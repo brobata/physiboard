@@ -23,6 +23,9 @@ import android.util.TypedValue
 import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.MainActivity
 import kotlin.math.max
+import android.view.MotionEvent
+import android.view.KeyEvent
+import kotlin.math.abs
 
 /**
  * Manages the status bar shown by the IME, handling view creation
@@ -68,6 +71,8 @@ class StatusBarController(
     private var emojiMapTextView: TextView? = null
     private var emojiKeyboardContainer: LinearLayout? = null
     private var variationsContainer: LinearLayout? = null
+    private var variationsOverlay: View? = null
+    private var variationsWrapper: FrameLayout? = null
     private var variationButtons: MutableList<TextView> = mutableListOf()
     private var ledContainer: LinearLayout? = null
     private var shiftLed: View? = null
@@ -78,6 +83,11 @@ class StatusBarController(
     private var currentVariationsRow: LinearLayout? = null
     private var microphoneButtonView: AppCompatImageButton? = null
     private var lastDisplayedVariations: List<String> = emptyList()
+    private var currentInputConnection: android.view.inputmethod.InputConnection? = null
+    private var isSwipeInProgress = false
+    private var touchStartX = 0f
+    private var touchStartY = 0f
+    private var isSymModeActive = false
 
     fun getLayout(): LinearLayout? = statusBarLayout
 
@@ -173,7 +183,119 @@ class StatusBarController(
                 )
                 visibility = View.GONE
             }
-
+            
+            // Create FrameLayout wrapper for variationsContainer with overlay
+            variationsWrapper = FrameLayout(context).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    variationsContainerHeight
+                )
+                visibility = View.GONE
+            }
+            
+            // Add variationsContainer to wrapper
+            variationsWrapper?.addView(variationsContainer)
+            
+            // Create transparent overlay for swipe gestures
+            variationsOverlay = View(context).apply {
+                background = ColorDrawable(Color.TRANSPARENT)
+                layoutParams = FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                )
+                visibility = View.GONE
+            }
+            
+            // Add overlay to wrapper (on top of variationsContainer)
+            variationsWrapper?.addView(variationsOverlay)
+            
+            // Add OnTouchListener to overlay for swipe gestures
+            val SWIPE_THRESHOLD = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP,
+                10f, // dp - increased sensitivity (reduced threshold)
+                context.resources.displayMetrics
+            )
+            
+            variationsOverlay?.setOnTouchListener { view, motionEvent ->
+                // Don't handle swipe if SYM mode is active
+                if (isSymModeActive) {
+                    return@setOnTouchListener false
+                }
+                
+                when (motionEvent.action) {
+                    MotionEvent.ACTION_DOWN -> {
+                        isSwipeInProgress = false
+                        touchStartX = motionEvent.x
+                        touchStartY = motionEvent.y
+                        Log.d(TAG, "Touch down on overlay at ($touchStartX, $touchStartY)")
+                        // Intercept all events to handle both swipe and tap
+                        true
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        val deltaX = motionEvent.x - touchStartX
+                        val deltaY = abs(motionEvent.y - touchStartY)
+                        
+                        // If scroll is mainly horizontal and exceeds threshold
+                        if (abs(deltaX) > SWIPE_THRESHOLD && abs(deltaX) > deltaY) {
+                            if (!isSwipeInProgress) {
+                                isSwipeInProgress = true
+                                val inputConnection = currentInputConnection
+                                
+                                if (inputConnection != null) {
+                                    // Determine swipe direction and move cursor
+                                    val keyCode = if (deltaX > 0) {
+                                        // Swipe right: move cursor right
+                                        KeyEvent.KEYCODE_DPAD_RIGHT
+                                    } else {
+                                        // Swipe left: move cursor left
+                                        KeyEvent.KEYCODE_DPAD_LEFT
+                                    }
+                                    
+                                    Log.d(TAG, "Swipe detected on overlay: ${if (deltaX > 0) "RIGHT" else "LEFT"}, moving cursor")
+                                    
+                                    // Send key events to move cursor
+                                    inputConnection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, keyCode))
+                                    inputConnection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, keyCode))
+                                    
+                                    // Update start position to prevent multiple triggers
+                                    touchStartX = motionEvent.x
+                                }
+                            }
+                            true // Consume the event
+                        } else {
+                            true // Still intercept to prevent button handling during potential swipe
+                        }
+                    }
+                    MotionEvent.ACTION_UP -> {
+                        if (isSwipeInProgress) {
+                            isSwipeInProgress = false
+                            Log.d(TAG, "Swipe ended on overlay")
+                            true // Consume to prevent button click
+                        } else {
+                            // Not a swipe, find and click button under touch position in variationsContainer
+                            val x = motionEvent.x
+                            val y = motionEvent.y
+                            Log.d(TAG, "Tap detected on overlay at ($x, $y), looking for button")
+                            
+                            // Find clickable view at touch position in variationsContainer
+                            val clickedView = variationsContainer?.let { findClickableViewAt(it, x, y) }
+                            if (clickedView != null) {
+                                Log.d(TAG, "Button clicked via overlay: ${clickedView.javaClass.simpleName}")
+                                clickedView.performClick()
+                            } else {
+                                Log.d(TAG, "No clickable button found at touch position")
+                            }
+                            true // Consume the event
+                        }
+                    }
+                    MotionEvent.ACTION_CANCEL -> {
+                        isSwipeInProgress = false
+                        true
+                    }
+                    else -> true
+                }
+            }
+            
             // Container for LEDs along the bottom edge
             val ledHeight = TypedValue.applyDimension(
                 TypedValue.COMPLEX_UNIT_DIP,
@@ -221,7 +343,7 @@ class StatusBarController(
             
             statusBarLayout?.apply {
                 addView(modifiersContainer)
-                addView(variationsContainer)
+                addView(variationsWrapper) // Use wrapper instead of variationsContainer
                 addView(emojiKeyboardContainer) // Griglia emoji prima dei LED
                 addView(ledContainer) // LED sempre in fondo
             }
@@ -229,6 +351,57 @@ class StatusBarController(
             emojiMapTextView?.text = emojiMapText
         }
         return statusBarLayout!!
+    }
+    
+    /**
+     * Recursively finds a clickable view at the given coordinates in the view hierarchy.
+     * Coordinates are relative to the parent view.
+     */
+    private fun findClickableViewAt(parent: View, x: Float, y: Float): View? {
+        if (parent !is ViewGroup) {
+            // Single view: check if it's clickable and contains the point
+            if (x >= 0 && x < parent.width &&
+                y >= 0 && y < parent.height &&
+                parent.isClickable) {
+                return parent
+            }
+            return null
+        }
+        
+        // For ViewGroup, check children first (they are on top)
+        // Iterate in reverse to check topmost views first
+        for (i in parent.childCount - 1 downTo 0) {
+            val child = parent.getChildAt(i)
+            if (child.visibility == View.VISIBLE) {
+                val childLeft = child.left.toFloat()
+                val childTop = child.top.toFloat()
+                val childRight = child.right.toFloat()
+                val childBottom = child.bottom.toFloat()
+                
+                if (x >= childLeft && x < childRight &&
+                    y >= childTop && y < childBottom) {
+                    // Point is inside this child, recurse with relative coordinates
+                    val childX = x - childLeft
+                    val childY = y - childTop
+                    val found = findClickableViewAt(child, childX, childY)
+                    if (found != null) {
+                        return found
+                    }
+                    
+                    // If child itself is clickable, return it
+                    if (child.isClickable) {
+                        return child
+                    }
+                }
+            }
+        }
+        
+        // If no child was found and parent is clickable, return parent
+        if (parent.isClickable) {
+            return parent
+        }
+        
+        return null
     }
     
     /**
@@ -1166,6 +1339,8 @@ class StatusBarController(
     private fun showVariationsAndMicrophone(snapshot: StatusSnapshot, inputConnection: android.view.inputmethod.InputConnection?) {
         val variationsContainerView = variationsContainer ?: return
         variationsContainerView.visibility = View.VISIBLE
+        variationsWrapper?.visibility = View.VISIBLE
+        variationsOverlay?.visibility = View.VISIBLE
 
         val limitedVariations = if (snapshot.variations.isNotEmpty() && snapshot.lastInsertedChar != null) {
             snapshot.variations.take(7)
@@ -1257,6 +1432,12 @@ class StatusBarController(
     }
 
     fun update(snapshot: StatusSnapshot, emojiMapText: String = "", inputConnection: android.view.inputmethod.InputConnection? = null, symMappings: Map<Int, String>? = null) {
+        // Save current inputConnection for swipe gestures
+        currentInputConnection = inputConnection
+        
+        // Update SYM mode state (swipe pad disabled when SYM mode is active)
+        isSymModeActive = snapshot.symPage > 0
+        
         val layout = statusBarLayout ?: return
         val modifiersContainerView = modifiersContainer ?: return
         val emojiView = emojiMapTextView ?: return
@@ -1317,6 +1498,8 @@ class StatusBarController(
                     animateEmojiKeyboardIn(emojiKeyboardView, layout)
                 }
                 variationsContainerView.visibility = View.GONE
+                variationsWrapper?.visibility = View.GONE
+                variationsOverlay?.visibility = View.GONE
             }
 
             if (emojiKeyboardView.visibility != View.VISIBLE) {
