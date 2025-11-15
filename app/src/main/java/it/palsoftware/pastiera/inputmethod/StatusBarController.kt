@@ -303,8 +303,9 @@ class StatusBarController(
      * Aggiorna la griglia emoji/caratteri con le mappature SYM.
      * @param symMappings Le mappature da visualizzare
      * @param page La pagina attiva (1=emoji, 2=caratteri)
+     * @param inputConnection L'input connection per inserire caratteri quando si clicca sui pulsanti
      */
-    private fun updateEmojiKeyboard(symMappings: Map<Int, String>, page: Int) {
+    private fun updateEmojiKeyboard(symMappings: Map<Int, String>, page: Int, inputConnection: android.view.inputmethod.InputConnection? = null) {
         val container = emojiKeyboardContainer ?: return
         
         // Rimuovi tutti i tasti esistenti
@@ -439,6 +440,42 @@ class StatusBarController(
                 
                 val keyButton = createEmojiKeyButton(label, content, keyHeight, page)
                 emojiKeyButtons.add(keyButton)
+                
+                // Aggiungi click listener per rendere il pulsante touchabile
+                if (content.isNotEmpty() && inputConnection != null) {
+                    keyButton.isClickable = true
+                    keyButton.isFocusable = true
+                    keyButton.setOnClickListener {
+                        // Inserisci il carattere/emoji quando si clicca
+                        inputConnection.commitText(content, 1)
+                        Log.d(TAG, "Clicked SYM button for keyCode $keyCode: $content")
+                    }
+                    
+                    // Aggiungi feedback visivo quando il pulsante viene premuto
+                    val originalBackground = keyButton.background
+                    keyButton.setOnTouchListener { view, motionEvent ->
+                        when (motionEvent.action) {
+                            android.view.MotionEvent.ACTION_DOWN -> {
+                                // Dimmer lo sfondo quando premuto
+                                if (originalBackground is GradientDrawable) {
+                                    val pressedColor = Color.argb(80, 255, 255, 255) // Più opaco
+                                    originalBackground.setColor(pressedColor)
+                                }
+                                view.invalidate()
+                            }
+                            android.view.MotionEvent.ACTION_UP,
+                            android.view.MotionEvent.ACTION_CANCEL -> {
+                                // Ripristina lo sfondo originale
+                                if (originalBackground is GradientDrawable) {
+                                    val normalColor = Color.argb(40, 255, 255, 255) // Sfondo normale
+                                    originalBackground.setColor(normalColor)
+                                }
+                                view.invalidate()
+                            }
+                        }
+                        false // Non consumare l'evento, lascia che il click listener funzioni
+                    }
+                }
                 
                 // Usa larghezza fissa invece di weight
                 rowLayout.addView(keyButton, LinearLayout.LayoutParams(fixedKeyWidth, keyHeight).apply {
@@ -1057,11 +1094,11 @@ class StatusBarController(
     private fun startSpeechRecognition(inputConnection: android.view.inputmethod.InputConnection?) {
         try {
             val intent = Intent(context, SpeechRecognitionActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                       Intent.FLAG_ACTIVITY_NO_HISTORY or
+                       Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
             }
-            
-            // Salva l'inputConnection per usarlo quando riceviamo il risultato
-            // Lo passeremo tramite il listener
+
             context.startActivity(intent)
             Log.d(TAG, "Riconoscimento vocale avviato")
         } catch (e: Exception) {
@@ -1272,7 +1309,7 @@ class StatusBarController(
         
         // Gestisci le animazioni tra SYM e suggerimenti
         if (snapshot.symPage > 0 && symMappings != null) {
-            updateEmojiKeyboard(symMappings, snapshot.symPage)
+            updateEmojiKeyboard(symMappings, snapshot.symPage, inputConnection)
             // Resetta le variazioni visualizzate quando SYM viene attivato
             lastDisplayedVariations = emptyList()
             val showSymKeyboard = {

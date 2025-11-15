@@ -57,7 +57,12 @@ fun SettingsScreen(
     var autoCapitalizeFirstLetter by remember {
         mutableStateOf(SettingsManager.getAutoCapitalizeFirstLetter(context))
     }
-    
+
+    // Load saved auto-capitalize after period value
+    var autoCapitalizeAfterPeriod by remember {
+        mutableStateOf(SettingsManager.getAutoCapitalizeAfterPeriod(context))
+    }
+
     // Load saved double space to period value
     var doubleSpaceToPeriod by remember {
         mutableStateOf(SettingsManager.getDoubleSpaceToPeriod(context))
@@ -357,9 +362,49 @@ fun SettingsScreen(
                     )
                 }
             }
-            
+
             HorizontalDivider()
-            
+
+            // Auto Capitalize After Period
+            Surface(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.TextFields,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.auto_capitalize_after_period_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = stringResource(R.string.auto_capitalize_after_period_description),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = autoCapitalizeAfterPeriod,
+                        onCheckedChange = { enabled ->
+                            autoCapitalizeAfterPeriod = enabled
+                            SettingsManager.setAutoCapitalizeAfterPeriod(context, enabled)
+                        }
+                    )
+                }
+            }
+
+            HorizontalDivider()
+
             // Double Space to Period
             Surface(
                 modifier = Modifier.fillMaxWidth()

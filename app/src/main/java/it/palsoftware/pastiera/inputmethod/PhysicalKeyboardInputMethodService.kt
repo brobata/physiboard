@@ -1280,7 +1280,24 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 }
             }
         }
-        
+
+        // ========== AUTO-CAPITALIZE AFTER PERIOD ==========
+        val autoCapitalizeAfterPeriodEnabled = SettingsManager.getAutoCapitalizeAfterPeriod(this)
+
+        if (autoCapitalizeAfterPeriodEnabled && inputConnection != null &&
+            keyCode == KeyEvent.KEYCODE_SPACE && !shiftOneShot) {
+
+            val textBeforeCursor = inputConnection.getTextBeforeCursor(100, 0)
+
+            // Check if text ends with "." (single period, not multiple periods)
+            if (textBeforeCursor != null && textBeforeCursor.endsWith(".") &&
+                textBeforeCursor.length >= 2 && textBeforeCursor[textBeforeCursor.length - 2] != '.') {
+
+                shiftOneShot = true
+                updateStatusBarText()
+            }
+        }
+
         // HANDLE AUTO-CORRECTION FOR SPACE AND PUNCTUATION
         if (isAutoCorrectEnabled) {
             // Controlla se è spazio o punteggiatura

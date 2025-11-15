@@ -95,8 +95,16 @@ class SpeechRecognitionActivity : Activity() {
                 Log.d(TAG, "Speech recognition cancelled or failed")
             }
         }
-        
-        finish()
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            try {
+                finishAndRemoveTask()
+            } catch (e: Exception) {
+                finish()
+            }
+        } else {
+            finish()
+        }
     }
 }
 

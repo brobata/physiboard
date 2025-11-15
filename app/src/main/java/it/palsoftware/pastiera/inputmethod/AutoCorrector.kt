@@ -511,5 +511,6 @@ object AutoCorrector {
             rejectedWords.clear()
         }
     }
+
 }
 

@@ -24,6 +24,7 @@ object SettingsManager {
     private const val KEY_SYM_MAPPINGS_PAGE2_CUSTOM = "sym_mappings_page2_custom"
     private const val KEY_AUTO_CORRECT_ENABLED = "auto_correct_enabled"
     private const val KEY_AUTO_CORRECT_ENABLED_LANGUAGES = "auto_correct_enabled_languages"
+    private const val KEY_AUTO_CAPITALIZE_AFTER_PERIOD = "auto_capitalize_after_period"
     private const val KEY_LONG_PRESS_MODIFIER = "long_press_modifier" // "alt" or "shift"
     
     // Default values
@@ -35,6 +36,7 @@ object SettingsManager {
     private const val DEFAULT_SWIPE_TO_DELETE = true
     private const val DEFAULT_AUTO_SHOW_KEYBOARD = true
     private const val DEFAULT_AUTO_CORRECT_ENABLED = true
+    private const val DEFAULT_AUTO_CAPITALIZE_AFTER_PERIOD = false
     private const val DEFAULT_LONG_PRESS_MODIFIER = "alt"
     
     /**
@@ -92,7 +94,23 @@ object SettingsManager {
             .putBoolean(KEY_AUTO_CAPITALIZE_FIRST_LETTER, enabled)
             .apply()
     }
-    
+
+    /**
+     * Returns the state of auto-capitalization after period.
+     */
+    fun getAutoCapitalizeAfterPeriod(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_AUTO_CAPITALIZE_AFTER_PERIOD, DEFAULT_AUTO_CAPITALIZE_AFTER_PERIOD)
+    }
+
+    /**
+     * Sets the state of auto-capitalization after period.
+     */
+    fun setAutoCapitalizeAfterPeriod(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_AUTO_CAPITALIZE_AFTER_PERIOD, enabled)
+            .apply()
+    }
+
     /**
      * Returns the state of the double-space-to-period feature.
      */

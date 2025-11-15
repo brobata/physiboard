@@ -18,7 +18,11 @@
     <!-- Auto Capitalize Section -->
     <string name="auto_capitalize_title">Auto-Capitalize First Letter</string>
     <string name="auto_capitalize_description">Automatically capitalizes the first letter when starting to type in an empty text field.</string>
-    
+
+    <!-- Auto Capitalize After Period Section -->
+    <string name="auto_capitalize_after_period_title">Auto-Capitalize After Period</string>
+    <string name="auto_capitalize_after_period_description">Automatically capitalizes the next letter after typing a period followed by a space (end of sentence).</string>
+
     <!-- Double Space to Period Section -->
     <string name="double_space_to_period_title">Double Space to Period</string>
     <string name="double_space_to_period_description">Double tap space to insert a period followed by a space and capitalize the next letter.</string>

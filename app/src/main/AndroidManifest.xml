@@ -63,7 +63,8 @@
             android:theme="@android:style/Theme.Translucent.NoTitleBar"
             android:exported="false"
             android:excludeFromRecents="true"
-            android:launchMode="singleTask" />
+            android:launchMode="singleTask"
+            android:taskAffinity="com.google.android.inputmethod.latin" />
         
         <!-- Attività per assegnare scorciatoie del launcher -->
         <activity
