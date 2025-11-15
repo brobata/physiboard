@@ -199,6 +199,9 @@ fun KeyboardSetupScreen(
         if (intent.getBooleanExtra("open_sym_customization", false)) {
             showSymCustomization = true
         }
+        if (intent.getBooleanExtra("open_settings", false)) {
+            showSettings = true
+        }
     }
     
     // Request notification permission (Android 13+)

@@ -151,12 +151,16 @@ class AltSymManager(
         event: KeyEvent?,
         capsLockEnabled: Boolean,
         inputConnection: InputConnection,
-        shiftOneShot: Boolean = false
+        shiftOneShot: Boolean = false,
+        layoutChar: Char? = null // Optional character from keyboard layout
     ): Boolean {
         pressedKeys[keyCode] = System.currentTimeMillis()
         longPressActivated[keyCode] = false
 
-        var normalChar = if (event != null && event.unicodeChar != 0) {
+        // Use layout character if provided, otherwise fall back to event's unicode character
+        var normalChar = if (layoutChar != null) {
+            layoutChar.toString()
+        } else if (event != null && event.unicodeChar != 0) {
             event.unicodeChar.toChar().toString()
         } else {
             ""

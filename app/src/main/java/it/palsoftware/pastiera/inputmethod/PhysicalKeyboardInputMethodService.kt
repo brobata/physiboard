@@ -114,6 +114,41 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     /**
      * Reloads nav mode key mappings from the file.
      */
+    private fun loadKeyboardLayout() {
+        val layoutName = SettingsManager.getKeyboardLayout(this)
+        val layout = KeyboardLayoutManager.loadLayout(assets, layoutName)
+        KeyboardLayoutManager.setLayout(layout)
+        Log.d(TAG, "Keyboard layout loaded: $layoutName")
+    }
+    
+    /**
+     * Gets the character from the selected keyboard layout for a given keyCode and shift state.
+     * If the keyCode is mapped in the layout, returns that character.
+     * Otherwise, returns the character from the event (if available).
+     * This ensures that keyboard layouts work correctly regardless of Android's system layout settings.
+     */
+    private fun getCharacterFromLayout(keyCode: Int, event: KeyEvent?, isShift: Boolean): Char? {
+        // First, try to get the character from the selected layout
+        val layoutChar = KeyboardLayoutManager.getCharacter(keyCode, isShift)
+        if (layoutChar != null) {
+            return layoutChar
+        }
+        // If not mapped in layout, fall back to event's unicode character
+        if (event != null && event.unicodeChar != 0) {
+            return event.unicodeChar.toChar()
+        }
+        return null
+    }
+    
+    /**
+     * Gets the character string from the selected keyboard layout.
+     * Returns the original event character if not mapped in layout.
+     */
+    private fun getCharacterStringFromLayout(keyCode: Int, event: KeyEvent?, isShift: Boolean): String {
+        val char = getCharacterFromLayout(keyCode, event, isShift)
+        return char?.toString() ?: ""
+    }
+    
     private fun reloadNavModeMappings() {
         try {
             ctrlKeyMap.clear()
@@ -290,6 +325,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             updateStatusBarText()
         }
         
+        // Initialize keyboard layout
+        loadKeyboardLayout()
+        
         // Initialize nav mode mappings file if needed
         it.palsoftware.pastiera.SettingsManager.initializeNavModeMappingsFile(this)
         ctrlKeyMap.putAll(KeyMappingLoader.loadCtrlKeyMappings(assets, this))
@@ -324,6 +362,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 Log.d(TAG, "Nav mode mappings changed, reloading...")
                 // Reload nav mode key mappings
                 reloadNavModeMappings()
+            } else if (key == "keyboard_layout") {
+                Log.d(TAG, "Keyboard layout changed, reloading...")
+                // Reload keyboard layout
+                loadKeyboardLayout()
             }
         }
         prefs.registerOnSharedPreferenceChangeListener(prefsListener)
@@ -1842,12 +1884,15 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             }
             // Otherwise use the standard long-press handling
             val wasShiftOneShot = shiftOneShot
+            // Get character from layout for conversion
+            val layoutChar = getCharacterFromLayout(keyCode, event, event?.isShiftPressed == true)
             altSymManager.handleKeyWithAltMapping(
                 keyCode,
                 event,
                 capsLockEnabled,
                 inputConnection,
-                shiftOneShot
+                shiftOneShot,
+                layoutChar
             )
             // Disable shiftOneShot after handling a key with Alt mapping,
             // so that it does not stay active for the next key.
@@ -1859,12 +1904,12 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
         
         // Handle Shift one-shot for keys without Alt mapping
-        if (shiftOneShot && event != null && event.unicodeChar != 0) {
-            var char = event.unicodeChar.toChar().toString()
-            if (char.isNotEmpty() && char[0].isLetter()) {
-                Log.d(TAG, "Shift one-shot active, original character: $char")
+        if (shiftOneShot) {
+            val charFromLayout = getCharacterStringFromLayout(keyCode, event, isShift = true)
+            if (charFromLayout.isNotEmpty() && charFromLayout[0].isLetter()) {
+                Log.d(TAG, "Shift one-shot active, character from layout: $charFromLayout")
                 // Always force uppercase when shiftOneShot is active
-                char = char.uppercase()
+                val char = charFromLayout.uppercase()
                 Log.d(TAG, "Shift one-shot, modified character: $char")
                 shiftOneShot = false
                 inputConnection.commitText(char, 1)
@@ -1878,15 +1923,16 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         
         // When there is no mapping, handle Caps Lock for regular characters.
         // Apply Caps Lock to alphabetical characters.
-        if (event != null && event.unicodeChar != 0) {
-            var char = event.unicodeChar.toChar().toString()
+        val charFromLayout = getCharacterStringFromLayout(keyCode, event, event?.isShiftPressed == true)
+        if (charFromLayout.isNotEmpty() && charFromLayout[0].isLetter()) {
+            var char = charFromLayout
             var shouldConsume = false
             
             // Apply Caps Lock when active (but only if Shift is not pressed)
-            if (capsLockEnabled && event.isShiftPressed != true && char.isNotEmpty() && char[0].isLetter()) {
+            if (capsLockEnabled && event?.isShiftPressed != true) {
                 char = char.uppercase()
                 shouldConsume = true
-            } else if (capsLockEnabled && event.isShiftPressed == true && char.isNotEmpty() && char[0].isLetter()) {
+            } else if (capsLockEnabled && event?.isShiftPressed == true) {
                 // When Caps Lock is active and Shift is pressed, force lowercase
                 char = char.lowercase()
                 shouldConsume = true
@@ -1904,12 +1950,12 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         
         // When there is no mapping, check whether the character has variations.
         // If it does, handle it ourselves so we can show variation suggestions.
-        if (event != null && event.unicodeChar != 0) {
-            val char = event.unicodeChar.toChar()
+        val charForVariations = getCharacterFromLayout(keyCode, event, event?.isShiftPressed == true)
+        if (charForVariations != null) {
             // Check whether the character has variations
-            if (variationsMap.containsKey(char)) {
+            if (variationsMap.containsKey(charForVariations)) {
                 // Insert the character ourselves so we can show variations
-                inputConnection.commitText(char.toString(), 1)
+                inputConnection.commitText(charForVariations.toString(), 1)
                 // Update variations after insertion (with delay to ensure commitText is completed)
                 android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                     updateStatusBarText()
@@ -1918,6 +1964,40 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             }
             // If the character has no variations, previous variations remain visible
             // (display only, no action)
+        }
+        
+        // Convert all alphabetic characters using the selected keyboard layout
+        // This ensures that layout conversion works even when no special modifiers are active
+        // Check if this is an alphabetic key that should be converted
+        val isAlphabeticKey = isAlphabeticKey(keyCode)
+        if (isAlphabeticKey && KeyboardLayoutManager.isMapped(keyCode)) {
+            val convertedChar = getCharacterFromLayout(keyCode, event, event?.isShiftPressed == true)
+            if (convertedChar != null && convertedChar.isLetter()) {
+                // Get the character from the layout and insert it ourselves
+                // This overrides Android's system layout handling
+                var char = convertedChar.toString()
+                
+                // Apply Caps Lock if enabled (but only if Shift is not pressed)
+                if (capsLockEnabled && event?.isShiftPressed != true) {
+                    char = char.uppercase()
+                } else if (capsLockEnabled && event?.isShiftPressed == true) {
+                    // When Caps Lock is active and Shift is pressed, force lowercase
+                    char = char.lowercase()
+                }
+                
+                Log.d(TAG, "Layout conversion: keyCode=$keyCode, original=${event?.unicodeChar?.toChar()}, converted=$char")
+                
+                // Insert the converted character
+                inputConnection.commitText(char, 1)
+                
+                // Update variations after insertion (with delay to ensure commitText is completed)
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                    updateStatusBarText()
+                }, 30) // 30ms per dare tempo ad Android di completare commitText
+                
+                // Consume the event to prevent Android from handling it
+                return true
+            }
         }
         
         // When there is no mapping, let Android handle the event normally.

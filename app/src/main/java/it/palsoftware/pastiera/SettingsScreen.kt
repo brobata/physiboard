@@ -86,8 +86,13 @@ fun SettingsScreen(
     }
     
     // Load saved launcher shortcuts enabled value
-    var launcherShortcutsEnabled by remember {
+    var launcherShortcutsEnabled by remember { 
         mutableStateOf(SettingsManager.getLauncherShortcutsEnabled(context))
+    }
+    
+    // Load saved keyboard layout value for display
+    val keyboardLayout = remember { 
+        SettingsManager.getKeyboardLayout(context)
     }
     
     // State for navigation to auto-correction settings
@@ -102,6 +107,9 @@ fun SettingsScreen(
     
     // State for navigation to nav mode settings
     var showNavModeSettings by remember { mutableStateOf(false) }
+    
+    // State for navigation to keyboard layout settings
+    var showKeyboardLayoutSettings by remember { mutableStateOf(false) }
     
     // Handle system back button
     BackHandler {
@@ -120,6 +128,9 @@ fun SettingsScreen(
             }
             showNavModeSettings -> {
                 showNavModeSettings = false
+            }
+            showKeyboardLayoutSettings -> {
+                showKeyboardLayoutSettings = false
             }
             else -> {
                 onBack()
@@ -168,6 +179,14 @@ fun SettingsScreen(
         NavModeSettingsScreen(
             modifier = modifier,
             onBack = { showNavModeSettings = false }
+        )
+        return
+    }
+    
+    if (showKeyboardLayoutSettings) {
+        KeyboardLayoutSettingsScreen(
+            modifier = modifier,
+            onBack = { showKeyboardLayoutSettings = false }
         )
         return
     }
@@ -327,6 +346,52 @@ fun SettingsScreen(
                                     MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
+                    }
+                }
+            
+                // Keyboard Layout Settings (navigable)
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(64.dp)
+                        .clickable { showKeyboardLayoutSettings = true }
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Keyboard,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.keyboard_layout_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1
+                            )
+                            Text(
+                                text = if (keyboardLayout == "qwerty") {
+                                    stringResource(R.string.keyboard_layout_no_conversion)
+                                } else {
+                                    keyboardLayout.replaceFirstChar { it.uppercase() }
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Filled.ArrowForward,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             

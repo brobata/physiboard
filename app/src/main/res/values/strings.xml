@@ -145,6 +145,15 @@
     <string name="long_press_modifier_alt">Alt</string>
     <string name="long_press_modifier_shift">Shift</string>
     
+    <!-- Keyboard Layout Section -->
+    <string name="keyboard_layout_title">Keyboard Layout</string>
+    <string name="keyboard_layout_description">Select your keyboard layout. ALT, SYM and Ctrl mappings remain based on physical key position.</string>
+    <string name="keyboard_layout_no_conversion">Standard</string>
+    <string name="keyboard_layout_no_conversion_description">Standard QWERTY layout (no conversion)</string>
+    <string name="keyboard_layout_conversions_title">Layout Conversions</string>
+    <string name="keyboard_layout_conversions_description">Convert letter keys to match the selected layout</string>
+    <string name="keyboard_layout_settings_button">Keyboard Layout Settings</string>
+    
     <!-- About Section -->
     <string name="about_github">GitHub</string>
     <string name="about_build_info">Build</string>

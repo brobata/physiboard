@@ -85,6 +85,7 @@ class StatusBarController(
     private var emojiKeyButtons: MutableList<View> = mutableListOf()
     private var currentVariationsRow: LinearLayout? = null
     private var microphoneButtonView: AppCompatImageButton? = null
+    private var settingsButtonView: AppCompatImageButton? = null
     private var lastDisplayedVariations: List<String> = emptyList()
     private var currentInputConnection: android.view.inputmethod.InputConnection? = null
     private var isSwipeInProgress = false
@@ -180,8 +181,9 @@ class StatusBarController(
             variationsContainer = LinearLayout(context).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.START or Gravity.CENTER_VERTICAL
-                // Padding speculare: sinistro e destro uguali (64dp)
-                setPadding(leftPadding, variationsVerticalPadding, leftPadding, variationsVerticalPadding)
+                // Padding: sinistro invariato (64dp), destro ridotto del 67% (64dp * 0.31 = 19.84dp)
+                val rightPadding = (leftPadding * 0.31f).toInt()
+                setPadding(leftPadding, variationsVerticalPadding, rightPadding, variationsVerticalPadding)
                 layoutParams = LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     variationsContainerHeight // Altezza fissa invece di WRAP_CONTENT
@@ -1303,6 +1305,34 @@ class StatusBarController(
     }
     
     /**
+     * Creates a small settings button for the status bar (placed to the right of the microphone).
+     */
+    private fun createStatusBarSettingsButton(buttonSize: Int): AppCompatImageButton {
+        // Smaller icon size - 60% of button size, then 10% smaller = 54% of button size
+        val iconSize = (buttonSize * 0.54f).toInt()
+        val dp3 = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            3f,
+            context.resources.displayMetrics
+        ).toInt()
+        
+        return AppCompatImageButton(context).apply {
+            setImageResource(R.drawable.ic_settings_24)
+            // Dark gray color (not invasive)
+            setColorFilter(Color.rgb(100, 100, 100))
+            background = null // No background
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            isClickable = true
+            isFocusable = true
+            setPadding(dp3, dp3, dp3, dp3)
+            layoutParams = LinearLayout.LayoutParams(
+                buttonSize,
+                buttonSize
+            )
+        }
+    }
+    
+    /**
      * Avvia il riconoscimento vocale di Google Voice Typing.
      */
     private fun startSpeechRecognition(inputConnection: android.view.inputmethod.InputConnection?) {
@@ -1413,7 +1443,8 @@ class StatusBarController(
             64f,
             context.resources.displayMetrics
         ).toInt()
-        val rightPadding = leftPadding
+        // Right padding reduced by 67% (from 64dp to 19.84dp)
+        val rightPadding = (leftPadding * 0.31f).toInt()
         val availableWidth = screenWidth - leftPadding - rightPadding
 
         val spacingBetweenButtons = TypedValue.applyDimension(
@@ -1421,8 +1452,10 @@ class StatusBarController(
             3f,
             context.resources.displayMetrics
         ).toInt()
-        val totalSpacing = spacingBetweenButtons * 7
-        val buttonWidth = max(1, (availableWidth - totalSpacing) / 8)
+        // Total elements: 7 variations + 1 microphone + 1 settings = 9 elements
+        // Total spacing: 8 spaces between 9 elements
+        val totalSpacing = spacingBetweenButtons * 8
+        val buttonWidth = max(1, (availableWidth - totalSpacing) / 9)
 
         val variationsRow = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -1461,6 +1494,30 @@ class StatusBarController(
         }
         microphoneButton.alpha = 1f
         microphoneButton.visibility = View.VISIBLE
+        
+        // Add settings button to the right of microphone
+        val settingsButton = settingsButtonView ?: createStatusBarSettingsButton(buttonWidth)
+        settingsButtonView = settingsButton
+        (settingsButton.parent as? ViewGroup)?.removeView(settingsButton)
+        val settingsParams = LinearLayout.LayoutParams(buttonWidth, buttonWidth).apply {
+            // Move icon 10% higher (negative top margin = 10% of button height)
+            topMargin = (-buttonWidth * 0.1f).toInt()
+        }
+        variationsContainerView.addView(settingsButton, settingsParams)
+        settingsButton.setOnClickListener {
+            // Open Settings screen
+            val intent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra("open_settings", true)
+            }
+            try {
+                context.startActivity(intent)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error opening Settings screen", e)
+            }
+        }
+        settingsButton.alpha = 1f
+        settingsButton.visibility = View.VISIBLE
 
         // Fai il fade in solo se le variazioni sono cambiate
         if (variationsChanged) {
@@ -1575,12 +1632,23 @@ class StatusBarController(
                         animationCompleted()
                     }
                 }
+                
+                settingsButtonView?.let { settings ->
+                    if (settings.visibility == View.VISIBLE) {
+                        // Rimuovi immediatamente il pulsante settings dal container
+                        (settings.parent as? ViewGroup)?.removeView(settings)
+                        settings.visibility = View.GONE
+                        settings.alpha = 1f
+                        animationCompleted()
+                    }
+                }
 
                 if (pendingAnimations == 0) {
                     showSymKeyboard()
                 }
             } else {
                 microphoneButtonView?.visibility = View.GONE
+                settingsButtonView?.visibility = View.GONE
             }
             return
         }

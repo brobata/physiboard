@@ -29,6 +29,7 @@ object SettingsManager {
     private const val KEY_AUTO_CORRECT_ENABLED_LANGUAGES = "auto_correct_enabled_languages"
     private const val KEY_AUTO_CAPITALIZE_AFTER_PERIOD = "auto_capitalize_after_period"
     private const val KEY_LONG_PRESS_MODIFIER = "long_press_modifier" // "alt" or "shift"
+    private const val KEY_KEYBOARD_LAYOUT = "keyboard_layout" // "qwerty", "azerty", etc.
     
     // Default values
     private const val DEFAULT_LONG_PRESS_THRESHOLD = 300L
@@ -41,6 +42,7 @@ object SettingsManager {
     private const val DEFAULT_AUTO_CORRECT_ENABLED = true
     private const val DEFAULT_AUTO_CAPITALIZE_AFTER_PERIOD = true
     private const val DEFAULT_LONG_PRESS_MODIFIER = "alt"
+    private const val DEFAULT_KEYBOARD_LAYOUT = "qwerty"
     
     /**
      * Returns the SharedPreferences instance for Pastiera.
@@ -855,6 +857,22 @@ object SettingsManager {
     fun hasCustomNavModeMappings(context: Context): Boolean {
         val mappingsFile = getNavModeMappingsFile(context)
         return mappingsFile.exists()
+    }
+    
+    /**
+     * Returns the selected keyboard layout name.
+     */
+    fun getKeyboardLayout(context: Context): String {
+        return getPreferences(context).getString(KEY_KEYBOARD_LAYOUT, DEFAULT_KEYBOARD_LAYOUT) ?: DEFAULT_KEYBOARD_LAYOUT
+    }
+    
+    /**
+     * Sets the keyboard layout name.
+     */
+    fun setKeyboardLayout(context: Context, layoutName: String) {
+        getPreferences(context).edit()
+            .putString(KEY_KEYBOARD_LAYOUT, layoutName)
+            .apply()
     }
 }
 
