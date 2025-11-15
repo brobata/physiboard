@@ -114,7 +114,7 @@ function Invoke-ProjectBuild {
     Write-Info "`nBuilding APK ($BuildType)..."
     Write-Info "This may take a few minutes..."
     
-    $commonGradleArgs = @("--no-daemon", "-Dorg.gradle.vfs.watch=false", "-Dorg.gradle.daemon=false")
+    $commonGradleArgs = @("-Dorg.gradle.vfs.watch=false")
 
     # Clean previous build output
     Write-Info "Cleaning previous build..."

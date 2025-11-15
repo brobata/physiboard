@@ -39,6 +39,9 @@ class StatusBarController(
     
     // Listener for speech recognition results
     var onSpeechResultListener: ((String) -> Unit)? = null
+    
+    // Listener for cursor movement (to update variations)
+    var onCursorMovedListener: (() -> Unit)? = null
 
     companion object {
         private const val TAG = "StatusBarController"
@@ -272,21 +275,28 @@ class StatusBarController(
                                     
                                     // Move cursor if movement exceeds threshold in current direction
                                     if (movementInDirection > INCREMENTAL_THRESHOLD) {
-                                        // Determine key code based on current swipe direction
-                                        val keyCode = if (swipeDirection == 1) {
-                                            KeyEvent.KEYCODE_DPAD_RIGHT
+                                        // Use TextSelectionHelper to move cursor directly (safer than DPAD keys)
+                                        // This only affects the text field, not UI navigation
+                                        val moved = if (swipeDirection == 1) {
+                                            TextSelectionHelper.moveCursorRight(inputConnection)
                                         } else {
-                                            KeyEvent.KEYCODE_DPAD_LEFT
+                                            TextSelectionHelper.moveCursorLeft(inputConnection)
                                         }
                                         
-                                        // Send key events to move cursor
-                                        inputConnection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, keyCode))
-                                        inputConnection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, keyCode))
-                                        
-                                        // Update last cursor move position
-                                        lastCursorMoveX = motionEvent.x
-                                        
-                                        Log.d(TAG, "Cursor moved: ${if (swipeDirection == 1) "RIGHT" else "LEFT"}")
+                                        if (moved) {
+                                            // Update last cursor move position
+                                            lastCursorMoveX = motionEvent.x
+                                            
+                                            Log.d(TAG, "Cursor moved: ${if (swipeDirection == 1) "RIGHT" else "LEFT"}")
+                                            
+                                            // Notify listener to update variations after cursor movement
+                                            // Use a delayed post to ensure Android has completed the cursor movement
+                                            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                                onCursorMovedListener?.invoke()
+                                            }, 50) // 50ms delay to allow Android to update cursor position
+                                        } else {
+                                            Log.d(TAG, "Cursor movement failed: ${if (swipeDirection == 1) "RIGHT" else "LEFT"} (probably at text boundary)")
+                                        }
                                     }
                                 }
                             }

@@ -263,6 +263,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 updateStatusBarText()
             }
         }
+        // Register listener for cursor movement (to update variations when cursor moves via swipe pad)
+        statusBarController.onCursorMovedListener = {
+            updateStatusBarText()
+        }
         altSymManager = AltSymManager(assets, prefs, this)
         altSymManager.reloadSymMappings() // Load custom mappings for page 1 if present
         altSymManager.reloadSymMappings2() // Load custom mappings for page 2 if present
@@ -580,7 +584,17 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     }
     
     /**
-     * Updates variations by checking the character before the cursor.
+     * Updates variations by checking the character immediately to the left of the cursor.
+     * 
+     * This function:
+     * 1. Checks if there is an active text selection (if so, disables variations)
+     * 2. Gets the character immediately before the cursor using getTextBeforeCursor(1, 0)
+     *    - getTextBeforeCursor(1, 0) returns exactly 1 character to the left of the cursor
+     *    - The last character of the returned string is the character immediately before the cursor
+     * 3. Looks up variations for that character and updates the UI accordingly
+     * 
+     * Note: This always checks the character to the LEFT of the cursor (in LTR languages),
+     * regardless of how the cursor was moved (keyboard, swipe pad, mouse, etc.).
      */
     private fun updateVariationsFromCursor() {
         val inputConnection = currentInputConnection
@@ -618,9 +632,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             Log.d(TAG, "Error while checking selection state: ${e.message}")
         }
         
-        // Get the character before the cursor
+        // Get the character immediately before the cursor (to the left in LTR languages)
+        // getTextBeforeCursor(1, 0) returns exactly 1 character before the cursor position
         val textBeforeCursor = inputConnection.getTextBeforeCursor(1, 0)
         if (textBeforeCursor != null && textBeforeCursor.isNotEmpty()) {
+            // The last character of the returned string is the character immediately before the cursor
             val charBeforeCursor = textBeforeCursor[textBeforeCursor.length - 1]
             // Check whether the character has variations
             val variations = variationsMap[charBeforeCursor]
@@ -636,7 +652,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 availableVariations = emptyList()
             }
         } else {
-            // No character before the cursor
+            // No character before the cursor (cursor is at the start of text)
             variationsActive = false
             lastInsertedChar = null
             availableVariations = emptyList()

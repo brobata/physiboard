@@ -171,6 +171,143 @@ object TextSelectionHelper {
     }
     
     /**
+     * Moves cursor one character to the left (without creating a selection).
+     * This is safer than using DPAD keys as it only affects the text field, not UI navigation.
+     * 
+     * @return true if cursor was moved, false if already at start or error occurred
+     */
+    fun moveCursorLeft(inputConnection: InputConnection): Boolean {
+        try {
+            // Get current cursor position using ExtractedTextRequest
+            val extractedText = inputConnection.getExtractedText(
+                ExtractedTextRequest().apply {
+                    flags = android.view.inputmethod.ExtractedText.FLAG_SELECTING
+                },
+                0
+            )
+            
+            if (extractedText == null) {
+                // Fallback: use getTextBeforeCursor to estimate position
+                val textBefore = inputConnection.getTextBeforeCursor(1000, 0)
+                
+                if (textBefore != null && textBefore.isNotEmpty()) {
+                    val currentPos = textBefore.length
+                    val newPos = currentPos - 1
+                    
+                    if (newPos >= 0) {
+                        // Move cursor without creating selection (same start and end)
+                        inputConnection.setSelection(newPos, newPos)
+                        Log.d(TAG, "moveCursorLeft: cursor moved from $currentPos to $newPos")
+                        return true
+                    }
+                }
+                return false
+            }
+            
+            val selectionStart = extractedText.selectionStart
+            val selectionEnd = extractedText.selectionEnd
+            
+            if (selectionStart < 0 || selectionEnd < 0) {
+                Log.d(TAG, "moveCursorLeft: unable to get cursor position")
+                return false
+            }
+            
+            // If there's a selection, collapse it to the start position first
+            val currentPos = if (selectionStart != selectionEnd) {
+                selectionStart // Collapse selection to start
+            } else {
+                selectionStart // Already at cursor position
+            }
+            
+            // Can't move left if already at start
+            if (currentPos <= 0) {
+                Log.d(TAG, "moveCursorLeft: cursor already at start of text")
+                return false
+            }
+            
+            val newPos = currentPos - 1
+            
+            // Move cursor without creating selection (same start and end)
+            inputConnection.setSelection(newPos, newPos)
+            Log.d(TAG, "moveCursorLeft: cursor moved from $currentPos to $newPos")
+            return true
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in moveCursorLeft", e)
+        }
+        return false
+    }
+    
+    /**
+     * Moves cursor one character to the right (without creating a selection).
+     * This is safer than using DPAD keys as it only affects the text field, not UI navigation.
+     * 
+     * @return true if cursor was moved, false if already at end or error occurred
+     */
+    fun moveCursorRight(inputConnection: InputConnection): Boolean {
+        try {
+            // Get current cursor position using ExtractedTextRequest
+            val extractedText = inputConnection.getExtractedText(
+                ExtractedTextRequest().apply {
+                    flags = android.view.inputmethod.ExtractedText.FLAG_SELECTING
+                },
+                0
+            )
+            
+            if (extractedText == null) {
+                // Fallback: use getTextBeforeCursor and getTextAfterCursor to estimate position
+                val textBefore = inputConnection.getTextBeforeCursor(1000, 0)
+                val textAfter = inputConnection.getTextAfterCursor(1, 0)
+                
+                if (textAfter != null && textAfter.isNotEmpty()) {
+                    val currentPos = textBefore?.length ?: 0
+                    val newPos = currentPos + 1
+                    
+                    // Move cursor without creating selection (same start and end)
+                    inputConnection.setSelection(newPos, newPos)
+                    Log.d(TAG, "moveCursorRight: cursor moved from $currentPos to $newPos")
+                    return true
+                }
+                return false
+            }
+            
+            val selectionStart = extractedText.selectionStart
+            val selectionEnd = extractedText.selectionEnd
+            
+            if (selectionStart < 0 || selectionEnd < 0) {
+                Log.d(TAG, "moveCursorRight: unable to get cursor position")
+                return false
+            }
+            
+            // Verify total text length
+            val fullText = extractedText.text?.toString() ?: ""
+            val textLength = fullText.length
+            
+            // If there's a selection, collapse it to the end position first
+            val currentPos = if (selectionStart != selectionEnd) {
+                selectionEnd // Collapse selection to end
+            } else {
+                selectionEnd // Already at cursor position
+            }
+            
+            // Can't move right if already at end
+            if (currentPos >= textLength) {
+                Log.d(TAG, "moveCursorRight: cursor already at end of text (pos: $currentPos, length: $textLength)")
+                return false
+            }
+            
+            val newPos = currentPos + 1
+            
+            // Move cursor without creating selection (same start and end)
+            inputConnection.setSelection(newPos, newPos)
+            Log.d(TAG, "moveCursorRight: cursor moved from $currentPos to $newPos")
+            return true
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in moveCursorRight", e)
+        }
+        return false
+    }
+    
+    /**
      * Deletes last word before cursor.
      */
     fun deleteLastWord(inputConnection: InputConnection): Boolean {
