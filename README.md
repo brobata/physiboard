@@ -39,7 +39,7 @@ Standard shortcuts work as you'd expect:
 
 ### Navigation Mode
 
-Double-tap Ctrl when not in a text field to enter navigation mode. This lets you use Ctrl+arrow keys to navigate around the UI even when there's no text input active. Press Back or Ctrl again to exit.
+Double-tap Ctrl when not in a text field to enter navigation mode. This lets you use ESDF or IJKL keys to navigate around the UI, T to tab and other commands when there's no text input active. Press Back or Ctrl again to exit.
 
 ### Launcher Shortcuts (Experimental)
 
@@ -49,10 +49,10 @@ When you're on the home screen (launcher) and not in a text field, you can assig
 
 After typing a letter, the status bar shows available accent variations (à, é, ñ, ç, etc.). Tap any variation to replace the character.
 
-### SYM Key for Emojis
+### SYM Key for Emojis and other characters
 
 Press the SYM key (if your keyboard has one) to activate emoji mode. Then press any letter key to insert its mapped emoji. You can customize which emoji each key produces in the settings.
-
+Press again the SYM key to enter the second page of the SYM layout, reserved to special characters (you can customize this layout too)
 
 
 ### Voice Input
@@ -70,7 +70,7 @@ Built-in auto-correction only for punctuation and similar (for example im → I'
 ### Other Conveniences
 
 - **Double space to period**: Tap space twice to insert a period, space, and capitalize the next letter
-- **Swipe to delete**: Swipe left on the keyboard to delete (if enabled, works on Unihertz Titan 2)
+- **Swipe to delete**: Swipe left on the keyboard to delete à word (if enabled, works on Unihertz Titan 2)
 - **Compact status bar**: The status bar is minimal and takes up very little vertical space
 
 ## Installation
