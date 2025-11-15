@@ -35,36 +35,52 @@ private fun LanguageItem(
     onToggle: (Boolean) -> Unit,
     onEdit: () -> Unit = {}
 ) {
+    val isRicettePastiera = languageCode == "x-pastiera"
+    val showToggle = !isRicettePastiera // Hide toggle for Ricette Pastiera (always active)
+    
     Surface(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(64.dp)
+            .clickable { onEdit() }
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Icon(
                 imageVector = Icons.Filled.Language,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
             )
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .clickable { onEdit() }
             ) {
                 Text(
                     text = languageName,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1
                 )
                 if (isSystemLanguage) {
                     Text(
                         text = stringResource(R.string.auto_correct_system_language),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
+                    )
+                }
+                if (isRicettePastiera) {
+                    Text(
+                        text = stringResource(R.string.auto_correct_ricette_pastiera_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
                     )
                 }
             }
@@ -75,23 +91,44 @@ private fun LanguageItem(
                 TextButton(onClick = onEdit) {
                     Text(stringResource(R.string.auto_correct_edit))
                 }
-                Switch(
-                    checked = isEnabled,
-                    onCheckedChange = onToggle
-                )
+                if (showToggle) {
+                    Switch(
+                        checked = isEnabled,
+                        onCheckedChange = onToggle
+                    )
+                }
             }
         }
     }
 }
 
 private fun getLanguageDisplayName(context: Context, languageCode: String): String {
+    // Special case for Ricette Pastiera
+    if (languageCode == "x-pastiera") {
+        return "Ricette Pastiera"
+    }
+    
     // First try to get saved name from JSON
     val savedName = SettingsManager.getCustomLanguageName(context, languageCode)
     if (savedName != null) {
         return savedName
     }
     
-    // If no saved name, use name generated from locale
+    // For standard languages, use simple locale display name (without "Pastiera")
+    val standardLanguages = mapOf(
+        "en" to "English",
+        "it" to "Italiano",
+        "fr" to "Français",
+        "de" to "Deutsch",
+        "pl" to "Polski",
+        "es" to "Español"
+    )
+    
+    if (languageCode in standardLanguages) {
+        return standardLanguages[languageCode]!!
+    }
+    
+    // If no saved name and not standard, use name generated from locale
     return try {
         val locale = Locale(languageCode)
         locale.getDisplayLanguage(locale).replaceFirstChar { 
@@ -190,8 +227,10 @@ fun AutoCorrectSettingsScreen(
 ) {
     val context = LocalContext.current
     
-    // Load available languages (updatable)
-    var allLanguages by remember { mutableStateOf(AutoCorrector.getAllAvailableLanguages()) }
+    // Load available languages (updatable), excluding x-pastiera from UI
+    var allLanguages by remember { 
+        mutableStateOf(AutoCorrector.getAllAvailableLanguages().filter { it != "x-pastiera" }) 
+    }
     val systemLocale = remember {
         context.resources.configuration.locales[0].language.lowercase()
     }
@@ -204,18 +243,30 @@ fun AutoCorrectSettingsScreen(
     // State for new language dialog
     var showNewLanguageDialog by remember { mutableStateOf(false) }
     
+    // Load corrections when screen is opened to ensure languages are available
+    LaunchedEffect(Unit) {
+        try {
+            val assets = context.assets
+            AutoCorrector.loadCorrections(assets, context)
+            allLanguages = AutoCorrector.getAllAvailableLanguages().filter { it != "x-pastiera" }
+        } catch (e: Exception) {
+            android.util.Log.e("AutoCorrectSettings", "Error loading corrections", e)
+        }
+    }
+    
     // Helper to determine if a language is enabled
     fun isLanguageEnabled(locale: String): Boolean {
         // If set is empty, all languages are enabled (default)
         return enabledLanguages.isEmpty() || enabledLanguages.contains(locale)
     }
     
-    // Helper to count how many languages are enabled
+    // Helper to count how many languages are enabled (excluding x-pastiera which is always enabled)
     fun countEnabledLanguages(): Int {
         return if (enabledLanguages.isEmpty()) {
-            allLanguages.size // All enabled
+            allLanguages.size // All enabled (excluding x-pastiera from count)
         } else {
-            enabledLanguages.size
+            // Count only visible languages (exclude x-pastiera)
+            enabledLanguages.filter { it != "x-pastiera" }.size
         }
     }
     
@@ -330,112 +381,141 @@ fun AutoCorrectSettingsScreen(
                         .padding(paddingValues)
                         .verticalScroll(rememberScrollState())
                 ) {
-            // Description section
-            Surface(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = stringResource(R.string.auto_correct_settings_description),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(16.dp)
-                )
-            }
-            
-            HorizontalDivider()
-            
-            // System language (always at top)
-            if (allLanguages.contains(systemLocale)) {
-                val systemEnabled = isLanguageEnabled(systemLocale)
-            LanguageItem(
-                languageCode = systemLocale,
-                languageName = getLanguageDisplayName(context, systemLocale),
-                    isSystemLanguage = true,
-                    isEnabled = systemEnabled,
-                    onToggle = { enabled ->
-                        toggleLanguage(systemLocale, systemEnabled)
-                    },
-                    onEdit = {
-                        onEditLanguage(systemLocale)
+                    // Description section
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            Text(
+                                text = stringResource(R.string.auto_correct_settings_description),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
-                )
-                HorizontalDivider()
-            }
-            
-            // Other available languages
-            val otherLanguages = allLanguages.filter { it != systemLocale }.sorted()
-            
-            if (otherLanguages.isNotEmpty()) {
-                // Header for other languages
-                Surface(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = stringResource(R.string.auto_correct_other_languages),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
-                    )
-                }
-                
-                otherLanguages.forEach { locale ->
-                    val localeEnabled = isLanguageEnabled(locale)
-                LanguageItem(
-                    languageCode = locale,
-                    languageName = getLanguageDisplayName(context, locale),
+                    
+                    // System language (always at top)
+                    if (allLanguages.contains(systemLocale)) {
+                        val systemEnabled = isLanguageEnabled(systemLocale)
+                        LanguageItem(
+                            languageCode = systemLocale,
+                            languageName = getLanguageDisplayName(context, systemLocale),
+                            isSystemLanguage = true,
+                            isEnabled = systemEnabled,
+                            onToggle = { enabled ->
+                                toggleLanguage(systemLocale, systemEnabled)
+                            },
+                            onEdit = {
+                                onEditLanguage(systemLocale)
+                            }
+                        )
+                    }
+                    
+                    // Ricette Pastiera (always active, no toggle, shown after system language)
+                    LanguageItem(
+                        languageCode = "x-pastiera",
+                        languageName = getLanguageDisplayName(context, "x-pastiera"),
                         isSystemLanguage = false,
-                        isEnabled = localeEnabled,
-                        onToggle = { enabled ->
-                            toggleLanguage(locale, localeEnabled)
-                        },
+                        isEnabled = true, // Always enabled
+                        onToggle = { /* No toggle for Ricette Pastiera */ },
                         onEdit = {
-                            onEditLanguage(locale)
+                            onEditLanguage("x-pastiera")
                         }
                     )
-                    HorizontalDivider()
-                }
-            }
-            
-            // Section for custom languages (if present)
-            // Filter only languages that are not standard and not already shown above
-            val customLanguages = AutoCorrector.getCustomLanguages()
-                .filter { it != systemLocale && it !in otherLanguages }
-            if (customLanguages.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                Surface(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = stringResource(R.string.auto_correct_custom_languages),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
-                    )
-                }
-                
-                customLanguages.forEach { locale ->
-                    val localeEnabled = isLanguageEnabled(locale)
-                LanguageItem(
-                    languageCode = locale,
-                    languageName = getLanguageDisplayName(context, locale),
-                        isSystemLanguage = false,
-                        isEnabled = localeEnabled,
-                        onToggle = { enabled ->
-                            toggleLanguage(locale, localeEnabled)
-                        },
-                        onEdit = {
-                            onEditLanguage(locale)
+                    
+                    // Other available languages (excluding x-pastiera)
+                    val otherLanguages = allLanguages.filter { it != systemLocale && it != "x-pastiera" }.sorted()
+                    
+                    if (otherLanguages.isNotEmpty()) {
+                        // Header for other languages
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 16.dp),
+                                contentAlignment = Alignment.CenterStart
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.auto_correct_other_languages),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
-                    )
-                    HorizontalDivider()
-                }
+                        
+                        otherLanguages.forEach { locale ->
+                            val localeEnabled = isLanguageEnabled(locale)
+                            LanguageItem(
+                                languageCode = locale,
+                                languageName = getLanguageDisplayName(context, locale),
+                                isSystemLanguage = false,
+                                isEnabled = localeEnabled,
+                                onToggle = { enabled ->
+                                    toggleLanguage(locale, localeEnabled)
+                                },
+                                onEdit = {
+                                    onEditLanguage(locale)
+                                }
+                            )
+                        }
+                    }
+                    
+                    // Section for custom languages (if present)
+                    // Filter only languages that are not standard and not already shown above (excluding x-pastiera)
+                    val customLanguages = AutoCorrector.getCustomLanguages()
+                        .filter { it != systemLocale && it !in otherLanguages && it != "x-pastiera" }
+                    if (customLanguages.isNotEmpty()) {
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 16.dp),
+                                contentAlignment = Alignment.CenterStart
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.auto_correct_custom_languages),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        
+                        customLanguages.forEach { locale ->
+                            val localeEnabled = isLanguageEnabled(locale)
+                            LanguageItem(
+                                languageCode = locale,
+                                languageName = getLanguageDisplayName(context, locale),
+                                isSystemLanguage = false,
+                                isEnabled = localeEnabled,
+                                onToggle = { enabled ->
+                                    toggleLanguage(locale, localeEnabled)
+                                },
+                                onEdit = {
+                                    onEditLanguage(locale)
+                                }
+                            )
+                        }
                     }
                 }
-                }
             }
+        }
             
             // Dialog to add a new language (outside Scaffold)
             if (showNewLanguageDialog) {
@@ -459,8 +539,8 @@ fun AutoCorrectSettingsScreen(
                     AutoCorrector.loadCustomCorrections(languageCode, "{}")
                 }
                 
-                // Update list of available languages
-                allLanguages = AutoCorrector.getAllAvailableLanguages()
+                // Update list of available languages (excluding x-pastiera)
+                allLanguages = AutoCorrector.getAllAvailableLanguages().filter { it != "x-pastiera" }
                 
                 // Automatically enable the new language
                 val newSet = if (enabledLanguages.isEmpty()) {
@@ -476,7 +556,7 @@ fun AutoCorrectSettingsScreen(
                 // Navigate to edit screen for the new language
                 onEditLanguage(languageCode)
             },
-            existingLanguages = allLanguages
+            existingLanguages = allLanguages.toSet()
         )
     }
 }

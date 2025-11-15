@@ -400,8 +400,6 @@ fun KeyboardSetupScreen(
             }
         }
         
-        HorizontalDivider()
-        
         // Choose input method button
         Surface(
             modifier = Modifier
@@ -466,8 +464,6 @@ fun KeyboardSetupScreen(
             }
         }
         
-        HorizontalDivider()
-        
         // Test field
         OutlinedTextField(
             value = testText,
@@ -476,11 +472,9 @@ fun KeyboardSetupScreen(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
             placeholder = { Text(stringResource(R.string.test_field_placeholder)) },
-            minLines = 5,
-            maxLines = 10
+            minLines = 2,
+            maxLines = 5
         )
-        
-        Spacer(modifier = Modifier.height(16.dp))
         
         // Last keyboard event (only if present)
         val event = lastKeyEvent

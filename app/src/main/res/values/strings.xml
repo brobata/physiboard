@@ -1,8 +1,12 @@
 <resources>
     <string name="app_name">Pastiera</string>
     <string name="input_method_name">Pastiera Physical Keyboard</string>
-    <string name="input_method_name_en">Pastiera (English)</string>
-    <string name="input_method_name_it">Pastiera (Italiano)</string>
+    <string name="input_method_name_en">English</string>
+    <string name="input_method_name_it">Italiano</string>
+    <string name="input_method_name_fr">Français</string>
+    <string name="input_method_name_de">Deutsch</string>
+    <string name="input_method_name_pl">Polski</string>
+    <string name="input_method_name_es">Español</string>
     
     <!-- Settings Screen -->
     <string name="settings_title">Settings</string>
@@ -85,6 +89,7 @@
     <string name="auto_correct_settings_title">Auto-Correction Languages</string>
     <string name="auto_correct_settings_description">Select which languages to use for auto-correction. The system language is shown at the top.</string>
     <string name="auto_correct_system_language">System language</string>
+    <string name="auto_correct_ricette_pastiera_description">Personalizzazioni valide per tutte le lingue</string>
     <string name="auto_correct_other_languages">Other Languages</string>
     <string name="auto_correct_custom_languages">Custom Languages</string>
     <string name="auto_correct_at_least_one_language_required">Almeno una lingua necessaria per il funzionamento</string>

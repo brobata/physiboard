@@ -387,20 +387,36 @@ object SettingsManager {
     fun getAutoCorrectEnabledLanguages(context: Context): Set<String> {
         val prefs = getPreferences(context)
         val languagesString = prefs.getString(KEY_AUTO_CORRECT_ENABLED_LANGUAGES, null)
-        return if (languagesString != null && languagesString.isNotEmpty()) {
-            languagesString.split(",").toSet()
-        } else {
-            // Default: all available languages are enabled
-            setOf("it", "en")
+        
+        // If languages are explicitly set, return them (ensuring x-pastiera is always included)
+        if (languagesString != null && languagesString.isNotEmpty()) {
+            val languages = languagesString.split(",").toMutableSet()
+            languages.add("x-pastiera") // Always include x-pastiera
+            return languages
         }
+        
+        // Default: system language + x-pastiera, with fallback to English
+        val systemLanguage = context.resources.configuration.locales[0].language.lowercase()
+        val supportedLanguages = setOf("it", "en", "es", "fr", "de", "pl")
+        
+        val defaultLanguage = if (systemLanguage in supportedLanguages) {
+            systemLanguage
+        } else {
+            "en" // Fallback to English
+        }
+        
+        return setOf(defaultLanguage, "x-pastiera")
     }
     
     /**
      * Sets the list of languages enabled for auto-correction.
      * @param languages Set of language codes (e.g. "it", "en")
+     * Note: x-pastiera is always included automatically in getAutoCorrectEnabledLanguages()
      */
     fun setAutoCorrectEnabledLanguages(context: Context, languages: Set<String>) {
-        val languagesString = languages.joinToString(",")
+        // Filter out x-pastiera from the saved list (it's always included automatically)
+        val languagesToSave = languages.filter { it != "x-pastiera" }
+        val languagesString = languagesToSave.joinToString(",")
         getPreferences(context).edit()
             .putString(KEY_AUTO_CORRECT_ENABLED_LANGUAGES, languagesString)
             .apply()

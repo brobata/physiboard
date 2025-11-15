@@ -48,7 +48,7 @@ object AutoCorrector {
             customLanguages.clear()
 
             // List of supported languages by default
-            val standardLocales = listOf("it", "en", "es", "fr", "de")
+            val standardLocales = listOf("it", "en", "es", "fr", "de", "pl", "x-pastiera")
 
             for (locale in standardLocales) {
                 try {
@@ -136,7 +136,7 @@ object AutoCorrector {
         try {
             loadCorrectionsFromJson(locale, jsonString)
             // Add to customLanguages only if not a standard language
-            val standardLocales = listOf("it", "en", "es", "fr", "de")
+            val standardLocales = listOf("it", "en", "es", "fr", "de", "pl", "x-pastiera")
             if (locale !in standardLocales) {
                 customLanguages.add(locale)
             }
@@ -149,6 +149,7 @@ object AutoCorrector {
     /**
      * Loads corrections from a JSON string.
      * Ignores the special "__name" field that contains the language name.
+     * Always adds the locale to corrections map, even if empty, so it appears in available languages.
      */
     private fun loadCorrectionsFromJson(locale: String, jsonString: String) {
         val jsonObject = JSONObject(jsonString)
@@ -165,10 +166,9 @@ object AutoCorrector {
             }
         }
 
-        if (correctionMap.isNotEmpty()) {
-            corrections[locale] = correctionMap
-            Log.d(TAG, "Loaded ${correctionMap.size} corrections for locale: $locale")
-        }
+        // Always add locale to corrections map, even if empty, so it appears in available languages
+        corrections[locale] = correctionMap
+        Log.d(TAG, "Loaded ${correctionMap.size} corrections for locale: $locale")
     }
 
     /**
