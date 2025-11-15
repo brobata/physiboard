@@ -112,6 +112,20 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     }
     
     /**
+     * Reloads nav mode key mappings from the file.
+     */
+    private fun reloadNavModeMappings() {
+        try {
+            ctrlKeyMap.clear()
+            val assets = assets
+            ctrlKeyMap.putAll(KeyMappingLoader.loadCtrlKeyMappings(assets, this))
+            Log.d(TAG, "Nav mode mappings reloaded successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error reloading nav mode mappings", e)
+        }
+    }
+    
+    /**
      * Verifica se il package corrente è un launcher.
      */
     private fun isLauncher(packageName: String?): Boolean {
@@ -275,7 +289,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         altSymManager.onAltCharInserted = { char ->
             updateStatusBarText()
         }
-        ctrlKeyMap.putAll(KeyMappingLoader.loadCtrlKeyMappings(assets))
+        
+        // Initialize nav mode mappings file if needed
+        it.palsoftware.pastiera.SettingsManager.initializeNavModeMappingsFile(this)
+        ctrlKeyMap.putAll(KeyMappingLoader.loadCtrlKeyMappings(assets, this))
         variationsMap.putAll(KeyMappingLoader.loadVariations(assets))
         
         // Load auto-correction rules
@@ -303,6 +320,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 Log.d(TAG, "Auto-correction rules changed, reloading...")
                 // Reload auto-corrections (including new custom languages)
                 AutoCorrector.loadCorrections(assets, this)
+            } else if (key == "nav_mode_mappings_updated") {
+                Log.d(TAG, "Nav mode mappings changed, reloading...")
+                // Reload nav mode key mappings
+                reloadNavModeMappings()
             }
         }
         prefs.registerOnSharedPreferenceChangeListener(prefsListener)
@@ -1011,6 +1032,12 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             
             // Handle Ctrl for nav mode FIRST, even if there is no InputConnection
             if (isCtrlKey) {
+                // Check if nav mode is enabled
+                if (!it.palsoftware.pastiera.SettingsManager.getNavModeEnabled(this)) {
+                    // Nav mode is disabled, do nothing
+                    return super.onKeyDown(keyCode, event)
+                }
+                
                 // Handle nav mode: double-tap on Ctrl to toggle Ctrl latch
                 val (shouldConsume, result) = NavModeHandler.handleCtrlKeyDown(
                     keyCode,

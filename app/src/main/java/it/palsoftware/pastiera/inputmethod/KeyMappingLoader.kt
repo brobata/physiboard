@@ -188,13 +188,33 @@ object KeyMappingLoader {
     /**
      * Loads Ctrl+key mappings from the common JSON file.
      * Files live under common/ctrl/ctrl_key_mappings.json
+     * If context is provided, checks for custom mappings in filesDir first.
      */
-    fun loadCtrlKeyMappings(assets: AssetManager): Map<Int, CtrlMapping> {
+    fun loadCtrlKeyMappings(assets: AssetManager, context: Context? = null): Map<Int, CtrlMapping> {
         val ctrlKeyMap = mutableMapOf<Int, CtrlMapping>()
         try {
-            val filePath = "common/ctrl/ctrl_key_mappings.json"
-            val inputStream: InputStream = assets.open(filePath)
-            val jsonString = inputStream.bufferedReader().use { it.readText() }
+            // Try to load from custom file in filesDir first
+            val jsonString = if (context != null) {
+                val customFile = it.palsoftware.pastiera.SettingsManager.getNavModeMappingsFile(context)
+                if (customFile.exists()) {
+                    try {
+                        customFile.readText()
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error reading custom nav mode mappings file, falling back to assets", e)
+                        null
+                    }
+                } else {
+                    null
+                }
+            } else {
+                null
+            } ?: run {
+                // Fallback to assets
+                val filePath = "common/ctrl/ctrl_key_mappings.json"
+                val inputStream: InputStream = assets.open(filePath)
+                inputStream.bufferedReader().use { it.readText() }
+            }
+            
             val jsonObject = JSONObject(jsonString)
             val mappingsObject = jsonObject.getJSONObject("mappings")
             

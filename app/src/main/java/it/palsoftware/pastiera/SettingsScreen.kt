@@ -98,6 +98,9 @@ fun SettingsScreen(
     // State for navigation to trackpad debug screen
     var showTrackpadDebug by remember { mutableStateOf(false) }
     
+    // State for navigation to nav mode settings
+    var showNavModeSettings by remember { mutableStateOf(false) }
+    
     // Handle system back button
     BackHandler {
         when {
@@ -112,6 +115,9 @@ fun SettingsScreen(
             }
             showTrackpadDebug -> {
                 showTrackpadDebug = false
+            }
+            showNavModeSettings -> {
+                showNavModeSettings = false
             }
             else -> {
                 onBack()
@@ -152,6 +158,14 @@ fun SettingsScreen(
         TrackpadDebugScreen(
             modifier = modifier,
             onBack = { showTrackpadDebug = false }
+        )
+        return
+    }
+    
+    if (showNavModeSettings) {
+        NavModeSettingsScreen(
+            modifier = modifier,
+            onBack = { showNavModeSettings = false }
         )
         return
     }
@@ -610,6 +624,46 @@ fun SettingsScreen(
                             text = stringResource(R.string.sym_customization_title),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Medium
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            
+            HorizontalDivider()
+            
+            // Nav Mode Settings
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showNavModeSettings = true }
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Keyboard,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Nav Mode",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = "Configure navigation mode key mappings",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Icon(
