@@ -87,6 +87,8 @@ class StatusBarController(
     private var isSwipeInProgress = false
     private var touchStartX = 0f
     private var touchStartY = 0f
+    private var lastCursorMoveX = 0f // Last X position where cursor was moved
+    private var swipeDirection: Int? = null // 1 for right, -1 for left
     private var isSymModeActive = false
 
     fun getLayout(): LinearLayout? = statusBarLayout
@@ -212,7 +214,12 @@ class StatusBarController(
             // Add OnTouchListener to overlay for swipe gestures
             val SWIPE_THRESHOLD = TypedValue.applyDimension(
                 TypedValue.COMPLEX_UNIT_DIP,
-                10f, // dp - increased sensitivity (reduced threshold)
+                6f, // dp - reduced threshold to start swipe (was 10f)
+                context.resources.displayMetrics
+            )
+            val INCREMENTAL_THRESHOLD = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP,
+                9.6f, // dp - threshold for each incremental cursor movement (8f * 1.2 = 9.6f, 20% slower)
                 context.resources.displayMetrics
             )
             
@@ -225,8 +232,10 @@ class StatusBarController(
                 when (motionEvent.action) {
                     MotionEvent.ACTION_DOWN -> {
                         isSwipeInProgress = false
+                        swipeDirection = null
                         touchStartX = motionEvent.x
                         touchStartY = motionEvent.y
+                        lastCursorMoveX = motionEvent.x
                         Log.d(TAG, "Touch down on overlay at ($touchStartX, $touchStartY)")
                         // Intercept all events to handle both swipe and tap
                         true
@@ -234,41 +243,62 @@ class StatusBarController(
                     MotionEvent.ACTION_MOVE -> {
                         val deltaX = motionEvent.x - touchStartX
                         val deltaY = abs(motionEvent.y - touchStartY)
+                        val incrementalDeltaX = motionEvent.x - lastCursorMoveX
                         
-                        // If scroll is mainly horizontal and exceeds threshold
-                        if (abs(deltaX) > SWIPE_THRESHOLD && abs(deltaX) > deltaY) {
+                        // If scroll is mainly horizontal and exceeds initial threshold, or swipe is already in progress
+                        if (isSwipeInProgress || (abs(deltaX) > SWIPE_THRESHOLD && abs(deltaX) > deltaY)) {
+                            // Determine or update swipe direction
                             if (!isSwipeInProgress) {
                                 isSwipeInProgress = true
+                                swipeDirection = if (deltaX > 0) 1 else -1
+                                Log.d(TAG, "Swipe started: ${if (swipeDirection == 1) "RIGHT" else "LEFT"}")
+                            } else {
+                                // Update direction if user changes direction during swipe
+                                // Only change if movement is clearly in opposite direction
+                                val currentDirection = if (incrementalDeltaX > 0) 1 else -1
+                                if (currentDirection != swipeDirection && abs(incrementalDeltaX) > SWIPE_THRESHOLD) {
+                                    swipeDirection = currentDirection
+                                    Log.d(TAG, "Swipe direction changed: ${if (swipeDirection == 1) "RIGHT" else "LEFT"}")
+                                }
+                            }
+                            
+                            // Continue moving cursor as finger moves (in any direction)
+                            if (isSwipeInProgress && swipeDirection != null) {
                                 val inputConnection = currentInputConnection
                                 
                                 if (inputConnection != null) {
-                                    // Determine swipe direction and move cursor
-                                    val keyCode = if (deltaX > 0) {
-                                        // Swipe right: move cursor right
-                                        KeyEvent.KEYCODE_DPAD_RIGHT
-                                    } else {
-                                        // Swipe left: move cursor left
-                                        KeyEvent.KEYCODE_DPAD_LEFT
+                                    // Check movement in current swipe direction
+                                    val movementInDirection = if (swipeDirection == 1) incrementalDeltaX else -incrementalDeltaX
+                                    
+                                    // Move cursor if movement exceeds threshold in current direction
+                                    if (movementInDirection > INCREMENTAL_THRESHOLD) {
+                                        // Determine key code based on current swipe direction
+                                        val keyCode = if (swipeDirection == 1) {
+                                            KeyEvent.KEYCODE_DPAD_RIGHT
+                                        } else {
+                                            KeyEvent.KEYCODE_DPAD_LEFT
+                                        }
+                                        
+                                        // Send key events to move cursor
+                                        inputConnection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, keyCode))
+                                        inputConnection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, keyCode))
+                                        
+                                        // Update last cursor move position
+                                        lastCursorMoveX = motionEvent.x
+                                        
+                                        Log.d(TAG, "Cursor moved: ${if (swipeDirection == 1) "RIGHT" else "LEFT"}")
                                     }
-                                    
-                                    Log.d(TAG, "Swipe detected on overlay: ${if (deltaX > 0) "RIGHT" else "LEFT"}, moving cursor")
-                                    
-                                    // Send key events to move cursor
-                                    inputConnection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, keyCode))
-                                    inputConnection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, keyCode))
-                                    
-                                    // Update start position to prevent multiple triggers
-                                    touchStartX = motionEvent.x
                                 }
                             }
-                            true // Consume the event
+                            true // Consume the event - swipe continues as long as finger is down
                         } else {
-                            true // Still intercept to prevent button handling during potential swipe
+                            true // Still intercept to prevent button handling
                         }
                     }
                     MotionEvent.ACTION_UP -> {
                         if (isSwipeInProgress) {
                             isSwipeInProgress = false
+                            swipeDirection = null
                             Log.d(TAG, "Swipe ended on overlay")
                             true // Consume to prevent button click
                         } else {
@@ -290,6 +320,7 @@ class StatusBarController(
                     }
                     MotionEvent.ACTION_CANCEL -> {
                         isSwipeInProgress = false
+                        swipeDirection = null
                         true
                     }
                     else -> true
