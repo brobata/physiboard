@@ -48,6 +48,11 @@ class StatusBarController(
         private const val NAV_MODE_LABEL = "NAV MODE"
         private val DEFAULT_BACKGROUND = Color.parseColor("#000000")
         private val NAV_MODE_BACKGROUND = Color.argb(100, 0, 0, 0)
+        
+        // LED colors
+        private val LED_COLOR_GRAY_OFF = Color.argb(26, 255, 255, 255) // Gray when LED is off
+        private val LED_COLOR_RED_LOCKED = Color.rgb(247, 99, 0) // Orange/red when locked
+        private val LED_COLOR_BLUE_ACTIVE = Color.rgb(100, 150, 255) // Blue when active
     }
 
     data class StatusSnapshot(
@@ -342,12 +347,17 @@ class StatusBarController(
             // Container for LEDs along the bottom edge
             val ledHeight = TypedValue.applyDimension(
                 TypedValue.COMPLEX_UNIT_DIP,
-                4f,
+                5.5f, // Increased from 4f for better visibility
                 context.resources.displayMetrics
             ).toInt()
             val ledBottomPadding = TypedValue.applyDimension(
                 TypedValue.COMPLEX_UNIT_DIP,
                 4f,
+                context.resources.displayMetrics
+            ).toInt()
+            val ledGap = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP,
+                1.5f, // Small gap between LED strips
                 context.resources.displayMetrics
             ).toInt()
             
@@ -375,12 +385,22 @@ class StatusBarController(
             unused2.visibility = View.INVISIBLE
             
             ledContainer?.apply {
-                // Add LEDs in the correct order, each occupying 1/6 of the width
-                addView(shiftLed, LinearLayout.LayoutParams(0, ledHeight, 1f))
-                addView(symLed, LinearLayout.LayoutParams(0, ledHeight, 1f))
-                addView(unused1, LinearLayout.LayoutParams(0, ledHeight, 1f))
-                addView(unused2, LinearLayout.LayoutParams(0, ledHeight, 1f))
-                addView(ctrlLed, LinearLayout.LayoutParams(0, ledHeight, 1f))
+                // Add LEDs in the correct order, each occupying 1/6 of the width with gaps
+                addView(shiftLed, LinearLayout.LayoutParams(0, ledHeight, 1f).apply {
+                    marginEnd = ledGap
+                })
+                addView(symLed, LinearLayout.LayoutParams(0, ledHeight, 1f).apply {
+                    marginEnd = ledGap
+                })
+                addView(unused1, LinearLayout.LayoutParams(0, ledHeight, 1f).apply {
+                    marginEnd = ledGap
+                })
+                addView(unused2, LinearLayout.LayoutParams(0, ledHeight, 1f).apply {
+                    marginEnd = ledGap
+                })
+                addView(ctrlLed, LinearLayout.LayoutParams(0, ledHeight, 1f).apply {
+                    marginEnd = ledGap
+                })
                 addView(altLed, LinearLayout.LayoutParams(0, ledHeight, 1f))
             }
             
@@ -451,15 +471,93 @@ class StatusBarController(
      * Crea un LED rettangolare e piatto per un modificatore.
      */
     private fun createFlatLed(width: Int, height: Int, isActive: Boolean): View {
+        val cornerRadius = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            2f, // Rounded top corners for modern look
+            context.resources.displayMetrics
+        )
+        
         val drawable = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             setColor(if (isActive) Color.WHITE else Color.argb(80, 255, 255, 255))
-            cornerRadius = 0f // Nessun arrotondamento per renderlo piatto
+            // Rounded corners only on top
+            cornerRadii = floatArrayOf(
+                cornerRadius, cornerRadius, // Top left
+                cornerRadius, cornerRadius, // Top right
+                0f, 0f, // Bottom left
+                0f, 0f  // Bottom right
+            )
         }
         
         return View(context).apply {
             background = drawable
             layoutParams = LinearLayout.LayoutParams(width, height)
+        }
+    }
+    
+    /**
+     * Aggiorna lo stato del LED SYM con colori specifici per pagina.
+     * @param led Il view del LED SYM da aggiornare
+     * @param symPage Il numero di pagina SYM (0=spento, 1=blu, 2=arancione)
+     */
+    private fun updateSymLed(led: View?, symPage: Int) {
+        led?.let {
+            val cornerRadius = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP,
+                2f, // Rounded top corners
+                context.resources.displayMetrics
+            )
+            
+            // Colors: blue for page 1, red/orange for page 2, gray when off (same as other LEDs)
+            val color = when (symPage) {
+                1 -> LED_COLOR_BLUE_ACTIVE // Blue for page 1
+                2 -> LED_COLOR_RED_LOCKED // Red/orange for page 2 (same as locked state)
+                else -> LED_COLOR_GRAY_OFF // Gray when off (same as Shift LED)
+            }
+            
+            // Get previous color from tag (if exists)
+            val previousColorTag = it.getTag(R.id.led_previous_color) as? Int
+            val previousColor = previousColorTag ?: LED_COLOR_GRAY_OFF
+            
+            // Save new color to tag
+            it.setTag(R.id.led_previous_color, color)
+            
+            // Animate color change for smooth transitions
+            if (previousColor != color) {
+                val animator = ValueAnimator.ofArgb(previousColor, color).apply {
+                    duration = 200
+                    interpolator = AccelerateDecelerateInterpolator()
+                    addUpdateListener { animation ->
+                        val animatedColor = animation.animatedValue as Int
+                        val animatedDrawable = GradientDrawable().apply {
+                            shape = GradientDrawable.RECTANGLE
+                            setColor(animatedColor)
+                            // Rounded corners only on top
+                            cornerRadii = floatArrayOf(
+                                cornerRadius, cornerRadius, // Top left
+                                cornerRadius, cornerRadius, // Top right
+                                0f, 0f, // Bottom left
+                                0f, 0f  // Bottom right
+                            )
+                        }
+                        it.background = animatedDrawable
+                    }
+                }
+                animator.start()
+            } else {
+                val drawable = GradientDrawable().apply {
+                    shape = GradientDrawable.RECTANGLE
+                    setColor(color)
+                    // Rounded corners only on top
+                    cornerRadii = floatArrayOf(
+                        cornerRadius, cornerRadius, // Top left
+                        cornerRadius, cornerRadius, // Top right
+                        0f, 0f, // Bottom left
+                        0f, 0f  // Bottom right
+                    )
+                }
+                it.background = drawable
+            }
         }
     }
     
@@ -471,17 +569,62 @@ class StatusBarController(
      */
     private fun updateLed(led: View?, isLocked: Boolean, isActive: Boolean = false) {
         led?.let {
+            val cornerRadius = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP,
+                2f, // Rounded top corners
+                context.resources.displayMetrics
+            )
+            
+            // More vibrant colors with better contrast
             val color = when {
-                isLocked -> Color.RED // Rosso quando lockato
-                isActive -> Color.BLUE // Blu quando attivo (ma non lockato)
-                else -> Color.argb(80, 255, 255, 255) // Grigio semi-trasparente quando spento
+                isLocked -> LED_COLOR_RED_LOCKED // Orange/red when locked
+                isActive -> LED_COLOR_BLUE_ACTIVE // Blue when active
+                else -> LED_COLOR_GRAY_OFF // Gray when off
             }
-            val drawable = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                setColor(color)
-                cornerRadius = 0f // Nessun arrotondamento per renderlo piatto
+            
+            // Get previous color from tag (if exists)
+            val previousColorTag = it.getTag(R.id.led_previous_color) as? Int
+            val previousColor = previousColorTag ?: LED_COLOR_GRAY_OFF
+            
+            // Save new color to tag
+            it.setTag(R.id.led_previous_color, color)
+            
+            // Animate color change for smooth transitions
+            if (previousColor != color) {
+                val animator = ValueAnimator.ofArgb(previousColor, color).apply {
+                    duration = 200
+                    interpolator = AccelerateDecelerateInterpolator()
+                    addUpdateListener { animation ->
+                        val animatedColor = animation.animatedValue as Int
+                        val animatedDrawable = GradientDrawable().apply {
+                            shape = GradientDrawable.RECTANGLE
+                            setColor(animatedColor)
+                            // Rounded corners only on top
+                            cornerRadii = floatArrayOf(
+                                cornerRadius, cornerRadius, // Top left
+                                cornerRadius, cornerRadius, // Top right
+                                0f, 0f, // Bottom left
+                                0f, 0f  // Bottom right
+                            )
+                        }
+                        it.background = animatedDrawable
+                    }
+                }
+                animator.start()
+            } else {
+                val drawable = GradientDrawable().apply {
+                    shape = GradientDrawable.RECTANGLE
+                    setColor(color)
+                    // Rounded corners only on top
+                    cornerRadii = floatArrayOf(
+                        cornerRadius, cornerRadius, // Top left
+                        cornerRadius, cornerRadius, // Top right
+                        0f, 0f, // Bottom left
+                        0f, 0f  // Bottom right
+                    )
+                }
+                it.background = drawable
             }
-            it.background = drawable
         }
     }
     
@@ -527,62 +670,6 @@ class StatusBarController(
         // Rimuovi tutti i tasti esistenti
         container.removeAllViews()
         emojiKeyButtons.clear()
-        
-        // Aggiungi indicatore visivo delle pagine (due piccole linee orizzontali)
-        val indicatorHeight = TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP,
-            2f,
-            context.resources.displayMetrics
-        ).toInt()
-        val indicatorSpacing = TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP,
-            4f,
-            context.resources.displayMetrics
-        ).toInt()
-        val indicatorWidth = TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP,
-            20f,
-            context.resources.displayMetrics
-        ).toInt()
-        
-        val indicatorContainer = LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply {
-                bottomMargin = TypedValue.applyDimension(
-                    TypedValue.COMPLEX_UNIT_DIP,
-                    4f,
-                    context.resources.displayMetrics
-                ).toInt()
-            }
-        }
-        
-        // Linea sinistra (pagina 1)
-        val line1 = View(context).apply {
-            background = GradientDrawable().apply {
-                setColor(if (page == 1) Color.WHITE else Color.argb(80, 255, 255, 255))
-                cornerRadius = 0f
-            }
-            layoutParams = LinearLayout.LayoutParams(indicatorWidth, indicatorHeight).apply {
-                marginEnd = indicatorSpacing
-            }
-        }
-        
-        // Linea destra (pagina 2)
-        val line2 = View(context).apply {
-            background = GradientDrawable().apply {
-                setColor(if (page == 2) Color.WHITE else Color.argb(80, 255, 255, 255))
-                cornerRadius = 0f
-            }
-            layoutParams = LinearLayout.LayoutParams(indicatorWidth, indicatorHeight)
-        }
-        
-        indicatorContainer.addView(line1)
-        indicatorContainer.addView(line2)
-        container.addView(indicatorContainer)
         
         // Definizione delle righe della tastiera
         val keyboardRows = listOf(
@@ -1585,8 +1672,8 @@ class StatusBarController(
         val altActive = (snapshot.altPhysicallyPressed || snapshot.altOneShot) && !altLocked
         updateLed(altLed, altLocked, altActive)
         
-        // SYM: rosso se attivo (sempre lockato quando attivo), grigio se spento
-        updateLed(symLed, snapshot.symPage > 0, false)
+        // SYM: blu per pagina 1, arancione per pagina 2, grigio se spento
+        updateSymLed(symLed, snapshot.symPage)
         
         // Gestisci le animazioni tra SYM e suggerimenti
         if (snapshot.symPage > 0 && symMappings != null) {
