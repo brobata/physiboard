@@ -43,6 +43,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     // Broadcast receiver for speech recognition
     private var speechResultReceiver: BroadcastReceiver? = null
     private lateinit var statusBarController: StatusBarController
+    private lateinit var candidatesViewController: StatusBarController
 
     // Keycode for the SYM key
     private val KEYCODE_SYM = 63
@@ -306,17 +307,24 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         NotificationHelper.createNotificationChannel(this)
         
         statusBarController = StatusBarController(this)
-        // Register listener for variation selection
-        statusBarController.onVariationSelectedListener = object : VariationButtonHandler.OnVariationSelectedListener {
+        candidatesViewController = StatusBarController(this)
+
+        // Register listener for variation selection (both controllers)
+        val variationListener = object : VariationButtonHandler.OnVariationSelectedListener {
             override fun onVariationSelected(variation: String) {
                 // Update variations after one has been selected (refresh view if needed)
                 updateStatusBarText()
             }
         }
-        // Register listener for cursor movement (to update variations when cursor moves via swipe pad)
-        statusBarController.onCursorMovedListener = {
+        statusBarController.onVariationSelectedListener = variationListener
+        candidatesViewController.onVariationSelectedListener = variationListener
+
+        // Register listener for cursor movement (both controllers)
+        val cursorListener = {
             updateStatusBarText()
         }
+        statusBarController.onCursorMovedListener = cursorListener
+        candidatesViewController.onCursorMovedListener = cursorListener
         altSymManager = AltSymManager(assets, prefs, this)
         altSymManager.reloadSymMappings() // Load custom mappings for page 1 if present
         altSymManager.reloadSymMappings2() // Load custom mappings for page 2 if present
@@ -460,34 +468,27 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         return layout
     }
 
-    // Store separate layout instances for input view and candidates view
-    private var candidatesViewLayout: LinearLayout? = null
-
     /**
      * Creates the candidates view shown when the soft keyboard is disabled.
-     * Uses the same layout as the status bar to provide identical functionality.
+     * Uses a separate StatusBarController instance to provide identical functionality.
      */
     override fun onCreateCandidatesView(): View? {
-        Log.d(TAG, "onCreateCandidatesView() called - creating candidates view with status bar layout")
+        Log.d(TAG, "onCreateCandidatesView() called - creating candidates view with separate controller")
 
-        // Create a separate layout instance for candidates view
-        // We can't reuse the same layout as input view due to Android View hierarchy constraints
-        if (candidatesViewLayout == null) {
-            candidatesViewLayout = statusBarController.getOrCreateLayout(altSymManager.buildEmojiMapText())
-            Log.d(TAG, "onCreateCandidatesView() - created new layout instance for candidates view")
-        }
+        // Use the separate candidates view controller
+        val layout = candidatesViewController.getOrCreateLayout(altSymManager.buildEmojiMapText())
 
         // Remove from any existing parent to avoid conflicts
-        if (candidatesViewLayout?.parent != null) {
+        if (layout.parent != null) {
             Log.d(TAG, "onCreateCandidatesView() - removing view from existing parent")
-            (candidatesViewLayout?.parent as? android.view.ViewGroup)?.removeView(candidatesViewLayout)
+            (layout.parent as? android.view.ViewGroup)?.removeView(layout)
         }
 
-        // Refresh the status bar content
+        // Refresh the status bar content for candidates view
         refreshStatusBar()
 
         Log.d(TAG, "onCreateCandidatesView() completed - candidates view created")
-        return candidatesViewLayout
+        return layout
     }
 
     /**
@@ -808,6 +809,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // Passa l'inputConnection per rendere i pulsanti clickabili
         val inputConnection = currentInputConnection
         statusBarController.update(snapshot, emojiMapText, inputConnection, symMappings)
+        candidatesViewController.update(snapshot, emojiMapText, inputConnection, symMappings)
     }
     
     /**
