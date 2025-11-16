@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import androidx.appcompat.app.AppCompatDelegate
 
 /**
  * Adapter for Unicode character RecyclerView.
@@ -26,14 +27,18 @@ class UnicodeCharacterRecyclerViewAdapter(
             .inflate(android.R.layout.simple_list_item_1, parent, false)
         val holder = CharacterViewHolder(view)
         
-        // Configure TextView to center character, white and bold
+        // Configure TextView to center character, theme-aware color and bold
         holder.characterText.apply {
             textSize = 24f
             gravity = android.view.Gravity.CENTER
             setPadding(0, 0, 0, 0)
             minHeight = (40 * parent.context.resources.displayMetrics.density).toInt()
             minWidth = (40 * parent.context.resources.displayMetrics.density).toInt()
-            setTextColor(Color.WHITE)
+            // Use theme-aware text color: black for light theme, white for dark theme
+            val isDarkTheme = AppCompatDelegate.getDefaultNightMode() == AppCompatDelegate.MODE_NIGHT_YES ||
+                    (AppCompatDelegate.getDefaultNightMode() == AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM &&
+                     (parent.context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES)
+            setTextColor(if (isDarkTheme) Color.WHITE else Color.BLACK)
             setTypeface(null, Typeface.BOLD)
         }
         

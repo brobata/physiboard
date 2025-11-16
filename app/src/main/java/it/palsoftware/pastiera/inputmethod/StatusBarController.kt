@@ -869,6 +869,8 @@ class StatusBarController(
                 context.resources.displayMetrics
             ).toInt()
             setPadding(0, 0, 0, bottomPadding) // Nessun padding orizzontale, solo in basso
+            // Aggiungi sfondo nero per migliorare la visibilità dei caratteri con tema chiaro
+            setBackgroundColor(Color.BLACK)
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
