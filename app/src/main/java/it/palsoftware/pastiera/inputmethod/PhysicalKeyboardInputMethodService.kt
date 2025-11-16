@@ -512,6 +512,22 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         return false
     }
 
+    /**
+     * Computes the insets for the IME window.
+     * This increases the "content" area to include the candidate view area,
+     * allowing the application to shift upwards properly without the candidates view
+     * covering system UI.
+     */
+    override fun onComputeInsets(outInsets: InputMethodService.Insets?) {
+        super.onComputeInsets(outInsets)
+        
+        if (outInsets != null && !isFullscreenMode()) {
+            // Increase the content area to include the candidate view area
+            // This prevents the candidates view from covering system UI
+            outInsets.contentTopInsets = outInsets.visibleTopInsets
+            Log.d(TAG, "onComputeInsets() - adjusted content insets: contentTop=${outInsets.contentTopInsets}, visibleTop=${outInsets.visibleTopInsets}")
+        }
+    }
 
     // Flag per tracciare se Ctrl latch è stato attivato nel nav mode (anche quando si entra in un campo di testo)
     private var ctrlLatchFromNavMode = false
