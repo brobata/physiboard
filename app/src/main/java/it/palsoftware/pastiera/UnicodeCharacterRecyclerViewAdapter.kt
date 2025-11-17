@@ -29,11 +29,11 @@ class UnicodeCharacterRecyclerViewAdapter(
         
         // Configure TextView to center character, theme-aware color and bold
         holder.characterText.apply {
-            textSize = 24f
+            textSize = 28.8f // 24 * 1.2 (20% larger)
             gravity = android.view.Gravity.CENTER
             setPadding(0, 0, 0, 0)
-            minHeight = (40 * parent.context.resources.displayMetrics.density).toInt()
-            minWidth = (40 * parent.context.resources.displayMetrics.density).toInt()
+            minHeight = (48 * parent.context.resources.displayMetrics.density).toInt() // 40 * 1.2
+            minWidth = (48 * parent.context.resources.displayMetrics.density).toInt() // 40 * 1.2
             // Use theme-aware text color: black for light theme, white for dark theme
             val isDarkTheme = AppCompatDelegate.getDefaultNightMode() == AppCompatDelegate.MODE_NIGHT_YES ||
                     (AppCompatDelegate.getDefaultNightMode() == AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM &&

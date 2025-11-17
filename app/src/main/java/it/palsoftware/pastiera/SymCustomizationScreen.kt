@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.*
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
@@ -111,6 +114,10 @@ fun SymCustomizationScreen(
     var showCharacterPicker by remember { mutableStateOf(false) }
     var selectedKeyCode by remember { mutableStateOf<Int?>(null) }
     
+    // State for reset confirmation dialog
+    var showResetConfirmDialog by remember { mutableStateOf(false) }
+    var resetPage by remember { mutableStateOf<Int?>(null) } // 1 for page1, 2 for page2
+    
     // Handle the system back button
     BackHandler {
         onBack()
@@ -149,41 +156,43 @@ fun SymCustomizationScreen(
         }
     }
     
-    AnimatedContent(
-        targetState = Unit,
-        transitionSpec = {
-            fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
-        },
-        label = "sym_customization_animation"
-    ) {
+    Scaffold(
+        topBar = {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.statusBars),
+                tonalElevation = 1.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.settings_back_content_description)
+                        )
+                    }
+                    Text(
+                        text = stringResource(R.string.sym_customize_title),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
+            }
+        }
+    ) { paddingValues ->
         Column(
             modifier = modifier
                 .fillMaxWidth()
+                .padding(paddingValues)
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-        // Header with back button
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = stringResource(R.string.settings_back_content_description)
-                )
-            }
-            Text(
-                text = stringResource(R.string.sym_customize_title),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 4.dp)
-            )
-        }
-        
-        HorizontalDivider()
         
         // Auto-Close SYM Layout option
         Surface(
@@ -268,17 +277,21 @@ fun SymCustomizationScreen(
                 // Reset button for page 1
                 Button(
                     onClick = {
-                        symMappingsPage1 = defaultMappingsPage1.toMutableMap()
-                        SettingsManager.resetSymMappings(context)
+                        resetPage = 1
+                        showResetConfirmDialog = true
                     },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 8.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
+                        containerColor = MaterialTheme.colorScheme.error
                     )
                 ) {
-                    Text(stringResource(R.string.sym_reset_to_default), style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        stringResource(R.string.sym_reset_to_default), 
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onError
+                    )
                 }
             }
             1 -> {
@@ -300,17 +313,21 @@ fun SymCustomizationScreen(
                 // Reset button for page 2
                 Button(
                     onClick = {
-                        symMappingsPage2 = defaultMappingsPage2.toMutableMap()
-                        SettingsManager.resetSymMappingsPage2(context)
+                        resetPage = 2
+                        showResetConfirmDialog = true
                     },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 8.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
+                        containerColor = MaterialTheme.colorScheme.error
                     )
                 ) {
-                    Text(stringResource(R.string.sym_reset_to_default), style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        stringResource(R.string.sym_reset_to_default), 
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onError
+                    )
                 }
             }
         }
@@ -351,6 +368,55 @@ fun SymCustomizationScreen(
                 onDismiss = {
                     showCharacterPicker = false
                     selectedKeyCode = null
+                }
+            )
+        }
+        
+        // Reset confirmation dialog
+        if (showResetConfirmDialog) {
+            AlertDialog(
+                onDismissRequest = { 
+                    showResetConfirmDialog = false
+                    resetPage = null
+                },
+                title = {
+                    Text(stringResource(R.string.sym_reset_confirm_title))
+                },
+                text = {
+                    Text(stringResource(R.string.sym_reset_confirm_message))
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            when (resetPage) {
+                                1 -> {
+                                    symMappingsPage1 = defaultMappingsPage1.toMutableMap()
+                                    SettingsManager.resetSymMappings(context)
+                                }
+                                2 -> {
+                                    symMappingsPage2 = defaultMappingsPage2.toMutableMap()
+                                    SettingsManager.resetSymMappingsPage2(context)
+                                }
+                            }
+                            showResetConfirmDialog = false
+                            resetPage = null
+                        },
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Text(stringResource(R.string.sym_reset_confirm_button))
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            showResetConfirmDialog = false
+                            resetPage = null
+                        }
+                    ) {
+                        Text(stringResource(R.string.cancel))
+                    }
                 }
             )
         }

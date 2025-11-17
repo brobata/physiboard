@@ -7,6 +7,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -140,7 +141,12 @@ fun UnicodeCharacterPickerDialog(
                         FilterChip(
                             selected = selectedCategory == category,
                             onClick = { selectedCategory = category },
-                            label = { Text(getCategoryName(category), style = MaterialTheme.typography.labelSmall) },
+                            label = { 
+                                Text(
+                                    getCategoryName(category), 
+                                    style = MaterialTheme.typography.labelMedium // 20% larger than labelSmall
+                                ) 
+                            },
                             modifier = Modifier.padding(horizontal = 2.dp)
                         )
                     }
@@ -152,35 +158,40 @@ fun UnicodeCharacterPickerDialog(
                 val selectedCharacters = characterCategories[selectedCategory] ?: emptyList()
                 
                 key(selectedCategory) {
-                    AndroidView(
-                        factory = { context ->
-                            val recyclerView = RecyclerView(context)
-                            val screenWidth = context.resources.displayMetrics.widthPixels
-                            val characterSize = (40 * context.resources.displayMetrics.density).toInt()
-                            val spacing = (2 * context.resources.displayMetrics.density).toInt()
-                            val padding = (4 * context.resources.displayMetrics.density).toInt()
-                            
-                            // Calculate number of columns based on screen width
-                            val columns = (screenWidth / (characterSize + spacing)).coerceAtLeast(4)
-                            
-                            recyclerView.apply {
-                                layoutManager = GridLayoutManager(context, columns)
-                                adapter = UnicodeCharacterRecyclerViewAdapter(selectedCharacters) { character ->
-                                    onCharacterSelected(character)
-                                    onDismiss()
-                                }
-                                setPadding(padding, padding, padding, padding)
-                                clipToPadding = false
-                                // Performance optimizations
-                                setHasFixedSize(true)
-                                setItemViewCacheSize(20)
-                            }
-                            recyclerView
-                        },
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f)
-                    )
+                            .clipToBounds()
+                    ) {
+                        AndroidView(
+                            factory = { context ->
+                                val recyclerView = RecyclerView(context)
+                                val screenWidth = context.resources.displayMetrics.widthPixels
+                                val characterSize = (48 * context.resources.displayMetrics.density).toInt() // 40 * 1.2 (20% larger)
+                                val spacing = (2 * context.resources.displayMetrics.density).toInt()
+                                val padding = (4 * context.resources.displayMetrics.density).toInt()
+                                
+                                // Calculate number of columns based on screen width
+                                val columns = (screenWidth / (characterSize + spacing)).coerceAtLeast(4)
+                                
+                                recyclerView.apply {
+                                    layoutManager = GridLayoutManager(context, columns)
+                                    adapter = UnicodeCharacterRecyclerViewAdapter(selectedCharacters) { character ->
+                                        onCharacterSelected(character)
+                                        onDismiss()
+                                    }
+                                    setPadding(padding, padding, padding, padding)
+                                    clipToPadding = false
+                                    // Performance optimizations
+                                    setHasFixedSize(true)
+                                    setItemViewCacheSize(20)
+                                }
+                                recyclerView
+                            },
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
             }
         }

@@ -26,11 +26,11 @@ class EmojiRecyclerViewAdapter(
         
         // Configure TextView to center emoji
         holder.emojiText.apply {
-            textSize = 24f
+            textSize = 28.8f // 24 * 1.2 (20% larger)
             gravity = android.view.Gravity.CENTER
             setPadding(0, 0, 0, 0)
-            minHeight = (40 * parent.context.resources.displayMetrics.density).toInt()
-            minWidth = (40 * parent.context.resources.displayMetrics.density).toInt()
+            minHeight = (48 * parent.context.resources.displayMetrics.density).toInt() // 40 * 1.2
+            minWidth = (48 * parent.context.resources.displayMetrics.density).toInt() // 40 * 1.2
         }
         
         // Click listener setup

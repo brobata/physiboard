@@ -123,6 +123,10 @@
     <string name="sym_instructions_title">Istruzioni</string>
     <string name="sym_instructions_text">Tocca un tasto qui sotto per cambiare la sua emoji. Le modifiche vengono salvate automaticamente.</string>
     <string name="sym_reset_to_default">Ripristina Predefiniti</string>
+    <string name="sym_reset_confirm_title">Ripristina Predefiniti</string>
+    <string name="sym_reset_confirm_message">Sei sicuro di voler ripristinare tutte le mappature SYM ai valori predefiniti? Questa azione non può essere annullata.</string>
+    <string name="sym_reset_confirm_button">Ripristina</string>
+    <string name="cancel">Annulla</string>
     
     <!-- Emoji Picker Dialog -->
     <string name="emoji_picker_title">Seleziona Emoji</string>

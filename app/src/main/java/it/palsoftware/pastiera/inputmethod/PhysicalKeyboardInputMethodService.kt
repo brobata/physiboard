@@ -1629,15 +1629,14 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             // Check if auto-close is enabled
             val autoCloseEnabled = SettingsManager.getSymAutoClose(this)
             
-            // Handle Enter key: insert newline and close SYM if auto-close is enabled
+            // Handle Enter key: close SYM and pass Enter event normally if auto-close is enabled
             if (keyCode == KeyEvent.KEYCODE_ENTER && autoCloseEnabled) {
-                // Insert newline in the text
-                ic.commitText("\n", 1)
-                // Close SYM layout
+                // Close SYM layout first
                 symPage = 0
                 prefs.edit().putInt("current_sym_page", 0).apply()
                 updateStatusBarText()
-                return true
+                // Pass Enter event normally (as if SYM was never active)
+                return super.onKeyDown(keyCode, event)
             }
             
             // Handle Alt key: close SYM if auto-close is enabled (but not if Ctrl or Shift are also pressed)

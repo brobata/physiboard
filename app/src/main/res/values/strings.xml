@@ -123,6 +123,10 @@
     <string name="sym_instructions_title">Instructions</string>
     <string name="sym_instructions_text">Tap on any key below to change its emoji. Changes are saved automatically.</string>
     <string name="sym_reset_to_default">Reset to Default</string>
+    <string name="sym_reset_confirm_title">Reset to Default</string>
+    <string name="sym_reset_confirm_message">Are you sure you want to reset all SYM mappings to default? This action cannot be undone.</string>
+    <string name="sym_reset_confirm_button">Reset</string>
+    <string name="cancel">Cancel</string>
     
     <!-- Emoji Picker Dialog -->
     <string name="emoji_picker_title">Select Emoji</string>
