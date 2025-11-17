@@ -266,8 +266,17 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         val canCheckAutoCapitalize = isEditable && !shouldDisableSmartFeatures
         
         if (!isReallyEditable) {
+            // IMPORTANT: Se NavMode è attivo, manteniamo isInputViewActive = true
+            // anche se non c'è un campo editabile, per mantenere InputConnection disponibile
             if (ctrlLatchFromNavMode && ctrlLatchActive) {
-                isInputViewActive = false
+                isInputViewActive = true // Manteniamo IME attivo per NavMode
+                // Forziamo l'attivazione dell'IME per mantenere InputConnection disponibile
+                try {
+                    requestShowSelf(0)
+                    Log.d(TAG, "Nav mode: forced IME activation in initializeInputContext (no editable field)")
+                } catch (e: Exception) {
+                    Log.w(TAG, "Could not force IME activation for NavMode in initializeInputContext", e)
+                }
             } else {
                 isInputViewActive = false
             }
@@ -769,10 +778,21 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
      * Forces creation and display of the input view.
      * Called when the first physical key is pressed.
      * Shows the keyboard if there is an active text field.
-     * IMPORTANT: UI is never shown in nav mode.
+     * IMPORTANT: In nav mode, we keep IME active but don't show UI.
      */
     private fun ensureInputViewCreated() {
-        if (ctrlLatchFromNavMode && !isInputViewActive) {
+        // In nav mode, allow IME to stay active even without text field
+        // This ensures InputConnection remains available for sending key events
+        if (ctrlLatchFromNavMode && ctrlLatchActive) {
+            // Force IME to stay active for NavMode, even if InputConnection is null
+            // This helps maintain InputConnection availability, especially in launcher
+            try {
+                requestShowSelf(0)
+                Log.d(TAG, "Nav mode: forced IME activation to maintain InputConnection")
+            } catch (e: Exception) {
+                Log.w(TAG, "Could not force IME activation for NavMode", e)
+            }
+            // In NavMode, we don't need to create the UI, just keep IME active
             return
         }
         
@@ -793,7 +813,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
 
         // Only call requestShowSelf if the input view is not already shown
-        // and we are in a valid state (not in nav mode, input view is active)
+        // In nav mode, we keep IME active but don't show the UI
         if (!isInputViewShown && isInputViewActive && !ctrlLatchFromNavMode) {
             try {
                 requestShowSelf(0)
@@ -841,6 +861,14 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 if (it) {
                     ctrlLatchFromNavMode = true
                     NotificationHelper.showNavModeActivatedNotification(this)
+                    // Force IME to stay active when NavMode is activated
+                    // This ensures InputConnection remains available even without a text field
+                    try {
+                        requestShowSelf(0)
+                        Log.d(TAG, "Nav mode activated: forced IME to stay active")
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Could not force IME activation for NavMode", e)
+                    }
                 } else {
                     ctrlLatchFromNavMode = false
                     NotificationHelper.cancelNavModeNotification(this)
@@ -859,6 +887,14 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         
         // Handle mapped keys when Ctrl latch is active (nav mode active)
         if (ctrlLatchActive && ctrlLatchFromNavMode) {
+            // Always try to keep IME active when NavMode is active and a key is pressed
+            // This helps maintain InputConnection availability, especially in launcher
+            try {
+                requestShowSelf(0)
+            } catch (e: Exception) {
+                // Ignore - IME might already be active
+            }
+            
             val ctrlMapping = ctrlKeyMap[keyCode]
             if (ctrlMapping != null) {
                 when (ctrlMapping.type) {
@@ -881,48 +917,84 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                             else -> null
                         }
                         if (mappedKeyCode != null) {
-                            // In nav mode outside text fields, create a new KeyEvent with the mapped keycode
-                            // and pass it to Android to handle
+                            // Use InputConnection.sendKeyEvent() - the only reliable method to send events
+                            // from IME to the app, even when outside text fields
+                            // Always try to force IME activation when NavMode is active to ensure InputConnection is available
                             try {
-                                val mappedEvent = KeyEvent(
-                                    event?.downTime ?: System.currentTimeMillis(),
-                                    event?.eventTime ?: System.currentTimeMillis(),
-                                    KeyEvent.ACTION_DOWN,
-                                    mappedKeyCode,
-                                    0,
-                                    event?.metaState ?: 0,
-                                    event?.deviceId ?: 0,
-                                    event?.scanCode ?: 0,
-                                    event?.flags ?: 0,
-                                    event?.source ?: InputDevice.SOURCE_KEYBOARD
-                                )
-                                val mappedEventUp = KeyEvent(
-                                    event?.downTime ?: System.currentTimeMillis(),
-                                    event?.eventTime ?: System.currentTimeMillis(),
-                                    KeyEvent.ACTION_UP,
-                                    mappedKeyCode,
-                                    0,
-                                    event?.metaState ?: 0,
-                                    event?.deviceId ?: 0,
-                                    event?.scanCode ?: 0,
-                                    event?.flags ?: 0,
-                                    event?.source ?: InputDevice.SOURCE_KEYBOARD
-                                )
-                                // Pass the mapped event to Android
-                                val handled = super.onKeyDown(mappedKeyCode, mappedEvent)
-                                super.onKeyUp(mappedKeyCode, mappedEventUp)
-                                Log.d(TAG, "Nav mode: mapped key $keyCode -> $mappedKeyCode")
-                                return true // Consume the original event
+                                requestShowSelf(0)
                             } catch (e: Exception) {
-                                Log.e(TAG, "Error dispatching nav mode key event", e)
-                                return true // Consume on error
+                                Log.w(TAG, "Could not force IME activation for NavMode key event", e)
+                            }
+                            
+                            // Get InputConnection - it should be available if IME is active
+                            var inputConnection = currentInputConnection
+                            
+                            // Log context for debugging
+                            val packageName = currentPackageName
+                            val isLauncherContext = packageName != null && isLauncher(packageName)
+                            if (inputConnection == null) {
+                                Log.w(TAG, "Nav mode: InputConnection is null for key $keyCode -> $mappedKeyCode (package: $packageName, isLauncher: $isLauncherContext)")
+                            }
+                            
+                            if (inputConnection != null) {
+                                try {
+                                    val currentTime = System.currentTimeMillis()
+                                    val downTime = event?.downTime ?: currentTime
+                                    val eventTime = event?.eventTime ?: currentTime
+                                    
+                                    // Remove Ctrl from metaState - we're mapping the key, not sending Ctrl+key
+                                    // Control mapping is handled by keycode mapping, not metaState
+                                    val originalMetaState = event?.metaState ?: 0
+                                    val metaState = originalMetaState and KeyEvent.META_CTRL_MASK.inv()
+                                    
+                                    val mappedEventDown = KeyEvent(
+                                        downTime,
+                                        eventTime,
+                                        KeyEvent.ACTION_DOWN,
+                                        mappedKeyCode,
+                                        0,
+                                        metaState,
+                                        event?.deviceId ?: 0,
+                                        event?.scanCode ?: 0,
+                                        event?.flags ?: 0,
+                                        event?.source ?: InputDevice.SOURCE_KEYBOARD
+                                    )
+                                    val mappedEventUp = KeyEvent(
+                                        downTime,
+                                        eventTime,
+                                        KeyEvent.ACTION_UP,
+                                        mappedKeyCode,
+                                        0,
+                                        metaState,
+                                        event?.deviceId ?: 0,
+                                        event?.scanCode ?: 0,
+                                        event?.flags ?: 0,
+                                        event?.source ?: InputDevice.SOURCE_KEYBOARD
+                                    )
+                                    
+                                    // Send events via InputConnection - works reliably everywhere
+                                    inputConnection.sendKeyEvent(mappedEventDown)
+                                    inputConnection.sendKeyEvent(mappedEventUp)
+                                    Log.d(TAG, "Nav mode: mapped key $keyCode -> $mappedKeyCode (sent via InputConnection)")
+                                    return true // Consume the original event
+                                } catch (e: Exception) {
+                                    Log.e(TAG, "Error sending nav mode key event via InputConnection", e)
+                                    return true // Consume on error
+                                }
+                            } else {
+                                // No InputConnection available even after forcing activation
+                                // This can happen if Android doesn't allow IME to stay active
+                                Log.w(TAG, "Nav mode: no InputConnection available for key $keyCode -> $mappedKeyCode (IME may not be active)")
+                                // Still consume to prevent unwanted behavior
+                                return true
                             }
                         }
                     }
                 }
             }
-            // If key has no mapping but Ctrl latch is active, consume it
-            return true
+            // If key has no mapping but Ctrl latch is active, return false
+            // to let Android handle it normally (don't consume unmapped keys)
+            return false
         }
         
         // Not handled by nav mode
@@ -1062,7 +1134,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         currentPackageName = info?.packageName
         
         val (isEditable, isReallyEditable) = checkFieldEditability(info)
-        isInputViewActive = isEditable
+        // IMPORTANT: Se NavMode è attivo, manteniamo isInputViewActive = true
+        // anche se non c'è un campo editabile, per mantenere InputConnection disponibile
+        if (ctrlLatchFromNavMode && ctrlLatchActive) {
+            isInputViewActive = true // Manteniamo IME attivo per NavMode
+        } else {
+            isInputViewActive = isEditable
+        }
         
         isNumericField = info?.let { editorInfo ->
             val inputType = editorInfo.inputType
@@ -1087,6 +1165,17 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 if (!isInputViewShown && isInputViewActive) {
                     ensureInputViewCreated()
                 }
+            }
+        }
+        
+        // IMPORTANT: Se NavMode è attivo, forziamo l'attivazione dell'IME anche senza campo editabile
+        // per mantenere InputConnection disponibile
+        if (!restarting && ctrlLatchFromNavMode && ctrlLatchActive && !isEditable) {
+            try {
+                requestShowSelf(0)
+                Log.d(TAG, "Nav mode: forced IME activation in onStartInput (no editable field)")
+            } catch (e: Exception) {
+                Log.w(TAG, "Could not force IME activation for NavMode in onStartInput", e)
             }
         }
         
@@ -1139,16 +1228,42 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     
     override fun onFinishInput() {
         super.onFinishInput()
-        isInputViewActive = false
+        // Don't fully deactivate IME if NavMode is active - we need InputConnection to remain available
+        if (!ctrlLatchFromNavMode || !ctrlLatchActive) {
+            isInputViewActive = false
+        }
         isNumericField = false
         resetModifierStates(preserveNavMode = true)
+        
+        // If NavMode is active, force IME to stay active to maintain InputConnection
+        if (ctrlLatchFromNavMode && ctrlLatchActive) {
+            try {
+                requestShowSelf(0)
+                Log.d(TAG, "Nav mode: forced IME to stay active after onFinishInput")
+            } catch (e: Exception) {
+                Log.w(TAG, "Could not force IME activation after onFinishInput", e)
+            }
+        }
     }
     
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
-        isInputViewActive = false
+        // Don't fully deactivate IME if NavMode is active - we need InputConnection to remain available
+        if (!ctrlLatchFromNavMode || !ctrlLatchActive) {
+            isInputViewActive = false
+        }
         if (finishingInput) {
             resetModifierStates(preserveNavMode = true)
+        }
+        
+        // If NavMode is active, force IME to stay active to maintain InputConnection
+        if (ctrlLatchFromNavMode && ctrlLatchActive) {
+            try {
+                requestShowSelf(0)
+                Log.d(TAG, "Nav mode: forced IME to stay active after onFinishInputView")
+            } catch (e: Exception) {
+                Log.w(TAG, "Could not force IME activation after onFinishInputView", e)
+            }
         }
     }
     
@@ -1226,9 +1341,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         val info = currentInputEditorInfo
         val ic = currentInputConnection
         val inputType = info?.inputType ?: EditorInfo.TYPE_NULL
-        val hasEditableField = ic != null && inputType != EditorInfo.TYPE_NULL
+        val navModeActive = ctrlLatchFromNavMode && ctrlLatchActive
+        val hasEditableField = !navModeActive && ic != null && inputType != EditorInfo.TYPE_NULL
         
-        // If NO editable field is active, handle ONLY nav mode
+        // If NO editable field is active or nav mode is forcing navigation, handle ONLY nav mode
         if (!hasEditableField) {
             // Handle Back to exit nav mode
             if (keyCode == KeyEvent.KEYCODE_BACK) {
@@ -1259,9 +1375,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 return true
             }
             
-            // Not handled by nav mode, pass to Android and STOP
-            // Do NOT execute any IME logic (no ensureInputViewCreated, no status bar, etc.)
-            return super.onKeyDown(keyCode, event)
+            // Not handled by nav mode, return false to let Android handle it
+            // IMPORTANT: Do NOT call super.onKeyDown() here - it causes Android to stop
+            // sending hardware input events to the IME after a few keys
+            // Return false to indicate the IME is not interested in this event
+            return false
         }
         
         // If we have an editable field, nav mode must NOT be active
@@ -2040,9 +2158,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         val info = currentInputEditorInfo
         val ic = currentInputConnection
         val inputType = info?.inputType ?: EditorInfo.TYPE_NULL
-        val hasEditableField = ic != null && inputType != EditorInfo.TYPE_NULL
+        val navModeActive = ctrlLatchFromNavMode && ctrlLatchActive
+        val hasEditableField = !navModeActive && ic != null && inputType != EditorInfo.TYPE_NULL
         
-        // If NO editable field is active, handle ONLY nav mode Ctrl release
+        // If NO editable field is active or nav mode is forcing navigation, handle ONLY nav mode Ctrl release
         if (!hasEditableField) {
             val isCtrlKey = keyCode == KeyEvent.KEYCODE_CTRL_LEFT || keyCode == KeyEvent.KEYCODE_CTRL_RIGHT
             if (isCtrlKey && ctrlPressed) {
@@ -2053,8 +2172,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 // Do NOT update status bar outside text fields
                 return true
             }
-            // Not handled by nav mode, pass to Android
-            return super.onKeyUp(keyCode, event)
+            // Not handled by nav mode, return false to let Android handle it
+            // IMPORTANT: Do NOT call super.onKeyUp() here - it causes Android to stop
+            // sending hardware input events to the IME after a few keys
+            return false
         }
         
         // Continue with normal IME logic for text fields
@@ -2195,4 +2316,5 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         return super.onGenericMotionEvent(event)
     }
 }
+
 
