@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Keyboard
+import androidx.activity.compose.BackHandler
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
@@ -167,7 +168,11 @@ fun KeyboardSetupScreen(
     
     // State for navigation to settings
     var showSettings by remember { mutableStateOf(false) }
-    var showSymCustomization by remember { mutableStateOf(false) }
+    
+    // Check if activity was opened from keyboard (to return to previous app on back)
+    val openedFromKeyboard = remember {
+        activity.intent.getBooleanExtra("open_settings", false)
+    }
     
     // State for IME status
     var isPastieraEnabled by remember { mutableStateOf(false) }
@@ -193,12 +198,9 @@ fun KeyboardSetupScreen(
         }
     }
     
-    // Read the intent to open the SYM screen directly
+    // Read the intent to open the Settings screen directly
     LaunchedEffect(Unit) {
         val intent = activity.intent
-        if (intent.getBooleanExtra("open_sym_customization", false)) {
-            showSymCustomization = true
-        }
         if (intent.getBooleanExtra("open_settings", false)) {
             showSettings = true
         }
@@ -236,25 +238,27 @@ fun KeyboardSetupScreen(
         }
     }
     
+    // Handle system back button - standard Android behavior
+    // Intercept only when we have internal navigation (Settings open) or when opened from keyboard
+    // When on main screen, finish activity to return to previous app if opened from keyboard
+    BackHandler(enabled = showSettings || openedFromKeyboard) {
+        when {
+            showSettings -> {
+                // If Settings is open, close Settings and return to Main
+                showSettings = false
+            }
+            openedFromKeyboard -> {
+                // If we're on main screen and activity was opened from keyboard, finish to return to previous app
+                activity.finish()
+            }
+        }
+    }
+    
     // Conditional navigation with animations
     AnimatedContent(
-        targetState = when {
-            showSymCustomization -> "sym"
-            showSettings -> "settings"
-            else -> "main"
-        },
+        targetState = if (showSettings) "settings" else "main",
         transitionSpec = {
             when {
-                targetState == "sym" && initialState == "settings" -> {
-                    // Slide from right when navigating to SYM
-                    slideInHorizontally(
-                        initialOffsetX = { it },
-                        animationSpec = tween(300)
-                    ) togetherWith slideOutHorizontally(
-                        targetOffsetX = { -it },
-                        animationSpec = tween(300)
-                    )
-                }
                 targetState == "settings" && initialState == "main" -> {
                     // Slide from right when navigating to Settings
                     slideInHorizontally(
@@ -272,16 +276,6 @@ fun KeyboardSetupScreen(
                         animationSpec = tween(300)
                     )
                 }
-                targetState == "settings" && initialState == "sym" -> {
-                    // Slide from left when going back from SYM
-                    slideInHorizontally(
-                        initialOffsetX = { -it },
-                        animationSpec = tween(300)
-                    ) togetherWith slideOutHorizontally(
-                        targetOffsetX = { it },
-                        animationSpec = tween(300)
-                    )
-                }
                 else -> {
                     fadeIn(animationSpec = tween(200)) togetherWith fadeOut(animationSpec = tween(200))
                 }
@@ -291,17 +285,10 @@ fun KeyboardSetupScreen(
         label = "screen_transition"
     ) { target ->
         when (target) {
-            "sym" -> {
-                SymCustomizationScreen(
-                    modifier = Modifier.fillMaxSize(),
-                    onBack = { showSymCustomization = false }
-                )
-            }
             "settings" -> {
                 SettingsScreen(
                     modifier = Modifier.fillMaxSize(),
-                    onBack = { showSettings = false },
-                    onSymCustomizationClick = { showSymCustomization = true }
+                    onBack = { showSettings = false }
                 )
             }
             else -> {

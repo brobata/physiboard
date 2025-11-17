@@ -30,6 +30,9 @@ object SettingsManager {
     private const val KEY_AUTO_CAPITALIZE_AFTER_PERIOD = "auto_capitalize_after_period"
     private const val KEY_LONG_PRESS_MODIFIER = "long_press_modifier" // "alt" or "shift"
     private const val KEY_KEYBOARD_LAYOUT = "keyboard_layout" // "qwerty", "azerty", etc.
+    private const val KEY_RESTORE_SYM_PAGE = "restore_sym_page" // SYM page to restore when returning from settings
+    private const val KEY_PENDING_RESTORE_SYM_PAGE = "pending_restore_sym_page" // Temporary SYM page state saved when opening settings
+    private const val KEY_SYM_AUTO_CLOSE = "sym_auto_close" // Auto-close SYM layout after key press
     
     // Default values
     private const val DEFAULT_LONG_PRESS_THRESHOLD = 300L
@@ -43,6 +46,7 @@ object SettingsManager {
     private const val DEFAULT_AUTO_CAPITALIZE_AFTER_PERIOD = true
     private const val DEFAULT_LONG_PRESS_MODIFIER = "alt"
     private const val DEFAULT_KEYBOARD_LAYOUT = "qwerty"
+    private const val DEFAULT_SYM_AUTO_CLOSE = true
     
     /**
      * Returns the SharedPreferences instance for Pastiera.
@@ -872,6 +876,100 @@ object SettingsManager {
     fun setKeyboardLayout(context: Context, layoutName: String) {
         getPreferences(context).edit()
             .putString(KEY_KEYBOARD_LAYOUT, layoutName)
+            .apply()
+    }
+    
+    /**
+     * Sets the SYM page to restore when returning from settings.
+     * @param context The context
+     * @param page The SYM page to restore (0=disabled, 1=page1 emoji, 2=page2 characters)
+     */
+    fun setRestoreSymPage(context: Context, page: Int) {
+        getPreferences(context).edit()
+            .putInt(KEY_RESTORE_SYM_PAGE, page)
+            .apply()
+    }
+    
+    /**
+     * Gets the SYM page to restore when returning from settings.
+     * @param context The context
+     * @return The SYM page to restore (0=disabled, 1=page1 emoji, 2=page2 characters), or 0 if not set
+     */
+    fun getRestoreSymPage(context: Context): Int {
+        return getPreferences(context).getInt(KEY_RESTORE_SYM_PAGE, 0)
+    }
+    
+    /**
+     * Clears the SYM page restore state.
+     * @param context The context
+     */
+    fun clearRestoreSymPage(context: Context) {
+        getPreferences(context).edit()
+            .remove(KEY_RESTORE_SYM_PAGE)
+            .apply()
+    }
+    
+    /**
+     * Sets a pending SYM page state when opening SymCustomizationActivity.
+     * This will be converted to restore_sym_page only if user presses back.
+     * @param context The context
+     * @param page The SYM page that was active (0=disabled, 1=page1 emoji, 2=page2 characters)
+     */
+    fun setPendingRestoreSymPage(context: Context, page: Int) {
+        getPreferences(context).edit()
+            .putInt(KEY_PENDING_RESTORE_SYM_PAGE, page)
+            .apply()
+    }
+    
+    /**
+     * Gets the pending SYM page state.
+     * @param context The context
+     * @return The pending SYM page, or 0 if not set
+     */
+    fun getPendingRestoreSymPage(context: Context): Int {
+        return getPreferences(context).getInt(KEY_PENDING_RESTORE_SYM_PAGE, 0)
+    }
+    
+    /**
+     * Clears the pending SYM page state.
+     * @param context The context
+     */
+    fun clearPendingRestoreSymPage(context: Context) {
+        getPreferences(context).edit()
+            .remove(KEY_PENDING_RESTORE_SYM_PAGE)
+            .apply()
+    }
+    
+    /**
+     * Confirms the pending restore by moving it to restore_sym_page.
+     * Called when user presses back from SymCustomizationActivity.
+     * @param context The context
+     */
+    fun confirmPendingRestoreSymPage(context: Context) {
+        val pendingPage = getPendingRestoreSymPage(context)
+        if (pendingPage > 0) {
+            setRestoreSymPage(context, pendingPage)
+            clearPendingRestoreSymPage(context)
+        }
+    }
+    
+    /**
+     * Gets whether SYM layout should auto-close after key press.
+     * @param context The context
+     * @return true if SYM should auto-close, false otherwise
+     */
+    fun getSymAutoClose(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_SYM_AUTO_CLOSE, DEFAULT_SYM_AUTO_CLOSE)
+    }
+    
+    /**
+     * Sets whether SYM layout should auto-close after key press.
+     * @param context The context
+     * @param enabled true to enable auto-close, false to disable
+     */
+    fun setSymAutoClose(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_SYM_AUTO_CLOSE, enabled)
             .apply()
     }
 }

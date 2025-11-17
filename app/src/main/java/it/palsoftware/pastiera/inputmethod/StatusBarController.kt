@@ -22,6 +22,8 @@ import android.util.Log
 import android.util.TypedValue
 import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.MainActivity
+import it.palsoftware.pastiera.SymCustomizationActivity
+import it.palsoftware.pastiera.SettingsManager
 import kotlin.math.max
 import android.view.MotionEvent
 import android.view.KeyEvent
@@ -68,7 +70,8 @@ class StatusBarController(
         val altOneShot: Boolean,
         val symPage: Int, // 0=disattivato, 1=pagina1 emoji, 2=pagina2 caratteri
         val variations: List<String> = emptyList(),
-        val lastInsertedChar: Char? = null
+        val lastInsertedChar: Char? = null,
+        val shouldDisableSmartFeatures: Boolean = false
     ) {
         val navModeActive: Boolean
             get() = ctrlLatchActive && ctrlLatchFromNavMode
@@ -87,6 +90,7 @@ class StatusBarController(
     private var ctrlLed: View? = null
     private var altLed: View? = null
     private var symLed: View? = null
+    private var smartFeaturesDisabledIndicator: View? = null
     private var emojiKeyButtons: MutableList<View> = mutableListOf()
     private var currentVariationsRow: LinearLayout? = null
     private var microphoneButtonView: AppCompatImageButton? = null
@@ -141,6 +145,32 @@ class StatusBarController(
                 )
                 visibility = View.GONE
             }
+            
+            // Create red dot indicator for smart features disabled
+            val dotSize = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP,
+                8f,
+                context.resources.displayMetrics
+            ).toInt()
+            val dotMargin = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP,
+                8f,
+                context.resources.displayMetrics
+            ).toInt()
+            
+            smartFeaturesDisabledIndicator = View(context).apply {
+                val drawable = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(Color.RED)
+                }
+                background = drawable
+                layoutParams = LinearLayout.LayoutParams(dotSize, dotSize).apply {
+                    marginEnd = dotMargin
+                }
+                visibility = View.GONE
+            }
+            
+            modifiersContainer?.addView(smartFeaturesDisabledIndicator)
 
             // Container for emoji grid (when SYM is active) - placed at the bottom
             val emojiKeyboardHorizontalPadding = TypedValue.applyDimension(
@@ -847,10 +877,17 @@ class StatusBarController(
         }
         
         button.setOnClickListener {
-            // Apri MainActivity con l'extra per aprire la schermata di personalizzazione SYM
-            val intent = Intent(context, MainActivity::class.java).apply {
+            // Save current SYM page state temporarily (will be confirmed only if user presses back)
+            val prefs = context.getSharedPreferences("pastiera_prefs", Context.MODE_PRIVATE)
+            val currentSymPage = prefs.getInt("current_sym_page", 0)
+            if (currentSymPage > 0) {
+                // Save as pending - will be converted to restore only if user presses back
+                SettingsManager.setPendingRestoreSymPage(context, currentSymPage)
+            }
+            
+            // Apri SymCustomizationActivity direttamente
+            val intent = Intent(context, SymCustomizationActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                putExtra("open_sym_customization", true)
             }
             try {
                 context.startActivity(intent)
@@ -1661,9 +1698,15 @@ class StatusBarController(
             }
         }
         
-        // Nascondi sempre il container dei modificatori testuali (ora usiamo i LED)
-        // Quando SYM è attivo, assicuriamoci che sia completamente nascosto (GONE)
-        modifiersContainerView.visibility = View.GONE
+        // Mostra il container dei modificatori solo se smart features sono disabilitate
+        // (per mostrare il pallino rosso), altrimenti nascondilo
+        if (snapshot.shouldDisableSmartFeatures) {
+            modifiersContainerView.visibility = View.VISIBLE
+            smartFeaturesDisabledIndicator?.visibility = View.VISIBLE
+        } else {
+            modifiersContainerView.visibility = View.GONE
+            smartFeaturesDisabledIndicator?.visibility = View.GONE
+        }
         
         // Aggiorna i LED nel bordo inferiore
         // Shift: rosso se lockato (Caps Lock), blu se attivo (premuto/one-shot), grigio se spento

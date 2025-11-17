@@ -62,39 +62,62 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private var availableVariations: List<String> = emptyList()
     private var variationsActive = false
     
-    // Caps Lock state
-    private var capsLockEnabled = false
+    // Accessor properties for backwards compatibility with existing code
+    private var capsLockEnabled: Boolean
+        get() = shiftState.latchActive
+        set(value) { shiftState.latchActive = value }
     
-    // Double-tap tracking on Shift to enable Caps Lock
-    private var lastShiftReleaseTime: Long = 0
-    private var shiftPressed = false
+    private var shiftPressed: Boolean
+        get() = shiftState.pressed
+        set(value) { shiftState.pressed = value }
     
-    // Latch states for Ctrl and Alt
-    private var ctrlLatchActive = false
-    private var altLatchActive = false
+    private var ctrlLatchActive: Boolean
+        get() = ctrlState.latchActive
+        set(value) { ctrlState.latchActive = value }
     
-    // Double-tap tracking on Ctrl and Alt
-    private var lastCtrlReleaseTime: Long = 0
-    private var ctrlPressed = false
-    private var lastAltReleaseTime: Long = 0
-    private var altPressed = false
+    private var altLatchActive: Boolean
+        get() = altState.latchActive
+        set(value) { altState.latchActive = value }
     
-    // Tracking of physically pressed modifier keys (for the status bar)
-    private var shiftPhysicallyPressed = false
-    private var ctrlPhysicallyPressed = false
-    private var altPhysicallyPressed = false
+    private var ctrlPressed: Boolean
+        get() = ctrlState.pressed
+        set(value) { ctrlState.pressed = value }
     
-    // One-shot states for modifier keys (active until the next key)
-    private var shiftOneShot = false
-    private var ctrlOneShot = false
-    private var altOneShot = false
+    private var altPressed: Boolean
+        get() = altState.pressed
+        set(value) { altState.pressed = value }
     
-    // Timestamp when shiftOneShot was enabled by auto-capitalize logic (after period, ENTER, etc.)
-    // Used to prevent onUpdateSelection() from disabling it immediately after it was enabled
-    private var shiftOneShotEnabledTime: Long = 0
+    private var shiftPhysicallyPressed: Boolean
+        get() = shiftState.physicallyPressed
+        set(value) { shiftState.physicallyPressed = value }
     
-    private val DOUBLE_TAP_THRESHOLD = 500L // milliseconds
-    private val SHIFT_ONE_SHOT_PROTECTION_WINDOW = 300L // milliseconds - protection window for recently enabled shiftOneShot
+    private var ctrlPhysicallyPressed: Boolean
+        get() = ctrlState.physicallyPressed
+        set(value) { ctrlState.physicallyPressed = value }
+    
+    private var altPhysicallyPressed: Boolean
+        get() = altState.physicallyPressed
+        set(value) { altState.physicallyPressed = value }
+    
+    private var shiftOneShot: Boolean
+        get() = autoCapitalizeState.shiftOneShot
+        set(value) { autoCapitalizeState.shiftOneShot = value }
+    
+    private var ctrlOneShot: Boolean
+        get() = ctrlState.oneShot
+        set(value) { ctrlState.oneShot = value }
+    
+    private var altOneShot: Boolean
+        get() = altState.oneShot
+        set(value) { altState.oneShot = value }
+    
+    private var shiftOneShotEnabledTime: Long
+        get() = autoCapitalizeState.shiftOneShotEnabledTime
+        set(value) { autoCapitalizeState.shiftOneShotEnabledTime = value }
+    
+    private var ctrlLatchFromNavMode: Boolean
+        get() = ctrlState.latchFromNavMode
+        set(value) { ctrlState.latchFromNavMode = value }
     
     // Double-tap tracking on space to insert period and space
     private var lastSpacePressTime: Long = 0
@@ -109,8 +132,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     // (password, URL, email, filter, codes, OTP, tokens, etc.)
     private var shouldDisableSmartFeatures = false
     
-    // Flag to avoid infinite loops when reactivating the keyboard recursively
-    private var isRehandlingKeyAfterReactivation = false
     
     // Cache for launcher packages
     private var cachedLauncherPackages: Set<String>? = null
@@ -118,49 +139,50 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     // Current package name
     private var currentPackageName: String? = null
     
-    // Handler and Runnable for periodic cursor position logging
-    private val cursorPositionHandler = Handler(Looper.getMainLooper())
-    private val cursorPositionRunnable = object : Runnable {
-        override fun run() {
-            val inputConnection = currentInputConnection
-            if (inputConnection != null) {
-                try {
-                    // Get cursor position using ExtractedText
-                    val extractedText = inputConnection.getExtractedText(
-                        android.view.inputmethod.ExtractedTextRequest().apply {
-                            flags = android.view.inputmethod.ExtractedText.FLAG_SELECTING
-                        },
-                        0
-                    )
-                    
-                    if (extractedText != null) {
-                        val selectionStart = extractedText.selectionStart
-                        val selectionEnd = extractedText.selectionEnd
-                        val textLength = extractedText.text?.length ?: 0
-                        Log.d(TAG, "Cursor position: start=$selectionStart, end=$selectionEnd, textLength=$textLength")
-                    } else {
-                        // Fallback: try to estimate position using getTextBeforeCursor
-                        val textBefore = inputConnection.getTextBeforeCursor(1000, 0)
-                        val textAfter = inputConnection.getTextAfterCursor(1000, 0)
-                        val estimatedPosition = textBefore?.length ?: 0
-                        val textBeforeLength = textBefore?.length ?: 0
-                        val textAfterLength = textAfter?.length ?: 0
-                        Log.d(TAG, "Cursor position (estimated): position=$estimatedPosition, textBeforeLength=$textBeforeLength, textAfterLength=$textAfterLength")
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error getting cursor position", e)
-                }
-            } else {
-                Log.d(TAG, "Cursor position: no input connection")
-            }
-            
-            // Schedule next execution in 1 second
-            cursorPositionHandler.postDelayed(this, 1000)
-        }
-    }
+    // Modifier key handler
+    private lateinit var modifierKeyHandler: ModifierKeyHandler
+    private val shiftState = ModifierKeyHandler.ShiftState()
+    private val ctrlState = ModifierKeyHandler.CtrlState()
+    private val altState = ModifierKeyHandler.AltState()
+    
+    // Auto-capitalize helper state
+    private val autoCapitalizeState = AutoCapitalizeHelper.AutoCapitalizeState()
+    
+    // Constants
+    private val DOUBLE_TAP_THRESHOLD = 500L
+    private val CURSOR_UPDATE_DELAY = 50L
 
     private fun refreshStatusBar() {
         updateStatusBarText()
+    }
+    
+    /**
+     * Syncs shiftState.oneShot with autoCapitalizeState.shiftOneShot.
+     * This ensures both states stay synchronized when Shift is manually pressed.
+     * When shiftOneShot is enabled/disabled by user action (Shift key press),
+     * both states are updated.
+     */
+    private fun syncShiftOneShotFromShiftState() {
+        autoCapitalizeState.shiftOneShot = shiftState.oneShot
+        if (shiftState.oneShot && shiftState.oneShotEnabledTime > 0) {
+            autoCapitalizeState.shiftOneShotEnabledTime = shiftState.oneShotEnabledTime
+        } else if (!shiftState.oneShot) {
+            autoCapitalizeState.shiftOneShotEnabledTime = 0
+        }
+    }
+    
+    /**
+     * Syncs autoCapitalizeState.shiftOneShot with shiftState.oneShot.
+     * This ensures both states stay synchronized when shiftOneShot is used (letter typed)
+     * or disabled by other logic.
+     */
+    private fun syncShiftOneShotToShiftState() {
+        shiftState.oneShot = autoCapitalizeState.shiftOneShot
+        if (autoCapitalizeState.shiftOneShot && autoCapitalizeState.shiftOneShotEnabledTime > 0) {
+            shiftState.oneShotEnabledTime = autoCapitalizeState.shiftOneShotEnabledTime
+        } else if (!autoCapitalizeState.shiftOneShot) {
+            shiftState.oneShotEnabledTime = 0
+        }
     }
     
     /**
@@ -171,7 +193,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
      * - URL fields (TYPE_TEXT_VARIATION_URI)
      * - Email fields (TYPE_TEXT_VARIATION_EMAIL_ADDRESS)
      * - Filter/search fields (TYPE_TEXT_VARIATION_FILTER)
-     * - Fields with NO_SUGGESTIONS flag (codes, OTP, tokens)
+     * 
+     * Note: We do NOT check for TYPE_TEXT_FLAG_NO_SUGGESTIONS because we set it on all editable
+     * fields to prevent Android's suggestion popup, so it's not a reliable indicator.
      * 
      * For these fields, all smart features are disabled:
      * - Autocorrection
@@ -188,7 +212,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         if (info == null) return false
         val inputType = info.inputType
         val inputVariation = inputType and android.text.InputType.TYPE_MASK_VARIATION
-        val inputFlags = inputType and android.text.InputType.TYPE_MASK_FLAGS
         
         // Check for password field types
         val isPasswordType = inputVariation == android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD ||
@@ -205,29 +228,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // Check for filter/search fields
         val isFilterType = inputVariation == android.text.InputType.TYPE_TEXT_VARIATION_FILTER
         
-        // Check for NO_SUGGESTIONS flag (codes, OTP, tokens)
-        val hasNoSuggestionsFlag = (inputFlags and android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS) != 0
-        
-        return isPasswordType || isUriType || isEmailType || isFilterType || hasNoSuggestionsFlag
+        // Only check specific field types, not flags (since we set NO_SUGGESTIONS on all fields)
+        return isPasswordType || isUriType || isEmailType || isFilterType
     }
     
-    /**
-     * Initializes the input context for a field.
-     * This method contains all common initialization logic that must run
-     * regardless of whether input view or candidates view is shown.
-     * 
-     * Called from both onStartInput() and onStartInputView() to ensure
-     * consistent behavior in all scenarios.
-     * 
-     * @param info The EditorInfo for the current input field
-     * @param restarting Whether this is a restart of the same input session
-     */
-    private fun initializeInputContext(info: EditorInfo?, restarting: Boolean) {
-        if (restarting) {
-            return // Skip initialization on restart
-        }
-        
-        // Check whether the field is actually editable
+    private fun checkFieldEditability(info: EditorInfo?): Pair<Boolean, Boolean> {
         val isEditable = info?.let { editorInfo ->
             val inputType = editorInfo.inputType
             val isTextInput = inputType and android.text.InputType.TYPE_MASK_CLASS != android.text.InputType.TYPE_NULL
@@ -235,123 +240,98 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             isTextInput && isNotNoInput
         } ?: false
         
-        // Check whether the field is REALLY editable (not just apparently editable)
-        // For nav mode and other logic, we need truly editable fields
         val isReallyEditable = isEditable && info?.let { editorInfo ->
             val inputType = editorInfo.inputType
             val inputClass = inputType and android.text.InputType.TYPE_MASK_CLASS
-            // Check that this is a truly editable input type
             inputClass == android.text.InputType.TYPE_CLASS_TEXT ||
             inputClass == android.text.InputType.TYPE_CLASS_NUMBER ||
             inputClass == android.text.InputType.TYPE_CLASS_PHONE ||
             inputClass == android.text.InputType.TYPE_CLASS_DATETIME
         } ?: false
         
-        // For auto-capitalize, we can be more permissive - check if field is editable (even if not "truly editable")
-        // This helps with messaging apps like WhatsApp that might use custom input types
+        return Pair(isEditable, isReallyEditable)
+    }
+
+    /**
+     * Initializes the input context for a field.
+     * This method contains all common initialization logic that must run
+     * regardless of whether input view or candidates view is shown.
+     */
+    private fun initializeInputContext(info: EditorInfo?, restarting: Boolean) {
+        if (restarting) {
+            return
+        }
+        
+        val (isEditable, isReallyEditable) = checkFieldEditability(info)
         val canCheckAutoCapitalize = isEditable && !shouldDisableSmartFeatures
         
         if (!isReallyEditable) {
-            // Not a truly editable field - if we are in nav mode, keep it
             if (ctrlLatchFromNavMode && ctrlLatchActive) {
-                Log.d(TAG, "initializeInputContext() - nav mode active, field not truly editable, keeping nav mode")
                 isInputViewActive = false
             } else {
                 isInputViewActive = false
             }
             
-            // BUT: still check auto-capitalize even if not "truly editable" (for messaging apps)
-            // This allows auto-capitalize to work in apps like WhatsApp
             if (canCheckAutoCapitalize) {
-                val autoCapitalizeEnabled = SettingsManager.getAutoCapitalizeFirstLetter(this)
-                if (autoCapitalizeEnabled) {
-                    val inputConnection = currentInputConnection
-                    if (inputConnection != null) {
-                        // Use a delay to ensure inputConnection is ready
-                        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                            val textBeforeCursor = inputConnection.getTextBeforeCursor(1, 0)
-                            val isCursorAtStart = textBeforeCursor == null || textBeforeCursor.isEmpty()
-                            val isAfterNewline = textBeforeCursor != null && 
-                                                 textBeforeCursor.isNotEmpty() && 
-                                                 textBeforeCursor[textBeforeCursor.length - 1] == '\n'
-                            
-                            if (isCursorAtStart || isAfterNewline) {
-                                shiftOneShot = true
-                                shiftOneShotEnabledTime = System.currentTimeMillis()
-                                Log.d(TAG, "Auto-capitalize: cursor at start or after newline detected (non-truly-editable field), shiftOneShot enabled")
-                                updateStatusBarText()
-                            }
-                        }, 100) // Longer delay for non-truly-editable fields
-                    }
-                }
+                AutoCapitalizeHelper.checkAndEnableAutoCapitalize(
+                    this,
+                    currentInputConnection,
+                    shouldDisableSmartFeatures,
+                    autoCapitalizeState,
+                    delayMs = 100L,
+                    onUpdateStatusBar = { updateStatusBarText() }
+                )
             }
-            return // Skip other initialization for non-truly-editable fields
+            return
         }
         
-        // Set input view active state
         isInputViewActive = true
         
-        // Check whether the field is numeric
         isNumericField = info?.let { editorInfo ->
             val inputType = editorInfo.inputType
             val inputClass = inputType and android.text.InputType.TYPE_MASK_CLASS
             inputClass == android.text.InputType.TYPE_CLASS_NUMBER
         } ?: false
-        Log.d(TAG, "initializeInputContext() - isNumericField: $isNumericField")
         
-        // Check whether the field should have smart features disabled
         shouldDisableSmartFeatures = shouldDisableSmartFeatures(info)
-        Log.d(TAG, "initializeInputContext() - shouldDisableSmartFeatures: $shouldDisableSmartFeatures")
         
-        // Hide candidates view for restricted fields
         if (shouldDisableSmartFeatures) {
             setCandidatesViewShown(false)
             deactivateVariations()
         }
         
-        // Handle nav mode: disable if entering a truly editable field
         if (ctrlLatchFromNavMode && ctrlLatchActive) {
             val inputConnection = currentInputConnection
             if (inputConnection != null) {
                 ctrlLatchFromNavMode = false
                 ctrlLatchActive = false
-                Log.d(TAG, "initializeInputContext() - nav mode disabled because we entered a truly editable text field")
                 NotificationHelper.cancelNavModeNotification(this)
             }
         }
         
-        // Handle auto-capitalize: enable shiftOneShot when cursor is at start with no characters before (not even spaces),
-        // or when cursor is after a newline (after pressing Enter).
-        // BUT: disable it for restricted fields (password, URL, email, etc.) even if auto-capitalize is enabled.
-        val autoCapitalizeEnabled = SettingsManager.getAutoCapitalizeFirstLetter(this)
-        if (autoCapitalizeEnabled) {
-            // Do not apply auto-capitalize to restricted fields
-            if (!shouldDisableSmartFeatures) {
-                val inputConnection = currentInputConnection
-                if (inputConnection != null) {
-                    // Use a delay to ensure inputConnection is ready (especially for messaging apps like WhatsApp)
-                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                        val textBeforeCursor = inputConnection.getTextBeforeCursor(1, 0)
-                        val isCursorAtStart = textBeforeCursor == null || textBeforeCursor.isEmpty()
-                        val isAfterNewline = textBeforeCursor != null && 
-                                             textBeforeCursor.isNotEmpty() && 
-                                             textBeforeCursor[textBeforeCursor.length - 1] == '\n'
-                        
-                        if (isCursorAtStart || isAfterNewline) {
-                            // Enable shiftOneShot for the first letter
-                            shiftOneShot = true
-                            shiftOneShotEnabledTime = System.currentTimeMillis()
-                            Log.d(TAG, "Auto-capitalize: cursor at start or after newline detected, shiftOneShot enabled")
-                            updateStatusBarText() // Update to show "shift"
-                        }
-                    }, 100) // Delay to ensure inputConnection is ready (especially for messaging apps)
-                }
-            } else {
-                Log.d(TAG, "Auto-capitalize: password field detected, auto-capitalize disabled")
+        AutoCapitalizeHelper.checkAndEnableAutoCapitalize(
+            this,
+            currentInputConnection,
+            shouldDisableSmartFeatures,
+            autoCapitalizeState,
+            delayMs = 100L,
+            onUpdateStatusBar = { updateStatusBarText() }
+        )
+        
+        // Restore SYM layout if it was active when SymCustomizationActivity was opened
+        val restoreSymPage = SettingsManager.getRestoreSymPage(this)
+        if (restoreSymPage > 0) {
+            symPage = restoreSymPage
+            // Save current symPage to SharedPreferences
+            prefs.edit().putInt("current_sym_page", symPage).apply()
+            // Clear restore state after restoring
+            SettingsManager.clearRestoreSymPage(this)
+            // Update status bar to show SYM layout
+            Handler(Looper.getMainLooper()).post {
+                updateStatusBarText()
             }
         }
         
-        // Reload Alt manager related settings
         altSymManager.reloadLongPressThreshold()
         altSymManager.resetTransientState()
     }
@@ -543,11 +523,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
 
     override fun onCreate() {
         super.onCreate()
-        Log.d(TAG, "onCreate() called")
         prefs = getSharedPreferences("pastiera_prefs", Context.MODE_PRIVATE)
         
-        // Create notification channel for Android 8.0+
         NotificationHelper.createNotificationChannel(this)
+        
+        modifierKeyHandler = ModifierKeyHandler(DOUBLE_TAP_THRESHOLD)
         
         statusBarController = StatusBarController(this)
         candidatesViewController = StatusBarController(this)
@@ -672,7 +652,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
         
         Log.d(TAG, "Broadcast receiver registered for: ${SpeechRecognitionActivity.ACTION_SPEECH_RESULT}")
-        Log.d(TAG, "onCreate() completed")
     }
     
     override fun onDestroy() {
@@ -692,22 +671,16 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
         speechResultReceiver = null
         
-        Log.d(TAG, "onDestroy() called")
     }
 
     override fun onCreateInputView(): View? {
-        Log.d(TAG, "onCreateInputView() called")
         val layout = statusBarController.getOrCreateLayout(altSymManager.buildEmojiMapText())
         
-        // If the view already has a parent, remove it before returning.
-        // This avoids "The specified child already has a parent" crash.
         if (layout.parent != null) {
-            Log.d(TAG, "onCreateInputView() - removing view from existing parent")
             (layout.parent as? android.view.ViewGroup)?.removeView(layout)
         }
         
         refreshStatusBar()
-        Log.d(TAG, "onCreateInputView() completed - view created: ${layout != null}, parent: ${layout.parent}")
         return layout
     }
 
@@ -716,43 +689,27 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
      * Uses a separate StatusBarController instance to provide identical functionality.
      */
     override fun onCreateCandidatesView(): View? {
-        Log.d(TAG, "onCreateCandidatesView() called - creating candidates view with separate controller")
-
-        // Use the separate candidates view controller
         val layout = candidatesViewController.getOrCreateLayout(altSymManager.buildEmojiMapText())
 
-        // Remove from any existing parent to avoid conflicts
         if (layout.parent != null) {
-            Log.d(TAG, "onCreateCandidatesView() - removing view from existing parent")
             (layout.parent as? android.view.ViewGroup)?.removeView(layout)
         }
 
-        // Refresh the status bar content for candidates view
         refreshStatusBar()
-
-        Log.d(TAG, "onCreateCandidatesView() completed - candidates view created")
         return layout
     }
 
     /**
      * Determines whether the input view (soft keyboard) should be shown.
-     * Respects the system setting "Show input method" when hardware keyboard is connected.
+     * Always returns true to ensure the entire IME area is touchable, even in candidates mode.
+     * This allows the sym board (emoji grid) to be clickable when using touch screen.
      */
     override fun onEvaluateInputViewShown(): Boolean {
-        val shouldShow = super.onEvaluateInputViewShown()
-        Log.d(TAG, "onEvaluateInputViewShown() - super returned: $shouldShow")
-
-        // If the system says to show the keyboard, always show it
-        if (shouldShow) {
-            // Make sure candidates view is hidden when main input view is shown
-            setCandidatesViewShown(false)
-            return true
-        }
-
-        // If system says not to show, we still want to show the candidates view
-        // as an alternative UI for physical keyboard users
-        setCandidatesViewShown(true)
-        return false
+        // Always return true to force Android to treat the input view as shown.
+        // This makes the entire IME area touchable, not just the bottom bar.
+        // Hide candidates view to avoid conflicts.
+        setCandidatesViewShown(false)
+        return true
     }
 
     /**
@@ -765,32 +722,22 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         super.onComputeInsets(outInsets)
         
         if (outInsets != null && !isFullscreenMode()) {
-            // Increase the content area to include the candidate view area
-            // This prevents the candidates view from covering system UI
             outInsets.contentTopInsets = outInsets.visibleTopInsets
-            Log.d(TAG, "onComputeInsets() - adjusted content insets: contentTop=${outInsets.contentTopInsets}, visibleTop=${outInsets.visibleTopInsets}")
         }
     }
 
-    // Flag per tracciare se Ctrl latch è stato attivato nel nav mode (anche quando si entra in un campo di testo)
-    private var ctrlLatchFromNavMode = false
-    
     /**
      * Resets all modifier key states.
      * Called when leaving a field or closing/reopening the keyboard.
      * @param preserveNavMode If true, keeps Ctrl latch active when nav mode is enabled.
      */
     private fun resetModifierStates(preserveNavMode: Boolean = false) {
-        Log.d(TAG, "resetModifierStates() called - resetting all modifier states, preserveNavMode: $preserveNavMode, ctrlLatchActive: $ctrlLatchActive, ctrlLatchFromNavMode: $ctrlLatchFromNavMode")
-        
-        // Save nav mode state if needed.
-        // If Ctrl latch is active and comes from nav mode, preserve it.
         val savedCtrlLatch = if (preserveNavMode && (ctrlLatchActive || ctrlLatchFromNavMode)) {
             if (ctrlLatchActive) {
-                ctrlLatchFromNavMode = true // Mark that Ctrl latch comes from nav mode
+                ctrlLatchFromNavMode = true
                 true
             } else if (ctrlLatchFromNavMode) {
-                true // Keep active if it was already marked as nav mode
+                true
             } else {
                 false
             }
@@ -798,56 +745,23 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             false
         }
         
-        // Reset Caps Lock
+        modifierKeyHandler.resetShiftState(shiftState)
         capsLockEnabled = false
+        AutoCapitalizeHelper.reset(autoCapitalizeState)
         
-        // Reset one-shot states
-        shiftOneShot = false
-        shiftOneShotEnabledTime = 0
-        ctrlOneShot = false
-        altOneShot = false
-        
-        // Reset latch states (but keep Ctrl latch in nav mode if requested)
         if (preserveNavMode && savedCtrlLatch) {
-            // Keep Ctrl latch active in nav mode
             ctrlLatchActive = true
-            Log.d(TAG, "resetModifierStates() - preserved Ctrl latch in nav mode")
         } else {
-            // If nav mode was active, cancel it and remove the notification
             if (ctrlLatchFromNavMode || ctrlLatchActive) {
-                Log.d(TAG, "resetModifierStates() - nav mode deactivated, cancelling notification")
                 NotificationHelper.cancelNavModeNotification(this)
             }
-            ctrlLatchActive = false
-            ctrlLatchFromNavMode = false // Also reset nav mode flag
+            modifierKeyHandler.resetCtrlState(ctrlState, preserveNavMode = false)
         }
-        altLatchActive = false
+        modifierKeyHandler.resetAltState(altState)
         
-        // Reset SYM
         symPage = 0
-        
-        // Reset physical states
-        shiftPressed = false
-        ctrlPressed = false
-        altPressed = false
-        
-        // Reset physically pressed states (for status bar)
-        shiftPhysicallyPressed = false
-        ctrlPhysicallyPressed = false
-        altPhysicallyPressed = false
-        
-        // Reset release times
-        lastShiftReleaseTime = 0
-        lastCtrlReleaseTime = 0
-        lastAltReleaseTime = 0
-        
-        // Reset Alt/SYM transient state
         altSymManager.resetTransientState()
-        
-        // Reset variations
         deactivateVariations()
-        
-        // Update status bar
         refreshStatusBar()
     }
     
@@ -858,24 +772,16 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
      * IMPORTANT: UI is never shown in nav mode.
      */
     private fun ensureInputViewCreated() {
-        Log.d(TAG, "ensureInputViewCreated() called - isInputViewActive: $isInputViewActive, ctrlLatchActive: $ctrlLatchActive, ctrlLatchFromNavMode: $ctrlLatchFromNavMode")
-        
-        // In nav mode we never show the UI
         if (ctrlLatchFromNavMode && !isInputViewActive) {
-            Log.d(TAG, "ensureInputViewCreated() - nav mode active without text field, not showing keyboard")
             return
         }
         
-        // Show keyboard only if there is an active text field
         if (!isInputViewActive) {
-            Log.d(TAG, "ensureInputViewCreated() - not in a valid input context, not showing keyboard")
             return
         }
         
-        // Verify that we have a valid input connection (active text field)
         val inputConnection = currentInputConnection
         if (inputConnection == null) {
-            Log.d(TAG, "ensureInputViewCreated() - no inputConnection, not showing keyboard")
             return
         }
         
@@ -883,81 +789,144 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         refreshStatusBar()
 
         if (layout.parent == null) {
-            Log.d(TAG, "ensureInputViewCreated() - setInputView() on new layout")
             setInputView(layout)
         }
 
-        Log.d(TAG, "ensureInputViewCreated() - requestShowSelf()")
-        requestShowSelf(0)
+        // Only call requestShowSelf if the input view is not already shown
+        // and we are in a valid state (not in nav mode, input view is active)
+        if (!isInputViewShown && isInputViewActive && !ctrlLatchFromNavMode) {
+            try {
+                requestShowSelf(0)
+            } catch (_: Exception) {
+                // Silently catch exceptions to avoid crashes
+            }
+        }
     }
     
     
     /**
-     * Gestisce i tasti quando Ctrl latch è attivo nel nav mode (senza campo di testo).
-     * Permette di usare le combinazioni Ctrl+tasto anche quando non c'è un campo di testo attivo.
-     * IMPORTANTE: In nav mode l'UI non viene mai mostrata.
+     * Handles nav mode when outside text fields.
+     * This function handles:
+     * - Double Ctrl detection to activate/deactivate nav mode
+     * - Control key mappings when Ctrl latch is active
+     * - Navigation keycode dispatch to the system
+     * 
+     * IMPORTANT: This function is ONLY called when there is NO editable field active.
+     * It does NOT create input views, update status bars, or execute any IME logic.
+     * 
+     * @param keyCode The keycode of the pressed key
+     * @param event The KeyEvent
+     * @return true if the event was handled, false otherwise
      */
-    private fun handleCtrlKeyInNavMode(keyCode: Int, event: KeyEvent?): Boolean {
-        // Notifica l'evento al tracker
-        KeyboardEventTracker.notifyKeyEvent(keyCode, event, "KEY_DOWN")
+    private fun handleNavModeOutsideTextFields(keyCode: Int, event: KeyEvent?): Boolean {
+        val isCtrlKey = keyCode == KeyEvent.KEYCODE_CTRL_LEFT || keyCode == KeyEvent.KEYCODE_CTRL_RIGHT
         
-        // NON mostriamo l'UI in nav mode
-        
-        // Gestisci gli shortcut Ctrl+tasto (solo keycode direzionali e azioni, non inserimento testo)
-        val ctrlMapping = ctrlKeyMap[keyCode]
-        if (ctrlMapping != null) {
-            when (ctrlMapping.type) {
-                "action" -> {
-                    // Nel nav mode, le azioni come copy/paste non hanno senso senza campo di testo
-                    // Ma possiamo gestire expand_selection se necessario
-                    when (ctrlMapping.value) {
-                        "expand_selection_left", "expand_selection_right" -> {
-                            // Queste azioni richiedono un input connection, quindi non funzionano nel nav mode
-                            Log.d(TAG, "Nav mode: azione $ctrlMapping.value richiede input connection")
-                        }
-                        else -> {
-                            Log.d(TAG, "Nav mode: azione $ctrlMapping.value non supportata senza campo di testo")
-                        }
-                    }
-                    // Consumiamo l'evento per evitare che Android lo gestisca
-                    return true
+        // Handle Ctrl key for nav mode activation/deactivation
+        if (isCtrlKey) {
+            // Check if nav mode is enabled
+            if (!it.palsoftware.pastiera.SettingsManager.getNavModeEnabled(this)) {
+                // Nav mode is disabled, don't handle it
+                return false
+            }
+            
+            val (shouldConsume, result) = NavModeHandler.handleCtrlKeyDown(
+                keyCode,
+                ctrlPressed,
+                ctrlLatchActive,
+                ctrlState.lastReleaseTime
+            )
+            
+            result.ctrlLatchActive?.let { 
+                ctrlLatchActive = it
+                if (it) {
+                    ctrlLatchFromNavMode = true
+                    NotificationHelper.showNavModeActivatedNotification(this)
+                } else {
+                    ctrlLatchFromNavMode = false
+                    NotificationHelper.cancelNavModeNotification(this)
                 }
-                "keycode" -> {
-                    // Invia il keycode direzionale usando lo stesso metodo che usiamo quando siamo in un campo di testo
-                    val dpadKeyCode = when (ctrlMapping.value) {
-                        "DPAD_UP" -> KeyEvent.KEYCODE_DPAD_UP
-                        "DPAD_DOWN" -> KeyEvent.KEYCODE_DPAD_DOWN
-                        "DPAD_LEFT" -> KeyEvent.KEYCODE_DPAD_LEFT
-                        "DPAD_RIGHT" -> KeyEvent.KEYCODE_DPAD_RIGHT
-                        else -> null
+            }
+            result.ctrlPhysicallyPressed?.let { ctrlPhysicallyPressed = it }
+            result.lastCtrlReleaseTime?.let { ctrlState.lastReleaseTime = it }
+            
+            if (shouldConsume) {
+                ctrlPressed = true
+                return true
+            }
+            // If we don't consume, let it pass through
+            return false
+        }
+        
+        // Handle mapped keys when Ctrl latch is active (nav mode active)
+        if (ctrlLatchActive && ctrlLatchFromNavMode) {
+            val ctrlMapping = ctrlKeyMap[keyCode]
+            if (ctrlMapping != null) {
+                when (ctrlMapping.type) {
+                    "action" -> {
+                        // Actions like copy/paste don't make sense without a text field
+                        // Consume the event to prevent Android from handling it
+                        return true
                     }
-                    if (dpadKeyCode != null) {
-                        // Usa lo stesso metodo che funziona quando siamo in un campo di testo
-                        val inputConnection = currentInputConnection
-                        if (inputConnection != null) {
-                            // Usa esattamente lo stesso metodo che funziona in campo di testo
-                            inputConnection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, dpadKeyCode))
-                            inputConnection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, dpadKeyCode))
-                            Log.d(TAG, "Nav mode: inviato keycode $dpadKeyCode tramite inputConnection.sendKeyEvent (stesso metodo usato in campo di testo)")
-                            
-                            // Aggiorna le variazioni dopo il movimento del cursore
-                            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                                updateStatusBarText()
-                            }, 50) // 50ms per dare tempo ad Android di aggiornare la posizione del cursore
-                            
-                            return true
-                        } else {
-                            Log.w(TAG, "Nav mode: nessun inputConnection disponibile per inviare keycode $dpadKeyCode")
-                            // Consumiamo comunque l'evento per evitare che venga processato
-                            return true
+                    "keycode" -> {
+                        // Map to navigation keycode
+                        val mappedKeyCode = when (ctrlMapping.value) {
+                            "DPAD_UP" -> KeyEvent.KEYCODE_DPAD_UP
+                            "DPAD_DOWN" -> KeyEvent.KEYCODE_DPAD_DOWN
+                            "DPAD_LEFT" -> KeyEvent.KEYCODE_DPAD_LEFT
+                            "DPAD_RIGHT" -> KeyEvent.KEYCODE_DPAD_RIGHT
+                            "TAB" -> KeyEvent.KEYCODE_TAB
+                            "PAGE_UP" -> KeyEvent.KEYCODE_PAGE_UP
+                            "PAGE_DOWN" -> KeyEvent.KEYCODE_PAGE_DOWN
+                            "ESCAPE" -> KeyEvent.KEYCODE_ESCAPE
+                            else -> null
+                        }
+                        if (mappedKeyCode != null) {
+                            // In nav mode outside text fields, create a new KeyEvent with the mapped keycode
+                            // and pass it to Android to handle
+                            try {
+                                val mappedEvent = KeyEvent(
+                                    event?.downTime ?: System.currentTimeMillis(),
+                                    event?.eventTime ?: System.currentTimeMillis(),
+                                    KeyEvent.ACTION_DOWN,
+                                    mappedKeyCode,
+                                    0,
+                                    event?.metaState ?: 0,
+                                    event?.deviceId ?: 0,
+                                    event?.scanCode ?: 0,
+                                    event?.flags ?: 0,
+                                    event?.source ?: InputDevice.SOURCE_KEYBOARD
+                                )
+                                val mappedEventUp = KeyEvent(
+                                    event?.downTime ?: System.currentTimeMillis(),
+                                    event?.eventTime ?: System.currentTimeMillis(),
+                                    KeyEvent.ACTION_UP,
+                                    mappedKeyCode,
+                                    0,
+                                    event?.metaState ?: 0,
+                                    event?.deviceId ?: 0,
+                                    event?.scanCode ?: 0,
+                                    event?.flags ?: 0,
+                                    event?.source ?: InputDevice.SOURCE_KEYBOARD
+                                )
+                                // Pass the mapped event to Android
+                                val handled = super.onKeyDown(mappedKeyCode, mappedEvent)
+                                super.onKeyUp(mappedKeyCode, mappedEventUp)
+                                Log.d(TAG, "Nav mode: mapped key $keyCode -> $mappedKeyCode")
+                                return true // Consume the original event
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Error dispatching nav mode key event", e)
+                                return true // Consume on error
+                            }
                         }
                     }
                 }
             }
+            // If key has no mapping but Ctrl latch is active, consume it
+            return true
         }
         
-        // Se non c'è mappatura, passa l'evento ad Android
-        return super.onKeyDown(keyCode, event)
+        // Not handled by nav mode
+        return false
     }
     
     /**
@@ -1006,7 +975,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                     variationsActive = false
                     lastInsertedChar = null
                     availableVariations = emptyList()
-                    Log.d(TAG, "Active selection detected (start: $selectionStart, end: $selectionEnd), variations disabled")
                     return
                 }
             }
@@ -1027,7 +995,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 lastInsertedChar = charBeforeCursor
                 availableVariations = variations
                 variationsActive = true
-                Log.d(TAG, "Variations updated for character before cursor '$charBeforeCursor': $variations")
             } else {
                 // No variations available for this character
                 variationsActive = false
@@ -1062,7 +1029,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             altOneShot = altOneShot,
             symPage = symPage,
             variations = if (variationsActive) availableVariations else emptyList(),
-            lastInsertedChar = lastInsertedChar
+            lastInsertedChar = lastInsertedChar,
+            shouldDisableSmartFeatures = shouldDisableSmartFeatures
         )
         // Passa anche la mappa emoji quando SYM è attivo (solo pagina 1)
         val emojiMapText = if (symPage == 1) altSymManager.buildEmojiMapText() else ""
@@ -1091,233 +1059,94 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     override fun onStartInput(info: EditorInfo?, restarting: Boolean) {
         super.onStartInput(info, restarting)
         
-        // Traccia il package corrente
         currentPackageName = info?.packageName
-        Log.d(TAG, "onStartInput() called - restarting: $restarting, info: ${info?.packageName}, inputType: ${info?.inputType}, ctrlLatchActive: $ctrlLatchActive")
         
-        // Start periodic cursor position logging
-        cursorPositionHandler.removeCallbacks(cursorPositionRunnable)
-        cursorPositionHandler.post(cursorPositionRunnable)
-        
-        // Check whether the field is actually editable
-        val isEditable = info?.let { editorInfo ->
-            val inputType = editorInfo.inputType
-            // Check whether this is an editable text field (not TYPE_NULL)
-            val isTextInput = inputType and android.text.InputType.TYPE_MASK_CLASS != android.text.InputType.TYPE_NULL
-            // Exclude non-editable fields such as lists
-            val isNotNoInput = inputType and android.text.InputType.TYPE_MASK_CLASS != 0
-            isTextInput && isNotNoInput
-        } ?: false
-        
-        Log.d(TAG, "onStartInput() - isEditable: $isEditable")
-        
-        // Mark that we are in a valid input context only if the field is editable
+        val (isEditable, isReallyEditable) = checkFieldEditability(info)
         isInputViewActive = isEditable
         
-        // Check whether the field is numeric
         isNumericField = info?.let { editorInfo ->
             val inputType = editorInfo.inputType
             val inputClass = inputType and android.text.InputType.TYPE_MASK_CLASS
             inputClass == android.text.InputType.TYPE_CLASS_NUMBER
         } ?: false
-        Log.d(TAG, "onStartInput() - isNumericField: $isNumericField")
         
-        // Check whether the field should have smart features disabled
         shouldDisableSmartFeatures = shouldDisableSmartFeatures(info)
-        Log.d(TAG, "onStartInput() - shouldDisableSmartFeatures: $shouldDisableSmartFeatures")
         
-        // Hide candidates view for restricted fields
         if (shouldDisableSmartFeatures) {
             setCandidatesViewShown(false)
             deactivateVariations()
         }
         
-        // Disable suggestions to avoid popup
         if (info != null && isEditable) {
             info.inputType = info.inputType or android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
         }
         
-        // Automatically show keyboard when an editable field gains focus (if enabled in settings)
         if (isEditable && !restarting) {
             val autoShowKeyboardEnabled = SettingsManager.getAutoShowKeyboard(this)
-            if (autoShowKeyboardEnabled) {
-                // Check whether the field is REALLY editable (not just apparently editable)
-                val isReallyEditable = info?.let { editorInfo ->
-                    val inputType = editorInfo.inputType
-                    val inputClass = inputType and android.text.InputType.TYPE_MASK_CLASS
-                    // Check that this is a truly editable input type
-                    inputClass == android.text.InputType.TYPE_CLASS_TEXT ||
-                    inputClass == android.text.InputType.TYPE_CLASS_NUMBER ||
-                    inputClass == android.text.InputType.TYPE_CLASS_PHONE ||
-                    inputClass == android.text.InputType.TYPE_CLASS_DATETIME
-                } ?: false
-                
-                if (isReallyEditable) {
-                    Log.d(TAG, "onStartInput() - editable field detected, auto-show keyboard (auto_show_keyboard enabled)")
+            if (autoShowKeyboardEnabled && isReallyEditable) {
+                if (!isInputViewShown && isInputViewActive) {
                     ensureInputViewCreated()
                 }
             }
         }
         
-        // Reset modifier states when entering a new field (only if this is not a restart).
-        // IMPORTANT: disable nav mode ONLY when entering an editable text field.
-        // Do not disable it when moving to other UI elements (icons, lists, etc.).
         if (!restarting) {
-            // If we are in nav mode, ALWAYS preserve it unless we enter a truly editable field.
             if (ctrlLatchFromNavMode && ctrlLatchActive) {
-                // Check whether the field is REALLY editable (not just apparently editable)
-                val isReallyEditable = isEditable && info?.let { editorInfo ->
-                    val inputType = editorInfo.inputType
-                    val inputClass = inputType and android.text.InputType.TYPE_MASK_CLASS
-                    // Check that this is a truly editable input type
-                    inputClass == android.text.InputType.TYPE_CLASS_TEXT ||
-                    inputClass == android.text.InputType.TYPE_CLASS_NUMBER ||
-                    inputClass == android.text.InputType.TYPE_CLASS_PHONE ||
-                    inputClass == android.text.InputType.TYPE_CLASS_DATETIME
-                } ?: false
-                
-                // Also check if we have a valid input connection
                 val inputConnection = currentInputConnection
                 val hasValidInputConnection = inputConnection != null
                 
                 if (isReallyEditable && hasValidInputConnection) {
-                    // Disable nav mode ONLY when entering a truly editable text field
-                    if (ctrlLatchFromNavMode || ctrlLatchActive) {
-                        Log.d(TAG, "onStartInput() - nav mode disabled because we entered a truly editable text field")
-                        NotificationHelper.cancelNavModeNotification(this)
-                    }
+                    NotificationHelper.cancelNavModeNotification(this)
                     ctrlLatchFromNavMode = false
                     ctrlLatchActive = false
                     resetModifierStates(preserveNavMode = false)
-                } else {
-                    // Non è un campo realmente editabile o non c'è input connection - mantieni il nav mode
-                    Log.d(TAG, "onStartInput() - nav mode attivo, campo non realmente editabile (isReallyEditable: $isReallyEditable, hasInputConnection: $hasValidInputConnection), mantengo nav mode")
-                    // Non resettare gli stati modificatori, preserva il nav mode
                 }
-            } else if (isEditable) {
-                // Non siamo in nav mode ma siamo in un campo editabile - reset normale
-                resetModifierStates(preserveNavMode = false)
-            } else if (!ctrlLatchFromNavMode) {
-                // Non siamo in nav mode e non siamo in un campo editabile - reset normale
+            } else if (isEditable || !ctrlLatchFromNavMode) {
                 resetModifierStates(preserveNavMode = false)
             }
-            // Se siamo in nav mode e non siamo in un campo editabile, non fare nulla (mantieni nav mode)
         }
         
-        // Initialize input context (works for both input view and candidates view modes)
-        // This ensures consistent behavior regardless of which view is shown
         initializeInputContext(info, restarting)
         
-        // IMPORTANT: Check for auto-capitalize even when restarting=true
-        // This is crucial for messaging apps where field is cleared after sending message
-        // and onStartInput() is called with restarting=true, but onUpdateSelection() might not be called
-        // because cursor position hasn't changed (it's already at 0)
-        if (restarting && isEditable) {
-            val autoCapitalizeEnabled = SettingsManager.getAutoCapitalizeFirstLetter(this)
-            if (autoCapitalizeEnabled) {
-                // Check if it's not a restricted field
-                if (!shouldDisableSmartFeatures) {
-                    val inputConnection = currentInputConnection
-                    if (inputConnection != null) {
-                        // Use a delay to ensure inputConnection is ready
-                        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                            val textBeforeCursor = inputConnection.getTextBeforeCursor(1000, 0)
-                            val textAfterCursor = inputConnection.getTextAfterCursor(1000, 0)
-                            val isCursorAtStart = textBeforeCursor == null || textBeforeCursor.isEmpty()
-                            val isFieldEmpty = isCursorAtStart && (textAfterCursor == null || textAfterCursor.isEmpty())
-                            
-                            Log.d(TAG, "onStartInput restarting check: textBeforeCursor='${textBeforeCursor}', textAfterCursor='${textAfterCursor}', isCursorAtStart=$isCursorAtStart, isFieldEmpty=$isFieldEmpty")
-                            
-                            if (isCursorAtStart && isFieldEmpty) {
-                                shiftOneShot = true
-                                shiftOneShotEnabledTime = System.currentTimeMillis()
-                                Log.d(TAG, "Auto-capitalize: field empty and cursor at start (onStartInput restarting), shiftOneShot enabled")
-                                updateStatusBarText()
-                            }
-                        }, 150) // Delay to ensure inputConnection is ready
-                    }
-                }
-            }
+        if (restarting && isEditable && !shouldDisableSmartFeatures) {
+            AutoCapitalizeHelper.checkAutoCapitalizeOnRestart(
+                this,
+                currentInputConnection,
+                shouldDisableSmartFeatures,
+                autoCapitalizeState,
+                onUpdateStatusBar = { updateStatusBarText() }
+            )
         }
     }
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
-        Log.d(TAG, "onStartInputView() called - restarting: $restarting")
 
-        // Force reevaluation of input view visibility when starting input
-        // This ensures the candidates view is shown/hidden appropriately
-        updateInputViewShown()
-        
-        // Initialize input context (same logic as onStartInput for consistency)
-        // This ensures all initialization logic runs even when only candidates view is shown
         initializeInputContext(info, restarting)
         
-        // Check whether the field is actually editable
-        val isEditable = info?.let { editorInfo ->
-            val inputType = editorInfo.inputType
-            // Check whether this is an editable text field (not TYPE_NULL)
-            val isTextInput = inputType and android.text.InputType.TYPE_MASK_CLASS != android.text.InputType.TYPE_NULL
-            // Exclude non-editable fields such as lists
-            val isNotNoInput = inputType and android.text.InputType.TYPE_MASK_CLASS != 0
-            isTextInput && isNotNoInput
-        } ?: false
+        val (isEditable, _) = checkFieldEditability(info)
         
-        // IMPORTANT: Check for auto-capitalize even when restarting=true
-        // This is crucial for messaging apps where field is cleared after sending message
-        // and onStartInput() is called with restarting=true, but onUpdateSelection() might not be called
-        // because cursor position hasn't changed (it's already at 0)
-        if (restarting && isEditable) {
-            val autoCapitalizeEnabled = SettingsManager.getAutoCapitalizeFirstLetter(this)
-            if (autoCapitalizeEnabled) {
-                // Check if it's not a restricted field
-                if (!shouldDisableSmartFeatures) {
-                    val inputConnection = currentInputConnection
-                    if (inputConnection != null) {
-                        // Use a delay to ensure inputConnection is ready
-                        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                            val textBeforeCursor = inputConnection.getTextBeforeCursor(1000, 0)
-                            val textAfterCursor = inputConnection.getTextAfterCursor(1000, 0)
-                            val isCursorAtStart = textBeforeCursor == null || textBeforeCursor.isEmpty()
-                            val isFieldEmpty = isCursorAtStart && (textAfterCursor == null || textAfterCursor.isEmpty())
-                            
-                            Log.d(TAG, "onStartInput restarting check: textBeforeCursor='${textBeforeCursor}', textAfterCursor='${textAfterCursor}', isCursorAtStart=$isCursorAtStart, isFieldEmpty=$isFieldEmpty")
-                            
-                            if (isCursorAtStart && isFieldEmpty) {
-                                shiftOneShot = true
-                                shiftOneShotEnabledTime = System.currentTimeMillis()
-                                Log.d(TAG, "Auto-capitalize: field empty and cursor at start (onStartInput restarting), shiftOneShot enabled")
-                                updateStatusBarText()
-                            }
-                        }, 150) // Delay to ensure inputConnection is ready
-                    }
-                }
-            }
+        if (restarting && isEditable && !shouldDisableSmartFeatures) {
+            AutoCapitalizeHelper.checkAutoCapitalizeOnRestart(
+                this,
+                currentInputConnection,
+                shouldDisableSmartFeatures,
+                autoCapitalizeState,
+                onUpdateStatusBar = { updateStatusBarText() }
+            )
         }
     }
     
     override fun onFinishInput() {
         super.onFinishInput()
-        Log.d(TAG, "onFinishInput() called - resetting modifier states")
-        
-        // Stop periodic cursor position logging
-        cursorPositionHandler.removeCallbacks(cursorPositionRunnable)
-        
-        // Mark that we are no longer in a valid input context
         isInputViewActive = false
         isNumericField = false
-        // Reset modifier states when leaving a field.
-        // Preserve Ctrl latch when nav mode is active.
         resetModifierStates(preserveNavMode = true)
     }
     
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
-        Log.d(TAG, "onFinishInputView() called - finishingInput: $finishingInput, ctrlLatchFromNavMode: $ctrlLatchFromNavMode, ctrlLatchActive: $ctrlLatchActive")
-        // Mark that we are no longer in a valid input context
         isInputViewActive = false
-        // Reset modifier states when the view is hidden.
-        // IMPORTANT: also preserve nav mode here, otherwise it is reset while navigating.
         if (finishingInput) {
             resetModifierStates(preserveNavMode = true)
         }
@@ -1325,26 +1154,16 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     
     override fun onWindowShown() {
         super.onWindowShown()
-        Log.d(TAG, "onWindowShown() called - window is visible")
-        // Update status text when the window is shown
         updateStatusBarText()
     }
     
     override fun onWindowHidden() {
         super.onWindowHidden()
-        Log.d(TAG, "onWindowHidden() called - window is hidden, resetting modifier states")
-        // Reset modifier states when the keyboard is hidden.
-        // Preserve Ctrl latch when nav mode is active.
         resetModifierStates(preserveNavMode = true)
     }
     
     /**
      * Called when the cursor position or selection changes in the text field.
-     * This is the standard Android IME method to monitor text and cursor changes.
-     * 
-     * Best practice: Use this to detect when user deletes all text and moves cursor to start,
-     * or when cursor moves to the beginning of an empty field, to enable auto-capitalize.
-     * Also disables auto-capitalize when cursor moves away from positions where it's needed.
      */
     override fun onUpdateSelection(
         oldSelStart: Int,
@@ -1356,150 +1175,26 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     ) {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
         
-        Log.d(TAG, "onUpdateSelection called: oldSelStart=$oldSelStart, oldSelEnd=$oldSelEnd, newSelStart=$newSelStart, newSelEnd=$newSelEnd")
-        
-        // Update variations when cursor position changes (important for candidates mode)
-        // This ensures variations are updated after Android has completed the insertion
-        // Disabled for restricted fields
         if (!shouldDisableSmartFeatures) {
             val cursorPositionChanged = (oldSelStart != newSelStart) || (oldSelEnd != newSelEnd)
             if (cursorPositionChanged && newSelStart == newSelEnd) {
-                // Cursor moved and there's no selection - update variations after a short delay
-                // to ensure Android has completed all text updates
-                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                Handler(Looper.getMainLooper()).postDelayed({
                     updateStatusBarText()
-                }, 50) // Delay to ensure text insertion is complete
+                }, CURSOR_UPDATE_DELAY)
             }
         }
         
-        // Check if auto-capitalize is enabled
-        val autoCapitalizeEnabled = SettingsManager.getAutoCapitalizeFirstLetter(this)
-        if (!autoCapitalizeEnabled) {
-            // If auto-capitalize is disabled, disable shiftOneShot if it was active
-            if (shiftOneShot) {
-                shiftOneShot = false
-                shiftOneShotEnabledTime = 0
-                updateStatusBarText()
-            }
-            return
-        }
-        
-        // Only check if cursor is at the start (no selection)
-        if (newSelStart != newSelEnd) {
-            // There's a selection, disable auto-capitalize if it was active
-            if (shiftOneShot) {
-                shiftOneShot = false
-                shiftOneShotEnabledTime = 0
-                Log.d(TAG, "Auto-capitalize: selection detected, shiftOneShot disabled")
-                updateStatusBarText()
-            }
-            return
-        }
-        
-        // Check if it's a restricted field
-        if (shouldDisableSmartFeatures) {
-            // Restricted field, disable auto-capitalize if it was active
-            if (shiftOneShot) {
-                shiftOneShot = false
-                shiftOneShotEnabledTime = 0
-                updateStatusBarText()
-            }
-            return
-        }
-        
-        // Check field state and cursor position
-        // Best practice: Always check cursor position, not just when it changes
-        // This ensures auto-capitalize works even when cursor is already at start when entering field
-        // Also detects when field becomes empty after sending message in messaging apps
-        val inputConnection = currentInputConnection
-        if (inputConnection != null) {
-            // Detect if cursor moved to position 0 (especially from a different position)
-            // This often indicates field was cleared (e.g., after sending message in messaging apps)
-            val cursorMovedToStart = newSelStart == 0 && oldSelStart != 0
-            val cursorAtStart = newSelStart == 0
-            
-            // Use appropriate delay based on context
-            // Longer delay needed when:
-            // 1. Cursor moved to 0 from different position (field likely just cleared)
-            // 2. Cursor at 0 but position hasn't changed (might be initial entry or field just cleared)
-            val delay = when {
-                cursorMovedToStart -> {
-                    // Cursor moved to 0 - field likely just cleared (e.g., after sending message)
-                    // Use longer delay to ensure field is fully cleared
-                    200L
-                }
-                cursorAtStart && oldSelStart == 0 && newSelEnd == 0 && oldSelEnd == 0 -> {
-                    // Cursor position hasn't changed at 0 - might be initial entry, use longer delay
-                    150L
-                }
-                else -> {
-                    // Cursor position changed but not to 0 - normal delay
-                    50L
-                }
-            }
-            
-            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                // Check both before and after cursor to ensure field is completely empty
-                // This is important for messaging apps where field is cleared after sending
-                val textBeforeCursor = inputConnection.getTextBeforeCursor(1000, 0)
-                val textAfterCursor = inputConnection.getTextAfterCursor(1000, 0)
-                
-                // Debug logging
-                Log.d(TAG, "onUpdateSelection delayed check: textBeforeCursor='${textBeforeCursor}', textBeforeLength=${textBeforeCursor?.length ?: 0}, textAfterCursor='${textAfterCursor}', textAfterLength=${textAfterCursor?.length ?: 0}")
-                
-                // Check if cursor is at start with no characters before (not even spaces),
-                // or if cursor is after a newline
-                val isCursorAtStart = textBeforeCursor == null || textBeforeCursor.isEmpty()
-                val isFieldEmpty = isCursorAtStart && (textAfterCursor == null || textAfterCursor.isEmpty())
-                val isAfterNewline = textBeforeCursor != null && 
-                                     textBeforeCursor.isNotEmpty() && 
-                                     textBeforeCursor[textBeforeCursor.length - 1] == '\n'
-                
-                Log.d(TAG, "onUpdateSelection conditions: isCursorAtStart=$isCursorAtStart, isFieldEmpty=$isFieldEmpty, isAfterNewline=$isAfterNewline, shiftOneShot=$shiftOneShot")
-                
-                if (isCursorAtStart || isAfterNewline) {
-                    // Enable shiftOneShot for the first letter
-                    if (!shiftOneShot) {
-                        shiftOneShot = true
-                        shiftOneShotEnabledTime = System.currentTimeMillis()
-                        if (isFieldEmpty && cursorMovedToStart) {
-                            Log.d(TAG, "Auto-capitalize: field cleared and cursor at start (onUpdateSelection), shiftOneShot enabled")
-                        } else {
-                            Log.d(TAG, "Auto-capitalize: cursor at start or after newline (onUpdateSelection), shiftOneShot enabled")
-                        }
-                        updateStatusBarText() // Update to show "shift"
-                    } else {
-                        Log.d(TAG, "Auto-capitalize: shiftOneShot already enabled, skipping")
-                    }
-                } else {
-                    // Cursor is not at start or after newline - disable shiftOneShot if it was active
-                    // BUT: don't disable if it was just enabled by another logic (after period, ENTER, etc.)
-                    // within the protection window
-                    if (shiftOneShot) {
-                        val timeSinceEnabled = System.currentTimeMillis() - shiftOneShotEnabledTime
-                        if (timeSinceEnabled > SHIFT_ONE_SHOT_PROTECTION_WINDOW) {
-                            // shiftOneShot was enabled more than protection window ago, safe to disable
-                            shiftOneShot = false
-                            shiftOneShotEnabledTime = 0
-                            Log.d(TAG, "Auto-capitalize: cursor moved away from start/newline (onUpdateSelection), shiftOneShot disabled")
-                            updateStatusBarText()
-                        } else {
-                            // shiftOneShot was recently enabled, keep it active (likely from after period/ENTER)
-                            Log.d(TAG, "Auto-capitalize: shiftOneShot protected from disable (enabled ${timeSinceEnabled}ms ago)")
-                        }
-                    } else {
-                        Log.d(TAG, "Auto-capitalize: cursor not at start/newline and shiftOneShot not active")
-                    }
-                }
-            }, delay) // Variable delay based on cursor movement context
-        } else {
-            // No input connection, disable shiftOneShot if it was active
-            if (shiftOneShot) {
-                shiftOneShot = false
-                shiftOneShotEnabledTime = 0
-                updateStatusBarText()
-            }
-        }
+        AutoCapitalizeHelper.checkAutoCapitalizeOnSelectionChange(
+            this,
+            currentInputConnection,
+            shouldDisableSmartFeatures,
+            autoCapitalizeState,
+            oldSelStart,
+            oldSelEnd,
+            newSelStart,
+            newSelEnd,
+            onUpdateStatusBar = { updateStatusBarText() }
+        )
     }
 
     override fun onKeyLongPress(keyCode: Int, event: KeyEvent?): Boolean {
@@ -1511,9 +1206,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         
         // If the keyboard is hidden but we have an InputConnection, reactivate it
         if (!isInputViewActive) {
-            Log.d(TAG, "Long press detected with keyboard hidden - reactivating immediately")
-            ensureInputViewCreated()
             isInputViewActive = true
+            if (!isInputViewShown) {
+                ensureInputViewCreated()
+            }
         }
         
         // Intercept long presses BEFORE Android handles them
@@ -1526,190 +1222,78 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        // Exception for nav mode: handle Ctrl even when we are not in a text field
-        val isCtrlKey = keyCode == KeyEvent.KEYCODE_CTRL_LEFT || keyCode == KeyEvent.KEYCODE_CTRL_RIGHT
+        // Check if we have an editable field at the very start
+        val info = currentInputEditorInfo
+        val ic = currentInputConnection
+        val inputType = info?.inputType ?: EditorInfo.TYPE_NULL
+        val hasEditableField = ic != null && inputType != EditorInfo.TYPE_NULL
+        
+        // If NO editable field is active, handle ONLY nav mode
+        if (!hasEditableField) {
+            // Handle Back to exit nav mode
+            if (keyCode == KeyEvent.KEYCODE_BACK) {
+                if (ctrlLatchFromNavMode && ctrlLatchActive) {
+                    ctrlLatchActive = false
+                    ctrlLatchFromNavMode = false
+                    NotificationHelper.cancelNavModeNotification(this)
+                    // Do not consume Back; let Android handle it
+                    return super.onKeyDown(keyCode, event)
+                }
+                // Back key not related to nav mode, let Android handle it
+                return super.onKeyDown(keyCode, event)
+            }
+            
+            // Handle launcher shortcuts (only when nav mode is not active)
+            if (!ctrlLatchActive && SettingsManager.getLauncherShortcutsEnabled(this)) {
+                val packageName = info?.packageName ?: currentPackageName
+                if (isLauncher(packageName) && isAlphabeticKey(keyCode)) {
+                    if (handleLauncherShortcut(keyCode)) {
+                        return true // Shortcut executed, consume the event
+                    }
+                }
+            }
+            
+            // Handle nav mode (double Ctrl and control mappings)
+            val handled = handleNavModeOutsideTextFields(keyCode, event)
+            if (handled) {
+                return true
+            }
+            
+            // Not handled by nav mode, pass to Android and STOP
+            // Do NOT execute any IME logic (no ensureInputViewCreated, no status bar, etc.)
+            return super.onKeyDown(keyCode, event)
+        }
+        
+        // If we have an editable field, nav mode must NOT be active
+        // Deactivate nav mode if it was active
+        if (ctrlLatchFromNavMode && ctrlLatchActive) {
+            ctrlLatchActive = false
+            ctrlLatchFromNavMode = false
+            NotificationHelper.cancelNavModeNotification(this)
+        }
+        
+        // Continue with normal IME logic for text fields
         val isBackKey = keyCode == KeyEvent.KEYCODE_BACK
         
-        // Handle Back to exit nav mode or hide candidates view
+        // Handle Back to hide candidates view
         if (isBackKey) {
-            if (ctrlLatchFromNavMode && ctrlLatchActive && !isInputViewActive) {
-                // We are in nav mode and Back is pressed - disable nav mode
-                ctrlLatchActive = false
-                ctrlLatchFromNavMode = false
-                Log.d(TAG, "Nav mode disabled via Back")
-                // Cancel notification when nav mode is disabled
-                NotificationHelper.cancelNavModeNotification(this)
-                // No need to hide the keyboard because UI is never shown in nav mode.
-                // Do not consume Back; let Android handle it.
-                return super.onKeyDown(keyCode, event)
-            } else if (isInputViewActive && !onEvaluateInputViewShown()) {
-                // We are in candidates mode (input view not shown but candidates view is shown)
-                // Hide the candidates view when Back is pressed
-                Log.d(TAG, "Back pressed in candidates mode - hiding candidates view")
+            if (isInputViewActive && !onEvaluateInputViewShown()) {
                 setCandidatesViewShown(false)
-                // Consume the event to prevent Android from handling it
                 return true
             }
         }
         
-        // If we are not in a valid input context, handle Ctrl for nav mode
-        // and also other keys when Ctrl latch is active (nav mode active).
-        // When re-handling events after reactivation, skip this check.
-        if (!isInputViewActive && !isRehandlingKeyAfterReactivation) {
-            // Gestisci le scorciatoie del launcher quando non siamo in un campo di testo
-            // MA: bypassa questa logica se siamo in nav mode (ctrlLatchActive) o se le scorciatoie sono disabilitate
-            // ATTENZIONE: abilita le scorciatoie SOLO per i tasti alfabetici (A-Z), non per modificatori, volume, ecc.
-            if (!ctrlLatchActive && SettingsManager.getLauncherShortcutsEnabled(this)) {
-                val packageName = currentInputEditorInfo?.packageName ?: currentPackageName
-                if (isLauncher(packageName) && isAlphabeticKey(keyCode)) {
-                    // Siamo nel launcher, non in un campo di testo, e il tasto è alfabetico - controlla se c'è una scorciatoia
-                    if (handleLauncherShortcut(keyCode)) {
-                        return true // Scorciatoia eseguita, consumiamo l'evento
-                    }
-                }
-            }
-            
-            // Check if we have a valid InputConnection (we are on a text field)
-            // but the keyboard is hidden (for example after pressing Back)
-            val inputConnection = currentInputConnection
-            
-            // Handle Ctrl for nav mode FIRST, even if there is no InputConnection
-            if (isCtrlKey) {
-                // Check if nav mode is enabled
-                if (!it.palsoftware.pastiera.SettingsManager.getNavModeEnabled(this)) {
-                    // Nav mode is disabled, do nothing
-                    return super.onKeyDown(keyCode, event)
-                }
-                
-                // Handle nav mode: double-tap on Ctrl to toggle Ctrl latch
-                val (shouldConsume, result) = NavModeHandler.handleCtrlKeyDown(
-                    keyCode,
-                    ctrlPressed,
-                    ctrlLatchActive,
-                    lastCtrlReleaseTime
-                )
-                
-                // IMPORTANT: apply ctrlLatchActive and ctrlLatchFromNavMode
-                // BEFORE calling ensureInputViewCreated(), so that when
-                // onStartInput() or onStartInputView() are executed, flags are already set.
-                result.ctrlLatchActive?.let { 
-                    ctrlLatchActive = it
-                    // If it is activated in nav mode, mark the flag first
-                    if (it) {
-                        ctrlLatchFromNavMode = true
-                        Log.d(TAG, "Nav mode: Ctrl latch activated, ctrlLatchFromNavMode = true (set BEFORE ensureInputViewCreated)")
-                        // Show notification when nav mode is activated
-                        NotificationHelper.showNavModeActivatedNotification(this)
-                    } else {
-                        ctrlLatchFromNavMode = false
-                        Log.d(TAG, "Nav mode: Ctrl latch deactivated, ctrlLatchFromNavMode = false")
-                        // Cancel notification when nav mode is deactivated
-                        NotificationHelper.cancelNavModeNotification(this)
-                    }
-                }
-                result.ctrlPhysicallyPressed?.let { ctrlPhysicallyPressed = it }
-                result.lastCtrlReleaseTime?.let { lastCtrlReleaseTime = it }
-                
-                // In nav mode UI is never shown, so ignore shouldShowKeyboard.
-                // If we are not in nav mode (isInputViewActive is true), show the keyboard normally.
-                if (result.shouldShowKeyboard && isInputViewActive) {
-                    // Update status bar BEFORE showing the keyboard
-                    updateStatusBarText()
-                    // Now that flags are set, show the keyboard
-                    ensureInputViewCreated()
-                }
-                // No need to handle shouldHideKeyboard because UI is never shown in nav mode
-                
-                if (shouldConsume) {
-                    ctrlPressed = true
-                    return true
-                }
-                // If we don't consume, pass the event to Android
-                return super.onKeyDown(keyCode, event)
-            }
-            
-            // If we have a valid InputConnection but the keyboard is hidden
-            // and we are pressing a regular key (not a modifier, not Back),
-            // automatically reactivate the keyboard.
-            if (inputConnection != null && !isCtrlKey && !isBackKey && !ctrlLatchFromNavMode) {
-                // Ensure this is a key that should be handled by the IME
-                // (exclude system keys such as HOME, MENU, etc.)
-                val isRegularKey = (keyCode >= KeyEvent.KEYCODE_A && keyCode <= KeyEvent.KEYCODE_Z) ||
-                                  (keyCode >= KeyEvent.KEYCODE_0 && keyCode <= KeyEvent.KEYCODE_9) ||
-                                  keyCode == KeyEvent.KEYCODE_SPACE ||
-                                  keyCode == KeyEvent.KEYCODE_ENTER ||
-                                  keyCode == KeyEvent.KEYCODE_DEL ||
-                                  keyCode == KeyEvent.KEYCODE_COMMA ||
-                                  keyCode == KeyEvent.KEYCODE_PERIOD ||
-                                  keyCode == KeyEvent.KEYCODE_SLASH ||
-                                  keyCode == KeyEvent.KEYCODE_SEMICOLON ||
-                                  keyCode == KeyEvent.KEYCODE_APOSTROPHE ||
-                                  keyCode == KeyEvent.KEYCODE_MINUS ||
-                                  keyCode == KeyEvent.KEYCODE_EQUALS ||
-                                  keyCode == KeyEvent.KEYCODE_LEFT_BRACKET ||
-                                  keyCode == KeyEvent.KEYCODE_RIGHT_BRACKET
-                
-                if (isRegularKey) {
-                    Log.d(TAG, "Regular key ($keyCode) detected with keyboard hidden but valid InputConnection - reactivating immediately")
-                    // Force keyboard recreation immediately
-                    ensureInputViewCreated()
-                    // Set isInputViewActive to true to allow normal key handling
-                    isInputViewActive = true
-                    
-                    // Consume the event to prevent Android from handling it,
-                    // then call onKeyDown recursively after a short delay to let reactivation complete.
-                    val savedEvent = event
-                    val savedKeyCode = keyCode
-                    // Use post instead of postDelayed to execute as soon as possible
-                    android.os.Handler(android.os.Looper.getMainLooper()).post {
-                        // After the keyboard is reactivated, call onKeyDown recursively.
-                        // This allows Pastiera's full logic to handle the key.
-                        if (savedEvent != null) {
-                            // Small delay to ensure the keyboard is fully initialized
-                            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                                // Set flag to avoid infinite loops
-                                isRehandlingKeyAfterReactivation = true
-                                // Call onKeyDown recursively with the saved event
-                                onKeyDown(savedKeyCode, savedEvent)
-                                // Reset flag after handling
-                                isRehandlingKeyAfterReactivation = false
-                                Log.d(TAG, "KeyEvent re-handled after keyboard reactivation (keyCode: $savedKeyCode)")
-                            }, 50) // Delay ridotto a 50ms per una risposta più rapida
-                        }
-                    }
-                    
-                    // Consume the original event to prevent Android from handling it
-                    return true
-                } else {
-                    // Not a regular key; continue with the normal flow
-                    if (ctrlLatchActive) {
-                        // If Ctrl latch is active in nav mode, handle keys even without a text field.
-                        // This allows Ctrl+key combinations in nav mode.
-                        return handleCtrlKeyInNavMode(keyCode, event)
-                    }
-                    Log.d(TAG, "onKeyDown() - not in a valid input context, passing event to Android")
-                    return super.onKeyDown(keyCode, event)
-                }
-            } else if (ctrlLatchActive) {
-                // If Ctrl latch is active in nav mode, handle keys even without a text field.
-                // This allows Ctrl+key combinations in nav mode.
-                return handleCtrlKeyInNavMode(keyCode, event)
-            }
-            Log.d(TAG, "onKeyDown() - not in a valid input context, passing event to Android")
-            return super.onKeyDown(keyCode, event)
+        // If we have a valid InputConnection but the keyboard is hidden,
+        // ensure it's shown and continue with normal processing
+        if (ic != null && !isInputViewShown && isInputViewActive) {
+            ensureInputViewCreated()
         }
         
-        val inputConnection = currentInputConnection ?: return super.onKeyDown(keyCode, event)
-        
-        Log.d(TAG, "onKeyDown() - keyCode: $keyCode, inputConnection: ${inputConnection != null}")
-        
-        // Always notify the tracker (even when the event is consumed)
+        // Continue with normal IME logic
         KeyboardEventTracker.notifyKeyEvent(keyCode, event, "KEY_DOWN")
-        
-        // Force view creation on the first key press (including modifiers).
-        // This ensures the status bar is visible even if the virtual keyboard is disabled.
-        Log.d(TAG, "onKeyDown() - calling ensureInputViewCreated() to activate keyboard")
-        ensureInputViewCreated()
+        if (!isInputViewShown && isInputViewActive) {
+            ensureInputViewCreated()
+        }
         
         // ========== AUTO-CORRECTION HANDLING ==========
         // Skip all auto-correction, suggestions, and text modifications for restricted fields
@@ -1722,7 +1306,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             
             if (correction != null) {
                 // Get the text before the cursor to verify that it matches the correction
-                val textBeforeCursor = inputConnection.getTextBeforeCursor(
+                val textBeforeCursor = ic.getTextBeforeCursor(
                     correction.correctedWord.length + 2, // +2 per sicurezza (spazio/punteggiatura)
                     0
                 )
@@ -1758,10 +1342,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                         }
                         
                         // Delete characters
-                        inputConnection.deleteSurroundingText(charsToDelete, 0)
+                        ic.deleteSurroundingText(charsToDelete, 0)
                         
                         // Reinsert the original word
-                        inputConnection.commitText(correction.originalWord, 1)
+                        ic.commitText(correction.originalWord, 1)
                         
                         // Undo the correction
                         AutoCorrector.undoLastCorrection()
@@ -1788,7 +1372,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 if (isDoubleTap) {
                     // When space is pressed the second time, in onKeyDown the second space has NOT yet been inserted.
                     // So we check whether there is already a space before the cursor (from the first tap).
-                    val textBeforeCursor = inputConnection.getTextBeforeCursor(100, 0)
+                    val textBeforeCursor = ic.getTextBeforeCursor(100, 0)
                     if (textBeforeCursor != null && textBeforeCursor.endsWith(" ")) {
                         // Exception: if there are already multiple consecutive spaces,
                         // do not trigger replacement. Check if there is another space before.
@@ -1809,8 +1393,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                                 if (lastChar.isLetter()) {
                                     // Last character is a letter, proceed with replacement.
                                     // There is a space from the first tap; delete it and insert ". "
-                                    inputConnection.deleteSurroundingText(1, 0)
-                                    inputConnection.commitText(". ", 1)
+                                    ic.deleteSurroundingText(1, 0)
+                                    ic.commitText(". ", 1)
                                     
                                     // Enable shiftOneShot to capitalize the next letter
                                     shiftOneShot = true
@@ -1831,8 +1415,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                             } else {
                                 // No character found before space (empty field).
                                 // Insert ". " anyway.
-                                inputConnection.deleteSurroundingText(1, 0)
-                                inputConnection.commitText(". ", 1)
+                                ic.deleteSurroundingText(1, 0)
+                                ic.commitText(". ", 1)
                                 
                                 // Enable shiftOneShot to capitalize the next letter
                                 shiftOneShot = true
@@ -1872,38 +1456,14 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
 
         // ========== AUTO-CAPITALIZE AFTER PERIOD ==========
-        // Disabled for restricted fields
         val autoCapitalizeAfterPeriodEnabled = SettingsManager.getAutoCapitalizeAfterPeriod(this) && !shouldDisableSmartFeatures
-
-        if (autoCapitalizeAfterPeriodEnabled && inputConnection != null &&
+        if (autoCapitalizeAfterPeriodEnabled &&
             keyCode == KeyEvent.KEYCODE_SPACE && !shiftOneShot) {
-
-            val textBeforeCursor = inputConnection.getTextBeforeCursor(100, 0)
-
-            // Check if text ends with punctuation that requires capitalization: ".", "!", "?"
-            // For period, avoid multiple consecutive periods (ellipsis "...")
-            // For "!" and "?", consecutive characters are acceptable (e.g., "!!!" or "???")
-            if (textBeforeCursor != null && textBeforeCursor.isNotEmpty()) {
-                val lastChar = textBeforeCursor[textBeforeCursor.length - 1]
-                val shouldCapitalize = when (lastChar) {
-                    '.' -> {
-                        // For period, check that it's not part of an ellipsis
-                        textBeforeCursor.length >= 2 && textBeforeCursor[textBeforeCursor.length - 2] != '.'
-                    }
-                    '!', '?' -> {
-                        // For "!" and "?", just check that the character exists
-                        true
-                    }
-                    else -> false
-                }
-                
-                if (shouldCapitalize) {
-                    shiftOneShot = true
-                    shiftOneShotEnabledTime = System.currentTimeMillis()
-                    Log.d(TAG, "Auto-capitalize after period: shiftOneShot enabled")
-                    updateStatusBarText()
-                }
-            }
+            AutoCapitalizeHelper.enableAfterPunctuation(
+                ic,
+                autoCapitalizeState,
+                onUpdateStatusBar = { updateStatusBarText() }
+            )
         }
 
         // HANDLE AUTO-CORRECTION FOR SPACE AND PUNCTUATION
@@ -1915,7 +1475,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             
             if (isSpace || isPunctuation) {
                 // Get text before cursor
-                val textBeforeCursor = inputConnection.getTextBeforeCursor(100, 0)
+                val textBeforeCursor = ic.getTextBeforeCursor(100, 0)
                 
                 // Process and obtain correction if available
                 val correction = AutoCorrector.processText(textBeforeCursor, context = this)
@@ -1924,10 +1484,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                     val (wordToReplace, correctedWord) = correction
                     
                     // Delete the word to be corrected
-                    inputConnection.deleteSurroundingText(wordToReplace.length, 0)
+                    ic.deleteSurroundingText(wordToReplace.length, 0)
                     
                     // Insert the corrected word
-                    inputConnection.commitText(correctedWord, 1)
+                    ic.commitText(correctedWord, 1)
                     
                     // Record the correction so it can be undone
                     AutoCorrector.recordCorrection(
@@ -1937,14 +1497,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                     
                     // If it was space, insert it after the correction
                     if (isSpace) {
-                        inputConnection.commitText(" ", 1)
+                        ic.commitText(" ", 1)
                     } else if (isPunctuation && event?.unicodeChar != null && event.unicodeChar != 0) {
                         // If it was punctuation, insert it after the correction
                         val punctChar = event.unicodeChar.toChar().toString()
-                        inputConnection.commitText(punctChar, 1)
+                        ic.commitText(punctChar, 1)
                     }
                     
-                    Log.d(TAG, "Auto-correction applied: '$wordToReplace' → '$correctedWord'")
                     updateStatusBarText()
                     return true // Consume the event
                 }
@@ -1971,207 +1530,76 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // ========== END AUTO-CORRECTION HANDLING ==========
         
         // ========== AUTO-CAPITALIZE AFTER ENTER ==========
-        // Handle ENTER: after pressing Enter, enable shiftOneShot for the next character
-        if (keyCode == KeyEvent.KEYCODE_ENTER && inputConnection != null) {
-            val autoCapitalizeEnabled = SettingsManager.getAutoCapitalizeFirstLetter(this)
-            if (autoCapitalizeEnabled) {
-                // Check if it's not a restricted field
-                if (!shouldDisableSmartFeatures) {
-                    // After ENTER is processed by Android, the cursor will be on a new line
-                    // Use a delayed check to ensure ENTER has been processed
-                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                        val textBeforeCursor = inputConnection.getTextBeforeCursor(1, 0)
-                        val isAfterNewline = textBeforeCursor != null && 
-                                             textBeforeCursor.isNotEmpty() && 
-                                             textBeforeCursor[textBeforeCursor.length - 1] == '\n'
-                        
-                        if (isAfterNewline) {
-                            // Enable shiftOneShot for the first letter after newline
-                            shiftOneShot = true
-                            shiftOneShotEnabledTime = System.currentTimeMillis()
-                            Log.d(TAG, "Auto-capitalize: ENTER pressed, shiftOneShot enabled for next character")
-                            updateStatusBarText()
-                        }
-                    }, 50) // 50ms delay to allow Android to process ENTER
-                }
-            }
+        if (keyCode == KeyEvent.KEYCODE_ENTER && !shouldDisableSmartFeatures) {
+            AutoCapitalizeHelper.enableAfterEnter(
+                this,
+                ic,
+                shouldDisableSmartFeatures,
+                autoCapitalizeState,
+                onUpdateStatusBar = { updateStatusBarText() }
+            )
         }
         
         // Handle double-tap Shift to toggle Caps Lock
         if (keyCode == KeyEvent.KEYCODE_SHIFT_LEFT || keyCode == KeyEvent.KEYCODE_SHIFT_RIGHT) {
             if (!shiftPressed) {
-                // Shift just pressed
-                shiftPhysicallyPressed = true
-                val currentTime = System.currentTimeMillis()
-                
-                if (capsLockEnabled) {
-                    // If Caps Lock is active, a single tap disables it
-                    capsLockEnabled = false
-                    updateStatusBarText()
-                    lastShiftReleaseTime = 0 // Reset per evitare attivazioni indesiderate
-                } else if (shiftOneShot) {
-                    // If Shift one-shot is active, check for a quick double-tap
-                    if (currentTime - lastShiftReleaseTime < DOUBLE_TAP_THRESHOLD && lastShiftReleaseTime > 0) {
-                        // Double-tap detected while one-shot is active - enable Caps Lock
-                        shiftOneShot = false
-                        shiftOneShotEnabledTime = 0
-                        capsLockEnabled = true
-                        Log.d(TAG, "Shift double-tap: one-shot -> Caps Lock")
-                        refreshStatusBar()
-                        lastShiftReleaseTime = 0 // Reset per evitare triple tap
-                    } else {
-                        // Single tap while one-shot is active - disable one-shot
-                        shiftOneShot = false
-                        shiftOneShotEnabledTime = 0
-                        Log.d(TAG, "Shift one-shot disabled")
-                        refreshStatusBar()
-                        lastShiftReleaseTime = 0 // Reset per evitare attivazioni indesiderate
-                    }
-                } else {
-                    // If Caps Lock is not active and one-shot is not active, check for double-tap
-                    if (currentTime - lastShiftReleaseTime < DOUBLE_TAP_THRESHOLD && lastShiftReleaseTime > 0) {
-                        // Double-tap detected - enable Caps Lock
-                        capsLockEnabled = true
-                        updateStatusBarText()
-                        lastShiftReleaseTime = 0 // Reset per evitare triple tap
-                    } else {
-                        // Shift pressed once - enable one-shot
-                        shiftOneShot = true
-                        Log.d(TAG, "Shift one-shot enabled")
-                        updateStatusBarText() // Update to show "shift"
-                    }
-                }
+                val result = modifierKeyHandler.handleShiftKeyDown(keyCode, shiftState)
+                // Sync shiftState.oneShot with autoCapitalizeState.shiftOneShot
+                // User manually pressed Shift - sync from shiftState to autoCapitalizeState
+                syncShiftOneShotFromShiftState()
                 shiftPressed = true
+                if (result.shouldUpdateStatusBar) {
+                    updateStatusBarText()
+                } else if (result.shouldRefreshStatusBar) {
+                    refreshStatusBar()
+                }
             }
-            // Non consumiamo l'evento, lasciamo che Android gestisca Shift normalmente
             return super.onKeyDown(keyCode, event)
         }
         
         // Handle double-tap Ctrl to toggle Ctrl latch
         if (keyCode == KeyEvent.KEYCODE_CTRL_LEFT || keyCode == KeyEvent.KEYCODE_CTRL_RIGHT) {
             if (!ctrlPressed) {
-                // Ctrl just pressed
-                ctrlPhysicallyPressed = true
-                val currentTime = System.currentTimeMillis()
-                
-                if (ctrlLatchActive) {
-                    // If Ctrl latch is active, a single tap disables it.
-                    // BUT: if it is active from nav mode and we are NOT in a text field, disable nav mode.
-                    // When in a text field, nav mode is already disabled in onStartInput.
-                    if (ctrlLatchFromNavMode && !isInputViewActive) {
-                        // We are in nav mode and Ctrl is pressed - disable nav mode
-                        ctrlLatchActive = false
-                        ctrlLatchFromNavMode = false
-                        Log.d(TAG, "Ctrl latch disabled from nav mode (Ctrl pressed)")
-                        // Cancel notification when nav mode is disabled
+                val result = modifierKeyHandler.handleCtrlKeyDown(
+                    keyCode,
+                    ctrlState,
+                    isInputViewActive,
+                    onNavModeDeactivated = {
                         NotificationHelper.cancelNavModeNotification(this)
-                        // Non serve nascondere la tastiera perché in nav mode non viene mai mostrata
-                    } else if (!ctrlLatchFromNavMode) {
-                        // Regular Ctrl latch (not nav mode), disable it normally
-                        ctrlLatchActive = false
-                        updateStatusBarText()
-                    } else {
-                        // Ctrl latch from nav mode but we are in a text field - this should not happen,
-                        // but if it does, disable it anyway.
-                        if (ctrlLatchFromNavMode) {
-                            NotificationHelper.cancelNavModeNotification(this)
-                        }
-                        ctrlLatchActive = false
-                        ctrlLatchFromNavMode = false
-                        updateStatusBarText()
                     }
-                    lastCtrlReleaseTime = 0 // Reset per evitare attivazioni indesiderate
-                } else if (ctrlOneShot) {
-                    // If Ctrl one-shot is active, check for a quick double-tap
-                    if (currentTime - lastCtrlReleaseTime < DOUBLE_TAP_THRESHOLD && lastCtrlReleaseTime > 0) {
-                        // Double-tap detected while one-shot is active - enable Ctrl latch
-                        ctrlOneShot = false
-                        ctrlLatchActive = true
-                        Log.d(TAG, "Ctrl double-tap: one-shot -> latch")
-                        updateStatusBarText()
-                        lastCtrlReleaseTime = 0 // Reset per evitare triple tap
-                    } else {
-                        // Single tap while one-shot is active - disable one-shot
-                        ctrlOneShot = false
-                        Log.d(TAG, "Ctrl one-shot disabled")
-                        updateStatusBarText()
-                        lastCtrlReleaseTime = 0 // Reset per evitare attivazioni indesiderate
-                    }
-                } else {
-                    // If Ctrl latch is not active and one-shot is not active, check for double-tap
-                    if (currentTime - lastCtrlReleaseTime < DOUBLE_TAP_THRESHOLD && lastCtrlReleaseTime > 0) {
-                        // Double-tap detected - enable Ctrl latch
-                        ctrlLatchActive = true
-                        updateStatusBarText()
-                        lastCtrlReleaseTime = 0 // Reset per evitare triple tap
-                    } else {
-                        // Ctrl pressed once - enable one-shot
-                        ctrlOneShot = true
-                        updateStatusBarText() // Update to show "ctrl"
-                    }
-                }
+                )
                 ctrlPressed = true
+                if (result.shouldConsume) {
+                    if (result.shouldUpdateStatusBar) {
+                        updateStatusBarText()
+                    }
+                    return true
+                } else if (result.shouldUpdateStatusBar) {
+                    updateStatusBarText()
+                }
             }
-            // Non consumiamo l'evento, lasciamo che Android gestisca Ctrl normalmente
             return super.onKeyDown(keyCode, event)
         }
         
         // Handle double-tap Alt to toggle Alt latch
         if (keyCode == KeyEvent.KEYCODE_ALT_LEFT || keyCode == KeyEvent.KEYCODE_ALT_RIGHT) {
             if (!altPressed) {
-                // Alt just pressed
-                altPhysicallyPressed = true
-                val currentTime = System.currentTimeMillis()
-                
-                if (altLatchActive) {
-                    // If Alt latch is active, a single tap disables it
-                    altLatchActive = false
-                    updateStatusBarText()
-                    lastAltReleaseTime = 0 // Reset per evitare attivazioni indesiderate
-                } else if (altOneShot) {
-                    // If Alt one-shot is active, check for a quick double-tap
-                    if (currentTime - lastAltReleaseTime < DOUBLE_TAP_THRESHOLD && lastAltReleaseTime > 0) {
-                        // Double-tap detected while one-shot is active - enable Alt latch
-                        altOneShot = false
-                        altLatchActive = true
-                        Log.d(TAG, "Alt double-tap: one-shot -> latch")
-                        updateStatusBarText()
-                        lastAltReleaseTime = 0 // Reset per evitare triple tap
-                    } else {
-                        // Single tap while one-shot is active - disable one-shot
-                        altOneShot = false
-                        Log.d(TAG, "Alt one-shot disabled")
-                        updateStatusBarText()
-                        lastAltReleaseTime = 0 // Reset per evitare attivazioni indesiderate
-                    }
-                } else {
-                    // If Alt latch is not active and one-shot is not active, check for double-tap
-                    if (currentTime - lastAltReleaseTime < DOUBLE_TAP_THRESHOLD && lastAltReleaseTime > 0) {
-                        // Double-tap detected - enable Alt latch
-                        altLatchActive = true
-                        updateStatusBarText()
-                        lastAltReleaseTime = 0 // Reset per evitare triple tap
-                    } else {
-                        // Alt pressed once - enable one-shot
-                        altOneShot = true
-                        updateStatusBarText() // Update to show "alt"
-                    }
-                }
+                val result = modifierKeyHandler.handleAltKeyDown(keyCode, altState)
                 altPressed = true
+                if (result.shouldUpdateStatusBar) {
+                    updateStatusBarText()
+                }
             }
-            // Consumiamo l'evento Alt per evitare che Android gestisca Alt+Spazio come scorciatoia
-            // Questo previene il popup di selezione simboli di Android
-            Log.d(TAG, "Alt key consumed to prevent Android symbol picker popup")
-            return true  // Consumiamo l'evento invece di passarlo ad Android
+            return true  // Consume Alt event to prevent Android symbol picker popup
         }
         
         // Handle SYM key (toggle/latch with 3 states: disabled -> page1 -> page2 -> disabled)
         if (keyCode == KEYCODE_SYM) {
             // Cycle between the 3 states: 0 -> 1 -> 2 -> 0
             symPage = (symPage + 1) % 3
+            // Save current symPage to SharedPreferences for potential restore
+            prefs.edit().putInt("current_sym_page", symPage).apply()
             updateStatusBarText()
-            // Force reevaluation of input view visibility to ensure SYM layout works in candidates view
-            updateInputViewShown()
             // Consume the event to prevent Android from handling it
             return true
         }
@@ -2180,13 +1608,12 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         if (keyCode == 322) {
             val swipeToDeleteEnabled = SettingsManager.getSwipeToDelete(this)
                 if (swipeToDeleteEnabled) {
-                if (TextSelectionHelper.deleteLastWord(inputConnection)) {
+                if (TextSelectionHelper.deleteLastWord(ic)) {
                     // Consumiamo l'evento
                     return true
                 }
                     } else {
                 // Feature disabled, still consume the event to avoid unwanted behavior
-                Log.d(TAG, "Swipe to delete disabled, keycode 322 event ignored")
                 return true
             }
         }
@@ -2199,6 +1626,32 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // If SYM is active, check SYM mappings first (they take precedence over Alt and Ctrl)
         // When SYM is active, all other modifiers are bypassed
         if (symPage > 0) {
+            // Check if auto-close is enabled
+            val autoCloseEnabled = SettingsManager.getSymAutoClose(this)
+            
+            // Handle Enter key: insert newline and close SYM if auto-close is enabled
+            if (keyCode == KeyEvent.KEYCODE_ENTER && autoCloseEnabled) {
+                // Insert newline in the text
+                ic.commitText("\n", 1)
+                // Close SYM layout
+                symPage = 0
+                prefs.edit().putInt("current_sym_page", 0).apply()
+                updateStatusBarText()
+                return true
+            }
+            
+            // Handle Alt key: close SYM if auto-close is enabled (but not if Ctrl or Shift are also pressed)
+            // Only close if Alt is pressed alone (not with other keys)
+            if ((keyCode == KeyEvent.KEYCODE_ALT_LEFT || keyCode == KeyEvent.KEYCODE_ALT_RIGHT) && 
+                autoCloseEnabled && 
+                !(event?.isCtrlPressed == true || event?.isShiftPressed == true)) {
+                symPage = 0
+                prefs.edit().putInt("current_sym_page", 0).apply()
+                updateStatusBarText()
+                // Consume Alt to prevent it from being handled as Alt+key combination
+                return true
+            }
+            
             val symChar = when (symPage) {
                 1 -> altSymManager.getSymMappings()[keyCode]
                 2 -> altSymManager.getSymMappings2()[keyCode]
@@ -2206,7 +1659,17 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             }
             if (symChar != null) {
                 // Insert emoji or character from SYM map
-                inputConnection.commitText(symChar, 1)
+                ic.commitText(symChar, 1)
+                
+                // Auto-close SYM after inserting character if enabled and no modifiers are pressed
+                if (autoCloseEnabled && 
+                    !(event?.isCtrlPressed == true || event?.isShiftPressed == true || 
+                      event?.isAltPressed == true || ctrlLatchActive || altLatchActive)) {
+                    symPage = 0
+                    prefs.edit().putInt("current_sym_page", 0).apply()
+                    updateStatusBarText()
+                }
+                
                 // Consume the event
                 return true
             }
@@ -2225,15 +1688,14 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             // Questo gestisce i casi: Spazio->Alt, Alt->Spazio, Alt->tasto alfabetico->Spazio
             // Inseriamo uno spazio nel campo di testo
             if (keyCode == KeyEvent.KEYCODE_SPACE) {
-                inputConnection.commitText(" ", 1)
-                Log.d(TAG, "Alt+Space combination: inserted space to prevent Android symbol picker popup")
+                ic.commitText(" ", 1)
                 updateStatusBarText()
                 return true  // Consumiamo l'evento senza passarlo ad Android
             }
             
             val result = altSymManager.handleAltCombination(
                 keyCode,
-                inputConnection,
+                ic,
                 event
             ) { defaultKeyCode, defaultEvent ->
                 // FIX: Anche se non c'è una mappatura Alt per questo tasto,
@@ -2241,8 +1703,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 // per evitare comportamenti indesiderati di Android
                 // Inseriamo uno spazio nel campo di testo
                 if (keyCode == KeyEvent.KEYCODE_SPACE) {
-                    inputConnection.commitText(" ", 1)
-                    Log.d(TAG, "Alt+Space (no mapping): inserted space to prevent Android symbol picker")
+                    ic.commitText(" ", 1)
                     updateStatusBarText()
                     return@handleAltCombination true
                 }
@@ -2285,7 +1746,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                                     outputKeyCode = null,
                                     outputKeyCodeName = "expand_selection_left"
                                 )
-                                TextSelectionHelper.expandSelectionLeft(inputConnection)
+                                TextSelectionHelper.expandSelectionLeft(ic)
                                 return true
                             }
                             "expand_selection_right" -> {
@@ -2298,7 +1759,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                                     outputKeyCode = null,
                                     outputKeyCodeName = "expand_selection_right"
                                 )
-                                TextSelectionHelper.expandSelectionRight(inputConnection)
+                                TextSelectionHelper.expandSelectionRight(ic)
                                 return true
                             }
                             else -> {
@@ -2320,11 +1781,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                                         outputKeyCode = null,
                                         outputKeyCodeName = ctrlMapping.value
                                     )
-                                    inputConnection.performContextMenuAction(actionId)
+                                    ic.performContextMenuAction(actionId)
                                     return true
                                 } else {
                                     // Unknown action, consume the event to avoid inserting characters
-                                    Log.d(TAG, "Ctrl+action not recognized: ${ctrlMapping.value}, event consumed")
                                     return true
                                 }
                             }
@@ -2352,8 +1812,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                                 outputKeyCode = mappedKeyCode,
                                 outputKeyCodeName = KeyboardEventTracker.getOutputKeyCodeName(mappedKeyCode)
                             )
-                            inputConnection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, mappedKeyCode))
-                            inputConnection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, mappedKeyCode))
+                            ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, mappedKeyCode))
+                            ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, mappedKeyCode))
                             
                             // Update variations after cursor movement or other operations.
                             // Use a delayed post to ensure Android has completed the operation.
@@ -2373,7 +1833,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                             return true
                         } else {
                             // Unknown keycode, consume event to avoid inserting characters
-                            Log.d(TAG, "Ctrl+keycode not recognized: ${ctrlMapping.value}, event consumed")
                             return true
                         }
                     }
@@ -2383,7 +1842,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 // Special handling for Backspace: delete last word or selected text.
                 if (keyCode == KeyEvent.KEYCODE_DEL) {
                     // Verifica se c'è del testo selezionato
-                    val extractedText = inputConnection.getExtractedText(
+                    val extractedText = ic.getExtractedText(
                         android.view.inputmethod.ExtractedTextRequest().apply {
                             flags = android.view.inputmethod.ExtractedText.FLAG_SELECTING
                         },
@@ -2404,8 +1863,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                             outputKeyCodeName = "delete_selection"
                         )
                         // Delete selected text using commitText with an empty string
-                        inputConnection.commitText("", 0)
-                        Log.d(TAG, "Ctrl+Backspace: selected text deleted")
+                        ic.commitText("", 0)
                         return true
                     } else {
                         // Ctrl+Backspace deletes last word
@@ -2416,18 +1874,16 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                             outputKeyCode = null,
                             outputKeyCodeName = "delete_last_word"
                         )
-                        TextSelectionHelper.deleteLastWord(inputConnection)
+                        TextSelectionHelper.deleteLastWord(ic)
                         return true
                     }
                 }
                 // Eccezione per Enter: continua a funzionare normalmente
                 if (keyCode == KeyEvent.KEYCODE_ENTER) {
                     // Lascia passare Enter anche con Ctrl premuto
-                        Log.d(TAG, "Ctrl+Enter without mapping, passing event to Android")
                     return super.onKeyDown(keyCode, event)
                 }
                 // For all other keys without mappings, consume the event
-                Log.d(TAG, "Ctrl+key without mapping (keyCode: $keyCode), event consumed")
                 return true
             }
         }
@@ -2450,8 +1906,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             if (isNumericField && !useShift) {
                 val altChar = altSymManager.getAltMappings()[keyCode]
                 if (altChar != null) {
-                    Log.d(TAG, "Numeric field: direct insertion of Alt character '$altChar' for keyCode $keyCode")
-                    inputConnection.commitText(altChar, 1)
+                    ic.commitText(altChar, 1)
                     // Update variations after insertion (with delay to ensure commitText is completed)
                     android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                         updateStatusBarText()
@@ -2467,7 +1922,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 keyCode,
                 event,
                 capsLockEnabled,
-                inputConnection,
+                ic,
                 shiftOneShot,
                 layoutChar
             )
@@ -2476,6 +1931,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             if (wasShiftOneShot) {
                 shiftOneShot = false
                 shiftOneShotEnabledTime = 0
+                // Sync to shiftState
+                syncShiftOneShotToShiftState()
                 updateStatusBarText()
             }
             return true
@@ -2485,17 +1942,16 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         if (shiftOneShot) {
             val charFromLayout = getCharacterStringFromLayout(keyCode, event, isShift = true)
             if (charFromLayout.isNotEmpty() && charFromLayout[0].isLetter()) {
-                Log.d(TAG, "Shift one-shot active, character from layout: $charFromLayout")
-                // Always force uppercase when shiftOneShot is active
                 val char = charFromLayout.uppercase()
-                Log.d(TAG, "Shift one-shot, modified character: $char")
+                // Disable shift one-shot (used when letter is typed)
                 shiftOneShot = false
                 shiftOneShotEnabledTime = 0
-                inputConnection.commitText(char, 1)
-                // Update variations after insertion (with delay to ensure commitText is completed)
-                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                // Sync to shiftState
+                syncShiftOneShotToShiftState()
+                ic.commitText(char, 1)
+                Handler(Looper.getMainLooper()).postDelayed({
                     updateStatusBarText()
-                }, 50) // 50ms per dare tempo ad Android di completare commitText e aggiornare il cursore
+                }, CURSOR_UPDATE_DELAY)
                 return true
             }
         }
@@ -2518,11 +1974,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             }
             
             if (shouldConsume) {
-                inputConnection.commitText(char, 1)
-                // Update variations after insertion (with delay to ensure commitText is completed)
-                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                ic.commitText(char, 1)
+                Handler(Looper.getMainLooper()).postDelayed({
                     updateStatusBarText()
-                }, 50) // 50ms per dare tempo ad Android di completare commitText e aggiornare il cursore
+                }, CURSOR_UPDATE_DELAY)
                 return true
             }
         }
@@ -2534,11 +1989,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             // Check whether the character has variations
             if (variationsMap.containsKey(charForVariations)) {
                 // Insert the character ourselves so we can show variations
-                inputConnection.commitText(charForVariations.toString(), 1)
-                // Update variations after insertion (with delay to ensure commitText is completed)
-                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                ic.commitText(charForVariations.toString(), 1)
+                Handler(Looper.getMainLooper()).postDelayed({
                     updateStatusBarText()
-                }, 50) // 50ms per dare tempo ad Android di completare commitText e aggiornare il cursore
+                }, CURSOR_UPDATE_DELAY)
                 return true
             }
             // If the character has no variations, previous variations remain visible
@@ -2564,15 +2018,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                     char = char.lowercase()
                 }
                 
-                Log.d(TAG, "Layout conversion: keyCode=$keyCode, original=${event?.unicodeChar?.toChar()}, converted=$char")
                 
                 // Insert the converted character
-                inputConnection.commitText(char, 1)
+                ic.commitText(char, 1)
                 
-                // Update variations after insertion (with delay to ensure commitText is completed)
-                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                Handler(Looper.getMainLooper()).postDelayed({
                     updateStatusBarText()
-                }, 50) // 50ms per dare tempo ad Android di completare commitText e aggiornare il cursore
+                }, CURSOR_UPDATE_DELAY)
                 
                 // Consume the event to prevent Android from handling it
                 return true
@@ -2585,23 +2037,28 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     }
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
-        // Exception for nav mode: handle Ctrl even when we are not in a text field
-        val isCtrlKey = keyCode == KeyEvent.KEYCODE_CTRL_LEFT || keyCode == KeyEvent.KEYCODE_CTRL_RIGHT
+        // Check if we have an editable field at the start (same logic as onKeyDown)
+        val info = currentInputEditorInfo
+        val ic = currentInputConnection
+        val inputType = info?.inputType ?: EditorInfo.TYPE_NULL
+        val hasEditableField = ic != null && inputType != EditorInfo.TYPE_NULL
         
-        if (!isInputViewActive && isCtrlKey) {
-            // Handle Ctrl release in nav mode
-            if (ctrlPressed) {
+        // If NO editable field is active, handle ONLY nav mode Ctrl release
+        if (!hasEditableField) {
+            val isCtrlKey = keyCode == KeyEvent.KEYCODE_CTRL_LEFT || keyCode == KeyEvent.KEYCODE_CTRL_RIGHT
+            if (isCtrlKey && ctrlPressed) {
                 val result = NavModeHandler.handleCtrlKeyUp()
                 result.ctrlPressed?.let { ctrlPressed = it }
                 result.ctrlPhysicallyPressed?.let { ctrlPhysicallyPressed = it }
-                result.lastCtrlReleaseTime?.let { lastCtrlReleaseTime = it }
-                updateStatusBarText()
-                Log.d(TAG, "Nav mode: Ctrl released")
+                result.lastCtrlReleaseTime?.let { ctrlState.lastReleaseTime = it }
+                // Do NOT update status bar outside text fields
+                return true
             }
-            // Consumiamo l'evento per evitare che Android lo gestisca
-            return true
+            // Not handled by nav mode, pass to Android
+            return super.onKeyUp(keyCode, event)
         }
         
+        // Continue with normal IME logic for text fields
         val inputConnection = currentInputConnection ?: return super.onKeyUp(keyCode, event)
         
         // Always notify the tracker (even when the event is consumed)
@@ -2610,42 +2067,39 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // Handle Shift release for double-tap
         if (keyCode == KeyEvent.KEYCODE_SHIFT_LEFT || keyCode == KeyEvent.KEYCODE_SHIFT_RIGHT) {
             if (shiftPressed) {
-                lastShiftReleaseTime = System.currentTimeMillis()
+                val result = modifierKeyHandler.handleShiftKeyUp(keyCode, shiftState)
+                // Sync shiftState.oneShot with autoCapitalizeState.shiftOneShot
+                // Shift one-shot remains active until used (when letter is typed)
+                syncShiftOneShotFromShiftState()
                 shiftPressed = false
-                shiftPhysicallyPressed = false
-                // Do not disable shiftOneShot here - it is disabled when used.
-                // If released without being used, it remains active for the next key.
-                updateStatusBarText() // Update to remove physical "shift"
+                if (result.shouldUpdateStatusBar) {
+                    updateStatusBarText()
+                }
             }
-            // Non consumiamo l'evento, lasciamo che Android gestisca Shift normalmente
             return super.onKeyUp(keyCode, event)
         }
         
         // Handle Ctrl release for double-tap
         if (keyCode == KeyEvent.KEYCODE_CTRL_LEFT || keyCode == KeyEvent.KEYCODE_CTRL_RIGHT) {
             if (ctrlPressed) {
-                lastCtrlReleaseTime = System.currentTimeMillis()
+                val result = modifierKeyHandler.handleCtrlKeyUp(keyCode, ctrlState)
                 ctrlPressed = false
-                ctrlPhysicallyPressed = false
-                // Do not disable ctrlOneShot here - it is disabled when used.
-                // If released without being used, it remains active for the next key.
-                updateStatusBarText() // Update to remove physical "ctrl"
+                if (result.shouldUpdateStatusBar) {
+                    updateStatusBarText()
+                }
             }
-            // Non consumiamo l'evento, lasciamo che Android gestisca Ctrl normalmente
             return super.onKeyUp(keyCode, event)
         }
         
         // Handle Alt release for double-tap
         if (keyCode == KeyEvent.KEYCODE_ALT_LEFT || keyCode == KeyEvent.KEYCODE_ALT_RIGHT) {
             if (altPressed) {
-                lastAltReleaseTime = System.currentTimeMillis()
+                val result = modifierKeyHandler.handleAltKeyUp(keyCode, altState)
                 altPressed = false
-                altPhysicallyPressed = false
-                // Do not disable altOneShot here - it is disabled when used.
-                // If released without being used, it remains active for the next key.
-                updateStatusBarText() // Update to remove physical "alt"
+                if (result.shouldUpdateStatusBar) {
+                    updateStatusBarText()
+                }
             }
-            // Non consumiamo l'evento, lasciamo che Android gestisca Alt normalmente
             return super.onKeyUp(keyCode, event)
         }
         

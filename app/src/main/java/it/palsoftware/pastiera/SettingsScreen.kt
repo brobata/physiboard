@@ -1,6 +1,7 @@
 package it.palsoftware.pastiera
 
 import android.content.Context
+import android.content.Intent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -28,7 +29,6 @@ import androidx.compose.material.icons.filled.TouchApp
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
-import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
@@ -40,8 +40,7 @@ import it.palsoftware.pastiera.R
 @Composable
 fun SettingsScreen(
     modifier: Modifier = Modifier,
-    onBack: () -> Unit,
-    onSymCustomizationClick: () -> Unit = {}
+    onBack: () -> Unit
 ) {
     val context = LocalContext.current
     
@@ -672,7 +671,13 @@ fun SettingsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(64.dp)
-                        .clickable { onSymCustomizationClick() }
+                        .clickable {
+                            // Open SymCustomizationActivity directly
+                            val intent = Intent(context, SymCustomizationActivity::class.java).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                            }
+                            context.startActivity(intent)
+                        }
                 ) {
                     Row(
                         modifier = Modifier

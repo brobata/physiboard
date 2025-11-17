@@ -43,6 +43,13 @@
             </intent-filter>
         </activity>
         
+        <!-- Activity per la personalizzazione SYM -->
+        <activity
+            android:name=".SymCustomizationActivity"
+            android:exported="false"
+            android:label="@string/sym_customize_title"
+            android:theme="@style/Theme.Pastiera" />
+        
         <!-- Servizio di immissione per tastiera fisica -->
         <service
             android:name=".inputmethod.PhysicalKeyboardInputMethodService"

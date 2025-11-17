@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Keyboard
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
@@ -32,6 +33,11 @@ fun SymCustomizationScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
+    
+    // Load saved auto-close SYM value
+    var symAutoClose by remember { 
+        mutableStateOf(SettingsManager.getSymAutoClose(context))
+    }
     
     // Selected tab (0 = Emoji, 1 = Characters)
     var selectedTab by remember { mutableStateOf(0) }
@@ -175,6 +181,51 @@ fun SymCustomizationScreen(
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(start = 4.dp)
             )
+        }
+        
+        HorizontalDivider()
+        
+        // Auto-Close SYM Layout option
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(64.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Keyboard,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.sym_auto_close_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1
+                    )
+                    Text(
+                        text = stringResource(R.string.sym_auto_close_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2
+                    )
+                }
+                Switch(
+                    checked = symAutoClose,
+                    onCheckedChange = { enabled ->
+                        symAutoClose = enabled
+                        SettingsManager.setSymAutoClose(context, enabled)
+                    }
+                )
+            }
         }
         
         HorizontalDivider()

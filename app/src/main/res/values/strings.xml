@@ -118,6 +118,8 @@
     
     <!-- SYM Customization Screen -->
     <string name="sym_customize_title">Customize SYM Keyboard</string>
+    <string name="sym_auto_close_title">Auto-Close SYM Layout</string>
+    <string name="sym_auto_close_description">Automatically close SYM layout after inserting a character, pressing Alt, or pressing Enter. Does not close with Control or Shift.</string>
     <string name="sym_instructions_title">Instructions</string>
     <string name="sym_instructions_text">Tap on any key below to change its emoji. Changes are saved automatically.</string>
     <string name="sym_reset_to_default">Reset to Default</string>
