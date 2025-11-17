@@ -64,7 +64,9 @@ object NotificationHelper {
                 description = context.getString(R.string.notification_nav_mode_channel_description)
                 setShowBadge(false)
                 enableLights(false) // Disable LED light
-                enableVibration(false) // No vibration
+                enableVibration(true) // Enable vibration
+                // Set vibration pattern: short vibration (50ms)
+                vibrationPattern = longArrayOf(0, 50)
                 setSound(null, null) // No sound
             }
             
@@ -139,7 +141,7 @@ object NotificationHelper {
         val largeIconSize = (64 * context.resources.displayMetrics.density).toInt().coerceAtLeast(64)
         val largeIconBitmap = createNavModeIcon(largeIconSize, Color.TRANSPARENT, Color.WHITE)
         
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+        val notificationBuilder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setContentTitle(context.getString(R.string.notification_nav_mode_activated_title))
             .setContentText(context.getString(R.string.notification_nav_mode_activated_text))
             .setSmallIcon(smallIcon) // Custom "N" icon for status bar
@@ -150,7 +152,18 @@ object NotificationHelper {
             .setCategory(NotificationCompat.CATEGORY_STATUS) // Status category for status bar
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC) // Visible on lock screen
             // Sound is disabled via channel settings (setSound(null, null))
-            .build()
+        
+        // For Android < 8.0, set vibration pattern directly on notification
+        // (On Android 8.0+ this is controlled by the channel)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            // Vibration pattern: short vibration (50ms)
+            // Pattern: [delay, vibrate, delay, vibrate, ...]
+            // 0 = no delay before first vibration, 50 = vibrate for 50ms
+            @Suppress("DEPRECATION")
+            notificationBuilder.setVibrate(longArrayOf(0, 50))
+        }
+        
+        val notification = notificationBuilder.build()
         
         notificationManager.notify(NOTIFICATION_ID, notification)
     }

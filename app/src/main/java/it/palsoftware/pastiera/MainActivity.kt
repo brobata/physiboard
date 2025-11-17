@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.size
 import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.inputmethod.KeyboardEventTracker
 import it.palsoftware.pastiera.inputmethod.NotificationHelper
+import it.palsoftware.pastiera.ui.CustomTopBar
 import it.palsoftware.pastiera.ui.theme.PastieraTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowForward
@@ -300,31 +301,11 @@ fun KeyboardSetupScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-        // Modern header
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            tonalElevation = 1.dp
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = stringResource(R.string.keyboard_title),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold
-                )
-                IconButton(onClick = { showSettings = true }) {
-                    Icon(
-                        imageVector = Icons.Filled.Settings,
-                        contentDescription = stringResource(R.string.settings_content_description)
-                    )
-                }
-            }
-        }
+        // Custom top bar with personalized graphics
+        CustomTopBar(
+            onSettingsClick = { showSettings = true },
+            modifier = Modifier.fillMaxWidth()
+        )
         
         // Enable Pastiera button
         Surface(

@@ -90,7 +90,6 @@ class StatusBarController(
     private var ctrlLed: View? = null
     private var altLed: View? = null
     private var symLed: View? = null
-    private var smartFeaturesDisabledIndicator: View? = null
     private var emojiKeyButtons: MutableList<View> = mutableListOf()
     private var currentVariationsRow: LinearLayout? = null
     private var microphoneButtonView: AppCompatImageButton? = null
@@ -145,32 +144,6 @@ class StatusBarController(
                 )
                 visibility = View.GONE
             }
-            
-            // Create red dot indicator for smart features disabled
-            val dotSize = TypedValue.applyDimension(
-                TypedValue.COMPLEX_UNIT_DIP,
-                8f,
-                context.resources.displayMetrics
-            ).toInt()
-            val dotMargin = TypedValue.applyDimension(
-                TypedValue.COMPLEX_UNIT_DIP,
-                8f,
-                context.resources.displayMetrics
-            ).toInt()
-            
-            smartFeaturesDisabledIndicator = View(context).apply {
-                val drawable = GradientDrawable().apply {
-                    shape = GradientDrawable.OVAL
-                    setColor(Color.RED)
-                }
-                background = drawable
-                layoutParams = LinearLayout.LayoutParams(dotSize, dotSize).apply {
-                    marginEnd = dotMargin
-                }
-                visibility = View.GONE
-            }
-            
-            modifiersContainer?.addView(smartFeaturesDisabledIndicator)
 
             // Container for emoji grid (when SYM is active) - placed at the bottom
             val emojiKeyboardHorizontalPadding = TypedValue.applyDimension(
@@ -1698,15 +1671,8 @@ class StatusBarController(
             }
         }
         
-        // Mostra il container dei modificatori solo se smart features sono disabilitate
-        // (per mostrare il pallino rosso), altrimenti nascondilo
-        if (snapshot.shouldDisableSmartFeatures) {
-            modifiersContainerView.visibility = View.VISIBLE
-            smartFeaturesDisabledIndicator?.visibility = View.VISIBLE
-        } else {
-            modifiersContainerView.visibility = View.GONE
-            smartFeaturesDisabledIndicator?.visibility = View.GONE
-        }
+        // Hide modifiers container (no longer needed since red dot indicator is removed)
+        modifiersContainerView.visibility = View.GONE
         
         // Aggiorna i LED nel bordo inferiore
         // Shift: rosso se lockato (Caps Lock), blu se attivo (premuto/one-shot), grigio se spento
