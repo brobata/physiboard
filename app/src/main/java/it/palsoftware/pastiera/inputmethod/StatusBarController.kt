@@ -17,12 +17,12 @@ import android.widget.ImageView
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.appcompat.widget.AppCompatImageButton
 import android.util.Log
 import android.util.TypedValue
 import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.MainActivity
 import it.palsoftware.pastiera.SymCustomizationActivity
+import it.palsoftware.pastiera.SettingsActivity
 import it.palsoftware.pastiera.SettingsManager
 import kotlin.math.max
 import android.view.MotionEvent
@@ -92,8 +92,8 @@ class StatusBarController(
     private var symLed: View? = null
     private var emojiKeyButtons: MutableList<View> = mutableListOf()
     private var currentVariationsRow: LinearLayout? = null
-    private var microphoneButtonView: AppCompatImageButton? = null
-    private var settingsButtonView: AppCompatImageButton? = null
+    private var microphoneButtonView: ImageView? = null
+    private var settingsButtonView: ImageView? = null
     private var lastDisplayedVariations: List<String> = emptyList()
     private var currentInputConnection: android.view.inputmethod.InputConnection? = null
     private var isSwipeInProgress = false
@@ -829,9 +829,9 @@ class StatusBarController(
             context.resources.displayMetrics
         ).toInt()
         
-        val button = AppCompatImageButton(context).apply {
+        val button = ImageView(context).apply {
             background = null // Nessuno sfondo
-            setImageResource(R.drawable.ic_settings_24)
+            setImageResource(R.drawable.ic_edit_24)
             // Grigio quasi nero invece di bianco
             setColorFilter(Color.rgb(40, 40, 40)) // Grigio molto scuro, quasi nero
             scaleType = ImageView.ScaleType.FIT_CENTER
@@ -1390,13 +1390,13 @@ class StatusBarController(
     /**
      * Crea il pulsante microfono (usato nei suggerimenti).
      */
-    private fun createMicrophoneButton(buttonSize: Int): AppCompatImageButton {
+    private fun createMicrophoneButton(buttonSize: Int): ImageView {
         val drawable = GradientDrawable().apply {
             setColor(Color.rgb(17, 17, 17))
             setCornerRadius(0f)
         }
 
-        return AppCompatImageButton(context).apply {
+        return ImageView(context).apply {
             setImageResource(R.drawable.ic_baseline_mic_24)
             setColorFilter(Color.WHITE)
             background = drawable
@@ -1414,7 +1414,7 @@ class StatusBarController(
     /**
      * Creates a small settings button for the status bar (placed to the right of the microphone).
      */
-    private fun createStatusBarSettingsButton(buttonSize: Int): AppCompatImageButton {
+    private fun createStatusBarSettingsButton(buttonSize: Int): ImageView {
         // Smaller icon size - 60% of button size, then 10% smaller = 54% of button size
         val iconSize = (buttonSize * 0.54f).toInt()
         val dp3 = TypedValue.applyDimension(
@@ -1423,7 +1423,7 @@ class StatusBarController(
             context.resources.displayMetrics
         ).toInt()
         
-        return AppCompatImageButton(context).apply {
+        return ImageView(context).apply {
             setImageResource(R.drawable.ic_settings_24)
             // Dark gray color (not invasive)
             setColorFilter(Color.rgb(100, 100, 100))
@@ -1613,9 +1613,9 @@ class StatusBarController(
         variationsContainerView.addView(settingsButton, settingsParams)
         settingsButton.setOnClickListener {
             // Open Settings screen
-            val intent = Intent(context, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                putExtra("open_settings", true)
+            // FLAG_ACTIVITY_NEW_TASK is required when starting activity from a service
+            val intent = Intent(context, SettingsActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             try {
                 context.startActivity(intent)

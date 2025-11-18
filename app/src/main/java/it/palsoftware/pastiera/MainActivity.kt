@@ -167,14 +167,6 @@ fun KeyboardSetupScreen(
     val lastKeyEventState = remember { mutableStateOf<KeyboardEventTracker.KeyEventInfo?>(null) }
     val lastKeyEvent by lastKeyEventState
     
-    // State for navigation to settings
-    var showSettings by remember { mutableStateOf(false) }
-    
-    // Check if activity was opened from keyboard (to return to previous app on back)
-    val openedFromKeyboard = remember {
-        activity.intent.getBooleanExtra("open_settings", false)
-    }
-    
     // State for IME status
     var isPastieraEnabled by remember { mutableStateOf(false) }
     var isPastieraSelected by remember { mutableStateOf(false) }
@@ -196,14 +188,6 @@ fun KeyboardSetupScreen(
                 isPastieraEnabled = enabled
                 isPastieraSelected = selected
             }
-        }
-    }
-    
-    // Read the intent to open the Settings screen directly
-    LaunchedEffect(Unit) {
-        val intent = activity.intent
-        if (intent.getBooleanExtra("open_settings", false)) {
-            showSettings = true
         }
     }
     
@@ -239,71 +223,20 @@ fun KeyboardSetupScreen(
         }
     }
     
-    // Handle system back button - standard Android behavior
-    // Intercept only when we have internal navigation (Settings open) or when opened from keyboard
-    // When on main screen, finish activity to return to previous app if opened from keyboard
-    BackHandler(enabled = showSettings || openedFromKeyboard) {
-        when {
-            showSettings -> {
-                // If Settings is open, close Settings and return to Main
-                showSettings = false
-            }
-            openedFromKeyboard -> {
-                // If we're on main screen and activity was opened from keyboard, finish to return to previous app
-                activity.finish()
-            }
-        }
-    }
-    
-    // Conditional navigation with animations
-    AnimatedContent(
-        targetState = if (showSettings) "settings" else "main",
-        transitionSpec = {
-            when {
-                targetState == "settings" && initialState == "main" -> {
-                    // Slide from right when navigating to Settings
-                    slideInHorizontally(
-                        initialOffsetX = { it },
-                        animationSpec = tween(300)
-                    ) togetherWith fadeOut(animationSpec = tween(200))
-                }
-                targetState == "main" && initialState == "settings" -> {
-                    // Slide from left when going back to main
-                    slideInHorizontally(
-                        initialOffsetX = { -it },
-                        animationSpec = tween(300)
-                    ) togetherWith slideOutHorizontally(
-                        targetOffsetX = { it },
-                        animationSpec = tween(300)
-                    )
-                }
-                else -> {
-                    fadeIn(animationSpec = tween(200)) togetherWith fadeOut(animationSpec = tween(200))
-                }
-            }
-        },
-        modifier = modifier.fillMaxSize(),
-        label = "screen_transition"
-    ) { target ->
-        when (target) {
-            "settings" -> {
-                SettingsScreen(
-                    modifier = Modifier.fillMaxSize(),
-                    onBack = { showSettings = false }
-                )
-            }
-            else -> {
-                // Main screen
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState()),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+    // Main screen
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
         // Custom top bar with personalized graphics
         CustomTopBar(
-            onSettingsClick = { showSettings = true },
+            onSettingsClick = {
+                val settingsIntent = Intent(context, SettingsActivity::class.java)
+                context.startActivity(settingsIntent)
+            },
             modifier = Modifier.fillMaxWidth()
         )
         
@@ -530,9 +463,6 @@ fun KeyboardSetupScreen(
                             }
                         }
                     }
-                }
-            }
-        }
                 }
             }
         }

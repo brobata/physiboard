@@ -32,6 +32,9 @@ import androidx.compose.animation.core.tween
 import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import it.palsoftware.pastiera.R
 
 /**
@@ -39,8 +42,7 @@ import it.palsoftware.pastiera.R
  */
 @Composable
 fun SettingsScreen(
-    modifier: Modifier = Modifier,
-    onBack: () -> Unit
+    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     
@@ -132,7 +134,9 @@ fun SettingsScreen(
                 showKeyboardLayoutSettings = false
             }
             else -> {
-                onBack()
+                // Get activity from context to finish it
+                val activity = (context as? androidx.activity.ComponentActivity)
+                activity?.finish()
             }
         }
     }
@@ -193,7 +197,9 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             Surface(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.statusBars),
                 tonalElevation = 1.dp
             ) {
                 Row(
@@ -202,7 +208,11 @@ fun SettingsScreen(
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = {
+                        // Get activity from context to finish it
+                        val activity = (context as? androidx.activity.ComponentActivity)
+                        activity?.finish()
+                    }) {
                         Icon(
                             imageVector = Icons.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.settings_back_content_description)
