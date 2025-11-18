@@ -1265,12 +1265,14 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // Continue with normal IME logic for text fields
         val isBackKey = keyCode == KeyEvent.KEYCODE_BACK
         
-        // Handle Back to hide candidates view
+        // Handle Back to hide candidates view or close keyboard
         if (isBackKey) {
             if (isInputViewActive && !onEvaluateInputViewShown()) {
                 setCandidatesViewShown(false)
                 return true
             }
+            // Always let Back key pass through to close keyboard, even with modifiers active
+            return super.onKeyDown(keyCode, event)
         }
         
         // If we have a valid InputConnection but the keyboard is hidden,
@@ -1619,6 +1621,16 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             // Check if auto-close is enabled
             val autoCloseEnabled = SettingsManager.getSymAutoClose(this)
             
+            // Handle Back key: always close keyboard, even when SYM is active
+            if (keyCode == KeyEvent.KEYCODE_BACK) {
+                // Close SYM layout first
+                symPage = 0
+                prefs.edit().putInt("current_sym_page", 0).apply()
+                updateStatusBarText()
+                // Pass Back event to close keyboard
+                return super.onKeyDown(keyCode, event)
+            }
+            
             // Handle Enter key: close SYM and pass Enter event normally if auto-close is enabled
             if (keyCode == KeyEvent.KEYCODE_ENTER && autoCloseEnabled) {
                 // Close SYM layout first
@@ -1671,6 +1683,12 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             if (altOneShot) {
                 altOneShot = false
                 refreshStatusBar()
+            }
+            
+            // Eccezione per Back: chiude sempre la tastiera anche con Alt premuto
+            if (keyCode == KeyEvent.KEYCODE_BACK) {
+                // Lascia passare Back anche con Alt premuto per chiudere la tastiera
+                return super.onKeyDown(keyCode, event)
             }
             
             // FIX: Consumiamo Alt+Spazio per evitare il popup di selezione simboli di Android
@@ -1870,6 +1888,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 // Eccezione per Enter: continua a funzionare normalmente
                 if (keyCode == KeyEvent.KEYCODE_ENTER) {
                     // Lascia passare Enter anche con Ctrl premuto
+                    return super.onKeyDown(keyCode, event)
+                }
+                // Eccezione per Back: chiude sempre la tastiera anche con Ctrl premuto
+                if (keyCode == KeyEvent.KEYCODE_BACK) {
+                    // Lascia passare Back anche con Ctrl premuto per chiudere la tastiera
                     return super.onKeyDown(keyCode, event)
                 }
                 // For all other keys without mappings, consume the event
