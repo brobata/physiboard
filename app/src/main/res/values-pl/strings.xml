@@ -260,6 +260,13 @@
     
     <!-- Auto Correct Settings -->
     <string name="auto_correct_ricette_pastiera_name">Ricette Pastiera</string>
+    
+    <!-- Settings Categories -->
+    <string name="settings_category_keyboard_timing">Klawiatura &amp; Czasowanie</string>
+    <string name="settings_category_text_input">Wprowadzanie Tekstu</string>
+    <string name="settings_category_auto_correction">Auto-korekta</string>
+    <string name="settings_category_customization">Dostosowanie</string>
+    <string name="settings_category_advanced">Zaawansowane</string>
 </resources>
 
 

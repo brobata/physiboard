@@ -281,4 +281,11 @@
     
     <!-- Auto Correct Settings -->
     <string name="auto_correct_ricette_pastiera_name">Ricette Pastiera</string>
+    
+    <!-- Settings Categories -->
+    <string name="settings_category_keyboard_timing">Keyboard &amp; Timing</string>
+    <string name="settings_category_text_input">Text Input</string>
+    <string name="settings_category_auto_correction">Auto-correction</string>
+    <string name="settings_category_customization">Customization</string>
+    <string name="settings_category_advanced">Advanced</string>
 </resources>
