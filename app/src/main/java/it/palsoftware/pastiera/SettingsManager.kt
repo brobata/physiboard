@@ -33,6 +33,7 @@ object SettingsManager {
     private const val KEY_RESTORE_SYM_PAGE = "restore_sym_page" // SYM page to restore when returning from settings
     private const val KEY_PENDING_RESTORE_SYM_PAGE = "pending_restore_sym_page" // Temporary SYM page state saved when opening settings
     private const val KEY_SYM_AUTO_CLOSE = "sym_auto_close" // Auto-close SYM layout after key press
+    private const val KEY_DISMISSED_RELEASES = "dismissed_releases" // Set of release tag_names that were dismissed
     
     // Default values
     private const val DEFAULT_LONG_PRESS_THRESHOLD = 300L
@@ -971,6 +972,45 @@ object SettingsManager {
         getPreferences(context).edit()
             .putBoolean(KEY_SYM_AUTO_CLOSE, enabled)
             .apply()
+    }
+    
+    /**
+     * Returns the set of dismissed release tag names.
+     * @param context The context
+     * @return Set of release tag names that were dismissed by the user
+     */
+    fun getDismissedReleases(context: Context): Set<String> {
+        val prefs = getPreferences(context)
+        val dismissedString = prefs.getString(KEY_DISMISSED_RELEASES, null) ?: return emptySet()
+        return if (dismissedString.isBlank()) {
+            emptySet()
+        } else {
+            dismissedString.split(",").toSet()
+        }
+    }
+    
+    /**
+     * Adds a release tag name to the dismissed releases set.
+     * @param context The context
+     * @param tagName The release tag name to dismiss
+     */
+    fun addDismissedRelease(context: Context, tagName: String) {
+        val dismissed = getDismissedReleases(context).toMutableSet()
+        dismissed.add(tagName)
+        val dismissedString = dismissed.joinToString(",")
+        getPreferences(context).edit()
+            .putString(KEY_DISMISSED_RELEASES, dismissedString)
+            .apply()
+    }
+    
+    /**
+     * Checks if a release tag name has been dismissed.
+     * @param context The context
+     * @param tagName The release tag name to check
+     * @return true if the release was dismissed, false otherwise
+     */
+    fun isReleaseDismissed(context: Context, tagName: String): Boolean {
+        return getDismissedReleases(context).contains(tagName)
     }
 }
 

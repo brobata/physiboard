@@ -57,10 +57,24 @@ object KeyboardLayoutManager {
     private var currentLayout: Map<Int, LayoutMapping> = defaultLayout
     
     /**
-     * Loads a keyboard layout from assets.
-     * Layout files should be in common/layouts/{layout_name}.json
+     * Loads a keyboard layout from assets or custom files.
+     * First tries to load from custom files (filesDir), then falls back to assets.
+     * Layout files should be in common/layouts/{layout_name}.json (assets)
+     * or keyboard_layouts/{layout_name}.json (custom files).
      */
-    fun loadLayout(assets: AssetManager, layoutName: String): Map<Int, LayoutMapping> {
+    fun loadLayout(assets: AssetManager, layoutName: String, context: Context? = null): Map<Int, LayoutMapping> {
+        // Try to load from custom files first if context is provided
+        if (context != null) {
+            val customLayout = KeyboardLayoutFileManager.loadLayoutFromFile(
+                KeyboardLayoutFileManager.getLayoutFile(context, layoutName)
+            )
+            if (customLayout != null) {
+                Log.d(TAG, "Loaded custom layout: $layoutName with ${customLayout.size} mappings")
+                return customLayout
+            }
+        }
+        
+        // Fallback to assets
         return try {
             val filePath = "common/layouts/$layoutName.json"
             val inputStream: InputStream = assets.open(filePath)
@@ -114,7 +128,7 @@ object KeyboardLayoutManager {
                 }
             }
             
-            Log.d(TAG, "Loaded layout: $layoutName with ${layout.size} mappings")
+            Log.d(TAG, "Loaded layout from assets: $layoutName with ${layout.size} mappings")
             layout
         } catch (e: Exception) {
             Log.e(TAG, "Error loading layout: $layoutName, falling back to default", e)
@@ -165,11 +179,18 @@ object KeyboardLayoutManager {
     }
     
     /**
-     * Gets all available layout names from assets.
+     * Gets all available layout names from assets and custom files.
+     * @param assets The AssetManager for loading built-in layouts
+     * @param context Optional context for loading custom layouts
+     * @return Combined list of layout names (custom layouts first, then built-in)
      */
-    fun getAvailableLayouts(assets: AssetManager): List<String> {
+    fun getAvailableLayouts(assets: AssetManager, context: Context? = null): List<String> {
+        val layouts = mutableSetOf<String>()
+        context?.let {
+            layouts.addAll(KeyboardLayoutFileManager.getCustomLayoutNames(it))
+        }
+
         return try {
-            val layouts = mutableListOf<String>()
             val layoutFiles = assets.list("common/layouts")
             layoutFiles?.forEach { fileName ->
                 if (fileName.endsWith(".json")) {
@@ -178,8 +199,8 @@ object KeyboardLayoutManager {
             }
             layouts.sorted()
         } catch (e: Exception) {
-            Log.e(TAG, "Error getting available layouts", e)
-            emptyList()
+            Log.e(TAG, "Error getting available layouts from assets", e)
+            layouts.sorted()
         }
     }
 }

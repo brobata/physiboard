@@ -8,6 +8,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
@@ -36,6 +37,10 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import it.palsoftware.pastiera.R
+import android.widget.Toast
+import it.palsoftware.pastiera.BuildConfig
+import it.palsoftware.pastiera.update.checkForUpdate
+import it.palsoftware.pastiera.update.showUpdateDialog
 
 /**
  * App settings screen.
@@ -91,6 +96,21 @@ fun SettingsScreen(
         mutableStateOf(SettingsManager.getLauncherShortcutsEnabled(context))
     }
     
+    var checkingForUpdates by remember { mutableStateOf(false) }
+    
+    // Automatic update check on screen open (only once, respecting dismissed releases)
+    LaunchedEffect(Unit) {
+        checkForUpdate(
+            context = context,
+            currentVersion = BuildConfig.VERSION_NAME,
+            ignoreDismissedReleases = true
+        ) { hasUpdate, latestVersion, downloadUrl ->
+            if (hasUpdate && latestVersion != null) {
+                showUpdateDialog(context, latestVersion, downloadUrl)
+            }
+        }
+    }
+
     // Load saved keyboard layout value for display
     val keyboardLayout = remember { 
         SettingsManager.getKeyboardLayout(context)
@@ -976,6 +996,84 @@ fun SettingsScreen(
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    tonalElevation = 0.dp,
+                    shadowElevation = 0.dp,
+                    shape = MaterialTheme.shapes.extraSmall,
+                    color = MaterialTheme.colorScheme.surfaceVariant
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp, horizontal = 12.dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.settings_update_section_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = stringResource(R.string.settings_update_section_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = {
+                                checkingForUpdates = true
+                                checkForUpdate(
+                                    context = context,
+                                    currentVersion = BuildConfig.VERSION_NAME,
+                                    ignoreDismissedReleases = false
+                                ) { hasUpdate, latestVersion, downloadUrl ->
+                                    checkingForUpdates = false
+                                    when {
+                                        latestVersion == null -> {
+                                            Toast.makeText(
+                                                context,
+                                                context.getString(R.string.settings_update_check_failed),
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                        hasUpdate -> showUpdateDialog(context, latestVersion, downloadUrl)
+                                        else -> {
+                                            Toast.makeText(
+                                                context,
+                                                context.getString(R.string.settings_update_up_to_date),
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                    }
+                                }
+                            },
+                            enabled = !checkingForUpdates,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            if (checkingForUpdates) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    CircularProgressIndicator(
+                                        strokeWidth = 2.dp,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(stringResource(R.string.settings_update_checking))
+                                }
+                            } else {
+                                Text(stringResource(R.string.settings_update_button))
+                            }
+                        }
                     }
                 }
 

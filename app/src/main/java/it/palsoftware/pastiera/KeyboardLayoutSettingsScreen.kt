@@ -1,6 +1,8 @@
 package it.palsoftware.pastiera
 
 import android.content.Context
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -13,14 +15,23 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Keyboard
-import androidx.activity.compose.BackHandler
+import androidx.compose.material.icons.filled.*
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import it.palsoftware.pastiera.inputmethod.KeyboardLayoutManager
+import it.palsoftware.pastiera.inputmethod.KeyboardLayoutFileManager
 import it.palsoftware.pastiera.R
+import kotlinx.coroutines.launch
+import java.util.Locale
+
+private data class PendingLayoutSave(
+    val fileName: String,
+    val json: String
+)
 
 /**
  * Settings screen for keyboard layout selection.
@@ -37,14 +48,89 @@ fun KeyboardLayoutSettingsScreen(
         mutableStateOf(SettingsManager.getKeyboardLayout(context))
     }
     
-    // Get available keyboard layouts from assets (excluding qwerty as it's the default)
-    val availableLayouts = remember {
+    // Refresh trigger for custom layouts
+    var refreshTrigger by remember { mutableStateOf(0) }
+    
+    // Get available keyboard layouts from assets and custom files (excluding qwerty as it's the default)
+    val availableLayouts = remember(refreshTrigger) {
+        KeyboardLayoutManager.getAvailableLayouts(context.assets, context)
+            .filter { it != "qwerty" && !KeyboardLayoutFileManager.layoutExists(context, it) }
+    }
+    
+    // Snackbar host state for showing messages
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+    var pendingLayoutSave by remember { mutableStateOf<PendingLayoutSave?>(null) }
+    
+    // File picker launcher for importing layouts
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let {
+            try {
+                context.contentResolver.openInputStream(it)?.use { inputStream ->
+                    val layout = KeyboardLayoutFileManager.loadLayoutFromStream(inputStream)
+                    if (layout != null) {
+                        // Generate a unique name based on timestamp
+                        val layoutName = "custom_${System.currentTimeMillis()}"
+                        val success = KeyboardLayoutFileManager.saveLayout(
+                            context = context,
+                            layoutName = layoutName,
+                            layout = layout,
+                            name = "Imported Layout",
+                            description = "Imported from file"
+                        )
+                        if (success) {
+                            refreshTrigger++
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar("Layout imported successfully")
+                            }
+                        } else {
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar("Failed to import layout")
+                            }
+                        }
+                    } else {
+                        coroutineScope.launch {
+                            snackbarHostState.showSnackbar("Invalid layout file")
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                coroutineScope.launch {
+                    snackbarHostState.showSnackbar("Error importing layout: ${e.message}")
+                }
+            }
+        }
+    }
+    
+    val createDocumentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        val pending = pendingLayoutSave
+        pendingLayoutSave = null
+        if (pending == null) {
+            return@rememberLauncherForActivityResult
+        }
+
+        if (uri == null) {
+            coroutineScope.launch {
+                snackbarHostState.showSnackbar("Save canceled")
+            }
+            return@rememberLauncherForActivityResult
+        }
+
         try {
-            context.assets.list("common/layouts")?.map { 
-                it.removeSuffix(".json") 
-            }?.filter { it != "qwerty" }?.sorted() ?: emptyList()
+            context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                outputStream.write(pending.json.toByteArray())
+            }
+            coroutineScope.launch {
+                snackbarHostState.showSnackbar("Layout saved successfully")
+            }
         } catch (e: Exception) {
-            emptyList()
+            coroutineScope.launch {
+                snackbarHostState.showSnackbar("Error saving layout: ${e.message}")
+            }
         }
     }
     
@@ -70,11 +156,63 @@ fun KeyboardLayoutSettingsScreen(
                         text = stringResource(R.string.keyboard_layout_title),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(start = 8.dp)
+                        modifier = Modifier
+                            .padding(start = 8.dp)
+                            .weight(1f)
                     )
+                    // Save button
+                    IconButton(
+                        onClick = {
+                            val currentLayout = KeyboardLayoutManager.getLayout()
+                            if (currentLayout.isNotEmpty()) {
+                                val metadata = KeyboardLayoutFileManager.getLayoutMetadataFromAssets(
+                                    context.assets,
+                                    selectedLayout
+                                ) ?: KeyboardLayoutFileManager.getLayoutMetadata(context, selectedLayout)
+
+                                val displayName = metadata?.name ?: selectedLayout
+                                val description = metadata?.description
+
+                                val jsonString = KeyboardLayoutFileManager.buildLayoutJsonString(
+                                    layoutName = selectedLayout,
+                                    layout = currentLayout,
+                                    name = displayName,
+                                    description = description
+                                )
+
+                                val sanitizedName = displayName
+                                    .lowercase(Locale.ROOT)
+                                    .replace("\\s+".toRegex(), "_")
+                                val suggestedFileName = "${sanitizedName}_${System.currentTimeMillis()}.json"
+
+                                pendingLayoutSave = PendingLayoutSave(
+                                    fileName = suggestedFileName,
+                                    json = jsonString
+                                )
+                                createDocumentLauncher.launch(suggestedFileName)
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Save,
+                            contentDescription = "Save layout"
+                        )
+                    }
+                    // Import button
+                    IconButton(
+                        onClick = {
+                            filePickerLauncher.launch("application/json")
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Add,
+                            contentDescription = "Import layout"
+                        )
+                    }
                 }
             }
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         AnimatedContent(
             targetState = Unit,
@@ -87,6 +225,7 @@ fun KeyboardLayoutSettingsScreen(
                 modifier = modifier
                     .fillMaxWidth()
                     .padding(paddingValues)
+                    .windowInsetsPadding(WindowInsets.statusBars)
                     .verticalScroll(rememberScrollState())
             ) {
                 // Description
@@ -144,8 +283,6 @@ fun KeyboardLayoutSettingsScreen(
                     }
                 }
                 
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
-                
                 // Layout Conversions Section
                 Text(
                     text = stringResource(R.string.keyboard_layout_conversions_title),
@@ -163,6 +300,11 @@ fun KeyboardLayoutSettingsScreen(
                 
                 // Available layout conversions
                 availableLayouts.forEach { layout ->
+                    val metadata = KeyboardLayoutFileManager.getLayoutMetadataFromAssets(
+                        context.assets,
+                        layout
+                    ) ?: KeyboardLayoutFileManager.getLayoutMetadata(context, layout)
+                    
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -187,13 +329,13 @@ fun KeyboardLayoutSettingsScreen(
                             )
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = layout.replaceFirstChar { it.uppercase() },
+                                    text = metadata?.name ?: layout.replaceFirstChar { it.uppercase() },
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Medium,
                                     maxLines = 1
                                 )
                                 Text(
-                                    text = getLayoutDescription(context, layout),
+                                    text = metadata?.description ?: getLayoutDescription(context, layout),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 2
@@ -218,16 +360,20 @@ fun KeyboardLayoutSettingsScreen(
 
 /**
  * Gets the description for a layout from its JSON file.
+ * Tries custom files first, then falls back to assets.
  */
 private fun getLayoutDescription(context: Context, layoutName: String): String {
-    return try {
-        val filePath = "common/layouts/$layoutName.json"
-        val inputStream = context.assets.open(filePath)
-        val jsonString = inputStream.bufferedReader().use { it.readText() }
-        val jsonObject = org.json.JSONObject(jsonString)
-        jsonObject.optString("description", "")
-    } catch (e: Exception) {
-        ""
+    // Try custom layout first
+    val customMetadata = KeyboardLayoutFileManager.getLayoutMetadata(context, layoutName)
+    if (customMetadata != null) {
+        return customMetadata.description
     }
+    
+    // Fallback to assets
+    val assetsMetadata = KeyboardLayoutFileManager.getLayoutMetadataFromAssets(
+        context.assets,
+        layoutName
+    )
+    return assetsMetadata?.description ?: ""
 }
 

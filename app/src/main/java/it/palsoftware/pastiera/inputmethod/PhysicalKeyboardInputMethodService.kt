@@ -342,7 +342,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
      */
     private fun loadKeyboardLayout() {
         val layoutName = SettingsManager.getKeyboardLayout(this)
-        val layout = KeyboardLayoutManager.loadLayout(assets, layoutName)
+        val layout = KeyboardLayoutManager.loadLayout(assets, layoutName, this)
         KeyboardLayoutManager.setLayout(layout)
         Log.d(TAG, "Keyboard layout loaded: $layoutName")
     }

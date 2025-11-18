@@ -272,6 +272,12 @@
     <string name="settings_nav_mode_configure">Configure navigation mode key mappings</string>
     <string name="settings_trackpad_debug_title">Trackpad Debug</string>
     <string name="settings_trackpad_debug_description">Test trackpad/touch-sensitive keyboard events</string>
+    <string name="settings_update_section_title">Updates</string>
+    <string name="settings_update_section_description">Check the latest release on GitHub.</string>
+    <string name="settings_update_button">Check for updates</string>
+    <string name="settings_update_checking">Checking for updates…</string>
+    <string name="settings_update_up_to_date">App is up to date.</string>
+    <string name="settings_update_check_failed">Unable to reach GitHub.</string>
     
     <!-- Auto Correct Settings -->
     <string name="auto_correct_ricette_pastiera_name">Ricette Pastiera</string>

@@ -7,6 +7,9 @@
     
     <!-- Permesso per il riconoscimento vocale -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    
+    <!-- Permesso per l'accesso a Internet (richiesto per il controllo aggiornamenti) -->
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <!-- Query per vedere tutte le app installate che possono essere avviate -->
     <queries>
