@@ -25,6 +25,7 @@ import android.view.InputDevice
 import it.palsoftware.pastiera.inputmethod.MotionEventTracker
 import it.palsoftware.pastiera.core.ModifierStateController
 import it.palsoftware.pastiera.core.NavModeController
+import it.palsoftware.pastiera.core.SymLayoutController
 import it.palsoftware.pastiera.data.layout.LayoutMappingRepository
 import it.palsoftware.pastiera.data.mappings.KeyMappingLoader
 import it.palsoftware.pastiera.data.variation.VariationRepository
@@ -52,9 +53,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
 
     // Keycode for the SYM key
     private val KEYCODE_SYM = 63
-    
-    // State to track the active SYM page (0=disabled, 1=page1 emoji, 2=page2 characters)
-    private var symPage = 0
     
     // Mapping Ctrl+key -> action or keycode (loaded from JSON)
     private val ctrlKeyMap = mutableMapOf<Int, KeyMappingLoader.CtrlMapping>()
@@ -144,9 +142,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     // Current package name
     private var currentPackageName: String? = null
     
-    // Modifier/nav controllers
+    // Modifier/nav/SYM controllers
     private lateinit var modifierStateController: ModifierStateController
     private lateinit var navModeController: NavModeController
+    private lateinit var symLayoutController: SymLayoutController
     
     // Auto-capitalize helper state
     private val autoCapitalizeState = AutoCapitalizeHelper.AutoCapitalizeState()
@@ -154,6 +153,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     // Constants
     private val DOUBLE_TAP_THRESHOLD = 500L
     private val CURSOR_UPDATE_DELAY = 50L
+
+    private val symPage: Int
+        get() = if (::symLayoutController.isInitialized) symLayoutController.currentSymPage() else 0
 
     private fun refreshStatusBar() {
         updateStatusBarText()
@@ -290,19 +292,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             onUpdateStatusBar = { updateStatusBarText() }
         )
         
-        // Restore SYM layout if it was active when SymCustomizationActivity was opened
-        val restoreSymPage = SettingsManager.getRestoreSymPage(this)
-        if (restoreSymPage > 0) {
-            symPage = restoreSymPage
-            // Save current symPage to SharedPreferences
-            prefs.edit().putInt("current_sym_page", symPage).apply()
-            // Clear restore state after restoring
-            SettingsManager.clearRestoreSymPage(this)
-            // Update status bar to show SYM layout
-            Handler(Looper.getMainLooper()).post {
-                updateStatusBarText()
-            }
-        }
+        symLayoutController.restoreSymPageIfNeeded { updateStatusBarText() }
         
         altSymManager.reloadLongPressThreshold()
         altSymManager.resetTransientState()
@@ -528,6 +518,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         altSymManager.onAltCharInserted = { char ->
             updateStatusBarText()
         }
+        symLayoutController = SymLayoutController(this, prefs, altSymManager)
         
         // Initialize keyboard layout
         loadKeyboardLayout()
@@ -646,7 +637,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     }
 
     override fun onCreateInputView(): View? {
-        val layout = statusBarController.getOrCreateLayout(altSymManager.buildEmojiMapText())
+        val layout = statusBarController.getOrCreateLayout(symLayoutController.emojiMapTextForLayout())
         
         if (layout.parent != null) {
             (layout.parent as? android.view.ViewGroup)?.removeView(layout)
@@ -661,7 +652,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
      * Uses a separate StatusBarController instance to provide identical functionality.
      */
     override fun onCreateCandidatesView(): View? {
-        val layout = candidatesViewController.getOrCreateLayout(altSymManager.buildEmojiMapText())
+        val layout = candidatesViewController.getOrCreateLayout(symLayoutController.emojiMapTextForLayout())
 
         if (layout.parent != null) {
             (layout.parent as? android.view.ViewGroup)?.removeView(layout)
@@ -709,7 +700,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             onNavModeCancelled = { navModeController.cancelNotification() }
         )
         
-        symPage = 0
+        symLayoutController.reset()
         altSymManager.resetTransientState()
         deactivateVariations()
         refreshStatusBar()
@@ -735,7 +726,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             return
         }
         
-        val layout = statusBarController.getOrCreateLayout(altSymManager.buildEmojiMapText())
+        val layout = statusBarController.getOrCreateLayout(symLayoutController.emojiMapTextForLayout())
         refreshStatusBar()
 
         if (layout.parent == null) {
@@ -863,13 +854,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             shouldDisableSmartFeatures = shouldDisableSmartFeatures
         )
         // Passa anche la mappa emoji quando SYM è attivo (solo pagina 1)
-        val emojiMapText = if (symPage == 1) altSymManager.buildEmojiMapText() else ""
+        val emojiMapText = symLayoutController.emojiMapText()
         // Passa le mappature SYM per la griglia emoji/caratteri
-        val symMappings = when (symPage) {
-            1 -> altSymManager.getSymMappings()
-            2 -> altSymManager.getSymMappings2()
-            else -> null
-        }
+        val symMappings = symLayoutController.currentSymMappings()
         // Passa l'inputConnection per rendere i pulsanti clickabili
         val inputConnection = currentInputConnection
         statusBarController.update(snapshot, emojiMapText, inputConnection, symMappings)
@@ -1403,6 +1390,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         
         // Handle double-tap Alt to toggle Alt latch
         if (keyCode == KeyEvent.KEYCODE_ALT_LEFT || keyCode == KeyEvent.KEYCODE_ALT_RIGHT) {
+            if (symLayoutController.isSymActive()) {
+                if (symLayoutController.closeSymPage()) {
+                    updateStatusBarText()
+                }
+            }
             if (!altPressed) {
                 val result = modifierStateController.handleAltKeyDown(keyCode)
                 if (result.shouldUpdateStatusBar) {
@@ -1414,10 +1406,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         
         // Handle SYM key (toggle/latch with 3 states: disabled -> page1 -> page2 -> disabled)
         if (keyCode == KEYCODE_SYM) {
-            // Cycle between the 3 states: 0 -> 1 -> 2 -> 0
-            symPage = (symPage + 1) % 3
-            // Save current symPage to SharedPreferences for potential restore
-            prefs.edit().putInt("current_sym_page", symPage).apply()
+            symLayoutController.toggleSymPage()
             updateStatusBarText()
             // Consume the event to prevent Android from handling it
             return true
@@ -1444,62 +1433,23 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         
         // If SYM is active, check SYM mappings first (they take precedence over Alt and Ctrl)
         // When SYM is active, all other modifiers are bypassed
-        if (symPage > 0) {
-            // Check if auto-close is enabled
-            val autoCloseEnabled = SettingsManager.getSymAutoClose(this)
-            
-            // Handle Back key: always close keyboard, even when SYM is active
-            if (keyCode == KeyEvent.KEYCODE_BACK) {
-                // Close SYM layout first
-                symPage = 0
-                prefs.edit().putInt("current_sym_page", 0).apply()
-                updateStatusBarText()
-                // Pass Back event to close keyboard
-                return super.onKeyDown(keyCode, event)
-            }
-            
-            // Handle Enter key: close SYM and pass Enter event normally if auto-close is enabled
-            if (keyCode == KeyEvent.KEYCODE_ENTER && autoCloseEnabled) {
-                // Close SYM layout first
-                symPage = 0
-                prefs.edit().putInt("current_sym_page", 0).apply()
-                updateStatusBarText()
-                // Pass Enter event normally (as if SYM was never active)
-                return super.onKeyDown(keyCode, event)
-            }
-            
-            // Handle Alt key: close SYM if auto-close is enabled (but not if Ctrl or Shift are also pressed)
-            // Only close if Alt is pressed alone (not with other keys)
-            if ((keyCode == KeyEvent.KEYCODE_ALT_LEFT || keyCode == KeyEvent.KEYCODE_ALT_RIGHT) && 
-                autoCloseEnabled && 
-                !(event?.isCtrlPressed == true || event?.isShiftPressed == true)) {
-                symPage = 0
-                prefs.edit().putInt("current_sym_page", 0).apply()
-                updateStatusBarText()
-                // Consume Alt to prevent it from being handled as Alt+key combination
-                return true
-            }
-            
-            val symChar = when (symPage) {
-                1 -> altSymManager.getSymMappings()[keyCode]
-                2 -> altSymManager.getSymMappings2()[keyCode]
-                else -> null
-            }
-            if (symChar != null) {
-                // Insert emoji or character from SYM map
-                ic.commitText(symChar, 1)
-                
-                // Auto-close SYM after inserting character if enabled and no modifiers are pressed
-                if (autoCloseEnabled && 
-                    !(event?.isCtrlPressed == true || event?.isShiftPressed == true || 
-                      event?.isAltPressed == true || ctrlLatchActive || altLatchActive)) {
-                    symPage = 0
-                    prefs.edit().putInt("current_sym_page", 0).apply()
-                    updateStatusBarText()
+        val shouldBypassSymForCtrl = event?.isCtrlPressed == true || ctrlLatchActive || ctrlOneShot
+        if (!shouldBypassSymForCtrl && symLayoutController.isSymActive()) {
+            when (
+                symLayoutController.handleKeyWhenActive(
+                    keyCode,
+                    event,
+                    ic,
+                    ctrlLatchActive = ctrlLatchActive,
+                    altLatchActive = altLatchActive,
+                    updateStatusBar = { updateStatusBarText() }
+                )
+            ) {
+                SymLayoutController.SymKeyResult.CONSUME -> return true
+                SymLayoutController.SymKeyResult.CALL_SUPER -> return super.onKeyDown(keyCode, event)
+                SymLayoutController.SymKeyResult.NOT_HANDLED -> {
+                    // Continue with normal processing
                 }
-                
-                // Consume the event
-                return true
             }
         }
         
@@ -1940,7 +1890,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             return true
         }
         
-        if (altSymManager.handleKeyUp(keyCode, symPage > 0, shiftPressed)) {
+        if (symLayoutController.handleKeyUp(keyCode, shiftPressed)) {
             return true
         }
         
