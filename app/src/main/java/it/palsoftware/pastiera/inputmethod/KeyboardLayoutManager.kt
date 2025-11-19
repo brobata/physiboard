@@ -172,6 +172,55 @@ object KeyboardLayoutManager {
     }
     
     /**
+     * Gets the character for a given keyCode considering all modifier states.
+     * This is the centralized method for character retrieval that handles:
+     * - Caps Lock
+     * - Shift pressed
+     * - Shift one-shot (auto-capitalize)
+     * 
+     * @param keyCode The physical key code
+     * @param isShiftPressed Whether Shift is currently physically pressed
+     * @param capsLockEnabled Whether Caps Lock is active
+     * @param shiftOneShot Whether auto-capitalize (shift one-shot) is active
+     * @return The appropriate character from the layout, or null if not mapped
+     */
+    fun getCharacterWithModifiers(
+        keyCode: Int,
+        isShiftPressed: Boolean,
+        capsLockEnabled: Boolean,
+        shiftOneShot: Boolean
+    ): Char? {
+        val mapping = currentLayout[keyCode] ?: return null
+        
+        // Determine if we need uppercase based on modifier states
+        val needsUppercase = when {
+            // Shift one-shot (auto-capitalize) takes precedence
+            shiftOneShot -> true
+            // Caps Lock active: uppercase unless Shift is pressed (which forces lowercase)
+            capsLockEnabled && !isShiftPressed -> true
+            // Shift physically pressed
+            isShiftPressed -> true
+            // Default: lowercase
+            else -> false
+        }
+        
+        return if (needsUppercase) mapping.uppercase else mapping.lowercase
+    }
+    
+    /**
+     * Gets the character string for a given keyCode considering all modifier states.
+     * Convenience method that returns a String instead of Char?.
+     */
+    fun getCharacterStringWithModifiers(
+        keyCode: Int,
+        isShiftPressed: Boolean,
+        capsLockEnabled: Boolean,
+        shiftOneShot: Boolean
+    ): String {
+        return getCharacterWithModifiers(keyCode, isShiftPressed, capsLockEnabled, shiftOneShot)?.toString() ?: ""
+    }
+    
+    /**
      * Returns true if the keyCode is mapped in the current layout.
      */
     fun isMapped(keyCode: Int): Boolean {

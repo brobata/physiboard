@@ -157,16 +157,27 @@ class AltSymManager(
         pressedKeys[keyCode] = System.currentTimeMillis()
         longPressActivated[keyCode] = false
 
-        // Use layout character if provided, otherwise fall back to event's unicode character
-        var normalChar = if (layoutChar != null) {
-            layoutChar.toString()
-        } else if (event != null && event.unicodeChar != 0) {
-            event.unicodeChar.toChar().toString()
+        // Use centralized character retrieval from layout manager when key is mapped
+        var normalChar = if (KeyboardLayoutManager.isMapped(keyCode)) {
+            KeyboardLayoutManager.getCharacterStringWithModifiers(
+                keyCode,
+                isShiftPressed = event?.isShiftPressed == true,
+                capsLockEnabled = capsLockEnabled,
+                shiftOneShot = shiftOneShot
+            )
         } else {
-            ""
+            // Fallback: use layout character if provided, otherwise fall back to event's unicode character
+            if (layoutChar != null) {
+                layoutChar.toString()
+            } else if (event != null && event.unicodeChar != 0) {
+                event.unicodeChar.toChar().toString()
+            } else {
+                ""
+            }
         }
 
-        if (normalChar.isNotEmpty()) {
+        // For unmapped keys, apply case conversion if needed (fallback only)
+        if (normalChar.isNotEmpty() && !KeyboardLayoutManager.isMapped(keyCode)) {
             // Gestisci shiftOneShot: se è attivo e il carattere è una lettera, rendilo maiuscolo
             if (shiftOneShot && normalChar.isNotEmpty() && normalChar[0].isLetter()) {
                 normalChar = normalChar.uppercase()
@@ -189,9 +200,10 @@ class AltSymManager(
         
         // Only schedule long press if:
         // - Using Alt and key has Alt mapping, OR
-        // - Using Shift and character is a letter
+        // - Using Shift and key is mapped in layout (works for any character, not just letters)
         val shouldScheduleLongPress = if (useShift) {
-            normalChar.isNotEmpty() && normalChar[0].isLetter()
+            // For Shift long press: schedule if key is mapped in layout (supports all characters)
+            KeyboardLayoutManager.isMapped(keyCode) && normalChar.isNotEmpty()
         } else {
             altKeyMap.containsKey(keyCode)
         }
@@ -252,18 +264,36 @@ class AltSymManager(
                 val insertedChar = insertedNormalChars[keyCode]
                 
                 if (useShift) {
-                    // Long press with Shift: make the character uppercase
-                    if (insertedChar != null && insertedChar.isNotEmpty() && insertedChar[0].isLetter()) {
+                    // Long press with Shift: get uppercase from layout (always use JSON for mapped keys)
+                    if (KeyboardLayoutManager.isMapped(keyCode)) {
+                        // Always use JSON to get uppercase character (works correctly for complex layouts like Arabic)
+                        val upperChar = KeyboardLayoutManager.getUppercase(keyCode)
+                        if (upperChar != null) {
+                            longPressActivated[keyCode] = true
+                            val upperCharString = upperChar.toString()
+                            
+                            // Delete the previously inserted character and insert uppercase from JSON
+                            inputConnection.deleteSurroundingText(1, 0)
+                            inputConnection.commitText(upperCharString, 1)
+                            
+                            insertedNormalChars.remove(keyCode)
+                            longPressRunnables.remove(keyCode)
+                            Log.d(TAG, "Long press Shift per keyCode $keyCode -> $upperCharString")
+                            // Notify that a character was inserted
+                            onAltCharInserted?.invoke(upperChar)
+                        }
+                    } else if (insertedChar != null && insertedChar.isNotEmpty() && insertedChar[0].isLetter()) {
+                        // Fallback for unmapped keys only: use Kotlin uppercase (not ideal but necessary)
                         longPressActivated[keyCode] = true
                         val upperChar = insertedChar.uppercase()
                         
-                        // Delete the lowercase character and insert uppercase
+                        // Delete the previously inserted character and insert uppercase
                         inputConnection.deleteSurroundingText(1, 0)
                         inputConnection.commitText(upperChar, 1)
                         
                         insertedNormalChars.remove(keyCode)
                         longPressRunnables.remove(keyCode)
-                        Log.d(TAG, "Long press Shift per keyCode $keyCode -> $upperChar")
+                        Log.d(TAG, "Long press Shift per keyCode $keyCode -> $upperChar (fallback)")
                         // Notify that a character was inserted
                         if (upperChar.isNotEmpty()) {
                             onAltCharInserted?.invoke(upperChar[0])

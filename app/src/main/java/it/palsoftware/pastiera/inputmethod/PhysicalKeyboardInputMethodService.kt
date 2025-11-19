@@ -1952,9 +1952,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         
         // Handle Shift one-shot for keys without Alt mapping
         if (shiftOneShot) {
-            val charFromLayout = getCharacterStringFromLayout(keyCode, event, isShift = true)
-            if (charFromLayout.isNotEmpty() && charFromLayout[0].isLetter()) {
-                val char = charFromLayout.uppercase()
+            val char = KeyboardLayoutManager.getCharacterStringWithModifiers(
+                keyCode,
+                isShiftPressed = event?.isShiftPressed == true,
+                capsLockEnabled = capsLockEnabled,
+                shiftOneShot = true
+            )
+            if (char.isNotEmpty() && char[0].isLetter()) {
                 // Disable shift one-shot (used when letter is typed)
                 shiftOneShot = false
                 shiftOneShotEnabledTime = 0
@@ -1970,22 +1974,14 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         
         // When there is no mapping, handle Caps Lock for regular characters.
         // Apply Caps Lock to alphabetical characters.
-        val charFromLayout = getCharacterStringFromLayout(keyCode, event, event?.isShiftPressed == true)
-        if (charFromLayout.isNotEmpty() && charFromLayout[0].isLetter()) {
-            var char = charFromLayout
-            var shouldConsume = false
-            
-            // Apply Caps Lock when active (but only if Shift is not pressed)
-            if (capsLockEnabled && event?.isShiftPressed != true) {
-                char = char.uppercase()
-                shouldConsume = true
-            } else if (capsLockEnabled && event?.isShiftPressed == true) {
-                // When Caps Lock is active and Shift is pressed, force lowercase
-                char = char.lowercase()
-                shouldConsume = true
-            }
-            
-            if (shouldConsume) {
+        if (capsLockEnabled && KeyboardLayoutManager.isMapped(keyCode)) {
+            val char = KeyboardLayoutManager.getCharacterStringWithModifiers(
+                keyCode,
+                isShiftPressed = event?.isShiftPressed == true,
+                capsLockEnabled = capsLockEnabled,
+                shiftOneShot = false
+            )
+            if (char.isNotEmpty() && char[0].isLetter()) {
                 ic.commitText(char, 1)
                 Handler(Looper.getMainLooper()).postDelayed({
                     updateStatusBarText()
@@ -1996,7 +1992,16 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         
         // When there is no mapping, check whether the character has variations.
         // If it does, handle it ourselves so we can show variation suggestions.
-        val charForVariations = getCharacterFromLayout(keyCode, event, event?.isShiftPressed == true)
+        val charForVariations = if (KeyboardLayoutManager.isMapped(keyCode)) {
+            KeyboardLayoutManager.getCharacterWithModifiers(
+                keyCode,
+                isShiftPressed = event?.isShiftPressed == true,
+                capsLockEnabled = capsLockEnabled,
+                shiftOneShot = shiftOneShot
+            )
+        } else {
+            getCharacterFromLayout(keyCode, event, event?.isShiftPressed == true)
+        }
         if (charForVariations != null) {
             // Check whether the character has variations
             if (variationsMap.containsKey(charForVariations)) {
@@ -2016,21 +2021,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // Check if this is an alphabetic key that should be converted
         val isAlphabeticKey = isAlphabeticKey(keyCode)
         if (isAlphabeticKey && KeyboardLayoutManager.isMapped(keyCode)) {
-            val convertedChar = getCharacterFromLayout(keyCode, event, event?.isShiftPressed == true)
-            if (convertedChar != null && convertedChar.isLetter()) {
-                // Get the character from the layout and insert it ourselves
-                // This overrides Android's system layout handling
-                var char = convertedChar.toString()
-                
-                // Apply Caps Lock if enabled (but only if Shift is not pressed)
-                if (capsLockEnabled && event?.isShiftPressed != true) {
-                    char = char.uppercase()
-                } else if (capsLockEnabled && event?.isShiftPressed == true) {
-                    // When Caps Lock is active and Shift is pressed, force lowercase
-                    char = char.lowercase()
-                }
-                
-                
+            val char = KeyboardLayoutManager.getCharacterStringWithModifiers(
+                keyCode,
+                isShiftPressed = event?.isShiftPressed == true,
+                capsLockEnabled = capsLockEnabled,
+                shiftOneShot = shiftOneShot
+            )
+            if (char.isNotEmpty() && char[0].isLetter()) {
                 // Insert the converted character
                 ic.commitText(char, 1)
                 
