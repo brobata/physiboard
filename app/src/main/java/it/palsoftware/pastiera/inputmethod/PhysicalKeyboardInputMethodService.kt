@@ -17,13 +17,14 @@ import android.view.inputmethod.InputConnection
 import it.palsoftware.pastiera.inputmethod.KeyboardEventTracker
 import android.os.Handler
 import android.os.Looper
-import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import android.view.MotionEvent
 import android.view.InputDevice
 import it.palsoftware.pastiera.inputmethod.MotionEventTracker
+import it.palsoftware.pastiera.core.ModifierStateController
+import it.palsoftware.pastiera.core.NavModeController
 import it.palsoftware.pastiera.data.layout.LayoutMappingRepository
 import it.palsoftware.pastiera.data.mappings.KeyMappingLoader
 import it.palsoftware.pastiera.data.variation.VariationRepository
@@ -68,60 +69,60 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     
     // Accessor properties for backwards compatibility with existing code
     private var capsLockEnabled: Boolean
-        get() = shiftState.latchActive
-        set(value) { shiftState.latchActive = value }
+        get() = modifierStateController.capsLockEnabled
+        set(value) { modifierStateController.capsLockEnabled = value }
     
     private var shiftPressed: Boolean
-        get() = shiftState.pressed
-        set(value) { shiftState.pressed = value }
+        get() = modifierStateController.shiftPressed
+        set(value) { modifierStateController.shiftPressed = value }
     
     private var ctrlLatchActive: Boolean
-        get() = ctrlState.latchActive
-        set(value) { ctrlState.latchActive = value }
+        get() = modifierStateController.ctrlLatchActive
+        set(value) { modifierStateController.ctrlLatchActive = value }
     
     private var altLatchActive: Boolean
-        get() = altState.latchActive
-        set(value) { altState.latchActive = value }
+        get() = modifierStateController.altLatchActive
+        set(value) { modifierStateController.altLatchActive = value }
     
     private var ctrlPressed: Boolean
-        get() = ctrlState.pressed
-        set(value) { ctrlState.pressed = value }
+        get() = modifierStateController.ctrlPressed
+        set(value) { modifierStateController.ctrlPressed = value }
     
     private var altPressed: Boolean
-        get() = altState.pressed
-        set(value) { altState.pressed = value }
+        get() = modifierStateController.altPressed
+        set(value) { modifierStateController.altPressed = value }
     
     private var shiftPhysicallyPressed: Boolean
-        get() = shiftState.physicallyPressed
-        set(value) { shiftState.physicallyPressed = value }
+        get() = modifierStateController.shiftPhysicallyPressed
+        set(value) { modifierStateController.shiftPhysicallyPressed = value }
     
     private var ctrlPhysicallyPressed: Boolean
-        get() = ctrlState.physicallyPressed
-        set(value) { ctrlState.physicallyPressed = value }
+        get() = modifierStateController.ctrlPhysicallyPressed
+        set(value) { modifierStateController.ctrlPhysicallyPressed = value }
     
     private var altPhysicallyPressed: Boolean
-        get() = altState.physicallyPressed
-        set(value) { altState.physicallyPressed = value }
+        get() = modifierStateController.altPhysicallyPressed
+        set(value) { modifierStateController.altPhysicallyPressed = value }
     
     private var shiftOneShot: Boolean
-        get() = autoCapitalizeState.shiftOneShot
-        set(value) { autoCapitalizeState.shiftOneShot = value }
+        get() = modifierStateController.shiftOneShot
+        set(value) { modifierStateController.shiftOneShot = value }
     
     private var ctrlOneShot: Boolean
-        get() = ctrlState.oneShot
-        set(value) { ctrlState.oneShot = value }
+        get() = modifierStateController.ctrlOneShot
+        set(value) { modifierStateController.ctrlOneShot = value }
     
     private var altOneShot: Boolean
-        get() = altState.oneShot
-        set(value) { altState.oneShot = value }
+        get() = modifierStateController.altOneShot
+        set(value) { modifierStateController.altOneShot = value }
     
     private var shiftOneShotEnabledTime: Long
-        get() = autoCapitalizeState.shiftOneShotEnabledTime
-        set(value) { autoCapitalizeState.shiftOneShotEnabledTime = value }
+        get() = modifierStateController.shiftOneShotEnabledTime
+        set(value) { modifierStateController.shiftOneShotEnabledTime = value }
     
     private var ctrlLatchFromNavMode: Boolean
-        get() = ctrlState.latchFromNavMode
-        set(value) { ctrlState.latchFromNavMode = value }
+        get() = modifierStateController.ctrlLatchFromNavMode
+        set(value) { modifierStateController.ctrlLatchFromNavMode = value }
     
     // Double-tap tracking on space to insert period and space
     private var lastSpacePressTime: Long = 0
@@ -143,11 +144,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     // Current package name
     private var currentPackageName: String? = null
     
-    // Modifier key handler
-    private lateinit var modifierKeyHandler: ModifierKeyHandler
-    private val shiftState = ModifierKeyHandler.ShiftState()
-    private val ctrlState = ModifierKeyHandler.CtrlState()
-    private val altState = ModifierKeyHandler.AltState()
+    // Modifier/nav controllers
+    private lateinit var modifierStateController: ModifierStateController
+    private lateinit var navModeController: NavModeController
     
     // Auto-capitalize helper state
     private val autoCapitalizeState = AutoCapitalizeHelper.AutoCapitalizeState()
@@ -158,35 +157,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
 
     private fun refreshStatusBar() {
         updateStatusBarText()
-    }
-    
-    /**
-     * Syncs shiftState.oneShot with autoCapitalizeState.shiftOneShot.
-     * This ensures both states stay synchronized when Shift is manually pressed.
-     * When shiftOneShot is enabled/disabled by user action (Shift key press),
-     * both states are updated.
-     */
-    private fun syncShiftOneShotFromShiftState() {
-        autoCapitalizeState.shiftOneShot = shiftState.oneShot
-        if (shiftState.oneShot && shiftState.oneShotEnabledTime > 0) {
-            autoCapitalizeState.shiftOneShotEnabledTime = shiftState.oneShotEnabledTime
-        } else if (!shiftState.oneShot) {
-            autoCapitalizeState.shiftOneShotEnabledTime = 0
-        }
-    }
-    
-    /**
-     * Syncs autoCapitalizeState.shiftOneShot with shiftState.oneShot.
-     * This ensures both states stay synchronized when shiftOneShot is used (letter typed)
-     * or disabled by other logic.
-     */
-    private fun syncShiftOneShotToShiftState() {
-        shiftState.oneShot = autoCapitalizeState.shiftOneShot
-        if (autoCapitalizeState.shiftOneShot && autoCapitalizeState.shiftOneShotEnabledTime > 0) {
-            shiftState.oneShotEnabledTime = autoCapitalizeState.shiftOneShotEnabledTime
-        } else if (!autoCapitalizeState.shiftOneShot) {
-            shiftState.oneShotEnabledTime = 0
-        }
     }
     
     /**
@@ -307,9 +277,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         if (ctrlLatchFromNavMode && ctrlLatchActive) {
             val inputConnection = currentInputConnection
             if (inputConnection != null) {
-                ctrlLatchFromNavMode = false
-                ctrlLatchActive = false
-                NotificationHelper.cancelNavModeNotification(this)
+                navModeController.exitNavMode()
             }
         }
         
@@ -530,7 +498,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         
         NotificationHelper.createNotificationChannel(this)
         
-        modifierKeyHandler = ModifierKeyHandler(DOUBLE_TAP_THRESHOLD)
+        modifierStateController = ModifierStateController(DOUBLE_TAP_THRESHOLD, autoCapitalizeState)
+        navModeController = NavModeController(this, modifierStateController)
         
         statusBarController = StatusBarController(this)
         candidatesViewController = StatusBarController(this)
@@ -735,32 +704,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
      * @param preserveNavMode If true, keeps Ctrl latch active when nav mode is enabled.
      */
     private fun resetModifierStates(preserveNavMode: Boolean = false) {
-        val savedCtrlLatch = if (preserveNavMode && (ctrlLatchActive || ctrlLatchFromNavMode)) {
-            if (ctrlLatchActive) {
-                ctrlLatchFromNavMode = true
-                true
-            } else if (ctrlLatchFromNavMode) {
-                true
-            } else {
-                false
-            }
-        } else {
-            false
-        }
-        
-        modifierKeyHandler.resetShiftState(shiftState)
-        capsLockEnabled = false
-        AutoCapitalizeHelper.reset(autoCapitalizeState)
-        
-        if (preserveNavMode && savedCtrlLatch) {
-            ctrlLatchActive = true
-        } else {
-            if (ctrlLatchFromNavMode || ctrlLatchActive) {
-                NotificationHelper.cancelNavModeNotification(this)
-            }
-            modifierKeyHandler.resetCtrlState(ctrlState, preserveNavMode = false)
-        }
-        modifierKeyHandler.resetAltState(altState)
+        modifierStateController.resetModifiers(
+            preserveNavMode = preserveNavMode,
+            onNavModeCancelled = { navModeController.cancelNotification() }
+        )
         
         symPage = 0
         altSymManager.resetTransientState()
@@ -809,121 +756,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     
     private fun isInputConnectionAvailable(): Boolean {
         return currentInputConnection != null
-    }
-
-    private fun isNavModeActive(): Boolean {
-        return ctrlLatchActive && ctrlLatchFromNavMode
-    }
-
-    private fun isNavModeKey(keyCode: Int): Boolean {
-        val navModeEnabled = SettingsManager.getNavModeEnabled(this)
-        val navModeActive = isNavModeActive()
-        if (!navModeEnabled && !navModeActive) {
-            return false
-        }
-        val isCtrlKey = keyCode == KeyEvent.KEYCODE_CTRL_LEFT || keyCode == KeyEvent.KEYCODE_CTRL_RIGHT
-        return isCtrlKey || navModeActive
-    }
-
-    private fun sendMappedDpadKey(mappedKeyCode: Int, event: KeyEvent?): Boolean {
-        val inputConnection = currentInputConnection ?: return false
-        val downTime = event?.downTime ?: SystemClock.uptimeMillis()
-        val eventTime = event?.eventTime ?: downTime
-        val metaState = event?.metaState ?: 0
-
-        val downEvent = KeyEvent(
-            downTime,
-            eventTime,
-            KeyEvent.ACTION_DOWN,
-            mappedKeyCode,
-            0,
-            metaState
-        )
-        val upEvent = KeyEvent(
-            downTime,
-            eventTime,
-            KeyEvent.ACTION_UP,
-            mappedKeyCode,
-            0,
-            metaState
-        )
-        inputConnection.sendKeyEvent(downEvent)
-        inputConnection.sendKeyEvent(upEvent)
-        Log.d(TAG, "Nav mode: dispatched DPAD keycode $mappedKeyCode")
-        return true
-    }
-
-    private fun applyNavModeResult(result: NavModeHandler.NavModeResult) {
-        result.ctrlLatchActive?.let { latchActive ->
-            ctrlLatchActive = latchActive
-            if (latchActive) {
-                ctrlLatchFromNavMode = true
-                NotificationHelper.showNavModeActivatedNotification(this)
-            } else if (ctrlLatchFromNavMode) {
-                ctrlLatchFromNavMode = false
-                NotificationHelper.cancelNavModeNotification(this)
-            }
-        }
-        result.ctrlPhysicallyPressed?.let { ctrlPhysicallyPressed = it }
-        result.ctrlPressed?.let { ctrlPressed = it }
-        result.lastCtrlReleaseTime?.let { ctrlState.lastReleaseTime = it }
-    }
-
-    private fun handleNavModeKey(keyCode: Int, event: KeyEvent?, isKeyDown: Boolean): Boolean {
-        val navModeEnabled = SettingsManager.getNavModeEnabled(this)
-        val navModeActive = isNavModeActive()
-        if (!navModeEnabled && !navModeActive) {
-            return false
-        }
-
-        val isCtrlKey = keyCode == KeyEvent.KEYCODE_CTRL_LEFT || keyCode == KeyEvent.KEYCODE_CTRL_RIGHT
-        if (isCtrlKey) {
-            if (isKeyDown) {
-                val (shouldConsume, result) = NavModeHandler.handleCtrlKeyDown(
-                    keyCode,
-                    ctrlPressed,
-                    ctrlLatchActive,
-                    ctrlState.lastReleaseTime
-                )
-                applyNavModeResult(result)
-                if (shouldConsume) {
-                    ctrlPressed = true
-                }
-                return shouldConsume
-            } else {
-                val result = NavModeHandler.handleCtrlKeyUp()
-                applyNavModeResult(result)
-                ctrlPressed = false
-                return true
-            }
-        }
-
-        if (!isKeyDown) {
-            return isNavModeActive()
-        }
-
-        if (!isNavModeActive()) {
-            return false
-        }
-
-        if (!isInputConnectionAvailable()) {
-            return false
-        }
-
-        val ctrlMapping = ctrlKeyMap[keyCode] ?: return false
-        if (ctrlMapping.type != "keycode") {
-            return false
-        }
-
-        val mappedKeyCode = when (ctrlMapping.value) {
-            "DPAD_UP" -> KeyEvent.KEYCODE_DPAD_UP
-            "DPAD_DOWN" -> KeyEvent.KEYCODE_DPAD_DOWN
-            "DPAD_LEFT" -> KeyEvent.KEYCODE_DPAD_LEFT
-            "DPAD_RIGHT" -> KeyEvent.KEYCODE_DPAD_RIGHT
-            else -> null
-        } ?: return false
-
-        return sendMappedDpadKey(mappedKeyCode, event)
     }
     
     /**
@@ -1013,17 +845,18 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // Aggiorna le variazioni controllando il carattere prima del cursore
         updateVariationsFromCursor()
         
+        val modifierSnapshot = modifierStateController.snapshot()
         val snapshot = StatusBarController.StatusSnapshot(
-            capsLockEnabled = capsLockEnabled,
-            shiftPhysicallyPressed = shiftPhysicallyPressed,
-            shiftOneShot = shiftOneShot,
-            ctrlLatchActive = ctrlLatchActive,
-            ctrlPhysicallyPressed = ctrlPhysicallyPressed,
-            ctrlOneShot = ctrlOneShot,
-            ctrlLatchFromNavMode = ctrlLatchFromNavMode,
-            altLatchActive = altLatchActive,
-            altPhysicallyPressed = altPhysicallyPressed,
-            altOneShot = altOneShot,
+            capsLockEnabled = modifierSnapshot.capsLockEnabled,
+            shiftPhysicallyPressed = modifierSnapshot.shiftPhysicallyPressed,
+            shiftOneShot = modifierSnapshot.shiftOneShot,
+            ctrlLatchActive = modifierSnapshot.ctrlLatchActive,
+            ctrlPhysicallyPressed = modifierSnapshot.ctrlPhysicallyPressed,
+            ctrlOneShot = modifierSnapshot.ctrlOneShot,
+            ctrlLatchFromNavMode = modifierSnapshot.ctrlLatchFromNavMode,
+            altLatchActive = modifierSnapshot.altLatchActive,
+            altPhysicallyPressed = modifierSnapshot.altPhysicallyPressed,
+            altOneShot = modifierSnapshot.altOneShot,
             symPage = symPage,
             variations = if (variationsActive) availableVariations else emptyList(),
             lastInsertedChar = lastInsertedChar,
@@ -1093,9 +926,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 val hasValidInputConnection = inputConnection != null
                 
                 if (isReallyEditable && hasValidInputConnection) {
-                    NotificationHelper.cancelNavModeNotification(this)
-                    ctrlLatchFromNavMode = false
-                    ctrlLatchActive = false
+                    navModeController.exitNavMode()
                     resetModifierStates(preserveNavMode = false)
                 }
             } else if (isEditable || !ctrlLatchFromNavMode) {
@@ -1228,17 +1059,20 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // If NO editable field is active, handle ONLY nav mode
         if (!hasEditableField) {
             if (keyCode == KeyEvent.KEYCODE_BACK) {
-                if (isNavModeActive()) {
-                    ctrlLatchActive = false
-                    ctrlLatchFromNavMode = false
-                    NotificationHelper.cancelNavModeNotification(this)
+                if (navModeController.isNavModeActive()) {
+                    navModeController.exitNavMode()
                     return false
                 }
                 return super.onKeyDown(keyCode, event)
             }
 
-            if (isNavModeKey(keyCode)) {
-                return handleNavModeKey(keyCode, event, isKeyDown = true)
+            if (navModeController.isNavModeKey(keyCode)) {
+                return navModeController.handleNavModeKey(
+                    keyCode,
+                    event,
+                    isKeyDown = true,
+                    ctrlKeyMap = ctrlKeyMap
+                ) { currentInputConnection }
             }
             
             // Handle launcher shortcuts (only when nav mode is not active)
@@ -1259,9 +1093,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // If we have an editable field, nav mode must NOT be active
         // Deactivate nav mode if it was active
         if (ctrlLatchFromNavMode && ctrlLatchActive) {
-            ctrlLatchActive = false
-            ctrlLatchFromNavMode = false
-            NotificationHelper.cancelNavModeNotification(this)
+            navModeController.exitNavMode()
         }
         
         // Continue with normal IME logic for text fields
@@ -1537,11 +1369,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // Handle double-tap Shift to toggle Caps Lock
         if (keyCode == KeyEvent.KEYCODE_SHIFT_LEFT || keyCode == KeyEvent.KEYCODE_SHIFT_RIGHT) {
             if (!shiftPressed) {
-                val result = modifierKeyHandler.handleShiftKeyDown(keyCode, shiftState)
-                // Sync shiftState.oneShot with autoCapitalizeState.shiftOneShot
-                // User manually pressed Shift - sync from shiftState to autoCapitalizeState
-                syncShiftOneShotFromShiftState()
-                shiftPressed = true
+                val result = modifierStateController.handleShiftKeyDown(keyCode)
                 if (result.shouldUpdateStatusBar) {
                     updateStatusBarText()
                 } else if (result.shouldRefreshStatusBar) {
@@ -1554,15 +1382,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // Handle double-tap Ctrl to toggle Ctrl latch
         if (keyCode == KeyEvent.KEYCODE_CTRL_LEFT || keyCode == KeyEvent.KEYCODE_CTRL_RIGHT) {
             if (!ctrlPressed) {
-                val result = modifierKeyHandler.handleCtrlKeyDown(
+                val result = modifierStateController.handleCtrlKeyDown(
                     keyCode,
-                    ctrlState,
                     isInputViewActive,
                     onNavModeDeactivated = {
-                        NotificationHelper.cancelNavModeNotification(this)
+                        navModeController.cancelNotification()
                     }
                 )
-                ctrlPressed = true
                 if (result.shouldConsume) {
                     if (result.shouldUpdateStatusBar) {
                         updateStatusBarText()
@@ -1578,8 +1404,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // Handle double-tap Alt to toggle Alt latch
         if (keyCode == KeyEvent.KEYCODE_ALT_LEFT || keyCode == KeyEvent.KEYCODE_ALT_RIGHT) {
             if (!altPressed) {
-                val result = modifierKeyHandler.handleAltKeyDown(keyCode, altState)
-                altPressed = true
+                val result = modifierStateController.handleAltKeyDown(keyCode)
                 if (result.shouldUpdateStatusBar) {
                     updateStatusBarText()
                 }
@@ -1946,7 +1771,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 shiftOneShot = false
                 shiftOneShotEnabledTime = 0
                 // Sync to shiftState
-                syncShiftOneShotToShiftState()
+                modifierStateController.syncShiftOneShotToShiftState()
                 updateStatusBarText()
             }
             return true
@@ -1965,7 +1790,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 shiftOneShot = false
                 shiftOneShotEnabledTime = 0
                 // Sync to shiftState
-                syncShiftOneShotToShiftState()
+                modifierStateController.syncShiftOneShotToShiftState()
                 ic.commitText(char, 1)
                 Handler(Looper.getMainLooper()).postDelayed({
                     updateStatusBarText()
@@ -2056,8 +1881,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         
         // If NO editable field is active, handle ONLY nav mode Ctrl release
         if (!hasEditableField) {
-            if (isNavModeKey(keyCode)) {
-                return handleNavModeKey(keyCode, event, isKeyDown = false)
+            if (navModeController.isNavModeKey(keyCode)) {
+                return navModeController.handleNavModeKey(
+                    keyCode,
+                    event,
+                    isKeyDown = false,
+                    ctrlKeyMap = ctrlKeyMap
+                ) { currentInputConnection }
             }
             // Not handled by nav mode, pass to Android
             return super.onKeyUp(keyCode, event)
@@ -2072,11 +1902,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // Handle Shift release for double-tap
         if (keyCode == KeyEvent.KEYCODE_SHIFT_LEFT || keyCode == KeyEvent.KEYCODE_SHIFT_RIGHT) {
             if (shiftPressed) {
-                val result = modifierKeyHandler.handleShiftKeyUp(keyCode, shiftState)
-                // Sync shiftState.oneShot with autoCapitalizeState.shiftOneShot
+                val result = modifierStateController.handleShiftKeyUp(keyCode)
                 // Shift one-shot remains active until used (when letter is typed)
-                syncShiftOneShotFromShiftState()
-                shiftPressed = false
+                modifierStateController.syncShiftOneShotFromShiftState()
                 if (result.shouldUpdateStatusBar) {
                     updateStatusBarText()
                 }
@@ -2087,8 +1915,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // Handle Ctrl release for double-tap
         if (keyCode == KeyEvent.KEYCODE_CTRL_LEFT || keyCode == KeyEvent.KEYCODE_CTRL_RIGHT) {
             if (ctrlPressed) {
-                val result = modifierKeyHandler.handleCtrlKeyUp(keyCode, ctrlState)
-                ctrlPressed = false
+                val result = modifierStateController.handleCtrlKeyUp(keyCode)
                 if (result.shouldUpdateStatusBar) {
                     updateStatusBarText()
                 }
@@ -2099,8 +1926,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // Handle Alt release for double-tap
         if (keyCode == KeyEvent.KEYCODE_ALT_LEFT || keyCode == KeyEvent.KEYCODE_ALT_RIGHT) {
             if (altPressed) {
-                val result = modifierKeyHandler.handleAltKeyUp(keyCode, altState)
-                altPressed = false
+                val result = modifierStateController.handleAltKeyUp(keyCode)
                 if (result.shouldUpdateStatusBar) {
                     updateStatusBarText()
                 }
