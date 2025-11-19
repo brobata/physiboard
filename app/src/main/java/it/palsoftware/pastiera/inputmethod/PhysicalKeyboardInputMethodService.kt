@@ -23,9 +23,11 @@ import android.content.pm.ResolveInfo
 import android.view.MotionEvent
 import android.view.InputDevice
 import it.palsoftware.pastiera.inputmethod.MotionEventTracker
+import it.palsoftware.pastiera.core.AutoCorrectionManager
 import it.palsoftware.pastiera.core.ModifierStateController
 import it.palsoftware.pastiera.core.NavModeController
 import it.palsoftware.pastiera.core.SymLayoutController
+import it.palsoftware.pastiera.core.TextInputController
 import it.palsoftware.pastiera.data.layout.LayoutMappingRepository
 import it.palsoftware.pastiera.data.mappings.KeyMappingLoader
 import it.palsoftware.pastiera.data.variation.VariationRepository
@@ -122,9 +124,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         get() = modifierStateController.ctrlLatchFromNavMode
         set(value) { modifierStateController.ctrlLatchFromNavMode = value }
     
-    // Double-tap tracking on space to insert period and space
-    private var lastSpacePressTime: Long = 0
-    
     // Flag to track whether we are in a valid input context
     private var isInputViewActive = false
     
@@ -146,6 +145,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private lateinit var modifierStateController: ModifierStateController
     private lateinit var navModeController: NavModeController
     private lateinit var symLayoutController: SymLayoutController
+    private lateinit var textInputController: TextInputController
+    private lateinit var autoCorrectionManager: AutoCorrectionManager
     
     // Auto-capitalize helper state
     private val autoCapitalizeState = AutoCapitalizeHelper.AutoCapitalizeState()
@@ -254,7 +255,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                     currentInputConnection,
                     shouldDisableSmartFeatures,
                     autoCapitalizeState,
-                    delayMs = 100L,
                     onUpdateStatusBar = { updateStatusBarText() }
                 )
             }
@@ -288,7 +288,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             currentInputConnection,
             shouldDisableSmartFeatures,
             autoCapitalizeState,
-            delayMs = 100L,
             onUpdateStatusBar = { updateStatusBarText() }
         )
         
@@ -490,6 +489,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         
         modifierStateController = ModifierStateController(DOUBLE_TAP_THRESHOLD, autoCapitalizeState)
         navModeController = NavModeController(this, modifierStateController)
+        textInputController = TextInputController(
+            context = this,
+            modifierStateController = modifierStateController,
+            autoCapitalizeState = autoCapitalizeState,
+            doubleTapThreshold = DOUBLE_TAP_THRESHOLD
+        )
+        autoCorrectionManager = AutoCorrectionManager(this)
         
         statusBarController = StatusBarController(this)
         candidatesViewController = StatusBarController(this)
@@ -1108,250 +1114,57 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             ensureInputViewCreated()
         }
         
-        // ========== AUTO-CORRECTION HANDLING ==========
-        // Skip all auto-correction, suggestions, and text modifications for restricted fields
+        // ========== TEXT INPUT HELPERS ==========
         val isAutoCorrectEnabled = SettingsManager.getAutoCorrectEnabled(this) && !shouldDisableSmartFeatures
-        
-        // HANDLE BACKSPACE TO UNDO AUTO-CORRECTION (BEFORE normal handling)
-        if (isAutoCorrectEnabled && keyCode == KeyEvent.KEYCODE_DEL) {
-            // Check whether there is a correction to undo
-            val correction = AutoCorrector.getLastCorrection()
-            
-            if (correction != null) {
-                // Get the text before the cursor to verify that it matches the correction
-                val textBeforeCursor = ic.getTextBeforeCursor(
-                    correction.correctedWord.length + 2, // +2 per sicurezza (spazio/punteggiatura)
-                    0
-                )
-                
-                if (textBeforeCursor != null && 
-                    textBeforeCursor.length >= correction.correctedWord.length) {
-                    
-                    // Extract the last characters (they may include space/punctuation)
-                    val lastChars = textBeforeCursor.substring(
-                        maxOf(0, textBeforeCursor.length - correction.correctedWord.length - 1)
-                    )
-                    
-                    // Verify that the text matches the correction.
-                    // The corrected word may be followed by space or punctuation.
-                    if (lastChars.endsWith(correction.correctedWord) ||
-                        lastChars.trimEnd().endsWith(correction.correctedWord)) {
-                        
-                        // Delete the corrected word (and any trailing space/punctuation).
-                        // First count how many characters must be deleted.
-                        val charsToDelete = if (lastChars.endsWith(correction.correctedWord)) {
-                            correction.correctedWord.length
-                        } else {
-                            // C'è spazio/punteggiatura dopo, cancelliamo anche quello
-                            var deleteCount = correction.correctedWord.length
-                            var i = textBeforeCursor.length - 1
-                            while (i >= 0 && i >= textBeforeCursor.length - deleteCount - 1 &&
-                                   (textBeforeCursor[i].isWhitespace() || 
-                                    textBeforeCursor[i] in ".,;:!?()[]{}\"'")) {
-                                deleteCount++
-                                i--
-                            }
-                            deleteCount
-                        }
-                        
-                        // Delete characters
-                        ic.deleteSurroundingText(charsToDelete, 0)
-                        
-                        // Reinsert the original word
-                        ic.commitText(correction.originalWord, 1)
-                        
-                        // Undo the correction
-                        AutoCorrector.undoLastCorrection()
-                        
-                        Log.d(TAG, "Auto-correction undone: '${correction.correctedWord}' → '${correction.originalWord}'")
-                        updateStatusBarText()
-                        return true // Consume the event, do not handle backspace further
-                    }
-                }
-            }
-        }
-        
-        // HANDLE DOUBLE-TAP SPACE TO INSERT PERIOD AND SPACE (BEFORE auto-correction)
-        // Disabled for restricted fields
-        val isSpace = keyCode == KeyEvent.KEYCODE_SPACE
-        if (isSpace && !shouldDisableSmartFeatures) {
-            val doubleSpaceToPeriodEnabled = SettingsManager.getDoubleSpaceToPeriod(this)
-            if (doubleSpaceToPeriodEnabled) {
-                val currentTime = System.currentTimeMillis()
-                // Check whether this is a double-tap on space (second tap within DOUBLE_TAP_THRESHOLD)
-                val isDoubleTap = lastSpacePressTime > 0 && 
-                                 (currentTime - lastSpacePressTime) < DOUBLE_TAP_THRESHOLD
-                
-                if (isDoubleTap) {
-                    // When space is pressed the second time, in onKeyDown the second space has NOT yet been inserted.
-                    // So we check whether there is already a space before the cursor (from the first tap).
-                    val textBeforeCursor = ic.getTextBeforeCursor(100, 0)
-                    if (textBeforeCursor != null && textBeforeCursor.endsWith(" ")) {
-                        // Exception: if there are already multiple consecutive spaces,
-                        // do not trigger replacement. Check if there is another space before.
-                        if (textBeforeCursor.length >= 2 && textBeforeCursor[textBeforeCursor.length - 2] == ' ') {
-                            // Multiple spaces already present, do not trigger replacement.
-                            Log.d(TAG, "Double-tap space ignored: multiple spaces already present")
-                            // Do not reset lastSpacePressTime here so that the next space is still a potential double-tap.
-                        } else {
-                            // Find the last non-space character before the space
-                            var lastCharIndex = textBeforeCursor.length - 2 // Index of last character before space
-                            while (lastCharIndex >= 0 && textBeforeCursor[lastCharIndex].isWhitespace()) {
-                                lastCharIndex--
-                            }
-                            
-                            // Check whether the last non-space character is alphabetical
-                            if (lastCharIndex >= 0) {
-                                val lastChar = textBeforeCursor[lastCharIndex]
-                                if (lastChar.isLetter()) {
-                                    // Last character is a letter, proceed with replacement.
-                                    // There is a space from the first tap; delete it and insert ". "
-                                    ic.deleteSurroundingText(1, 0)
-                                    ic.commitText(". ", 1)
-                                    
-                                    // Enable shiftOneShot to capitalize the next letter
-                                    shiftOneShot = true
-                                    shiftOneShotEnabledTime = System.currentTimeMillis()
-                                    updateStatusBarText()
-                                    
-                                    Log.d(TAG, "Double-tap space: inserted '. ' and enabled shiftOneShot (last character: '$lastChar')")
-                                    
-                                    // Reset to avoid triple-tap
-                                    lastSpacePressTime = 0
-                                    return true // Consume the event to prevent space insertion
-                                } else {
-                                    // Last character is not alphabetical (punctuation, number, etc.).
-                                    // Do not trigger replacement, let the space be inserted normally.
-                                    Log.d(TAG, "Double-tap space ignored: last character is not alphabetical ('$lastChar')")
-                                    // Do not reset lastSpacePressTime here so that the next space is still a potential double-tap.
-                                }
-                            } else {
-                                // No character found before space (empty field).
-                                // Insert ". " anyway.
-                                ic.deleteSurroundingText(1, 0)
-                                ic.commitText(". ", 1)
-                                
-                                // Enable shiftOneShot to capitalize the next letter
-                                shiftOneShot = true
-                                shiftOneShotEnabledTime = System.currentTimeMillis()
-                                updateStatusBarText()
-                                
-                                Log.d(TAG, "Double-tap space: inserted '. ' and enabled shiftOneShot (empty field)")
-                                
-                                // Reset to avoid triple-tap
-                                lastSpacePressTime = 0
-                                return true // Consume the event to prevent space insertion
-                            }
-                        }
-                    } else {
-                        // No space found before the cursor (edge case).
-                        // This should not happen in a normal double-tap, but handle it anyway:
-                        // do nothing special and let the space be inserted normally.
-                        Log.d(TAG, "Double-tap space: no space found before cursor")
-                    }
-                }
-                
-                // Update timestamp of last space press
-                lastSpacePressTime = currentTime
-            } else {
-                // If the feature is disabled, reset timestamp
-                lastSpacePressTime = 0
-            }
-        } else {
-            // If this is not space, reset timestamp after a certain time
-            // (to avoid late double-tap detection)
-            if (lastSpacePressTime > 0) {
-                val currentTime = System.currentTimeMillis()
-                if (currentTime - lastSpacePressTime >= DOUBLE_TAP_THRESHOLD) {
-                    lastSpacePressTime = 0
-                }
-            }
+
+        if (
+            autoCorrectionManager.handleBackspaceUndo(
+                keyCode,
+                ic,
+                isAutoCorrectEnabled
+            ) { updateStatusBarText() }
+        ) {
+            return true
         }
 
-        // ========== AUTO-CAPITALIZE AFTER PERIOD ==========
-        val autoCapitalizeAfterPeriodEnabled = SettingsManager.getAutoCapitalizeAfterPeriod(this) && !shouldDisableSmartFeatures
-        if (autoCapitalizeAfterPeriodEnabled &&
-            keyCode == KeyEvent.KEYCODE_SPACE && !shiftOneShot) {
-            AutoCapitalizeHelper.enableAfterPunctuation(
+        if (
+            textInputController.handleDoubleSpaceToPeriod(
+                keyCode,
                 ic,
-                autoCapitalizeState,
-                onUpdateStatusBar = { updateStatusBarText() }
-            )
+                shouldDisableSmartFeatures
+            ) { updateStatusBarText() }
+        ) {
+            return true
         }
 
-        // HANDLE AUTO-CORRECTION FOR SPACE AND PUNCTUATION
-        if (isAutoCorrectEnabled) {
-            // Controlla se è spazio o punteggiatura
-            val isPunctuation = event?.unicodeChar != null &&
-                               event.unicodeChar != 0 &&
-                               event.unicodeChar.toChar() in ".,;:!?()[]{}\"'"
-            
-            if (isSpace || isPunctuation) {
-                // Get text before cursor
-                val textBeforeCursor = ic.getTextBeforeCursor(100, 0)
-                
-                // Process and obtain correction if available
-                val correction = AutoCorrector.processText(textBeforeCursor, context = this)
-                
-                if (correction != null) {
-                    val (wordToReplace, correctedWord) = correction
-                    
-                    // Delete the word to be corrected
-                    ic.deleteSurroundingText(wordToReplace.length, 0)
-                    
-                    // Insert the corrected word
-                    ic.commitText(correctedWord, 1)
-                    
-                    // Record the correction so it can be undone
-                    AutoCorrector.recordCorrection(
-                        originalWord = wordToReplace,
-                        correctedWord = correctedWord
-                    )
-                    
-                    // If it was space, insert it after the correction
-                    if (isSpace) {
-                        ic.commitText(" ", 1)
-                    } else if (isPunctuation && event?.unicodeChar != null && event.unicodeChar != 0) {
-                        // If it was punctuation, insert it after the correction
-                        val punctChar = event.unicodeChar.toChar().toString()
-                        ic.commitText(punctChar, 1)
-                    }
-                    
-                    updateStatusBarText()
-                    return true // Consume the event
-                }
-            }
-        }
-        
-        // ACCEPT CORRECTION WHEN ANY OTHER KEY IS PRESSED
-        // (except backspace, which is already handled above)
-        if (isAutoCorrectEnabled && keyCode != KeyEvent.KEYCODE_DEL) {
-            // Any key other than backspace accepts the correction.
-            // This includes characters, modifiers, arrows, etc.
-            AutoCorrector.acceptLastCorrection()
-            
-            // If a normal character (not a modifier) is typed, reset rejected words
-            // because the user may have changed the text.
-            if (event != null && event.unicodeChar != 0) {
-                val char = event.unicodeChar.toChar()
-                // Solo per caratteri alfabetici o numerici (non modificatori, frecce, ecc.)
-                if (char.isLetterOrDigit()) {
-                    AutoCorrector.clearRejectedWords()
-                }
-            }
-        }
-        // ========== END AUTO-CORRECTION HANDLING ==========
-        
-        // ========== AUTO-CAPITALIZE AFTER ENTER ==========
-        if (keyCode == KeyEvent.KEYCODE_ENTER && !shouldDisableSmartFeatures) {
-            AutoCapitalizeHelper.enableAfterEnter(
-                this,
+        textInputController.handleAutoCapAfterPeriod(
+            keyCode,
+            ic,
+            shouldDisableSmartFeatures
+        ) { updateStatusBarText() }
+
+        textInputController.handleAutoCapAfterEnter(
+            keyCode,
+            ic,
+            shouldDisableSmartFeatures
+        ) { updateStatusBarText() }
+
+        if (
+            autoCorrectionManager.handleSpaceOrPunctuation(
+                keyCode,
+                event,
                 ic,
-                shouldDisableSmartFeatures,
-                autoCapitalizeState,
-                onUpdateStatusBar = { updateStatusBarText() }
-            )
+                isAutoCorrectEnabled
+            ) { updateStatusBarText() }
+        ) {
+            return true
         }
+
+        autoCorrectionManager.handleAcceptOrResetOnOtherKeys(
+            keyCode,
+            event,
+            isAutoCorrectEnabled
+        )
         
         // Handle double-tap Shift to toggle Caps Lock
         if (keyCode == KeyEvent.KEYCODE_SHIFT_LEFT || keyCode == KeyEvent.KEYCODE_SHIFT_RIGHT) {
