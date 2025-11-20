@@ -995,38 +995,23 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             return true
         }
         
-        // Numeric fields always use the Alt mapping for every key press (short press included).
-        if (isNumericField) {
-            val altChar = altSymManager.getAltMappings()[keyCode]
-            if (altChar != null) {
-                ic.commitText(altChar, 1)
-                Handler(Looper.getMainLooper()).postDelayed({
-                    updateStatusBarText()
-                }, CURSOR_UPDATE_DELAY)
-                return true
-            }
-        }
-        
-        // If SYM is active, check SYM mappings first (they take precedence over Alt and Ctrl)
-        // When SYM is active, all other modifiers are bypassed
-        val shouldBypassSymForCtrl = event?.isCtrlPressed == true || ctrlLatchActive || ctrlOneShot
-        if (!shouldBypassSymForCtrl && symLayoutController.isSymActive()) {
-            when (
-                symLayoutController.handleKeyWhenActive(
-                    keyCode,
-                    event,
-                    ic,
-                    ctrlLatchActive = ctrlLatchActive,
-                    altLatchActive = altLatchActive,
-                    updateStatusBar = { updateStatusBarText() }
-                )
-            ) {
-                SymLayoutController.SymKeyResult.CONSUME -> return true
-                SymLayoutController.SymKeyResult.CALL_SUPER -> return super.onKeyDown(keyCode, event)
-                SymLayoutController.SymKeyResult.NOT_HANDLED -> {
-                    // Continue with normal processing
-                }
-            }
+        if (
+            inputEventRouter.handleNumericAndSym(
+                keyCode = keyCode,
+                event = event,
+                inputConnection = ic,
+                isNumericField = isNumericField,
+                altSymManager = altSymManager,
+                symLayoutController = symLayoutController,
+                ctrlLatchActive = ctrlLatchActive,
+                ctrlOneShot = ctrlOneShot,
+                altLatchActive = altLatchActive,
+                cursorUpdateDelayMs = CURSOR_UPDATE_DELAY,
+                updateStatusBar = { updateStatusBarText() },
+                callSuper = { super.onKeyDown(keyCode, event) }
+            )
+        ) {
+            return true
         }
         
         // If Alt is pressed or Alt latch / Alt one-shot are active, handle Alt+key combination

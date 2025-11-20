@@ -7,6 +7,11 @@ import android.view.inputmethod.InputConnection
 import it.palsoftware.pastiera.SettingsManager
 import it.palsoftware.pastiera.core.NavModeController
 import it.palsoftware.pastiera.data.mappings.KeyMappingLoader
+import android.os.Handler
+import android.os.Looper
+import it.palsoftware.pastiera.inputmethod.AltSymManager
+import it.palsoftware.pastiera.core.SymLayoutController
+import it.palsoftware.pastiera.core.SymLayoutController.SymKeyResult
 import it.palsoftware.pastiera.core.TextInputController
 import it.palsoftware.pastiera.core.AutoCorrectionManager
 
@@ -187,6 +192,57 @@ class InputEventRouter(
             event,
             isAutoCorrectEnabled
         )
+        return false
+    }
+
+    fun handleNumericAndSym(
+        keyCode: Int,
+        event: KeyEvent?,
+        inputConnection: InputConnection?,
+        isNumericField: Boolean,
+        altSymManager: AltSymManager,
+        symLayoutController: SymLayoutController,
+        ctrlLatchActive: Boolean,
+        ctrlOneShot: Boolean,
+        altLatchActive: Boolean,
+        cursorUpdateDelayMs: Long,
+        updateStatusBar: () -> Unit,
+        callSuper: () -> Boolean
+    ): Boolean {
+        val ic = inputConnection ?: return false
+
+        // Numeric fields always use the Alt mapping for every key press (short press included).
+        if (isNumericField) {
+            val altChar = altSymManager.getAltMappings()[keyCode]
+            if (altChar != null) {
+                ic.commitText(altChar, 1)
+                Handler(Looper.getMainLooper()).postDelayed({
+                    updateStatusBar()
+                }, cursorUpdateDelayMs)
+                return true
+            }
+        }
+
+        // If SYM is active, check SYM mappings first (they take precedence over Alt and Ctrl)
+        // When SYM is active, all other modifiers are bypassed
+        val shouldBypassSymForCtrl = event?.isCtrlPressed == true || ctrlLatchActive || ctrlOneShot
+        if (!shouldBypassSymForCtrl && symLayoutController.isSymActive()) {
+            return when (
+                symLayoutController.handleKeyWhenActive(
+                    keyCode,
+                    event,
+                    ic,
+                    ctrlLatchActive = ctrlLatchActive,
+                    altLatchActive = altLatchActive,
+                    updateStatusBar = updateStatusBar
+                )
+            ) {
+                SymKeyResult.CONSUME -> true
+                SymKeyResult.CALL_SUPER -> callSuper()
+                SymKeyResult.NOT_HANDLED -> false
+            }
+        }
+
         return false
     }
 }
