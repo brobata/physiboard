@@ -917,285 +917,58 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             return true
         }
         
-        // Handle double-tap Shift to toggle Caps Lock
-        if (keyCode == KeyEvent.KEYCODE_SHIFT_LEFT || keyCode == KeyEvent.KEYCODE_SHIFT_RIGHT) {
-            if (!shiftPressed) {
-                val result = modifierStateController.handleShiftKeyDown(keyCode)
-                if (result.shouldUpdateStatusBar) {
-                    updateStatusBarText()
-                } else if (result.shouldRefreshStatusBar) {
-                    refreshStatusBar()
-                }
-            }
-            return super.onKeyDown(keyCode, event)
-        }
-        
-        // Handle double-tap Ctrl to toggle Ctrl latch
-        if (keyCode == KeyEvent.KEYCODE_CTRL_LEFT || keyCode == KeyEvent.KEYCODE_CTRL_RIGHT) {
-            if (!ctrlPressed) {
-                val result = modifierStateController.handleCtrlKeyDown(
-                    keyCode,
-                    isInputViewActive,
-                    onNavModeDeactivated = {
-                        navModeController.cancelNotification()
-                    }
-                )
-                if (result.shouldConsume) {
-                    if (result.shouldUpdateStatusBar) {
-                        updateStatusBarText()
-                    }
-                    return true
-                } else if (result.shouldUpdateStatusBar) {
-                    updateStatusBarText()
-                }
-            }
-            return super.onKeyDown(keyCode, event)
-        }
-        
-        // Handle double-tap Alt to toggle Alt latch
-        if (keyCode == KeyEvent.KEYCODE_ALT_LEFT || keyCode == KeyEvent.KEYCODE_ALT_RIGHT) {
-            if (symLayoutController.isSymActive()) {
-                if (symLayoutController.closeSymPage()) {
-                    updateStatusBarText()
-                }
-            }
-            if (!altPressed) {
-                val result = modifierStateController.handleAltKeyDown(keyCode)
-                if (result.shouldUpdateStatusBar) {
-                    updateStatusBarText()
-                }
-            }
-            return true  // Consume Alt event to prevent Android symbol picker popup
-        }
-        
-        // Handle SYM key (toggle/latch with 3 states: disabled -> page1 -> page2 -> disabled)
-        if (keyCode == KEYCODE_SYM) {
-            symLayoutController.toggleSymPage()
-            updateStatusBarText()
-            // Consume the event to prevent Android from handling it
-            return true
-        }
-        
-        // Handle keycode 322 to delete the last word (swipe to delete)
-        if (keyCode == 322) {
-            val swipeToDeleteEnabled = SettingsManager.getSwipeToDelete(this)
-                if (swipeToDeleteEnabled) {
-                if (TextSelectionHelper.deleteLastWord(ic)) {
-                    // Consumiamo l'evento
-                    return true
-                }
-                    } else {
-                // Feature disabled, still consume the event to avoid unwanted behavior
-                return true
-            }
-        }
-        
-        // If the key is already pressed, consume the event to avoid repeats and popups
-        if (altSymManager.hasPendingPress(keyCode)) {
-            return true
-        }
-        
-        if (
-            inputEventRouter.handleNumericAndSym(
-                keyCode = keyCode,
-                event = event,
+        val routingDecision = inputEventRouter.routeEditableFieldKeyDown(
+            keyCode = keyCode,
+            event = event,
+            params = InputEventRouter.EditableFieldKeyDownHandlingParams(
                 inputConnection = ic,
                 isNumericField = isNumericField,
-                altSymManager = altSymManager,
-                symLayoutController = symLayoutController,
+                isInputViewActive = isInputViewActive,
+                shiftPressed = shiftPressed,
+                ctrlPressed = ctrlPressed,
+                altPressed = altPressed,
                 ctrlLatchActive = ctrlLatchActive,
-                ctrlOneShot = ctrlOneShot,
                 altLatchActive = altLatchActive,
-                cursorUpdateDelayMs = CURSOR_UPDATE_DELAY,
+                ctrlLatchFromNavMode = ctrlLatchFromNavMode,
+                ctrlKeyMap = ctrlKeyMap,
+                ctrlOneShot = ctrlOneShot,
+                altOneShot = altOneShot,
+                shiftOneShot = shiftOneShot,
+                capsLockEnabled = capsLockEnabled,
+                cursorUpdateDelayMs = CURSOR_UPDATE_DELAY
+            ),
+            controllers = InputEventRouter.EditableFieldKeyDownControllers(
+                modifierStateController = modifierStateController,
+                symLayoutController = symLayoutController,
+                altSymManager = altSymManager,
+                variationStateController = variationStateController
+            ),
+            callbacks = InputEventRouter.EditableFieldKeyDownHandlingCallbacks(
                 updateStatusBar = { updateStatusBarText() },
-                callSuper = { super.onKeyDown(keyCode, event) }
+                refreshStatusBar = { refreshStatusBar() },
+                disableShiftOneShot = {
+                    shiftOneShot = false
+                    shiftOneShotEnabledTime = 0
+                    modifierStateController.syncShiftOneShotToShiftState()
+                },
+                clearAltOneShot = { altOneShot = false },
+                clearCtrlOneShot = { ctrlOneShot = false },
+                getCharacterFromLayout = { code, keyEvent, isShiftPressed ->
+                    getCharacterFromLayout(code, keyEvent, isShiftPressed)
+                },
+                isAlphabeticKey = { code -> isAlphabeticKey(code) },
+                callSuper = { super.onKeyDown(keyCode, event) },
+                callSuperWithKey = { defaultKeyCode, defaultEvent ->
+                    super.onKeyDown(defaultKeyCode, defaultEvent)
+                }
             )
-        ) {
-            return true
+        )
+
+        return when (routingDecision) {
+            InputEventRouter.EditableFieldRoutingResult.Consume -> true
+            InputEventRouter.EditableFieldRoutingResult.CallSuper -> super.onKeyDown(keyCode, event)
+            InputEventRouter.EditableFieldRoutingResult.Continue -> super.onKeyDown(keyCode, event)
         }
-        
-        // If Alt is pressed or Alt latch / Alt one-shot are active, handle Alt+key combination
-        // Alt has priority over Ctrl
-        if (event?.isAltPressed == true || altLatchActive || altOneShot) {
-            altSymManager.cancelPendingLongPress(keyCode)
-            if (altOneShot) {
-                altOneShot = false
-                refreshStatusBar()
-            }
-            
-            // Eccezione per Back: chiude sempre la tastiera anche con Alt premuto
-            if (keyCode == KeyEvent.KEYCODE_BACK) {
-                // Lascia passare Back anche con Alt premuto per chiudere la tastiera
-                return super.onKeyDown(keyCode, event)
-            }
-            
-            if (
-                inputEventRouter.handleAltModifiedKey(
-                    keyCode = keyCode,
-                    event = event,
-                    inputConnection = ic,
-                    altSymManager = altSymManager,
-                    updateStatusBar = { updateStatusBarText() },
-                    callSuperWithKey = { defaultKeyCode, defaultEvent ->
-                        super.onKeyDown(defaultKeyCode, defaultEvent)
-                    }
-                )
-            ) {
-                return true
-            }
-        }
-        
-        // Handle Ctrl+key shortcuts (checks both physical Ctrl, Ctrl latch and one-shot).
-        // IMPORTANT: If we are in nav mode (ctrlLatchFromNavMode), Ctrl latch MUST NOT be disabled here.
-        // BUT: in a text field, nav mode is already disabled, so treat Ctrl latch as normal.
-        if (event?.isCtrlPressed == true || ctrlLatchActive || ctrlOneShot) {
-            if (
-                inputEventRouter.handleCtrlModifiedKey(
-                    keyCode = keyCode,
-                    event = event,
-                    inputConnection = ic,
-                    ctrlKeyMap = ctrlKeyMap,
-                    ctrlLatchFromNavMode = ctrlLatchFromNavMode,
-                    ctrlOneShot = ctrlOneShot,
-                    clearCtrlOneShot = { ctrlOneShot = false },
-                    updateStatusBar = { updateStatusBarText() },
-                    callSuper = { super.onKeyDown(keyCode, event) }
-                )
-            ) {
-                return true
-            }
-        }
-        
-        // Check whether this key has an Alt mapping or should support long press with Shift.
-        // If it does, handle it with long press (even when shiftOneShot is active).
-        // This avoids inserting the normal character when the user intends a long press.
-        val useShift = SettingsManager.isLongPressShift(this)
-        val hasLongPressSupport = if (useShift) {
-            // With Shift, support long press for any letter key
-            event != null && event.unicodeChar != 0 && event.unicodeChar.toChar().isLetter()
-        } else {
-            // With Alt, only keys with Alt mapping
-            altSymManager.hasAltMapping(keyCode)
-        }
-        
-        if (hasLongPressSupport) {
-            // Standard long-press handling (numeric fields were already handled earlier)
-            val wasShiftOneShot = shiftOneShot
-            // Get character from layout for conversion
-            val layoutChar = getCharacterFromLayout(keyCode, event, event?.isShiftPressed == true)
-            altSymManager.handleKeyWithAltMapping(
-                keyCode,
-                event,
-                capsLockEnabled,
-                ic,
-                shiftOneShot,
-                layoutChar
-            )
-            // Disable shiftOneShot after handling a key with Alt mapping,
-            // so that it does not stay active for the next key.
-            if (wasShiftOneShot) {
-                shiftOneShot = false
-                shiftOneShotEnabledTime = 0
-                // Sync to shiftState
-                modifierStateController.syncShiftOneShotToShiftState()
-                updateStatusBarText()
-            }
-            return true
-        }
-        
-        // Handle Shift one-shot for keys without Alt mapping
-        if (shiftOneShot) {
-            val char = LayoutMappingRepository.getCharacterStringWithModifiers(
-                keyCode,
-                isShiftPressed = event?.isShiftPressed == true,
-                capsLockEnabled = capsLockEnabled,
-                shiftOneShot = true
-            )
-            if (char.isNotEmpty() && char[0].isLetter()) {
-                // Disable shift one-shot (used when letter is typed)
-                shiftOneShot = false
-                shiftOneShotEnabledTime = 0
-                // Sync to shiftState
-                modifierStateController.syncShiftOneShotToShiftState()
-                ic.commitText(char, 1)
-                Handler(Looper.getMainLooper()).postDelayed({
-                    updateStatusBarText()
-                }, CURSOR_UPDATE_DELAY)
-                return true
-            }
-        }
-        
-        // When there is no mapping, handle Caps Lock for regular characters.
-        // Apply Caps Lock to alphabetical characters.
-        if (capsLockEnabled && LayoutMappingRepository.isMapped(keyCode)) {
-            val char = LayoutMappingRepository.getCharacterStringWithModifiers(
-                keyCode,
-                isShiftPressed = event?.isShiftPressed == true,
-                capsLockEnabled = capsLockEnabled,
-                shiftOneShot = false
-            )
-            if (char.isNotEmpty() && char[0].isLetter()) {
-                ic.commitText(char, 1)
-                Handler(Looper.getMainLooper()).postDelayed({
-                    updateStatusBarText()
-                }, CURSOR_UPDATE_DELAY)
-                return true
-            }
-        }
-        
-        // When there is no mapping, check whether the character has variations.
-        // If it does, handle it ourselves so we can show variation suggestions.
-        val charForVariations = if (LayoutMappingRepository.isMapped(keyCode)) {
-            LayoutMappingRepository.getCharacterWithModifiers(
-                keyCode,
-                isShiftPressed = event?.isShiftPressed == true,
-                capsLockEnabled = capsLockEnabled,
-                shiftOneShot = shiftOneShot
-            )
-        } else {
-            getCharacterFromLayout(keyCode, event, event?.isShiftPressed == true)
-        }
-        if (charForVariations != null) {
-            // Check whether the character has variations
-            if (variationStateController.hasVariationsFor(charForVariations)) {
-                // Insert the character ourselves so we can show variations
-                ic.commitText(charForVariations.toString(), 1)
-                Handler(Looper.getMainLooper()).postDelayed({
-                    updateStatusBarText()
-                }, CURSOR_UPDATE_DELAY)
-                return true
-            }
-            // If the character has no variations, previous variations remain visible
-            // (display only, no action)
-        }
-        
-        // Convert all alphabetic characters using the selected keyboard layout
-        // This ensures that layout conversion works even when no special modifiers are active
-        // Check if this is an alphabetic key that should be converted
-        val isAlphabeticKey = isAlphabeticKey(keyCode)
-        if (isAlphabeticKey && LayoutMappingRepository.isMapped(keyCode)) {
-            val char = LayoutMappingRepository.getCharacterStringWithModifiers(
-                keyCode,
-                isShiftPressed = event?.isShiftPressed == true,
-                capsLockEnabled = capsLockEnabled,
-                shiftOneShot = shiftOneShot
-            )
-            if (char.isNotEmpty() && char[0].isLetter()) {
-                // Insert the converted character
-                ic.commitText(char, 1)
-                
-                Handler(Looper.getMainLooper()).postDelayed({
-                    updateStatusBarText()
-                }, CURSOR_UPDATE_DELAY)
-                
-                // Consume the event to prevent Android from handling it
-                return true
-            }
-        }
-        
-        // When there is no mapping, let Android handle the event normally.
-        // Variations will be updated automatically by onUpdateSelection() after Android completes the insertion.
-        return super.onKeyDown(keyCode, event)
     }
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {

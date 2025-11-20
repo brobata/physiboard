@@ -14,10 +14,12 @@ import it.palsoftware.pastiera.core.SymLayoutController
 import it.palsoftware.pastiera.core.SymLayoutController.SymKeyResult
 import it.palsoftware.pastiera.core.TextInputController
 import it.palsoftware.pastiera.core.AutoCorrectionManager
+import it.palsoftware.pastiera.core.ModifierStateController
 import it.palsoftware.pastiera.inputmethod.KeyboardEventTracker
 import it.palsoftware.pastiera.inputmethod.TextSelectionHelper
 import android.view.inputmethod.ExtractedText
 import android.view.inputmethod.ExtractedTextRequest
+import it.palsoftware.pastiera.data.mappings.LayoutMappingRepository
 
 /**
  * Routes IME key events to the appropriate handlers so that the service can
@@ -131,6 +133,289 @@ class InputEventRouter(
         }
 
         return EditableFieldRoutingResult.Continue
+    }
+
+    data class EditableFieldKeyDownHandlingParams(
+        val inputConnection: InputConnection?,
+        val isNumericField: Boolean,
+        val isInputViewActive: Boolean,
+        val shiftPressed: Boolean,
+        val ctrlPressed: Boolean,
+        val altPressed: Boolean,
+        val ctrlLatchActive: Boolean,
+        val altLatchActive: Boolean,
+        val ctrlLatchFromNavMode: Boolean,
+        val ctrlKeyMap: Map<Int, KeyMappingLoader.CtrlMapping>,
+        val ctrlOneShot: Boolean,
+        val altOneShot: Boolean,
+        val shiftOneShot: Boolean,
+        val capsLockEnabled: Boolean,
+        val cursorUpdateDelayMs: Long
+    )
+
+    data class EditableFieldKeyDownControllers(
+        val modifierStateController: ModifierStateController,
+        val symLayoutController: SymLayoutController,
+        val altSymManager: AltSymManager,
+        val variationStateController: VariationStateController
+    )
+
+    data class EditableFieldKeyDownHandlingCallbacks(
+        val updateStatusBar: () -> Unit,
+        val refreshStatusBar: () -> Unit,
+        val disableShiftOneShot: () -> Unit,
+        val clearAltOneShot: () -> Unit,
+        val clearCtrlOneShot: () -> Unit,
+        val getCharacterFromLayout: (Int, KeyEvent?, Boolean) -> Char?,
+        val isAlphabeticKey: (Int) -> Boolean,
+        val callSuper: () -> Boolean,
+        val callSuperWithKey: (Int, KeyEvent?) -> Boolean
+    )
+
+    fun routeEditableFieldKeyDown(
+        keyCode: Int,
+        event: KeyEvent?,
+        params: EditableFieldKeyDownHandlingParams,
+        controllers: EditableFieldKeyDownControllers,
+        callbacks: EditableFieldKeyDownHandlingCallbacks
+    ): EditableFieldRoutingResult {
+        var shiftOneShotActive = params.shiftOneShot
+        val ic = params.inputConnection
+
+        if (keyCode == KeyEvent.KEYCODE_SHIFT_LEFT || keyCode == KeyEvent.KEYCODE_SHIFT_RIGHT) {
+            if (!params.shiftPressed) {
+                val result = controllers.modifierStateController.handleShiftKeyDown(keyCode)
+                if (result.shouldUpdateStatusBar) {
+                    callbacks.updateStatusBar()
+                } else if (result.shouldRefreshStatusBar) {
+                    callbacks.refreshStatusBar()
+                }
+            }
+            return EditableFieldRoutingResult.CallSuper
+        }
+
+        if (keyCode == KeyEvent.KEYCODE_CTRL_LEFT || keyCode == KeyEvent.KEYCODE_CTRL_RIGHT) {
+            if (!params.ctrlPressed) {
+                val result = controllers.modifierStateController.handleCtrlKeyDown(
+                    keyCode,
+                    params.isInputViewActive,
+                    onNavModeDeactivated = {
+                        navModeController.cancelNotification()
+                    }
+                )
+                if (result.shouldConsume) {
+                    if (result.shouldUpdateStatusBar) {
+                        callbacks.updateStatusBar()
+                    }
+                    return EditableFieldRoutingResult.Consume
+                } else if (result.shouldUpdateStatusBar) {
+                    callbacks.updateStatusBar()
+                }
+            }
+            return EditableFieldRoutingResult.CallSuper
+        }
+
+        if (keyCode == KeyEvent.KEYCODE_ALT_LEFT || keyCode == KeyEvent.KEYCODE_ALT_RIGHT) {
+            if (controllers.symLayoutController.isSymActive()) {
+                if (controllers.symLayoutController.closeSymPage()) {
+                    callbacks.updateStatusBar()
+                }
+            }
+            if (!params.altPressed) {
+                val result = controllers.modifierStateController.handleAltKeyDown(keyCode)
+                if (result.shouldUpdateStatusBar) {
+                    callbacks.updateStatusBar()
+                }
+            }
+            return EditableFieldRoutingResult.Consume
+        }
+
+        if (keyCode == KeyEvent.KEYCODE_SYM) {
+            controllers.symLayoutController.toggleSymPage()
+            callbacks.updateStatusBar()
+            return EditableFieldRoutingResult.Consume
+        }
+
+        if (keyCode == 322) {
+            val swipeToDeleteEnabled = SettingsManager.getSwipeToDelete(context)
+            if (swipeToDeleteEnabled) {
+                if (ic != null && TextSelectionHelper.deleteLastWord(ic)) {
+                    return EditableFieldRoutingResult.Consume
+                }
+            } else {
+                return EditableFieldRoutingResult.Consume
+            }
+        }
+
+        if (controllers.altSymManager.hasPendingPress(keyCode)) {
+            return EditableFieldRoutingResult.Consume
+        }
+
+        if (
+            handleNumericAndSym(
+                keyCode = keyCode,
+                event = event,
+                inputConnection = ic,
+                isNumericField = params.isNumericField,
+                altSymManager = controllers.altSymManager,
+                symLayoutController = controllers.symLayoutController,
+                ctrlLatchActive = params.ctrlLatchActive,
+                ctrlOneShot = params.ctrlOneShot,
+                altLatchActive = params.altLatchActive,
+                cursorUpdateDelayMs = params.cursorUpdateDelayMs,
+                updateStatusBar = callbacks.updateStatusBar,
+                callSuper = callbacks.callSuper
+            )
+        ) {
+            return EditableFieldRoutingResult.Consume
+        }
+
+        if (event?.isAltPressed == true || params.altLatchActive || params.altOneShot) {
+            controllers.altSymManager.cancelPendingLongPress(keyCode)
+            if (params.altOneShot) {
+                callbacks.clearAltOneShot()
+                callbacks.refreshStatusBar()
+            }
+
+            if (keyCode == KeyEvent.KEYCODE_BACK) {
+                return EditableFieldRoutingResult.CallSuper
+            }
+
+            if (
+                handleAltModifiedKey(
+                    keyCode = keyCode,
+                    event = event,
+                    inputConnection = ic,
+                    altSymManager = controllers.altSymManager,
+                    updateStatusBar = callbacks.updateStatusBar,
+                    callSuperWithKey = callbacks.callSuperWithKey
+                )
+            ) {
+                return EditableFieldRoutingResult.Consume
+            }
+        }
+
+        if (event?.isCtrlPressed == true || params.ctrlLatchActive || params.ctrlOneShot) {
+            if (
+                handleCtrlModifiedKey(
+                    keyCode = keyCode,
+                    event = event,
+                    inputConnection = ic,
+                    ctrlKeyMap = params.ctrlKeyMap,
+                    ctrlLatchFromNavMode = params.ctrlLatchFromNavMode,
+                    ctrlOneShot = params.ctrlOneShot,
+                    clearCtrlOneShot = {
+                        callbacks.clearCtrlOneShot()
+                    },
+                    updateStatusBar = callbacks.updateStatusBar,
+                    callSuper = callbacks.callSuper
+                )
+            ) {
+                return EditableFieldRoutingResult.Consume
+            }
+        }
+
+        val useShiftForLongPress = SettingsManager.isLongPressShift(context)
+        val hasLongPressSupport = if (useShiftForLongPress) {
+            event != null && event.unicodeChar != 0 && event.unicodeChar.toChar().isLetter()
+        } else {
+            controllers.altSymManager.hasAltMapping(keyCode)
+        }
+
+        if (hasLongPressSupport) {
+            val wasShiftOneShot = shiftOneShotActive
+            val layoutChar = callbacks.getCharacterFromLayout(
+                keyCode,
+                event,
+                event?.isShiftPressed == true
+            )
+            controllers.altSymManager.handleKeyWithAltMapping(
+                keyCode,
+                event,
+                params.capsLockEnabled,
+                ic,
+                shiftOneShotActive,
+                layoutChar
+            )
+            if (wasShiftOneShot) {
+                callbacks.disableShiftOneShot()
+                callbacks.updateStatusBar()
+                shiftOneShotActive = false
+            }
+            return EditableFieldRoutingResult.Consume
+        }
+
+        if (shiftOneShotActive) {
+            val char = LayoutMappingRepository.getCharacterStringWithModifiers(
+                keyCode,
+                isShiftPressed = event?.isShiftPressed == true,
+                capsLockEnabled = params.capsLockEnabled,
+                shiftOneShot = true
+            )
+            if (char.isNotEmpty() && char[0].isLetter()) {
+                callbacks.disableShiftOneShot()
+                ic?.commitText(char, 1)
+                Handler(Looper.getMainLooper()).postDelayed({
+                    callbacks.updateStatusBar()
+                }, params.cursorUpdateDelayMs)
+                return EditableFieldRoutingResult.Consume
+            }
+        }
+
+        if (params.capsLockEnabled && LayoutMappingRepository.isMapped(keyCode)) {
+            val char = LayoutMappingRepository.getCharacterStringWithModifiers(
+                keyCode,
+                isShiftPressed = event?.isShiftPressed == true,
+                capsLockEnabled = params.capsLockEnabled,
+                shiftOneShot = false
+            )
+            if (char.isNotEmpty() && char[0].isLetter()) {
+                ic?.commitText(char, 1)
+                Handler(Looper.getMainLooper()).postDelayed({
+                    callbacks.updateStatusBar()
+                }, params.cursorUpdateDelayMs)
+                return EditableFieldRoutingResult.Consume
+            }
+        }
+
+        val charForVariations = if (LayoutMappingRepository.isMapped(keyCode)) {
+            LayoutMappingRepository.getCharacterWithModifiers(
+                keyCode,
+                isShiftPressed = event?.isShiftPressed == true,
+                capsLockEnabled = params.capsLockEnabled,
+                shiftOneShot = shiftOneShotActive
+            )
+        } else {
+            callbacks.getCharacterFromLayout(keyCode, event, event?.isShiftPressed == true)
+        }
+        if (charForVariations != null) {
+            if (controllers.variationStateController.hasVariationsFor(charForVariations)) {
+                ic?.commitText(charForVariations.toString(), 1)
+                Handler(Looper.getMainLooper()).postDelayed({
+                    callbacks.updateStatusBar()
+                }, params.cursorUpdateDelayMs)
+                return EditableFieldRoutingResult.Consume
+            }
+        }
+
+        val isAlphabeticKey = callbacks.isAlphabeticKey(keyCode)
+        if (isAlphabeticKey && LayoutMappingRepository.isMapped(keyCode)) {
+            val char = LayoutMappingRepository.getCharacterStringWithModifiers(
+                keyCode,
+                isShiftPressed = event?.isShiftPressed == true,
+                capsLockEnabled = params.capsLockEnabled,
+                shiftOneShot = shiftOneShotActive
+            )
+            if (char.isNotEmpty() && char[0].isLetter()) {
+                ic?.commitText(char, 1)
+                Handler(Looper.getMainLooper()).postDelayed({
+                    callbacks.updateStatusBar()
+                }, params.cursorUpdateDelayMs)
+                return EditableFieldRoutingResult.Consume
+            }
+        }
+
+        return EditableFieldRoutingResult.CallSuper
     }
 
     fun handleTextInputPipeline(
