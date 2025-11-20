@@ -24,6 +24,7 @@ import android.view.MotionEvent
 import android.view.InputDevice
 import it.palsoftware.pastiera.inputmethod.MotionEventTracker
 import it.palsoftware.pastiera.core.AutoCorrectionManager
+import it.palsoftware.pastiera.core.InputContextState
 import it.palsoftware.pastiera.core.ModifierStateController
 import it.palsoftware.pastiera.core.NavModeController
 import it.palsoftware.pastiera.core.SymLayoutController
@@ -127,12 +128,14 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     // Flag to track whether we are in a valid input context
     private var isInputViewActive = false
     
-    // Flag to track whether we are in a numeric field
-    private var isNumericField = false
+    // Snapshot of the current input context (numeric/password/restricted fields, etc.)
+    private var inputContextState: InputContextState = InputContextState.EMPTY
     
-    // Flag to track whether we are in a field that should have smart features disabled
-    // (password, URL, email, filter, codes, OTP, tokens, etc.)
-    private var shouldDisableSmartFeatures = false
+    private val isNumericField: Boolean
+        get() = inputContextState.isNumericField
+    
+    private val shouldDisableSmartFeatures: Boolean
+        get() = inputContextState.shouldDisableSmartFeatures
     
     
     // Cache for launcher packages
@@ -158,96 +161,33 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private val symPage: Int
         get() = if (::symLayoutController.isInitialized) symLayoutController.currentSymPage() else 0
 
+    private fun updateInputContextState(info: EditorInfo?) {
+        inputContextState = InputContextState.fromEditorInfo(info)
+    }
+
     private fun refreshStatusBar() {
         updateStatusBarText()
     }
     
-    /**
-     * Checks if the given EditorInfo represents a field that should have smart features disabled.
-     * This includes:
-     * - Password fields (TYPE_TEXT_VARIATION_PASSWORD, TYPE_TEXT_VARIATION_VISIBLE_PASSWORD, 
-     *   TYPE_TEXT_VARIATION_WEB_PASSWORD, TYPE_NUMBER_VARIATION_PASSWORD)
-     * - URL fields (TYPE_TEXT_VARIATION_URI)
-     * - Email fields (TYPE_TEXT_VARIATION_EMAIL_ADDRESS)
-     * - Filter/search fields (TYPE_TEXT_VARIATION_FILTER)
-     * 
-     * Note: We do NOT check for TYPE_TEXT_FLAG_NO_SUGGESTIONS because we set it on all editable
-     * fields to prevent Android's suggestion popup, so it's not a reliable indicator.
-     * 
-     * For these fields, all smart features are disabled:
-     * - Autocorrection
-     * - Suggestions
-     * - Predictive text
-     * - Auto-capitalize
-     * - Double-space to period
-     * - Variations (long-press variants)
-     * 
-     * @param info The EditorInfo to check
-     * @return true if smart features should be disabled, false otherwise
-     */
-    private fun shouldDisableSmartFeatures(info: EditorInfo?): Boolean {
-        if (info == null) return false
-        val inputType = info.inputType
-        val inputVariation = inputType and android.text.InputType.TYPE_MASK_VARIATION
-        
-        // Check for password field types
-        val isPasswordType = inputVariation == android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD ||
-                            inputVariation == android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD ||
-                            inputVariation == android.text.InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD ||
-                            inputVariation == android.text.InputType.TYPE_NUMBER_VARIATION_PASSWORD
-        
-        // Check for URL fields
-        val isUriType = inputVariation == android.text.InputType.TYPE_TEXT_VARIATION_URI
-        
-        // Check for email fields
-        val isEmailType = inputVariation == android.text.InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
-        
-        // Check for filter/search fields
-        val isFilterType = inputVariation == android.text.InputType.TYPE_TEXT_VARIATION_FILTER
-        
-        // Only check specific field types, not flags (since we set NO_SUGGESTIONS on all fields)
-        return isPasswordType || isUriType || isEmailType || isFilterType
-    }
     
-    private fun checkFieldEditability(info: EditorInfo?): Pair<Boolean, Boolean> {
-        val isEditable = info?.let { editorInfo ->
-            val inputType = editorInfo.inputType
-            val isTextInput = inputType and android.text.InputType.TYPE_MASK_CLASS != android.text.InputType.TYPE_NULL
-            val isNotNoInput = inputType and android.text.InputType.TYPE_MASK_CLASS != 0
-            isTextInput && isNotNoInput
-        } ?: false
-        
-        val isReallyEditable = isEditable && info?.let { editorInfo ->
-            val inputType = editorInfo.inputType
-            val inputClass = inputType and android.text.InputType.TYPE_MASK_CLASS
-            inputClass == android.text.InputType.TYPE_CLASS_TEXT ||
-            inputClass == android.text.InputType.TYPE_CLASS_NUMBER ||
-            inputClass == android.text.InputType.TYPE_CLASS_PHONE ||
-            inputClass == android.text.InputType.TYPE_CLASS_DATETIME
-        } ?: false
-        
-        return Pair(isEditable, isReallyEditable)
-    }
 
     /**
      * Initializes the input context for a field.
      * This method contains all common initialization logic that must run
      * regardless of whether input view or candidates view is shown.
      */
-    private fun initializeInputContext(info: EditorInfo?, restarting: Boolean) {
+    private fun initializeInputContext(restarting: Boolean) {
         if (restarting) {
             return
         }
         
-        val (isEditable, isReallyEditable) = checkFieldEditability(info)
-        val canCheckAutoCapitalize = isEditable && !shouldDisableSmartFeatures
+        val state = inputContextState
+        val isEditable = state.isEditable
+        val isReallyEditable = state.isReallyEditable
+        val canCheckAutoCapitalize = isEditable && !state.shouldDisableSmartFeatures
         
         if (!isReallyEditable) {
-            if (ctrlLatchFromNavMode && ctrlLatchActive) {
-                isInputViewActive = false
-            } else {
-                isInputViewActive = false
-            }
+            isInputViewActive = false
             
             if (canCheckAutoCapitalize) {
                 AutoCapitalizeHelper.checkAndEnableAutoCapitalize(
@@ -263,18 +203,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         
         isInputViewActive = true
         
-        isNumericField = info?.let { editorInfo ->
-            val inputType = editorInfo.inputType
-            val inputClass = inputType and android.text.InputType.TYPE_MASK_CLASS
-            inputClass == android.text.InputType.TYPE_CLASS_NUMBER
-        } ?: false
-        
-        shouldDisableSmartFeatures = shouldDisableSmartFeatures(info)
-        
-        if (shouldDisableSmartFeatures) {
-            setCandidatesViewShown(false)
-            deactivateVariations()
-        }
+        enforceSmartFeatureDisabledState()
         
         if (ctrlLatchFromNavMode && ctrlLatchActive) {
             val inputConnection = currentInputConnection
@@ -295,6 +224,14 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         
         altSymManager.reloadLongPressThreshold()
         altSymManager.resetTransientState()
+    }
+    
+    private fun enforceSmartFeatureDisabledState() {
+        if (!shouldDisableSmartFeatures) {
+            return
+        }
+        setCandidatesViewShown(false)
+        deactivateVariations()
     }
     
     /**
@@ -884,20 +821,14 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         
         currentPackageName = info?.packageName
         
-        val (isEditable, isReallyEditable) = checkFieldEditability(info)
+        updateInputContextState(info)
+        val state = inputContextState
+        val isEditable = state.isEditable
+        val isReallyEditable = state.isReallyEditable
         isInputViewActive = isEditable
         
-        isNumericField = info?.let { editorInfo ->
-            val inputType = editorInfo.inputType
-            val inputClass = inputType and android.text.InputType.TYPE_MASK_CLASS
-            inputClass == android.text.InputType.TYPE_CLASS_NUMBER
-        } ?: false
-        
-        shouldDisableSmartFeatures = shouldDisableSmartFeatures(info)
-        
-        if (shouldDisableSmartFeatures) {
-            setCandidatesViewShown(false)
-            deactivateVariations()
+        if (restarting) {
+            enforceSmartFeatureDisabledState()
         }
         
         if (info != null && isEditable) {
@@ -927,7 +858,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             }
         }
         
-        initializeInputContext(info, restarting)
+        initializeInputContext(restarting)
         
         if (restarting && isEditable && !shouldDisableSmartFeatures) {
             AutoCapitalizeHelper.checkAutoCapitalizeOnRestart(
@@ -943,9 +874,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
 
-        initializeInputContext(info, restarting)
+        updateInputContextState(info)
+        initializeInputContext(restarting)
         
-        val (isEditable, _) = checkFieldEditability(info)
+        val isEditable = inputContextState.isEditable
         
         if (restarting && isEditable && !shouldDisableSmartFeatures) {
             AutoCapitalizeHelper.checkAutoCapitalizeOnRestart(
@@ -961,7 +893,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     override fun onFinishInput() {
         super.onFinishInput()
         isInputViewActive = false
-        isNumericField = false
+        inputContextState = InputContextState.EMPTY
         resetModifierStates(preserveNavMode = true)
     }
     
@@ -1244,6 +1176,18 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             return true
         }
         
+        // Numeric fields always use the Alt mapping for every key press (short press included).
+        if (isNumericField) {
+            val altChar = altSymManager.getAltMappings()[keyCode]
+            if (altChar != null) {
+                ic.commitText(altChar, 1)
+                Handler(Looper.getMainLooper()).postDelayed({
+                    updateStatusBarText()
+                }, CURSOR_UPDATE_DELAY)
+                return true
+            }
+        }
+        
         // If SYM is active, check SYM mappings first (they take precedence over Alt and Ctrl)
         // When SYM is active, all other modifiers are bypassed
         val shouldBypassSymForCtrl = event?.isCtrlPressed == true || ctrlLatchActive || ctrlOneShot
@@ -1503,20 +1447,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
         
         if (hasLongPressSupport) {
-            // In numeric fields, only insert Alt character directly if using Alt modifier
-            // (Shift modifier doesn't make sense for numeric fields)
-            if (isNumericField && !useShift) {
-                val altChar = altSymManager.getAltMappings()[keyCode]
-                if (altChar != null) {
-                    ic.commitText(altChar, 1)
-                    // Update variations after insertion (with delay to ensure commitText is completed)
-                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                        updateStatusBarText()
-                    }, 50) // 50ms per dare tempo ad Android di completare commitText e aggiornare il cursore
-                    return true
-                }
-            }
-            // Otherwise use the standard long-press handling
+            // Standard long-press handling (numeric fields were already handled earlier)
             val wasShiftOneShot = shiftOneShot
             // Get character from layout for conversion
             val layoutChar = getCharacterFromLayout(keyCode, event, event?.isShiftPressed == true)

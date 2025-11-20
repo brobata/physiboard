@@ -2,7 +2,50 @@
 
 Questo documento traccia le fasi del refactoring modulare dell’IME fisica di Pastiera, con l’obiettivo di ridurre il “god class” `PhysicalKeyboardInputMethodService`, migliorare il riuso e facilitare futuri test automatizzati. Ogni fase è stata pensata per essere behaviour-preserving e accompagnata da build/test lato utente.
 
----
+# Incremental refactor plan (behavior-preserving)
+
+# Establish core data + repositories (no behavior change).
+
+Extract KeyMappingLoader, layout managers, and variation map loading into data/ classes with interfaces.
+
+Keep current JSON/schema untouched; service keeps using same loaders via new wrappers.
+
+# Isolate modifier and nav-mode state.
+
+Create ModifierStateController that owns shift/ctrl/alt states and sync helpers; replace direct properties with delegation while keeping public behavior identical.
+
+Wrap NavModeHandler into NavModeController to manage latch state, notifications, and entry/exit rules.
+
+# Introduce InputContextState snapshot. _(Completato vedi Fase 5)_
+
+Centralize detection of numeric/password/restricted fields and shouldDisableSmartFeatures computation to reduce duplication.
+
+# Extract SYM/variation handling.
+
+Move SYM page state, variation activation, and auto-close logic into SymLayoutController, exposing intents like onSymKey, onVariationRequested, onSymMappingResolved.
+
+# Split UI responsibilities.
+
+Implement CandidatesBarController to replace empty CandidatesViewManager, and KeyboardVisibilityController to manage view creation/show/hide; service calls these instead of direct UI mutations.
+
+# Create InputEventRouter.
+
+Add router that decides between nav-mode handling, launcher shortcuts, text input flow, and delegates to controllers; service’s onKeyDown/Up/LongPress/Motion delegate to router.
+
+# Extract text input pipeline.
+
+Move autocorrect undo, double-space period, auto-capitalization triggers, and backspace handling into TextInputController + AutoCorrectionManager, preserving sequence and preference checks.
+
+# Thin the IME service.
+
+Rename to PastieraImeService (or keep name) and limit it to lifecycle wiring, dependency setup, and delegating events to controllers; ensure settings listener and broadcasts are reattached without logic change.
+
+# Cleanup and verification.
+
+Remove dead/unused artifacts (e.g., empty CandidatesViewManager) once replacements are wired.
+
+Run regression checks (same unit/UI tests) after each step to confirm behavior parity.
+
 
 ## Fase 1 – Data/Repository Layer _(Completato)_
 **Obiettivo:** isolare accesso a JSON/layout/variations dal servizio IME.
@@ -78,6 +121,25 @@ Questo documento traccia le fasi del refactoring modulare dell’IME fisica di P
   2. Double-space produce “. ”, abilita Shift one-shot e non introduce ritardi percepibili.
   3. Auto-correction/accept/reset continua a funzionare su spazio/punteggiatura e altri tasti.
   4. Campi con smart features disabilitate ignorano tutte le funzioni sopra.
+
+---
+
+## Fase 5 – Input Context Snapshot _(Completato)_
+**Obiettivo:** avere un’unica fonte di verità per lo stato del campo attivo (editable/numeric/password/restricted) e per il flag `shouldDisableSmartFeatures`.
+
+- **`core/InputContextState`**  
+  - Nuovo snapshot immutabile creato da `EditorInfo` che espone `isEditable`, `isReallyEditable`, `isNumericField` e il motivo di restrizione (password/URI/email/filter).  
+  - Fornisce helper `shouldDisableSmartFeatures` così il servizio non ricalcola più manualmente le bitmask dell’`inputType`.
+  - `isNumericField` considera sia `TYPE_CLASS_NUMBER` sia `TYPE_CLASS_PHONE`, quindi anche i campi telefono applicano subito le mappature Alt.
+- **`PhysicalKeyboardInputMethodService`**  
+  - Sostituiti i campi `isNumericField` e `shouldDisableSmartFeatures` con getter che leggono dallo snapshot.  
+  - Rimossi `checkFieldEditability` e la vecchia funzione `shouldDisableSmartFeatures(info)`, ora la logica sta tutta in `InputContextState`.  
+  - Introdotta `enforceSmartFeatureDisabledState()` per applicare/hide candidates e variazioni in modo coerente sia in restart sia in start “fresh”.
+
+- **Testing suggerito**:
+  1. Campi password/URI/email/filter devono disattivare status LED delle variazioni e non mostrare candidates.  
+  2. Campi numerici devono continuare a committare i caratteri Alt direttamente (nessun crash in long-press).  
+  3. Passare rapidamente da un campo testo “normale” a uno password non deve lasciare stato sporco nella status bar.
 
 ---
 

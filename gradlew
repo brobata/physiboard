@@ -114,6 +114,19 @@ case "$( uname )" in                #(
   NONSTOP* )        nonstop=true ;;
 esac
 
+ # On macOS try to locate a suitable JDK via /usr/libexec/java_home when JAVA_HOME is unset.
+if [ -z "$JAVA_HOME" ] && "$darwin" ; then
+    if command -v /usr/libexec/java_home >/dev/null 2>&1 ; then
+        detected_java_home=$(/usr/libexec/java_home -v 17 2>/dev/null || true)
+        if [ -z "$detected_java_home" ] ; then
+            detected_java_home=$(/usr/libexec/java_home 2>/dev/null || true)
+        fi
+        if [ -n "$detected_java_home" ] ; then
+            JAVA_HOME=$detected_java_home
+        fi
+    fi
+fi
+
 CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
 
 
