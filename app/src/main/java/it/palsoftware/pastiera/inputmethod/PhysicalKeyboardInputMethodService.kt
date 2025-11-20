@@ -1029,211 +1029,39 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 return super.onKeyDown(keyCode, event)
             }
             
-            // FIX: Consumiamo Alt+Spazio per evitare il popup di selezione simboli di Android
-            // Questo gestisce i casi: Spazio->Alt, Alt->Spazio, Alt->tasto alfabetico->Spazio
-            // Inseriamo uno spazio nel campo di testo
-            if (keyCode == KeyEvent.KEYCODE_SPACE) {
-                ic.commitText(" ", 1)
-                updateStatusBarText()
-                return true  // Consumiamo l'evento senza passarlo ad Android
+            if (
+                inputEventRouter.handleAltModifiedKey(
+                    keyCode = keyCode,
+                    event = event,
+                    inputConnection = ic,
+                    altSymManager = altSymManager,
+                    updateStatusBar = { updateStatusBarText() },
+                    callSuperWithKey = { defaultKeyCode, defaultEvent ->
+                        super.onKeyDown(defaultKeyCode, defaultEvent)
+                    }
+                )
+            ) {
+                return true
             }
-            
-            val result = altSymManager.handleAltCombination(
-                keyCode,
-                ic,
-                event
-            ) { defaultKeyCode, defaultEvent ->
-                // FIX: Anche se non c'è una mappatura Alt per questo tasto,
-                // consumiamo l'evento quando Alt è attivo e il tasto è Spazio
-                // per evitare comportamenti indesiderati di Android
-                // Inseriamo uno spazio nel campo di testo
-                if (keyCode == KeyEvent.KEYCODE_SPACE) {
-                    ic.commitText(" ", 1)
-                    updateStatusBarText()
-                    return@handleAltCombination true
-                }
-                super.onKeyDown(defaultKeyCode, defaultEvent)
-            }
-            // If an Alt character has been inserted, update variations
-            if (result) {
-                updateStatusBarText()
-            }
-            return result
         }
         
         // Handle Ctrl+key shortcuts (checks both physical Ctrl, Ctrl latch and one-shot).
         // IMPORTANT: If we are in nav mode (ctrlLatchFromNavMode), Ctrl latch MUST NOT be disabled here.
         // BUT: in a text field, nav mode is already disabled, so treat Ctrl latch as normal.
         if (event?.isCtrlPressed == true || ctrlLatchActive || ctrlOneShot) {
-            // If it was one-shot, disable it after use (but NOT when in nav mode)
-            val wasOneShot = ctrlOneShot
-            if (wasOneShot && !ctrlLatchFromNavMode) {
-                ctrlOneShot = false
-                updateStatusBarText()
-            }
-            // IMPORTANT: In nav mode never disable Ctrl latch after using a key;
-            // Ctrl latch stays active until nav mode is exited.
-            
-            // Check whether a Ctrl mapping exists for this key
-            val ctrlMapping = ctrlKeyMap[keyCode]
-            if (ctrlMapping != null) {
-                when (ctrlMapping.type) {
-                    "action" -> {
-                        // Handle special custom actions
-                        when (ctrlMapping.value) {
-                            "expand_selection_left" -> {
-                                // Try to expand selection to the left.
-                                // Always consume the event to avoid inserting 'W'.
-                                KeyboardEventTracker.notifyKeyEvent(
-                                    keyCode,
-                                    event,
-                                    "KEY_DOWN",
-                                    outputKeyCode = null,
-                                    outputKeyCodeName = "expand_selection_left"
-                                )
-                                TextSelectionHelper.expandSelectionLeft(ic)
-                                return true
-                            }
-                            "expand_selection_right" -> {
-                                // Try to expand selection to the right.
-                                // Always consume the event to avoid inserting 'R'.
-                                KeyboardEventTracker.notifyKeyEvent(
-                                    keyCode,
-                                    event,
-                                    "KEY_DOWN",
-                                    outputKeyCode = null,
-                                    outputKeyCodeName = "expand_selection_right"
-                                )
-                                TextSelectionHelper.expandSelectionRight(ic)
-                                return true
-                            }
-                            else -> {
-                                // Execute standard context menu action
-                                val actionId = when (ctrlMapping.value) {
-                                    "copy" -> android.R.id.copy
-                                    "paste" -> android.R.id.paste
-                                    "cut" -> android.R.id.cut
-                                    "undo" -> android.R.id.undo
-                                    "select_all" -> android.R.id.selectAll
-                                    else -> null
-                                }
-                                if (actionId != null) {
-                                    // Notify the event with the action name
-                                    KeyboardEventTracker.notifyKeyEvent(
-                                        keyCode,
-                                        event,
-                                        "KEY_DOWN",
-                                        outputKeyCode = null,
-                                        outputKeyCodeName = ctrlMapping.value
-                                    )
-                                    ic.performContextMenuAction(actionId)
-                                    return true
-                                } else {
-                                    // Unknown action, consume the event to avoid inserting characters
-                                    return true
-                                }
-                            }
-                        }
-                    }
-                    "keycode" -> {
-                        // Send the mapped keycode
-                        val mappedKeyCode = when (ctrlMapping.value) {
-                            "DPAD_UP" -> KeyEvent.KEYCODE_DPAD_UP
-                            "DPAD_DOWN" -> KeyEvent.KEYCODE_DPAD_DOWN
-                            "DPAD_LEFT" -> KeyEvent.KEYCODE_DPAD_LEFT
-                            "DPAD_RIGHT" -> KeyEvent.KEYCODE_DPAD_RIGHT
-                            "TAB" -> KeyEvent.KEYCODE_TAB
-                            "PAGE_UP" -> KeyEvent.KEYCODE_PAGE_UP
-                            "PAGE_DOWN" -> KeyEvent.KEYCODE_PAGE_DOWN
-                            "ESCAPE" -> KeyEvent.KEYCODE_ESCAPE
-                            else -> null
-                        }
-                        if (mappedKeyCode != null) {
-                            // Notify the event with the output keycode
-                            KeyboardEventTracker.notifyKeyEvent(
-                                keyCode,
-                                event,
-                                "KEY_DOWN",
-                                outputKeyCode = mappedKeyCode,
-                                outputKeyCodeName = KeyboardEventTracker.getOutputKeyCodeName(mappedKeyCode)
-                            )
-                            ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, mappedKeyCode))
-                            ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, mappedKeyCode))
-                            
-                            // Update variations after cursor movement or other operations.
-                            // Use a delayed post to ensure Android has completed the operation.
-                            if (mappedKeyCode in listOf(
-                                KeyEvent.KEYCODE_DPAD_UP,
-                                KeyEvent.KEYCODE_DPAD_DOWN,
-                                KeyEvent.KEYCODE_DPAD_LEFT,
-                                KeyEvent.KEYCODE_DPAD_RIGHT,
-                                KeyEvent.KEYCODE_PAGE_UP,
-                                KeyEvent.KEYCODE_PAGE_DOWN
-                            )) {
-                                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                                    updateStatusBarText()
-                                }, 50) // 50ms per dare tempo ad Android di aggiornare la posizione del cursore
-                            }
-                            
-                            return true
-                        } else {
-                            // Unknown keycode, consume event to avoid inserting characters
-                            return true
-                        }
-                    }
-                }
-            } else {
-                // Ctrl is pressed but this key has no valid mapping.
-                // Special handling for Backspace: delete last word or selected text.
-                if (keyCode == KeyEvent.KEYCODE_DEL) {
-                    // Verifica se c'è del testo selezionato
-                    val extractedText = ic.getExtractedText(
-                        android.view.inputmethod.ExtractedTextRequest().apply {
-                            flags = android.view.inputmethod.ExtractedText.FLAG_SELECTING
-                        },
-                        0
-                    )
-                    
-                    val hasSelection = extractedText?.let {
-                        it.selectionStart >= 0 && it.selectionEnd >= 0 && it.selectionStart != it.selectionEnd
-                    } ?: false
-                    
-                    if (hasSelection) {
-                        // If some text is selected, delete it
-                        KeyboardEventTracker.notifyKeyEvent(
-                            keyCode,
-                            event,
-                            "KEY_DOWN",
-                            outputKeyCode = null,
-                            outputKeyCodeName = "delete_selection"
-                        )
-                        // Delete selected text using commitText with an empty string
-                        ic.commitText("", 0)
-                        return true
-                    } else {
-                        // Ctrl+Backspace deletes last word
-                        KeyboardEventTracker.notifyKeyEvent(
-                            keyCode,
-                            event,
-                            "KEY_DOWN",
-                            outputKeyCode = null,
-                            outputKeyCodeName = "delete_last_word"
-                        )
-                        TextSelectionHelper.deleteLastWord(ic)
-                        return true
-                    }
-                }
-                // Eccezione per Enter: continua a funzionare normalmente
-                if (keyCode == KeyEvent.KEYCODE_ENTER) {
-                    // Lascia passare Enter anche con Ctrl premuto
-                    return super.onKeyDown(keyCode, event)
-                }
-                // Eccezione per Back: chiude sempre la tastiera anche con Ctrl premuto
-                if (keyCode == KeyEvent.KEYCODE_BACK) {
-                    // Lascia passare Back anche con Ctrl premuto per chiudere la tastiera
-                    return super.onKeyDown(keyCode, event)
-                }
-                // For all other keys without mappings, consume the event
+            if (
+                inputEventRouter.handleCtrlModifiedKey(
+                    keyCode = keyCode,
+                    event = event,
+                    inputConnection = ic,
+                    ctrlKeyMap = ctrlKeyMap,
+                    ctrlLatchFromNavMode = ctrlLatchFromNavMode,
+                    ctrlOneShot = ctrlOneShot,
+                    clearCtrlOneShot = { ctrlOneShot = false },
+                    updateStatusBar = { updateStatusBarText() },
+                    callSuper = { super.onKeyDown(keyCode, event) }
+                )
+            ) {
                 return true
             }
         }

@@ -14,6 +14,10 @@ import it.palsoftware.pastiera.core.SymLayoutController
 import it.palsoftware.pastiera.core.SymLayoutController.SymKeyResult
 import it.palsoftware.pastiera.core.TextInputController
 import it.palsoftware.pastiera.core.AutoCorrectionManager
+import it.palsoftware.pastiera.inputmethod.KeyboardEventTracker
+import it.palsoftware.pastiera.inputmethod.TextSelectionHelper
+import android.view.inputmethod.ExtractedText
+import android.view.inputmethod.ExtractedTextRequest
 
 /**
  * Routes IME key events to the appropriate handlers so that the service can
@@ -241,6 +245,205 @@ class InputEventRouter(
                 SymKeyResult.CALL_SUPER -> callSuper()
                 SymKeyResult.NOT_HANDLED -> false
             }
+        }
+
+        return false
+    }
+
+    /**
+     * Handles Alt-modified key presses once Alt is considered active
+     * (physical Alt, latch or one-shot). The caller is responsible for
+     * managing Alt latch/one-shot state.
+     */
+    fun handleAltModifiedKey(
+        keyCode: Int,
+        event: KeyEvent?,
+        inputConnection: InputConnection?,
+        altSymManager: AltSymManager,
+        updateStatusBar: () -> Unit,
+        callSuperWithKey: (Int, KeyEvent?) -> Boolean
+    ): Boolean {
+        val ic = inputConnection ?: return false
+
+        // Consume Alt+Space to avoid Android's symbol picker and just insert a space.
+        if (keyCode == KeyEvent.KEYCODE_SPACE) {
+            ic.commitText(" ", 1)
+            updateStatusBar()
+            return true
+        }
+
+        val result = altSymManager.handleAltCombination(
+            keyCode,
+            ic,
+            event
+        ) { defaultKeyCode, defaultEvent ->
+            // Fallback: delegate to caller (typically super.onKeyDown)
+            callSuperWithKey(defaultKeyCode, defaultEvent)
+        }
+
+        if (result) {
+            updateStatusBar()
+        }
+        return result
+    }
+
+    /**
+     * Handles Ctrl-modified shortcuts in editable fields (copy/paste/cut/undo/select_all,
+     * expand selection, DPAD/TAB/PAGE/ESC mappings and Ctrl+Backspace behaviour).
+     * The caller is responsible for setting/clearing Ctrl latch and one-shot flags.
+     */
+    fun handleCtrlModifiedKey(
+        keyCode: Int,
+        event: KeyEvent?,
+        inputConnection: InputConnection?,
+        ctrlKeyMap: Map<Int, KeyMappingLoader.CtrlMapping>,
+        ctrlLatchFromNavMode: Boolean,
+        ctrlOneShot: Boolean,
+        clearCtrlOneShot: () -> Unit,
+        updateStatusBar: () -> Unit,
+        callSuper: () -> Boolean
+    ): Boolean {
+        val ic = inputConnection ?: return false
+
+        if (ctrlOneShot && !ctrlLatchFromNavMode) {
+            clearCtrlOneShot()
+            updateStatusBar()
+        }
+
+        val ctrlMapping = ctrlKeyMap[keyCode]
+        if (ctrlMapping != null) {
+            when (ctrlMapping.type) {
+                "action" -> {
+                    when (ctrlMapping.value) {
+                        "expand_selection_left" -> {
+                            KeyboardEventTracker.notifyKeyEvent(
+                                keyCode,
+                                event,
+                                "KEY_DOWN",
+                                outputKeyCode = null,
+                                outputKeyCodeName = "expand_selection_left"
+                            )
+                            TextSelectionHelper.expandSelectionLeft(ic)
+                            return true
+                        }
+                        "expand_selection_right" -> {
+                            KeyboardEventTracker.notifyKeyEvent(
+                                keyCode,
+                                event,
+                                "KEY_DOWN",
+                                outputKeyCode = null,
+                                outputKeyCodeName = "expand_selection_right"
+                            )
+                            TextSelectionHelper.expandSelectionRight(ic)
+                            return true
+                        }
+                        else -> {
+                            val actionId = when (ctrlMapping.value) {
+                                "copy" -> android.R.id.copy
+                                "paste" -> android.R.id.paste
+                                "cut" -> android.R.id.cut
+                                "undo" -> android.R.id.undo
+                                "select_all" -> android.R.id.selectAll
+                                else -> null
+                            }
+                            if (actionId != null) {
+                                KeyboardEventTracker.notifyKeyEvent(
+                                    keyCode,
+                                    event,
+                                    "KEY_DOWN",
+                                    outputKeyCode = null,
+                                    outputKeyCodeName = ctrlMapping.value
+                                )
+                                ic.performContextMenuAction(actionId)
+                                return true
+                            }
+                            return true
+                        }
+                    }
+                }
+                "keycode" -> {
+                    val mappedKeyCode = when (ctrlMapping.value) {
+                        "DPAD_UP" -> KeyEvent.KEYCODE_DPAD_UP
+                        "DPAD_DOWN" -> KeyEvent.KEYCODE_DPAD_DOWN
+                        "DPAD_LEFT" -> KeyEvent.KEYCODE_DPAD_LEFT
+                        "DPAD_RIGHT" -> KeyEvent.KEYCODE_DPAD_RIGHT
+                        "TAB" -> KeyEvent.KEYCODE_TAB
+                        "PAGE_UP" -> KeyEvent.KEYCODE_PAGE_UP
+                        "PAGE_DOWN" -> KeyEvent.KEYCODE_PAGE_DOWN
+                        "ESCAPE" -> KeyEvent.KEYCODE_ESCAPE
+                        else -> null
+                    }
+                    if (mappedKeyCode != null) {
+                        KeyboardEventTracker.notifyKeyEvent(
+                            keyCode,
+                            event,
+                            "KEY_DOWN",
+                            outputKeyCode = mappedKeyCode,
+                            outputKeyCodeName = KeyboardEventTracker.getOutputKeyCodeName(mappedKeyCode)
+                        )
+                        ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, mappedKeyCode))
+                        ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, mappedKeyCode))
+
+                        if (mappedKeyCode in listOf(
+                                KeyEvent.KEYCODE_DPAD_UP,
+                                KeyEvent.KEYCODE_DPAD_DOWN,
+                                KeyEvent.KEYCODE_DPAD_LEFT,
+                                KeyEvent.KEYCODE_DPAD_RIGHT,
+                                KeyEvent.KEYCODE_PAGE_UP,
+                                KeyEvent.KEYCODE_PAGE_DOWN
+                            )
+                        ) {
+                            Handler(Looper.getMainLooper()).postDelayed({
+                                updateStatusBar()
+                            }, 50)
+                        }
+
+                        return true
+                    }
+                    return true
+                }
+            }
+        } else {
+            if (keyCode == KeyEvent.KEYCODE_DEL) {
+                val extractedText: ExtractedText? = ic.getExtractedText(
+                    ExtractedTextRequest().apply {
+                        flags = ExtractedText.FLAG_SELECTING
+                    },
+                    0
+                )
+
+                val hasSelection = extractedText?.let {
+                    it.selectionStart >= 0 && it.selectionEnd >= 0 && it.selectionStart != it.selectionEnd
+                } ?: false
+
+                if (hasSelection) {
+                    KeyboardEventTracker.notifyKeyEvent(
+                        keyCode,
+                        event,
+                        "KEY_DOWN",
+                        outputKeyCode = null,
+                        outputKeyCodeName = "delete_selection"
+                    )
+                    ic.commitText("", 0)
+                    return true
+                } else {
+                    KeyboardEventTracker.notifyKeyEvent(
+                        keyCode,
+                        event,
+                        "KEY_DOWN",
+                        outputKeyCode = null,
+                        outputKeyCodeName = "delete_last_word"
+                    )
+                    TextSelectionHelper.deleteLastWord(ic)
+                    return true
+                }
+            }
+
+            if (keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_BACK) {
+                return callSuper()
+            }
+
+            return true
         }
 
         return false
