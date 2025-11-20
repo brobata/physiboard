@@ -20,11 +20,11 @@ Wrap NavModeHandler into NavModeController to manage latch state, notifications,
 
 Centralize detection of numeric/password/restricted fields and shouldDisableSmartFeatures computation to reduce duplication.
 
-# Extract SYM/variation handling.
+# Extract SYM/variation handling. (completato)
 
 Move SYM page state, variation activation, and auto-close logic into SymLayoutController, exposing intents like onSymKey, onVariationRequested, onSymMappingResolved.
 
-# Split UI responsibilities.
+# Split UI responsibilities. _(Fase 6: Status UI completata, resto da fare)_
 
 Implement CandidatesBarController to replace empty CandidatesViewManager, and KeyboardVisibilityController to manage view creation/show/hide; service calls these instead of direct UI mutations.
 
@@ -140,6 +140,29 @@ Run regression checks (same unit/UI tests) after each step to confirm behavior p
   1. Campi password/URI/email/filter devono disattivare status LED delle variazioni e non mostrare candidates.  
   2. Campi numerici devono continuare a committare i caratteri Alt direttamente (nessun crash in long-press).  
   3. Passare rapidamente da un campo testo “normale” a uno password non deve lasciare stato sporco nella status bar.
+
+---
+
+## Fase 6 – Status UI Split _(Completato)_
+**Obiettivo:** separare la Status Bar in componenti modulari per riuso (anche nella sola visuale candidates) e ridurre il codice monolitico.
+
+- **`inputmethod/ui/LedStatusView`**  
+  - Incapsula la creazione/aggiornamento degli indicatori Shift/SYM/Ctrl/Alt.  
+  - `StatusBarController` delega ora gli update dei LED allo snapshot, evitando duplicazioni di colore/stato.
+
+- **`inputmethod/ui/VariationBarView`**  
+  - Gestisce variazioni, overlay swipe, microfono e pulsante Settings con animazioni dedicate.  
+  - Espone callback per `onVariationSelected`/`onCursorMoved` e lancia direttamente `SpeechRecognitionActivity`/`SettingsActivity`.
+
+- **`StatusBarController`**  
+  - Supporta il nuovo `Mode` (`FULL` vs `CANDIDATES_ONLY`).  
+  - `PhysicalKeyboardInputMethodService` usa `Mode.CANDIDATES_ONLY` per la sola candidates view: vengono mostrati solo i LED e, quando richiesto, il layout SYM (nessuna barra variazioni/microfono).  
+  - Il service continua a delegare gli snapshot, ma con una classe >300 righe più corta e priva di logica duplicata per variazioni/LED.
+
+- **Testing suggerito**:
+  1. Modalità completa: variazioni + microfono continuano a reagire a swipe/click; aprire i Settings e avviare il microfono.  
+  2. Modalità “solo candidates” (disabilitando la tastiera virtuale dall’IME selector): verificare che compaiano solo LED e griglia SYM quando attivata.  
+  3. Toggle rapido SYM ↔ variazioni in entrambe le modalità per individuare glitch di animazione.
 
 ---
 

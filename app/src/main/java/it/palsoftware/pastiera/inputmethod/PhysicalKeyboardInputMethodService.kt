@@ -150,6 +150,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private lateinit var symLayoutController: SymLayoutController
     private lateinit var textInputController: TextInputController
     private lateinit var autoCorrectionManager: AutoCorrectionManager
+    private var forceCandidatesUi: Boolean = false
     
     // Auto-capitalize helper state
     private val autoCapitalizeState = AutoCapitalizeHelper.AutoCapitalizeState()
@@ -434,8 +435,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         )
         autoCorrectionManager = AutoCorrectionManager(this)
         
-        statusBarController = StatusBarController(this)
-        candidatesViewController = StatusBarController(this)
+        statusBarController = StatusBarController(this, StatusBarController.Mode.FULL)
+        candidatesViewController = StatusBarController(this, StatusBarController.Mode.CANDIDATES_ONLY)
 
         // Register listener for variation selection (both controllers)
         val variationListener = object : VariationButtonHandler.OnVariationSelectedListener {
@@ -607,13 +608,14 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
 
     /**
      * Determines whether the input view (soft keyboard) should be shown.
-     * Always returns true to ensure the entire IME area is touchable, even in candidates mode.
-     * This allows the sym board (emoji grid) to be clickable when using touch screen.
+     * Respects the system flag (e.g. "Mostra tastiera virtuale" off for tastiere fisiche):
+     * when the system asks for candidate-only mode we hide the main status UI and
+     * expose the slim candidates view (LED strip + SYM layout on demand).
      */
     override fun onEvaluateInputViewShown(): Boolean {
-        // Always return true to force Android to treat the input view as shown.
-        // This makes the entire IME area touchable, not just the bottom bar.
-        // Hide candidates view to avoid conflicts.
+        val shouldShowInputView = super.onEvaluateInputViewShown()
+        forceCandidatesUi = !shouldShowInputView
+        statusBarController.setForceMinimalUi(forceCandidatesUi)
         setCandidatesViewShown(false)
         return true
     }
