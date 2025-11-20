@@ -19,7 +19,7 @@ import it.palsoftware.pastiera.inputmethod.KeyboardEventTracker
 import it.palsoftware.pastiera.inputmethod.TextSelectionHelper
 import android.view.inputmethod.ExtractedText
 import android.view.inputmethod.ExtractedTextRequest
-import it.palsoftware.pastiera.data.mappings.LayoutMappingRepository
+import it.palsoftware.pastiera.data.layout.LayoutMappingRepository
 
 /**
  * Routes IME key events to the appropriate handlers so that the service can
@@ -329,14 +329,16 @@ class InputEventRouter(
                 event,
                 event?.isShiftPressed == true
             )
-            controllers.altSymManager.handleKeyWithAltMapping(
-                keyCode,
-                event,
-                params.capsLockEnabled,
-                ic,
-                shiftOneShotActive,
-                layoutChar
-            )
+            if (ic != null) {
+                controllers.altSymManager.handleKeyWithAltMapping(
+                    keyCode,
+                    event,
+                    params.capsLockEnabled,
+                    ic,
+                    shiftOneShotActive,
+                    layoutChar
+                )
+            }
             if (wasShiftOneShot) {
                 callbacks.disableShiftOneShot()
                 callbacks.updateStatusBar()
@@ -348,9 +350,9 @@ class InputEventRouter(
         if (shiftOneShotActive) {
             val char = LayoutMappingRepository.getCharacterStringWithModifiers(
                 keyCode,
-                isShiftPressed = event?.isShiftPressed == true,
-                capsLockEnabled = params.capsLockEnabled,
-                shiftOneShot = true
+                event?.isShiftPressed == true,
+                params.capsLockEnabled,
+                true
             )
             if (char.isNotEmpty() && char[0].isLetter()) {
                 callbacks.disableShiftOneShot()
@@ -365,9 +367,9 @@ class InputEventRouter(
         if (params.capsLockEnabled && LayoutMappingRepository.isMapped(keyCode)) {
             val char = LayoutMappingRepository.getCharacterStringWithModifiers(
                 keyCode,
-                isShiftPressed = event?.isShiftPressed == true,
-                capsLockEnabled = params.capsLockEnabled,
-                shiftOneShot = false
+                event?.isShiftPressed == true,
+                params.capsLockEnabled,
+                false
             )
             if (char.isNotEmpty() && char[0].isLetter()) {
                 ic?.commitText(char, 1)
@@ -381,9 +383,9 @@ class InputEventRouter(
         val charForVariations = if (LayoutMappingRepository.isMapped(keyCode)) {
             LayoutMappingRepository.getCharacterWithModifiers(
                 keyCode,
-                isShiftPressed = event?.isShiftPressed == true,
-                capsLockEnabled = params.capsLockEnabled,
-                shiftOneShot = shiftOneShotActive
+                event?.isShiftPressed == true,
+                params.capsLockEnabled,
+                shiftOneShotActive
             )
         } else {
             callbacks.getCharacterFromLayout(keyCode, event, event?.isShiftPressed == true)
@@ -402,9 +404,9 @@ class InputEventRouter(
         if (isAlphabeticKey && LayoutMappingRepository.isMapped(keyCode)) {
             val char = LayoutMappingRepository.getCharacterStringWithModifiers(
                 keyCode,
-                isShiftPressed = event?.isShiftPressed == true,
-                capsLockEnabled = params.capsLockEnabled,
-                shiftOneShot = shiftOneShotActive
+                event?.isShiftPressed == true,
+                params.capsLockEnabled,
+                shiftOneShotActive
             )
             if (char.isNotEmpty() && char[0].isLetter()) {
                 ic?.commitText(char, 1)
