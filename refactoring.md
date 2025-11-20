@@ -47,6 +47,15 @@ Remove dead/unused artifacts (e.g., empty CandidatesViewManager) once replacemen
 Run regression checks (same unit/UI tests) after each step to confirm behavior parity.
 
 
+## Stato attuale (novembre 2025)
+- ✅ **Dati e repository**: i loader JSON e i repository (`data/`) sono usati da servizio, schermate e manager (fase 1).
+- ✅ **Controller core**: `ModifierStateController`, `NavModeController`, `SymLayoutController`, `TextInputController`, `AutoCorrectionManager` e `InputContextState` sono cablati nel servizio (fasi 2–5).
+- ✅ **UI status bar**: `StatusBarController` con `LedStatusView`/`VariationBarView` gestisce modalità FULL e CANDIDATES (fase 6).
+- ⚠️ **Variazioni/SYM**: `variationsMap`, `lastInsertedChar`, `availableVariations` e le istanze di `StatusBarController` vivono ancora in `PhysicalKeyboardInputMethodService`.
+- ⚠️ **Gestione viste IME**: `onCreateInputView`, `onCreateCandidatesView`, `onEvaluateInputViewShown` e `ensureInputViewCreated` sono logica ad-hoc del servizio; manca un `KeyboardVisibilityController`.
+- ⚠️ **Instradamento eventi**: `onKeyDown/Up/LongPress` è una god function >700 righe; non c’è ancora un `InputEventRouter`.
+- ⏳ **Snellimento servizio**: la classe principale resta >1.700 righe; rename/estrazione a `PastieraImeService` non ancora eseguiti.
+
 ## Fase 1 – Data/Repository Layer _(Completato)_
 **Obiettivo:** isolare accesso a JSON/layout/variations dal servizio IME.
 
@@ -167,12 +176,14 @@ Run regression checks (same unit/UI tests) after each step to confirm behavior p
 ---
 
 ## Fasi successive (pianificate – **da fare**)
-2. **SYM/Variation UI refinement**
-   - Introdurre `CandidatesBarController` + `LedStatusBarView` per separare logic UI.
-3. **Event Router**
-   - `InputEventRouter` per orchestrare nav-mode vs text-input vs launcher shortcuts.
-4. **Service Slim Down**
-   - Rinominare/estrarre `PastieraImeService` con puro wiring/DI.
+7A. **UI surface controllers**
+   - Estrarre `CandidatesBarController` (rimpiazza `inputmethod/CandidatesViewManager.kt`) per possedere `variationsMap`, stato SYM e aggiornare le due `StatusBarController`.
+   - Introdurre `KeyboardVisibilityController` che gestisce creazione e visibilità delle viste IME (`onCreateInputView`, `onCreateCandidatesView`, `onEvaluateInputViewShown`, `ensureInputViewCreated`, `setCandidatesViewShown`, `requestShowSelf`).
+7B. **Input Event Router**
+   - Implementare `InputEventRouter` (nuovo pacchetto `inputmethod/events/`) per smistare `onKeyDown/Up/LongPress/Motion` tra nav-mode, shortcut launcher, text pipeline, SYM/Alt e fallback al sistema.
+7C. **Service slim down & cleanup**
+   - Rinominare o confermare `PastieraImeService`, lasciandolo limitato al lifecycle wiring e ai listener.
+   - Rimuovere artefatti morti (`CandidatesViewManager`, duplicazioni) e assicurare che i nuovi controller espongano hook per test/regressioni.
 
 Ogni fase continuerà a essere accompagnata da `assembleDebug` e test manuali suggeriti per garantire parità funzionale.
 

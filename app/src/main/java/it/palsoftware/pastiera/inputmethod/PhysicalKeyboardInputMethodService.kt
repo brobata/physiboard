@@ -51,8 +51,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     
     // Broadcast receiver for speech recognition
     private var speechResultReceiver: BroadcastReceiver? = null
-    private lateinit var statusBarController: StatusBarController
-    private lateinit var candidatesViewController: StatusBarController
+    private lateinit var candidatesBarController: CandidatesBarController
 
     // Keycode for the SYM key
     private val KEYCODE_SYM = 63
@@ -435,8 +434,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         )
         autoCorrectionManager = AutoCorrectionManager(this)
         
-        statusBarController = StatusBarController(this, StatusBarController.Mode.FULL)
-        candidatesViewController = StatusBarController(this, StatusBarController.Mode.CANDIDATES_ONLY)
+        candidatesBarController = CandidatesBarController(this)
 
         // Register listener for variation selection (both controllers)
         val variationListener = object : VariationButtonHandler.OnVariationSelectedListener {
@@ -445,15 +443,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 updateStatusBarText()
             }
         }
-        statusBarController.onVariationSelectedListener = variationListener
-        candidatesViewController.onVariationSelectedListener = variationListener
+        candidatesBarController.onVariationSelectedListener = variationListener
 
         // Register listener for cursor movement (both controllers)
         val cursorListener = {
             updateStatusBarText()
         }
-        statusBarController.onCursorMovedListener = cursorListener
-        candidatesViewController.onCursorMovedListener = cursorListener
+        candidatesBarController.onCursorMovedListener = cursorListener
         altSymManager = AltSymManager(assets, prefs, this)
         altSymManager.reloadSymMappings() // Load custom mappings for page 1 if present
         altSymManager.reloadSymMappings2() // Load custom mappings for page 2 if present
@@ -581,7 +577,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     }
 
     override fun onCreateInputView(): View? {
-        val layout = statusBarController.getOrCreateLayout(symLayoutController.emojiMapTextForLayout())
+        val layout = candidatesBarController.getInputView(symLayoutController.emojiMapTextForLayout())
         
         if (layout.parent != null) {
             (layout.parent as? android.view.ViewGroup)?.removeView(layout)
@@ -596,7 +592,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
      * Uses a separate StatusBarController instance to provide identical functionality.
      */
     override fun onCreateCandidatesView(): View? {
-        val layout = candidatesViewController.getOrCreateLayout(symLayoutController.emojiMapTextForLayout())
+        val layout = candidatesBarController.getCandidatesView(symLayoutController.emojiMapTextForLayout())
 
         if (layout.parent != null) {
             (layout.parent as? android.view.ViewGroup)?.removeView(layout)
@@ -615,7 +611,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     override fun onEvaluateInputViewShown(): Boolean {
         val shouldShowInputView = super.onEvaluateInputViewShown()
         forceCandidatesUi = !shouldShowInputView
-        statusBarController.setForceMinimalUi(forceCandidatesUi)
+        candidatesBarController.setForceMinimalUi(forceCandidatesUi)
         setCandidatesViewShown(false)
         return true
     }
@@ -671,7 +667,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             return
         }
         
-        val layout = statusBarController.getOrCreateLayout(symLayoutController.emojiMapTextForLayout())
+        val layout = candidatesBarController.getInputView(symLayoutController.emojiMapTextForLayout())
         refreshStatusBar()
 
         if (layout.parent == null) {
@@ -804,8 +800,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         val symMappings = symLayoutController.currentSymMappings()
         // Passa l'inputConnection per rendere i pulsanti clickabili
         val inputConnection = currentInputConnection
-        statusBarController.update(snapshot, emojiMapText, inputConnection, symMappings)
-        candidatesViewController.update(snapshot, emojiMapText, inputConnection, symMappings)
+        candidatesBarController.updateStatusBars(snapshot, emojiMapText, inputConnection, symMappings)
     }
     
     /**
