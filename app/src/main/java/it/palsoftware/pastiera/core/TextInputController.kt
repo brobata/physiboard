@@ -45,7 +45,7 @@ class TextInputController(
                             }
 
                             val shouldReplace = lastCharIndex >= 0 && textBeforeCursor[lastCharIndex].isLetter()
-                            if (shouldReplace || lastCharIndex < 0) {
+                            if (shouldReplace) {
                                 inputConnection.deleteSurroundingText(1, 0)
                                 inputConnection.commitText(". ", 1)
 

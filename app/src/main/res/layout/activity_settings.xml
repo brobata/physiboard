@@ -9,7 +9,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:text="Check for updates" />
+        android:text="@string/settings_update_button" />
 
 </FrameLayout>
 

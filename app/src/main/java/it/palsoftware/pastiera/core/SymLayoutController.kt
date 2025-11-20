@@ -7,6 +7,7 @@ import android.os.Looper
 import android.view.KeyEvent
 import android.view.inputmethod.InputConnection
 import it.palsoftware.pastiera.SettingsManager
+import it.palsoftware.pastiera.SymPagesConfig
 import it.palsoftware.pastiera.inputmethod.AltSymManager
 
 class SymLayoutController(
@@ -19,6 +20,11 @@ class SymLayoutController(
         private const val PREF_CURRENT_SYM_PAGE = "current_sym_page"
     }
 
+    private enum class SymPage {
+        EMOJI,
+        SYMBOLS
+    }
+
     enum class SymKeyResult {
         NOT_HANDLED,
         CONSUME,
@@ -27,12 +33,30 @@ class SymLayoutController(
 
     private var symPage: Int = prefs.getInt(PREF_CURRENT_SYM_PAGE, 0)
 
-    fun currentSymPage(): Int = symPage
+    init {
+        alignSymPageToConfig(SettingsManager.getSymPagesConfig(context))
+    }
 
-    fun isSymActive(): Boolean = symPage > 0
+    fun currentSymPage(): Int {
+        alignSymPageToConfig()
+        return symPage
+    }
+
+    fun isSymActive(): Boolean = currentSymPage() > 0
 
     fun toggleSymPage(): Int {
-        symPage = (symPage + 1) % 3
+        val config = SettingsManager.getSymPagesConfig(context)
+        alignSymPageToConfig(config)
+        val pages = buildActivePages(config)
+        val cycle = mutableListOf(0)
+        cycle.addAll(pages.map { it.toPrefValue() })
+        if (cycle.size > 1) {
+            val currentIndex = cycle.indexOf(symPage).takeIf { it >= 0 } ?: 0
+            val nextIndex = (currentIndex + 1) % cycle.size
+            symPage = cycle[nextIndex]
+        } else {
+            symPage = 0
+        }
         persistSymPage()
         return symPage
     }
@@ -54,7 +78,14 @@ class SymLayoutController(
     fun restoreSymPageIfNeeded(onStatusBarUpdate: () -> Unit) {
         val restoreSymPage = SettingsManager.getRestoreSymPage(context)
         if (restoreSymPage > 0) {
-            symPage = restoreSymPage.coerceIn(0, 2)
+            val config = SettingsManager.getSymPagesConfig(context)
+            val pages = buildActivePages(config)
+            val allowedValues = pages.map { it.toPrefValue() }
+            symPage = when {
+                restoreSymPage in allowedValues -> restoreSymPage
+                allowedValues.isNotEmpty() -> allowedValues.first()
+                else -> 0
+            }
             persistSymPage()
             SettingsManager.clearRestoreSymPage(context)
             Handler(Looper.getMainLooper()).post {
@@ -64,13 +95,13 @@ class SymLayoutController(
     }
 
     fun emojiMapText(): String {
-        return if (symPage == 1) altSymManager.buildEmojiMapText() else ""
+        return if (currentPageType() == SymPage.EMOJI) altSymManager.buildEmojiMapText() else ""
     }
 
     fun currentSymMappings(): Map<Int, String>? {
-        return when (symPage) {
-            1 -> altSymManager.getSymMappings()
-            2 -> altSymManager.getSymMappings2()
+        return when (currentPageType()) {
+            SymPage.EMOJI -> altSymManager.getSymMappings()
+            SymPage.SYMBOLS -> altSymManager.getSymMappings2()
             else -> null
         }
     }
@@ -84,6 +115,7 @@ class SymLayoutController(
         updateStatusBar: () -> Unit
     ): SymKeyResult {
         val autoCloseEnabled = SettingsManager.getSymAutoClose(context)
+        val page = currentPageType()
 
         when (keyCode) {
             KeyEvent.KEYCODE_BACK -> {
@@ -102,9 +134,9 @@ class SymLayoutController(
             }
         }
 
-        val symChar = when (symPage) {
-            1 -> altSymManager.getSymMappings()[keyCode]
-            2 -> altSymManager.getSymMappings2()[keyCode]
+        val symChar = when (page) {
+            SymPage.EMOJI -> altSymManager.getSymMappings()[keyCode]
+            SymPage.SYMBOLS -> altSymManager.getSymMappings2()[keyCode]
             else -> null
         }
 
@@ -128,6 +160,54 @@ class SymLayoutController(
     private fun closeSymAndUpdate(updateStatusBar: () -> Unit) {
         if (closeSymPage()) {
             updateStatusBar()
+        }
+    }
+
+    private fun buildActivePages(config: SymPagesConfig = SettingsManager.getSymPagesConfig(context)): List<SymPage> {
+        val pages = mutableListOf<SymPage>()
+        if (config.emojiEnabled) {
+            pages.add(SymPage.EMOJI)
+        }
+        if (config.symbolsEnabled) {
+            pages.add(SymPage.SYMBOLS)
+        }
+        if (!config.emojiFirst) {
+            pages.reverse()
+        }
+        return pages
+    }
+
+    private fun currentPageType(): SymPage? {
+        alignSymPageToConfig()
+        return when (symPage) {
+            1 -> SymPage.EMOJI
+            2 -> SymPage.SYMBOLS
+            else -> null
+        }
+    }
+
+    private fun SymPage.toPrefValue(): Int = when (this) {
+        SymPage.EMOJI -> 1
+        SymPage.SYMBOLS -> 2
+    }
+
+    private fun alignSymPageToConfig(config: SymPagesConfig = SettingsManager.getSymPagesConfig(context)) {
+        val allowedValues = buildActivePages(config).map { it.toPrefValue() }
+        if (allowedValues.isEmpty()) {
+            if (symPage != 0) {
+                symPage = 0
+                persistSymPage()
+            }
+            return
+        }
+
+        if (symPage == 0) {
+            return
+        }
+
+        if (symPage !in allowedValues) {
+            symPage = allowedValues.first()
+            persistSymPage()
         }
     }
 

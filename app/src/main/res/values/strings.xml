@@ -120,6 +120,14 @@
     <string name="sym_customize_title">Customize SYM Keyboard</string>
     <string name="sym_auto_close_title">Auto-Close SYM Layout</string>
     <string name="sym_auto_close_description">Automatically close SYM layout after inserting a character, pressing Alt, or pressing Enter. Does not close with Control or Shift.</string>
+    <string name="sym_enable_emoji_page_title">Enable Emoji Page</string>
+    <string name="sym_enable_emoji_page_description">Show the emoji SYM layout when cycling.</string>
+    <string name="sym_enable_symbols_page_title">Enable Symbols Page</string>
+    <string name="sym_enable_symbols_page_description">Show the symbols SYM layout when cycling.</string>
+    <string name="sym_swap_pages_title">Swap SYM pages order</string>
+    <string name="sym_swap_pages_description">Choose which SYM page appears first when toggling.</string>
+    <string name="sym_order_emoji_first">Emoji first</string>
+    <string name="sym_order_symbols_first">Symbols first</string>
     <string name="sym_instructions_title">Instructions</string>
     <string name="sym_instructions_text">Tap on any key below to change its emoji. Changes are saved automatically.</string>
     <string name="sym_reset_to_default">Reset to Default</string>
@@ -235,6 +243,7 @@
     <string name="unicode_category_technical">Technical Symbols</string>
     <string name="unicode_category_arrows">Arrows</string>
     <string name="unicode_category_misc">Miscellaneous</string>
+    <string name="unicode_category_variations">Variations</string>
     
     <!-- Trackpad Debug Screen -->
     <string name="trackpad_debug_title">Trackpad Debug</string>
@@ -288,4 +297,42 @@
     <string name="settings_category_auto_correction">Auto-correction</string>
     <string name="settings_category_customization">Customization</string>
     <string name="settings_category_advanced">Advanced</string>
+    
+    <!-- Keyboard Layout Settings -->
+    <string name="layout_save_content_description">Save layout</string>
+    <string name="layout_import_content_description">Import layout</string>
+    <string name="layout_imported_successfully">Layout imported successfully</string>
+    <string name="layout_import_failed">Failed to import layout</string>
+    <string name="layout_invalid_file">Invalid layout file</string>
+    <string name="layout_import_error">Error importing layout: %1$s</string>
+    <string name="layout_save_canceled">Save canceled</string>
+    <string name="layout_saved_successfully">Layout saved successfully</string>
+    <string name="layout_save_error">Error saving layout: %1$s</string>
+    <string name="layout_imported_name">Imported Layout</string>
+    <string name="layout_imported_description">Imported from file</string>
+    
+    <!-- Main Activity Event Display -->
+    <string name="modifier_alt">ALT</string>
+    <string name="event_unicode_label">Unicode: </string>
+    <string name="event_output_label">Output: </string>
+    <string name="event_not_available">N/A</string>
+    
+    <!-- Nav Mode Key Labels -->
+    <string name="nav_mode_action_copy">Copy</string>
+    <string name="nav_mode_action_paste">Paste</string>
+    <string name="nav_mode_action_cut">Cut</string>
+    <string name="nav_mode_action_undo">Undo</string>
+    <string name="nav_mode_action_select_all">SelAll</string>
+    <string name="nav_mode_action_expand_selection_left">←Sel</string>
+    <string name="nav_mode_action_expand_selection_right">→Sel</string>
+    <string name="nav_mode_keycode_up">↑</string>
+    <string name="nav_mode_keycode_down">↓</string>
+    <string name="nav_mode_keycode_left">←</string>
+    <string name="nav_mode_keycode_right">→</string>
+    <string name="nav_mode_keycode_center">○</string>
+    <string name="nav_mode_keycode_page_up">PgUp</string>
+    <string name="nav_mode_keycode_page_down">PgDn</string>
+    <string name="nav_mode_keycode_escape">Esc</string>
+    <string name="nav_mode_keycode_tab">Tab</string>
+    <string name="nav_mode_key_unknown">?</string>
 </resources>

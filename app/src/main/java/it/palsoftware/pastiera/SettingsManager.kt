@@ -32,6 +32,7 @@ object SettingsManager {
     private const val KEY_KEYBOARD_LAYOUT = "keyboard_layout" // "qwerty", "azerty", etc.
     private const val KEY_RESTORE_SYM_PAGE = "restore_sym_page" // SYM page to restore when returning from settings
     private const val KEY_PENDING_RESTORE_SYM_PAGE = "pending_restore_sym_page" // Temporary SYM page state saved when opening settings
+    private const val KEY_SYM_PAGES_CONFIG = "sym_pages_config" // Order/enabled pages for SYM
     private const val KEY_SYM_AUTO_CLOSE = "sym_auto_close" // Auto-close SYM layout after key press
     private const val KEY_DISMISSED_RELEASES = "dismissed_releases" // Set of release tag_names that were dismissed
     
@@ -48,6 +49,7 @@ object SettingsManager {
     private const val DEFAULT_LONG_PRESS_MODIFIER = "alt"
     private const val DEFAULT_KEYBOARD_LAYOUT = "qwerty"
     private const val DEFAULT_SYM_AUTO_CLOSE = true
+    private val DEFAULT_SYM_PAGES_CONFIG = SymPagesConfig()
     
     /**
      * Returns the SharedPreferences instance for Pastiera.
@@ -951,6 +953,45 @@ object SettingsManager {
         if (pendingPage > 0) {
             setRestoreSymPage(context, pendingPage)
             clearPendingRestoreSymPage(context)
+        }
+    }
+
+    /**
+     * Reads the SYM pages configuration (enabled pages and order).
+     */
+    fun getSymPagesConfig(context: Context): SymPagesConfig {
+        val prefs = getPreferences(context)
+        val jsonString = prefs.getString(KEY_SYM_PAGES_CONFIG, null) ?: return DEFAULT_SYM_PAGES_CONFIG
+
+        return try {
+            val jsonObject = JSONObject(jsonString)
+            SymPagesConfig(
+                emojiEnabled = jsonObject.optBoolean("emojiEnabled", true),
+                symbolsEnabled = jsonObject.optBoolean("symbolsEnabled", true),
+                emojiFirst = jsonObject.optBoolean("emojiFirst", true)
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Error loading SYM pages config", e)
+            DEFAULT_SYM_PAGES_CONFIG
+        }
+    }
+
+    /**
+     * Persists the SYM pages configuration (enabled pages and order).
+     */
+    fun setSymPagesConfig(context: Context, config: SymPagesConfig) {
+        try {
+            val jsonObject = JSONObject().apply {
+                put("emojiEnabled", config.emojiEnabled)
+                put("symbolsEnabled", config.symbolsEnabled)
+                put("emojiFirst", config.emojiFirst)
+            }
+
+            getPreferences(context).edit()
+                .putString(KEY_SYM_PAGES_CONFIG, jsonObject.toString())
+                .apply()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error saving SYM pages config", e)
         }
     }
     

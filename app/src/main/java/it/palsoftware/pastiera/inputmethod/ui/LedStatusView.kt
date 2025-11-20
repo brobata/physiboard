@@ -41,7 +41,7 @@ class LedStatusView(
     private val cornerRadius: Float by lazy {
         TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP,
-            2f,
+            3f,
             context.resources.displayMetrics
         )
     }
@@ -114,12 +114,7 @@ class LedStatusView(
         return GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             setColor(color)
-            cornerRadii = floatArrayOf(
-                cornerRadius, cornerRadius,
-                cornerRadius, cornerRadius,
-                0f, 0f,
-                0f, 0f
-            )
+            cornerRadius = this@LedStatusView.cornerRadius
         }
     }
 

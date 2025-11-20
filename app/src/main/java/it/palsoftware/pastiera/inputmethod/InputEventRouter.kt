@@ -654,6 +654,7 @@ class InputEventRouter(
                         "DPAD_DOWN" -> KeyEvent.KEYCODE_DPAD_DOWN
                         "DPAD_LEFT" -> KeyEvent.KEYCODE_DPAD_LEFT
                         "DPAD_RIGHT" -> KeyEvent.KEYCODE_DPAD_RIGHT
+                        "DPAD_CENTER" -> KeyEvent.KEYCODE_DPAD_CENTER
                         "TAB" -> KeyEvent.KEYCODE_TAB
                         "PAGE_UP" -> KeyEvent.KEYCODE_PAGE_UP
                         "PAGE_DOWN" -> KeyEvent.KEYCODE_PAGE_DOWN

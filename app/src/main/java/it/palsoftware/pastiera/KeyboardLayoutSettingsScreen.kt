@@ -77,28 +77,28 @@ fun KeyboardLayoutSettingsScreen(
                             context = context,
                             layoutName = layoutName,
                             layout = layout,
-                            name = "Imported Layout",
-                            description = "Imported from file"
+                            name = context.getString(R.string.layout_imported_name),
+                            description = context.getString(R.string.layout_imported_description)
                         )
                         if (success) {
                             refreshTrigger++
                             coroutineScope.launch {
-                                snackbarHostState.showSnackbar("Layout imported successfully")
+                                snackbarHostState.showSnackbar(context.getString(R.string.layout_imported_successfully))
                             }
                         } else {
                             coroutineScope.launch {
-                                snackbarHostState.showSnackbar("Failed to import layout")
+                                snackbarHostState.showSnackbar(context.getString(R.string.layout_import_failed))
                             }
                         }
                     } else {
                         coroutineScope.launch {
-                            snackbarHostState.showSnackbar("Invalid layout file")
+                            snackbarHostState.showSnackbar(context.getString(R.string.layout_invalid_file))
                         }
                     }
                 }
             } catch (e: Exception) {
                 coroutineScope.launch {
-                    snackbarHostState.showSnackbar("Error importing layout: ${e.message}")
+                    snackbarHostState.showSnackbar(context.getString(R.string.layout_import_error, e.message ?: ""))
                 }
             }
         }
@@ -115,7 +115,7 @@ fun KeyboardLayoutSettingsScreen(
 
         if (uri == null) {
             coroutineScope.launch {
-                snackbarHostState.showSnackbar("Save canceled")
+                snackbarHostState.showSnackbar(context.getString(R.string.layout_save_canceled))
             }
             return@rememberLauncherForActivityResult
         }
@@ -125,11 +125,11 @@ fun KeyboardLayoutSettingsScreen(
                 outputStream.write(pending.json.toByteArray())
             }
             coroutineScope.launch {
-                snackbarHostState.showSnackbar("Layout saved successfully")
+                snackbarHostState.showSnackbar(context.getString(R.string.layout_saved_successfully))
             }
         } catch (e: Exception) {
             coroutineScope.launch {
-                snackbarHostState.showSnackbar("Error saving layout: ${e.message}")
+                snackbarHostState.showSnackbar(context.getString(R.string.layout_save_error, e.message ?: ""))
             }
         }
     }
@@ -195,7 +195,7 @@ fun KeyboardLayoutSettingsScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Save,
-                            contentDescription = "Save layout"
+                            contentDescription = stringResource(R.string.layout_save_content_description)
                         )
                     }
                     // Import button
@@ -206,7 +206,7 @@ fun KeyboardLayoutSettingsScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Add,
-                            contentDescription = "Import layout"
+                            contentDescription = stringResource(R.string.layout_import_content_description)
                         )
                     }
                 }

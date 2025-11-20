@@ -179,6 +179,7 @@ object KeyMappingLoader {
                 "DPAD_DOWN" to KeyEvent.KEYCODE_DPAD_DOWN,
                 "DPAD_LEFT" to KeyEvent.KEYCODE_DPAD_LEFT,
                 "DPAD_RIGHT" to KeyEvent.KEYCODE_DPAD_RIGHT,
+                "DPAD_CENTER" to KeyEvent.KEYCODE_DPAD_CENTER,
                 "TAB" to KeyEvent.KEYCODE_TAB,
                 "PAGE_UP" to KeyEvent.KEYCODE_PAGE_UP,
                 "PAGE_DOWN" to KeyEvent.KEYCODE_PAGE_DOWN,

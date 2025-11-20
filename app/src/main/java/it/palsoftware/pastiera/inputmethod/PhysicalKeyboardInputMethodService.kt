@@ -16,8 +16,6 @@ import it.palsoftware.pastiera.inputmethod.KeyboardEventTracker
 import android.os.Handler
 import android.os.Looper
 import androidx.core.content.ContextCompat
-import android.content.pm.PackageManager
-import android.content.pm.ResolveInfo
 import android.view.MotionEvent
 import android.view.View
 import it.palsoftware.pastiera.core.AutoCorrectionManager
@@ -121,10 +119,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private val shouldDisableSmartFeatures: Boolean
         get() = inputContextState.shouldDisableSmartFeatures
     
-    
-    // Cache for launcher packages
-    private var cachedLauncherPackages: Set<String>? = null
-    
     // Current package name
     private var currentPackageName: String? = null
     
@@ -137,6 +131,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private lateinit var variationStateController: VariationStateController
     private lateinit var inputEventRouter: InputEventRouter
     private lateinit var keyboardVisibilityController: KeyboardVisibilityController
+    private lateinit var launcherShortcutController: LauncherShortcutController
 
     private val motionEventController = MotionEventController(logTag = TAG)
     
@@ -269,56 +264,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     }
     
     /**
-     * Verifica se il package corrente è un launcher.
-     */
-    private fun isLauncher(packageName: String?): Boolean {
-        if (packageName == null) return false
-        
-        // Cache la lista dei launcher per evitare query ripetute
-        if (cachedLauncherPackages == null) {
-            try {
-                val pm = packageManager
-                val intent = Intent(Intent.ACTION_MAIN).apply {
-                    addCategory(Intent.CATEGORY_HOME)
-                }
-                
-                val resolveInfos: List<ResolveInfo> = pm.queryIntentActivities(intent, 0)
-                cachedLauncherPackages = resolveInfos.map { it.activityInfo.packageName }.toSet()
-                Log.d(TAG, "Launcher packages trovati: $cachedLauncherPackages")
-            } catch (e: Exception) {
-                Log.e(TAG, "Errore nel rilevamento dei launcher", e)
-                cachedLauncherPackages = emptySet()
-            }
-        }
-        
-        val isLauncher = cachedLauncherPackages?.contains(packageName) ?: false
-        Log.d(TAG, "isLauncher($packageName) = $isLauncher")
-        return isLauncher
-    }
-    
-    /**
-     * Apre un'app tramite package name.
-     */
-    private fun launchApp(packageName: String): Boolean {
-        try {
-            val pm = packageManager
-            val intent = pm.getLaunchIntentForPackage(packageName)
-            if (intent != null) {
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                startActivity(intent)
-                Log.d(TAG, "App aperta: $packageName")
-                return true
-            } else {
-                Log.w(TAG, "Nessun launch intent trovato per: $packageName")
-                return false
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Errore nell'apertura dell'app $packageName", e)
-            return false
-        }
-    }
-    
-    /**
      * Checks if a keycode corresponds to an alphabetic key (A-Z).
      * Returns true only for alphabetic keys, false for all others (modifiers, volume, etc.).
      */
@@ -354,56 +299,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
     }
     
-    /**
-     * Handles launcher shortcuts when not in a text field.
-     */
-    private fun handleLauncherShortcut(keyCode: Int): Boolean {
-        val shortcut = SettingsManager.getLauncherShortcut(this, keyCode)
-        if (shortcut != null) {
-            // Gestisci diversi tipi di azioni
-            when (shortcut.type) {
-                SettingsManager.LauncherShortcut.TYPE_APP -> {
-                    if (shortcut.packageName != null) {
-                        val success = launchApp(shortcut.packageName)
-                        if (success) {
-                            Log.d(TAG, "Scorciatoia launcher eseguita: tasto $keyCode -> ${shortcut.packageName}")
-                            return true // Consumiamo l'evento
-                        }
-                    }
-                }
-                SettingsManager.LauncherShortcut.TYPE_SHORTCUT -> {
-                    // TODO: Gestire scorciatoie in futuro
-                    Log.d(TAG, "Tipo scorciatoia non ancora implementato: ${shortcut.type}")
-                }
-                else -> {
-                    Log.d(TAG, "Tipo azione sconosciuto: ${shortcut.type}")
-                }
-            }
-        } else {
-            // Tasto non assegnato: mostra dialog per assegnare un'app
-            showLauncherShortcutAssignmentDialog(keyCode)
-            return true // Consumiamo l'evento per evitare che venga gestito altrove
-        }
-        return false // Non consumiamo l'evento
-    }
-    
-    /**
-     * Mostra il dialog per assegnare un'app a un tasto.
-     */
-    private fun showLauncherShortcutAssignmentDialog(keyCode: Int) {
-        try {
-            val intent = Intent(this, LauncherShortcutAssignmentActivity::class.java).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                putExtra(LauncherShortcutAssignmentActivity.EXTRA_KEY_CODE, keyCode)
-            }
-            startActivity(intent)
-            Log.d(TAG, "Dialog assegnazione mostrato per tasto $keyCode")
-        } catch (e: Exception) {
-            Log.e(TAG, "Errore nel mostrare il dialog di assegnazione", e)
-        }
-    }
-
     override fun onCreate() {
         super.onCreate()
         prefs = getSharedPreferences("pastiera_prefs", Context.MODE_PRIVATE)
@@ -457,6 +352,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             requestShowInputView = { requestShowSelf(0) },
             refreshStatusBar = { refreshStatusBar() }
         )
+        launcherShortcutController = LauncherShortcutController(this)
         
         // Initialize keyboard layout
         loadKeyboardLayout()
@@ -484,6 +380,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 // Reload SYM mappings for page 2
                 altSymManager.reloadSymMappings2()
                 // Update status bar to reflect new mappings
+                Handler(Looper.getMainLooper()).post {
+                    updateStatusBarText()
+                }
+            } else if (key == "sym_pages_config") {
+                Log.d(TAG, "SYM pages configuration changed, refreshing status bar...")
                 Handler(Looper.getMainLooper()).post {
                     updateStatusBarText()
                 }
@@ -865,8 +766,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 ctrlKeyMap = ctrlKeyMap,
                 callbacks = InputEventRouter.NoEditableFieldCallbacks(
                     isAlphabeticKey = { code -> isAlphabeticKey(code) },
-                    isLauncherPackage = { pkg -> isLauncher(pkg) },
-                    handleLauncherShortcut = { key -> handleLauncherShortcut(key) },
+                    isLauncherPackage = { pkg -> launcherShortcutController.isLauncher(pkg) },
+                    handleLauncherShortcut = { key -> launcherShortcutController.handleLauncherShortcut(key) },
                     callSuper = { super.onKeyDown(keyCode, event) },
                     currentInputConnection = { currentInputConnection }
                 ),
@@ -987,8 +888,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 ctrlKeyMap = ctrlKeyMap,
                 callbacks = InputEventRouter.NoEditableFieldCallbacks(
                     isAlphabeticKey = { code -> isAlphabeticKey(code) },
-                    isLauncherPackage = { pkg -> isLauncher(pkg) },
-                    handleLauncherShortcut = { key -> handleLauncherShortcut(key) },
+                    isLauncherPackage = { pkg -> launcherShortcutController.isLauncher(pkg) },
+                    handleLauncherShortcut = { key -> launcherShortcutController.handleLauncherShortcut(key) },
                     callSuper = { super.onKeyUp(keyCode, event) },
                     currentInputConnection = { currentInputConnection }
                 )

@@ -406,13 +406,13 @@ fun KeyboardSetupScreen(
                         fontFamily = FontFamily.Monospace
                     )
                     Text(
-                        text = "Unicode: ${event.unicodeChar} (${if (event.unicodeChar != 0) event.unicodeChar.toChar() else "N/A"})",
+                        text = "${stringResource(R.string.event_unicode_label)}${event.unicodeChar} (${if (event.unicodeChar != 0) event.unicodeChar.toChar() else stringResource(R.string.event_not_available)})",
                         style = MaterialTheme.typography.bodyMedium,
                         fontFamily = FontFamily.Monospace
                     )
                     if (event.outputKeyCodeName != null) {
                         Text(
-                            text = "Output: ${event.outputKeyCodeName}${if (event.outputKeyCode != null) " (${event.outputKeyCode})" else ""}",
+                            text = "${stringResource(R.string.event_output_label)}${event.outputKeyCodeName}${if (event.outputKeyCode != null) " (${event.outputKeyCode})" else ""}",
                             style = MaterialTheme.typography.bodyMedium,
                             fontFamily = FontFamily.Monospace,
                             color = MaterialTheme.colorScheme.primary
@@ -454,7 +454,7 @@ fun KeyboardSetupScreen(
                                     shape = MaterialTheme.shapes.small
                                 ) {
                                     Text(
-                                        text = "ALT",
+                                        text = stringResource(R.string.modifier_alt),
                                         style = MaterialTheme.typography.labelSmall,
                                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                                         fontWeight = FontWeight.Medium

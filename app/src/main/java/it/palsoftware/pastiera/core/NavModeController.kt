@@ -12,7 +12,7 @@ import it.palsoftware.pastiera.inputmethod.NotificationHelper
 
 /**
  * Encapsulates nav-mode specific state and routing logic (Ctrl latch double-tap,
- * DPAD remapping, notification lifecycle).
+ * keycode remapping, notification lifecycle).
  */
 class NavModeController(
     private val context: Context,
@@ -85,20 +85,30 @@ class NavModeController(
         }
 
         val inputConnection = inputConnectionProvider() ?: return false
-        val ctrlMapping = ctrlKeyMap[keyCode] ?: return false
-        if (ctrlMapping.type != "keycode") {
-            return false
-        }
 
-        val mappedKeyCode = when (ctrlMapping.value) {
-            "DPAD_UP" -> KeyEvent.KEYCODE_DPAD_UP
-            "DPAD_DOWN" -> KeyEvent.KEYCODE_DPAD_DOWN
-            "DPAD_LEFT" -> KeyEvent.KEYCODE_DPAD_LEFT
-            "DPAD_RIGHT" -> KeyEvent.KEYCODE_DPAD_RIGHT
-            else -> null
+        val mappedKeyCode = when {
+            keyCode == KeyEvent.KEYCODE_ENTER -> KeyEvent.KEYCODE_DPAD_CENTER
+            else -> {
+                val ctrlMapping = ctrlKeyMap[keyCode] ?: return false
+                if (ctrlMapping.type != "keycode") {
+                    return false
+                }
+                when (ctrlMapping.value) {
+                    "DPAD_UP" -> KeyEvent.KEYCODE_DPAD_UP
+                    "DPAD_DOWN" -> KeyEvent.KEYCODE_DPAD_DOWN
+                    "DPAD_LEFT" -> KeyEvent.KEYCODE_DPAD_LEFT
+                    "DPAD_RIGHT" -> KeyEvent.KEYCODE_DPAD_RIGHT
+                    "DPAD_CENTER" -> KeyEvent.KEYCODE_DPAD_CENTER
+                    "TAB" -> KeyEvent.KEYCODE_TAB
+                    "PAGE_UP" -> KeyEvent.KEYCODE_PAGE_UP
+                    "PAGE_DOWN" -> KeyEvent.KEYCODE_PAGE_DOWN
+                    "ESCAPE" -> KeyEvent.KEYCODE_ESCAPE
+                    else -> null
+                }
+            }
         } ?: return false
 
-        return sendMappedDpadKey(mappedKeyCode, event, inputConnection)
+        return sendMappedKey(mappedKeyCode, event, inputConnection)
     }
 
     fun cancelNotification() {
@@ -129,7 +139,7 @@ class NavModeController(
         result.lastCtrlReleaseTime?.let { modifierStateController.ctrlLastReleaseTime = it }
     }
 
-    private fun sendMappedDpadKey(
+    private fun sendMappedKey(
         mappedKeyCode: Int,
         event: KeyEvent?,
         inputConnection: InputConnection
@@ -156,7 +166,7 @@ class NavModeController(
         )
         inputConnection.sendKeyEvent(downEvent)
         inputConnection.sendKeyEvent(upEvent)
-        Log.d(TAG, "Nav mode: dispatched DPAD keycode $mappedKeyCode")
+        Log.d(TAG, "Nav mode: dispatched keycode $mappedKeyCode")
         return true
     }
 }

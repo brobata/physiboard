@@ -23,7 +23,7 @@ class SettingsActivity : AppCompatActivity() {
                 if (hasUpdate && latestVersion != null) {
                     showUpdateDialog(this, latestVersion, downloadUrl)
                 } else {
-                    Toast.makeText(this, "App is up to date", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, getString(R.string.settings_update_up_to_date), Toast.LENGTH_SHORT).show()
                 }
             }
         }

@@ -120,6 +120,14 @@
     <string name="sym_customize_title">Personalizza Tastiera SYM</string>
     <string name="sym_auto_close_title">Chiudi Automaticamente Layout SYM</string>
     <string name="sym_auto_close_description">Chiudi automaticamente il layout SYM dopo aver inserito un carattere, premuto Alt o premuto Invio. Non si chiude con Control o Shift.</string>
+    <string name="sym_enable_emoji_page_title">Abilita Pagina Emoji</string>
+    <string name="sym_enable_emoji_page_description">Mostra il layout SYM emoji durante il ciclo.</string>
+    <string name="sym_enable_symbols_page_title">Abilita Pagina Simboli</string>
+    <string name="sym_enable_symbols_page_description">Mostra il layout SYM simboli durante il ciclo.</string>
+    <string name="sym_swap_pages_title">Scambia Ordine Pagine SYM</string>
+    <string name="sym_swap_pages_description">Scegli quale pagina SYM appare per prima quando si alterna.</string>
+    <string name="sym_order_emoji_first">Emoji prima</string>
+    <string name="sym_order_symbols_first">Simboli prima</string>
     <string name="sym_instructions_title">Istruzioni</string>
     <string name="sym_instructions_text">Tocca un tasto qui sotto per cambiare la sua emoji. Le modifiche vengono salvate automaticamente.</string>
     <string name="sym_reset_to_default">Ripristina Predefiniti</string>
@@ -235,6 +243,7 @@
     <string name="unicode_category_technical">Simboli Tecnici</string>
     <string name="unicode_category_arrows">Frecce</string>
     <string name="unicode_category_misc">Varie</string>
+    <string name="unicode_category_variations">Variazioni</string>
     
     <!-- Trackpad Debug Screen -->
     <string name="trackpad_debug_title">Trackpad Debug</string>
@@ -282,5 +291,43 @@
     <string name="settings_category_auto_correction">Auto-correzione</string>
     <string name="settings_category_customization">Personalizzazione</string>
     <string name="settings_category_advanced">Avanzate</string>
+    
+    <!-- Keyboard Layout Settings -->
+    <string name="layout_save_content_description">Salva layout</string>
+    <string name="layout_import_content_description">Importa layout</string>
+    <string name="layout_imported_successfully">Layout importato con successo</string>
+    <string name="layout_import_failed">Impossibile importare il layout</string>
+    <string name="layout_invalid_file">File layout non valido</string>
+    <string name="layout_import_error">Errore nell\'importazione del layout: %1$s</string>
+    <string name="layout_save_canceled">Salvataggio annullato</string>
+    <string name="layout_saved_successfully">Layout salvato con successo</string>
+    <string name="layout_save_error">Errore nel salvataggio del layout: %1$s</string>
+    <string name="layout_imported_name">Layout Importato</string>
+    <string name="layout_imported_description">Importato da file</string>
+    
+    <!-- Main Activity Event Display -->
+    <string name="modifier_alt">ALT</string>
+    <string name="event_unicode_label">Unicode: </string>
+    <string name="event_output_label">Output: </string>
+    <string name="event_not_available">N/D</string>
+    
+    <!-- Nav Mode Key Labels -->
+    <string name="nav_mode_action_copy">Copia</string>
+    <string name="nav_mode_action_paste">Incolla</string>
+    <string name="nav_mode_action_cut">Taglia</string>
+    <string name="nav_mode_action_undo">Annulla</string>
+    <string name="nav_mode_action_select_all">SelTutto</string>
+    <string name="nav_mode_action_expand_selection_left">←Sel</string>
+    <string name="nav_mode_action_expand_selection_right">→Sel</string>
+    <string name="nav_mode_keycode_up">↑</string>
+    <string name="nav_mode_keycode_down">↓</string>
+    <string name="nav_mode_keycode_left">←</string>
+    <string name="nav_mode_keycode_right">→</string>
+    <string name="nav_mode_keycode_center">○</string>
+    <string name="nav_mode_keycode_page_up">PagSu</string>
+    <string name="nav_mode_keycode_page_down">PagGiu</string>
+    <string name="nav_mode_keycode_escape">Esc</string>
+    <string name="nav_mode_keycode_tab">Tab</string>
+    <string name="nav_mode_key_unknown">?</string>
 </resources>
 

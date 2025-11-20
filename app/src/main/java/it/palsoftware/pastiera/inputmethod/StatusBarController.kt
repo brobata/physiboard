@@ -93,10 +93,14 @@ class StatusBarController(
     private var modifiersContainer: LinearLayout? = null
     private var emojiMapTextView: TextView? = null
     private var emojiKeyboardContainer: LinearLayout? = null
-    private var ledContainer: LinearLayout? = null
     private var emojiKeyButtons: MutableList<View> = mutableListOf()
+    private var lastSymPageRendered: Int = 0
+    private var lastSymMappingsRendered: Map<Int, String>? = null
+    private var wasSymActive: Boolean = false
+    private var symShown: Boolean = false
     private val ledStatusView = LedStatusView(context)
     private val variationBarView: VariationBarView? = if (mode == Mode.FULL) VariationBarView(context) else null
+    private var variationsWrapper: View? = null
     private var forceMinimalUi: Boolean = false
     fun setForceMinimalUi(force: Boolean) {
         if (mode != Mode.FULL) {
@@ -181,7 +185,7 @@ class StatusBarController(
                 visibility = View.GONE
             }
 
-            val variationsWrapper = variationBarView?.ensureView()
+            variationsWrapper = variationBarView?.ensureView()
             val ledStrip = ledStatusView.ensureView()
             
             statusBarLayout?.apply {
@@ -256,167 +260,6 @@ class StatusBarController(
     }
     
     /**
-     * Crea un LED rettangolare e piatto per un modificatore.
-     */
-    private fun createFlatLed(width: Int, height: Int, isActive: Boolean): View {
-        val cornerRadius = TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP,
-            2f, // Rounded top corners for modern look
-            context.resources.displayMetrics
-        )
-        
-        val drawable = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            setColor(if (isActive) Color.WHITE else Color.argb(80, 255, 255, 255))
-            // Rounded corners only on top
-            cornerRadii = floatArrayOf(
-                cornerRadius, cornerRadius, // Top left
-                cornerRadius, cornerRadius, // Top right
-                0f, 0f, // Bottom left
-                0f, 0f  // Bottom right
-            )
-        }
-        
-        return View(context).apply {
-            background = drawable
-            layoutParams = LinearLayout.LayoutParams(width, height)
-        }
-    }
-    
-    /**
-     * Aggiorna lo stato del LED SYM con colori specifici per pagina.
-     * @param led Il view del LED SYM da aggiornare
-     * @param symPage Il numero di pagina SYM (0=spento, 1=blu, 2=arancione)
-     */
-    private fun updateSymLed(led: View?, symPage: Int) {
-        led?.let {
-            val cornerRadius = TypedValue.applyDimension(
-                TypedValue.COMPLEX_UNIT_DIP,
-                2f, // Rounded top corners
-                context.resources.displayMetrics
-            )
-            
-            // Colors: blue for page 1, red/orange for page 2, gray when off (same as other LEDs)
-            val color = when (symPage) {
-                1 -> LED_COLOR_BLUE_ACTIVE // Blue for page 1
-                2 -> LED_COLOR_RED_LOCKED // Red/orange for page 2 (same as locked state)
-                else -> LED_COLOR_GRAY_OFF // Gray when off (same as Shift LED)
-            }
-            
-            // Get previous color from tag (if exists)
-            val previousColorTag = it.getTag(R.id.led_previous_color) as? Int
-            val previousColor = previousColorTag ?: LED_COLOR_GRAY_OFF
-            
-            // Save new color to tag
-            it.setTag(R.id.led_previous_color, color)
-            
-            // Animate color change for smooth transitions
-            if (previousColor != color) {
-                val animator = ValueAnimator.ofArgb(previousColor, color).apply {
-                    duration = 200
-                    interpolator = AccelerateDecelerateInterpolator()
-                    addUpdateListener { animation ->
-                        val animatedColor = animation.animatedValue as Int
-                        val animatedDrawable = GradientDrawable().apply {
-                            shape = GradientDrawable.RECTANGLE
-                            setColor(animatedColor)
-                            // Rounded corners only on top
-                            cornerRadii = floatArrayOf(
-                                cornerRadius, cornerRadius, // Top left
-                                cornerRadius, cornerRadius, // Top right
-                                0f, 0f, // Bottom left
-                                0f, 0f  // Bottom right
-                            )
-                        }
-                        it.background = animatedDrawable
-                    }
-                }
-                animator.start()
-            } else {
-                val drawable = GradientDrawable().apply {
-                    shape = GradientDrawable.RECTANGLE
-                    setColor(color)
-                    // Rounded corners only on top
-                    cornerRadii = floatArrayOf(
-                        cornerRadius, cornerRadius, // Top left
-                        cornerRadius, cornerRadius, // Top right
-                        0f, 0f, // Bottom left
-                        0f, 0f  // Bottom right
-                    )
-                }
-                it.background = drawable
-            }
-        }
-    }
-    
-    /**
-     * Aggiorna lo stato di un LED.
-     * @param led Il view del LED da aggiornare
-     * @param isLocked Se true, il LED è rosso (lockato), se false e isActive è true è blu (attivo), altrimenti grigio (spento)
-     * @param isActive Se true e isLocked è false, il LED è blu (attivo)
-     */
-    private fun updateLed(led: View?, isLocked: Boolean, isActive: Boolean = false) {
-        led?.let {
-            val cornerRadius = TypedValue.applyDimension(
-                TypedValue.COMPLEX_UNIT_DIP,
-                2f, // Rounded top corners
-                context.resources.displayMetrics
-            )
-            
-            // More vibrant colors with better contrast
-            val color = when {
-                isLocked -> LED_COLOR_RED_LOCKED // Orange/red when locked
-                isActive -> LED_COLOR_BLUE_ACTIVE // Blue when active
-                else -> LED_COLOR_GRAY_OFF // Gray when off
-            }
-            
-            // Get previous color from tag (if exists)
-            val previousColorTag = it.getTag(R.id.led_previous_color) as? Int
-            val previousColor = previousColorTag ?: LED_COLOR_GRAY_OFF
-            
-            // Save new color to tag
-            it.setTag(R.id.led_previous_color, color)
-            
-            // Animate color change for smooth transitions
-            if (previousColor != color) {
-                val animator = ValueAnimator.ofArgb(previousColor, color).apply {
-                    duration = 200
-                    interpolator = AccelerateDecelerateInterpolator()
-                    addUpdateListener { animation ->
-                        val animatedColor = animation.animatedValue as Int
-                        val animatedDrawable = GradientDrawable().apply {
-                            shape = GradientDrawable.RECTANGLE
-                            setColor(animatedColor)
-                            // Rounded corners only on top
-                            cornerRadii = floatArrayOf(
-                                cornerRadius, cornerRadius, // Top left
-                                cornerRadius, cornerRadius, // Top right
-                                0f, 0f, // Bottom left
-                                0f, 0f  // Bottom right
-                            )
-                        }
-                        it.background = animatedDrawable
-                    }
-                }
-                animator.start()
-            } else {
-                val drawable = GradientDrawable().apply {
-                    shape = GradientDrawable.RECTANGLE
-                    setColor(color)
-                    // Rounded corners only on top
-                    cornerRadii = floatArrayOf(
-                        cornerRadius, cornerRadius, // Top left
-                        cornerRadius, cornerRadius, // Top right
-                        0f, 0f, // Bottom left
-                        0f, 0f  // Bottom right
-                    )
-                }
-                it.background = drawable
-            }
-        }
-    }
-    
-    /**
      * Crea un indicatore per un modificatore (deprecato, mantenuto per compatibilità).
      */
     private fun createModifierIndicator(text: String, isActive: Boolean): TextView {
@@ -454,6 +297,9 @@ class StatusBarController(
      */
     private fun updateEmojiKeyboard(symMappings: Map<Int, String>, page: Int, inputConnection: android.view.inputmethod.InputConnection? = null) {
         val container = emojiKeyboardContainer ?: return
+        if (lastSymPageRendered == page && lastSymMappingsRendered == symMappings) {
+            return
+        }
         
         // Rimuovi tutti i tasti esistenti
         container.removeAllViews()
@@ -593,6 +439,10 @@ class StatusBarController(
             
             container.addView(rowLayout)
         }
+
+        // Cache what was rendered to avoid rebuilding on each status refresh
+        lastSymPageRendered = page
+        lastSymMappingsRendered = HashMap(symMappings)
     }
     
     /**
@@ -879,36 +729,37 @@ class StatusBarController(
     }
     
     /**
-     * Anima l'apparizione della griglia emoji (slide up + fade in).
-     * @param backgroundView Il view dello sfondo da animare insieme
+     * Anima l'apparizione della griglia emoji solo con slide up (nessun fade).
+     * @param backgroundView Il view dello sfondo da impostare a opaco immediatamente
      */
     private fun animateEmojiKeyboardIn(view: View, backgroundView: View? = null) {
         val height = view.height
         if (height == 0) {
-            // Se l'altezza non è ancora disponibile, usa una stima
             view.measure(
                 View.MeasureSpec.makeMeasureSpec(view.width, View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
             )
         }
         val measuredHeight = view.measuredHeight
-        val startHeight = 0
-        val endHeight = measuredHeight
-        
-        view.alpha = 0f
+
+        view.alpha = 1f
         view.translationY = measuredHeight.toFloat()
         view.visibility = View.VISIBLE
-        
-        // Anima anche lo sfondo se fornito
-        backgroundView?.let { animateBackgroundIn(it) }
-        
-        val animator = ValueAnimator.ofFloat(0f, 1f).apply {
+
+        // Set background to opaque immediately without animation
+        backgroundView?.let { bgView ->
+            if (bgView.background !is ColorDrawable) {
+                bgView.background = ColorDrawable(DEFAULT_BACKGROUND)
+            }
+            (bgView.background as? ColorDrawable)?.alpha = 255
+        }
+
+        val animator = ValueAnimator.ofFloat(measuredHeight.toFloat(), 0f).apply {
             duration = 125
             interpolator = AccelerateDecelerateInterpolator()
             addUpdateListener { animation ->
-                val progress = animation.animatedValue as Float
-                view.alpha = progress
-                view.translationY = measuredHeight * (1f - progress)
+                val value = animation.animatedValue as Float
+                view.translationY = value
             }
             addListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator) {
@@ -922,7 +773,7 @@ class StatusBarController(
     
     /**
      * Anima la scomparsa della griglia emoji (slide down + fade out).
-     * @param backgroundView Il view dello sfondo da animare insieme
+     * @param backgroundView Il view dello sfondo (non animato, rimane opaco)
      * @param onAnimationEnd Callback chiamato quando l'animazione è completata
      */
     private fun animateEmojiKeyboardOut(view: View, backgroundView: View? = null, onAnimationEnd: (() -> Unit)? = null) {
@@ -933,10 +784,7 @@ class StatusBarController(
             return
         }
 
-        // Anima anche lo sfondo se fornito
-        backgroundView?.let { bgView ->
-            animateBackgroundOut(bgView, null)
-        }
+        // Background remains opaque, no animation
 
         val animator = ValueAnimator.ofFloat(1f, 0f).apply {
             duration = 100
@@ -958,59 +806,6 @@ class StatusBarController(
         animator.start()
     }
 
-    /**
-     * Anima l'apparizione dello sfondo nero (fade in).
-     */
-    private fun animateBackgroundIn(view: View) {
-        val colorDrawable = ColorDrawable(DEFAULT_BACKGROUND)
-        view.background = colorDrawable
-        colorDrawable.alpha = 0
-
-        val animator = ValueAnimator.ofInt(0, 255).apply {
-            duration = 125
-            interpolator = AccelerateDecelerateInterpolator()
-            addUpdateListener { animation ->
-                val alpha = animation.animatedValue as Int
-                (view.background as? ColorDrawable)?.alpha = alpha
-            }
-            addListener(object : AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: Animator) {
-                    (view.background as? ColorDrawable)?.alpha = 255
-                }
-            })
-        }
-        animator.start()
-    }
-
-    /**
-     * Anima la scomparsa dello sfondo nero (fade out).
-     * @param onAnimationEnd Callback chiamato quando l'animazione è completata
-     */
-    private fun animateBackgroundOut(view: View, onAnimationEnd: (() -> Unit)? = null) {
-        val background = view.background
-        if (background !is ColorDrawable) {
-            // Se non è un ColorDrawable, creane uno nuovo
-            val colorDrawable = ColorDrawable(DEFAULT_BACKGROUND)
-            colorDrawable.alpha = 255
-            view.background = colorDrawable
-        }
-
-        val animator = ValueAnimator.ofInt(255, 0).apply {
-            duration = 100
-            interpolator = AccelerateDecelerateInterpolator()
-            addUpdateListener { animation ->
-                val alpha = animation.animatedValue as Int
-                (view.background as? ColorDrawable)?.alpha = alpha
-            }
-            addListener(object : AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: Animator) {
-                    (view.background as? ColorDrawable)?.alpha = 255
-                    onAnimationEnd?.invoke()
-                }
-            })
-        }
-        animator.start()
-    }
     
     
 
@@ -1045,34 +840,73 @@ class StatusBarController(
         if (snapshot.symPage > 0 && symMappings != null) {
             updateEmojiKeyboard(symMappings, snapshot.symPage, inputConnection)
             variationsBar?.resetVariationsState()
-            
-            val showSymKeyboard = {
-                if (emojiKeyboardView.visibility != View.VISIBLE) {
-                    animateEmojiKeyboardIn(emojiKeyboardView, layout)
-                } else {
-                    emojiKeyboardView.visibility = View.VISIBLE
-                }
-                variationBarView?.hideImmediate()
+
+            // Pin background to opaque IME color and hide variations so SYM animates on a solid canvas.
+            if (layout.background !is ColorDrawable) {
+                layout.background = ColorDrawable(DEFAULT_BACKGROUND)
             }
-            
-            if (variationsBar != null && emojiKeyboardView.visibility != View.VISIBLE) {
-                variationsBar.hideForSym {
-                    showSymKeyboard()
-                }
+            (layout.background as? ColorDrawable)?.alpha = 255
+            variationsWrapper?.apply {
+                visibility = View.INVISIBLE // keep space to avoid shrink/flash
+                isEnabled = false
+                isClickable = false
+            }
+            variationsBar?.hideImmediate()
+
+            val symHeight = ensureEmojiKeyboardMeasuredHeight(emojiKeyboardView, layout)
+            emojiKeyboardView.setBackgroundColor(DEFAULT_BACKGROUND)
+            emojiKeyboardView.visibility = View.VISIBLE
+            emojiKeyboardView.layoutParams = (emojiKeyboardView.layoutParams ?: LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                symHeight
+            )).apply { height = symHeight }
+            if (!symShown && !wasSymActive) {
+                emojiKeyboardView.alpha = 1f // keep black visible immediately
+                emojiKeyboardView.translationY = symHeight.toFloat()
+                animateEmojiKeyboardIn(emojiKeyboardView, layout)
+                symShown = true
+                wasSymActive = true
             } else {
-                showSymKeyboard()
+                emojiKeyboardView.alpha = 1f
+                emojiKeyboardView.translationY = 0f
+                wasSymActive = true
             }
             return
         }
         
         if (emojiKeyboardView.visibility == View.VISIBLE) {
             animateEmojiKeyboardOut(emojiKeyboardView, layout) {
+                variationsWrapper?.apply {
+                    visibility = View.VISIBLE
+                    isEnabled = true
+                    isClickable = true
+                }
                 variationsBar?.showVariations(snapshot, inputConnection)
             }
+            symShown = false
+            wasSymActive = false
         } else {
             emojiKeyboardView.visibility = View.GONE
+            variationsWrapper?.apply {
+                visibility = View.VISIBLE
+                isEnabled = true
+                isClickable = true
+            }
             variationsBar?.showVariations(snapshot, inputConnection)
+            symShown = false
+            wasSymActive = false
         }
+    }
+
+    private fun ensureEmojiKeyboardMeasuredHeight(view: View, parent: View): Int {
+        if (view.height > 0) {
+            return view.height
+        }
+        val width = if (parent.width > 0) parent.width else context.resources.displayMetrics.widthPixels
+        val widthSpec = View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY)
+        val heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        view.measure(widthSpec, heightSpec)
+        return view.measuredHeight
     }
 }
 
