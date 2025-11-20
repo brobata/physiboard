@@ -148,6 +148,7 @@ class InputEventRouter(
         val ctrlKeyMap: Map<Int, KeyMappingLoader.CtrlMapping>,
         val ctrlOneShot: Boolean,
         val altOneShot: Boolean,
+        val clearAltOnSpaceEnabled: Boolean,
         val shiftOneShot: Boolean,
         val capsLockEnabled: Boolean,
         val cursorUpdateDelayMs: Long
@@ -169,7 +170,8 @@ class InputEventRouter(
         val getCharacterFromLayout: (Int, KeyEvent?, Boolean) -> Char?,
         val isAlphabeticKey: (Int) -> Boolean,
         val callSuper: () -> Boolean,
-        val callSuperWithKey: (Int, KeyEvent?) -> Boolean
+        val callSuperWithKey: (Int, KeyEvent?) -> Boolean,
+        val startSpeechRecognition: () -> Unit
     )
 
     fun routeEditableFieldKeyDown(
@@ -180,6 +182,8 @@ class InputEventRouter(
         callbacks: EditableFieldKeyDownHandlingCallbacks
     ): EditableFieldRoutingResult {
         var shiftOneShotActive = params.shiftOneShot
+        var altLatchActive = params.altLatchActive
+        var altOneShotActive = params.altOneShot
         val ic = params.inputConnection
 
         if (keyCode == KeyEvent.KEYCODE_SHIFT_LEFT || keyCode == KeyEvent.KEYCODE_SHIFT_RIGHT) {
@@ -195,6 +199,15 @@ class InputEventRouter(
         }
 
         if (keyCode == KeyEvent.KEYCODE_CTRL_LEFT || keyCode == KeyEvent.KEYCODE_CTRL_RIGHT) {
+            // Check if Alt is physically pressed (not latch) - if so, trigger speech recognition (if enabled)
+            // Only trigger if both keys are physically pressed simultaneously, not if one is in latch
+            if (event?.isAltPressed == true && 
+                !params.ctrlPressed &&
+                SettingsManager.getAltCtrlSpeechShortcutEnabled(context)) {
+                callbacks.startSpeechRecognition()
+                return EditableFieldRoutingResult.Consume
+            }
+            
             if (!params.ctrlPressed) {
                 val result = controllers.modifierStateController.handleCtrlKeyDown(
                     keyCode,
@@ -216,6 +229,15 @@ class InputEventRouter(
         }
 
         if (keyCode == KeyEvent.KEYCODE_ALT_LEFT || keyCode == KeyEvent.KEYCODE_ALT_RIGHT) {
+            // Check if Ctrl is physically pressed (not latch) - if so, trigger speech recognition (if enabled)
+            // Only trigger if both keys are physically pressed simultaneously, not if one is in latch
+            if (event?.isCtrlPressed == true && 
+                !params.altPressed &&
+                SettingsManager.getAltCtrlSpeechShortcutEnabled(context)) {
+                callbacks.startSpeechRecognition()
+                return EditableFieldRoutingResult.Consume
+            }
+            
             if (controllers.symLayoutController.isSymActive()) {
                 if (controllers.symLayoutController.closeSymPage()) {
                     callbacks.updateStatusBar()
@@ -252,6 +274,17 @@ class InputEventRouter(
         }
 
         if (
+            params.clearAltOnSpaceEnabled &&
+            keyCode == KeyEvent.KEYCODE_SPACE &&
+            (altLatchActive || altOneShotActive)
+        ) {
+            controllers.modifierStateController.clearAltState()
+            altLatchActive = false
+            altOneShotActive = false
+            callbacks.updateStatusBar()
+        }
+
+        if (
             handleNumericAndSym(
                 keyCode = keyCode,
                 event = event,
@@ -261,7 +294,7 @@ class InputEventRouter(
                 symLayoutController = controllers.symLayoutController,
                 ctrlLatchActive = params.ctrlLatchActive,
                 ctrlOneShot = params.ctrlOneShot,
-                altLatchActive = params.altLatchActive,
+                altLatchActive = altLatchActive,
                 cursorUpdateDelayMs = params.cursorUpdateDelayMs,
                 updateStatusBar = callbacks.updateStatusBar,
                 callSuper = callbacks.callSuper
@@ -270,11 +303,12 @@ class InputEventRouter(
             return EditableFieldRoutingResult.Consume
         }
 
-        if (event?.isAltPressed == true || params.altLatchActive || params.altOneShot) {
+        if (event?.isAltPressed == true || altLatchActive || altOneShotActive) {
             controllers.altSymManager.cancelPendingLongPress(keyCode)
-            if (params.altOneShot) {
+            if (altOneShotActive) {
                 callbacks.clearAltOneShot()
                 callbacks.refreshStatusBar()
+                altOneShotActive = false
             }
 
             if (keyCode == KeyEvent.KEYCODE_BACK) {

@@ -23,6 +23,8 @@ object SettingsManager {
     private const val KEY_DOUBLE_SPACE_TO_PERIOD = "double_space_to_period"
     private const val KEY_SWIPE_TO_DELETE = "swipe_to_delete"
     private const val KEY_AUTO_SHOW_KEYBOARD = "auto_show_keyboard"
+    private const val KEY_CLEAR_ALT_ON_SPACE = "clear_alt_on_space"
+    private const val KEY_ALT_CTRL_SPEECH_SHORTCUT = "alt_ctrl_speech_shortcut"
     private const val KEY_SYM_MAPPINGS_CUSTOM = "sym_mappings_custom"
     private const val KEY_SYM_MAPPINGS_PAGE2_CUSTOM = "sym_mappings_page2_custom"
     private const val KEY_AUTO_CORRECT_ENABLED = "auto_correct_enabled"
@@ -44,6 +46,8 @@ object SettingsManager {
     private const val DEFAULT_DOUBLE_SPACE_TO_PERIOD = true
     private const val DEFAULT_SWIPE_TO_DELETE = false
     private const val DEFAULT_AUTO_SHOW_KEYBOARD = true
+    private const val DEFAULT_CLEAR_ALT_ON_SPACE = false
+    private const val DEFAULT_ALT_CTRL_SPEECH_SHORTCUT = true
     private const val DEFAULT_AUTO_CORRECT_ENABLED = true
     private const val DEFAULT_AUTO_CAPITALIZE_AFTER_PERIOD = true
     private const val DEFAULT_LONG_PRESS_MODIFIER = "alt"
@@ -168,6 +172,38 @@ object SettingsManager {
     fun setAutoShowKeyboard(context: Context, enabled: Boolean) {
         getPreferences(context).edit()
             .putBoolean(KEY_AUTO_SHOW_KEYBOARD, enabled)
+            .apply()
+    }
+
+    /**
+     * Returns whether Alt+Ctrl shortcut for speech recognition is enabled.
+     */
+    fun getAltCtrlSpeechShortcutEnabled(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_ALT_CTRL_SPEECH_SHORTCUT, DEFAULT_ALT_CTRL_SPEECH_SHORTCUT)
+    }
+
+    /**
+     * Sets whether Alt+Ctrl shortcut for speech recognition is enabled.
+     */
+    fun setAltCtrlSpeechShortcutEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_ALT_CTRL_SPEECH_SHORTCUT, enabled)
+            .apply()
+    }
+
+    /**
+     * Returns whether Alt/Alt-Lock should be cleared when pressing Space.
+     */
+    fun getClearAltOnSpace(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_CLEAR_ALT_ON_SPACE, DEFAULT_CLEAR_ALT_ON_SPACE)
+    }
+
+    /**
+     * Sets whether Alt/Alt-Lock should be cleared when pressing Space.
+     */
+    fun setClearAltOnSpace(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_CLEAR_ALT_ON_SPACE, enabled)
             .apply()
     }
     

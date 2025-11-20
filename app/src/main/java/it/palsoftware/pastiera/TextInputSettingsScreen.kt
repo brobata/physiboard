@@ -42,6 +42,10 @@ fun TextInputSettingsScreen(
     var doubleSpaceToPeriod by remember {
         mutableStateOf(SettingsManager.getDoubleSpaceToPeriod(context))
     }
+
+    var clearAltOnSpace by remember {
+        mutableStateOf(SettingsManager.getClearAltOnSpace(context))
+    }
     
     var swipeToDelete by remember {
         mutableStateOf(SettingsManager.getSwipeToDelete(context))
@@ -49,6 +53,10 @@ fun TextInputSettingsScreen(
     
     var autoShowKeyboard by remember {
         mutableStateOf(SettingsManager.getAutoShowKeyboard(context))
+    }
+    
+    var altCtrlSpeechShortcut by remember {
+        mutableStateOf(SettingsManager.getAltCtrlSpeechShortcutEnabled(context))
     }
     
     Scaffold(
@@ -209,7 +217,50 @@ fun TextInputSettingsScreen(
                     )
                 }
             }
-        
+
+            // Clear Alt on Space
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(64.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.TextFields,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.clear_alt_on_space_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1
+                        )
+                        Text(
+                            text = stringResource(R.string.clear_alt_on_space_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
+                    }
+                    Switch(
+                        checked = clearAltOnSpace,
+                        onCheckedChange = { enabled ->
+                            clearAltOnSpace = enabled
+                            SettingsManager.setClearAltOnSpace(context, enabled)
+                        }
+                    )
+                }
+            }
+
             // Swipe to Delete
             Surface(
                 modifier = Modifier
@@ -279,6 +330,49 @@ fun TextInputSettingsScreen(
                         onCheckedChange = { enabled ->
                             autoShowKeyboard = enabled
                             SettingsManager.setAutoShowKeyboard(context, enabled)
+                        }
+                    )
+                }
+            }
+
+            // Alt+Ctrl Speech Recognition Shortcut
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(64.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.TextFields,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.alt_ctrl_speech_shortcut_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1
+                        )
+                        Text(
+                            text = stringResource(R.string.alt_ctrl_speech_shortcut_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
+                    }
+                    Switch(
+                        checked = altCtrlSpeechShortcut,
+                        onCheckedChange = { enabled ->
+                            altCtrlSpeechShortcut = enabled
+                            SettingsManager.setAltCtrlSpeechShortcutEnabled(context, enabled)
                         }
                     )
                 }

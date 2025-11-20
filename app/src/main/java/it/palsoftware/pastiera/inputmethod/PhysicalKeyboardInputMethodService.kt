@@ -27,6 +27,7 @@ import it.palsoftware.pastiera.core.TextInputController
 import it.palsoftware.pastiera.data.layout.LayoutMappingRepository
 import it.palsoftware.pastiera.data.mappings.KeyMappingLoader
 import it.palsoftware.pastiera.data.variation.VariationRepository
+import it.palsoftware.pastiera.inputmethod.SpeechRecognitionActivity
 
 /**
  * Input method service specialized for physical keyboards.
@@ -132,6 +133,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private lateinit var inputEventRouter: InputEventRouter
     private lateinit var keyboardVisibilityController: KeyboardVisibilityController
     private lateinit var launcherShortcutController: LauncherShortcutController
+    private var clearAltOnSpaceEnabled: Boolean = false
 
     private val motionEventController = MotionEventController(logTag = TAG)
     
@@ -148,6 +150,20 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
 
     private fun refreshStatusBar() {
         updateStatusBarText()
+    }
+    
+    private fun startSpeechRecognition() {
+        try {
+            val intent = Intent(this, SpeechRecognitionActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                        Intent.FLAG_ACTIVITY_NO_HISTORY or
+                        Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
+            }
+            startActivity(intent)
+            Log.d(TAG, "Speech recognition started via Alt+Ctrl shortcut")
+        } catch (e: Exception) {
+            Log.e(TAG, "Unable to launch speech recognition", e)
+        }
     }
     
     
@@ -302,6 +318,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     override fun onCreate() {
         super.onCreate()
         prefs = getSharedPreferences("pastiera_prefs", Context.MODE_PRIVATE)
+        clearAltOnSpaceEnabled = SettingsManager.getClearAltOnSpace(this)
         
         NotificationHelper.createNotificationChannel(this)
         
@@ -388,6 +405,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 Handler(Looper.getMainLooper()).post {
                     updateStatusBarText()
                 }
+            } else if (key == "clear_alt_on_space") {
+                clearAltOnSpaceEnabled = SettingsManager.getClearAltOnSpace(this)
             } else if (key != null && (key.startsWith("auto_correct_custom_") || key == "auto_correct_enabled_languages")) {
                 Log.d(TAG, "Auto-correction rules changed, reloading...")
                 // Reload auto-corrections (including new custom languages)
@@ -837,6 +856,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 ctrlKeyMap = ctrlKeyMap,
                 ctrlOneShot = ctrlOneShot,
                 altOneShot = altOneShot,
+                clearAltOnSpaceEnabled = clearAltOnSpaceEnabled,
                 shiftOneShot = shiftOneShot,
                 capsLockEnabled = capsLockEnabled,
                 cursorUpdateDelayMs = CURSOR_UPDATE_DELAY
@@ -862,7 +882,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 callSuper = { super.onKeyDown(keyCode, event) },
                 callSuperWithKey = { defaultKeyCode, defaultEvent ->
                     super.onKeyDown(defaultKeyCode, defaultEvent)
-                }
+                },
+                startSpeechRecognition = { startSpeechRecognition() }
             )
         )
 
@@ -976,4 +997,3 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         return super.onGenericMotionEvent(event)
     }
 }
-

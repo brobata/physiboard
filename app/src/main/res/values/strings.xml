@@ -30,12 +30,20 @@
     <!-- Double Space to Period Section -->
     <string name="double_space_to_period_title">Double Space to Period</string>
     <string name="double_space_to_period_description">Double tap space to insert a period followed by a space and capitalize the next letter.</string>
+
+    <!-- Clear Alt on Space Section -->
+    <string name="clear_alt_on_space_title">Clear Alt on Space</string>
+    <string name="clear_alt_on_space_description">Automatically disable Alt or Alt-Lock when pressing Space.</string>
     
     <!-- Swipe to Delete Section -->
     <string name="swipe_to_delete_title">Enable Swipe to Delete</string>
     
     <!-- Auto Show Keyboard Section -->
     <string name="auto_show_keyboard_title">Auto Show Keyboard</string>
+    
+    <!-- Alt+Ctrl Speech Recognition Shortcut Section -->
+    <string name="alt_ctrl_speech_shortcut_title">Alt+Ctrl Speech Recognition</string>
+    <string name="alt_ctrl_speech_shortcut_description">Enable Alt+Ctrl keyboard shortcut to start speech recognition</string>
     
     <!-- Info Section -->
     <string name="info_title">Information</string>

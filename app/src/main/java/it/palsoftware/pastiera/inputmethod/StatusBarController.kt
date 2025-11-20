@@ -337,8 +337,8 @@ class StatusBarController(
             context.resources.displayMetrics
         ).toInt()
         
-        // Calcola la larghezza fissa dei tasti basata sulla riga più lunga
-        val maxKeysInRow = keyboardRows.maxOfOrNull { it.size } ?: 10
+        // Calcola la larghezza fissa dei tasti basata sulla prima riga (10 caselle)
+        val maxKeysInRow = 10 // Prima riga ha 10 caselle
         val screenWidth = context.resources.displayMetrics.widthPixels
         val horizontalPadding = TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP,
@@ -369,6 +369,14 @@ class StatusBarController(
                         bottomMargin = keySpacing
                     }
                 }
+            }
+            
+            // Per la terza riga, aggiungi placeholder trasparente a sinistra
+            if (rowIndex == 2) {
+                val leftPlaceholder = createPlaceholderButton(keyHeight)
+                rowLayout.addView(leftPlaceholder, LinearLayout.LayoutParams(fixedKeyWidth, keyHeight).apply {
+                    marginEnd = keySpacing
+                })
             }
             
             for ((index, keyCode) in row.withIndex()) {
@@ -423,17 +431,11 @@ class StatusBarController(
                 })
             }
             
-            // Aggiungi il pulsante ingranaggio alla fine della terza riga (a destra della M)
+            // Per la terza riga, aggiungi placeholder con icona matita a destra
             if (rowIndex == 2) {
-                val settingsButton = createSettingsButton(keyHeight)
-                val iconSize = TypedValue.applyDimension(
-                    TypedValue.COMPLEX_UNIT_DIP,
-                    24f, // Aumentato del 20% (20f * 1.2 = 24f)
-                    context.resources.displayMetrics
-                ).toInt()
-                rowLayout.addView(settingsButton, LinearLayout.LayoutParams(iconSize, iconSize).apply {
+                val rightPlaceholder = createPlaceholderWithPencilButton(keyHeight)
+                rowLayout.addView(rightPlaceholder, LinearLayout.LayoutParams(fixedKeyWidth, keyHeight).apply {
                     marginStart = keySpacing
-                    gravity = Gravity.CENTER_VERTICAL
                 })
             }
             
@@ -446,31 +448,55 @@ class StatusBarController(
     }
     
     /**
-     * Crea il pulsante ingranaggio per aprire la schermata di personalizzazione SYM.
+     * Crea un placeholder trasparente per allineare le righe.
      */
-    private fun createSettingsButton(height: Int): View {
-        // Dimensione aumentata del 20% per l'icona
+    private fun createPlaceholderButton(height: Int): View {
+        return FrameLayout(context).apply {
+            background = null // Trasparente
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                height
+            )
+            isClickable = false
+            isFocusable = false
+        }
+    }
+    
+    /**
+     * Crea un placeholder con icona matita per aprire la schermata di personalizzazione SYM.
+     */
+    private fun createPlaceholderWithPencilButton(height: Int): View {
+        val placeholder = FrameLayout(context).apply {
+            setPadding(0, 0, 0, 0)
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                height
+            )
+        }
+        
+        // Background trasparente
+        placeholder.background = null
+        
+        // Dimensione icona più grande
         val iconSize = TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP,
-            14.4f, // Aumentato del 20% (12f * 1.2 = 14.4f)
+            20f, // Aumentata ulteriormente per maggiore visibilità
             context.resources.displayMetrics
         ).toInt()
         
         val button = ImageView(context).apply {
-            background = null // Nessuno sfondo
+            background = null
             setImageResource(R.drawable.ic_edit_24)
-            // Grigio quasi nero invece di bianco
-            setColorFilter(Color.rgb(40, 40, 40)) // Grigio molto scuro, quasi nero
+            setColorFilter(Color.WHITE) // Bianco
             scaleType = ImageView.ScaleType.FIT_CENTER
-            adjustViewBounds = true // Permette il ridimensionamento
-            maxWidth = iconSize // Limita la larghezza massima
-            maxHeight = iconSize // Limita l'altezza massima
-            setPadding(0, 0, 0, 0) // Nessun padding
-            layoutParams = LinearLayout.LayoutParams(
-                iconSize, // Larghezza fissa basata sulla dimensione dell'icona
-                iconSize  // Altezza fissa basata sulla dimensione dell'icona
+            adjustViewBounds = true
+            maxWidth = iconSize
+            maxHeight = iconSize
+            layoutParams = FrameLayout.LayoutParams(
+                iconSize,
+                iconSize
             ).apply {
-                gravity = Gravity.CENTER_VERTICAL
+                gravity = Gravity.CENTER
             }
             isClickable = true
             isFocusable = true
@@ -496,7 +522,8 @@ class StatusBarController(
             }
         }
         
-        return button
+        placeholder.addView(button)
+        return placeholder
     }
     
     /**
@@ -515,10 +542,15 @@ class StatusBarController(
             )
         }
         
-        // Background del tasto senza angoli arrotondati e senza bordi
+        // Background del tasto con angoli leggermente arrotondati
+        val cornerRadius = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            6f, // Angoli leggermente arrotondati
+            context.resources.displayMetrics
+        )
         val drawable = GradientDrawable().apply {
             setColor(Color.argb(40, 255, 255, 255)) // Bianco semi-trasparente
-            setCornerRadius(0f) // Nessun angolo arrotondato
+            setCornerRadius(cornerRadius)
             // Nessun bordo
         }
         keyLayout.background = drawable
@@ -641,9 +673,9 @@ class StatusBarController(
             context.resources.displayMetrics
         ).toInt()
         
-        // Calcola la larghezza fissa dei tasti basata sulla riga più lunga
+        // Calcola la larghezza fissa dei tasti basata sulla prima riga (10 caselle)
         // Usa ViewTreeObserver per ottenere la larghezza effettiva del container dopo il layout
-        val maxKeysInRow = keyboardRows.maxOfOrNull { it.size } ?: 10
+        val maxKeysInRow = 10 // Prima riga ha 10 caselle
         
         // Inizializza con una larghezza temporanea, verrà aggiornata dopo il layout
         var fixedKeyWidth = 0
@@ -702,6 +734,14 @@ class StatusBarController(
                 }
             }
             
+            // Per la terza riga, aggiungi placeholder trasparente a sinistra
+            if (rowIndex == 2) {
+                val leftPlaceholder = createPlaceholderButton(keyHeight)
+                rowLayout.addView(leftPlaceholder, LinearLayout.LayoutParams(fixedKeyWidth, keyHeight).apply {
+                    marginEnd = keySpacing
+                })
+            }
+            
             for ((index, keyCode) in row.withIndex()) {
                 val label = keyLabels[keyCode] ?: ""
                 val emoji = symMappings[keyCode] ?: ""
@@ -719,6 +759,15 @@ class StatusBarController(
                     if (index < row.size - 1) {
                         marginEnd = keySpacing
                     }
+                })
+            }
+            
+            // Per la terza riga nella schermata di personalizzazione, aggiungi placeholder trasparente a destra
+            // per mantenere l'allineamento (senza matita e senza click listener)
+            if (rowIndex == 2) {
+                val rightPlaceholder = createPlaceholderButton(keyHeight)
+                rowLayout.addView(rightPlaceholder, LinearLayout.LayoutParams(fixedKeyWidth, keyHeight).apply {
+                    marginStart = keySpacing
                 })
             }
             

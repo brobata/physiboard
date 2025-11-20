@@ -261,6 +261,20 @@ class ModifierStateController(
         return result
     }
 
+    /**
+     * Clears Alt latch/one-shot state (used when Space should auto-disable Alt).
+     * Optionally resets pressed flags if they are not reliable anymore.
+     */
+    fun clearAltState(resetPressedState: Boolean = false) {
+        altState.latchActive = false
+        altState.oneShot = false
+        altState.lastReleaseTime = 0
+        if (resetPressedState) {
+            altState.pressed = false
+            altState.physicallyPressed = false
+        }
+    }
+
     fun requestShiftOneShotFromAutoCap(): Boolean {
         return shiftStateMachine.requestOneShot()
     }
