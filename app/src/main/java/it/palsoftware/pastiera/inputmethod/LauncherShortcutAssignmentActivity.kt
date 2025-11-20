@@ -1,19 +1,27 @@
 package it.palsoftware.pastiera.inputmethod
 
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
+import android.util.Log
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import it.palsoftware.pastiera.*
@@ -40,6 +48,16 @@ class LauncherShortcutAssignmentActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        // Disable activity transition animations for instant appearance
+        overridePendingTransition(0, 0)
+        
+        // Configure window to be fully transparent and overlay
+        window.setFlags(
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+        )
+        window.setBackgroundDrawableResource(android.R.color.transparent)
+        
         val keyCode = intent.getIntExtra(EXTRA_KEY_CODE, -1)
         if (keyCode == -1) {
             finish()
@@ -65,12 +83,17 @@ class LauncherShortcutAssignmentActivity : ComponentActivity() {
                     LauncherShortcutAssignmentBottomSheet(
                         keyCode = keyCode,
                         onAppSelected = { app ->
+                            // Save the shortcut
                             SettingsManager.setLauncherShortcut(
                                 this@LauncherShortcutAssignmentActivity,
                                 keyCode,
                                 app.packageName,
                                 app.appName
                             )
+                            
+                            // Launch the app immediately
+                            launchApp(app.packageName)
+                            
                             setResult(RESULT_ASSIGNED)
                             finish()
                         },
@@ -84,8 +107,32 @@ class LauncherShortcutAssignmentActivity : ComponentActivity() {
     }
     
     override fun onBackPressed() {
-        super.onBackPressed()
         finish()
+        overridePendingTransition(0, 0)
+    }
+    
+    override fun finish() {
+        super.finish()
+        overridePendingTransition(0, 0)
+    }
+    
+    /**
+     * Launches an app by package name.
+     */
+    private fun launchApp(packageName: String) {
+        try {
+            val pm = packageManager
+            val intent = pm.getLaunchIntentForPackage(packageName)
+            if (intent != null) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                startActivity(intent)
+                Log.d("LauncherShortcutAssignment", "App launched: $packageName")
+            } else {
+                Log.w("LauncherShortcutAssignment", "No launch intent found for: $packageName")
+            }
+        } catch (e: Exception) {
+            Log.e("LauncherShortcutAssignment", "Error launching app $packageName", e)
+        }
     }
 }
 
@@ -210,7 +257,7 @@ private fun LauncherShortcutAssignmentBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        modifier = Modifier.fillMaxHeight(0.85f),
+        modifier = Modifier.fillMaxHeight(1f),
         dragHandle = {
             HorizontalDivider(
                 modifier = Modifier
@@ -222,7 +269,9 @@ private fun LauncherShortcutAssignmentBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .fillMaxHeight()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.Bottom
         ) {
             // Header
             Row(
@@ -230,20 +279,22 @@ private fun LauncherShortcutAssignmentBottomSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text(
-                        text = stringResource(R.string.launcher_shortcut_assignment_title),
+                        text = "Shortcut",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
                     Surface(
                         color = MaterialTheme.colorScheme.primaryContainer,
                         shape = MaterialTheme.shapes.small
                     ) {
                         Text(
-                            text = stringResource(R.string.launcher_shortcut_assignment_key, getKeyName(keyCode)),
-                            style = MaterialTheme.typography.titleLarge,
+                            text = getKeyName(keyCode),
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
@@ -279,38 +330,39 @@ private fun LauncherShortcutAssignmentBottomSheet(
             
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Lista delle app (limita l'altezza)
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 400.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                if (filteredApps.isEmpty()) {
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(32.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = if (searchQuery.isBlank()) {
-                                    stringResource(R.string.launcher_shortcut_assignment_no_apps)
-                                } else {
-                                    stringResource(R.string.launcher_shortcut_assignment_no_results, searchQuery)
-                                },
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                } else {
+            // Griglia delle app
+            if (filteredApps.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (searchQuery.isBlank()) {
+                            stringResource(R.string.launcher_shortcut_assignment_no_apps)
+                        } else {
+                            stringResource(R.string.launcher_shortcut_assignment_no_results, searchQuery)
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(minSize = 100.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 400.dp),
+                    contentPadding = PaddingValues(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     items(
                         items = filteredApps,
                         key = { app -> app.packageName }
                     ) { app ->
-                        AppListItem(
+                        AppGridItem(
                             app = app,
                             onClick = {
                                 onAppSelected(app)
@@ -320,69 +372,68 @@ private fun LauncherShortcutAssignmentBottomSheet(
                 }
             }
             
-            // Spazio in basso per evitare che il contenuto tocchi il bordo
-            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
 
 /**
- * Item della lista per un'app (versione riutilizzabile).
+ * Item della griglia per un'app (versione compatta per griglia).
  */
 @Composable
-private fun AppListItem(
+private fun AppGridItem(
     app: InstalledApp,
     onClick: () -> Unit
 ) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
+            .aspectRatio(0.85f)
             .clickable(onClick = onClick),
-        color = MaterialTheme.colorScheme.surface
+        color = MaterialTheme.colorScheme.surface,
+        shape = MaterialTheme.shapes.medium
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            // Icona app usando AndroidView
-            // Usa key per forzare il recomposition quando cambia l'app
-            key(app.packageName) {
-                Box(
-                    modifier = Modifier.size(48.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    androidx.compose.ui.viewinterop.AndroidView(
-                        factory = { ctx ->
-                            android.widget.ImageView(ctx).apply {
-                                layoutParams = android.view.ViewGroup.LayoutParams(
-                                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                                    android.view.ViewGroup.LayoutParams.MATCH_PARENT
-                                )
-                                scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
-                                setImageDrawable(app.icon)
-                            }
-                        },
-                        update = { imageView ->
-                            imageView.setImageDrawable(app.icon)
-                        },
-                        modifier = Modifier.size(48.dp)
-                    )
-                }
-            }
-            
-            // Nome app (package name nascosto)
-            Column(
-                modifier = Modifier.weight(1f)
+            // Icona app usando AndroidView (ottimizzata con remember)
+            val iconDrawable = remember(app.packageName) { app.icon }
+            Box(
+                modifier = Modifier.size(56.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = app.appName,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium
+                androidx.compose.ui.viewinterop.AndroidView(
+                    factory = { ctx ->
+                        android.widget.ImageView(ctx).apply {
+                            layoutParams = android.view.ViewGroup.LayoutParams(
+                                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                                android.view.ViewGroup.LayoutParams.MATCH_PARENT
+                            )
+                            scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+                            setImageDrawable(iconDrawable)
+                        }
+                    },
+                    update = { imageView ->
+                        imageView.setImageDrawable(iconDrawable)
+                    },
+                    modifier = Modifier.size(56.dp)
                 )
             }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // Nome app (centrato, max 2 righe)
+            Text(
+                text = app.appName,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Medium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center
+            )
         }
     }
 }

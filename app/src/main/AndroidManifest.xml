@@ -86,10 +86,13 @@
         <!-- Attività per assegnare scorciatoie del launcher -->
         <activity
             android:name=".inputmethod.LauncherShortcutAssignmentActivity"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:theme="@style/Theme.Pastiera.OverlayDialog"
             android:exported="false"
             android:excludeFromRecents="true"
-            android:launchMode="singleTask" />
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:noHistory="true"
+            android:finishOnTaskLaunch="true" />
     </application>
 
 </manifest>

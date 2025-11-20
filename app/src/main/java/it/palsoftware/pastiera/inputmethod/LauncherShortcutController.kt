@@ -111,6 +111,8 @@ class LauncherShortcutController(
         try {
             val intent = Intent(context, LauncherShortcutAssignmentActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
+                addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY)
                 addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
                 putExtra(LauncherShortcutAssignmentActivity.EXTRA_KEY_CODE, keyCode)
             }
