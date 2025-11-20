@@ -1,21 +1,91 @@
 package it.palsoftware.pastiera.core
 
-import it.palsoftware.pastiera.inputmethod.AutoCapitalizeHelper
+import android.view.KeyEvent
 import it.palsoftware.pastiera.inputmethod.ModifierKeyHandler
+
+enum class ShiftState { OFF, ONE_SHOT, CAPS }
 
 /**
  * Centralizes modifier key state (Shift/Ctrl/Alt) and keeps one-shot / latch
- * bookkeeping in sync with auto-capitalization helpers.
+ * bookkeeping in sync with the UI and auto-capitalization helpers.
  */
 class ModifierStateController(
-    doubleTapThreshold: Long,
-    private val autoCapitalizeState: AutoCapitalizeHelper.AutoCapitalizeState
+    private val doubleTapThreshold: Long
 ) {
     private val modifierKeyHandler = ModifierKeyHandler(doubleTapThreshold)
+    private var lastKeyWasModifier = false
+    private var lastModifierKeyCode: Int = 0
 
-    private val shiftState = ModifierKeyHandler.ShiftState()
+    private class ShiftStateMachine(
+        private val doubleTapThreshold: Long
+    ) {
+        var state: ShiftState = ShiftState.OFF
+            private set
+
+        private var lastTapTime: Long = 0
+
+        fun tap(
+            now: Long = System.currentTimeMillis(),
+            isConsecutiveTap: Boolean
+        ): ShiftState {
+            val doubleTap = isConsecutiveTap && now - lastTapTime < doubleTapThreshold
+            lastTapTime = now
+            state = when {
+                doubleTap -> if (state == ShiftState.CAPS) ShiftState.OFF else ShiftState.CAPS
+                state == ShiftState.OFF -> ShiftState.ONE_SHOT
+                else -> ShiftState.OFF
+            }
+            return state
+        }
+
+        fun requestOneShot(): Boolean {
+            if (state == ShiftState.CAPS) {
+                return false
+            }
+            if (state != ShiftState.ONE_SHOT) {
+                state = ShiftState.ONE_SHOT
+                return true
+            }
+            return false
+        }
+
+        fun consumeOneShot(): Boolean {
+            return if (state == ShiftState.ONE_SHOT) {
+                state = ShiftState.OFF
+                true
+            } else {
+                false
+            }
+        }
+
+        fun setCapsLock(enabled: Boolean) {
+            state = if (enabled) ShiftState.CAPS else ShiftState.OFF
+        }
+
+        fun reset() {
+            state = ShiftState.OFF
+            lastTapTime = 0
+        }
+    }
+
+    private val shiftStateMachine = ShiftStateMachine(doubleTapThreshold)
+    private var shiftPressedFlag = false
+    private var shiftPhysicallyPressedFlag = false
+
     private val ctrlState = ModifierKeyHandler.CtrlState()
     private val altState = ModifierKeyHandler.AltState()
+
+    fun registerModifierTap(keyCode: Int): Boolean {
+        val isConsecutive = lastKeyWasModifier && lastModifierKeyCode == keyCode
+        lastKeyWasModifier = true
+        lastModifierKeyCode = keyCode
+        return isConsecutive
+    }
+
+    fun registerNonModifierKey() {
+        lastKeyWasModifier = false
+        lastModifierKeyCode = 0
+    }
 
     data class Snapshot(
         val capsLockEnabled: Boolean,
@@ -30,30 +100,29 @@ class ModifierStateController(
         val altOneShot: Boolean
     )
 
+    val shiftState: ShiftState
+        get() = shiftStateMachine.state
+
     var capsLockEnabled: Boolean
-        get() = shiftState.latchActive
-        set(value) { shiftState.latchActive = value }
+        get() = shiftStateMachine.state == ShiftState.CAPS
+        set(value) { shiftStateMachine.setCapsLock(value) }
 
     var shiftPressed: Boolean
-        get() = shiftState.pressed
-        set(value) { shiftState.pressed = value }
+        get() = shiftPressedFlag
+        set(value) { shiftPressedFlag = value }
 
     var shiftPhysicallyPressed: Boolean
-        get() = shiftState.physicallyPressed
-        set(value) { shiftState.physicallyPressed = value }
+        get() = shiftPhysicallyPressedFlag
+        set(value) { shiftPhysicallyPressedFlag = value }
 
     var shiftOneShot: Boolean
-        get() = autoCapitalizeState.shiftOneShot
+        get() = shiftStateMachine.state == ShiftState.ONE_SHOT
         set(value) {
-            autoCapitalizeState.shiftOneShot = value
-            syncShiftOneShotToShiftState()
-        }
-
-    var shiftOneShotEnabledTime: Long
-        get() = autoCapitalizeState.shiftOneShotEnabledTime
-        set(value) {
-            autoCapitalizeState.shiftOneShotEnabledTime = value
-            syncShiftOneShotToShiftState()
+            if (value) {
+                shiftStateMachine.requestOneShot()
+            } else {
+                shiftStateMachine.consumeOneShot()
+            }
         }
 
     var ctrlLatchActive: Boolean
@@ -100,7 +169,7 @@ class ModifierStateController(
         return Snapshot(
             capsLockEnabled = capsLockEnabled,
             shiftPhysicallyPressed = shiftPhysicallyPressed,
-            shiftOneShot = autoCapitalizeState.shiftOneShot,
+            shiftOneShot = shiftOneShot,
             ctrlLatchActive = ctrlLatchActive,
             ctrlPhysicallyPressed = ctrlPhysicallyPressed,
             ctrlOneShot = ctrlOneShot,
@@ -112,20 +181,38 @@ class ModifierStateController(
     }
 
     fun handleShiftKeyDown(keyCode: Int): ModifierKeyHandler.ModifierKeyResult {
-        if (shiftPressed) {
+        if (keyCode != KeyEvent.KEYCODE_SHIFT_LEFT &&
+            keyCode != KeyEvent.KEYCODE_SHIFT_RIGHT
+        ) {
             return ModifierKeyHandler.ModifierKeyResult()
         }
-        val result = modifierKeyHandler.handleShiftKeyDown(keyCode, shiftState)
-        shiftPressed = true
-        syncShiftOneShotFromShiftState()
-        return result
+
+        if (shiftPressedFlag) {
+            return ModifierKeyHandler.ModifierKeyResult()
+        }
+
+        shiftPhysicallyPressedFlag = true
+        shiftPressedFlag = true
+        val previous = shiftStateMachine.state
+        val isConsecutiveTap = registerModifierTap(keyCode)
+        val current = shiftStateMachine.tap(isConsecutiveTap = isConsecutiveTap)
+        val changed = previous != current
+        return ModifierKeyHandler.ModifierKeyResult(
+            shouldUpdateStatusBar = changed,
+            shouldRefreshStatusBar = changed
+        )
     }
 
     fun handleShiftKeyUp(keyCode: Int): ModifierKeyHandler.ModifierKeyResult {
-        val result = modifierKeyHandler.handleShiftKeyUp(keyCode, shiftState)
-        shiftPressed = false
-        syncShiftOneShotFromShiftState()
-        return result
+        if (keyCode != KeyEvent.KEYCODE_SHIFT_LEFT &&
+            keyCode != KeyEvent.KEYCODE_SHIFT_RIGHT
+        ) {
+            return ModifierKeyHandler.ModifierKeyResult()
+        }
+
+        shiftPressedFlag = false
+        shiftPhysicallyPressedFlag = false
+        return ModifierKeyHandler.ModifierKeyResult(shouldUpdateStatusBar = true)
     }
 
     fun handleCtrlKeyDown(
@@ -136,10 +223,12 @@ class ModifierStateController(
         if (ctrlPressed) {
             return ModifierKeyHandler.ModifierKeyResult()
         }
+        val isConsecutiveTap = registerModifierTap(keyCode)
         val result = modifierKeyHandler.handleCtrlKeyDown(
             keyCode,
             ctrlState,
             isInputViewActive,
+            isConsecutiveTap = isConsecutiveTap,
             onNavModeDeactivated
         )
         ctrlPressed = true
@@ -156,7 +245,12 @@ class ModifierStateController(
         if (altPressed) {
             return ModifierKeyHandler.ModifierKeyResult()
         }
-        val result = modifierKeyHandler.handleAltKeyDown(keyCode, altState)
+        val isConsecutiveTap = registerModifierTap(keyCode)
+        val result = modifierKeyHandler.handleAltKeyDown(
+            keyCode,
+            altState,
+            isConsecutiveTap = isConsecutiveTap
+        )
         altPressed = true
         return result
     }
@@ -165,6 +259,14 @@ class ModifierStateController(
         val result = modifierKeyHandler.handleAltKeyUp(keyCode, altState)
         altPressed = false
         return result
+    }
+
+    fun requestShiftOneShotFromAutoCap(): Boolean {
+        return shiftStateMachine.requestOneShot()
+    }
+
+    fun consumeShiftOneShot(): Boolean {
+        return shiftStateMachine.consumeOneShot()
     }
 
     fun resetModifiers(
@@ -182,9 +284,11 @@ class ModifierStateController(
             false
         }
 
-        modifierKeyHandler.resetShiftState(shiftState)
-        capsLockEnabled = false
-        AutoCapitalizeHelper.reset(autoCapitalizeState)
+        shiftStateMachine.reset()
+        shiftPressedFlag = false
+        shiftPhysicallyPressedFlag = false
+        lastKeyWasModifier = false
+        lastModifierKeyCode = 0
 
         if (preserveNavMode && savedCtrlLatch) {
             ctrlLatchActive = true
@@ -195,24 +299,6 @@ class ModifierStateController(
             modifierKeyHandler.resetCtrlState(ctrlState, preserveNavMode = false)
         }
         modifierKeyHandler.resetAltState(altState)
-    }
-
-    fun syncShiftOneShotFromShiftState() {
-        autoCapitalizeState.shiftOneShot = shiftState.oneShot
-        if (shiftState.oneShot && shiftState.oneShotEnabledTime > 0) {
-            autoCapitalizeState.shiftOneShotEnabledTime = shiftState.oneShotEnabledTime
-        } else if (!shiftState.oneShot) {
-            autoCapitalizeState.shiftOneShotEnabledTime = 0
-        }
-    }
-
-    fun syncShiftOneShotToShiftState() {
-        shiftState.oneShot = autoCapitalizeState.shiftOneShot
-        if (autoCapitalizeState.shiftOneShot && autoCapitalizeState.shiftOneShotEnabledTime > 0) {
-            shiftState.oneShotEnabledTime = autoCapitalizeState.shiftOneShotEnabledTime
-        } else if (!autoCapitalizeState.shiftOneShot) {
-            shiftState.oneShotEnabledTime = 0
-        }
     }
 }
 

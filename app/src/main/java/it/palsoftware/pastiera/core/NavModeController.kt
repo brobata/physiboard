@@ -55,11 +55,13 @@ class NavModeController(
         val isCtrlKey = keyCode == KeyEvent.KEYCODE_CTRL_LEFT || keyCode == KeyEvent.KEYCODE_CTRL_RIGHT
         if (isCtrlKey) {
             return if (isKeyDown) {
+                val isConsecutiveTap = modifierStateController.registerModifierTap(keyCode)
                 val (shouldConsume, result) = NavModeHandler.handleCtrlKeyDown(
                     keyCode,
                     modifierStateController.ctrlPressed,
                     modifierStateController.ctrlLatchActive,
-                    modifierStateController.ctrlLastReleaseTime
+                    modifierStateController.ctrlLastReleaseTime,
+                    isConsecutiveTap
                 )
                 applyNavModeResult(result)
                 if (shouldConsume) {

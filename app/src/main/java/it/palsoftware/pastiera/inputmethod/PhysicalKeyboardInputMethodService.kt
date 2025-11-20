@@ -96,7 +96,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private var shiftOneShot: Boolean
         get() = modifierStateController.shiftOneShot
         set(value) { modifierStateController.shiftOneShot = value }
-    
+
     private var ctrlOneShot: Boolean
         get() = modifierStateController.ctrlOneShot
         set(value) { modifierStateController.ctrlOneShot = value }
@@ -104,10 +104,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private var altOneShot: Boolean
         get() = modifierStateController.altOneShot
         set(value) { modifierStateController.altOneShot = value }
-    
-    private var shiftOneShotEnabledTime: Long
-        get() = modifierStateController.shiftOneShotEnabledTime
-        set(value) { modifierStateController.shiftOneShotEnabledTime = value }
     
     private var ctrlLatchFromNavMode: Boolean
         get() = modifierStateController.ctrlLatchFromNavMode
@@ -141,9 +137,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private lateinit var variationStateController: VariationStateController
     private lateinit var inputEventRouter: InputEventRouter
     private lateinit var keyboardVisibilityController: KeyboardVisibilityController
-    
-    // Auto-capitalize helper state
-    private val autoCapitalizeState = AutoCapitalizeHelper.AutoCapitalizeState()
 
     private val motionEventController = MotionEventController(logTag = TAG)
     
@@ -187,7 +180,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                     this,
                     currentInputConnection,
                     shouldDisableSmartFeatures,
-                    autoCapitalizeState,
+                    enableShift = { modifierStateController.requestShiftOneShotFromAutoCap() },
                     onUpdateStatusBar = { updateStatusBarText() }
                 )
             }
@@ -209,7 +202,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             this,
             currentInputConnection,
             shouldDisableSmartFeatures,
-            autoCapitalizeState,
+            enableShift = { modifierStateController.requestShiftOneShotFromAutoCap() },
             onUpdateStatusBar = { updateStatusBarText() }
         )
         
@@ -417,13 +410,12 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         
         NotificationHelper.createNotificationChannel(this)
         
-        modifierStateController = ModifierStateController(DOUBLE_TAP_THRESHOLD, autoCapitalizeState)
+        modifierStateController = ModifierStateController(DOUBLE_TAP_THRESHOLD)
         navModeController = NavModeController(this, modifierStateController)
         inputEventRouter = InputEventRouter(this, navModeController)
         textInputController = TextInputController(
             context = this,
             modifierStateController = modifierStateController,
-            autoCapitalizeState = autoCapitalizeState,
             doubleTapThreshold = DOUBLE_TAP_THRESHOLD
         )
         autoCorrectionManager = AutoCorrectionManager(this)
@@ -735,7 +727,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 this,
                 currentInputConnection,
                 shouldDisableSmartFeatures,
-                autoCapitalizeState,
+                enableShift = { modifierStateController.requestShiftOneShotFromAutoCap() },
                 onUpdateStatusBar = { updateStatusBarText() }
             )
         }
@@ -754,7 +746,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 this,
                 currentInputConnection,
                 shouldDisableSmartFeatures,
-                autoCapitalizeState,
+                enableShift = { modifierStateController.requestShiftOneShotFromAutoCap() },
                 onUpdateStatusBar = { updateStatusBarText() }
             )
         }
@@ -811,11 +803,12 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             this,
             currentInputConnection,
             shouldDisableSmartFeatures,
-            autoCapitalizeState,
             oldSelStart,
             oldSelEnd,
             newSelStart,
             newSelEnd,
+            enableShift = { modifierStateController.requestShiftOneShotFromAutoCap() },
+            disableShift = { modifierStateController.consumeShiftOneShot() },
             onUpdateStatusBar = { updateStatusBarText() }
         )
     }
@@ -852,6 +845,16 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         val hasEditableField = initialInputConnection != null && inputType != EditorInfo.TYPE_NULL
         if (hasEditableField && !isInputViewActive) {
             isInputViewActive = true
+        }
+
+        val isModifierKey = keyCode == KeyEvent.KEYCODE_SHIFT_LEFT ||
+            keyCode == KeyEvent.KEYCODE_SHIFT_RIGHT ||
+            keyCode == KeyEvent.KEYCODE_CTRL_LEFT ||
+            keyCode == KeyEvent.KEYCODE_CTRL_RIGHT ||
+            keyCode == KeyEvent.KEYCODE_ALT_LEFT ||
+            keyCode == KeyEvent.KEYCODE_ALT_RIGHT
+        if (!isModifierKey) {
+            modifierStateController.registerNonModifierKey()
         }
         
         // If NO editable field is active, handle ONLY nav mode
@@ -947,9 +950,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 updateStatusBar = { updateStatusBarText() },
                 refreshStatusBar = { refreshStatusBar() },
                 disableShiftOneShot = {
-                    shiftOneShot = false
-                    shiftOneShotEnabledTime = 0
-                    modifierStateController.syncShiftOneShotToShiftState()
+                    modifierStateController.consumeShiftOneShot()
                 },
                 clearAltOneShot = { altOneShot = false },
                 clearCtrlOneShot = { ctrlOneShot = false },
@@ -1004,8 +1005,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         if (keyCode == KeyEvent.KEYCODE_SHIFT_LEFT || keyCode == KeyEvent.KEYCODE_SHIFT_RIGHT) {
             if (shiftPressed) {
                 val result = modifierStateController.handleShiftKeyUp(keyCode)
-                // Shift one-shot remains active until used (when letter is typed)
-                modifierStateController.syncShiftOneShotFromShiftState()
                 if (result.shouldUpdateStatusBar) {
                     updateStatusBarText()
                 }

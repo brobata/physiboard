@@ -14,7 +14,6 @@ import it.palsoftware.pastiera.inputmethod.AutoCapitalizeHelper
 class TextInputController(
     private val context: Context,
     private val modifierStateController: ModifierStateController,
-    private val autoCapitalizeState: AutoCapitalizeHelper.AutoCapitalizeState,
     private val doubleTapThreshold: Long
 ) {
 
@@ -34,11 +33,11 @@ class TextInputController(
                 val isDoubleTap = lastSpacePressTime > 0 &&
                     (currentTime - lastSpacePressTime) < doubleTapThreshold
 
-                if (isDoubleTap && inputConnection != null) {
-                    val textBeforeCursor = inputConnection.getTextBeforeCursor(100, 0)
-                    if (textBeforeCursor != null && textBeforeCursor.endsWith(" ")) {
-                        if (textBeforeCursor.length >= 2 && textBeforeCursor[textBeforeCursor.length - 2] == ' ') {
-                            // Multiple spaces already present: ignore
+            if (isDoubleTap && inputConnection != null) {
+                val textBeforeCursor = inputConnection.getTextBeforeCursor(100, 0)
+                if (textBeforeCursor != null && textBeforeCursor.endsWith(" ")) {
+                    if (textBeforeCursor.length >= 2 && textBeforeCursor[textBeforeCursor.length - 2] == ' ') {
+                        // Multiple spaces already present: ignore
                         } else {
                             var lastCharIndex = textBeforeCursor.length - 2
                             while (lastCharIndex >= 0 && textBeforeCursor[lastCharIndex].isWhitespace()) {
@@ -51,7 +50,6 @@ class TextInputController(
                                 inputConnection.commitText(". ", 1)
 
                                 modifierStateController.shiftOneShot = true
-                                modifierStateController.shiftOneShotEnabledTime = System.currentTimeMillis()
                                 onStatusBarUpdate()
 
                                 lastSpacePressTime = 0
@@ -89,7 +87,7 @@ class TextInputController(
         ) {
             AutoCapitalizeHelper.enableAfterPunctuation(
                 inputConnection,
-                autoCapitalizeState,
+                onEnableShift = { modifierStateController.requestShiftOneShotFromAutoCap() },
                 onUpdateStatusBar = onStatusBarUpdate
             )
         }
@@ -106,7 +104,7 @@ class TextInputController(
                 context,
                 inputConnection,
                 shouldDisableSmartFeatures,
-                autoCapitalizeState,
+                onEnableShift = { modifierStateController.requestShiftOneShotFromAutoCap() },
                 onUpdateStatusBar = onStatusBarUpdate
             )
         }
