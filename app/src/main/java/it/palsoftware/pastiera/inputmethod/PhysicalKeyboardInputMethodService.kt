@@ -141,6 +141,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private lateinit var textInputController: TextInputController
     private lateinit var autoCorrectionManager: AutoCorrectionManager
     private lateinit var variationStateController: VariationStateController
+    private lateinit var inputEventRouter: InputEventRouter
     private lateinit var keyboardVisibilityController: KeyboardVisibilityController
     
     // Auto-capitalize helper state
@@ -418,6 +419,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         
         modifierStateController = ModifierStateController(DOUBLE_TAP_THRESHOLD, autoCapitalizeState)
         navModeController = NavModeController(this, modifierStateController)
+        inputEventRouter = InputEventRouter(this, navModeController)
         textInputController = TextInputController(
             context = this,
             modifierStateController = modifierStateController,
@@ -845,68 +847,54 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         // Check if we have an editable field at the very start
         val info = currentInputEditorInfo
-        val ic = currentInputConnection
+        val initialInputConnection = currentInputConnection
         val inputType = info?.inputType ?: EditorInfo.TYPE_NULL
-        val hasEditableField = ic != null && inputType != EditorInfo.TYPE_NULL
+        val hasEditableField = initialInputConnection != null && inputType != EditorInfo.TYPE_NULL
+        if (hasEditableField && !isInputViewActive) {
+            isInputViewActive = true
+        }
         
         // If NO editable field is active, handle ONLY nav mode
         if (!hasEditableField) {
-            if (keyCode == KeyEvent.KEYCODE_BACK) {
-                if (navModeController.isNavModeActive()) {
-                    navModeController.exitNavMode()
-                    return false
-                }
-                return super.onKeyDown(keyCode, event)
-            }
-
-            if (navModeController.isNavModeKey(keyCode)) {
-                return navModeController.handleNavModeKey(
-                    keyCode,
-                    event,
-                    isKeyDown = true,
-                    ctrlKeyMap = ctrlKeyMap
-                ) { currentInputConnection }
-            }
-            
-            // Handle launcher shortcuts (only when nav mode is not active)
-            if (!ctrlLatchActive && SettingsManager.getLauncherShortcutsEnabled(this)) {
-                val packageName = info?.packageName ?: currentPackageName
-                if (isLauncher(packageName) && isAlphabeticKey(keyCode)) {
-                    if (handleLauncherShortcut(keyCode)) {
-                        return true // Shortcut executed, consume the event
-                    }
-                }
-            }
-            
-            // Not handled by nav mode, pass to Android and STOP
-            // Do NOT execute any IME logic (no ensureInputViewCreated, no status bar, etc.)
-            return super.onKeyDown(keyCode, event)
+            return inputEventRouter.handleKeyDownWithNoEditableField(
+                keyCode = keyCode,
+                event = event,
+                ctrlKeyMap = ctrlKeyMap,
+                callbacks = InputEventRouter.NoEditableFieldCallbacks(
+                    isAlphabeticKey = { code -> isAlphabeticKey(code) },
+                    isLauncherPackage = { pkg -> isLauncher(pkg) },
+                    handleLauncherShortcut = { key -> handleLauncherShortcut(key) },
+                    callSuper = { super.onKeyDown(keyCode, event) },
+                    currentInputConnection = { currentInputConnection }
+                ),
+                ctrlLatchActive = ctrlLatchActive,
+                editorInfo = info,
+                currentPackageName = currentPackageName
+            )
         }
         
-        // If we have an editable field, nav mode must NOT be active
-        // Deactivate nav mode if it was active
-        if (ctrlLatchFromNavMode && ctrlLatchActive) {
-            navModeController.exitNavMode()
+        val routingResult = inputEventRouter.handleEditableFieldKeyDownPrelude(
+            keyCode = keyCode,
+            params = InputEventRouter.EditableFieldKeyDownParams(
+                ctrlLatchFromNavMode = ctrlLatchFromNavMode,
+                ctrlLatchActive = ctrlLatchActive,
+                isInputViewActive = isInputViewActive,
+                isInputViewShown = isInputViewShown,
+                hasInputConnection = initialInputConnection != null
+            ),
+            callbacks = InputEventRouter.EditableFieldKeyDownCallbacks(
+                exitNavMode = { navModeController.exitNavMode() },
+                ensureInputViewCreated = { keyboardVisibilityController.ensureInputViewCreated() },
+                callSuper = { super.onKeyDown(keyCode, event) }
+            )
+        )
+        when (routingResult) {
+            InputEventRouter.EditableFieldRoutingResult.Consume -> return true
+            InputEventRouter.EditableFieldRoutingResult.CallSuper -> return super.onKeyDown(keyCode, event)
+            InputEventRouter.EditableFieldRoutingResult.Continue -> {}
         }
         
-        // Continue with normal IME logic for text fields
-        val isBackKey = keyCode == KeyEvent.KEYCODE_BACK
-        
-        // Handle Back to hide candidates view or close keyboard
-        if (isBackKey) {
-            if (isInputViewActive && !onEvaluateInputViewShown()) {
-                setCandidatesViewShown(false)
-                return true
-            }
-            // Always let Back key pass through to close keyboard, even with modifiers active
-            return super.onKeyDown(keyCode, event)
-        }
-        
-        // If we have a valid InputConnection but the keyboard is hidden,
-        // ensure it's shown and continue with normal processing
-        if (ic != null && !isInputViewShown && isInputViewActive) {
-            ensureInputViewCreated()
-        }
+        val ic = currentInputConnection
         
         // Continue with normal IME logic
         KeyboardEventTracker.notifyKeyEvent(keyCode, event, "KEY_DOWN")
@@ -914,57 +902,20 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             ensureInputViewCreated()
         }
         
-        // ========== TEXT INPUT HELPERS ==========
         val isAutoCorrectEnabled = SettingsManager.getAutoCorrectEnabled(this) && !shouldDisableSmartFeatures
-
         if (
-            autoCorrectionManager.handleBackspaceUndo(
-                keyCode,
-                ic,
-                isAutoCorrectEnabled
+            inputEventRouter.handleTextInputPipeline(
+                keyCode = keyCode,
+                event = event,
+                inputConnection = ic,
+                shouldDisableSmartFeatures = shouldDisableSmartFeatures,
+                isAutoCorrectEnabled = isAutoCorrectEnabled,
+                textInputController = textInputController,
+                autoCorrectionManager = autoCorrectionManager
             ) { updateStatusBarText() }
         ) {
             return true
         }
-
-        if (
-            textInputController.handleDoubleSpaceToPeriod(
-                keyCode,
-                ic,
-                shouldDisableSmartFeatures
-            ) { updateStatusBarText() }
-        ) {
-            return true
-        }
-
-        textInputController.handleAutoCapAfterPeriod(
-            keyCode,
-            ic,
-            shouldDisableSmartFeatures
-        ) { updateStatusBarText() }
-
-        textInputController.handleAutoCapAfterEnter(
-            keyCode,
-            ic,
-            shouldDisableSmartFeatures
-        ) { updateStatusBarText() }
-
-        if (
-            autoCorrectionManager.handleSpaceOrPunctuation(
-                keyCode,
-                event,
-                ic,
-                isAutoCorrectEnabled
-            ) { updateStatusBarText() }
-        ) {
-            return true
-        }
-
-        autoCorrectionManager.handleAcceptOrResetOnOtherKeys(
-            keyCode,
-            event,
-            isAutoCorrectEnabled
-        )
         
         // Handle double-tap Shift to toggle Caps Lock
         if (keyCode == KeyEvent.KEYCODE_SHIFT_LEFT || keyCode == KeyEvent.KEYCODE_SHIFT_RIGHT) {
@@ -1443,16 +1394,18 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         
         // If NO editable field is active, handle ONLY nav mode Ctrl release
         if (!hasEditableField) {
-            if (navModeController.isNavModeKey(keyCode)) {
-                return navModeController.handleNavModeKey(
-                    keyCode,
-                    event,
-                    isKeyDown = false,
-                    ctrlKeyMap = ctrlKeyMap
-                ) { currentInputConnection }
-            }
-            // Not handled by nav mode, pass to Android
-            return super.onKeyUp(keyCode, event)
+            return inputEventRouter.handleKeyUpWithNoEditableField(
+                keyCode = keyCode,
+                event = event,
+                ctrlKeyMap = ctrlKeyMap,
+                callbacks = InputEventRouter.NoEditableFieldCallbacks(
+                    isAlphabeticKey = { code -> isAlphabeticKey(code) },
+                    isLauncherPackage = { pkg -> isLauncher(pkg) },
+                    handleLauncherShortcut = { key -> handleLauncherShortcut(key) },
+                    callSuper = { super.onKeyUp(keyCode, event) },
+                    currentInputConnection = { currentInputConnection }
+                )
+            )
         }
         
         // Continue with normal IME logic for text fields
