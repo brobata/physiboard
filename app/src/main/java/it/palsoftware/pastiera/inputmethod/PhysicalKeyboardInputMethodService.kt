@@ -20,8 +20,6 @@ import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import android.view.MotionEvent
 import android.view.View
-import android.view.InputDevice
-import it.palsoftware.pastiera.inputmethod.MotionEventTracker
 import it.palsoftware.pastiera.core.AutoCorrectionManager
 import it.palsoftware.pastiera.core.InputContextState
 import it.palsoftware.pastiera.core.ModifierStateController
@@ -146,6 +144,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     
     // Auto-capitalize helper state
     private val autoCapitalizeState = AutoCapitalizeHelper.AutoCapitalizeState()
+
+    private val motionEventController = MotionEventController(logTag = TAG)
     
     // Constants
     private val DOUBLE_TAP_THRESHOLD = 500L
@@ -1295,63 +1295,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
      * for scrolling, cursor movement, and gestures.
      */
     override fun onGenericMotionEvent(event: MotionEvent?): Boolean {
-        if (event == null) {
-            return super.onGenericMotionEvent(event)
+        val handled = motionEventController.handle(event)
+        if (handled != null) {
+            return handled
         }
-        
-        // Check if this is a trackpad/touch event from the keyboard
-        val source = event.source
-        val isFromTrackpad = (source and InputDevice.SOURCE_MOUSE) == InputDevice.SOURCE_MOUSE ||
-                            (source and InputDevice.SOURCE_TOUCHPAD) == InputDevice.SOURCE_TOUCHPAD
-        
-        // Also check if it's from a keyboard device (touch-sensitive keyboard)
-        val device = event.device
-        val isFromKeyboard = device != null && 
-                            ((source and InputDevice.SOURCE_KEYBOARD) == InputDevice.SOURCE_KEYBOARD ||
-                             device.name?.contains("keyboard", ignoreCase = true) == true ||
-                             device.name?.contains("titan", ignoreCase = true) == true)
-        
-        if (isFromTrackpad || isFromKeyboard) {
-            Log.d(TAG, "Motion event intercepted - Action: ${MotionEventTracker.getActionName(event.action)}, " +
-                    "Source: ${MotionEventTracker.getSourceName(source)}, " +
-                    "Device: ${device?.name}, " +
-                    "X: ${event.x}, Y: ${event.y}, " +
-                    "ScrollX: ${event.getAxisValue(MotionEvent.AXIS_HSCROLL)}, " +
-                    "ScrollY: ${event.getAxisValue(MotionEvent.AXIS_VSCROLL)}")
-            
-            // Notify the tracker for debug display
-            MotionEventTracker.notifyMotionEvent(event)
-            
-            // Handle different motion event types
-            when (event.action) {
-                MotionEvent.ACTION_SCROLL -> {
-                    val scrollX = event.getAxisValue(MotionEvent.AXIS_HSCROLL)
-                    val scrollY = event.getAxisValue(MotionEvent.AXIS_VSCROLL)
-                    Log.d(TAG, "Trackpad scroll detected - X: $scrollX, Y: $scrollY")
-                    
-                    // You can handle scroll events here
-                    // For example, convert to cursor movement or scroll actions
-                    // return true to consume the event, false to pass it to Android
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    Log.d(TAG, "Trackpad move detected - X: ${event.x}, Y: ${event.y}")
-                    // Handle cursor movement
-                }
-                MotionEvent.ACTION_DOWN -> {
-                    Log.d(TAG, "Trackpad touch down detected - X: ${event.x}, Y: ${event.y}")
-                    // Handle touch down (click)
-                }
-                MotionEvent.ACTION_UP -> {
-                    Log.d(TAG, "Trackpad touch up detected")
-                    // Handle touch up (release)
-                }
-            }
-            
-            // Return true to consume the event, false to let Android handle it
-            // For now, we'll let Android handle it but log everything for debugging
-            return false
-        }
-        
+
         return super.onGenericMotionEvent(event)
     }
 }
