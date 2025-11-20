@@ -10,8 +10,6 @@ import android.inputmethodservice.InputMethodService
 import android.os.Build
 import android.util.Log
 import android.view.KeyEvent
-import android.view.View
-import android.widget.LinearLayout
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import it.palsoftware.pastiera.inputmethod.KeyboardEventTracker
@@ -21,6 +19,7 @@ import androidx.core.content.ContextCompat
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import android.view.MotionEvent
+import android.view.View
 import android.view.InputDevice
 import it.palsoftware.pastiera.inputmethod.MotionEventTracker
 import it.palsoftware.pastiera.core.AutoCorrectionManager
@@ -58,14 +57,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     
     // Mapping Ctrl+key -> action or keycode (loaded from JSON)
     private val ctrlKeyMap = mutableMapOf<Int, KeyMappingLoader.CtrlMapping>()
-    
-    // Mapping of character variations (loaded from JSON)
-    private val variationsMap = mutableMapOf<Char, List<String>>()
-    
-    // Last inserted character and its available variations
-    private var lastInsertedChar: Char? = null
-    private var availableVariations: List<String> = emptyList()
-    private var variationsActive = false
     
     // Accessor properties for backwards compatibility with existing code
     private var capsLockEnabled: Boolean
@@ -149,7 +140,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private lateinit var symLayoutController: SymLayoutController
     private lateinit var textInputController: TextInputController
     private lateinit var autoCorrectionManager: AutoCorrectionManager
-    private var forceCandidatesUi: Boolean = false
+    private lateinit var variationStateController: VariationStateController
+    private lateinit var keyboardVisibilityController: KeyboardVisibilityController
     
     // Auto-capitalize helper state
     private val autoCapitalizeState = AutoCapitalizeHelper.AutoCapitalizeState()
@@ -459,6 +451,18 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             updateStatusBarText()
         }
         symLayoutController = SymLayoutController(this, prefs, altSymManager)
+        keyboardVisibilityController = KeyboardVisibilityController(
+            candidatesBarController = candidatesBarController,
+            symLayoutController = symLayoutController,
+            isInputViewActive = { isInputViewActive },
+            isNavModeLatched = { ctrlLatchFromNavMode },
+            currentInputConnection = { currentInputConnection },
+            isInputViewShown = { isInputViewShown },
+            attachInputView = { view -> setInputView(view) },
+            setCandidatesViewShown = { shown -> setCandidatesViewShown(shown) },
+            requestShowInputView = { requestShowSelf(0) },
+            refreshStatusBar = { refreshStatusBar() }
+        )
         
         // Initialize keyboard layout
         loadKeyboardLayout()
@@ -466,7 +470,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // Initialize nav mode mappings file if needed
         it.palsoftware.pastiera.SettingsManager.initializeNavModeMappingsFile(this)
         ctrlKeyMap.putAll(KeyMappingLoader.loadCtrlKeyMappings(assets, this))
-        variationsMap.putAll(VariationRepository.loadVariations(assets))
+        variationStateController = VariationStateController(VariationRepository.loadVariations(assets))
         
         // Load auto-correction rules
         AutoCorrector.loadCorrections(assets, this)
@@ -576,31 +580,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         
     }
 
-    override fun onCreateInputView(): View? {
-        val layout = candidatesBarController.getInputView(symLayoutController.emojiMapTextForLayout())
-        
-        if (layout.parent != null) {
-            (layout.parent as? android.view.ViewGroup)?.removeView(layout)
-        }
-        
-        refreshStatusBar()
-        return layout
-    }
+    override fun onCreateInputView(): View? = keyboardVisibilityController.onCreateInputView()
 
     /**
      * Creates the candidates view shown when the soft keyboard is disabled.
      * Uses a separate StatusBarController instance to provide identical functionality.
      */
-    override fun onCreateCandidatesView(): View? {
-        val layout = candidatesBarController.getCandidatesView(symLayoutController.emojiMapTextForLayout())
-
-        if (layout.parent != null) {
-            (layout.parent as? android.view.ViewGroup)?.removeView(layout)
-        }
-
-        refreshStatusBar()
-        return layout
-    }
+    override fun onCreateCandidatesView(): View? = keyboardVisibilityController.onCreateCandidatesView()
 
     /**
      * Determines whether the input view (soft keyboard) should be shown.
@@ -610,10 +596,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
      */
     override fun onEvaluateInputViewShown(): Boolean {
         val shouldShowInputView = super.onEvaluateInputViewShown()
-        forceCandidatesUi = !shouldShowInputView
-        candidatesBarController.setForceMinimalUi(forceCandidatesUi)
-        setCandidatesViewShown(false)
-        return true
+        return keyboardVisibilityController.onEvaluateInputViewShown(shouldShowInputView)
     }
 
     /**
@@ -654,128 +637,16 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
      * IMPORTANT: UI is never shown in nav mode.
      */
     private fun ensureInputViewCreated() {
-        if (ctrlLatchFromNavMode && !isInputViewActive) {
-            return
-        }
-        
-        if (!isInputViewActive) {
-            return
-        }
-        
-        val inputConnection = currentInputConnection
-        if (inputConnection == null) {
-            return
-        }
-        
-        val layout = candidatesBarController.getInputView(symLayoutController.emojiMapTextForLayout())
-        refreshStatusBar()
-
-        if (layout.parent == null) {
-            setInputView(layout)
-        }
-
-        // Only call requestShowSelf if the input view is not already shown
-        // and we are in a valid state (not in nav mode, input view is active)
-        if (!isInputViewShown && isInputViewActive && !ctrlLatchFromNavMode) {
-            try {
-                requestShowSelf(0)
-            } catch (_: Exception) {
-                // Silently catch exceptions to avoid crashes
-            }
-        }
+        keyboardVisibilityController.ensureInputViewCreated()
     }
-    
-    
-    private fun isInputConnectionAvailable(): Boolean {
-        return currentInputConnection != null
-    }
-    
-    /**
-     * Updates variations by checking the character immediately to the left of the cursor.
-     * 
-     * This function:
-     * 1. Checks if there is an active text selection (if so, disables variations)
-     * 2. Gets the character immediately before the cursor using getTextBeforeCursor(1, 0)
-     *    - getTextBeforeCursor(1, 0) returns exactly 1 character to the left of the cursor
-     *    - The last character of the returned string is the character immediately before the cursor
-     * 3. Looks up variations for that character and updates the UI accordingly
-     * 
-     * Note: This always checks the character to the LEFT of the cursor (in LTR languages),
-     * regardless of how the cursor was moved (keyboard, swipe pad, mouse, etc.).
-     */
-    private fun updateVariationsFromCursor() {
-        // Disable variations for restricted fields
-        if (shouldDisableSmartFeatures) {
-            deactivateVariations()
-            return
-        }
-        
-        val inputConnection = currentInputConnection
-        if (inputConnection == null) {
-            deactivateVariations()
-            return
-        }
-        
-        // Check if there is an active selection (more than one character selected).
-        // If there is a selection, completely disable variations.
-        try {
-            val extractedText = inputConnection.getExtractedText(
-                android.view.inputmethod.ExtractedTextRequest().apply {
-                    flags = android.view.inputmethod.ExtractedText.FLAG_SELECTING
-                },
-                0
-            )
-            
-            if (extractedText != null) {
-                val selectionStart = extractedText.selectionStart
-                val selectionEnd = extractedText.selectionEnd
-                
-                // If there is an active selection (selectionStart != selectionEnd), disable variations
-                if (selectionStart >= 0 && selectionEnd >= 0 && selectionStart != selectionEnd) {
-                    // Active selection detected, disable variations
-                    variationsActive = false
-                    lastInsertedChar = null
-                    availableVariations = emptyList()
-                    return
-                }
-            }
-        } catch (e: Exception) {
-            // If there is any error while checking the selection, keep normal logic.
-            Log.d(TAG, "Error while checking selection state: ${e.message}")
-        }
-        
-        // Get the character immediately before the cursor (to the left in LTR languages)
-        // getTextBeforeCursor(1, 0) returns exactly 1 character before the cursor position
-        val textBeforeCursor = inputConnection.getTextBeforeCursor(1, 0)
-        if (textBeforeCursor != null && textBeforeCursor.isNotEmpty()) {
-            // The last character of the returned string is the character immediately before the cursor
-            val charBeforeCursor = textBeforeCursor[textBeforeCursor.length - 1]
-            // Check whether the character has variations
-            val variations = variationsMap[charBeforeCursor]
-            if (variations != null && variations.isNotEmpty()) {
-                lastInsertedChar = charBeforeCursor
-                availableVariations = variations
-                variationsActive = true
-            } else {
-                // No variations available for this character
-                variationsActive = false
-                lastInsertedChar = null
-                availableVariations = emptyList()
-            }
-        } else {
-            // No character before the cursor (cursor is at the start of text)
-            variationsActive = false
-            lastInsertedChar = null
-            availableVariations = emptyList()
-        }
-    }
-    
     /**
      * Aggiorna la status bar delegando al controller dedicato.
      */
     private fun updateStatusBarText() {
-        // Aggiorna le variazioni controllando il carattere prima del cursore
-        updateVariationsFromCursor()
+        val variationSnapshot = variationStateController.refreshFromCursor(
+            currentInputConnection,
+            shouldDisableSmartFeatures
+        )
         
         val modifierSnapshot = modifierStateController.snapshot()
         val snapshot = StatusBarController.StatusSnapshot(
@@ -790,8 +661,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             altPhysicallyPressed = modifierSnapshot.altPhysicallyPressed,
             altOneShot = modifierSnapshot.altOneShot,
             symPage = symPage,
-            variations = if (variationsActive) availableVariations else emptyList(),
-            lastInsertedChar = lastInsertedChar,
+            variations = variationSnapshot.variations,
+            lastInsertedChar = variationSnapshot.lastInsertedChar,
             shouldDisableSmartFeatures = shouldDisableSmartFeatures
         )
         // Passa anche la mappa emoji quando SYM è attivo (solo pagina 1)
@@ -807,9 +678,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
      * Disattiva le variazioni.
      */
     private fun deactivateVariations() {
-        variationsActive = false
-        lastInsertedChar = null
-        availableVariations = emptyList()
+        if (::variationStateController.isInitialized) {
+            variationStateController.clear()
+        }
     }
     
 
@@ -1522,7 +1393,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
         if (charForVariations != null) {
             // Check whether the character has variations
-            if (variationsMap.containsKey(charForVariations)) {
+            if (variationStateController.hasVariationsFor(charForVariations)) {
                 // Insert the character ourselves so we can show variations
                 ic.commitText(charForVariations.toString(), 1)
                 Handler(Looper.getMainLooper()).postDelayed({
