@@ -9,24 +9,74 @@ import it.palsoftware.pastiera.SettingsManager
  * source of truth tracks the modifier state.
  */
 object AutoCapitalizeHelper {
+    private var firstLetterShiftRequested = false
+
+    private fun shouldAutoCapitalizeFirstLetter(inputConnection: InputConnection): Boolean {
+        val textBeforeCursor = inputConnection.getTextBeforeCursor(1, 0) ?: return false
+        val textAfterCursor = inputConnection.getTextAfterCursor(1, 0) ?: ""
+        val isCursorAtStart = textBeforeCursor.isEmpty()
+        val isFieldEmpty = isCursorAtStart && textAfterCursor.isEmpty()
+        val isAfterNewline = textBeforeCursor.lastOrNull() == '\n'
+        return isFieldEmpty || isAfterNewline
+    }
+
+    private fun clearFirstLetterShift(
+        disableShift: () -> Boolean,
+        onUpdateStatusBar: () -> Unit
+    ) {
+        if (firstLetterShiftRequested) {
+            val changed = disableShift()
+            firstLetterShiftRequested = false
+            if (changed) onUpdateStatusBar()
+        }
+    }
+
+    private fun applyAutoCapitalizeFirstLetter(
+        context: android.content.Context,
+        inputConnection: InputConnection?,
+        shouldDisableSmartFeatures: Boolean,
+        enableShift: () -> Boolean,
+        disableShift: () -> Boolean,
+        onUpdateStatusBar: () -> Unit
+    ) {
+        val autoCapEnabled = SettingsManager.getAutoCapitalizeFirstLetter(context)
+        if (!autoCapEnabled || shouldDisableSmartFeatures) {
+            clearFirstLetterShift(disableShift, onUpdateStatusBar)
+            return
+        }
+
+        val ic = inputConnection ?: run {
+            clearFirstLetterShift(disableShift, onUpdateStatusBar)
+            return
+        }
+
+        val shouldCapitalize = shouldAutoCapitalizeFirstLetter(ic)
+        if (shouldCapitalize) {
+            if (enableShift()) {
+                firstLetterShiftRequested = true
+                onUpdateStatusBar()
+            }
+        } else {
+            clearFirstLetterShift(disableShift, onUpdateStatusBar)
+        }
+    }
 
     fun checkAndEnableAutoCapitalize(
         context: android.content.Context,
         inputConnection: InputConnection?,
         shouldDisableSmartFeatures: Boolean,
         enableShift: () -> Boolean,
+        disableShift: () -> Boolean = { false },
         onUpdateStatusBar: () -> Unit
     ) {
-        if (!SettingsManager.getAutoCapitalizeFirstLetter(context)) return
-        if (shouldDisableSmartFeatures) return
-        val ic = inputConnection ?: return
-        val textBeforeCursor = ic.getTextBeforeCursor(1, 0)
-
-        val isCursorAtStart = textBeforeCursor.isNullOrEmpty()
-        val isAfterNewline = textBeforeCursor?.lastOrNull() == '\n'
-        if ((isCursorAtStart || isAfterNewline) && enableShift()) {
-            onUpdateStatusBar()
-        }
+        applyAutoCapitalizeFirstLetter(
+            context = context,
+            inputConnection = inputConnection,
+            shouldDisableSmartFeatures = shouldDisableSmartFeatures,
+            enableShift = enableShift,
+            disableShift = disableShift,
+            onUpdateStatusBar = onUpdateStatusBar
+        )
     }
 
     fun checkAutoCapitalizeOnSelectionChange(
@@ -41,25 +91,18 @@ object AutoCapitalizeHelper {
         disableShift: () -> Boolean,
         onUpdateStatusBar: () -> Unit
     ) {
-        if (!SettingsManager.getAutoCapitalizeFirstLetter(context)) {
+        if (newSelStart != newSelEnd) {
             if (disableShift()) onUpdateStatusBar()
             return
         }
-
-        if (newSelStart != newSelEnd || shouldDisableSmartFeatures || inputConnection == null) {
-            if (disableShift()) onUpdateStatusBar()
-            return
-        }
-
-        val textBeforeCursor = inputConnection.getTextBeforeCursor(1000, 0) ?: ""
-        val textAfterCursor = inputConnection.getTextAfterCursor(1000, 0) ?: ""
-        val isCursorAtStart = textBeforeCursor.isEmpty()
-        val isAfterNewline = textBeforeCursor.lastOrNull() == '\n'
-        val isFieldEmpty = isCursorAtStart && textAfterCursor.isEmpty()
-
-        if ((isCursorAtStart && isFieldEmpty) || isAfterNewline) {
-            if (enableShift()) onUpdateStatusBar()
-        }
+        applyAutoCapitalizeFirstLetter(
+            context = context,
+            inputConnection = inputConnection,
+            shouldDisableSmartFeatures = shouldDisableSmartFeatures,
+            enableShift = enableShift,
+            disableShift = disableShift,
+            onUpdateStatusBar = onUpdateStatusBar
+        )
     }
 
     fun checkAutoCapitalizeOnRestart(
@@ -67,18 +110,17 @@ object AutoCapitalizeHelper {
         inputConnection: InputConnection?,
         shouldDisableSmartFeatures: Boolean,
         enableShift: () -> Boolean,
+        disableShift: () -> Boolean = { false },
         onUpdateStatusBar: () -> Unit
     ) {
-        if (!SettingsManager.getAutoCapitalizeFirstLetter(context)) return
-        if (shouldDisableSmartFeatures) return
-        val ic = inputConnection ?: return
-        val textBeforeCursor = ic.getTextBeforeCursor(1000, 0)
-        val textAfterCursor = ic.getTextAfterCursor(1000, 0) ?: ""
-        val isCursorAtStart = textBeforeCursor.isNullOrEmpty()
-        val isFieldEmpty = isCursorAtStart && textAfterCursor.isEmpty()
-        if (isCursorAtStart && isFieldEmpty && enableShift()) {
-            onUpdateStatusBar()
-        }
+        applyAutoCapitalizeFirstLetter(
+            context = context,
+            inputConnection = inputConnection,
+            shouldDisableSmartFeatures = shouldDisableSmartFeatures,
+            enableShift = enableShift,
+            disableShift = disableShift,
+            onUpdateStatusBar = onUpdateStatusBar
+        )
     }
 
     fun enableAfterPunctuation(
@@ -110,14 +152,13 @@ object AutoCapitalizeHelper {
         onEnableShift: () -> Boolean,
         onUpdateStatusBar: () -> Unit
     ) {
-        if (!SettingsManager.getAutoCapitalizeFirstLetter(context)) return
-        if (shouldDisableSmartFeatures) return
-
-        val textBeforeCursor = inputConnection?.getTextBeforeCursor(1, 0) ?: return
-        val isAfterNewline = textBeforeCursor.lastOrNull() == '\n'
-        if (isAfterNewline && onEnableShift()) {
-            onUpdateStatusBar()
-        }
+        applyAutoCapitalizeFirstLetter(
+            context = context,
+            inputConnection = inputConnection,
+            shouldDisableSmartFeatures = shouldDisableSmartFeatures,
+            enableShift = onEnableShift,
+            disableShift = { false },
+            onUpdateStatusBar = onUpdateStatusBar
+        )
     }
 }
-

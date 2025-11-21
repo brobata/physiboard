@@ -56,6 +56,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
 
     // Single instance to show layout switch toasts without overlapping
     private var layoutSwitchToast: android.widget.Toast? = null
+    private var lastLayoutToastText: String? = null
+    private var lastLayoutToastTime: Long = 0
+    private var suppressNextLayoutReload: Boolean = false
     
     // Mapping Ctrl+key -> action or keycode (loaded from JSON)
     private val ctrlKeyMap = mutableMapOf<Int, KeyMappingLoader.CtrlMapping>()
@@ -210,6 +213,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                     currentInputConnection,
                     shouldDisableSmartFeatures,
                     enableShift = { modifierStateController.requestShiftOneShotFromAutoCap() },
+                    disableShift = { modifierStateController.consumeShiftOneShot() },
                     onUpdateStatusBar = { updateStatusBarText() }
                 )
             }
@@ -232,6 +236,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             currentInputConnection,
             shouldDisableSmartFeatures,
             enableShift = { modifierStateController.requestShiftOneShotFromAutoCap() },
+            disableShift = { modifierStateController.consumeShiftOneShot() },
             onUpdateStatusBar = { updateStatusBarText() }
         )
         
@@ -286,8 +291,42 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         return char?.toString() ?: ""
     }
 
+    private fun switchToLayout(layoutName: String, showToast: Boolean) {
+        LayoutMappingRepository.loadLayout(assets, layoutName, this)
+        if (showToast) {
+            val metadata = try {
+                LayoutFileStore.getLayoutMetadataFromAssets(assets, layoutName)
+                    ?: LayoutFileStore.getLayoutMetadata(this, layoutName)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error getting layout metadata for toast", e)
+                null
+            }
+            val displayName = metadata?.name ?: layoutName
+            showLayoutSwitchToast(displayName)
+        }
+        updateStatusBarText()
+    }
+
+    private fun cycleLayoutFromShortcut() {
+        suppressNextLayoutReload = true
+        val nextLayout = SettingsManager.cycleKeyboardLayout(this)
+        if (nextLayout != null) {
+            switchToLayout(nextLayout, showToast = true)
+        }
+    }
+
     private fun showLayoutSwitchToast(displayName: String) {
         uiHandler.post {
+            val now = System.currentTimeMillis()
+            // Avoid spamming identical toasts and keep a minimum gap to satisfy system quota.
+            val sameText = lastLayoutToastText == displayName
+            val sinceLast = now - lastLayoutToastTime
+            if (sinceLast < 1000 || (sameText && sinceLast < 4000)) {
+                return@post
+            }
+
+            lastLayoutToastText = displayName
+            lastLayoutToastTime = now
             layoutSwitchToast?.cancel()
             layoutSwitchToast = android.widget.Toast.makeText(
                 applicationContext,
@@ -323,26 +362,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 updateStatusBarText()
             }
 
-            val nextLayout = SettingsManager.cycleKeyboardLayout(this)
-            if (nextLayout != null) {
-                LayoutMappingRepository.loadLayout(assets, nextLayout, this)
-
-                // Show toast only when cycling among multiple layouts.
-                layoutSwitchToast?.cancel()
-                try {
-                    val metadata = LayoutFileStore.getLayoutMetadataFromAssets(assets, nextLayout)
-                        ?: LayoutFileStore.getLayoutMetadata(this, nextLayout)
-                    val displayName = metadata?.name ?: nextLayout
-                    showLayoutSwitchToast(displayName)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error showing layout switch toast", e)
-                }
-
-                spaceLongPressTriggered = true
-                updateStatusBarText()
-            } else {
-                spaceLongPressTriggered = false
-            }
+            cycleLayoutFromShortcut()
+            spaceLongPressTriggered = true
         }
         spaceLongPressRunnable = runnable
         spaceLongPressHandler.postDelayed(runnable, threshold)
@@ -518,9 +539,14 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 // Reload nav mode key mappings
                 reloadNavModeMappings()
             } else if (key == "keyboard_layout") {
-                Log.d(TAG, "Keyboard layout changed, reloading...")
-                // Reload keyboard layout
-                loadKeyboardLayout()
+                if (suppressNextLayoutReload) {
+                    Log.d(TAG, "Keyboard layout change observed, reload suppressed")
+                    suppressNextLayoutReload = false
+                } else {
+                    Log.d(TAG, "Keyboard layout changed, reloading...")
+                    val layoutName = SettingsManager.getKeyboardLayout(this)
+                    switchToLayout(layoutName, showToast = true)
+                }
             }
         }
         prefs.registerOnSharedPreferenceChangeListener(prefsListener)
@@ -752,6 +778,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 currentInputConnection,
                 shouldDisableSmartFeatures,
                 enableShift = { modifierStateController.requestShiftOneShotFromAutoCap() },
+                disableShift = { modifierStateController.consumeShiftOneShot() },
                 onUpdateStatusBar = { updateStatusBarText() }
             )
         }
@@ -771,6 +798,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 currentInputConnection,
                 shouldDisableSmartFeatures,
                 enableShift = { modifierStateController.requestShiftOneShotFromAutoCap() },
+                disableShift = { modifierStateController.consumeShiftOneShot() },
                 onUpdateStatusBar = { updateStatusBarText() }
             )
         }
@@ -913,19 +941,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 shouldUpdateStatusBar = true
             }
 
-            val nextLayout = SettingsManager.cycleKeyboardLayout(this)
-            if (nextLayout != null) {
-                LayoutMappingRepository.loadLayout(assets, nextLayout, this)
-                try {
-                    val metadata = LayoutFileStore.getLayoutMetadataFromAssets(assets, nextLayout)
-                        ?: LayoutFileStore.getLayoutMetadata(this, nextLayout)
-                    val displayName = metadata?.name ?: nextLayout
-                    showLayoutSwitchToast(displayName)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error showing layout switch toast", e)
-                }
-                shouldUpdateStatusBar = true
-            }
+            cycleLayoutFromShortcut()
+            shouldUpdateStatusBar = true
 
             if (shouldUpdateStatusBar) {
                 updateStatusBarText()

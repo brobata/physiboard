@@ -5,9 +5,9 @@ import android.content.SharedPreferences
 import android.util.Log
 import android.view.KeyEvent
 import org.json.JSONObject
+import java.io.InputStream
 import java.io.File
 import java.io.FileOutputStream
-import java.io.InputStream
 
 /**
  * Manages the app settings.
@@ -919,6 +919,19 @@ object SettingsManager {
             .apply()
     }
 
+    private fun isLayoutAvailable(context: Context, layoutName: String): Boolean {
+        if (it.palsoftware.pastiera.data.layout.LayoutFileStore.layoutExists(context, layoutName)) {
+            return true
+        }
+        return try {
+            val path = "common/layouts/$layoutName.json"
+            context.assets.open(path).close()
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     /**
      * Returns the list of keyboard layouts configured for cycling.
      * Falls back to a single-entry list using the current layout if no list is stored.
@@ -928,17 +941,17 @@ object SettingsManager {
         val jsonString = prefs.getString(KEY_KEYBOARD_LAYOUT_LIST, null) ?: return listOf(getKeyboardLayout(context))
         return try {
             val array = org.json.JSONArray(jsonString)
-            val result = mutableListOf<String>()
+            val seen = LinkedHashSet<String>()
             for (i in 0 until array.length()) {
-                val name = array.optString(i, null)
-                if (!name.isNullOrBlank()) {
-                    result.add(name)
+                val name = array.optString(i, null)?.trim()
+                if (!name.isNullOrEmpty()) {
+                    seen.add(name)
                 }
             }
-            if (result.isEmpty()) {
+            if (seen.isEmpty()) {
                 listOf(getKeyboardLayout(context))
             } else {
-                result.toList()
+                seen.toList()
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error parsing keyboard layout list, falling back to single layout", e)
@@ -951,7 +964,7 @@ object SettingsManager {
      * The caller is responsible for also selecting the active layout via setKeyboardLayout().
      */
     fun setKeyboardLayoutList(context: Context, layouts: List<String>) {
-        val normalized = layouts.filter { it.isNotBlank() }
+        val normalized = layouts.map { it.trim() }.filter { it.isNotBlank() }.distinct()
         if (normalized.isEmpty()) {
             // Clear the list to fall back to single-layout behaviour.
             getPreferences(context).edit()
@@ -968,14 +981,20 @@ object SettingsManager {
 
     /**
      * Cycles to the next keyboard layout in the configured list and returns its id.
-     * If only a single layout is configured, returns null and leaves the current layout unchanged.
+     * Always loops: even with a single entry we "cycle" back to it, so Ctrl+Space/long press
+     * consistently triggers a layout reload/toast and never becomes a no-op.
      */
     fun cycleKeyboardLayout(context: Context): String? {
         val current = getKeyboardLayout(context)
-        val layouts = getKeyboardLayoutList(context)
-        if (layouts.size <= 1) {
-            return null
+        // Normalize list: keep order, drop blanks/duplicates, ensure at least one entry.
+        val baseLayouts = getKeyboardLayoutList(context).ifEmpty { listOf(current) }
+        val normalized = if (baseLayouts.contains(current)) baseLayouts else listOf(current) + baseLayouts
+        val missing = normalized.filterNot { isLayoutAvailable(context, it) }
+        if (missing.isNotEmpty()) {
+            Log.w(TAG, "Skipping missing layouts: ${missing.joinToString()}")
         }
+        val layouts = normalized.filter { isLayoutAvailable(context, it) }.ifEmpty { listOf(current) }
+
         val currentIndex = layouts.indexOf(current).let { if (it >= 0) it else 0 }
         val nextIndex = (currentIndex + 1) % layouts.size
         val nextLayout = layouts[nextIndex]
