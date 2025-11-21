@@ -275,7 +275,7 @@ class InputEventRouter(
 
         if (
             params.clearAltOnSpaceEnabled &&
-            keyCode == KeyEvent.KEYCODE_SPACE &&
+            (keyCode == KeyEvent.KEYCODE_SPACE || keyCode == KeyEvent.KEYCODE_ENTER) &&
             (altLatchActive || altOneShotActive)
         ) {
             controllers.modifierStateController.clearAltState()
