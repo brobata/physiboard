@@ -69,6 +69,7 @@ fun KeyboardLayoutSettingsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     var pendingLayoutSave by remember { mutableStateOf<PendingLayoutSave?>(null) }
+    var previewLayout by remember { mutableStateOf<String?>(null) }
     
     // File picker launcher for importing layouts
     val filePickerLauncher = rememberLauncherForActivityResult(
@@ -140,6 +141,15 @@ fun KeyboardLayoutSettingsScreen(
                 snackbarHostState.showSnackbar(context.getString(R.string.layout_save_error, e.message ?: ""))
             }
         }
+    }
+
+    if (previewLayout != null) {
+        KeyboardLayoutViewerScreen(
+            layoutName = previewLayout!!,
+            modifier = modifier,
+            onBack = { previewLayout = null }
+        )
+        return
     }
     
     Scaffold(
@@ -290,6 +300,15 @@ fun KeyboardLayoutSettingsScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
+                            IconButton(
+                                onClick = { previewLayout = "qwerty" }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Visibility,
+                                    contentDescription = stringResource(R.string.keyboard_layout_viewer_open),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                             Checkbox(
                                 checked = enabledLayouts.contains("qwerty"),
                                 onCheckedChange = { enabled ->
@@ -384,6 +403,15 @@ fun KeyboardLayoutSettingsScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
+                                IconButton(
+                                    onClick = { previewLayout = layout }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Visibility,
+                                        contentDescription = stringResource(R.string.keyboard_layout_viewer_open),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                                 Checkbox(
                                     checked = enabledLayouts.contains(layout),
                                     onCheckedChange = { enabled ->
