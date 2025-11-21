@@ -21,7 +21,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Keyboard
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import it.palsoftware.pastiera.R
@@ -132,10 +131,8 @@ fun SymCustomizationScreen(
     var showResetConfirmDialog by remember { mutableStateOf(false) }
     var resetPage by remember { mutableStateOf<Int?>(null) } // 1 for page1, 2 for page2
     
-    // Handle the system back button
-    BackHandler {
-        onBack()
-    }
+    // Note: System back button is handled by Activity.onBackPressedDispatcher
+    // to follow Android history. This BackHandler is removed to allow default behavior.
     
     // Helper function to convert keycode to letter
     fun getLetterFromKeyCode(keyCode: Int): String {

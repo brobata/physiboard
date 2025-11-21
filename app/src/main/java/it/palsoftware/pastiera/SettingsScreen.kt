@@ -43,6 +43,18 @@ import it.palsoftware.pastiera.update.checkForUpdate
 import it.palsoftware.pastiera.update.showUpdateDialog
 
 /**
+ * Sealed class per rappresentare lo stato della navigazione nelle settings.
+ */
+sealed class SettingsDestination {
+    object Main : SettingsDestination()
+    object KeyboardTiming : SettingsDestination()
+    object TextInput : SettingsDestination()
+    object AutoCorrection : SettingsDestination()
+    object Customization : SettingsDestination()
+    object Advanced : SettingsDestination()
+}
+
+/**
  * App settings screen.
  */
 @Composable
@@ -67,79 +79,102 @@ fun SettingsScreen(
     }
     
     // State for navigation to category screens
-    var showKeyboardTimingSettings by remember { mutableStateOf(false) }
-    var showTextInputSettings by remember { mutableStateOf(false) }
-    var showAutoCorrectionCategory by remember { mutableStateOf(false) }
-    var showCustomizationSettings by remember { mutableStateOf(false) }
-    var showAdvancedSettings by remember { mutableStateOf(false) }
+    var currentDestination by remember { mutableStateOf<SettingsDestination>(SettingsDestination.Main) }
     
     // Handle system back button
     BackHandler {
-        when {
-            showKeyboardTimingSettings -> {
-                showKeyboardTimingSettings = false
-            }
-            showTextInputSettings -> {
-                showTextInputSettings = false
-            }
-            showAutoCorrectionCategory -> {
-                showAutoCorrectionCategory = false
-            }
-            showCustomizationSettings -> {
-                showCustomizationSettings = false
-            }
-            showAdvancedSettings -> {
-                showAdvancedSettings = false
-            }
-            else -> {
+        when (currentDestination) {
+            is SettingsDestination.Main -> {
                 // Get activity from context to finish it
                 val activity = (context as? androidx.activity.ComponentActivity)
                 activity?.finish()
             }
+            else -> {
+                currentDestination = SettingsDestination.Main
+            }
         }
     }
     
-    // Navigazione condizionale
-    if (showKeyboardTimingSettings) {
-        KeyboardTimingSettingsScreen(
-            modifier = modifier,
-            onBack = { showKeyboardTimingSettings = false }
-        )
-        return
+    // AnimatedContent per gestire le transizioni slide
+    AnimatedContent(
+        targetState = currentDestination,
+        transitionSpec = {
+            // Navigazione in avanti: slide in da destra, slide out verso sinistra
+            slideInHorizontally(
+                initialOffsetX = { fullWidth -> fullWidth },
+                animationSpec = tween(300)
+            ) togetherWith slideOutHorizontally(
+                targetOffsetX = { fullWidth -> -fullWidth },
+                animationSpec = tween(300)
+            )
+        },
+        label = "settings_navigation"
+    ) { destination ->
+        when (destination) {
+            is SettingsDestination.Main -> {
+                SettingsMainScreen(
+                    modifier = modifier,
+                    context = context,
+                    checkingForUpdates = checkingForUpdates,
+                    onCheckingForUpdatesChange = { checkingForUpdates = it },
+                    onKeyboardTimingClick = { currentDestination = SettingsDestination.KeyboardTiming },
+                    onTextInputClick = { currentDestination = SettingsDestination.TextInput },
+                    onAutoCorrectionClick = { currentDestination = SettingsDestination.AutoCorrection },
+                    onCustomizationClick = { currentDestination = SettingsDestination.Customization },
+                    onAdvancedClick = { currentDestination = SettingsDestination.Advanced },
+                    onBackClick = {
+                        val activity = (context as? androidx.activity.ComponentActivity)
+                        activity?.finish()
+                    }
+                )
+            }
+            is SettingsDestination.KeyboardTiming -> {
+                KeyboardTimingSettingsScreen(
+                    modifier = modifier,
+                    onBack = { currentDestination = SettingsDestination.Main }
+                )
+            }
+            is SettingsDestination.TextInput -> {
+                TextInputSettingsScreen(
+                    modifier = modifier,
+                    onBack = { currentDestination = SettingsDestination.Main }
+                )
+            }
+            is SettingsDestination.AutoCorrection -> {
+                AutoCorrectionCategoryScreen(
+                    modifier = modifier,
+                    onBack = { currentDestination = SettingsDestination.Main }
+                )
+            }
+            is SettingsDestination.Customization -> {
+                CustomizationSettingsScreen(
+                    modifier = modifier,
+                    onBack = { currentDestination = SettingsDestination.Main }
+                )
+            }
+            is SettingsDestination.Advanced -> {
+                AdvancedSettingsScreen(
+                    modifier = modifier,
+                    onBack = { currentDestination = SettingsDestination.Main }
+                )
+            }
+        }
     }
-    
-    if (showTextInputSettings) {
-        TextInputSettingsScreen(
-            modifier = modifier,
-            onBack = { showTextInputSettings = false }
-        )
-        return
-    }
-    
-    if (showAutoCorrectionCategory) {
-        AutoCorrectionCategoryScreen(
-            modifier = modifier,
-            onBack = { showAutoCorrectionCategory = false }
-        )
-        return
-    }
-    
-    if (showCustomizationSettings) {
-        CustomizationSettingsScreen(
-            modifier = modifier,
-            onBack = { showCustomizationSettings = false }
-        )
-        return
-    }
-    
-    if (showAdvancedSettings) {
-        AdvancedSettingsScreen(
-            modifier = modifier,
-            onBack = { showAdvancedSettings = false }
-        )
-        return
-    }
-    
+}
+
+@Composable
+private fun SettingsMainScreen(
+    modifier: Modifier,
+    context: Context,
+    checkingForUpdates: Boolean,
+    onCheckingForUpdatesChange: (Boolean) -> Unit,
+    onKeyboardTimingClick: () -> Unit,
+    onTextInputClick: () -> Unit,
+    onAutoCorrectionClick: () -> Unit,
+    onCustomizationClick: () -> Unit,
+    onAdvancedClick: () -> Unit,
+    onBackClick: () -> Unit
+) {
     Scaffold(
         topBar = {
             Surface(
@@ -154,11 +189,7 @@ fun SettingsScreen(
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = {
-                        // Get activity from context to finish it
-                        val activity = (context as? androidx.activity.ComponentActivity)
-                        activity?.finish()
-                    }) {
+                    IconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.settings_back_content_description)
@@ -174,26 +205,19 @@ fun SettingsScreen(
             }
         }
     ) { paddingValues ->
-        AnimatedContent(
-            targetState = Unit,
-            transitionSpec = {
-                fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
-            },
-            label = "settings_animation"
+        Column(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(paddingValues)
+                .verticalScroll(rememberScrollState())
         ) {
-            Column(
-                modifier = modifier
+            // Keyboard & Timing
+            Surface(
+                modifier = Modifier
                     .fillMaxWidth()
-                    .padding(paddingValues)
-                    .verticalScroll(rememberScrollState())
+                    .height(64.dp)
+                    .clickable(onClick = onKeyboardTimingClick)
             ) {
-                // Keyboard & Timing
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(64.dp)
-                        .clickable { showKeyboardTimingSettings = true }
-                ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -228,7 +252,7 @@ fun SettingsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(64.dp)
-                        .clickable { showTextInputSettings = true }
+                        .clickable(onClick = onTextInputClick)
                 ) {
                     Row(
                         modifier = Modifier
@@ -264,7 +288,7 @@ fun SettingsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(64.dp)
-                        .clickable { showAutoCorrectionCategory = true }
+                        .clickable(onClick = onAutoCorrectionClick)
                 ) {
                     Row(
                         modifier = Modifier
@@ -300,7 +324,7 @@ fun SettingsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(64.dp)
-                        .clickable { showCustomizationSettings = true }
+                        .clickable(onClick = onCustomizationClick)
                 ) {
                     Row(
                         modifier = Modifier
@@ -336,7 +360,7 @@ fun SettingsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(64.dp)
-                        .clickable { showAdvancedSettings = true }
+                        .clickable(onClick = onAdvancedClick)
                 ) {
                     Row(
                         modifier = Modifier
@@ -471,13 +495,13 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.height(8.dp))
                         Button(
                             onClick = {
-                                checkingForUpdates = true
+                                onCheckingForUpdatesChange(true)
                                 checkForUpdate(
                                     context = context,
                                     currentVersion = BuildConfig.VERSION_NAME,
                                     ignoreDismissedReleases = false
                                 ) { hasUpdate, latestVersion, downloadUrl ->
-                                    checkingForUpdates = false
+                                    onCheckingForUpdatesChange(false)
                                     when {
                                         latestVersion == null -> {
                                             Toast.makeText(
@@ -578,4 +602,3 @@ fun SettingsScreen(
             }
         }
     }
-}

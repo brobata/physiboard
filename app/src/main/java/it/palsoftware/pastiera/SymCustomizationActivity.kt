@@ -17,12 +17,21 @@ class SymCustomizationActivity : ComponentActivity() {
                 SymCustomizationScreen(
                     modifier = Modifier.fillMaxSize(),
                     onBack = {
-                        // Confirm pending restore when user presses back
+                        // This is only called from the UI back button (arrow icon)
                         SettingsManager.confirmPendingRestoreSymPage(this@SymCustomizationActivity)
                         finish()
                     }
                 )
             }
+        }
+    }
+    
+    override fun onPause() {
+        super.onPause()
+        // Confirm pending restore when activity is paused (user navigates away)
+        // This handles both back button and other navigation methods
+        if (isFinishing) {
+            SettingsManager.confirmPendingRestoreSymPage(this)
         }
     }
     
