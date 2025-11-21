@@ -155,6 +155,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         handler = multiTapHandler,
         timeoutMs = MULTI_TAP_TIMEOUT_MS
     )
+    private val uiHandler = Handler(Looper.getMainLooper())
 
     private val motionEventController = MotionEventController(logTag = TAG)
 
@@ -285,6 +286,18 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         return char?.toString() ?: ""
     }
 
+    private fun showLayoutSwitchToast(displayName: String) {
+        uiHandler.post {
+            layoutSwitchToast?.cancel()
+            layoutSwitchToast = android.widget.Toast.makeText(
+                applicationContext,
+                displayName,
+                android.widget.Toast.LENGTH_SHORT
+            )
+            layoutSwitchToast?.show()
+        }
+    }
+
     private fun cancelSpaceLongPress() {
         spaceLongPressRunnable?.let { spaceLongPressHandler.removeCallbacks(it) }
         spaceLongPressRunnable = null
@@ -320,12 +333,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                     val metadata = LayoutFileStore.getLayoutMetadataFromAssets(assets, nextLayout)
                         ?: LayoutFileStore.getLayoutMetadata(this, nextLayout)
                     val displayName = metadata?.name ?: nextLayout
-                    layoutSwitchToast = android.widget.Toast.makeText(
-                        this,
-                        displayName,
-                        android.widget.Toast.LENGTH_SHORT
-                    )
-                    layoutSwitchToast?.show()
+                    showLayoutSwitchToast(displayName)
                 } catch (e: Exception) {
                     Log.e(TAG, "Error showing layout switch toast", e)
                 }
@@ -912,13 +920,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                     val metadata = LayoutFileStore.getLayoutMetadataFromAssets(assets, nextLayout)
                         ?: LayoutFileStore.getLayoutMetadata(this, nextLayout)
                     val displayName = metadata?.name ?: nextLayout
-                    layoutSwitchToast?.cancel()
-                    layoutSwitchToast = android.widget.Toast.makeText(
-                        this,
-                        displayName,
-                        android.widget.Toast.LENGTH_SHORT
-                    )
-                    layoutSwitchToast?.show()
+                    showLayoutSwitchToast(displayName)
                 } catch (e: Exception) {
                     Log.e(TAG, "Error showing layout switch toast", e)
                 }
