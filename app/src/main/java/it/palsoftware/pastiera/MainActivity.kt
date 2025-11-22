@@ -141,6 +141,15 @@ class MainActivity : ComponentActivity() {
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Check if tutorial has been completed
+        if (!SettingsManager.isTutorialCompleted(this)) {
+            val intent = Intent(this, TutorialActivity::class.java)
+            startActivity(intent)
+            finish()
+            return
+        }
+        
         enableEdgeToEdge()
         setContent {
             PastieraTheme {

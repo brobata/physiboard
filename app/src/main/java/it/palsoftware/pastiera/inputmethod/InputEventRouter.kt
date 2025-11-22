@@ -4,6 +4,7 @@ import android.content.Context
 import android.view.KeyEvent
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
+import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.SettingsManager
 import it.palsoftware.pastiera.core.NavModeController
 import it.palsoftware.pastiera.data.mappings.KeyMappingLoader
@@ -42,6 +43,8 @@ class InputEventRouter(
         val isAlphabeticKey: (Int) -> Boolean,
         val isLauncherPackage: (String?) -> Boolean,
         val handleLauncherShortcut: (Int) -> Boolean,
+        val handlePowerShortcut: (Int) -> Boolean,
+        val togglePowerShortcutMode: (String, Boolean) -> Unit, // Callback per toast e stato nav mode
         val callSuper: () -> Boolean,
         val currentInputConnection: () -> InputConnection?
     )
@@ -53,7 +56,8 @@ class InputEventRouter(
         callbacks: NoEditableFieldCallbacks,
         ctrlLatchActive: Boolean,
         editorInfo: EditorInfo?,
-        currentPackageName: String?
+        currentPackageName: String?,
+        powerShortcutsEnabled: Boolean
     ): Boolean {
         if (keyCode == KeyEvent.KEYCODE_BACK) {
             // Commented out: Nav mode is now persistent and won't close on back button press
@@ -62,6 +66,14 @@ class InputEventRouter(
             //     return false
             // }
             return callbacks.callSuper()
+        }
+
+        // Gestisci SYM per Power Shortcuts (toggle: attiva/disattiva)
+        if (keyCode == KeyEvent.KEYCODE_SYM && powerShortcutsEnabled) {
+            val message = context.getString(R.string.power_shortcuts_press_key)
+            val isNavModeActive = navModeController.isNavModeActive()
+            callbacks.togglePowerShortcutMode(message, isNavModeActive)
+            return true // Consumiamo l'evento
         }
 
         if (navModeController.isNavModeKey(keyCode)) {
@@ -74,6 +86,16 @@ class InputEventRouter(
             )
         }
 
+        // Gestisci Power Shortcuts (SYM premuto + tasto alfabetico)
+        if (!ctrlLatchActive && powerShortcutsEnabled) {
+            if (callbacks.isAlphabeticKey(keyCode)) {
+                if (callbacks.handlePowerShortcut(keyCode)) {
+                    return true
+                }
+            }
+        }
+
+        // Launcher Shortcuts (logica esistente - mantieni per compatibilità)
         if (!ctrlLatchActive && SettingsManager.getLauncherShortcutsEnabled(context)) {
             val packageName = editorInfo?.packageName ?: currentPackageName
             if (callbacks.isLauncherPackage(packageName) && callbacks.isAlphabeticKey(keyCode)) {

@@ -39,6 +39,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.activity.compose.BackHandler
 import it.palsoftware.pastiera.data.layout.JsonLayoutLoader
 import it.palsoftware.pastiera.data.layout.LayoutMapping
 import it.palsoftware.pastiera.data.layout.TapMapping
@@ -83,6 +84,9 @@ fun KeyboardLayoutViewerScreen(
                 )
             }.orEmpty()
     }
+
+    // Handle system back button
+    BackHandler { onBack() }
 
     Scaffold(
         topBar = {

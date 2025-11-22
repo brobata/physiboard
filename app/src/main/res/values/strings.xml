@@ -216,6 +216,11 @@
     <string name="launcher_shortcut_assignment_no_results">No results for \"%1$s\"</string>
     <string name="launcher_shortcut_assignment_key_name">Key %1$d</string>
     
+    <!-- Power Shortcuts Section -->
+    <string name="power_shortcuts_title">Power Shortcuts</string>
+    <string name="power_shortcuts_description">Press SYM then a key to launch shortcuts when not in a text field</string>
+    <string name="power_shortcuts_press_key">Press shortcut key to launch</string>
+    
     <!-- Notification Helper -->
     <string name="notification_nav_mode_channel_name">Pastiera Nav Mode</string>
     <string name="notification_nav_mode_channel_description">Notifications for Pastiera nav mode</string>

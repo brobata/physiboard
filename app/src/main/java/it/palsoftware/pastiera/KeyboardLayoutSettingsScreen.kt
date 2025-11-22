@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
+import androidx.activity.compose.BackHandler
 import it.palsoftware.pastiera.data.layout.LayoutFileStore
 import it.palsoftware.pastiera.data.layout.LayoutMappingRepository
 import it.palsoftware.pastiera.R
@@ -157,6 +158,9 @@ fun KeyboardLayoutSettingsScreen(
         )
         return
     }
+    
+    // Handle system back button
+    BackHandler { onBack() }
     
     Scaffold(
         topBar = {

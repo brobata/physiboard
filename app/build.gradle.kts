@@ -45,8 +45,8 @@ android {
         applicationId = "it.palsoftware.pastiera"
         minSdk = 29
         targetSdk = 36
-        versionCode = 5
-        versionName = "0.5beta"
+        versionCode = 6
+        versionName = "0.6beta"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         
@@ -126,6 +126,7 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation("androidx.compose.foundation:foundation")
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("androidx.compose.material:material-icons-extended")
     implementation("com.squareup.okhttp3:okhttp:4.11.0")

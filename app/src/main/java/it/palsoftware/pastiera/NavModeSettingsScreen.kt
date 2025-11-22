@@ -27,6 +27,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.activity.compose.BackHandler
 import it.palsoftware.pastiera.data.mappings.KeyMappingLoader
 import it.palsoftware.pastiera.R
 
@@ -57,6 +58,9 @@ fun NavModeSettingsScreen(
     val defaultMappings = remember {
         loadAllKeyMappings(context, useDefaults = true)
     }
+    
+    // Handle system back button
+    BackHandler { onBack() }
     
     Column(
         modifier = modifier

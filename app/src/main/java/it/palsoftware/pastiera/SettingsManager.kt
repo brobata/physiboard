@@ -38,6 +38,7 @@ object SettingsManager {
     private const val KEY_SYM_PAGES_CONFIG = "sym_pages_config" // Order/enabled pages for SYM
     private const val KEY_SYM_AUTO_CLOSE = "sym_auto_close" // Auto-close SYM layout after key press
     private const val KEY_DISMISSED_RELEASES = "dismissed_releases" // Set of release tag_names that were dismissed
+    private const val KEY_TUTORIAL_COMPLETED = "tutorial_completed" // Whether the first-run tutorial has been completed
     
     // Default values
     private const val DEFAULT_LONG_PRESS_THRESHOLD = 300L
@@ -754,6 +755,26 @@ object SettingsManager {
             .apply()
     }
     
+    // Power Shortcuts settings
+    private const val KEY_POWER_SHORTCUTS_ENABLED = "power_shortcuts_enabled"
+    private const val DEFAULT_POWER_SHORTCUTS_ENABLED = false
+    
+    /**
+     * Restituisce se i Power Shortcuts sono abilitati.
+     */
+    fun getPowerShortcutsEnabled(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_POWER_SHORTCUTS_ENABLED, DEFAULT_POWER_SHORTCUTS_ENABLED)
+    }
+    
+    /**
+     * Imposta se i Power Shortcuts sono abilitati.
+     */
+    fun setPowerShortcutsEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_POWER_SHORTCUTS_ENABLED, enabled)
+            .apply()
+    }
+    
     /**
      * Returns whether nav mode is enabled.
      */
@@ -1172,5 +1193,34 @@ object SettingsManager {
      */
     fun isReleaseDismissed(context: Context, tagName: String): Boolean {
         return getDismissedReleases(context).contains(tagName)
+    }
+    
+    /**
+     * Checks if the tutorial has been completed.
+     * @param context The context
+     * @return true if the tutorial has been completed, false otherwise
+     */
+    fun isTutorialCompleted(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_TUTORIAL_COMPLETED, false)
+    }
+    
+    /**
+     * Marks the tutorial as completed.
+     * @param context The context
+     */
+    fun setTutorialCompleted(context: Context) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_TUTORIAL_COMPLETED, true)
+            .apply()
+    }
+    
+    /**
+     * Resets the tutorial completion status, allowing it to be shown again.
+     * @param context The context
+     */
+    fun resetTutorialCompleted(context: Context) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_TUTORIAL_COMPLETED, false)
+            .apply()
     }
 }

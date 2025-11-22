@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.size
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.activity.compose.BackHandler
 import it.palsoftware.pastiera.R
 
 /**
@@ -55,6 +56,9 @@ fun KeyboardTimingSettingsScreen(
         )
         return
     }
+    
+    // Handle system back button
+    BackHandler { onBack() }
     
     Scaffold(
         topBar = {

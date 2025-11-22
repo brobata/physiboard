@@ -67,14 +67,22 @@ fun AutoCorrectionCategoryScreen(
         targetState = currentDestination,
         transitionSpec = {
             if (navigationDirection == LocalNavigationDirection.Push) {
+                // Forward navigation: new screen enters from right, old screen exits to left
                 slideInHorizontally(
                     initialOffsetX = { fullWidth -> fullWidth },
-                    animationSpec = tween(300)
-                ) togetherWith ExitTransition.None
+                    animationSpec = tween(250)
+                ) togetherWith slideOutHorizontally(
+                    targetOffsetX = { fullWidth -> -fullWidth },
+                    animationSpec = tween(250)
+                )
             } else {
-                EnterTransition.None togetherWith slideOutHorizontally(
+                // Back navigation: current screen exits to right, previous screen enters from left
+                slideInHorizontally(
+                    initialOffsetX = { fullWidth -> -fullWidth },
+                    animationSpec = tween(250)
+                ) togetherWith slideOutHorizontally(
                     targetOffsetX = { fullWidth -> fullWidth },
-                    animationSpec = tween(300)
+                    animationSpec = tween(250)
                 )
             }
         },

@@ -60,6 +60,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private var lastLayoutToastTime: Long = 0
     private var suppressNextLayoutReload: Boolean = false
     
+    // Aggiungi per Power Shortcuts
+    private var powerShortcutToast: android.widget.Toast? = null
+    
     // Mapping Ctrl+key -> action or keycode (loaded from JSON)
     private val ctrlKeyMap = mutableMapOf<Int, KeyMappingLoader.CtrlMapping>()
     
@@ -336,6 +339,26 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             layoutSwitchToast?.show()
         }
     }
+    
+    private fun showPowerShortcutToast(message: String) {
+        uiHandler.post {
+            val now = System.currentTimeMillis()
+            val sameText = lastLayoutToastText == message
+            val sinceLast = now - lastLayoutToastTime
+            
+            if (!sameText || sinceLast > 1000) {
+                lastLayoutToastText = message
+                lastLayoutToastTime = now
+                powerShortcutToast?.cancel()
+                powerShortcutToast = android.widget.Toast.makeText(
+                    applicationContext,
+                    message,
+                    android.widget.Toast.LENGTH_SHORT
+                )
+                powerShortcutToast?.show()
+            }
+        }
+    }
 
     private fun cancelSpaceLongPress() {
         spaceLongPressRunnable?.let { spaceLongPressHandler.removeCallbacks(it) }
@@ -493,6 +516,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             refreshStatusBar = { refreshStatusBar() }
         )
         launcherShortcutController = LauncherShortcutController(this)
+        // Configura callbacks per gestire nav mode durante power shortcuts
+        launcherShortcutController.setNavModeCallbacks(
+            exitNavMode = { navModeController.exitNavMode() },
+            enterNavMode = { navModeController.enterNavMode() }
+        )
         
         // Initialize keyboard layout
         loadKeyboardLayout()
@@ -957,6 +985,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         
         // If NO editable field is active, handle ONLY nav mode
         if (!hasEditableField) {
+            val powerShortcutsEnabled = SettingsManager.getPowerShortcutsEnabled(this)
             return inputEventRouter.handleKeyDownWithNoEditableField(
                 keyCode = keyCode,
                 event = event,
@@ -965,12 +994,20 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                     isAlphabeticKey = { code -> isAlphabeticKey(code) },
                     isLauncherPackage = { pkg -> launcherShortcutController.isLauncher(pkg) },
                     handleLauncherShortcut = { key -> launcherShortcutController.handleLauncherShortcut(key) },
+                    handlePowerShortcut = { key -> launcherShortcutController.handlePowerShortcut(key) },
+                    togglePowerShortcutMode = { message, isNavModeActive -> 
+                        launcherShortcutController.togglePowerShortcutMode(
+                            showToast = { showPowerShortcutToast(it) },
+                            isNavModeActive = isNavModeActive
+                        )
+                    },
                     callSuper = { super.onKeyDown(keyCode, event) },
                     currentInputConnection = { currentInputConnection }
                 ),
                 ctrlLatchActive = ctrlLatchActive,
                 editorInfo = info,
-                currentPackageName = currentPackageName
+                currentPackageName = currentPackageName,
+                powerShortcutsEnabled = powerShortcutsEnabled
             )
         }
         
@@ -1096,6 +1133,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                     isAlphabeticKey = { code -> isAlphabeticKey(code) },
                     isLauncherPackage = { pkg -> launcherShortcutController.isLauncher(pkg) },
                     handleLauncherShortcut = { key -> launcherShortcutController.handleLauncherShortcut(key) },
+                    handlePowerShortcut = { key -> launcherShortcutController.handlePowerShortcut(key) },
+                    togglePowerShortcutMode = { message, isNavModeActive -> 
+                        launcherShortcutController.togglePowerShortcutMode(
+                            showToast = { showPowerShortcutToast(it) },
+                            isNavModeActive = isNavModeActive
+                        )
+                    },
                     callSuper = { super.onKeyUp(keyCode, event) },
                     currentInputConnection = { currentInputConnection }
                 )

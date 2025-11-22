@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import android.util.Log
+import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.SettingsManager
 
 /**
@@ -16,10 +17,21 @@ class LauncherShortcutController(
 ) {
     companion object {
         private const val TAG = "PastieraInputMethod"
+        private const val POWER_SHORTCUT_TIMEOUT_MS = 5000L // 5 secondi di timeout
     }
 
     // Cache for launcher packages
     private var cachedLauncherPackages: Set<String>? = null
+    
+    // Stato per Power Shortcuts: SYM premuto per attivare shortcut
+    private var powerShortcutSymPressed: Boolean = false
+    private var powerShortcutTimeoutHandler: android.os.Handler? = null
+    private var powerShortcutTimeoutRunnable: Runnable? = null
+    
+    // Stato per gestire nav mode durante power shortcuts
+    private var navModeWasActive: Boolean = false
+    private var exitNavModeCallback: (() -> Unit)? = null
+    private var enterNavModeCallback: (() -> Unit)? = null
 
     /**
      * Verifica se il package corrente è un launcher.
@@ -121,6 +133,117 @@ class LauncherShortcutController(
         } catch (e: Exception) {
             Log.e(TAG, "Errore nel mostrare il dialog di assegnazione", e)
         }
+    }
+    
+    /**
+     * Imposta i callback per gestire nav mode durante power shortcuts.
+     */
+    fun setNavModeCallbacks(
+        exitNavMode: () -> Unit,
+        enterNavMode: () -> Unit
+    ) {
+        exitNavModeCallback = exitNavMode
+        enterNavModeCallback = enterNavMode
+    }
+    
+    /**
+     * Attiva o disattiva il Power Shortcut mode (SYM premuto).
+     * Se già attivo, lo disattiva (edge case).
+     * Restituisce true se il mode è stato attivato, false se disattivato.
+     * @param isNavModeActive indica se nav mode è attivo quando SYM viene premuto
+     */
+    fun togglePowerShortcutMode(
+        showToast: (String) -> Unit,
+        isNavModeActive: Boolean = false
+    ): Boolean {
+        if (powerShortcutSymPressed) {
+            // Edge case: se già attivo, disattivalo
+            resetPowerShortcutMode()
+            Log.d(TAG, "Power Shortcut mode disattivato da SYM")
+            return false
+        }
+        
+        // Salva se nav mode era attivo e disabilitalo se necessario
+        navModeWasActive = isNavModeActive
+        if (isNavModeActive) {
+            exitNavModeCallback?.invoke()
+            Log.d(TAG, "Nav mode disabilitato per attivare Power Shortcut")
+        }
+        
+        // Attiva il mode
+        powerShortcutSymPressed = true
+        Log.d(TAG, "Power Shortcut mode attivato")
+        
+        // Mostra toast
+        val message = context.getString(R.string.power_shortcuts_press_key)
+        showToast(message)
+        
+        // Cancella timeout precedente se esiste
+        cancelPowerShortcutTimeout()
+        
+        // Imposta timeout per resettare automaticamente
+        val handler = android.os.Handler(android.os.Looper.getMainLooper())
+        powerShortcutTimeoutRunnable = Runnable {
+            resetPowerShortcutMode()
+        }
+        powerShortcutTimeoutHandler = handler
+        handler.postDelayed(powerShortcutTimeoutRunnable!!, POWER_SHORTCUT_TIMEOUT_MS)
+        
+        return true
+    }
+    
+    /**
+     * Resetta il Power Shortcut mode.
+     * Se nav mode era attivo prima, lo riabilita.
+     */
+    fun resetPowerShortcutMode() {
+        if (powerShortcutSymPressed) {
+            powerShortcutSymPressed = false
+            cancelPowerShortcutTimeout()
+            Log.d(TAG, "Power Shortcut mode resettato")
+            
+            // Se nav mode era attivo prima, riabilitalo
+            if (navModeWasActive) {
+                enterNavModeCallback?.invoke()
+                navModeWasActive = false
+                Log.d(TAG, "Nav mode riabilitato dopo Power Shortcut")
+            }
+        }
+    }
+    
+    /**
+     * Verifica se il Power Shortcut mode è attivo.
+     */
+    fun isPowerShortcutModeActive(): Boolean {
+        return powerShortcutSymPressed
+    }
+    
+    /**
+     * Cancella il timeout del Power Shortcut mode.
+     */
+    private fun cancelPowerShortcutTimeout() {
+        powerShortcutTimeoutRunnable?.let { runnable ->
+            powerShortcutTimeoutHandler?.removeCallbacks(runnable)
+        }
+        powerShortcutTimeoutRunnable = null
+        powerShortcutTimeoutHandler = null
+    }
+
+    /**
+     * Handles power shortcuts when SYM was pressed first.
+     * Riutilizza la logica esistente di handleLauncherShortcut.
+     * Restituisce true se lo shortcut è stato gestito, false altrimenti.
+     */
+    fun handlePowerShortcut(keyCode: Int): Boolean {
+        if (!isPowerShortcutModeActive()) {
+            return false
+        }
+        
+        // Reset del mode dopo l'uso
+        resetPowerShortcutMode()
+        
+        // Riutilizza la logica esistente - stessa funzione, stesse assegnazioni
+        return handleLauncherShortcut(keyCode)
     }
 }
 

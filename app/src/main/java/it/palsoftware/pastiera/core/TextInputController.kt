@@ -25,52 +25,60 @@ class TextInputController(
         shouldDisableSmartFeatures: Boolean,
         onStatusBarUpdate: () -> Unit
     ): Boolean {
-        val isSpace = keyCode == KeyEvent.KEYCODE_SPACE
-        if (isSpace && !shouldDisableSmartFeatures) {
-            val doubleSpaceToPeriodEnabled = SettingsManager.getDoubleSpaceToPeriod(context)
-            if (doubleSpaceToPeriodEnabled) {
-                val currentTime = System.currentTimeMillis()
-                val isDoubleTap = lastSpacePressTime > 0 &&
-                    (currentTime - lastSpacePressTime) < doubleTapThreshold
-
-            if (isDoubleTap && inputConnection != null) {
-                val textBeforeCursor = inputConnection.getTextBeforeCursor(100, 0)
-                if (textBeforeCursor != null && textBeforeCursor.endsWith(" ")) {
-                    if (textBeforeCursor.length >= 2 && textBeforeCursor[textBeforeCursor.length - 2] == ' ') {
-                        // Multiple spaces already present: ignore
-                        } else {
-                            var lastCharIndex = textBeforeCursor.length - 2
-                            while (lastCharIndex >= 0 && textBeforeCursor[lastCharIndex].isWhitespace()) {
-                                lastCharIndex--
-                            }
-
-                            val shouldReplace = lastCharIndex >= 0 && textBeforeCursor[lastCharIndex].isLetter()
-                            if (shouldReplace) {
-                                inputConnection.deleteSurroundingText(1, 0)
-                                inputConnection.commitText(". ", 1)
-
-                                modifierStateController.shiftOneShot = true
-                                onStatusBarUpdate()
-
-                                lastSpacePressTime = 0
-                                return true
-                            }
-                        }
-                    }
-                }
-                lastSpacePressTime = currentTime
-            } else {
-                lastSpacePressTime = 0
-            }
-        } else {
+        if (keyCode != KeyEvent.KEYCODE_SPACE || shouldDisableSmartFeatures) {
             if (lastSpacePressTime > 0) {
                 val currentTime = System.currentTimeMillis()
                 if (currentTime - lastSpacePressTime >= doubleTapThreshold) {
                     lastSpacePressTime = 0
                 }
             }
+            return false
         }
-        return false
+
+        if (!SettingsManager.getDoubleSpaceToPeriod(context)) {
+            lastSpacePressTime = 0
+            return false
+        }
+
+        val currentTime = System.currentTimeMillis()
+        val isDoubleTap = lastSpacePressTime > 0 &&
+            (currentTime - lastSpacePressTime) < doubleTapThreshold
+
+        if (!isDoubleTap || inputConnection == null) {
+            lastSpacePressTime = currentTime
+            return false
+        }
+
+        val textBeforeCursor = inputConnection.getTextBeforeCursor(100, 0) ?: return false
+        if (!textBeforeCursor.endsWith(" ") || 
+            (textBeforeCursor.length >= 2 && textBeforeCursor[textBeforeCursor.length - 2] == ' ')) {
+            lastSpacePressTime = currentTime
+            return false
+        }
+
+        var lastCharIndex = textBeforeCursor.length - 2
+        while (lastCharIndex >= 0 && textBeforeCursor[lastCharIndex].isWhitespace()) {
+            lastCharIndex--
+        }
+
+        if (lastCharIndex < 0) {
+            lastSpacePressTime = currentTime
+            return false
+        }
+
+        val lastChar = textBeforeCursor[lastCharIndex]
+        val isEndPunctuation = lastChar in ".!?"
+        if (isEndPunctuation) {
+            lastSpacePressTime = currentTime
+            return false
+        }
+
+        inputConnection.deleteSurroundingText(1, 0)
+        inputConnection.commitText(". ", 1)
+        modifierStateController.shiftOneShot = true
+        onStatusBarUpdate()
+        lastSpacePressTime = 0
+        return true
     }
 
     fun handleAutoCapAfterPeriod(

@@ -122,6 +122,23 @@ class NavModeController(
             NotificationHelper.cancelNavModeNotification(context)
         }
     }
+    
+    /**
+     * Riattiva nav mode (usato quando power shortcut termina e nav mode era attivo prima).
+     * Riutilizza applyNavModeResult per mantenere la logica consistente.
+     */
+    fun enterNavMode() {
+        val navModeEnabled = SettingsManager.getNavModeEnabled(context)
+        if (navModeEnabled && !isNavModeActive()) {
+            // Riutilizza la logica esistente per attivare nav mode
+            applyNavModeResult(
+                NavModeHandler.NavModeResult(
+                    ctrlLatchActive = true
+                )
+            )
+            Log.d(TAG, "Nav mode riattivato")
+        }
+    }
 
     private fun applyNavModeResult(result: NavModeHandler.NavModeResult) {
         result.ctrlLatchActive?.let { latchActive ->

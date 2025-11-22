@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.size
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.activity.compose.BackHandler
 import it.palsoftware.pastiera.R
 
 /**
@@ -58,6 +59,9 @@ fun TextInputSettingsScreen(
     var altCtrlSpeechShortcut by remember {
         mutableStateOf(SettingsManager.getAltCtrlSpeechShortcutEnabled(context))
     }
+    
+    // Handle system back button
+    BackHandler { onBack() }
     
     Scaffold(
         topBar = {
