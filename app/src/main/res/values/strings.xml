@@ -373,4 +373,14 @@
     <string name="nav_mode_keycode_escape">Esc</string>
     <string name="nav_mode_keycode_tab">Tab</string>
     <string name="nav_mode_key_unknown">?</string>
+
+    <!-- Backup & Restore -->
+    <string name="backup_now">Backup now</string>
+    <string name="backup_now_description">Export all settings and custom layouts to a ZIP</string>
+    <string name="restore_from_file">Restore from file</string>
+    <string name="restore_from_file_description">Import a Pastiera backup ZIP</string>
+    <string name="backup_completed">Backup completed</string>
+    <string name="restore_completed">Restore completed</string>
+    <string name="backup_failed">Backup failed: %1$s</string>
+    <string name="restore_failed">Restore failed: %1$s</string>
 </resources>

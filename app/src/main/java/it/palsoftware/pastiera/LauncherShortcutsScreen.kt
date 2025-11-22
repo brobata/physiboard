@@ -32,6 +32,7 @@ import android.content.pm.PackageManager
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.BoxWithConstraints
 import it.palsoftware.pastiera.inputmethod.LauncherShortcutAssignmentActivity
+import androidx.compose.runtime.key
 
 /**
  * Schermata per gestire le scorciatoie del launcher.
@@ -197,66 +198,83 @@ fun LauncherShortcutsScreen(
                             if (keyCode != null) {
                                 val shortcut = shortcuts[keyCode]
                                 val hasApp = shortcut != null && shortcut.type == SettingsManager.LauncherShortcut.TYPE_APP && shortcut.packageName != null
-                                val appIcon = if (hasApp) getAppIcon(shortcut.packageName) else null
+                                
+                                // Use remember with shortcut.packageName as dependency
+                                // This recalculates icon only when packageName changes
+                                val appIcon = remember(shortcut?.packageName) {
+                                    if (hasApp && shortcut?.packageName != null) {
+                                        getAppIcon(shortcut.packageName)
+                                    } else {
+                                        null
+                                    }
+                                }
                                 
                                 if (keyIndex > 0) {
                                     Spacer(modifier = Modifier.width(keySpacing))
                                 }
                                 
-                                Surface(
-                                    modifier = Modifier
-                                        .width(keySize)
-                                        .aspectRatio(1f)
-                                        .combinedClickable(
-                                            onClick = {
-                                                launchShortcutAssignment(keyCode)
-                                            },
-                                            onLongClick = {
-                                                if (hasApp) {
-                                                    SettingsManager.removeLauncherShortcut(context, keyCode)
-                                                    shortcuts = SettingsManager.getLauncherShortcuts(context)
-                                                }
-                                            }
-                                        ),
-                                    shape = MaterialTheme.shapes.medium,
-                                    color = if (hasApp) {
-                                        MaterialTheme.colorScheme.primaryContainer
-                                    } else {
-                                        MaterialTheme.colorScheme.surfaceVariant
-                                    },
-                                    tonalElevation = if (hasApp) 2.dp else 1.dp
-                                ) {
-                                    Box(
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        if (hasApp && appIcon != null) {
-                                            // Mostra solo l'icona dell'app (riempie tutto il tasto)
-                                            AndroidView(
-                                                factory = { ctx ->
-                                                    ImageView(ctx).apply {
-                                                        layoutParams = ViewGroup.LayoutParams(
-                                                            ViewGroup.LayoutParams.MATCH_PARENT,
-                                                            ViewGroup.LayoutParams.MATCH_PARENT
-                                                        )
-                                                        scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
-                                                        setImageDrawable(appIcon)
-                                                    }
+                                // Use key() to force recomposition when shortcut changes
+                                // When packageName changes, the entire Surface is recomposed
+                                key(shortcut?.packageName ?: "none_$keyCode") {
+                                    Surface(
+                                        modifier = Modifier
+                                            .width(keySize)
+                                            .aspectRatio(1f)
+                                            .combinedClickable(
+                                                onClick = {
+                                                    launchShortcutAssignment(keyCode)
                                                 },
-                                                modifier = Modifier.fillMaxSize()
-                                            )
-                                        } else {
-                                            // Mostra la lettera del tasto
-                                            Text(
-                                                text = keyName,
-                                                style = MaterialTheme.typography.titleLarge,
-                                                fontWeight = FontWeight.Bold,
-                                                color = if (hasApp) {
-                                                    MaterialTheme.colorScheme.onPrimaryContainer
-                                                } else {
-                                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                                onLongClick = {
+                                                    if (hasApp) {
+                                                        SettingsManager.removeLauncherShortcut(context, keyCode)
+                                                        shortcuts = SettingsManager.getLauncherShortcuts(context)
+                                                    }
                                                 }
-                                            )
+                                            ),
+                                        shape = MaterialTheme.shapes.medium,
+                                        color = if (hasApp) {
+                                            MaterialTheme.colorScheme.primaryContainer
+                                        } else {
+                                            MaterialTheme.colorScheme.surfaceVariant
+                                        },
+                                        tonalElevation = if (hasApp) 2.dp else 1.dp
+                                    ) {
+                                        Box(
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            if (hasApp && appIcon != null) {
+                                                // Mostra solo l'icona dell'app (riempie tutto il tasto)
+                                                AndroidView(
+                                                    factory = { ctx ->
+                                                        ImageView(ctx).apply {
+                                                            layoutParams = ViewGroup.LayoutParams(
+                                                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                                                ViewGroup.LayoutParams.MATCH_PARENT
+                                                            )
+                                                            scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+                                                            setImageDrawable(appIcon)
+                                                        }
+                                                    },
+                                                    update = { imageView ->
+                                                        // Update icon when appIcon changes during recomposition
+                                                        imageView.setImageDrawable(appIcon)
+                                                    },
+                                                    modifier = Modifier.fillMaxSize()
+                                                )
+                                            } else {
+                                                // Mostra la lettera del tasto
+                                                Text(
+                                                    text = keyName,
+                                                    style = MaterialTheme.typography.titleLarge,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (hasApp) {
+                                                        MaterialTheme.colorScheme.onPrimaryContainer
+                                                    } else {
+                                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                                    }
+                                                )
+                                            }
                                         }
                                     }
                                 }

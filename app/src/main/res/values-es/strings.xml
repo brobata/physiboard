@@ -169,8 +169,6 @@
     
     <!-- Launcher Shortcuts Screen -->
     <string name="launcher_shortcuts_screen_title">Accesos Rápidos del Lanzador</string>
-    <string name="launcher_shortcuts_screen_assign_title">Asignar accesos rápidos a aplicaciones</string>
-    <string name="launcher_shortcuts_screen_assign_description">Cuando esté en el lanzador y no en un campo de texto, puede presionar una tecla para abrir una aplicación asignada.</string>
     <string name="launcher_shortcuts_not_assigned">No asignado</string>
     <string name="launcher_shortcuts_remove">Eliminar</string>
     <string name="launcher_shortcuts_app_name_unavailable">Aplicación (nombre no disponible)</string>

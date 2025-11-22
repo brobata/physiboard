@@ -169,8 +169,6 @@
     
     <!-- Launcher Shortcuts Screen -->
     <string name="launcher_shortcuts_screen_title">Raccourcis Lanceur</string>
-    <string name="launcher_shortcuts_screen_assign_title">Assigner des raccourcis aux applications</string>
-    <string name="launcher_shortcuts_screen_assign_description">Lorsque vous êtes dans le lanceur et non dans un champ de texte, vous pouvez appuyer sur une touche pour ouvrir une application assignée.</string>
     <string name="launcher_shortcuts_not_assigned">Non assigné</string>
     <string name="launcher_shortcuts_remove">Supprimer</string>
     <string name="launcher_shortcuts_app_name_unavailable">Application (nom indisponible)</string>

@@ -1,33 +1,67 @@
 package it.palsoftware.pastiera
 
 import android.content.Intent
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.Backup
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.TouchApp
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.activity.compose.BackHandler
-import androidx.compose.animation.*
-import androidx.compose.animation.core.tween
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.size
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.windowInsetsPadding
 import it.palsoftware.pastiera.R
+import it.palsoftware.pastiera.backup.BackupManager
+import it.palsoftware.pastiera.backup.RestoreManager
+import androidx.compose.material3.Surface
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * Advanced settings screen.
@@ -38,6 +72,8 @@ fun AdvancedSettingsScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
     
     var launcherShortcutsEnabled by remember { 
         mutableStateOf(SettingsManager.getLauncherShortcutsEnabled(context))
@@ -72,6 +108,45 @@ fun AdvancedSettingsScreen(
     }
     
     BackHandler { navigateBack() }
+    
+    fun defaultBackupName(): String {
+        val formatter = SimpleDateFormat("yyyyMMdd-HHmm", Locale.US)
+        return "pastiera-backup-${formatter.format(Date())}.zip"
+    }
+
+    val backupLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/zip")
+    ) { uri ->
+        if (uri != null) {
+            scope.launch {
+                val result = BackupManager.createBackup(context, uri)
+                val message = when (result) {
+                    is it.palsoftware.pastiera.backup.BackupResult.Success ->
+                        context.getString(R.string.backup_completed)
+                    is it.palsoftware.pastiera.backup.BackupResult.Failure ->
+                        context.getString(R.string.backup_failed, result.reason)
+                }
+                snackbarHostState.showSnackbar(message)
+            }
+        }
+    }
+
+    val restoreLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            scope.launch {
+                val result = RestoreManager.restore(context, uri)
+                val message = when (result) {
+                    is it.palsoftware.pastiera.backup.RestoreResult.Success ->
+                        context.getString(R.string.restore_completed)
+                    is it.palsoftware.pastiera.backup.RestoreResult.Failure ->
+                        context.getString(R.string.restore_failed, result.reason)
+                }
+                snackbarHostState.showSnackbar(message)
+            }
+        }
+    }
     
     AnimatedContent(
         targetState = currentDestination,
@@ -129,7 +204,8 @@ fun AdvancedSettingsScreen(
                                 )
                             }
                         }
-                    }
+                    },
+                    snackbarHost = { SnackbarHost(snackbarHostState) }
                 ) { paddingValues ->
                     Column(
                         modifier = modifier
@@ -236,6 +312,94 @@ fun AdvancedSettingsScreen(
                                         powerShortcutsEnabled = enabled
                                         SettingsManager.setPowerShortcutsEnabled(context, enabled)
                                     }
+                                )
+                            }
+                        }
+                    
+                        // Backup
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(64.dp)
+                                .clickable {
+                                    backupLauncher.launch(defaultBackupName())
+                                }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Backup,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = stringResource(R.string.backup_now),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.backup_now_description),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 2
+                                    )
+                                }
+                                Icon(
+                                    imageVector = Icons.Filled.ArrowForward,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    
+                        // Restore
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(64.dp)
+                                .clickable {
+                                    restoreLauncher.launch(arrayOf("application/zip"))
+                                }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.History,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = stringResource(R.string.restore_from_file),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.restore_from_file_description),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 2
+                                    )
+                                }
+                                Icon(
+                                    imageVector = Icons.Filled.ArrowForward,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }

@@ -74,10 +74,22 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file("../pastiera-release-key.jks")
-            storePassword = "pastiera123"
-            keyAlias = "pastiera"
-            keyPassword = "pastiera123"
+            val keystorePropertiesFile = rootProject.file("keystore.properties")
+            if (keystorePropertiesFile.exists()) {
+                val keystoreProperties = Properties()
+                keystoreProperties.load(keystorePropertiesFile.inputStream())
+                storeFile = file("../pastiera-release-key.jks")
+                storePassword = keystoreProperties["storePassword"] as String
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+            } else {
+                // Fallback for CI/CD or local builds without the file
+                // Uses environment variables if available
+                storeFile = file("../pastiera-release-key.jks")
+                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
+                keyAlias = System.getenv("KEY_ALIAS") ?: "pastiera"
+                keyPassword = System.getenv("KEY_PASSWORD") ?: ""
+            }
         }
     }
 
