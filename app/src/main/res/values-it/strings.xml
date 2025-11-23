@@ -300,7 +300,7 @@
     <string name="layout_delete_failed">Impossibile eliminare il layout</string>
     <string name="layout_view_mapping">Visualizza mappa</string>
     <string name="layout_delete">Elimina</string>
-    <string name="layout_enable_for_cycling">Abilita per ciclo (Space lungo)</string>
+    <string name="layout_enable_for_cycling">Abilita (Ctrl + Space per cambiare)</string>
     <string name="layout_select_as_active">Seleziona come layout attivo</string>
     
     <!-- Main Activity Event Display -->
@@ -327,4 +327,31 @@
     <string name="nav_mode_keycode_escape">Esc</string>
     <string name="nav_mode_keycode_tab">Tab</string>
     <string name="nav_mode_key_unknown">?</string>
+    
+    <!-- Tutorial -->
+    <string name="tutorial_skip">Salta</string>
+    <string name="tutorial_previous">Precedente</string>
+    <string name="tutorial_next">Successivo</string>
+    <string name="tutorial_finish">Fine</string>
+    <string name="tutorial_page_welcome_title">Benvenuto in Pastiera</string>
+    <string name="tutorial_page_welcome_description">Pastiera è una tastiera fisica avanzata per Android con supporto per modificatori, LED indicatori e modalità di navigazione.</string>
+    <string name="tutorial_page_enable_title">Abilita Pastiera</string>
+    <string name="tutorial_page_enable_description">Per iniziare, devi abilitare Pastiera come metodo di input nelle Impostazioni Android. Tocca il pulsante qui sotto per aprire le impostazioni.</string>
+    <string name="tutorial_page_select_title">Seleziona Pastiera</string>
+    <string name="tutorial_page_select_description">Dopo aver abilitato Pastiera, selezionala come tastiera predefinita. Tocca il pulsante qui sotto per scegliere il metodo di input.</string>
+    <string name="tutorial_page_led_title">LED Indicator</string>
+    <string name="tutorial_page_led_description">Pastiera mostra 5 LED nella barra di stato che indicano lo stato dei modificatori:\n\n• Shift: blu quando attivo, rosso quando bloccato\n• SYM: blu per emoji, rosso per caratteri speciali\n• Ctrl: blu quando attivo, rosso quando bloccato\n• Alt: blu quando attivo, rosso quando bloccato\n\nI LED grigi indicano che il modificatore è spento.</string>
+    <string name="tutorial_page_nav_mode_title">Nav Mode</string>
+    <string name="tutorial_page_nav_mode_description">Il Nav Mode permette di navigare usando i tasti alfabetici come scorciatoie.\n\nPer attivarlo:\n• Premi Ctrl due volte rapidamente\n• I tasti alfabetici vengono mappati a funzioni di navigazione\n• Premi Ctrl di nuovo per disattivare\n\nPuoi personalizzare le mappature nelle impostazioni avanzate.</string>
+    <string name="tutorial_page_customization_title">Personalizzazione</string>
+    <string name="tutorial_page_customization_description">Pastiera offre molte opzioni di personalizzazione:\n\n• Layout tastiera personalizzabili\n• Scorciatoie del launcher\n• Correzione automatica\n• Mappature personalizzate per Nav Mode\n\nEsplora le impostazioni per trovare la configurazione perfetta per te!</string>
+    <string name="tutorial_page_ready_title">Pronto per Iniziare</string>
+    <string name="tutorial_page_ready_description">Ora sei pronto a usare Pastiera! Ricorda che puoi sempre tornare alle impostazioni per personalizzare ulteriormente la tastiera secondo le tue esigenze.</string>
+    <string name="tutorial_enable_button">Abilita Pastiera</string>
+    <string name="tutorial_enabled_message">Pastiera è abilitata!</string>
+    <string name="tutorial_select_button">Seleziona Pastiera</string>
+    <string name="tutorial_enable_first_message">Abilita prima Pastiera nella pagina precedente</string>
+    <string name="tutorial_selected_message">Pastiera è selezionata!</string>
+    <string name="tutorial_show">Mostra Tutorial</string>
+    <string name="tutorial_review_description">Rivedi il tutorial introduttivo</string>
 </resources>

@@ -266,6 +266,15 @@
     <string name="layout_save_error">Erreur lors de l\'enregistrement du layout : %1$s</string>
     <string name="layout_imported_name">Layout Importé</string>
     <string name="layout_imported_description">Importé depuis un fichier</string>
+    <string name="layout_delete_content_description">Supprimer le layout</string>
+    <string name="layout_delete_confirmation_title">Supprimer le Layout</string>
+    <string name="layout_delete_confirmation_message">Êtes-vous sûr de vouloir supprimer le layout \"%1$s\" ? Cette action ne peut pas être annulée.</string>
+    <string name="layout_delete_success">Layout supprimé avec succès</string>
+    <string name="layout_delete_failed">Échec de la suppression du layout</string>
+    <string name="layout_view_mapping">Voir le mappage</string>
+    <string name="layout_delete">Supprimer</string>
+    <string name="layout_enable_for_cycling">Activer (Ctrl + Espace pour changer)</string>
+    <string name="layout_select_as_active">Sélectionner comme layout actif</string>
     
     <!-- Main Activity Event Display -->
     <string name="modifier_alt">ALT</string>
@@ -291,6 +300,33 @@
     <string name="nav_mode_keycode_escape">Échap</string>
     <string name="nav_mode_keycode_tab">Tab</string>
     <string name="nav_mode_key_unknown">?</string>
+    
+    <!-- Tutorial -->
+    <string name="tutorial_skip">Passer</string>
+    <string name="tutorial_previous">Précédent</string>
+    <string name="tutorial_next">Suivant</string>
+    <string name="tutorial_finish">Terminer</string>
+    <string name="tutorial_page_welcome_title">Bienvenue dans Pastiera</string>
+    <string name="tutorial_page_welcome_description">Pastiera est un clavier physique avancé pour Android avec support des modificateurs, indicateurs LED et mode de navigation.</string>
+    <string name="tutorial_page_enable_title">Activer Pastiera</string>
+    <string name="tutorial_page_enable_description">Pour commencer, vous devez activer Pastiera comme méthode de saisie dans les Paramètres Android. Appuyez sur le bouton ci-dessous pour ouvrir les paramètres.</string>
+    <string name="tutorial_page_select_title">Sélectionner Pastiera</string>
+    <string name="tutorial_page_select_description">Après avoir activé Pastiera, sélectionnez-le comme clavier par défaut. Appuyez sur le bouton ci-dessous pour choisir la méthode de saisie.</string>
+    <string name="tutorial_page_led_title">Indicateur LED</string>
+    <string name="tutorial_page_led_description">Pastiera affiche 5 LED dans la barre d\'état qui indiquent l\'état des modificateurs:\n\n• Shift: bleu quand actif, rouge quand verrouillé\n• SYM: bleu pour emoji, rouge pour caractères spéciaux\n• Ctrl: bleu quand actif, rouge quand verrouillé\n• Alt: bleu quand actif, rouge quand verrouillé\n\nLes LED grises indiquent que le modificateur est désactivé.</string>
+    <string name="tutorial_page_nav_mode_title">Mode Nav</string>
+    <string name="tutorial_page_nav_mode_description">Le mode Nav vous permet de naviguer en utilisant les touches de lettres comme raccourcis.\n\nPour activer:\n• Appuyez deux fois rapidement sur Ctrl\n• Les touches de lettres sont mappées aux fonctions de navigation\n• Appuyez à nouveau sur Ctrl pour désactiver\n\nVous pouvez personnaliser les mappages dans les paramètres avancés.</string>
+    <string name="tutorial_page_customization_title">Personnalisation</string>
+    <string name="tutorial_page_customization_description">Pastiera offre de nombreuses options de personnalisation:\n\n• Dispositions de clavier personnalisables\n• Raccourcis du lanceur\n• Auto-correction\n• Mappages personnalisés pour le mode Nav\n\nExplorez les paramètres pour trouver la configuration parfaite pour vous!</string>
+    <string name="tutorial_page_ready_title">Prêt à Commencer</string>
+    <string name="tutorial_page_ready_description">Vous êtes maintenant prêt à utiliser Pastiera! N\'oubliez pas que vous pouvez toujours revenir aux paramètres pour personnaliser davantage le clavier selon vos besoins.</string>
+    <string name="tutorial_enable_button">Activer Pastiera</string>
+    <string name="tutorial_enabled_message">Pastiera est activé!</string>
+    <string name="tutorial_select_button">Sélectionner Pastiera</string>
+    <string name="tutorial_enable_first_message">Activez d\'abord Pastiera sur la page précédente</string>
+    <string name="tutorial_selected_message">Pastiera est sélectionné!</string>
+    <string name="tutorial_show">Afficher le Tutoriel</string>
+    <string name="tutorial_review_description">Revoir le tutoriel d\'introduction</string>
 </resources>
 
 

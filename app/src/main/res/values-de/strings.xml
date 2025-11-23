@@ -266,6 +266,15 @@
     <string name="layout_save_error">Fehler beim Speichern des Layouts: %1$s</string>
     <string name="layout_imported_name">Importiertes Layout</string>
     <string name="layout_imported_description">Aus Datei importiert</string>
+    <string name="layout_delete_content_description">Layout löschen</string>
+    <string name="layout_delete_confirmation_title">Layout löschen</string>
+    <string name="layout_delete_confirmation_message">Sind Sie sicher, dass Sie das Layout \"%1$s\" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.</string>
+    <string name="layout_delete_success">Layout erfolgreich gelöscht</string>
+    <string name="layout_delete_failed">Layout konnte nicht gelöscht werden</string>
+    <string name="layout_view_mapping">Zuordnung anzeigen</string>
+    <string name="layout_delete">Löschen</string>
+    <string name="layout_enable_for_cycling">Aktivieren (Strg + Leertaste zum Wechseln)</string>
+    <string name="layout_select_as_active">Als aktives Layout auswählen</string>
     
     <!-- Main Activity Event Display -->
     <string name="modifier_alt">ALT</string>
@@ -291,6 +300,33 @@
     <string name="nav_mode_keycode_escape">Esc</string>
     <string name="nav_mode_keycode_tab">Tab</string>
     <string name="nav_mode_key_unknown">?</string>
+    
+    <!-- Tutorial -->
+    <string name="tutorial_skip">Überspringen</string>
+    <string name="tutorial_previous">Zurück</string>
+    <string name="tutorial_next">Weiter</string>
+    <string name="tutorial_finish">Fertig</string>
+    <string name="tutorial_page_welcome_title">Willkommen bei Pastiera</string>
+    <string name="tutorial_page_welcome_description">Pastiera ist eine erweiterte physische Tastatur für Android mit Unterstützung für Modifikatoren, LED-Anzeigen und Navigationsmodus.</string>
+    <string name="tutorial_page_enable_title">Pastiera aktivieren</string>
+    <string name="tutorial_page_enable_description">Um zu beginnen, müssen Sie Pastiera als Eingabemethode in den Android-Einstellungen aktivieren. Tippen Sie auf die Schaltfläche unten, um die Einstellungen zu öffnen.</string>
+    <string name="tutorial_page_select_title">Pastiera auswählen</string>
+    <string name="tutorial_page_select_description">Nach der Aktivierung von Pastiera wählen Sie es als Standardtastatur aus. Tippen Sie auf die Schaltfläche unten, um die Eingabemethode auszuwählen.</string>
+    <string name="tutorial_page_led_title">LED-Anzeige</string>
+    <string name="tutorial_page_led_description">Pastiera zeigt 5 LEDs in der Statusleiste an, die den Status der Modifikatoren anzeigen:\n\n• Shift: blau wenn aktiv, rot wenn gesperrt\n• SYM: blau für Emoji, rot für Sonderzeichen\n• Ctrl: blau wenn aktiv, rot wenn gesperrt\n• Alt: blau wenn aktiv, rot wenn gesperrt\n\nGraue LEDs zeigen an, dass der Modifikator ausgeschaltet ist.</string>
+    <string name="tutorial_page_nav_mode_title">Nav-Modus</string>
+    <string name="tutorial_page_nav_mode_description">Der Nav-Modus ermöglicht es Ihnen, mit Buchstabentasten als Verknüpfungen zu navigieren.\n\nZum Aktivieren:\n• Drücken Sie zweimal schnell auf Ctrl\n• Buchstabentasten werden Navigationsfunktionen zugeordnet\n• Drücken Sie erneut auf Ctrl zum Deaktivieren\n\nSie können die Zuordnungen in den erweiterten Einstellungen anpassen.</string>
+    <string name="tutorial_page_customization_title">Anpassung</string>
+    <string name="tutorial_page_customization_description">Pastiera bietet viele Anpassungsmöglichkeiten:\n\n• Anpassbare Tastaturlayouts\n• Launcher-Verknüpfungen\n• Autokorrektur\n• Benutzerdefinierte Zuordnungen für den Nav-Modus\n\nDurchsuchen Sie die Einstellungen, um die perfekte Konfiguration für Sie zu finden!</string>
+    <string name="tutorial_page_ready_title">Bereit zum Starten</string>
+    <string name="tutorial_page_ready_description">Sie sind jetzt bereit, Pastiera zu verwenden! Denken Sie daran, dass Sie jederzeit zu den Einstellungen zurückkehren können, um die Tastatur weiter an Ihre Bedürfnisse anzupassen.</string>
+    <string name="tutorial_enable_button">Pastiera aktivieren</string>
+    <string name="tutorial_enabled_message">Pastiera ist aktiviert!</string>
+    <string name="tutorial_select_button">Pastiera auswählen</string>
+    <string name="tutorial_enable_first_message">Aktivieren Sie zuerst Pastiera auf der vorherigen Seite</string>
+    <string name="tutorial_selected_message">Pastiera ist ausgewählt!</string>
+    <string name="tutorial_show">Tutorial anzeigen</string>
+    <string name="tutorial_review_description">Einführungstutorial überprüfen</string>
 </resources>
 
 

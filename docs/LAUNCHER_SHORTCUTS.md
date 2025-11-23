@@ -23,11 +23,11 @@ This document explains the behavior and implementation of launcher shortcuts and
 - ✅ **Only when you're on the launcher** (home screen)
 - ✅ **Only when there's no active text field** (no editable field)
 - ✅ **Only if launcher shortcuts are enabled** in settings
-- ✅ **Only if Ctrl is not active** (doesn't interfere with nav mode or other Ctrl shortcuts)
+- ✅ **Only if Ctrl is not active** (doesn't interfere with nav mode)
 
 ### How They Work
 
-1. User presses an **alphabetic key** (Q-Z, A-M) while on the launcher
+1. User presses an **alphabetic key** while on the launcher
 2. System checks if a shortcut is assigned to that key
 3. If it exists:
    - The app is launched immediately
@@ -354,4 +354,5 @@ Currently only `TYPE_APP` is implemented. Future support may include:
 - Smoother animations
 - Preview of assigned apps
 - Batch assignment management
+
 

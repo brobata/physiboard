@@ -33,6 +33,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import it.palsoftware.pastiera.ui.theme.PastieraTheme
 import it.palsoftware.pastiera.BuildConfig
 import it.palsoftware.pastiera.update.checkForUpdate
@@ -84,55 +85,40 @@ fun TutorialScreen(
     val context = LocalContext.current
     val pages = listOf(
         TutorialPageType.Standard(
-            title = "Benvenuto in Pastiera",
-            description = "Pastiera è una tastiera fisica avanzata per Android con supporto per modificatori, LED indicatori e modalità di navigazione.",
+            title = stringResource(R.string.tutorial_page_welcome_title),
+            description = stringResource(R.string.tutorial_page_welcome_description),
             icon = Icons.Filled.Keyboard,
             iconTint = MaterialTheme.colorScheme.primary
         ),
         TutorialPageType.EnablePastiera(
-            title = "Abilita Pastiera",
-            description = "Per iniziare, devi abilitare Pastiera come metodo di input nelle Impostazioni Android. Tocca il pulsante qui sotto per aprire le impostazioni."
+            title = stringResource(R.string.tutorial_page_enable_title),
+            description = stringResource(R.string.tutorial_page_enable_description)
         ),
         TutorialPageType.SelectPastiera(
-            title = "Seleziona Pastiera",
-            description = "Dopo aver abilitato Pastiera, selezionala come tastiera predefinita. Tocca il pulsante qui sotto per scegliere il metodo di input."
+            title = stringResource(R.string.tutorial_page_select_title),
+            description = stringResource(R.string.tutorial_page_select_description)
         ),
         TutorialPageType.Standard(
-            title = "LED Indicator",
-            description = "Pastiera mostra 5 LED nella barra di stato che indicano lo stato dei modificatori:\n\n" +
-                    "• Shift: blu quando attivo, rosso quando bloccato\n" +
-                    "• SYM: blu per emoji, rosso per caratteri speciali\n" +
-                    "• Ctrl: blu quando attivo, rosso quando bloccato\n" +
-                    "• Alt: blu quando attivo, rosso quando bloccato\n\n" +
-                    "I LED grigi indicano che il modificatore è spento.",
+            title = stringResource(R.string.tutorial_page_led_title),
+            description = stringResource(R.string.tutorial_page_led_description),
             icon = Icons.Filled.Lightbulb,
             iconTint = MaterialTheme.colorScheme.secondary
         ),
         TutorialPageType.Standard(
-            title = "Nav Mode",
-            description = "Il Nav Mode permette di navigare usando i tasti alfabetici come scorciatoie.\n\n" +
-                    "Per attivarlo:\n" +
-                    "• Premi Ctrl due volte rapidamente\n" +
-                    "• I tasti alfabetici vengono mappati a funzioni di navigazione\n" +
-                    "• Premi Ctrl di nuovo per disattivare\n\n" +
-                    "Puoi personalizzare le mappature nelle impostazioni avanzate.",
+            title = stringResource(R.string.tutorial_page_nav_mode_title),
+            description = stringResource(R.string.tutorial_page_nav_mode_description),
             icon = Icons.Filled.Navigation,
             iconTint = MaterialTheme.colorScheme.tertiary
         ),
         TutorialPageType.Standard(
-            title = "Personalizzazione",
-            description = "Pastiera offre molte opzioni di personalizzazione:\n\n" +
-                    "• Layout tastiera personalizzabili\n" +
-                    "• Scorciatoie del launcher\n" +
-                    "• Correzione automatica\n" +
-                    "• Mappature personalizzate per Nav Mode\n\n" +
-                    "Esplora le impostazioni per trovare la configurazione perfetta per te!",
+            title = stringResource(R.string.tutorial_page_customization_title),
+            description = stringResource(R.string.tutorial_page_customization_description),
             icon = Icons.Filled.Settings,
             iconTint = MaterialTheme.colorScheme.primary
         ),
         TutorialPageType.Standard(
-            title = "Pronto per Iniziare",
-            description = "Ora sei pronto a usare Pastiera! Ricorda che puoi sempre tornare alle impostazioni per personalizzare ulteriormente la tastiera secondo le tue esigenze.",
+            title = stringResource(R.string.tutorial_page_ready_title),
+            description = stringResource(R.string.tutorial_page_ready_description),
             icon = Icons.Filled.CheckCircle,
             iconTint = MaterialTheme.colorScheme.primary
         )
@@ -195,7 +181,7 @@ fun TutorialScreen(
                     onClick = onComplete,
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                 ) {
-                    Text("Salta", style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.tutorial_skip), style = MaterialTheme.typography.bodyMedium)
                 }
             }
             
@@ -293,11 +279,11 @@ fun TutorialScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Filled.ArrowBack,
-                            contentDescription = "Precedente",
+                            contentDescription = stringResource(R.string.tutorial_previous),
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Precedente", style = MaterialTheme.typography.bodyMedium)
+                        Text(stringResource(R.string.tutorial_previous), style = MaterialTheme.typography.bodyMedium)
                     }
                 } else {
                     Spacer(modifier = Modifier.width(1.dp))
@@ -316,11 +302,11 @@ fun TutorialScreen(
                         },
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                     ) {
-                        Text("Successivo", style = MaterialTheme.typography.bodyMedium)
+                        Text(stringResource(R.string.tutorial_next), style = MaterialTheme.typography.bodyMedium)
                         Spacer(modifier = Modifier.width(4.dp))
                         Icon(
                             imageVector = Icons.Filled.ArrowForward,
-                            contentDescription = "Successivo",
+                            contentDescription = stringResource(R.string.tutorial_next),
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -329,11 +315,11 @@ fun TutorialScreen(
                         onClick = onComplete,
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                     ) {
-                        Text("Fine", style = MaterialTheme.typography.bodyMedium)
+                        Text(stringResource(R.string.tutorial_finish), style = MaterialTheme.typography.bodyMedium)
                         Spacer(modifier = Modifier.width(4.dp))
                         Icon(
                             imageVector = Icons.Filled.Check,
-                            contentDescription = "Fine",
+                            contentDescription = stringResource(R.string.tutorial_finish),
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -476,7 +462,7 @@ fun TutorialEnablePastieraPageContent(
                 modifier = Modifier.size(18.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Abilita Pastiera", style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.tutorial_enable_button), style = MaterialTheme.typography.bodyMedium)
         }
         
         if (isPastieraEnabled) {
@@ -493,7 +479,7 @@ fun TutorialEnablePastieraPageContent(
                     modifier = Modifier.size(18.dp)
                 )
                 Text(
-                    text = "Pastiera è abilitata!",
+                    text = stringResource(R.string.tutorial_enabled_message),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Medium
@@ -580,7 +566,7 @@ fun TutorialSelectPastieraPageContent(
                 modifier = Modifier.size(18.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Seleziona Pastiera", style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.tutorial_select_button), style = MaterialTheme.typography.bodyMedium)
         }
         
         if (!isPastieraEnabled) {
@@ -597,7 +583,7 @@ fun TutorialSelectPastieraPageContent(
                     modifier = Modifier.size(18.dp)
                 )
                 Text(
-                    text = "Abilita prima Pastiera nella pagina precedente",
+                    text = stringResource(R.string.tutorial_enable_first_message),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
                     textAlign = TextAlign.Center
@@ -617,7 +603,7 @@ fun TutorialSelectPastieraPageContent(
                     modifier = Modifier.size(18.dp)
                 )
                 Text(
-                    text = "Pastiera è selezionata!",
+                    text = stringResource(R.string.tutorial_selected_message),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Medium

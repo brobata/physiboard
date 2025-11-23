@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.background
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.isSystemInDarkTheme
 import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.inputmethod.KeyboardEventTracker
 import it.palsoftware.pastiera.inputmethod.NotificationHelper
@@ -174,14 +175,22 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     
-                    // Status bar overlay
+                    // Status bar overlay - responsive to theme
                     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+                    val isDarkTheme = isSystemInDarkTheme()
+                    val overlayColor = if (isDarkTheme) {
+                        // Dark theme: use black overlay
+                        Color.Black.copy(alpha = 0.3f)
+                    } else {
+                        // Light theme: use white overlay
+                        Color.White.copy(alpha = 0.2f)
+                    }
                     
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(statusBarHeight)
-                            .background(Color.Black.copy(alpha = 0.3f))
+                            .background(overlayColor)
                     )
                 }
             }

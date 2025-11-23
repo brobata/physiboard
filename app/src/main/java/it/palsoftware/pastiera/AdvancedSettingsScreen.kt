@@ -524,13 +524,13 @@ fun AdvancedSettingsScreen(
                                 )
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = "Mostra Tutorial",
+                                        text = stringResource(R.string.tutorial_show),
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Medium,
                                         maxLines = 1
                                     )
                                     Text(
-                                        text = "Rivedi il tutorial introduttivo",
+                                        text = stringResource(R.string.tutorial_review_description),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         maxLines = 1
