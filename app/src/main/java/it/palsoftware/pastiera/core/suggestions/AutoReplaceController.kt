@@ -2,6 +2,7 @@ package it.palsoftware.pastiera.core.suggestions
 
 import android.view.KeyEvent
 import android.view.inputmethod.InputConnection
+import java.util.Locale
 
 class AutoReplaceController(
     private val repository: DictionaryRepository,
@@ -41,10 +42,11 @@ class AutoReplaceController(
         val shouldReplace = top != null && !repository.isKnownWord(word) && top.distance <= settings.maxAutoReplaceDistance
 
         if (shouldReplace && top != null) {
+            val replacement = applyCasing(top.candidate, word)
             inputConnection.beginBatchEdit()
             inputConnection.deleteSurroundingText(word.length, 0)
-            inputConnection.commitText(top.candidate, 1)
-            repository.markUsed(top.candidate)
+            inputConnection.commitText(replacement, 1)
+            repository.markUsed(replacement)
             tracker.reset()
             inputConnection.endBatchEdit()
             if (boundaryChar != null) {
@@ -55,5 +57,15 @@ class AutoReplaceController(
 
         tracker.onBoundaryReached(boundaryChar, inputConnection)
         return ReplaceResult(false, event?.unicodeChar != null)
+    }
+
+    private fun applyCasing(candidate: String, original: String): String {
+        if (original.isEmpty()) return candidate
+        return when {
+            original.all { it.isUpperCase() } -> candidate.uppercase(Locale.getDefault())
+            original.first().isUpperCase() && original.drop(1).all { it.isLowerCase() } ->
+                candidate.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+            else -> candidate
+        }
     }
 }

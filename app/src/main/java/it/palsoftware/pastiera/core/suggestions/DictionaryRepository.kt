@@ -3,6 +3,7 @@ package it.palsoftware.pastiera.core.suggestions
 import android.content.Context
 import android.content.res.AssetManager
 import org.json.JSONArray
+import android.util.Log
 import java.text.Normalizer
 import java.util.Locale
 
@@ -20,13 +21,16 @@ class DictionaryRepository(
     private val prefixCache: MutableMap<String, MutableList<DictionaryEntry>> = mutableMapOf()
     private val normalizedIndex: MutableMap<String, MutableList<DictionaryEntry>> = mutableMapOf()
     private var loaded = false
+    private val tag = "DictionaryRepo"
 
     fun loadIfNeeded() {
         if (loaded) return
         synchronized(this) {
             if (loaded) return
             val mainEntries = loadFromAssets("common/dictionaries/${baseLocale.language}_base.json")
-            index(mainEntries + userDictionaryStore.loadUserEntries(context))
+            val userEntries = userDictionaryStore.loadUserEntries(context)
+            Log.d(tag, "loadIfNeeded main=${mainEntries.size} user=${userEntries.size}")
+            index(mainEntries + userEntries)
             loaded = true
         }
     }
@@ -89,6 +93,7 @@ class DictionaryRepository(
                 }
             }
         } catch (_: Exception) {
+            Log.e(tag, "Failed to load dictionary from assets: $path")
             emptyList()
         }
     }
@@ -114,6 +119,7 @@ class DictionaryRepository(
         }
 
         prefixCache.values.forEach { list -> list.sortByDescending { it.frequency } }
+        Log.d(tag, "index built: normalizedIndex=${normalizedIndex.size} prefixCache=${prefixCache.size}")
     }
 
     private fun normalize(word: String): String {

@@ -3,6 +3,7 @@ package it.palsoftware.pastiera.inputmethod
 import android.content.Context
 import android.view.KeyEvent
 import android.view.inputmethod.EditorInfo
+import android.util.Log
 import android.view.inputmethod.InputConnection
 import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.SettingsManager
@@ -37,8 +38,9 @@ class InputEventRouter(
 
     private fun commitTextWithTracking(ic: InputConnection?, text: CharSequence, trackWord: Boolean = true) {
         ic?.commitText(text, 1)
+        Log.d("PastieraIME", "commitTextWithTracking: '$text', trackWord=$trackWord")
         if (trackWord) {
-            suggestionController?.onCharacterCommitted(text)
+            suggestionController?.onCharacterCommitted(text, ic)
         }
     }
 
@@ -222,6 +224,11 @@ class InputEventRouter(
         var altLatchActive = params.altLatchActive
         var altOneShotActive = params.altOneShot
         val ic = params.inputConnection
+
+        Log.d(
+            "PastieraIME",
+            "routeEditableFieldKeyDown key=$keyCode uc=${event?.unicodeChar} mapped=${LayoutMappingRepository.isMapped(keyCode)} alpha=${callbacks.isAlphabeticKey(keyCode)}"
+        )
 
         if (keyCode == KeyEvent.KEYCODE_SHIFT_LEFT || keyCode == KeyEvent.KEYCODE_SHIFT_RIGHT) {
             if (!params.shiftPressed) {
@@ -427,6 +434,16 @@ class InputEventRouter(
 
         if (hasLongPressSupport) {
             val wasShiftOneShot = shiftOneShotActive
+            val trackedChar = if (LayoutMappingRepository.isMapped(keyCode)) {
+                LayoutMappingRepository.getCharacterStringWithModifiers(
+                    keyCode,
+                    event?.isShiftPressed == true,
+                    params.capsLockEnabled,
+                    shiftOneShotActive
+                )
+            } else {
+                event?.unicodeChar?.takeIf { it != 0 }?.toChar()?.toString() ?: ""
+            }
             val layoutChar = callbacks.getCharacterFromLayout(
                 keyCode,
                 event,
@@ -441,6 +458,10 @@ class InputEventRouter(
                     shiftOneShotActive,
                     layoutChar
                 )
+                if (trackedChar.isNotEmpty() && trackedChar[0].isLetter()) {
+                    Log.d("PastieraIME", "alt/longpress commit track: '$trackedChar'")
+                    suggestionController?.onCharacterCommitted(trackedChar, ic)
+                }
             }
             if (wasShiftOneShot) {
                 callbacks.disableShiftOneShot()
@@ -512,7 +533,24 @@ class InputEventRouter(
                 shiftOneShotActive
             )
             if (char.isNotEmpty() && char[0].isLetter()) {
+                Log.d("PastieraIME", "layout commit: '$char'")
                 commitTextWithTracking(ic, char)
+                Handler(Looper.getMainLooper()).postDelayed({
+                    callbacks.updateStatusBar()
+                }, params.cursorUpdateDelayMs)
+                return EditableFieldRoutingResult.Consume
+            }
+        }
+
+        // Fallback: if we reach this point and the key actually produced
+        // a letter character, commit it with tracking so that the
+        // suggestion pipeline can still work even when the key is not
+        // covered by the current layout mappings.
+        if (ic != null && event != null && event.unicodeChar != 0) {
+            val ch = event.unicodeChar.toChar()
+            if (ch.isLetter()) {
+                Log.d("PastieraIME", "fallback commit: '$ch'")
+                commitTextWithTracking(ic, ch.toString())
                 Handler(Looper.getMainLooper()).postDelayed({
                     callbacks.updateStatusBar()
                 }, params.cursorUpdateDelayMs)
@@ -538,6 +576,11 @@ class InputEventRouter(
             event.unicodeChar != 0 &&
             event.unicodeChar.toChar() in ".,;:!?()[]{}\"'"
 
+        Log.d(
+            "PastieraIME",
+            "handleTextInputPipeline key=$keyCode uc=${event?.unicodeChar} boundary=$isBoundaryKey punct=$isPunctuation disable=$shouldDisableSmartFeatures icNull=${inputConnection == null}"
+        )
+
         if (
             autoCorrectionManager.handleBackspaceUndo(
                 keyCode,
@@ -548,6 +591,10 @@ class InputEventRouter(
         ) {
             suggestionController?.onContextReset()
             return true
+        }
+
+        if (keyCode == KeyEvent.KEYCODE_DEL && !shouldDisableSmartFeatures && inputConnection != null) {
+            suggestionController?.refreshFromInputConnection(inputConnection)
         }
 
         if (

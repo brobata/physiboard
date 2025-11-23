@@ -437,7 +437,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 multiTapController.state.tapIndex
             )
             if (!committedText.isNullOrEmpty()) {
-                suggestionController.onCharacterCommitted(committedText)
+                suggestionController.onCharacterCommitted(committedText, inputConnection)
             }
         }
         return handled
@@ -925,8 +925,12 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         
         if (!shouldDisableSmartFeatures) {
             val cursorPositionChanged = (oldSelStart != newSelStart) || (oldSelEnd != newSelEnd)
-            if (cursorPositionChanged && newSelStart == newSelEnd) {
-                suggestionController.onCursorMoved()
+            // Skip the reset when the selection moved forward by 1 as a direct result of our own commit.
+            val movedByCommit = oldSelStart == oldSelEnd &&
+                newSelEnd == newSelStart &&
+                newSelStart == oldSelStart + 1
+            if (cursorPositionChanged && newSelStart == newSelEnd && !movedByCommit) {
+                suggestionController.onCursorMoved(currentInputConnection)
                 Handler(Looper.getMainLooper()).postDelayed({
                     updateStatusBarText()
                 }, CURSOR_UPDATE_DELAY)

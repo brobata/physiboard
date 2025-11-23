@@ -1,5 +1,6 @@
 package it.palsoftware.pastiera.core.suggestions
 
+import android.util.Log
 import android.view.inputmethod.InputConnection
 
 class CurrentWordTracker(
@@ -9,9 +10,21 @@ class CurrentWordTracker(
 ) {
 
     private val current = StringBuilder()
+    private val tag = "CurrentWordTracker"
 
     val currentWord: String
         get() = current.toString()
+
+    fun setWord(word: String) {
+        current.clear()
+        if (word.length <= maxLength) {
+            current.append(word)
+        } else {
+            current.append(word.takeLast(maxLength))
+        }
+        Log.d(tag, "setWord currentWord='$current'")
+        onWordChanged(current.toString())
+    }
 
     fun onCharacterCommitted(text: CharSequence) {
         if (text.isEmpty()) return
@@ -19,9 +32,11 @@ class CurrentWordTracker(
             if (char.isLetterOrDigit()) {
                 if (current.length < maxLength) {
                     current.append(char)
+                    Log.d(tag, "currentWord='$current'")
                     onWordChanged(current.toString())
                 }
             } else {
+                Log.d(tag, "reset on non-letter char='$char'")
                 reset()
             }
         }
@@ -36,6 +51,7 @@ class CurrentWordTracker(
 
     fun reset() {
         if (current.isNotEmpty()) {
+            Log.d(tag, "reset currentWord='$current'")
             current.clear()
             onWordReset()
         }

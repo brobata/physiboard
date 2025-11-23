@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.res.AssetManager
 import android.view.KeyEvent
 import android.view.inputmethod.InputConnection
+import android.util.Log
 import java.util.concurrent.atomic.AtomicReference
 
 class SuggestionController(
@@ -31,13 +32,42 @@ class SuggestionController(
 
     var suggestionsListener: ((List<SuggestionResult>) -> Unit)? = onSuggestionsUpdated
 
-    fun onCharacterCommitted(text: CharSequence) {
-        tracker.onCharacterCommitted(text)
+    fun onCharacterCommitted(text: CharSequence, inputConnection: InputConnection?) {
+        Log.d("PastieraIME", "SuggestionController.onCharacterCommitted('$text')")
+        rebuildFromContext(inputConnection, fallback = { tracker.onCharacterCommitted(text) })
+        updateSuggestions()
+    }
+
+    /**
+     * Rebuild the current word from the text field (used on backspace or cursor edits).
+     */
+    fun refreshFromInputConnection(inputConnection: InputConnection?) {
+        rebuildFromContext(inputConnection, fallback = { tracker.reset() })
+        updateSuggestions()
+    }
+
+    private fun rebuildFromContext(
+        inputConnection: InputConnection?,
+        fallback: () -> Unit
+    ) {
+        val contextWord = extractWordAtCursor(inputConnection)
+        if (!contextWord.isNullOrBlank()) {
+            tracker.setWord(contextWord)
+        } else {
+            fallback()
+        }
+    }
+
+    private fun updateSuggestions() {
         val settings = settingsProvider()
         if (settings.suggestionsEnabled) {
             val next = suggestionEngine.suggest(tracker.currentWord, settings.maxSuggestions, settings.accentMatching)
+            val summary = next.take(3).joinToString { "${it.candidate}:${it.distance}" }
+            Log.d("PastieraIME", "suggestions (${next.size}): $summary")
             latestSuggestions.set(next)
             suggestionsListener?.invoke(next)
+        } else {
+            suggestionsListener?.invoke(emptyList())
         }
     }
 
@@ -46,6 +76,10 @@ class SuggestionController(
         event: KeyEvent?,
         inputConnection: InputConnection?
     ): AutoReplaceController.ReplaceResult {
+        Log.d(
+            "PastieraIME",
+            "SuggestionController.onBoundaryKey keyCode=$keyCode char=${event?.unicodeChar}"
+        )
         val result = autoReplaceController.handleBoundary(keyCode, event, tracker, inputConnection)
         if (result.replaced) {
             dictionaryRepository.refreshUserEntries()
@@ -54,9 +88,9 @@ class SuggestionController(
         return result
     }
 
-    fun onCursorMoved() {
-        tracker.onCursorMoved()
-        suggestionsListener?.invoke(emptyList())
+    fun onCursorMoved(inputConnection: InputConnection?) {
+        rebuildFromContext(inputConnection, fallback = { tracker.reset() })
+        updateSuggestions()
     }
 
     fun onContextReset() {
@@ -83,4 +117,26 @@ class SuggestionController(
     fun currentSuggestions(): List<SuggestionResult> = latestSuggestions.get()
 
     fun userDictionarySnapshot(): List<UserDictionaryStore.UserEntry> = userDictionaryStore.getSnapshot()
+
+    private fun extractWordAtCursor(inputConnection: InputConnection?): String? {
+        if (inputConnection == null) return null
+        return try {
+            val before = inputConnection.getTextBeforeCursor(64, 0)?.toString() ?: ""
+            val after = inputConnection.getTextAfterCursor(64, 0)?.toString() ?: ""
+            val boundary = " \t\n\r.,;:!?()[]{}\"'"
+            var start = before.length
+            while (start > 0 && !boundary.contains(before[start - 1])) {
+                start--
+            }
+            var end = 0
+            while (end < after.length && !boundary.contains(after[end])) {
+                end++
+            }
+            val word = before.substring(start) + after.substring(0, end)
+            if (word.isBlank()) null else word
+        } catch (e: Exception) {
+            Log.d("PastieraIME", "extractWordAtCursor failed: ${e.message}")
+            null
+        }
+    }
 }

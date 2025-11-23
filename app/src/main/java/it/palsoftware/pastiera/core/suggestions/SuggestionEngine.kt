@@ -3,6 +3,7 @@ package it.palsoftware.pastiera.core.suggestions
 import kotlin.math.min
 import java.text.Normalizer
 import java.util.Locale
+import android.util.Log
 
 data class SuggestionResult(
     val candidate: String,
@@ -18,6 +19,7 @@ class SuggestionEngine(
 
     private val normalizeRegex = "[^a-z]".toRegex()
     private val accentCache: MutableMap<String, String> = mutableMapOf()
+    private val tag = "SuggestionEngine"
 
     fun suggest(
         currentWord: String,
@@ -28,15 +30,25 @@ class SuggestionEngine(
         val normalizedWord = normalize(currentWord)
         val candidates = repository.lookupByPrefix(normalizedWord)
             .ifEmpty { repository.allCandidates() }
+        Log.d(tag, "suggest '$currentWord' normalized='$normalizedWord' candidates=${candidates.size}")
 
         val scored = mutableListOf<SuggestionResult>()
         for (entry in candidates) {
             val normalizedCandidate = normalize(entry.word)
-            val distance = boundedLevenshtein(normalizedWord, normalizedCandidate, 2)
+            val distance = if (normalizedCandidate.startsWith(normalizedWord)) {
+                0 // treat prefix match as perfect to surface completions early
+            } else {
+                boundedLevenshtein(normalizedWord, normalizedCandidate, 2)
+            }
             if (distance < 0) continue
 
             val accentDistance = if (includeAccentMatching) {
-                boundedLevenshtein(normalizedWord, stripAccents(normalizedCandidate), 2)
+                val normalizedNoAccent = stripAccents(normalizedCandidate)
+                if (normalizedNoAccent.startsWith(normalizedWord)) {
+                    0
+                } else {
+                    boundedLevenshtein(normalizedWord, normalizedNoAccent, 2)
+                }
             } else distance
 
             val effectiveDistance = min(distance, accentDistance)
