@@ -17,7 +17,7 @@ class DictionaryRepository(
     private val cachePrefixLength: Int = 3
 ) {
 
-    private val prefixCache: MutableMap<String, List<DictionaryEntry>> = mutableMapOf()
+    private val prefixCache: MutableMap<String, MutableList<DictionaryEntry>> = mutableMapOf()
     private val normalizedIndex: MutableMap<String, MutableList<DictionaryEntry>> = mutableMapOf()
     private var loaded = false
 
