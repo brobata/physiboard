@@ -59,14 +59,7 @@ class StatusBarController(
 
     companion object {
         private const val TAG = "StatusBarController"
-        private const val NAV_MODE_LABEL = "NAV MODE"
         private val DEFAULT_BACKGROUND = Color.parseColor("#000000")
-        private val NAV_MODE_BACKGROUND = Color.argb(100, 0, 0, 0)
-        
-        // LED colors
-        private val LED_COLOR_GRAY_OFF = Color.argb(26, 255, 255, 255) // Gray when LED is off
-        private val LED_COLOR_RED_LOCKED = Color.rgb(247, 99, 0) // Orange/red when locked
-        private val LED_COLOR_BLUE_ACTIVE = Color.rgb(100, 150, 255) // Blue when active
     }
 
     data class StatusSnapshot(
@@ -968,6 +961,5 @@ class StatusBarController(
         return view.measuredHeight
     }
 }
-
 
 

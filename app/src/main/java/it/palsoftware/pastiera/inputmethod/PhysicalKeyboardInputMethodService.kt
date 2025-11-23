@@ -149,6 +149,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private lateinit var keyboardVisibilityController: KeyboardVisibilityController
     private lateinit var launcherShortcutController: LauncherShortcutController
     private var clearAltOnSpaceEnabled: Boolean = false
+    // Stato per ricordare se il nav mode era attivo prima di entrare in un campo di testo
+    private var navModeWasActiveBeforeEditableField: Boolean = false
 
     // Space long-press for layout cycling
     private val spaceLongPressHandler = Handler(Looper.getMainLooper())
@@ -787,6 +789,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 val hasValidInputConnection = inputConnection != null
                 
                 if (isReallyEditable && hasValidInputConnection) {
+                    // Ricorda che nav mode era attivo prima di entrare nel campo di testo
+                    navModeWasActiveBeforeEditableField = true
                     navModeController.exitNavMode()
                     resetModifierStates(preserveNavMode = false)
                 }
@@ -836,6 +840,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         multiTapController.cancelAll()
         cancelSpaceLongPress()
         resetModifierStates(preserveNavMode = true)
+        // Se nav mode era attivo prima di entrare nel campo di testo, riattivalo ora
+        if (navModeWasActiveBeforeEditableField) {
+            navModeController.enterNavMode()
+            navModeWasActiveBeforeEditableField = false
+        }
     }
     
     override fun onFinishInputView(finishingInput: Boolean) {
