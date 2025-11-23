@@ -21,8 +21,30 @@
 - User dict in memoria (mappa) con persist a batch per evitare I/O in hot path.
 
 ## Test manuali suggeriti
-- Digitazione normale in italiano: suggerimenti in tempo reale, nessun lag percepito.
-- Multi-tap: comportamento invariato, suggerimenti aggiornati sui commit effettivi.
-- Nav mode in launcher: routing invariato, buffer resettato all'entrata/uscita.
-- Spazio/enter ancora committano testo; con auto-replace attivo sostituzione atomica e undo tramite stack esistente.
-- Undo immediato dopo autocorrezione: la parola originale torna correttamente.
+
+### Abilitazione rapide
+1. Apri **Impostazioni → Auto-correzione** dalla schermata dell'app (categoria già esistente).
+2. Attiva i toggle desiderati:
+   - **Suggerimenti** / **Accenti** per vedere le proposte in tempo reale.
+   - **Auto-replace su spazio/enter** per applicare la correzione automatica.
+3. (Opzionale) Aggiungi una parola utente dal pannello "Dizionario utente" per verificare la precedenza rispetto al dizionario base.
+
+### Checklist di test manuali
+- **Digitazione base ITA (campo testo qualunque)**
+  - Digita parole corrette e osserva i suggerimenti; nessun lag percepito.
+  - Premi spazio/enter: il testo viene committato normalmente; con auto-replace attivo la parola viene sostituita dal top suggestion solo se non nel dizionario.
+- **Errori comuni e accenti**
+  - Digita "perche" → verifica che appaia "perché" fra i suggerimenti; con auto-replace attivo deve correggere su spazio.
+  - Prova doppie/mancanti ("cosi"/"comincia" → "comincia"); controlla che la distanza ≤2 venga corretta.
+- **Multi-tap**
+  - Usa sequenze multi-tap per caratteri speciali: il ritmo/temporizzazioni restano invariati, i suggerimenti arrivano solo quando il commit avviene.
+- **Nav mode / routing launcher**
+  - Entra ed esci dalla nav mode: il buffer currentWord si resetta e il routing dei tasti resta invariato.
+- **Movimento cursore e cambio campo**
+  - Sposta il cursore manualmente o cambia campo di input: il buffer si svuota e non avviene auto-replace.
+- **Dizionario utente**
+  - Aggiungi una parola personalizzata → verifica che appaia come primo suggerimento e prevalga sulle proposte base.
+- **Undo**
+  - Dopo un auto-replace, usa l'undo già presente: la parola originale deve tornare integralmente.
+- **Stress/performance**
+  - Digitazione veloce (10–15 parole) senza pause: nessun lag, suggerimenti aggiornati ad ogni lettera.
