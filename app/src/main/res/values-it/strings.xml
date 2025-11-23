@@ -36,7 +36,6 @@
     
     <!-- Swipe Incremental Threshold Section -->
     <string name="swipe_incremental_threshold_title">Sensibilità Swipe Bar</string>
-    <string name="swipe_incremental_threshold_description">Distanza necessaria per spostare il cursore di una posizione. Valori più bassi rendono il cursore più veloce.</string>
     
     <!-- Auto Show Keyboard Section -->
     <string name="auto_show_keyboard_title">Mostra Automaticamente la Tastiera</string>
@@ -222,6 +221,9 @@
     
     <!-- Speech Recognition -->
     <string name="speech_recognition_prompt">Parla ora...</string>
+    <!-- Static Variation Bar Mode -->
+    <string name="static_variation_bar_mode_title">Barra variazioni statica</string>
+    <string name="static_variation_bar_mode_description">Mostra sempre una serie fissa di tasti di utilità nella barra variazioni invece delle variazioni contestuali. I tasti statici restano disponibili anche quando le smart features sono disabilitate.</string>
     
     <!-- Auto Correct Edit Screen -->
     <string name="auto_correct_search_placeholder">Cerca correzioni...</string>
@@ -354,4 +356,18 @@
     <string name="tutorial_selected_message">Pastiera è selezionata!</string>
     <string name="tutorial_show">Mostra Tutorial</string>
     <string name="tutorial_review_description">Rivedi il tutorial introduttivo</string>
+    
+    <!-- Backup & Restore -->
+    <string name="backup_now">Backup ora</string>
+    <string name="backup_now_description">Esporta tutte le impostazioni e i layout personalizzati in un file ZIP</string>
+    <string name="restore_from_file">Ripristina da file</string>
+    <string name="restore_from_file_description">Importa un backup ZIP di Pastiera</string>
+    <string name="backup_completed">Backup completato</string>
+    <string name="restore_completed">Ripristino completato</string>
+    <string name="backup_failed">Backup fallito: %1$s</string>
+    <string name="restore_failed">Ripristino fallito: %1$s</string>
+    
+    <!-- Swipe Incremental Threshold -->
+    <string name="swipe_incremental_threshold_description">Distanza necessaria per spostare il cursore di una posizione. Valori più bassi rendono il cursore più veloce.</string>
+    <string name="dip_unit">DIP</string>
 </resources>

@@ -48,6 +48,10 @@
     <!-- Alt+Ctrl Speech Recognition Shortcut Section -->
     <string name="alt_ctrl_speech_shortcut_title">Alt+Ctrl Speech Recognition</string>
     <string name="alt_ctrl_speech_shortcut_description">Enable Alt+Ctrl keyboard shortcut to start speech recognition</string>
+
+    <!-- Static Variation Bar Mode -->
+    <string name="static_variation_bar_mode_title">Static Variation Bar</string>
+    <string name="static_variation_bar_mode_description">Always show a fixed set of utility keys in the variation row instead of context-based variations. Static keys remain available even when smart features are disabled.</string>
     
     <!-- Info Section -->
     <string name="info_title">Information</string>
@@ -386,4 +390,7 @@
     <string name="restore_completed">Restore completed</string>
     <string name="backup_failed">Backup failed: %1$s</string>
     <string name="restore_failed">Restore failed: %1$s</string>
+    
+    <!-- Units -->
+    <string name="dip_unit">DIP</string>
 </resources>

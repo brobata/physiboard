@@ -27,6 +27,7 @@ import it.palsoftware.pastiera.inputmethod.StatusBarController
 import it.palsoftware.pastiera.inputmethod.TextSelectionHelper
 import it.palsoftware.pastiera.inputmethod.VariationButtonHandler
 import it.palsoftware.pastiera.inputmethod.SpeechRecognitionActivity
+import it.palsoftware.pastiera.data.variation.VariationRepository
 import kotlin.math.abs
 import kotlin.math.max
 
@@ -58,6 +59,9 @@ class VariationBarView(
     private var touchStartY = 0f
     private var lastCursorMoveX = 0f
     private var currentInputConnection: android.view.inputmethod.InputConnection? = null
+    private var staticVariations: List<String> = emptyList()
+    private var lastInputConnectionUsed: android.view.inputmethod.InputConnection? = null
+    private var lastIsStaticContent: Boolean? = null
 
     fun ensureView(): FrameLayout {
         if (wrapper != null) {
@@ -131,6 +135,8 @@ class VariationBarView(
 
     fun resetVariationsState() {
         lastDisplayedVariations = emptyList()
+        lastInputConnectionUsed = null
+        lastIsStaticContent = null
     }
 
     fun hideImmediate() {
@@ -188,18 +194,33 @@ class VariationBarView(
         wrapperView.visibility = View.VISIBLE
         overlayView.visibility = if (isSymModeActive) View.GONE else View.VISIBLE
 
-        val limitedVariations = if (snapshot.variations.isNotEmpty() && snapshot.lastInsertedChar != null) {
-            snapshot.variations.take(7)
+        // Decide whether to use dynamic variations (from cursor) or static utility keys.
+        val staticModeEnabled = SettingsManager.isStaticVariationBarModeEnabled(context)
+        val useDynamicVariations = !staticModeEnabled && !snapshot.shouldDisableSmartFeatures
+
+        val effectiveVariations: List<String>
+        val isStaticContent: Boolean
+        if (useDynamicVariations && snapshot.variations.isNotEmpty() && snapshot.lastInsertedChar != null) {
+            effectiveVariations = snapshot.variations
+            isStaticContent = false
         } else {
-            emptyList()
+            if (staticVariations.isEmpty()) {
+                staticVariations = VariationRepository.loadStaticVariations(context.assets)
+            }
+            effectiveVariations = staticVariations
+            isStaticContent = true
         }
 
+        val limitedVariations = effectiveVariations.take(7)
+
         val variationsChanged = limitedVariations != lastDisplayedVariations
+        val inputConnectionChanged = lastInputConnectionUsed !== inputConnection
+        val contentModeChanged = lastIsStaticContent != isStaticContent
         val hasExistingRow = currentVariationsRow != null &&
             currentVariationsRow?.parent == containerView &&
             currentVariationsRow?.visibility == View.VISIBLE
 
-        if (!variationsChanged && hasExistingRow) {
+        if (!variationsChanged && !inputConnectionChanged && !contentModeChanged && hasExistingRow) {
             return
         }
 
@@ -236,9 +257,11 @@ class VariationBarView(
         containerView.addView(variationsRow, 0, rowLayoutParams)
 
         lastDisplayedVariations = limitedVariations
+        lastInputConnectionUsed = inputConnection
+        lastIsStaticContent = isStaticContent
 
         for (variation in limitedVariations) {
-            val button = createVariationButton(variation, inputConnection, buttonWidth)
+            val button = createVariationButton(variation, inputConnection, buttonWidth, isStaticContent)
             variationButtons.add(button)
             variationsRow.addView(button)
         }
@@ -423,7 +446,8 @@ class VariationBarView(
     private fun createVariationButton(
         variation: String,
         inputConnection: android.view.inputmethod.InputConnection?,
-        buttonWidth: Int
+        buttonWidth: Int,
+        isStatic: Boolean
     ): TextView {
         val dp4 = TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP,
@@ -470,11 +494,19 @@ class VariationBarView(
             isClickable = true
             isFocusable = true
             setOnClickListener(
-                VariationButtonHandler.createVariationClickListener(
-                    variation,
-                    inputConnection,
-                    onVariationSelectedListener
-                )
+                if (isStatic) {
+                    VariationButtonHandler.createStaticVariationClickListener(
+                        variation,
+                        inputConnection,
+                        onVariationSelectedListener
+                    )
+                } else {
+                    VariationButtonHandler.createVariationClickListener(
+                        variation,
+                        inputConnection,
+                        onVariationSelectedListener
+                    )
+                }
             )
         }
     }
@@ -603,4 +635,3 @@ class VariationBarView(
         return if (parent.isClickable) parent else null
     }
 }
-

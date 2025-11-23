@@ -40,6 +40,7 @@ object SettingsManager {
     private const val KEY_DISMISSED_RELEASES = "dismissed_releases" // Set of release tag_names that were dismissed
     private const val KEY_TUTORIAL_COMPLETED = "tutorial_completed" // Whether the first-run tutorial has been completed
     private const val KEY_SWIPE_INCREMENTAL_THRESHOLD = "swipe_incremental_threshold" // Distance in DIP for cursor movement
+    private const val KEY_STATIC_VARIATION_BAR_MODE = "static_variation_bar_mode" // Use static variation bar instead of dynamic cursor-based variations
     
     // Default values
     private const val DEFAULT_LONG_PRESS_THRESHOLD = 300L
@@ -60,6 +61,7 @@ object SettingsManager {
     private const val DEFAULT_KEYBOARD_LAYOUT = "qwerty"
     private const val DEFAULT_SYM_AUTO_CLOSE = true
     private val DEFAULT_SYM_PAGES_CONFIG = SymPagesConfig()
+    private const val DEFAULT_STATIC_VARIATION_BAR_MODE = false
     
     /**
      * Returns the SharedPreferences instance for Pastiera.
@@ -228,6 +230,24 @@ object SettingsManager {
     fun setAltCtrlSpeechShortcutEnabled(context: Context, enabled: Boolean) {
         getPreferences(context).edit()
             .putBoolean(KEY_ALT_CTRL_SPEECH_SHORTCUT, enabled)
+            .apply()
+    }
+
+    /**
+     * Returns whether the static variation bar mode is enabled.
+     * When enabled, the variation row shows a fixed set of utility keys
+     * instead of dynamic cursor-based character variations.
+     */
+    fun isStaticVariationBarModeEnabled(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_STATIC_VARIATION_BAR_MODE, DEFAULT_STATIC_VARIATION_BAR_MODE)
+    }
+
+    /**
+     * Sets whether the static variation bar mode is enabled.
+     */
+    fun setStaticVariationBarModeEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_STATIC_VARIATION_BAR_MODE, enabled)
             .apply()
     }
 

@@ -327,6 +327,20 @@
     <string name="tutorial_selected_message">¡Pastiera está seleccionado!</string>
     <string name="tutorial_show">Mostrar Tutorial</string>
     <string name="tutorial_review_description">Revisar el tutorial introductorio</string>
+    
+    <!-- Backup & Restore -->
+    <string name="backup_now">Hacer copia de seguridad ahora</string>
+    <string name="backup_now_description">Exportar todas las configuraciones y diseños personalizados a un ZIP</string>
+    <string name="restore_from_file">Restaurar desde archivo</string>
+    <string name="restore_from_file_description">Importar un archivo ZIP de copia de seguridad de Pastiera</string>
+    <string name="backup_completed">Copia de seguridad completada</string>
+    <string name="restore_completed">Restauración completada</string>
+    <string name="backup_failed">Copia de seguridad fallida: %1$s</string>
+    <string name="restore_failed">Restauración fallida: %1$s</string>
+    
+    <!-- Swipe Incremental Threshold -->
+    <string name="swipe_incremental_threshold_description">Distancia requerida para mover el cursor una posición. Valores más bajos hacen que el cursor se mueva más rápido.</string>
+    <string name="dip_unit">DIP</string>
 </resources>
 
 

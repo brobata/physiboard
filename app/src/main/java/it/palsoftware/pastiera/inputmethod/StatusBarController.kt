@@ -393,35 +393,40 @@ class StatusBarController(
                 if (content.isNotEmpty() && inputConnection != null) {
                     keyButton.isClickable = true
                     keyButton.isFocusable = true
-                    keyButton.setOnClickListener {
-                        // Inserisci il carattere/emoji quando si clicca
-                        inputConnection.commitText(content, 1)
-                        Log.d(TAG, "Clicked SYM button for keyCode $keyCode: $content")
-                    }
                     
-                    // Aggiungi feedback visivo quando il pulsante viene premuto
-                    val originalBackground = keyButton.background
-                    keyButton.setOnTouchListener { view, motionEvent ->
-                        when (motionEvent.action) {
-                            android.view.MotionEvent.ACTION_DOWN -> {
-                                // Dimmer lo sfondo quando premuto
-                                if (originalBackground is GradientDrawable) {
-                                    val pressedColor = Color.argb(80, 255, 255, 255) // Più opaco
+                    // Usa solo OnTouchListener per feedback + click (più efficiente)
+                    val originalBackground = keyButton.background as? GradientDrawable
+                    if (originalBackground != null) {
+                        val normalColor = Color.argb(40, 255, 255, 255)
+                        val pressedColor = Color.argb(80, 255, 255, 255)
+                        
+                        keyButton.setOnTouchListener { view, motionEvent ->
+                            when (motionEvent.action) {
+                                android.view.MotionEvent.ACTION_DOWN -> {
                                     originalBackground.setColor(pressedColor)
+                                    view.postInvalidate()
+                                    true // Consuma per feedback immediato
                                 }
-                                view.invalidate()
-                            }
-                            android.view.MotionEvent.ACTION_UP,
-                            android.view.MotionEvent.ACTION_CANCEL -> {
-                                // Ripristina lo sfondo originale
-                                if (originalBackground is GradientDrawable) {
-                                    val normalColor = Color.argb(40, 255, 255, 255) // Sfondo normale
+                                android.view.MotionEvent.ACTION_UP -> {
                                     originalBackground.setColor(normalColor)
+                                    view.postInvalidate()
+                                    // Esegui commitText direttamente qui (più veloce)
+                                    inputConnection.commitText(content, 1)
+                                    true
                                 }
-                                view.invalidate()
+                                android.view.MotionEvent.ACTION_CANCEL -> {
+                                    originalBackground.setColor(normalColor)
+                                    view.postInvalidate()
+                                    true
+                                }
+                                else -> false
                             }
                         }
-                        false // Non consumare l'evento, lascia che il click listener funzioni
+                    } else {
+                        // Fallback: solo click listener se non c'è background
+                        keyButton.setOnClickListener {
+                            inputConnection.commitText(content, 1)
+                        }
                     }
                 }
                 
@@ -963,5 +968,6 @@ class StatusBarController(
         return view.measuredHeight
     }
 }
+
 
 

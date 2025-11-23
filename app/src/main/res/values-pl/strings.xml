@@ -327,6 +327,20 @@
     <string name="tutorial_selected_message">Pastiera jest wybrana!</string>
     <string name="tutorial_show">Pokaż Samouczek</string>
     <string name="tutorial_review_description">Przejrzyj wprowadzający samouczek</string>
+    
+    <!-- Backup & Restore -->
+    <string name="backup_now">Utwórz kopię zapasową teraz</string>
+    <string name="backup_now_description">Eksportuj wszystkie ustawienia i niestandardowe układy do pliku ZIP</string>
+    <string name="restore_from_file">Przywróć z pliku</string>
+    <string name="restore_from_file_description">Importuj plik ZIP kopii zapasowej Pastiera</string>
+    <string name="backup_completed">Kopia zapasowa zakończona</string>
+    <string name="restore_completed">Przywracanie zakończone</string>
+    <string name="backup_failed">Kopia zapasowa nie powiodła się: %1$s</string>
+    <string name="restore_failed">Przywracanie nie powiodło się: %1$s</string>
+    
+    <!-- Swipe Incremental Threshold -->
+    <string name="swipe_incremental_threshold_description">Wymagana odległość do przesunięcia kursora o jedną pozycję. Niższe wartości sprawiają, że kursor porusza się szybciej.</string>
+    <string name="dip_unit">DIP</string>
 </resources>
 
 

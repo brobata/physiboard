@@ -40,5 +40,39 @@ object VariationRepository {
             variationsMap
         }
     }
-}
 
+    /**
+     * Loads static utility variations from JSON assets.
+     * These are shown in the variation bar when static mode is enabled
+     * or when smart features are disabled for the current field.
+     */
+    fun loadStaticVariations(assets: AssetManager): List<String> {
+        return try {
+            val filePath = "common/variations/variations.json"
+            val inputStream = assets.open(filePath)
+            val jsonString = inputStream.bufferedReader().use { it.readText() }
+            val jsonObject = JSONObject(jsonString)
+
+            if (jsonObject.has("staticVariations")) {
+                val staticArray = jsonObject.getJSONArray("staticVariations")
+                val result = mutableListOf<String>()
+                for (i in 0 until staticArray.length()) {
+                    val value = staticArray.getString(i)
+                    if (!value.isNullOrEmpty()) {
+                        result.add(value)
+                    }
+                }
+                if (result.isNotEmpty()) {
+                    return result
+                }
+            }
+
+            // Fallback: a small set of utility symbols
+            listOf(";", ",", ":", "…", "?", "!", "\"")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error loading static variations", e)
+            // Fallback: same default set
+            listOf(";", ",", ":", "…", "?", "!", "\"")
+        }
+    }
+}
