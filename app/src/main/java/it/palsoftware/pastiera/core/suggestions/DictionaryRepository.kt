@@ -59,8 +59,16 @@ class DictionaryRepository(
     fun lookupByPrefix(prefix: String): List<DictionaryEntry> {
         loadIfNeeded()
         if (prefix.isBlank()) return emptyList()
-        val normalizedPrefix = normalize(prefix).take(cachePrefixLength)
-        return prefixCache[normalizedPrefix] ?: emptyList()
+        val normalizedPrefix = normalize(prefix)
+        val maxPrefixLength = normalizedPrefix.length.coerceAtMost(cachePrefixLength)
+
+        for (length in maxPrefixLength downTo 1) {
+            val bucket = prefixCache[normalizedPrefix.take(length)]
+            if (!bucket.isNullOrEmpty()) {
+                return bucket
+            }
+        }
+        return emptyList()
     }
 
     fun allCandidates(): List<DictionaryEntry> {
@@ -97,9 +105,12 @@ class DictionaryRepository(
             bucket.removeAll { it.word.equals(entry.word, ignoreCase = true) && it.source == entry.source }
             bucket.add(entry)
 
-            val prefix = normalized.take(cachePrefixLength)
-            val prefixList = prefixCache.getOrPut(prefix) { mutableListOf() }
-            prefixList.add(entry)
+            val maxPrefixLength = normalized.length.coerceAtMost(cachePrefixLength)
+            for (length in 1..maxPrefixLength) {
+                val prefix = normalized.take(length)
+                val prefixList = prefixCache.getOrPut(prefix) { mutableListOf() }
+                prefixList.add(entry)
+            }
         }
 
         prefixCache.values.forEach { list -> list.sortByDescending { it.frequency } }
