@@ -194,18 +194,26 @@ class VariationBarView(
         wrapperView.visibility = View.VISIBLE
         overlayView.visibility = if (isSymModeActive) View.GONE else View.VISIBLE
 
-        // Decide whether to use dynamic variations (from cursor) or static utility keys.
+        // Decide whether to use suggestions, dynamic variations (from cursor) or static utility keys.
         val staticModeEnabled = SettingsManager.isStaticVariationBarModeEnabled(context)
-        val useDynamicVariations = !staticModeEnabled && !snapshot.shouldDisableSmartFeatures
+        val canShowSmart = !snapshot.shouldDisableSmartFeatures
+        // Legacy variations: always honor them when present, independent of suggestions.
+        val hasDynamicVariations = canShowSmart && snapshot.variations.isNotEmpty()
+        val hasSuggestions = canShowSmart && snapshot.suggestions.isNotEmpty()
+        val useDynamicVariations = !staticModeEnabled && hasDynamicVariations
 
         val effectiveVariations: List<String>
         val isStaticContent: Boolean
-        if (useDynamicVariations && snapshot.variations.isNotEmpty() && snapshot.lastInsertedChar != null) {
+        // Legacy behavior: give priority to letter variations when available, otherwise suggestions.
+        if (useDynamicVariations) {
             effectiveVariations = snapshot.variations
+            isStaticContent = false
+        } else if (hasSuggestions) {
+            effectiveVariations = snapshot.suggestions
             isStaticContent = false
         } else {
             if (staticVariations.isEmpty()) {
-                staticVariations = VariationRepository.loadStaticVariations(context.assets)
+                staticVariations = VariationRepository.loadStaticVariations(context.assets, context)
             }
             effectiveVariations = staticVariations
             isStaticContent = true
