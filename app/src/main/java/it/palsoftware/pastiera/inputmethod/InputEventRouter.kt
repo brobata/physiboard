@@ -454,9 +454,11 @@ class InputEventRouter(
                     layoutChar
                 )
                 if (trackedChar.isNotEmpty() && trackedChar[0].isLetter()) {
-                    Log.d("PastieraIME", "alt/longpress commit track: '$trackedChar'")
                     suggestionController?.onCharacterCommitted(trackedChar, ic)
                 }
+                Handler(Looper.getMainLooper()).postDelayed({
+                    callbacks.updateStatusBar()
+                }, params.cursorUpdateDelayMs)
             }
             if (wasShiftOneShot) {
                 callbacks.disableShiftOneShot()
