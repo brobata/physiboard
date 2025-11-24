@@ -18,8 +18,9 @@ class AutoReplaceController(
         tracker: CurrentWordTracker,
         inputConnection: InputConnection?
     ): ReplaceResult {
+        val unicodeChar = event?.unicodeChar ?: 0
         val boundaryChar = when {
-            event?.unicodeChar != null && event.unicodeChar != 0 -> event.unicodeChar.toChar()
+            unicodeChar != 0 -> unicodeChar.toChar()
             keyCode == KeyEvent.KEYCODE_SPACE -> ' '
             keyCode == KeyEvent.KEYCODE_ENTER -> '\n'
             else -> null
@@ -28,13 +29,13 @@ class AutoReplaceController(
         val settings = settingsProvider()
         if (!settings.autoReplaceOnSpaceEnter || inputConnection == null) {
             tracker.onBoundaryReached(boundaryChar, inputConnection)
-            return ReplaceResult(false, event?.unicodeChar != null)
+            return ReplaceResult(false, unicodeChar != 0)
         }
 
         val word = tracker.currentWord
         if (word.isBlank()) {
             tracker.onBoundaryReached(boundaryChar, inputConnection)
-            return ReplaceResult(false, event?.unicodeChar != null)
+            return ReplaceResult(false, unicodeChar != 0)
         }
 
         val suggestions = suggestionEngine.suggest(word, limit = 1, includeAccentMatching = settings.accentMatching)
@@ -56,7 +57,7 @@ class AutoReplaceController(
         }
 
         tracker.onBoundaryReached(boundaryChar, inputConnection)
-        return ReplaceResult(false, event?.unicodeChar != null)
+        return ReplaceResult(false, unicodeChar != 0)
     }
 
     private fun applyCasing(candidate: String, original: String): String {

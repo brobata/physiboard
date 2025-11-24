@@ -1097,7 +1097,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 ctrlLatchActive = ctrlLatchActive,
                 isInputViewActive = isInputViewActive,
                 isInputViewShown = isInputViewShown,
-                hasInputConnection = initialInputConnection != null
+                hasInputConnection = hasEditableField
             ),
             callbacks = InputEventRouter.EditableFieldKeyDownCallbacks(
                 exitNavMode = { navModeController.exitNavMode() },
