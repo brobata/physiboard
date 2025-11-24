@@ -29,7 +29,7 @@ import android.view.KeyEvent
 import kotlin.math.abs
 import it.palsoftware.pastiera.inputmethod.ui.LedStatusView
 import it.palsoftware.pastiera.inputmethod.ui.VariationBarView
-import it.palsoftware.pastiera.inputmethod.ui.FullSuggestionsBar
+import it.palsoftware.pastiera.inputmethod.suggestions.ui.FullSuggestionsBar
 
 /**
  * Manages the status bar shown by the IME, handling view creation
@@ -896,7 +896,12 @@ class StatusBarController(
         val variationsBar = if (!forceMinimalUi) variationBarView else null
         val variationsWrapperView = if (!forceMinimalUi) variationsWrapper else null
         val experimentalEnabled = SettingsManager.isExperimentalSuggestionsEnabled(context)
-        val showFullBar = !forceMinimalUi && experimentalEnabled && !snapshot.shouldDisableSmartFeatures && snapshot.symPage == 0
+        val suggestionsEnabledSetting = SettingsManager.getSuggestionsEnabled(context)
+        val showFullBar = !forceMinimalUi &&
+            experimentalEnabled &&
+            suggestionsEnabledSetting &&
+            !snapshot.shouldDisableSmartFeatures &&
+            snapshot.symPage == 0
         fullSuggestionsBar?.update(snapshot.suggestions, showFullBar, inputConnection, onVariationSelectedListener)
         
         if (snapshot.symPage > 0 && symMappings != null) {

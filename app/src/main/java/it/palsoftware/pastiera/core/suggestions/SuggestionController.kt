@@ -38,7 +38,11 @@ class SuggestionController(
     fun onCharacterCommitted(text: CharSequence, inputConnection: InputConnection?) {
         if (!isEnabled()) return
         if (debugLogging) Log.d("PastieraIME", "SuggestionController.onCharacterCommitted('$text')")
-        rebuildFromContext(inputConnection, fallback = { tracker.onCharacterCommitted(text) })
+        if (inputConnection != null) {
+            rebuildFromContext(inputConnection, fallback = { tracker.reset() })
+        } else {
+            tracker.onCharacterCommitted(text)
+        }
         updateSuggestions()
     }
 
@@ -55,7 +59,7 @@ class SuggestionController(
         inputConnection: InputConnection?,
         fallback: () -> Unit
     ) {
-        val contextWord = extractWordAtCursor(inputConnection)
+        val contextWord = extractPrefixBeforeCursor(inputConnection)
         if (!contextWord.isNullOrBlank()) {
             tracker.setWord(contextWord)
         } else {
@@ -131,24 +135,19 @@ class SuggestionController(
 
     fun userDictionarySnapshot(): List<UserDictionaryStore.UserEntry> = userDictionaryStore.getSnapshot()
 
-    private fun extractWordAtCursor(inputConnection: InputConnection?): String? {
+    private fun extractPrefixBeforeCursor(inputConnection: InputConnection?): String? {
         if (inputConnection == null) return null
         return try {
             val before = inputConnection.getTextBeforeCursor(64, 0)?.toString() ?: ""
-            val after = inputConnection.getTextAfterCursor(64, 0)?.toString() ?: ""
             val boundary = " \t\n\r.,;:!?()[]{}\"'"
             var start = before.length
             while (start > 0 && !boundary.contains(before[start - 1])) {
                 start--
             }
-            var end = 0
-            while (end < after.length && !boundary.contains(after[end])) {
-                end++
-            }
-            val word = before.substring(start) + after.substring(0, end)
+            val word = before.substring(start)
             if (word.isBlank()) null else word
         } catch (e: Exception) {
-            Log.d("PastieraIME", "extractWordAtCursor failed: ${e.message}")
+            Log.d("PastieraIME", "extractPrefixBeforeCursor failed: ${e.message}")
             null
         }
     }

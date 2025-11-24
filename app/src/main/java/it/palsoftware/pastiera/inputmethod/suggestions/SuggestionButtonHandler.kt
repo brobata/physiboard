@@ -1,8 +1,9 @@
-package it.palsoftware.pastiera.inputmethod
+package it.palsoftware.pastiera.inputmethod.suggestions
 
 import android.util.Log
 import android.view.View
 import android.view.inputmethod.InputConnection
+import it.palsoftware.pastiera.inputmethod.VariationButtonHandler
 import java.util.Locale
 
 /**
@@ -35,29 +36,35 @@ object SuggestionButtonHandler {
      * (leading capital only). All-caps input (e.g., CapsLock) will not force the suggestion to uppercase.
      */
     private fun replaceCurrentWord(inputConnection: InputConnection, suggestion: String) {
-        val before = inputConnection.getTextBeforeCursor(64, 0) ?: ""
-        if (before.isEmpty()) {
-            inputConnection.commitText("$suggestion ", 1)
-            Log.d(TAG, "Suggestion '$suggestion' inserted (no text before cursor)")
-            return
-        }
-
-        // Find word start (stop at whitespace or punctuation)
+        val before = inputConnection.getTextBeforeCursor(64, 0)?.toString().orEmpty()
+        val after = inputConnection.getTextAfterCursor(64, 0)?.toString().orEmpty()
         val boundaryChars = " \t\n\r.,;:!?()[]{}\"'"
+
+        // Find start of word in 'before'
         var start = before.length
         while (start > 0 && !boundaryChars.contains(before[start - 1])) {
             start--
         }
-        val currentWord = before.substring(start)
-        val deleteCount = currentWord.length
+        // Find end of word in 'after'
+        var end = 0
+        while (end < after.length && !boundaryChars.contains(after[end])) {
+            end++
+        }
 
+        val wordBeforeCursor = before.substring(start)
+        val wordAfterCursor = after.substring(0, end)
+        val currentWord = wordBeforeCursor + wordAfterCursor
+
+        // Delete the full word around the cursor
+        val deleteBefore = wordBeforeCursor.length
+        val deleteAfter = wordAfterCursor.length
         val replacement = applyCasing(suggestion, currentWord)
 
-        val deleted = inputConnection.deleteSurroundingText(deleteCount, 0)
+        val deleted = inputConnection.deleteSurroundingText(deleteBefore, deleteAfter)
         if (deleted) {
-            Log.d(TAG, "Deleted $deleteCount chars ('$currentWord') before inserting suggestion")
+            Log.d(TAG, "Deleted ${deleteBefore + deleteAfter} chars ('$currentWord') before inserting suggestion")
         } else {
-            Log.w(TAG, "Unable to delete $deleteCount chars before cursor; inserting anyway")
+            Log.w(TAG, "Unable to delete surrounding word; inserting anyway")
         }
 
         inputConnection.commitText("$replacement ", 1)

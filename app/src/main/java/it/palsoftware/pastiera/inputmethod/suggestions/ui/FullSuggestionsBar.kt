@@ -1,4 +1,4 @@
-package it.palsoftware.pastiera.inputmethod.ui
+package it.palsoftware.pastiera.inputmethod.suggestions.ui
 
 import android.content.Context
 import android.graphics.Color
@@ -9,7 +9,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
-import it.palsoftware.pastiera.inputmethod.SuggestionButtonHandler
+import it.palsoftware.pastiera.inputmethod.suggestions.SuggestionButtonHandler
 import it.palsoftware.pastiera.inputmethod.VariationButtonHandler
 
 /**
@@ -57,9 +57,18 @@ class FullSuggestionsBar(private val context: Context) {
             return
         }
 
+        renderSlots(bar, slots, inputConnection, listener)
+        lastSlots = slots
+    }
+
+    private fun renderSlots(
+        bar: LinearLayout,
+        slots: List<String?>,
+        inputConnection: android.view.inputmethod.InputConnection?,
+        listener: VariationButtonHandler.OnVariationSelectedListener?
+    ) {
         bar.removeAllViews()
         bar.visibility = View.VISIBLE
-        lastSlots = slots
 
         val padV = dpToPx(10f)
         val padH = dpToPx(12f)
@@ -71,7 +80,6 @@ class FullSuggestionsBar(private val context: Context) {
             marginEnd = dpToPx(3f)
         }
 
-        // Always render 3 slots (fill placeholders if needed)
         val slotOrder = listOf(slots[0], slots[1], slots[2]) // left, center, right
         for (suggestion in slotOrder) {
             val button = TextView(context).apply {

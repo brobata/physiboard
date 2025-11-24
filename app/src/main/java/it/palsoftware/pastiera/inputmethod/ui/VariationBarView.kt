@@ -197,7 +197,8 @@ class VariationBarView(
         // Decide whether to use suggestions, dynamic variations (from cursor) or static utility keys.
         val staticModeEnabled = SettingsManager.isStaticVariationBarModeEnabled(context)
         val canShowSmart = !snapshot.shouldDisableSmartFeatures
-        val hasDynamicVariations = canShowSmart && snapshot.variations.isNotEmpty() && snapshot.lastInsertedChar != null
+        // Legacy variations: always honor them when present, independent of suggestions.
+        val hasDynamicVariations = canShowSmart && snapshot.variations.isNotEmpty()
         val hasSuggestions = canShowSmart && snapshot.suggestions.isNotEmpty()
         val useDynamicVariations = !staticModeEnabled && hasDynamicVariations
 
