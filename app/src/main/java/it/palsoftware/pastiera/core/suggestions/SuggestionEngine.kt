@@ -14,7 +14,8 @@ data class SuggestionResult(
 
 class SuggestionEngine(
     private val repository: DictionaryRepository,
-    private val locale: Locale = Locale.ITALIAN
+    private val locale: Locale = Locale.ITALIAN,
+    private val debugLogging: Boolean = false
 ) {
 
     private val normalizeRegex = "[^a-z]".toRegex()
@@ -30,7 +31,9 @@ class SuggestionEngine(
         val normalizedWord = normalize(currentWord)
         val candidates = repository.lookupByPrefix(normalizedWord)
             .ifEmpty { repository.allCandidates() }
-        Log.d(tag, "suggest '$currentWord' normalized='$normalizedWord' candidates=${candidates.size}")
+        if (debugLogging) {
+            Log.d(tag, "suggest '$currentWord' normalized='$normalizedWord' candidates=${candidates.size}")
+        }
 
         val scored = mutableListOf<SuggestionResult>()
         for (entry in candidates) {

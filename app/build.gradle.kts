@@ -74,22 +74,10 @@ android {
 
     signingConfigs {
         create("release") {
-            val keystorePropertiesFile = rootProject.file("keystore.properties")
-            if (keystorePropertiesFile.exists()) {
-                val keystoreProperties = Properties()
-                keystoreProperties.load(keystorePropertiesFile.inputStream())
-                storeFile = file("../pastiera-release-key.jks")
-                storePassword = keystoreProperties["storePassword"] as String
-                keyAlias = keystoreProperties["keyAlias"] as String
-                keyPassword = keystoreProperties["keyPassword"] as String
-            } else {
-                // Fallback for CI/CD or local builds without the file
-                // Uses environment variables if available
-                storeFile = file("../pastiera-release-key.jks")
-                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
-                keyAlias = System.getenv("KEY_ALIAS") ?: "pastiera"
-                keyPassword = System.getenv("KEY_PASSWORD") ?: ""
-            }
+            storeFile = file("../pastiera-release-key.jks")
+            storePassword = "pastiera123"
+            keyAlias = "pastiera"
+            keyPassword = "pastiera123"
         }
     }
 
@@ -138,17 +126,16 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
-    implementation("androidx.compose.foundation:foundation")
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("androidx.compose.material:material-icons-extended")
     implementation("com.squareup.okhttp3:okhttp:4.11.0")
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
     // RecyclerView per performance ottimali nella griglia emoji
     implementation("androidx.recyclerview:recyclerview:1.3.2")
     // Emoji2 per supporto emoji future-proof
     implementation("androidx.emoji2:emoji2:1.4.0")
     implementation("androidx.emoji2:emoji2-views:1.4.0")
     implementation("androidx.emoji2:emoji2-views-helper:1.4.0")
-    implementation("androidx.work:work-runtime-ktx:2.9.0")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

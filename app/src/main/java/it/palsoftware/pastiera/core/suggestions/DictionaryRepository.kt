@@ -15,13 +15,15 @@ class DictionaryRepository(
     private val assets: AssetManager,
     private val userDictionaryStore: UserDictionaryStore,
     private val baseLocale: Locale = Locale.ITALIAN,
-    private val cachePrefixLength: Int = 3
+    private val cachePrefixLength: Int = 3,
+    debugLogging: Boolean = false
 ) {
 
     private val prefixCache: MutableMap<String, MutableList<DictionaryEntry>> = mutableMapOf()
     private val normalizedIndex: MutableMap<String, MutableList<DictionaryEntry>> = mutableMapOf()
     private var loaded = false
     private val tag = "DictionaryRepo"
+    private val debugLogging: Boolean = debugLogging
 
     fun loadIfNeeded() {
         if (loaded) return
@@ -29,7 +31,9 @@ class DictionaryRepository(
             if (loaded) return
             val mainEntries = loadFromAssets("common/dictionaries/${baseLocale.language}_base.json")
             val userEntries = userDictionaryStore.loadUserEntries(context)
-            Log.d(tag, "loadIfNeeded main=${mainEntries.size} user=${userEntries.size}")
+            if (debugLogging) {
+                Log.d(tag, "loadIfNeeded main=${mainEntries.size} user=${userEntries.size}")
+            }
             index(mainEntries + userEntries)
             loaded = true
         }
@@ -93,7 +97,7 @@ class DictionaryRepository(
                 }
             }
         } catch (_: Exception) {
-            Log.e(tag, "Failed to load dictionary from assets: $path")
+            if (debugLogging) Log.e(tag, "Failed to load dictionary from assets: $path")
             emptyList()
         }
     }
@@ -119,7 +123,9 @@ class DictionaryRepository(
         }
 
         prefixCache.values.forEach { list -> list.sortByDescending { it.frequency } }
-        Log.d(tag, "index built: normalizedIndex=${normalizedIndex.size} prefixCache=${prefixCache.size}")
+        if (debugLogging) {
+            Log.d(tag, "index built: normalizedIndex=${normalizedIndex.size} prefixCache=${prefixCache.size}")
+        }
     }
 
     private fun normalize(word: String): String {

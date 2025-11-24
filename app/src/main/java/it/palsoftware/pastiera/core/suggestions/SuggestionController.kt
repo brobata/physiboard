@@ -11,13 +11,16 @@ class SuggestionController(
     context: Context,
     assets: AssetManager,
     private val settingsProvider: () -> SuggestionSettings,
+    private val isEnabled: () -> Boolean = { true },
+    debugLogging: Boolean = false,
     onSuggestionsUpdated: (List<SuggestionResult>) -> Unit
 ) {
 
     private val appContext = context.applicationContext
+    private val debugLogging: Boolean = debugLogging
     private val userDictionaryStore = UserDictionaryStore()
-    private val dictionaryRepository = DictionaryRepository(appContext, assets, userDictionaryStore)
-    private val suggestionEngine = SuggestionEngine(dictionaryRepository)
+    private val dictionaryRepository = DictionaryRepository(appContext, assets, userDictionaryStore, debugLogging = debugLogging)
+    private val suggestionEngine = SuggestionEngine(dictionaryRepository, debugLogging = debugLogging)
     private val tracker = CurrentWordTracker(
         onWordChanged = { word ->
             val settings = settingsProvider()
@@ -33,7 +36,8 @@ class SuggestionController(
     var suggestionsListener: ((List<SuggestionResult>) -> Unit)? = onSuggestionsUpdated
 
     fun onCharacterCommitted(text: CharSequence, inputConnection: InputConnection?) {
-        Log.d("PastieraIME", "SuggestionController.onCharacterCommitted('$text')")
+        if (!isEnabled()) return
+        if (debugLogging) Log.d("PastieraIME", "SuggestionController.onCharacterCommitted('$text')")
         rebuildFromContext(inputConnection, fallback = { tracker.onCharacterCommitted(text) })
         updateSuggestions()
     }
@@ -42,6 +46,7 @@ class SuggestionController(
      * Rebuild the current word from the text field (used on backspace or cursor edits).
      */
     fun refreshFromInputConnection(inputConnection: InputConnection?) {
+        if (!isEnabled()) return
         rebuildFromContext(inputConnection, fallback = { tracker.reset() })
         updateSuggestions()
     }
@@ -63,7 +68,7 @@ class SuggestionController(
         if (settings.suggestionsEnabled) {
             val next = suggestionEngine.suggest(tracker.currentWord, settings.maxSuggestions, settings.accentMatching)
             val summary = next.take(3).joinToString { "${it.candidate}:${it.distance}" }
-            Log.d("PastieraIME", "suggestions (${next.size}): $summary")
+            if (debugLogging) Log.d("PastieraIME", "suggestions (${next.size}): $summary")
             latestSuggestions.set(next)
             suggestionsListener?.invoke(next)
         } else {
@@ -76,10 +81,12 @@ class SuggestionController(
         event: KeyEvent?,
         inputConnection: InputConnection?
     ): AutoReplaceController.ReplaceResult {
-        Log.d(
-            "PastieraIME",
-            "SuggestionController.onBoundaryKey keyCode=$keyCode char=${event?.unicodeChar}"
-        )
+        if (debugLogging) {
+            Log.d(
+                "PastieraIME",
+                "SuggestionController.onBoundaryKey keyCode=$keyCode char=${event?.unicodeChar}"
+            )
+        }
         val result = autoReplaceController.handleBoundary(keyCode, event, tracker, inputConnection)
         if (result.replaced) {
             dictionaryRepository.refreshUserEntries()
@@ -89,28 +96,34 @@ class SuggestionController(
     }
 
     fun onCursorMoved(inputConnection: InputConnection?) {
+        if (!isEnabled()) return
         rebuildFromContext(inputConnection, fallback = { tracker.reset() })
         updateSuggestions()
     }
 
     fun onContextReset() {
+        if (!isEnabled()) return
         tracker.onContextChanged()
         suggestionsListener?.invoke(emptyList())
     }
 
     fun onNavModeToggle() {
+        if (!isEnabled()) return
         tracker.onContextChanged()
     }
 
     fun addUserWord(word: String) {
+        if (!isEnabled()) return
         dictionaryRepository.addUserEntry(word)
     }
 
     fun removeUserWord(word: String) {
+        if (!isEnabled()) return
         dictionaryRepository.removeUserEntry(word)
     }
 
     fun markUsed(word: String) {
+        if (!isEnabled()) return
         dictionaryRepository.markUsed(word)
     }
 

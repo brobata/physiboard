@@ -225,11 +225,6 @@ class InputEventRouter(
         var altOneShotActive = params.altOneShot
         val ic = params.inputConnection
 
-        Log.d(
-            "PastieraIME",
-            "routeEditableFieldKeyDown key=$keyCode uc=${event?.unicodeChar} mapped=${LayoutMappingRepository.isMapped(keyCode)} alpha=${callbacks.isAlphabeticKey(keyCode)}"
-        )
-
         if (keyCode == KeyEvent.KEYCODE_SHIFT_LEFT || keyCode == KeyEvent.KEYCODE_SHIFT_RIGHT) {
             if (!params.shiftPressed) {
                 val result = controllers.modifierStateController.handleShiftKeyDown(keyCode)
@@ -575,11 +570,6 @@ class InputEventRouter(
         val isPunctuation = event?.unicodeChar != null &&
             event.unicodeChar != 0 &&
             event.unicodeChar.toChar() in ".,;:!?()[]{}\"'"
-
-        Log.d(
-            "PastieraIME",
-            "handleTextInputPipeline key=$keyCode uc=${event?.unicodeChar} boundary=$isBoundaryKey punct=$isPunctuation disable=$shouldDisableSmartFeatures icNull=${inputConnection == null}"
-        )
 
         if (
             autoCorrectionManager.handleBackspaceUndo(

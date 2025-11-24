@@ -62,7 +62,6 @@ class AutoReplaceController(
     private fun applyCasing(candidate: String, original: String): String {
         if (original.isEmpty()) return candidate
         return when {
-            original.all { it.isUpperCase() } -> candidate.uppercase(Locale.getDefault())
             original.first().isUpperCase() && original.drop(1).all { it.isLowerCase() } ->
                 candidate.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
             else -> candidate

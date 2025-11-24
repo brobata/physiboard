@@ -506,10 +506,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             doubleTapThreshold = DOUBLE_TAP_THRESHOLD
         )
         autoCorrectionManager = AutoCorrectionManager(this)
+        val suggestionDebugLogging = SettingsManager.isSuggestionDebugLoggingEnabled(this)
         suggestionController = SuggestionController(
             context = this,
             assets = assets,
-            settingsProvider = { getSuggestionSettings() }
+            settingsProvider = { getSuggestionSettings() },
+            isEnabled = { SettingsManager.isExperimentalSuggestionsEnabled(this) },
+            debugLogging = suggestionDebugLogging
         ) { suggestions -> handleSuggestionsUpdated(suggestions) }
         inputEventRouter.suggestionController = suggestionController
 
@@ -769,7 +772,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             altOneShot = modifierSnapshot.altOneShot,
             symPage = symPage,
             variations = variationSnapshot.variations,
-            suggestions = if (SettingsManager.getSuggestionsEnabled(this)) latestSuggestions else emptyList(),
+            suggestions = if (SettingsManager.isExperimentalSuggestionsEnabled(this) && SettingsManager.getSuggestionsEnabled(this)) latestSuggestions else emptyList(),
             lastInsertedChar = variationSnapshot.lastInsertedChar,
             shouldDisableSmartFeatures = shouldDisableSmartFeatures
         )

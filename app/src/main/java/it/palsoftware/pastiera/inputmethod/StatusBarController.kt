@@ -29,6 +29,7 @@ import android.view.KeyEvent
 import kotlin.math.abs
 import it.palsoftware.pastiera.inputmethod.ui.LedStatusView
 import it.palsoftware.pastiera.inputmethod.ui.VariationBarView
+import it.palsoftware.pastiera.inputmethod.ui.FullSuggestionsBar
 
 /**
  * Manages the status bar shown by the IME, handling view creation
@@ -97,6 +98,8 @@ class StatusBarController(
     private val variationBarView: VariationBarView? = if (mode == Mode.FULL) VariationBarView(context) else null
     private var variationsWrapper: View? = null
     private var forceMinimalUi: Boolean = false
+    private var fullSuggestionsBar: FullSuggestionsBar? = null
+
     fun setForceMinimalUi(force: Boolean) {
         if (mode != Mode.FULL) {
             return
@@ -184,6 +187,9 @@ class StatusBarController(
             val ledStrip = ledStatusView.ensureView()
             
             statusBarLayout?.apply {
+                // Full-width suggestions bar above the rest
+                fullSuggestionsBar = FullSuggestionsBar(context)
+                addView(fullSuggestionsBar?.ensureView())
                 addView(modifiersContainer)
                 variationsWrapper?.let { addView(it) }
                 addView(emojiKeyboardContainer) // Griglia emoji prima dei LED
@@ -889,6 +895,9 @@ class StatusBarController(
         ledStatusView.update(snapshot)
         val variationsBar = if (!forceMinimalUi) variationBarView else null
         val variationsWrapperView = if (!forceMinimalUi) variationsWrapper else null
+        val experimentalEnabled = SettingsManager.isExperimentalSuggestionsEnabled(context)
+        val showFullBar = !forceMinimalUi && experimentalEnabled && !snapshot.shouldDisableSmartFeatures && snapshot.symPage == 0
+        fullSuggestionsBar?.update(snapshot.suggestions, showFullBar, inputConnection, onVariationSelectedListener)
         
         if (snapshot.symPage > 0 && symMappings != null) {
             updateEmojiKeyboard(symMappings, snapshot.symPage, inputConnection)
@@ -934,7 +943,10 @@ class StatusBarController(
                     isEnabled = true
                     isClickable = true
                 }
-                variationsBar?.showVariations(snapshot, inputConnection)
+                val snapshotForVariations = if (snapshot.suggestions.isNotEmpty()) {
+                    snapshot.copy(suggestions = emptyList())
+                } else snapshot
+                variationsBar?.showVariations(snapshotForVariations, inputConnection)
             }
             symShown = false
             wasSymActive = false
@@ -945,7 +957,10 @@ class StatusBarController(
                 isEnabled = true
                 isClickable = true
             }
-            variationsBar?.showVariations(snapshot, inputConnection)
+            val snapshotForVariations = if (snapshot.suggestions.isNotEmpty()) {
+                snapshot.copy(suggestions = emptyList())
+            } else snapshot
+            variationsBar?.showVariations(snapshotForVariations, inputConnection)
             symShown = false
             wasSymActive = false
         }
@@ -961,6 +976,5 @@ class StatusBarController(
         view.measure(widthSpec, heightSpec)
         return view.measuredHeight
     }
+
 }
-
-

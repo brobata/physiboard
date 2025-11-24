@@ -68,6 +68,10 @@ object SettingsManager {
     private const val DEFAULT_SYM_AUTO_CLOSE = true
     private val DEFAULT_SYM_PAGES_CONFIG = SymPagesConfig()
     private const val DEFAULT_STATIC_VARIATION_BAR_MODE = false
+    private const val DEFAULT_EXPERIMENTAL_SUGGESTIONS_ENABLED = false
+    private const val DEFAULT_SUGGESTION_DEBUG_LOGGING = false
+    private const val KEY_EXPERIMENTAL_SUGGESTIONS_ENABLED = "experimental_suggestions_enabled"
+    private const val KEY_SUGGESTION_DEBUG_LOGGING = "suggestion_debug_logging"
     
     /**
      * Returns the SharedPreferences instance for Pastiera.
@@ -520,6 +524,33 @@ object SettingsManager {
     fun setAccentMatchingEnabled(context: Context, enabled: Boolean) {
         getPreferences(context).edit()
             .putBoolean(KEY_ACCENT_MATCHING_ENABLED, enabled)
+            .apply()
+    }
+
+    /**
+     * Master toggle for the experimental dictionary/suggestion engine.
+     * When disabled, the IME will skip initialization and hide suggestion UI.
+     */
+    fun isExperimentalSuggestionsEnabled(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_EXPERIMENTAL_SUGGESTIONS_ENABLED, DEFAULT_EXPERIMENTAL_SUGGESTIONS_ENABLED)
+    }
+
+    fun setExperimentalSuggestionsEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_EXPERIMENTAL_SUGGESTIONS_ENABLED, enabled)
+            .apply()
+    }
+
+    /**
+     * Optional debug logging for the suggestion engine.
+     */
+    fun isSuggestionDebugLoggingEnabled(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_SUGGESTION_DEBUG_LOGGING, DEFAULT_SUGGESTION_DEBUG_LOGGING)
+    }
+
+    fun setSuggestionDebugLoggingEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_SUGGESTION_DEBUG_LOGGING, enabled)
             .apply()
     }
 

@@ -11,6 +11,7 @@ class CurrentWordTracker(
 
     private val current = StringBuilder()
     private val tag = "CurrentWordTracker"
+    private val debugLogging = false
 
     val currentWord: String
         get() = current.toString()
@@ -22,7 +23,7 @@ class CurrentWordTracker(
         } else {
             current.append(word.takeLast(maxLength))
         }
-        Log.d(tag, "setWord currentWord='$current'")
+        if (debugLogging) Log.d(tag, "setWord currentWord='$current'")
         onWordChanged(current.toString())
     }
 
@@ -32,11 +33,11 @@ class CurrentWordTracker(
             if (char.isLetterOrDigit()) {
                 if (current.length < maxLength) {
                     current.append(char)
-                    Log.d(tag, "currentWord='$current'")
+                    if (debugLogging) Log.d(tag, "currentWord='$current'")
                     onWordChanged(current.toString())
                 }
             } else {
-                Log.d(tag, "reset on non-letter char='$char'")
+                if (debugLogging) Log.d(tag, "reset on non-letter char='$char'")
                 reset()
             }
         }
@@ -51,7 +52,7 @@ class CurrentWordTracker(
 
     fun reset() {
         if (current.isNotEmpty()) {
-            Log.d(tag, "reset currentWord='$current'")
+            if (debugLogging) Log.d(tag, "reset currentWord='$current'")
             current.clear()
             onWordReset()
         }

@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.TextFields
@@ -41,6 +42,11 @@ fun AutoCorrectionCategoryScreen(
     var autoCorrectEnabled by remember {
         mutableStateOf(SettingsManager.getAutoCorrectEnabled(context))
     }
+    var experimentalSuggestionsEnabled by remember {
+        mutableStateOf(SettingsManager.isExperimentalSuggestionsEnabled(context))
+    }
+    var showExperimentalToggle by remember { mutableStateOf(false) }
+    var experimentalTapCount by remember { mutableStateOf(0) }
     var suggestionsEnabled by remember {
         mutableStateOf(SettingsManager.getSuggestionsEnabled(context))
     }
@@ -131,7 +137,14 @@ fun AutoCorrectionCategoryScreen(
                                     text = stringResource(R.string.settings_category_auto_correction),
                                     style = MaterialTheme.typography.headlineSmall,
                                     fontWeight = FontWeight.SemiBold,
-                                    modifier = Modifier.padding(start = 8.dp)
+                                    modifier = Modifier
+                                        .padding(start = 8.dp)
+                                        .clickable {
+                                            experimentalTapCount++
+                                            if (experimentalTapCount >= 5) {
+                                                showExperimentalToggle = true
+                                            }
+                                        }
                                 )
                             }
                         }
@@ -177,6 +190,54 @@ fun AutoCorrectionCategoryScreen(
                                         SettingsManager.setAutoCorrectEnabled(context, enabled)
                                     }
                                 )
+                            }
+                        }
+
+                        if (showExperimentalToggle) {
+                            // Experimental suggestions master toggle
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(64.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Code,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = stringResource(R.string.experimental_suggestions_title),
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Medium,
+                                            maxLines = 1
+                                        )
+                                        Text(
+                                            text = stringResource(R.string.experimental_suggestions_subtitle),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    Switch(
+                                        checked = experimentalSuggestionsEnabled,
+                                        onCheckedChange = { enabled ->
+                                            experimentalSuggestionsEnabled = enabled
+                                            SettingsManager.setExperimentalSuggestionsEnabled(context, enabled)
+                                            if (enabled && !suggestionsEnabled) {
+                                                suggestionsEnabled = true
+                                                SettingsManager.setSuggestionsEnabled(context, true)
+                                            }
+                                        }
+                                    )
+                                }
                             }
                         }
                     
@@ -253,111 +314,115 @@ fun AutoCorrectionCategoryScreen(
                             }
                         }
 
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(64.dp)
-                        ) {
-                            Row(
+                        if (showExperimentalToggle) {
+                            Surface(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    .height(64.dp)
                             ) {
-                                Icon(
-                                    imageVector = Icons.Filled.TextFields,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = stringResource(R.string.auto_correct_suggestions_toggle_title),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Medium,
-                                        maxLines = 1
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.TextFields,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = stringResource(R.string.auto_correct_suggestions_toggle_title),
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Medium,
+                                            maxLines = 1
+                                        )
+                                    }
+                                    Switch(
+                                        checked = suggestionsEnabled,
+                                        onCheckedChange = { enabled ->
+                                            suggestionsEnabled = enabled
+                                            SettingsManager.setSuggestionsEnabled(context, enabled)
+                                        },
+                                        enabled = experimentalSuggestionsEnabled
                                     )
                                 }
-                                Switch(
-                                    checked = suggestionsEnabled,
-                                    onCheckedChange = { enabled ->
-                                        suggestionsEnabled = enabled
-                                        SettingsManager.setSuggestionsEnabled(context, enabled)
-                                    }
-                                )
                             }
-                        }
 
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(64.dp)
-                        ) {
-                            Row(
+                            Surface(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    .height(64.dp)
                             ) {
-                                Icon(
-                                    imageVector = Icons.Filled.TextFields,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = stringResource(R.string.auto_correct_accent_matching_title),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Medium,
-                                        maxLines = 1
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.TextFields,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = stringResource(R.string.auto_correct_accent_matching_title),
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Medium,
+                                            maxLines = 1
+                                        )
+                                    }
+                                    Switch(
+                                        checked = accentMatchingEnabled,
+                                        onCheckedChange = { enabled ->
+                                            accentMatchingEnabled = enabled
+                                            SettingsManager.setAccentMatchingEnabled(context, enabled)
+                                        },
+                                        enabled = experimentalSuggestionsEnabled
                                     )
                                 }
-                                Switch(
-                                    checked = accentMatchingEnabled,
-                                    onCheckedChange = { enabled ->
-                                        accentMatchingEnabled = enabled
-                                        SettingsManager.setAccentMatchingEnabled(context, enabled)
-                                    }
-                                )
                             }
-                        }
 
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(64.dp)
-                        ) {
-                            Row(
+                            Surface(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    .height(64.dp)
                             ) {
-                                Icon(
-                                    imageVector = Icons.Filled.TextFields,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = stringResource(R.string.auto_correct_auto_replace_title),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Medium,
-                                        maxLines = 1
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.TextFields,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = stringResource(R.string.auto_correct_auto_replace_title),
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Medium,
+                                            maxLines = 1
+                                        )
+                                    }
+                                    Switch(
+                                        checked = autoReplaceOnSpaceEnter,
+                                        onCheckedChange = { enabled ->
+                                            autoReplaceOnSpaceEnter = enabled
+                                            SettingsManager.setAutoReplaceOnSpaceEnter(context, enabled)
+                                        }
                                     )
                                 }
-                                Switch(
-                                    checked = autoReplaceOnSpaceEnter,
-                                    onCheckedChange = { enabled ->
-                                        autoReplaceOnSpaceEnter = enabled
-                                        SettingsManager.setAutoReplaceOnSpaceEnter(context, enabled)
-                                    }
-                                )
                             }
                         }
                     }
