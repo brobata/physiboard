@@ -21,6 +21,9 @@ class SuggestionEngine(
     private val normalizeRegex = "[^a-z]".toRegex()
     private val accentCache: MutableMap<String, String> = mutableMapOf()
     private val tag = "SuggestionEngine"
+    private val wordNormalizeCache: MutableMap<String, String> = mutableMapOf()
+    private var lastNormalized: String = ""
+    private var lastBucket: List<DictionaryEntry> = emptyList()
 
     fun suggest(
         currentWord: String,
@@ -28,16 +31,45 @@ class SuggestionEngine(
         includeAccentMatching: Boolean = true
     ): List<SuggestionResult> {
         if (currentWord.isBlank()) return emptyList()
+        if (!repository.isReady) return emptyList()
         val normalizedWord = normalize(currentWord)
-        val candidates = repository.lookupByPrefix(normalizedWord)
-            .ifEmpty { repository.allCandidates() }
+        // Require at least 2 characters to avoid heavy buckets on large dictionaries.
+        if (normalizedWord.length < 2) return emptyList()
+
+        val prefixKey = normalizedWord.take(4)
+
+        val candidates: List<DictionaryEntry> = when {
+            lastNormalized.isNotEmpty() &&
+                normalizedWord.startsWith(lastNormalized) &&
+                normalizedWord.length == lastNormalized.length + 1 -> {
+                // Extend typed prefix by 1: filter previous bucket.
+                lastBucket.filter { normalizeCached(it.word).startsWith(normalizedWord) }
+            }
+            lastNormalized.length > normalizedWord.length &&
+                lastNormalized.startsWith(normalizedWord) -> {
+                // Backspace/shorter prefix: reload bucket for new prefix.
+                repository.lookupByPrefix(normalizedWord)
+            }
+            else -> {
+                // Fresh lookup for the current prefix.
+                repository.lookupByPrefix(normalizedWord)
+            }
+        }
+
+        if (debugLogging) {
+            Log.d(tag, "suggest '$currentWord' normalized='$normalizedWord' candidates=${candidates.size}")
+        }
+
+        lastNormalized = normalizedWord
+        lastBucket = candidates
+
         if (debugLogging) {
             Log.d(tag, "suggest '$currentWord' normalized='$normalizedWord' candidates=${candidates.size}")
         }
 
         val scored = mutableListOf<SuggestionResult>()
         for (entry in candidates) {
-            val normalizedCandidate = normalize(entry.word)
+            val normalizedCandidate = normalizeCached(entry.word)
             val distance = if (normalizedCandidate.startsWith(normalizedWord)) {
                 0 // treat prefix match as perfect to surface completions early
             } else {
@@ -104,6 +136,10 @@ class SuggestionEngine(
     private fun normalize(word: String): String {
         return stripAccents(word.lowercase(locale))
             .replace(normalizeRegex, "")
+    }
+
+    private fun normalizeCached(word: String): String {
+        return wordNormalizeCache.getOrPut(word) { normalize(word) }
     }
 
     private fun stripAccents(input: String): String {

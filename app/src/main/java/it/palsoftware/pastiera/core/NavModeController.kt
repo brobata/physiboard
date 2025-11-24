@@ -23,11 +23,22 @@ class NavModeController(
         private const val TAG = "NavModeController"
     }
 
+    private var navModeChangedListener: ((Boolean) -> Unit)? = null
+    private var lastNavModeActive: Boolean = false
+
     fun isNavModeActive(): Boolean {
         return modifierStateController.ctrlLatchActive && modifierStateController.ctrlLatchFromNavMode
     }
 
     fun hasCtrlLatchFromNavMode(): Boolean = modifierStateController.ctrlLatchFromNavMode
+
+    fun setOnNavModeChangedListener(listener: ((Boolean) -> Unit)?) {
+        navModeChangedListener = listener
+    }
+
+    fun refreshNavModeState() {
+        notifyNavModeChanged()
+    }
 
     fun isNavModeKey(keyCode: Int): Boolean {
         val navModeEnabled = SettingsManager.getNavModeEnabled(context)
@@ -121,6 +132,7 @@ class NavModeController(
             modifierStateController.ctrlLatchActive = false
             NotificationHelper.cancelNavModeNotification(context)
         }
+        notifyNavModeChanged()
     }
     
     /**
@@ -145,15 +157,16 @@ class NavModeController(
             modifierStateController.ctrlLatchActive = latchActive
             if (latchActive) {
                 modifierStateController.ctrlLatchFromNavMode = true
-                NotificationHelper.showNavModeActivatedNotification(context)
             } else if (modifierStateController.ctrlLatchFromNavMode) {
                 modifierStateController.ctrlLatchFromNavMode = false
+                // Ensure any legacy nav mode notification is cleared.
                 NotificationHelper.cancelNavModeNotification(context)
             }
         }
         result.ctrlPhysicallyPressed?.let { modifierStateController.ctrlPhysicallyPressed = it }
         result.ctrlPressed?.let { modifierStateController.ctrlPressed = it }
         result.lastCtrlReleaseTime?.let { modifierStateController.ctrlLastReleaseTime = it }
+        notifyNavModeChanged()
     }
 
     private fun sendMappedKey(
@@ -186,5 +199,12 @@ class NavModeController(
         Log.d(TAG, "Nav mode: dispatched keycode $mappedKeyCode")
         return true
     }
-}
 
+    private fun notifyNavModeChanged() {
+        val isActiveNow = isNavModeActive()
+        if (lastNavModeActive != isActiveNow) {
+            navModeChangedListener?.invoke(isActiveNow)
+        }
+        lastNavModeActive = isActiveNow
+    }
+}

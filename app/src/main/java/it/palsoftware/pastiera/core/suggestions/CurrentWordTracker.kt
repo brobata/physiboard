@@ -43,6 +43,18 @@ class CurrentWordTracker(
         }
     }
 
+    fun onBackspace() {
+        if (current.isNotEmpty()) {
+            current.deleteCharAt(current.length - 1)
+            if (current.isNotEmpty()) {
+                if (debugLogging) Log.d(tag, "currentWord after backspace='$current'")
+                onWordChanged(current.toString())
+            } else {
+                reset()
+            }
+        }
+    }
+
     fun onBoundaryReached(boundaryChar: Char? = null, inputConnection: InputConnection? = null) {
         if (boundaryChar != null) {
             inputConnection?.commitText(boundaryChar.toString(), 1)

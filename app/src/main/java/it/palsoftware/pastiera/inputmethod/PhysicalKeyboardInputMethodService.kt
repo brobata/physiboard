@@ -13,10 +13,15 @@ import android.view.KeyEvent
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import it.palsoftware.pastiera.inputmethod.KeyboardEventTracker
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import android.os.Handler
 import android.os.Looper
 import androidx.core.content.ContextCompat
 import android.view.View
+import it.palsoftware.pastiera.R
+import it.palsoftware.pastiera.inputmethod.NotificationHelper
 import it.palsoftware.pastiera.core.AutoCorrectionManager
 import it.palsoftware.pastiera.core.InputContextState
 import it.palsoftware.pastiera.core.ModifierStateController
@@ -174,6 +179,16 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
 
     private fun updateInputContextState(info: EditorInfo?) {
         inputContextState = InputContextState.fromEditorInfo(info)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun updateNavModeStatusIcon(isActive: Boolean) {
+        // Deprecated but still works on current Android versions; use for quick nav mode indicator.
+        if (isActive) {
+            showStatusIcon(R.drawable.ic_nav_mode_status)
+        } else {
+            hideStatusIcon()
+        }
     }
 
     private fun refreshStatusBar() {
@@ -494,11 +509,15 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         super.onCreate()
         prefs = getSharedPreferences("pastiera_prefs", Context.MODE_PRIVATE)
         clearAltOnSpaceEnabled = SettingsManager.getClearAltOnSpace(this)
-        
-        NotificationHelper.createNotificationChannel(this)
-        
+
+        // Clear legacy nav mode notification since we now rely on the status icon only.
+        NotificationHelper.cancelNavModeNotification(this)
+
         modifierStateController = ModifierStateController(DOUBLE_TAP_THRESHOLD)
         navModeController = NavModeController(this, modifierStateController)
+        navModeController.setOnNavModeChangedListener { isActive ->
+            updateNavModeStatusIcon(isActive)
+        }
         inputEventRouter = InputEventRouter(this, navModeController)
         textInputController = TextInputController(
             context = this,
@@ -687,6 +706,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         speechResultReceiver = null
         cancelSpaceLongPress()
         multiTapController.cancelAll()
+        updateNavModeStatusIcon(false)
         
     }
 
@@ -738,6 +758,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         altSymManager.resetTransientState()
         deactivateVariations()
         refreshStatusBar()
+        navModeController.refreshNavModeState()
     }
     
     /**
@@ -1022,6 +1043,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 modifierStateController.clearCtrlState(resetPressedState = true)
                 if (navModeLatched) {
                     navModeController.cancelNotification()
+                    navModeController.refreshNavModeState()
                 }
                 shouldUpdateStatusBar = true
             }

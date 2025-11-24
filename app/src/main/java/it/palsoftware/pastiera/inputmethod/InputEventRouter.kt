@@ -125,6 +125,10 @@ class InputEventRouter(
         ctrlKeyMap: Map<Int, KeyMappingLoader.CtrlMapping>,
         callbacks: NoEditableFieldCallbacks
     ): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            return callbacks.callSuper()
+        }
+
         if (navModeController.isNavModeKey(keyCode)) {
             return navModeController.handleNavModeKey(
                 keyCode,

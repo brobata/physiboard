@@ -2,10 +2,15 @@ package it.palsoftware.pastiera.core.suggestions
 
 import android.content.Context
 import android.content.res.AssetManager
+import android.os.Handler
+import android.os.Looper
 import android.view.KeyEvent
 import android.view.inputmethod.InputConnection
 import android.util.Log
 import java.util.concurrent.atomic.AtomicReference
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class SuggestionController(
     context: Context,
@@ -32,39 +37,25 @@ class SuggestionController(
     )
     private val autoReplaceController = AutoReplaceController(dictionaryRepository, suggestionEngine, settingsProvider)
     private val latestSuggestions: AtomicReference<List<SuggestionResult>> = AtomicReference(emptyList())
+    private val loadScope = CoroutineScope(Dispatchers.Default)
+    private val cursorHandler = Handler(Looper.getMainLooper())
+    private var cursorRunnable: Runnable? = null
+    private val cursorDebounceMs = 120L
 
     var suggestionsListener: ((List<SuggestionResult>) -> Unit)? = onSuggestionsUpdated
 
     fun onCharacterCommitted(text: CharSequence, inputConnection: InputConnection?) {
         if (!isEnabled()) return
         if (debugLogging) Log.d("PastieraIME", "SuggestionController.onCharacterCommitted('$text')")
-        if (inputConnection != null) {
-            rebuildFromContext(inputConnection, fallback = { tracker.reset() })
-        } else {
-            tracker.onCharacterCommitted(text)
-        }
+        ensureDictionaryLoaded()
+        tracker.onCharacterCommitted(text)
         updateSuggestions()
     }
 
-    /**
-     * Rebuild the current word from the text field (used on backspace or cursor edits).
-     */
     fun refreshFromInputConnection(inputConnection: InputConnection?) {
         if (!isEnabled()) return
-        rebuildFromContext(inputConnection, fallback = { tracker.reset() })
+        tracker.onBackspace()
         updateSuggestions()
-    }
-
-    private fun rebuildFromContext(
-        inputConnection: InputConnection?,
-        fallback: () -> Unit
-    ) {
-        val contextWord = extractPrefixBeforeCursor(inputConnection)
-        if (!contextWord.isNullOrBlank()) {
-            tracker.setWord(contextWord)
-        } else {
-            fallback()
-        }
     }
 
     private fun updateSuggestions() {
@@ -91,6 +82,7 @@ class SuggestionController(
                 "SuggestionController.onBoundaryKey keyCode=$keyCode char=${event?.unicodeChar}"
             )
         }
+        ensureDictionaryLoaded()
         val result = autoReplaceController.handleBoundary(keyCode, event, tracker, inputConnection)
         if (result.replaced) {
             dictionaryRepository.refreshUserEntries()
@@ -101,8 +93,29 @@ class SuggestionController(
 
     fun onCursorMoved(inputConnection: InputConnection?) {
         if (!isEnabled()) return
-        rebuildFromContext(inputConnection, fallback = { tracker.reset() })
-        updateSuggestions()
+        ensureDictionaryLoaded()
+        cursorRunnable?.let { cursorHandler.removeCallbacks(it) }
+        if (inputConnection == null) {
+            tracker.reset()
+            suggestionsListener?.invoke(emptyList())
+            return
+        }
+        cursorRunnable = Runnable {
+            if (!dictionaryRepository.isReady) {
+                tracker.reset()
+                suggestionsListener?.invoke(emptyList())
+                return@Runnable
+            }
+            val word = extractWordAtCursor(inputConnection)
+            if (!word.isNullOrBlank()) {
+                tracker.setWord(word)
+                updateSuggestions()
+            } else {
+                tracker.reset()
+                suggestionsListener?.invoke(emptyList())
+            }
+        }
+        cursorHandler.postDelayed(cursorRunnable!!, cursorDebounceMs)
     }
 
     fun onContextReset() {
@@ -135,20 +148,34 @@ class SuggestionController(
 
     fun userDictionarySnapshot(): List<UserDictionaryStore.UserEntry> = userDictionaryStore.getSnapshot()
 
-    private fun extractPrefixBeforeCursor(inputConnection: InputConnection?): String? {
+    private fun extractWordAtCursor(inputConnection: InputConnection?): String? {
         if (inputConnection == null) return null
         return try {
-            val before = inputConnection.getTextBeforeCursor(64, 0)?.toString() ?: ""
+            val before = inputConnection.getTextBeforeCursor(12, 0)?.toString() ?: ""
+            val after = inputConnection.getTextAfterCursor(12, 0)?.toString() ?: ""
             val boundary = " \t\n\r.,;:!?()[]{}\"'"
             var start = before.length
             while (start > 0 && !boundary.contains(before[start - 1])) {
                 start--
             }
-            val word = before.substring(start)
+            var end = 0
+            while (end < after.length && !boundary.contains(after[end])) {
+                end++
+            }
+            val word = before.substring(start) + after.substring(0, end)
             if (word.isBlank()) null else word
-        } catch (e: Exception) {
-            Log.d("PastieraIME", "extractPrefixBeforeCursor failed: ${e.message}")
+        } catch (_: Exception) {
             null
+        }
+    }
+
+    private fun ensureDictionaryLoaded() {
+        if (!dictionaryRepository.isReady) {
+            dictionaryRepository.ensureLoadScheduled {
+                loadScope.launch {
+                    dictionaryRepository.loadIfNeeded()
+                }
+            }
         }
     }
 }

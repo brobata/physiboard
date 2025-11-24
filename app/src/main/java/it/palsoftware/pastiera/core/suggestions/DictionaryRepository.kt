@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.res.AssetManager
 import org.json.JSONArray
 import android.util.Log
+import android.os.Looper
 import java.text.Normalizer
 import java.util.Locale
 
@@ -15,28 +16,38 @@ class DictionaryRepository(
     private val assets: AssetManager,
     private val userDictionaryStore: UserDictionaryStore,
     private val baseLocale: Locale = Locale.ITALIAN,
-    private val cachePrefixLength: Int = 3,
+    private val cachePrefixLength: Int = 4,
     debugLogging: Boolean = false
 ) {
 
     private val prefixCache: MutableMap<String, MutableList<DictionaryEntry>> = mutableMapOf()
     private val normalizedIndex: MutableMap<String, MutableList<DictionaryEntry>> = mutableMapOf()
-    private var loaded = false
+    @Volatile var isReady: Boolean = false
+        private set
+    @Volatile private var loadStarted: Boolean = false
     private val tag = "DictionaryRepo"
     private val debugLogging: Boolean = debugLogging
 
     fun loadIfNeeded() {
-        if (loaded) return
+        if (isReady) return
+        // Must not run on main thread
+        if (Looper.myLooper() == Looper.getMainLooper()) return
         synchronized(this) {
-            if (loaded) return
+            if (isReady || loadStarted) return
+            loadStarted = true
             val mainEntries = loadFromAssets("common/dictionaries/${baseLocale.language}_base.json")
             val userEntries = userDictionaryStore.loadUserEntries(context)
             if (debugLogging) {
                 Log.d(tag, "loadIfNeeded main=${mainEntries.size} user=${userEntries.size}")
             }
             index(mainEntries + userEntries)
-            loaded = true
+            isReady = true
         }
+    }
+
+    fun ensureLoadScheduled(background: () -> Unit) {
+        if (isReady || loadStarted) return
+        background()
     }
 
     fun refreshUserEntries() {
@@ -59,14 +70,13 @@ class DictionaryRepository(
     }
 
     fun isKnownWord(word: String): Boolean {
-        loadIfNeeded()
+        if (!isReady) return false
         val normalized = normalize(word)
         return normalizedIndex[normalized]?.isNotEmpty() == true
     }
 
     fun lookupByPrefix(prefix: String): List<DictionaryEntry> {
-        loadIfNeeded()
-        if (prefix.isBlank()) return emptyList()
+        if (!isReady || prefix.isBlank()) return emptyList()
         val normalizedPrefix = normalize(prefix)
         val maxPrefixLength = normalizedPrefix.length.coerceAtMost(cachePrefixLength)
 
@@ -80,7 +90,7 @@ class DictionaryRepository(
     }
 
     fun allCandidates(): List<DictionaryEntry> {
-        loadIfNeeded()
+        if (!isReady) return emptyList()
         return normalizedIndex.values.flatten()
     }
 
