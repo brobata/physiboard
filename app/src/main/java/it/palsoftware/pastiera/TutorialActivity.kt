@@ -350,6 +350,7 @@ fun TutorialScreen(
 private val TutorialIconAreaHeight = 110.dp
 private val TutorialIconSurfaceSize = 96.dp
 private val TutorialIconSize = 44.dp
+private val TutorialWelcomeImageSize = 240.dp
 
 @Composable
 private fun TutorialPageLayout(
@@ -430,21 +431,51 @@ fun TutorialWelcomePageContent(
     page: TutorialPageType.Welcome,
     modifier: Modifier = Modifier
 ) {
-    TutorialPageLayout(
-        title = page.title,
-        description = page.description,
-        modifier = modifier,
-        iconContent = {
+    val scrollState = rememberScrollState()
+    
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(scrollState)
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(260.dp),
+            contentAlignment = Alignment.Center
+        ) {
             Image(
                 painter = painterResource(id = page.imageRes),
                 contentDescription = null,
                 modifier = Modifier
-                    .size(TutorialIconSurfaceSize)
+                    .size(TutorialWelcomeImageSize)
                     .clip(RoundedCornerShape(28.dp)),
                 contentScale = ContentScale.Crop
             )
         }
-    )
+        
+        Spacer(modifier = Modifier.height(1.dp))
+        
+        Text(
+            text = page.title,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Text(
+            text = page.description,
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.15f
+        )
+    }
 }
 
 @Composable
