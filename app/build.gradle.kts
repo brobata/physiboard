@@ -8,9 +8,22 @@ import java.util.Properties
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import org.gradle.api.GradleException
 
 // File per salvare il build number incrementale
 val buildPropertiesFile = file("build.properties")
+
+// Config di firma letta da keystore.properties (non tracciato) o da env vars
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) {
+        keystorePropertiesFile.inputStream().use { load(it) }
+    }
+}
+
+fun signingProp(key: String, env: String): String? =
+    keystoreProperties.getProperty(key)?.takeIf { it.isNotBlank() }
+        ?: System.getenv(env)?.takeIf { it.isNotBlank() }
 
 // Task per incrementare il build number
 tasks.register("incrementBuildNumber") {
@@ -74,10 +87,23 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file("../pastiera-release-key.jks")
-            storePassword = "pastiera123"
-            keyAlias = "pastiera"
-            keyPassword = "pastiera123"
+            val storePath = signingProp("storeFile", "PASTIERA_KEYSTORE_PATH")
+            val storePass = signingProp("storePassword", "PASTIERA_KEYSTORE_PASSWORD")
+            val alias = signingProp("keyAlias", "PASTIERA_KEY_ALIAS")
+            val keyPass = signingProp("keyPassword", "PASTIERA_KEY_PASSWORD")
+
+            if (storePath == null || storePass == null || alias == null || keyPass == null) {
+                throw GradleException(
+                    "Missing signing config. Define storeFile, storePassword, keyAlias e keyPassword in " +
+                        "keystore.properties (non tracciato) o nelle variabili d'ambiente PASTIERA_KEYSTORE_PATH, " +
+                        "PASTIERA_KEYSTORE_PASSWORD, PASTIERA_KEY_ALIAS, PASTIERA_KEY_PASSWORD."
+                )
+            }
+
+            storeFile = file(storePath)
+            storePassword = storePass
+            keyAlias = alias
+            keyPassword = keyPass
         }
     }
 
