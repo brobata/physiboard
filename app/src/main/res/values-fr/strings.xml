@@ -352,8 +352,9 @@
     <string name="restore_failed">Échec de la restauration : %1$s</string>
     
     <!-- Swipe Incremental Threshold -->
-    <string name="swipe_incremental_threshold_description">Distance requise pour d&amp;eacute;placer le curseur d\'une position. Des valeurs plus basses font bouger le curseur plus rapidement.</string>
-    <string name="swipe_to_move_cursor">Balayez pour d&amp;eacute;placer le curseur</string>
+    <string name="swipe_incremental_threshold_description">Distance requise pour     <string name="swipe_to_move_cursor">Balayez pour déplacer le curseur</string>
+ le curseur d\'une position. Des valeurs plus basses font bouger le curseur plus rapidement.</string>
+    <string name="swipe_to_move_cursor">Balayez pour déplacer le curseur</string>
     <string name="dip_unit">DIP</string>
 </resources>
 
