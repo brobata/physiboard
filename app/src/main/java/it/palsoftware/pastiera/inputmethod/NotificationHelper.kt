@@ -13,6 +13,7 @@ import android.graphics.Paint
 import android.graphics.Typeface
 import android.net.Uri
 import android.os.Build
+import android.os.DeadSystemException
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -56,11 +57,11 @@ object NotificationHelper {
      * @param durationMs Duration of the vibration in milliseconds (default: 30ms)
      */
     fun triggerHapticFeedback(context: Context, durationMs: Long = 30) {
-        if (tryModernHapticFeedback(context)) {
-            return
-        }
-        
         try {
+            if (tryModernHapticFeedback(context)) {
+                return
+            }
+
             val vibrator: Vibrator? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 val vm = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
                 vm?.defaultVibrator
@@ -80,6 +81,8 @@ object NotificationHelper {
                 @Suppress("DEPRECATION")
                 vibrator.vibrate(durationMs)
             }
+        } catch (e: DeadSystemException) {
+            android.util.Log.w("NotificationHelper", "Haptic skipped: system is dead", e)
         } catch (e: Exception) {
             android.util.Log.w("NotificationHelper", "Unable to trigger haptic feedback", e)
         }

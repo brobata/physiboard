@@ -1,6 +1,7 @@
 package it.palsoftware.pastiera
 
 import android.content.Intent
+import android.content.SharedPreferences
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -41,6 +42,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -58,6 +60,7 @@ import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.backup.BackupManager
 import it.palsoftware.pastiera.backup.RestoreManager
 import androidx.compose.material3.Surface
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -74,6 +77,7 @@ fun AdvancedSettingsScreen(
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val prefs = remember { SettingsManager.getPreferences(context) }
     
     var launcherShortcutsEnabled by remember { 
         mutableStateOf(SettingsManager.getLauncherShortcutsEnabled(context))
@@ -91,6 +95,27 @@ fun AdvancedSettingsScreen(
     }
     val currentDestination by remember {
         derivedStateOf { navigationStack.last() }
+    }
+    
+    // Listen to SharedPreferences changes to update UI when values are restored
+    DisposableEffect(prefs) {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            when (key) {
+                "launcher_shortcuts_enabled" -> {
+                    launcherShortcutsEnabled = SettingsManager.getLauncherShortcutsEnabled(context)
+                }
+                "power_shortcuts_enabled" -> {
+                    powerShortcutsEnabled = SettingsManager.getPowerShortcutsEnabled(context)
+                }
+                "swipe_incremental_threshold" -> {
+                    swipeIncrementalThreshold = SettingsManager.getSwipeIncrementalThreshold(context)
+                }
+            }
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        onDispose {
+            prefs.unregisterOnSharedPreferenceChangeListener(listener)
+        }
     }
     
     fun navigateTo(destination: AdvancedDestination) {
@@ -144,6 +169,14 @@ fun AdvancedSettingsScreen(
                         context.getString(R.string.restore_failed, result.reason)
                 }
                 snackbarHostState.showSnackbar(message)
+                
+                // Wait a bit for SharedPreferences to be written (apply() is asynchronous)
+                kotlinx.coroutines.delay(100)
+                
+                // Explicitly reload values after restore to ensure UI is updated
+                launcherShortcutsEnabled = SettingsManager.getLauncherShortcutsEnabled(context)
+                powerShortcutsEnabled = SettingsManager.getPowerShortcutsEnabled(context)
+                swipeIncrementalThreshold = SettingsManager.getSwipeIncrementalThreshold(context)
             }
         }
     }
@@ -475,7 +508,7 @@ fun AdvancedSettingsScreen(
                                     valueRange = SettingsManager.getMinSwipeIncrementalThreshold()..SettingsManager.getMaxSwipeIncrementalThreshold(),
                                     steps = 16,
                                     modifier = Modifier
-                                        .weight(1.5f)
+                                        .weight(1.0f)
                                         .height(24.dp)
                                 )
                             }

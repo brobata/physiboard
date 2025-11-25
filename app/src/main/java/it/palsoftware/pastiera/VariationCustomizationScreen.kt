@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -183,15 +184,12 @@ fun VariationCustomizationScreen(
                 }
             }
             
-            HorizontalDivider()
-            
-            val staticRowLabel = stringResource(R.string.static_variation_bar_mode_title)
-            
             // Static variations row
             VariationRow(
-                letter = staticRowLabel,
+                letter = "S",
                 variations = staticVariations,
                 labelWidth = 64.dp,
+                labelColor = Color.Transparent,
                 onBoxClick = { index ->
                     staticInputIndex = index
                     staticInputValue = limitInputToSingleCodePoint(staticVariations.getOrNull(index) ?: "")
@@ -393,7 +391,8 @@ private fun VariationRow(
     variations: List<String>,
     onBoxClick: (Int) -> Unit,
     onReorder: (fromIndex: Int, toIndex: Int) -> Unit,
-    labelWidth: Dp = 40.dp
+    labelWidth: Dp = 40.dp,
+    labelColor: androidx.compose.ui.graphics.Color? = null
 ) {
     val density = LocalDensity.current
     val boxSize = 48.dp
@@ -452,7 +451,8 @@ private fun VariationRow(
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.width(labelWidth),
                 textAlign = TextAlign.Center,
-                maxLines = 2
+                maxLines = 2,
+                color = labelColor ?: MaterialTheme.colorScheme.onSurface
             )
             
             // 7 variation boxes

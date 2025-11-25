@@ -619,11 +619,12 @@ class InputEventRouter(
         )
 
         if (
-            autoCorrectionManager.handleSpaceOrPunctuation(
+            autoCorrectionManager.handleBoundaryKey(
                 keyCode,
                 event,
                 inputConnection,
                 isAutoCorrectEnabled,
+                commitBoundary = true,
                 onStatusBarUpdate = updateStatusBar
             )
         ) {

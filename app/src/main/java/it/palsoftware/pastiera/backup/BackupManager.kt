@@ -167,7 +167,9 @@ object PreferencesBackupHelper {
                 }
                 applied.add("$prefName:$key")
             }
-            editor.apply()
+            // Use commit() instead of apply() to ensure values are written synchronously
+            // This ensures listeners are called immediately and UI updates work correctly
+            editor.commit()
         }
 
         return PreferencesRestoreSummary(appliedKeys = applied, skippedKeys = skipped)

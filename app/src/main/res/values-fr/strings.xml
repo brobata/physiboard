@@ -193,6 +193,8 @@
     <string name="notification_nav_mode_activated_text">Mode nav activé</string>
     
     <!-- Speech Recognition -->
+    <string name="alt_ctrl_speech_shortcut_title">Saisie vocale</string>
+    <string name="alt_ctrl_speech_shortcut_description">Activer le raccourci clavier Alt+Ctrl pour lancer la saisie vocale</string>
     <string name="speech_recognition_prompt">Parlez maintenant…</string>
     
     <!-- Auto Correct Edit Screen -->
@@ -267,6 +269,7 @@
     <string name="settings_category_advanced">Avancé</string>
     
     <!-- Keyboard Layout Settings -->
+    <string name="keyboard_layout_title">Disposition du clavier</string>
     <string name="layout_save_content_description">Enregistrer le layout</string>
     <string name="layout_import_content_description">Importer le layout</string>
     <string name="layout_imported_successfully">Layout importé avec succès</string>
@@ -352,8 +355,8 @@
     <string name="restore_failed">Échec de la restauration : %1$s</string>
     
     <!-- Swipe Incremental Threshold -->
-    <string name="swipe_incremental_threshold_description">Distance requise pour     <string name="swipe_to_move_cursor">Balayez pour déplacer le curseur</string>
- le curseur d\'une position. Des valeurs plus basses font bouger le curseur plus rapidement.</string>
+    <string name="swipe_incremental_threshold_title">Sensibilité du glissement</string>
+    <string name="swipe_incremental_threshold_description">Distance requise pour le curseur d\'une position. Des valeurs plus basses font bouger le curseur plus rapidement.</string>
     <string name="swipe_to_move_cursor">Balayez pour déplacer le curseur</string>
     <string name="dip_unit">DIP</string>
 </resources>

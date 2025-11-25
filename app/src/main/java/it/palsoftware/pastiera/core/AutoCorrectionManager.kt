@@ -70,41 +70,67 @@ class AutoCorrectionManager(
         return true
     }
 
-    fun handleSpaceOrPunctuation(
+    fun handleBoundaryKey(
         keyCode: Int,
         event: KeyEvent?,
         inputConnection: InputConnection?,
         isAutoCorrectEnabled: Boolean,
-        onStatusBarUpdate: () -> Unit
+        commitBoundary: Boolean,
+        onStatusBarUpdate: () -> Unit,
+        boundaryCharOverride: Char? = null
     ): Boolean {
         if (!isAutoCorrectEnabled || inputConnection == null) {
             return false
         }
 
-        val isSpace = keyCode == KeyEvent.KEYCODE_SPACE
-        val isPunctuation = event?.unicodeChar != null &&
-            event.unicodeChar != 0 &&
-            event.unicodeChar.toChar() in ".,;:!?()[]{}\"'"
+        val isSpaceKey = keyCode == KeyEvent.KEYCODE_SPACE
+        val isEnterKey = keyCode == KeyEvent.KEYCODE_ENTER
+        val punctuationChar = if (event?.unicodeChar != null && event.unicodeChar != 0) {
+            event.unicodeChar.toChar()
+        } else null
 
-        if (!isSpace && !isPunctuation) {
+        val boundaryChar: Char? = boundaryCharOverride ?: when {
+            isSpaceKey -> ' '
+            isEnterKey -> '\n'
+            punctuationChar != null && punctuationChar in ".,;:!?()[]{}\"'" -> punctuationChar
+            else -> null
+        }
+
+        if (boundaryChar == null) {
             return false
         }
+
+        val punctuationChars = ".,;:!?()[]{}\"'"
+        val isSpaceBoundary = boundaryChar == ' '
+        val isEnterBoundary = boundaryChar == '\n'
+        val isPunctuationBoundary = boundaryChar in punctuationChars
+
+        inputConnection.finishComposingText()
 
         val textBeforeCursor = inputConnection.getTextBeforeCursor(100, 0)
         val correction = AutoCorrector.processText(textBeforeCursor, context = context) ?: return false
 
         val (wordToReplace, correctedWord) = correction
-        inputConnection.deleteSurroundingText(wordToReplace.length, 0)
+        val boundaryAtEnd = textBeforeCursor?.lastOrNull() == boundaryChar
+        var deleteCount = wordToReplace.length
+        if (commitBoundary && boundaryAtEnd) {
+            deleteCount += 1
+        }
+
+        inputConnection.deleteSurroundingText(deleteCount, 0)
         inputConnection.commitText(correctedWord, 1)
         AutoCorrector.recordCorrection(wordToReplace, correctedWord)
         
         // Trigger haptic feedback when autocorrection occurs
         NotificationHelper.triggerHapticFeedback(context)
 
-        when {
-            isSpace -> inputConnection.commitText(" ", 1)
-            isPunctuation && event?.unicodeChar != null && event.unicodeChar != 0 -> {
-                inputConnection.commitText(event.unicodeChar.toChar().toString(), 1)
+        if (commitBoundary) {
+            when {
+                isSpaceBoundary -> inputConnection.commitText(" ", 1)
+                isEnterBoundary -> inputConnection.commitText("\n", 1)
+                isPunctuationBoundary -> {
+                    inputConnection.commitText(boundaryChar.toString(), 1)
+                }
             }
         }
 
@@ -130,4 +156,3 @@ class AutoCorrectionManager(
         }
     }
 }
-

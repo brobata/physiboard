@@ -219,6 +219,96 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         )
     }
 
+    private fun clearAltOnBoundaryIfNeeded(keyCode: Int, updateStatusBar: () -> Unit) {
+        if (!clearAltOnSpaceEnabled) return
+        val isBoundary = keyCode == KeyEvent.KEYCODE_SPACE || keyCode == KeyEvent.KEYCODE_ENTER
+        if (!isBoundary) return
+        val hasAlt = altLatchActive || altOneShot
+        if (!hasAlt) return
+        modifierStateController.clearAltState()
+        updateStatusBar()
+    }
+
+    /**
+     * Resolves a meaningful editor action for Enter. Returns null for multiline/unspecified fields
+     * or when actions are explicitly disabled.
+     */
+    private fun resolveEditorAction(info: EditorInfo?): Int? {
+        if (info == null) return null
+        val imeOptions = info.imeOptions
+        if (imeOptions and EditorInfo.IME_FLAG_NO_ENTER_ACTION != 0) {
+            return null
+        }
+
+        val action = when {
+            info.actionId != 0 -> info.actionId
+            else -> imeOptions and EditorInfo.IME_MASK_ACTION
+        }
+
+        return when (action) {
+            EditorInfo.IME_ACTION_GO,
+            EditorInfo.IME_ACTION_SEARCH,
+            EditorInfo.IME_ACTION_SEND,
+            EditorInfo.IME_ACTION_NEXT,
+            EditorInfo.IME_ACTION_DONE,
+            EditorInfo.IME_ACTION_PREVIOUS -> action
+            else -> null
+        }
+    }
+
+    /**
+     * Executes the field's editor action on Enter (e.g., Search/Go/Done) instead of inserting
+     * whitespace. Nav mode keeps its own Enter remapping, so we skip it here.
+     */
+    private fun handleEnterAsEditorAction(
+        keyCode: Int,
+        info: EditorInfo?,
+        inputConnection: InputConnection?,
+        event: KeyEvent?,
+        isAutoCorrectEnabled: Boolean
+    ): Boolean {
+        if (keyCode != KeyEvent.KEYCODE_ENTER || navModeController.isNavModeActive()) {
+            return false
+        }
+
+        val isMultiline = info?.inputType?.let {
+            it and android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE != 0
+        } ?: false
+        if (isMultiline) {
+            return false
+        }
+
+        val actionId = resolveEditorAction(info) ?: return false
+        val ic = inputConnection ?: return false
+
+        ic.finishComposingText()
+        autoCorrectionManager.handleBoundaryKey(
+            keyCode = keyCode,
+            event = event,
+            inputConnection = ic,
+            isAutoCorrectEnabled = isAutoCorrectEnabled,
+            commitBoundary = false,
+            onStatusBarUpdate = { updateStatusBarText() }
+        )
+        textInputController.handleAutoCapAfterEnter(
+            keyCode,
+            ic,
+            shouldDisableSmartFeatures
+        ) { updateStatusBarText() }
+        val performed = ic.performEditorAction(actionId)
+        if (performed) {
+            suggestionController.onContextReset()
+            KeyboardEventTracker.notifyKeyEvent(
+                keyCode,
+                event,
+                "KEY_DOWN",
+                outputKeyCode = null,
+                outputKeyCodeName = "editor_action_$actionId"
+            )
+        }
+        return performed
+    }
+
     private fun handleSuggestionsUpdated(suggestions: List<SuggestionResult>) {
         latestSuggestions = suggestions.map { it.candidate }
         uiHandler.post { updateStatusBarText() }
@@ -558,6 +648,19 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // Variations are updated automatically by updateStatusBarText().
         altSymManager.onAltCharInserted = { char ->
             updateStatusBarText()
+            if (char in ".,;:!?()[]{}\"'") {
+                val ic = currentInputConnection
+                val isAutoCorrectEnabled = SettingsManager.getAutoCorrectEnabled(this) && !shouldDisableSmartFeatures
+                autoCorrectionManager.handleBoundaryKey(
+                    keyCode = KeyEvent.KEYCODE_UNKNOWN,
+                    event = null,
+                    inputConnection = ic,
+                    isAutoCorrectEnabled = isAutoCorrectEnabled,
+                    commitBoundary = true,
+                    onStatusBarUpdate = { updateStatusBarText() },
+                    boundaryCharOverride = char
+                )
+            }
         }
         symLayoutController = SymLayoutController(this, prefs, altSymManager)
         keyboardVisibilityController = KeyboardVisibilityController(
@@ -1121,6 +1224,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
         
         val ic = currentInputConnection
+        val isAutoCorrectEnabled = SettingsManager.getAutoCorrectEnabled(this) && !shouldDisableSmartFeatures
+
+        clearAltOnBoundaryIfNeeded(keyCode) { updateStatusBarText() }
+
+        if (handleEnterAsEditorAction(keyCode, info, ic, event, isAutoCorrectEnabled)) {
+            return true
+        }
         
         // Continue with normal IME logic
         KeyboardEventTracker.notifyKeyEvent(keyCode, event, "KEY_DOWN")
@@ -1128,7 +1238,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             ensureInputViewCreated()
         }
         
-        val isAutoCorrectEnabled = SettingsManager.getAutoCorrectEnabled(this) && !shouldDisableSmartFeatures
         if (
             inputEventRouter.handleTextInputPipeline(
                 keyCode = keyCode,
