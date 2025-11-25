@@ -15,6 +15,7 @@
     
     <!-- Long Press Section -->
     <string name="long_press_title">Long Press</string>
+    <string name="keyboard_timing_long_press_value">%1$dms</string>
     <string name="long_press_duration">Durata Long Press: %1$dms</string>
     <string name="long_press_description">Tempo di attesa prima che un long press venga riconosciuto. Un valore più basso rende il long press più reattivo, mentre un valore più alto richiede una pressione più prolungata.</string>
     <string name="setting_applied_immediately">Impostazione applicata immediatamente</string>
@@ -36,6 +37,7 @@
     
     <!-- Swipe Incremental Threshold Section -->
     <string name="swipe_incremental_threshold_title">Sensibilità Swipe Bar</string>
+    <string name="swipe_to_move_cursor">Swipe per spostare il cursore</string>
     
     <!-- Auto Show Keyboard Section -->
     <string name="auto_show_keyboard_title">Mostra Automaticamente la Tastiera</string>
@@ -165,6 +167,8 @@
     <!-- Keyboard Layout Section -->
     <string name="keyboard_layout_title">Layout Tastiera</string>
     <string name="keyboard_layout_description">Seleziona il layout della tastiera. Le mappature ALT, SYM e Ctrl rimangono basate sulla posizione fisica del tasto. Cambia la mappatura rapidamente con CTRL+SPACE.</string>
+    <string name="keyboard_layout_editor_title">Keyboard Layout Editor</string>
+    <string name="keyboard_layout_multitap_badge">multitap</string>
     <string name="keyboard_layout_no_conversion">Standard</string>
     <string name="keyboard_layout_no_conversion_description">Layout QWERTY standard (nessuna conversione)</string>
     <string name="keyboard_layout_conversions_title">Conversioni Layout</string>
@@ -173,7 +177,7 @@
     
     <!-- About Section -->
     <string name="about_github">GitHub</string>
-    <string name="about_build_info">Build</string>
+    <string name="about_build_info">Pastiera IME - Palsoftware 2025</string>
     <string name="about_title">Informazioni</string>
     
     <!-- Launcher Shortcuts Section -->
@@ -195,6 +199,7 @@
     <!-- Launcher Shortcut Assignment Activity -->
     <string name="launcher_shortcut_assignment_title">Assegna app al tasto</string>
     <string name="launcher_shortcut_assignment_key">Tasto %1$s</string>
+    <string name="launcher_shortcut_assignment_header">Shortcut</string>
     <string name="launcher_shortcut_assignment_search_placeholder">Cerca app...</string>
     <string name="launcher_shortcut_assignment_search_description">Cerca</string>
     <string name="launcher_shortcut_assignment_close">Chiudi</string>
@@ -238,6 +243,7 @@
     <string name="nav_mode_key_mappings">Mappature Tasti</string>
     <string name="nav_mode_revert_to_default">Ripristina Predefiniti</string>
     <string name="nav_mode_note">Nota: Modificare i tasti del nav mode influisce anche sulle combinazioni Ctrl+tasto nei campi di testo.</string>
+    <string name="nav_mode_warning_icon">⚠</string>
     <string name="nav_mode_configure_key">Configura %1$s</string>
     <string name="nav_mode_type">Tipo</string>
     <string name="nav_mode_keycode">Keycode</string>

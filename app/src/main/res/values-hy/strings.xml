@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Pastiera</string>
-    <string name="input_method_name">Pasteria Ֆիզիկական Ստեղնաշար</string>
+    <string name="input_method_name">Pastiera</string>
     <string name="back">Հետ</string>
     <string name="settings_back_content_description">Հետ</string>
     <string name="long_press_title">Երկար սեղմում</string>
@@ -19,6 +19,7 @@
     <string name="swipe_to_delete_title">Միացնել Սվայփով Ջնջումը</string>
     <string name="swipe_incremental_threshold_title">Սվայփի զգայունությունը</string>
     <string name="swipe_incremental_threshold_description">Հեռավորությունը՝ կուրսորը մեկ դիրքով տեղափոխելու համար։ Ավելի փոքր արժեքները արագացնում են կուրսորը։</string>
+    <string name="swipe_to_move_cursor">Սվայփ՝ կուրսորը տեղափոխելու համար</string>
     <string name="auto_show_keyboard_title">Ավտոմատ ցույց տալ ստեղնաշարը</string>
     <string name="alt_ctrl_speech_shortcut_title">Խոսքի ճանաչում Alt+Ctrl-ով</string>
     <string name="alt_ctrl_speech_shortcut_description">Միացնում է խոսքի ճանաչումը Alt+Ctrl-ով</string>
@@ -28,13 +29,13 @@
     <string name="settings_content_description">Կարգավորումներ</string>
     <string name="installation_title">Տեղակայում</string>
     <string name="installation_step1">1. Սեղմեք ներքևի կոճակը՝ կարգավորումները բացելու համար</string>
-    <string name="installation_step2">2. Միացրեք "Pasteria Physical Keyboard"-ը</string>
+    <string name="installation_step2">2. Միացրեք "Pastiera Physical Keyboard"-ը</string>
     <string name="installation_step3">3. Ներդարձեք այստեղ և փորձարկեք ստեղնաշարը</string>
     <string name="open_keyboard_settings">Բացել ստեղնաշարի կարգավորումները</string>
-    <string name="enable_pastiera">Միացնել Pasteria-ն</string>
-    <string name="pastiera_not_enabled">Pasteria-ը միացված չէ</string>
+    <string name="enable_pastiera">Միացնել Pastiera-ն</string>
+    <string name="pastiera_not_enabled">Pastiera-ը միացված չէ</string>
     <string name="choose_input_method">Ընտրեք մուտքագրման մեթոդը</string>
-    <string name="pastiera_not_selected">Pasteria-ը ընտրված չէ</string>
+    <string name="pastiera_not_selected">Pastiera-ը ընտրված չէ</string>
     <string name="test_keyboard_title">Ստեղնաշարի թեստ</string>
     <string name="test_keyboard_description">Միացրեք ֆիզիկական ստեղնաշար և փորձարկեք ստորև.</string>
     <string name="test_keyboard_normal">• Սովորական սեղմում՝ մուտքագրում է սիմվոլ</string>
@@ -150,10 +151,10 @@
     <string name="notification_nav_mode_channel_description">Նավիգացիայի ռեժիմի ծանուցումներ</string>
     <string name="notification_nav_mode_activated_title">Նավիգացիայի ռեժիմը միացված է</string>
     <string name="notification_nav_mode_activated_text">Նավիգացիայի ռեժիմը միացված է</string>
-    <string name="notification_update_channel_name">Pasteria-ի թարմացումներ</string>
-    <string name="notification_update_channel_description">Pasteria-ի նոր տարբերակների մասին ծանուցումներ</string>
-    <string name="notification_update_available_title">Pasteria — Առկա է թարմացում</string>
-    <string name="notification_update_available_text">Առկա է Pasteria-ի նոր տարբերակը (%1$s)</string>
+    <string name="notification_update_channel_name">Pastiera-ի թարմացումներ</string>
+    <string name="notification_update_channel_description">Pastiera-ի նոր տարբերակների մասին ծանուցումներ</string>
+    <string name="notification_update_available_title">Pastiera — Առկա է թարմացում</string>
+    <string name="notification_update_available_text">Առկա է Pastiera-ի նոր տարբերակը (%1$s)</string>
     <string name="speech_recognition_prompt">Խոսեք…</string>
     <string name="auto_correct_search_placeholder">Փնտրել ուղղումները...</string>
     <string name="auto_correct_search_description">Փնտրել</string>

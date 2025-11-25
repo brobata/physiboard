@@ -294,7 +294,7 @@ fun KeyboardLayoutSettingsScreen(
                         )
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Keyboard Layout Editor",
+                                text = stringResource(R.string.keyboard_layout_editor_title),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Medium,
                                 maxLines = 1
@@ -443,7 +443,7 @@ fun KeyboardLayoutSettingsScreen(
                                                 modifier = Modifier.height(18.dp)
                                             ) {
                                                 Text(
-                                                    text = "multitap",
+                                                    text = stringResource(R.string.keyboard_layout_multitap_badge),
                                                     style = MaterialTheme.typography.labelSmall,
                                                     color = MaterialTheme.colorScheme.onSecondaryContainer,
                                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)

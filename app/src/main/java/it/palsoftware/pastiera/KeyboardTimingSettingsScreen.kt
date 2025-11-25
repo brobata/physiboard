@@ -123,7 +123,10 @@ fun KeyboardTimingSettingsScreen(
                             maxLines = 1
                         )
                         Text(
-                            text = "${longPressThreshold}ms",
+                            text = stringResource(
+                                R.string.keyboard_timing_long_press_value,
+                                longPressThreshold
+                            ),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1

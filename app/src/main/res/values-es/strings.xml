@@ -1,6 +1,6 @@
 ﻿<resources>
     <string name="app_name">Pastiera</string>
-    <string name="input_method_name">Pastiera Physical Keyboard</string>
+    <string name="input_method_name">Pastiera</string>
     <string name="input_method_name_en">English</string>
     <string name="input_method_name_it">Italiano</string>
     <string name="input_method_name_fr">Français</string>
@@ -157,7 +157,7 @@
     
     <!-- About Section -->
     <string name="about_github">GitHub</string>
-    <string name="about_build_info">Build</string>
+    <string name="about_build_info">Pastiera IME - Palsoftware 2025</string>
     <string name="about_title">Acerca de</string>
     
     <!-- Launcher Shortcuts Section -->
@@ -353,7 +353,6 @@
     
     <!-- Swipe Incremental Threshold -->
     <string name="swipe_incremental_threshold_description">Distancia requerida para mover el cursor una posición. Valores más bajos hacen que el cursor se mueva más rápido.</string>
+    <string name="swipe_to_move_cursor">Desliza para mover el cursor</string>
     <string name="dip_unit">DIP</string>
 </resources>
-
-

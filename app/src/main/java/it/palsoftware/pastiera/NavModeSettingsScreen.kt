@@ -237,7 +237,7 @@ fun NavModeSettingsScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Text(
-                                text = "⚠",
+                                text = stringResource(R.string.nav_mode_warning_icon),
                                 fontSize = 20.sp
                             )
                             Column(modifier = Modifier.weight(1f)) {

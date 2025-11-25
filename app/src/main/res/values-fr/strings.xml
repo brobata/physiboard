@@ -1,6 +1,6 @@
 ﻿<resources>
     <string name="app_name">Pastiera</string>
-    <string name="input_method_name">Pastiera Physical Keyboard</string>
+    <string name="input_method_name">Pastiera</string>
     <string name="input_method_name_en">English</string>
     <string name="input_method_name_it">Italiano</string>
     <string name="input_method_name_fr">Français</string>
@@ -73,9 +73,9 @@
     
     <!-- Long Press Mappings Section -->
     <string name="long_press_mappings_title">Mappages d\'Appui Long</string>
-    <string name="long_press_mappings_line1">Q→0, W→1, E→2, R→3, T→(, Y→), U→-, I→_, O→\', P→:</string>
-    <string name="long_press_mappings_line2">A→@, S→4, D→5, F→6, G→*, H→#, J→+, K→\", L→\'</string>
-    <string name="long_press_mappings_line3">Z→!, X→7, C→8, V→9, B→., N→\', M→?</string>
+    <string name="long_press_mappings_line1">Q?0, W?1, E?2, R?3, T?(, Y?), U?-, I?_, O?\', P?:</string>
+    <string name="long_press_mappings_line2">A?@, S?4, D?5, F?6, G?*, H?#, J?+, K?\", L?\'</string>
+    <string name="long_press_mappings_line3">Z?!, X?7, C?8, V?9, B?., N?\', M??</string>
     
     <!-- Buttons -->
     <string name="settings_button">Paramètres</string>
@@ -157,7 +157,7 @@
     
     <!-- About Section -->
     <string name="about_github">GitHub</string>
-    <string name="about_build_info">Build</string>
+    <string name="about_build_info">Pastiera IME - Palsoftware 2025</string>
     <string name="about_title">À Propos</string>
     
     <!-- Launcher Shortcuts Section -->
@@ -300,18 +300,18 @@
     <string name="nav_mode_action_cut">Couper</string>
     <string name="nav_mode_action_undo">Annuler</string>
     <string name="nav_mode_action_select_all">ToutSel</string>
-    <string name="nav_mode_action_expand_selection_left">←Sel</string>
-    <string name="nav_mode_action_expand_selection_right">→Sel</string>
-    <string name="nav_mode_keycode_up">↑</string>
-    <string name="nav_mode_keycode_down">↓</string>
-    <string name="nav_mode_keycode_left">←</string>
-    <string name="nav_mode_keycode_right">→</string>
-    <string name="nav_mode_keycode_center">○</string>
+    <string name="nav_mode_action_expand_selection_left">&amp;#8592;Sel</string>
+    <string name="nav_mode_action_expand_selection_right">&amp;#8594;Sel</string>
+    <string name="nav_mode_keycode_up">&amp;#8593;</string>
+    <string name="nav_mode_keycode_down">&amp;#8595;</string>
+    <string name="nav_mode_keycode_left">&amp;#8592;</string>
+    <string name="nav_mode_keycode_right">&amp;#8594;</string>
+    <string name="nav_mode_keycode_center">&amp;#9675;</string>
     <string name="nav_mode_keycode_page_up">PgPréc</string>
     <string name="nav_mode_keycode_page_down">PgSuiv</string>
     <string name="nav_mode_keycode_escape">Échap</string>
     <string name="nav_mode_keycode_tab">Tab</string>
-    <string name="nav_mode_keycode_forward_delete">Del→</string>
+    <string name="nav_mode_keycode_forward_delete">Del&amp;#8594;</string>
     <string name="nav_mode_key_unknown">?</string>
     
     <!-- Tutorial -->
@@ -352,8 +352,8 @@
     <string name="restore_failed">Échec de la restauration : %1$s</string>
     
     <!-- Swipe Incremental Threshold -->
-    <string name="swipe_incremental_threshold_description">Distance requise pour déplacer le curseur d\'une position. Des valeurs plus basses font bouger le curseur plus rapidement.</string>
+    <string name="swipe_incremental_threshold_description">Distance requise pour d&amp;eacute;placer le curseur d\'une position. Des valeurs plus basses font bouger le curseur plus rapidement.</string>
+    <string name="swipe_to_move_cursor">Balayez pour d&amp;eacute;placer le curseur</string>
     <string name="dip_unit">DIP</string>
 </resources>
-
 

@@ -314,7 +314,7 @@ private fun LauncherShortcutAssignmentBottomSheet(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Shortcut",
+                        text = stringResource(R.string.launcher_shortcut_assignment_header),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )

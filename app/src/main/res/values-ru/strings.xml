@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Pastiera</string>
-    <string name="input_method_name">Pasteria Physical Keyboard</string>
+    <string name="input_method_name">Pastiera</string>
     <string name="back">Назад</string>
     <string name="settings_back_content_description">Назад</string>
     <string name="long_press_title">Долгое нажатие</string>
@@ -19,6 +19,7 @@
     <string name="swipe_to_delete_title">Включить Удаление Свайпом</string>
     <string name="swipe_incremental_threshold_title">Чувствительность Полоски Свайпа</string>
     <string name="swipe_incremental_threshold_description">Дистанция, необходимая чтобы сдвинуть курсор на одну позицию. Меньшие числа ускоряют курсор.</string>
+    <string name="swipe_to_move_cursor">Свайп для перемещения курсора</string>
     <string name="auto_show_keyboard_title">Авто Показывать Клавиатуру</string>
     <string name="alt_ctrl_speech_shortcut_title">Распознавание Речи на Alt+Ctrl</string>
     <string name="alt_ctrl_speech_shortcut_description">Включает распознование речи на Alt+Ctrl</string>
@@ -28,13 +29,13 @@
     <string name="settings_content_description">Настройки</string>
     <string name="installation_title">Установка</string>
     <string name="installation_step1">1. Нажмите на кнопку ниже, чтобы открыть настройки</string>
-    <string name="installation_step2">2. Включите \'Pasteria Physical Keyboard\'</string>
+    <string name="installation_step2">2. Включите \'Pastiera Physical Keyboard\'</string>
     <string name="installation_step3">3. Вернитесь сюда и проверьте клавиатуру</string>
     <string name="open_keyboard_settings">Открыть Настройки Клавиатуры</string>
-    <string name="enable_pastiera">Включить Pasteria</string>
-    <string name="pastiera_not_enabled">Pasteria не включена</string>
+    <string name="enable_pastiera">Включить Pastiera</string>
+    <string name="pastiera_not_enabled">Pastiera не включена</string>
     <string name="choose_input_method">Выберите метод ввода</string>
-    <string name="pastiera_not_selected">Pasteria не выбрана</string>
+    <string name="pastiera_not_selected">Pastiera не выбрана</string>
     <string name="test_keyboard_title">Тест клавиатуры</string>
     <string name="test_keyboard_description">Подключите физическую клавиатуру и протестируйте ниже:</string>
     <string name="test_keyboard_normal">• Нормальное нажатие: вставляет символ</string>
@@ -150,10 +151,10 @@
     <string name="notification_nav_mode_channel_description">Уведомления для режима навигации</string>
     <string name="notification_nav_mode_activated_title">Режим Навигации включен</string>
     <string name="notification_nav_mode_activated_text">Режим Навигации включен</string>
-    <string name="notification_update_channel_name">Обновления Pasteria</string>
-    <string name="notification_update_channel_description">Уведомления о новых версиях Pasteria</string>
-    <string name="notification_update_available_title">Pasteria - Доступно обновление</string>
-    <string name="notification_update_available_text">Доступна новая версия Pasteria (%1$s)</string>
+    <string name="notification_update_channel_name">Обновления Pastiera</string>
+    <string name="notification_update_channel_description">Уведомления о новых версиях Pastiera</string>
+    <string name="notification_update_available_title">Pastiera - Доступно обновление</string>
+    <string name="notification_update_available_text">Доступна новая версия Pastiera (%1$s)</string>
     <string name="speech_recognition_prompt">Говорите...</string>
     <string name="auto_correct_search_placeholder">Найти коррекции...</string>
     <string name="auto_correct_search_description">Поиск</string>
@@ -241,3 +242,4 @@
     <string name="backup_failed">Резервная копия не удалась: %1$s</string>
     <string name="restore_failed">Восстановление не удалось: %1$s</string>
 </resources>
+

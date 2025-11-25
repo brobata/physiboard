@@ -1,6 +1,6 @@
 ﻿<resources>
     <string name="app_name">Pastiera</string>
-    <string name="input_method_name">Pastiera Physical Keyboard</string>
+    <string name="input_method_name">Pastiera</string>
     <string name="input_method_name_en">English</string>
     <string name="input_method_name_it">Italiano</string>
     <string name="input_method_name_fr">Français</string>
@@ -15,6 +15,7 @@
     
     <!-- Long Press Section -->
     <string name="long_press_title">Long Press</string>
+    <string name="keyboard_timing_long_press_value">%1$dms</string>
     <string name="long_press_duration">Long Press Duration: %1$dms</string>
     <string name="long_press_description">Wait time before a long press is recognized. A lower value makes long press more responsive, while a higher value requires a longer press.</string>
     <string name="setting_applied_immediately">Setting applied immediately</string>
@@ -193,6 +194,7 @@
     <!-- Keyboard Layout Section -->
     <string name="keyboard_layout_title">Keyboard Layout</string>
     <string name="keyboard_layout_description">Select your keyboard layout. ALT, SYM and Ctrl mappings remain based on physical key position. Change mapping quickly with CTRL+SPACE.</string>
+    <string name="keyboard_layout_editor_title">Keyboard Layout Editor</string>
     <string name="keyboard_layout_no_conversion">Standard</string>
     <string name="keyboard_layout_no_conversion_description">Standard QWERTY layout (no conversion)</string>
     <string name="keyboard_layout_conversions_title">Layout Conversions</string>
@@ -201,6 +203,7 @@
     <string name="keyboard_layout_viewer_subtitle">Layout: %1$s</string>
     <string name="keyboard_layout_viewer_unavailable">Unable to load this layout mapping.</string>
     <string name="keyboard_layout_viewer_empty">No key mappings found for this layout.</string>
+    <string name="keyboard_layout_multitap_badge">multitap</string>
     <string name="keyboard_layout_viewer_multitap_on">multitap</string>
     <string name="keyboard_layout_viewer_multitap_off">single</string>
     <string name="keyboard_layout_viewer_open">View mapping</string>
@@ -208,7 +211,7 @@
     
     <!-- About Section -->
     <string name="about_github">GitHub</string>
-    <string name="about_build_info">Build</string>
+    <string name="about_build_info">Pastiera IME - Palsoftware 2025</string>
     <string name="about_title">About</string>
     
     <!-- Launcher Shortcuts Section -->
@@ -230,6 +233,7 @@
     <!-- Launcher Shortcut Assignment Activity -->
     <string name="launcher_shortcut_assignment_title">Assign app to key</string>
     <string name="launcher_shortcut_assignment_key">Key %1$s</string>
+    <string name="launcher_shortcut_assignment_header">Shortcut</string>
     <string name="launcher_shortcut_assignment_search_placeholder">Search apps...</string>
     <string name="launcher_shortcut_assignment_search_description">Search</string>
     <string name="launcher_shortcut_assignment_close">Close</string>
@@ -270,6 +274,7 @@
     <string name="nav_mode_key_mappings">Key Mappings</string>
     <string name="nav_mode_revert_to_default">Revert to Default</string>
     <string name="nav_mode_note">Note: Modifying nav mode keys also affects Ctrl+key combinations in text fields.</string>
+    <string name="nav_mode_warning_icon">⚠</string>
     <string name="nav_mode_configure_key">Configure %1$s</string>
     <string name="nav_mode_type">Type</string>
     <string name="nav_mode_keycode">Keycode</string>
