@@ -57,6 +57,10 @@ class StatusBarController(
             field = value
             variationBarView?.onCursorMovedListener = value
         }
+    
+    fun invalidateStaticVariations() {
+        variationBarView?.invalidateStaticVariations()
+    }
 
     companion object {
         private const val TAG = "StatusBarController"

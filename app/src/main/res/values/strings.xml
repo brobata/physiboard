@@ -52,6 +52,7 @@
     <!-- Static Variation Bar Mode -->
     <string name="static_variation_bar_mode_title">Static Variation Bar</string>
     <string name="static_variation_bar_mode_description">Always show a fixed set of utility keys in the variation row instead of context-based variations.</string>
+    <string name="swipe_to_move_cursor">Swipe to move cursor</string>
     
     <!-- Info Section -->
     <string name="info_title">Information</string>
@@ -96,6 +97,7 @@
     <!-- Buttons -->
     <string name="settings_button">Settings</string>
     <string name="change_keyboard_button">Change Keyboard</string>
+    <string name="save">Save</string>
     
     <!-- SYM Customization -->
     <string name="sym_customization_title">Customize SYM Keyboard</string>
@@ -300,6 +302,8 @@
     <string name="variation_reset_confirm_title">Reset to Default</string>
     <string name="variation_reset_confirm_message">Are you sure you want to reset all variations to default? This action cannot be undone.</string>
     <string name="variation_reset_confirm_button">Reset</string>
+    <string name="static_variation_input_label">Value</string>
+    <string name="static_variation_input_hint">Leave empty and save to remove the slot.</string>
     
     <!-- SYM Customization Screen -->
     <string name="sym_tab_emoji">Emoji</string>
@@ -376,6 +380,7 @@
     <string name="nav_mode_keycode_page_down">PgDn</string>
     <string name="nav_mode_keycode_escape">Esc</string>
     <string name="nav_mode_keycode_tab">Tab</string>
+    <string name="nav_mode_keycode_forward_delete">Del→</string>
     <string name="nav_mode_key_unknown">?</string>
     
     <!-- Tutorial -->

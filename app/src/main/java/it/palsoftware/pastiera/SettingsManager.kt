@@ -1463,10 +1463,7 @@ object SettingsManager {
                 outputStream.write(jsonObject.toString(2).toByteArray(Charsets.UTF_8))
             }
             
-            // Notify input method service to reload variations
-            getPreferences(context).edit()
-                .putLong(KEY_VARIATIONS_UPDATED, System.currentTimeMillis())
-                .apply()
+            notifyVariationsUpdated(context)
             
             Log.d(TAG, "Variations saved to ${getVariationsFile(context).absolutePath}")
         } catch (e: Exception) {
@@ -1486,10 +1483,7 @@ object SettingsManager {
             }
             inputStream.close()
             
-            // Notify input method service to reload variations
-            getPreferences(context).edit()
-                .putLong(KEY_VARIATIONS_UPDATED, System.currentTimeMillis())
-                .apply()
+            notifyVariationsUpdated(context)
             
             Log.d(TAG, "Variations reset to default from assets")
         } catch (e: Exception) {
@@ -1502,5 +1496,14 @@ object SettingsManager {
      */
     fun hasCustomVariations(context: Context): Boolean {
         return getVariationsFile(context).exists()
+    }
+    
+    /**
+     * Touch the variations_updated flag so the IME reloads variations/static bar content.
+     */
+    fun notifyVariationsUpdated(context: Context) {
+        getPreferences(context).edit()
+            .putLong(KEY_VARIATIONS_UPDATED, System.currentTimeMillis())
+            .apply()
     }
 }

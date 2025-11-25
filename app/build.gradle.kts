@@ -100,7 +100,7 @@ android {
                 )
             }
 
-            storeFile = file(storePath)
+            storeFile = rootProject.file(storePath)
             storePassword = storePass
             keyAlias = alias
             keyPassword = keyPass

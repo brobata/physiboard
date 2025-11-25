@@ -73,10 +73,12 @@ fun UnicodeCharacterPickerDialog(
                 val characterCategories = remember {
                     mapOf(
                         "punteggiatura" to listOf(
+                            "“", "”", "‘", "’", "\"", // Virgolette doppie e singole standard aperte e chiuse
                             "¿", "¡", "…", "—", "–", "«", "»", "‹", "›", "„",
-                            "‚", """, """, "'", "'", "•", "‥", "‰", "′", "″",
+                            "‚",  "'", "'", "•", "‥", "‰", "′", "″",
                             "‴", "‵", "‶", "‷", "‸", "※", "§", "¶", "†", "‡",
-                            ";", ":", "!", "?", ".", ",", "‽", "⁇", "⁈", "⁉"
+                            ";", ":", "!", "?", ".", ",", "‽", "⁇", "⁈", "⁉",
+                            "(", ")", "[", "]", "{", "}", "<", ">",
                         ),
                         "simboli_matematici" to listOf(
                             "±", "×", "÷", "≠", "≤", "≥", "≈", "∞", "∑", "∏",

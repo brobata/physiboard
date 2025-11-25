@@ -623,6 +623,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 Log.d(TAG, "Variations file changed, reloading...")
                 // Reload variations from file
                 variationStateController = VariationStateController(VariationRepository.loadVariations(assets, this))
+                candidatesBarController.invalidateStaticVariations()
                 // Update status bar to reflect new variations
                 Handler(Looper.getMainLooper()).post {
                     updateStatusBarText()

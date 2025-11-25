@@ -337,6 +337,7 @@
     <string name="nav_mode_keycode_page_down">PagGiu</string>
     <string name="nav_mode_keycode_escape">Esc</string>
     <string name="nav_mode_keycode_tab">Tab</string>
+    <string name="nav_mode_keycode_forward_delete">Del→</string>
     <string name="nav_mode_key_unknown">?</string>
     
     <!-- Tutorial -->

@@ -3,6 +3,7 @@ package it.palsoftware.pastiera
 import android.content.Context
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,10 +16,19 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.consumePositionChange
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.data.variation.VariationRepository
@@ -47,19 +57,24 @@ fun VariationCustomizationScreen(
     }
     
     // Load static variations to preserve them when saving
-    val staticVariations = remember {
-        VariationRepository.loadStaticVariations(context.assets, context)
+    var staticVariations by remember {
+        mutableStateOf(VariationRepository.loadStaticVariations(context.assets, context).take(7))
     }
     
-    // Generate alphabet list (A-Z, then a-z)
+    // Generate alphabet list with uppercase followed by lowercase for each letter (A, a, B, b, ...)
     val alphabet = remember {
-        ('A'..'Z').toList() + ('a'..'z').toList()
+        ('A'..'Z').flatMap { listOf(it, it.lowercaseChar()) }
     }
     
     // State for picker dialog
     var showPickerDialog by remember { mutableStateOf(false) }
     var selectedLetter by remember { mutableStateOf<String?>(null) }
     var selectedIndex by remember { mutableStateOf<Int?>(null) }
+    
+    // State for static variation input dialog
+    var showStaticInputDialog by remember { mutableStateOf(false) }
+    var staticInputIndex by remember { mutableStateOf<Int?>(null) }
+    var staticInputValue by remember { mutableStateOf("") }
     
     // State for reset confirmation dialog
     var showResetConfirmDialog by remember { mutableStateOf(false) }
@@ -170,20 +185,57 @@ fun VariationCustomizationScreen(
             
             HorizontalDivider()
             
+            val staticRowLabel = stringResource(R.string.static_variation_bar_mode_title)
+            
+            // Static variations row
+            VariationRow(
+                letter = staticRowLabel,
+                variations = staticVariations,
+                labelWidth = 64.dp,
+                onBoxClick = { index ->
+                    staticInputIndex = index
+                    staticInputValue = limitInputToSingleCodePoint(staticVariations.getOrNull(index) ?: "")
+                    showStaticInputDialog = true
+                },
+                onReorder = { fromIndex, toIndex ->
+                    val reordered = reorderEntries(staticVariations, fromIndex, toIndex)
+                    if (reordered != staticVariations) {
+                        staticVariations = reordered
+                        SettingsManager.saveVariations(context, variations, reordered)
+                    }
+                }
+            )
+            
+            HorizontalDivider()
+            
             // Alphabet grid
             alphabet.forEach { letter ->
-                val letterStr = letter.toString()
-                val letterVariations = variations[letterStr] ?: emptyList()
-                
-                VariationRow(
-                    letter = letterStr,
-                    variations = letterVariations,
-                    onBoxClick = { index ->
-                        selectedLetter = letterStr
-                        selectedIndex = index
-                        showPickerDialog = true
-                    }
-                )
+                // key() ensures each row keeps its own drag state when list recomposes
+                key(letter) {
+                    val letterStr = letter.toString()
+                    val letterVariations = variations[letterStr] ?: emptyList()
+                    
+                    VariationRow(
+                        letter = letterStr,
+                        variations = letterVariations,
+                        onBoxClick = { index ->
+                            selectedLetter = letterStr
+                            selectedIndex = index
+                            showPickerDialog = true
+                        },
+                        onReorder = { fromIndex, toIndex ->
+                            val updatedMap = variations.toMutableMap()
+                            val current = updatedMap[letterStr] ?: emptyList()
+                            val reordered = reorderEntries(current, fromIndex, toIndex)
+                            
+                            if (reordered != current) {
+                                updatedMap[letterStr] = reordered
+                                variations = updatedMap
+                                SettingsManager.saveVariations(context, updatedMap, staticVariations)
+                            }
+                        }
+                    )
+                }
             }
             
             Spacer(modifier = Modifier.height(16.dp))
@@ -192,54 +244,24 @@ fun VariationCustomizationScreen(
     
     // Variation picker dialog
     if (showPickerDialog && selectedLetter != null) {
-        val letter = selectedLetter!!
-        // Get available variations for this letter (use uppercase if lowercase not found)
-        val availableVariations = allVariations[letter] 
-            ?: allVariations[letter.uppercase()]
+        val letterKey = selectedLetter!!
+        val availableVariations = allVariations[letterKey]
+            ?: allVariations[letterKey.uppercase()]
             ?: emptyList()
         
         VariationPickerDialog(
-            letter = letter,
+            letter = letterKey,
             availableVariations = availableVariations,
             onVariationSelected = { character ->
-                // Update variations map
                 val updatedVariations = variations.toMutableMap()
-                val currentVariations = (updatedVariations[letter] ?: emptyList()).toMutableList()
+                val currentVariations = updatedVariations[letterKey] ?: emptyList()
                 
-                // Ensure list has at least selectedIndex + 1 elements
-                while (currentVariations.size <= (selectedIndex ?: 0)) {
-                    currentVariations.add("")
-                }
-                
-                // Set the selected character at the selected index
-                if (selectedIndex != null) {
-                    if (character.isEmpty()) {
-                        // Remove the character if empty
-                        if (selectedIndex!! < currentVariations.size) {
-                            currentVariations.removeAt(selectedIndex!!)
-                        }
-                    } else {
-                        // Set or update the character
-                        if (selectedIndex!! < currentVariations.size) {
-                            currentVariations[selectedIndex!!] = character
-                        } else {
-                            currentVariations.add(character)
-                        }
-                    }
-                }
-                
-                // Remove trailing empty strings
-                while (currentVariations.isNotEmpty() && currentVariations.last().isEmpty()) {
-                    currentVariations.removeLast()
-                }
-                
-                // Limit to 7 variations
-                val trimmedVariations = currentVariations.take(7)
+                val trimmedVariations = updateVariationEntries(currentVariations, selectedIndex, character)
                 
                 if (trimmedVariations.isEmpty()) {
-                    updatedVariations.remove(letter)
+                    updatedVariations.remove(letterKey)
                 } else {
-                    updatedVariations[letter] = trimmedVariations
+                    updatedVariations[letterKey] = trimmedVariations
                 }
                 
                 variations = updatedVariations
@@ -251,6 +273,75 @@ fun VariationCustomizationScreen(
                 showPickerDialog = false
                 selectedLetter = null
                 selectedIndex = null
+            }
+        )
+    }
+
+    if (showStaticInputDialog && staticInputIndex != null) {
+        val focusRequester = remember { FocusRequester() }
+        LaunchedEffect(showStaticInputDialog, staticInputIndex) {
+            focusRequester.requestFocus()
+        }
+        
+        AlertDialog(
+            onDismissRequest = {
+                showStaticInputDialog = false
+                staticInputIndex = null
+                staticInputValue = ""
+            },
+            title = {
+                Text(stringResource(R.string.static_variation_bar_mode_title))
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = staticInputValue,
+                        onValueChange = { newValue ->
+                            staticInputValue = limitInputToSingleCodePoint(newValue)
+                        },
+                        singleLine = true,
+                        modifier = Modifier.focusRequester(focusRequester),
+                        label = { Text(stringResource(R.string.static_variation_input_label)) }
+                    )
+                    Text(
+                        text = stringResource(R.string.static_variation_input_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val index = staticInputIndex
+                        if (index != null) {
+                            val trimmedStatic = updateVariationEntries(
+                                currentEntries = staticVariations,
+                                index = index,
+                                newValue = staticInputValue
+                            )
+                            staticVariations = trimmedStatic
+                            SettingsManager.saveVariations(context, variations, trimmedStatic)
+                        }
+                        
+                        showStaticInputDialog = false
+                        staticInputIndex = null
+                        staticInputValue = ""
+                    }
+                ) {
+                    Text(stringResource(R.string.save))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showStaticInputDialog = false
+                        staticInputIndex = null
+                        staticInputValue = ""
+                    }
+                ) {
+                    Text(stringResource(R.string.cancel))
+                }
             }
         )
     }
@@ -271,6 +362,7 @@ fun VariationCustomizationScreen(
                         SettingsManager.resetVariationsToDefault(context)
                         val repoVariations = VariationRepository.loadVariations(context.assets, context)
                         variations = repoVariations.mapKeys { it.key.toString() }
+                        staticVariations = VariationRepository.loadStaticVariations(context.assets, context).take(7)
                         showResetConfirmDialog = false
                     },
                     colors = ButtonDefaults.textButtonColors(
@@ -291,12 +383,57 @@ fun VariationCustomizationScreen(
     }
 }
 
+/**
+ * Displays a single base letter row and handles local drag state so callers only
+ * receive the final reorder indexes.
+ */
 @Composable
 private fun VariationRow(
     letter: String,
     variations: List<String>,
-    onBoxClick: (Int) -> Unit
+    onBoxClick: (Int) -> Unit,
+    onReorder: (fromIndex: Int, toIndex: Int) -> Unit,
+    labelWidth: Dp = 40.dp
 ) {
+    val density = LocalDensity.current
+    val boxSize = 48.dp
+    val boxSpacing = 8.dp
+    val boxSizePx = with(density) { boxSize.toPx() }
+    val boxSpacingPx = with(density) { boxSpacing.toPx() }
+    val totalSlots = 7
+    
+    // Track which index is being dragged and the eventual drop slot for highlighting.
+    var draggingIndex by remember { mutableStateOf<Int?>(null) }
+    var dragStartIndex by remember { mutableStateOf<Int?>(null) }
+    var dragOffsetX by remember { mutableStateOf(0f) }
+    var dropTargetIndex by remember { mutableStateOf<Int?>(null) }
+    
+    fun handleDrag(dragAmountX: Float) {
+        val startIndex = dragStartIndex ?: return
+        dragOffsetX += dragAmountX
+        
+        val currentStartX = startIndex * (boxSizePx + boxSpacingPx) + dragOffsetX
+        val targetIndex = ((currentStartX + boxSizePx / 2) / (boxSizePx + boxSpacingPx))
+            .toInt()
+            .coerceIn(0, totalSlots - 1)
+        
+        dropTargetIndex = targetIndex
+    }
+    
+    fun endDrag() {
+        val startIndex = dragStartIndex
+        val targetIndex = dropTargetIndex
+        if (startIndex != null && targetIndex != null && startIndex != targetIndex) {
+            onReorder(startIndex, targetIndex)
+        }
+        draggingIndex = null
+        dragStartIndex = null
+        dropTargetIndex = null
+        dragOffsetX = 0f
+    }
+    
+    val dragOffsetDp = with(density) { dragOffsetX.toDp() }
+    
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surface
@@ -313,8 +450,9 @@ private fun VariationRow(
                 text = letter,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.width(40.dp),
-                textAlign = TextAlign.Center
+                modifier = Modifier.width(labelWidth),
+                textAlign = TextAlign.Center,
+                maxLines = 2
             )
             
             // 7 variation boxes
@@ -323,10 +461,32 @@ private fun VariationRow(
                 modifier = Modifier.weight(1f)
             ) {
                 repeat(7) { index ->
+                    val character = variations.getOrNull(index) ?: ""
+                    val isEmpty = index >= variations.size
+                    val isDragging = draggingIndex == index
+                    val isDropTarget = dropTargetIndex == index && draggingIndex != null
+                    
                     VariationBox(
-                        character = variations.getOrNull(index) ?: "",
-                        isEmpty = index >= variations.size,
-                        onClick = { onBoxClick(index) }
+                        character = character,
+                        isEmpty = isEmpty,
+                        onClick = { onBoxClick(index) },
+                        onDragStart = if (!isEmpty) {
+                            {
+                                draggingIndex = index
+                                dragStartIndex = index
+                                dragOffsetX = 0f
+                                dropTargetIndex = index
+                            }
+                        } else null,
+                        onDrag = if (!isEmpty) ({ deltaX -> handleDrag(deltaX) }) else null,
+                        onDragEnd = if (!isEmpty) {
+                            {
+                                endDrag()
+                            }
+                        } else null,
+                        isDragging = isDragging,
+                        isDropTarget = isDropTarget,
+                        dragOffset = if (isDragging) dragOffsetDp else 0.dp
                     )
                 }
             }
@@ -338,26 +498,54 @@ private fun VariationRow(
 private fun VariationBox(
     character: String,
     isEmpty: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onDragStart: (() -> Unit)? = null,
+    onDrag: ((Float) -> Unit)? = null,
+    onDragEnd: (() -> Unit)? = null,
+    isDragging: Boolean = false,
+    isDropTarget: Boolean = false,
+    dragOffset: Dp = 0.dp
 ) {
     Surface(
         modifier = Modifier
             .width(48.dp)
             .height(48.dp)
-            .clickable(onClick = onClick),
+            .pointerInput(character, isEmpty) {
+                if (!isEmpty && onDrag != null) {
+                    detectDragGesturesAfterLongPress(
+                        onDragStart = { onDragStart?.invoke() },
+                        onDragEnd = { onDragEnd?.invoke() },
+                        onDragCancel = { onDragEnd?.invoke() },
+                        onDrag = { change, dragAmount ->
+                            change.consumePositionChange()
+                            onDrag(dragAmount.x)
+                        }
+                    )
+                }
+            }
+            .clickable(onClick = onClick)
+            .graphicsLayer {
+                translationX = dragOffset.toPx()
+                scaleX = if (isDragging) 1.05f else 1f
+                scaleY = if (isDragging) 1.05f else 1f
+            }
+            .shadow(if (isDragging) 8.dp else 0.dp, RoundedCornerShape(8.dp))
+            .zIndex(if (isDragging) 1f else 0f),
         shape = RoundedCornerShape(8.dp),
-        color = if (isEmpty) {
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        } else {
-            MaterialTheme.colorScheme.surfaceVariant
+        color = when {
+            isDragging -> MaterialTheme.colorScheme.primaryContainer
+            isDropTarget -> MaterialTheme.colorScheme.secondaryContainer
+            isEmpty -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            else -> MaterialTheme.colorScheme.surfaceVariant
         },
-        border = if (isEmpty) {
-            BorderStroke(
+        border = when {
+            isEmpty -> BorderStroke(
                 1.dp,
                 MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
             )
-        } else {
-            null
+            isDragging -> BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
+            isDropTarget -> BorderStroke(1.5.dp, MaterialTheme.colorScheme.secondary)
+            else -> null
         }
     ) {
         Box(
@@ -374,6 +562,67 @@ private fun VariationBox(
             }
         }
     }
+}
+
+// Static inputs accept at most one code point (emoji included); trim safely instead of char-by-char.
+private fun limitInputToSingleCodePoint(value: String): String {
+    if (value.isEmpty()) return ""
+    return try {
+        val endIndex = value.offsetByCodePoints(0, 1)
+        value.substring(0, endIndex)
+    } catch (_: Exception) {
+        value
+    }
+}
+
+// Shared helper for row drag/drop to keep both static and per-letter paths consistent.
+private fun reorderEntries(
+    entries: List<String>,
+    fromIndex: Int,
+    toIndex: Int
+): List<String> {
+    if (fromIndex !in entries.indices) return entries
+    
+    val mutable = entries.toMutableList()
+    val movedItem = mutable.removeAt(fromIndex)
+    val target = toIndex.coerceIn(0, mutable.size)
+    mutable.add(target, movedItem)
+    
+    return mutable.take(7)
+}
+
+/**
+ * Applies picker changes for a row slot, trimming trailing blanks and enforcing the 7-slot cap.
+ */
+private fun updateVariationEntries(
+    currentEntries: List<String>,
+    index: Int?,
+    newValue: String
+): List<String> {
+    val targetIndex = index ?: return currentEntries
+    val updatedEntries = currentEntries.toMutableList()
+    
+    while (updatedEntries.size <= targetIndex) {
+        updatedEntries.add("")
+    }
+    
+    if (newValue.isEmpty()) {
+        if (targetIndex < updatedEntries.size) {
+            updatedEntries.removeAt(targetIndex)
+        }
+    } else {
+        if (targetIndex < updatedEntries.size) {
+            updatedEntries[targetIndex] = newValue
+        } else {
+            updatedEntries.add(newValue)
+        }
+    }
+    
+    while (updatedEntries.isNotEmpty() && updatedEntries.last().isEmpty()) {
+        updatedEntries.removeLast()
+    }
+    
+    return updatedEntries.take(7)
 }
 
 /**
@@ -406,4 +655,3 @@ private fun loadAllVariationsFromJson(context: Context): Map<String, List<String
         emptyMap()
     }
 }
-

@@ -721,43 +721,6 @@ class InputEventRouter(
             return true
         }
 
-        // Alt+Backspace: act as forward delete (Delete key)
-        if (keyCode == KeyEvent.KEYCODE_DEL) {
-            val extractedText: ExtractedText? = ic.getExtractedText(
-                ExtractedTextRequest().apply {
-                    flags = ExtractedText.FLAG_SELECTING
-                },
-                0
-            )
-
-            val hasSelection = extractedText?.let {
-                it.selectionStart >= 0 && it.selectionEnd >= 0 && it.selectionStart != it.selectionEnd
-            } ?: false
-
-            if (hasSelection) {
-                KeyboardEventTracker.notifyKeyEvent(
-                    keyCode,
-                    event,
-                    "KEY_DOWN",
-                    outputKeyCode = null,
-                    outputKeyCodeName = "alt_delete_selection_forward"
-                )
-                ic.commitText("", 0)
-            } else {
-                KeyboardEventTracker.notifyKeyEvent(
-                    keyCode,
-                    event,
-                    "KEY_DOWN",
-                    outputKeyCode = null,
-                    outputKeyCodeName = "alt_forward_delete"
-                )
-                ic.deleteSurroundingText(0, 1)
-            }
-
-            updateStatusBar()
-            return true
-        }
-
         val result = altSymManager.handleAltCombination(
             keyCode,
             ic,
@@ -858,6 +821,7 @@ class InputEventRouter(
                         "PAGE_UP" -> KeyEvent.KEYCODE_PAGE_UP
                         "PAGE_DOWN" -> KeyEvent.KEYCODE_PAGE_DOWN
                         "ESCAPE" -> KeyEvent.KEYCODE_ESCAPE
+                        "FORWARD_DEL" -> KeyEvent.KEYCODE_FORWARD_DEL
                         else -> null
                     }
                     if (mappedKeyCode != null) {

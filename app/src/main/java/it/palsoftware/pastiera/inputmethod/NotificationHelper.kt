@@ -51,9 +51,15 @@ object NotificationHelper {
     }
     
     /**
-     * Triggers a short vibration for nav mode activation, without showing a notification.
+     * Triggers a haptic feedback vibration.
+     * @param context The context to get the vibrator service
+     * @param durationMs Duration of the vibration in milliseconds (default: 30ms)
      */
-    fun vibrateNavModeActivated(context: Context) {
+    fun triggerHapticFeedback(context: Context, durationMs: Long = 30) {
+        if (tryModernHapticFeedback(context)) {
+            return
+        }
+        
         try {
             val vibrator: Vibrator? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 val vm = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
@@ -68,14 +74,54 @@ object NotificationHelper {
             }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val effect = VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE)
+                val effect = VibrationEffect.createOneShot(durationMs, VibrationEffect.DEFAULT_AMPLITUDE)
                 vibrator.vibrate(effect)
             } else {
                 @Suppress("DEPRECATION")
-                vibrator.vibrate(50)
+                vibrator.vibrate(durationMs)
             }
         } catch (e: Exception) {
-            android.util.Log.w("NotificationHelper", "Unable to vibrate for nav mode", e)
+            android.util.Log.w("NotificationHelper", "Unable to trigger haptic feedback", e)
+        }
+    }
+
+    /**
+     * Triggers a short vibration for nav mode activation, without showing a notification.
+     */
+    fun vibrateNavModeActivated(context: Context) {
+        triggerHapticFeedback(context, 50)
+    }
+    
+    private fun tryModernHapticFeedback(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+            return false
+        }
+        
+        return try {
+            val contextClass = Context::class.java
+            val hapticManagerClass = Class.forName("android.os.HapticFeedbackManager")
+            val getSystemServiceMethod = contextClass.getMethod("getSystemService", Class::class.java)
+            val hapticManager = getSystemServiceMethod.invoke(context, hapticManagerClass) ?: return false
+            
+            val performMethod = hapticManagerClass.getMethod(
+                "performHapticFeedback",
+                Int::class.javaPrimitiveType,
+                Int::class.javaPrimitiveType
+            )
+            val hapticAutocorrect = hapticManagerClass.getField("HAPTIC_AUTOCORRECT").getInt(null)
+            val ignoreViewSetting = hapticManagerClass.getField("FLAG_IGNORE_VIEW_SETTING").getInt(null)
+            val successCode = hapticManagerClass.getField("HAPTIC_FEEDBACK_SUCCESS").getInt(null)
+            
+            val result = performMethod.invoke(
+                hapticManager,
+                hapticAutocorrect,
+                ignoreViewSetting
+            ) as? Int ?: return false
+            
+            result == successCode
+        } catch (e: Exception) {
+            android.util.Log.d("NotificationHelper", "Modern haptic feedback unavailable", e)
+            false
         }
     }
 

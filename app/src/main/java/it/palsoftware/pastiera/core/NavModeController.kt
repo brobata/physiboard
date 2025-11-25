@@ -267,6 +267,9 @@ class NavModeController(
     private fun notifyNavModeChanged() {
         val isActiveNow = isNavModeActive()
         if (lastNavModeActive != isActiveNow) {
+            if (isActiveNow) {
+                NotificationHelper.vibrateNavModeActivated(context)
+            }
             navModeChangedListener?.invoke(isActiveNow)
         }
         lastNavModeActive = isActiveNow
