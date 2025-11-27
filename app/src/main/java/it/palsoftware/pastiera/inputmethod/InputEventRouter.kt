@@ -572,7 +572,9 @@ class InputEventRouter(
         autoCorrectionManager: AutoCorrectionManager,
         updateStatusBar: () -> Unit
     ): Boolean {
-        val isBoundaryKey = keyCode == KeyEvent.KEYCODE_SPACE || keyCode == KeyEvent.KEYCODE_ENTER
+        val isEnterKey = keyCode == KeyEvent.KEYCODE_ENTER
+        val isSpaceKey = keyCode == KeyEvent.KEYCODE_SPACE
+        val isBoundaryKey = isSpaceKey || isEnterKey
         val isPunctuation = event?.unicodeChar != null &&
             event.unicodeChar != 0 &&
             event.unicodeChar.toChar() in ".,;:!?()[]{}\"'"
@@ -617,6 +619,31 @@ class InputEventRouter(
             shouldDisableSmartFeatures,
             onStatusBarUpdate = updateStatusBar
         )
+
+        // For Enter, run autocorrect/auto-cap but do NOT consume/commit a newline.
+        // This lets apps with custom Enter handling (e.g., "Enter to send") receive the key,
+        // while still preserving our boundary corrections.
+        if (isEnterKey) {
+            val handled = autoCorrectionManager.handleBoundaryKey(
+                keyCode,
+                event,
+                inputConnection,
+                isAutoCorrectEnabled,
+                commitBoundary = false,
+                onStatusBarUpdate = updateStatusBar,
+                boundaryCharOverride = '\n'
+            )
+            if (handled) {
+                suggestionController?.onContextReset()
+            }
+            if (!shouldDisableSmartFeatures && inputConnection != null) {
+                val sc = suggestionController
+                // Trigger auto-replace/suggestions without committing a newline;
+                // use an unknown key to avoid boundary-char commit inside the tracker.
+                sc?.onBoundaryKey(KeyEvent.KEYCODE_UNKNOWN, null, inputConnection)
+            }
+            return false
+        }
 
         if (
             autoCorrectionManager.handleBoundaryKey(

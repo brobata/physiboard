@@ -906,7 +906,13 @@ class StatusBarController(
             suggestionsEnabledSetting &&
             !snapshot.shouldDisableSmartFeatures &&
             snapshot.symPage == 0
-        fullSuggestionsBar?.update(snapshot.suggestions, showFullBar, inputConnection, onVariationSelectedListener)
+        fullSuggestionsBar?.update(
+            snapshot.suggestions,
+            showFullBar,
+            inputConnection,
+            onVariationSelectedListener,
+            snapshot.shouldDisableSmartFeatures
+        )
         
         if (snapshot.symPage > 0 && symMappings != null) {
             updateEmojiKeyboard(symMappings, snapshot.symPage, inputConnection)

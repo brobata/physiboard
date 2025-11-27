@@ -230,8 +230,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     }
 
     /**
-     * Resolves a meaningful editor action for Enter. Returns null for multiline/unspecified fields
-     * or when actions are explicitly disabled.
+     * Resolves a meaningful editor action for Enter. Returns null for unspecified fields
+     * or when actions are explicitly disabled. Works for both single-line and multiline fields.
      */
     private fun resolveEditorAction(info: EditorInfo?): Int? {
         if (info == null) return null
@@ -258,7 +258,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
 
     /**
      * Executes the field's editor action on Enter (e.g., Search/Go/Done) instead of inserting
-     * whitespace. Nav mode keeps its own Enter remapping, so we skip it here.
+     * a newline. Works for both single-line and multiline fields if they have an IME action configured.
+     * Nav mode keeps its own Enter remapping, so we skip it here.
      */
     private fun handleEnterAsEditorAction(
         keyCode: Int,
@@ -268,13 +269,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         isAutoCorrectEnabled: Boolean
     ): Boolean {
         if (keyCode != KeyEvent.KEYCODE_ENTER || navModeController.isNavModeActive()) {
-            return false
-        }
-
-        val isMultiline = info?.inputType?.let {
-            it and android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE != 0
-        } ?: false
-        if (isMultiline) {
             return false
         }
 
