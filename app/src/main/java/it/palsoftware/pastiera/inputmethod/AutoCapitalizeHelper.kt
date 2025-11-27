@@ -1,88 +1,106 @@
 package it.palsoftware.pastiera.inputmethod
 
+import android.text.TextUtils
+import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
 import it.palsoftware.pastiera.SettingsManager
-import android.view.inputmethod.ExtractedTextRequest
 
 /**
- * Central helper for all smart auto-capitalization rules.
- *
- * It never manipulates modifier state directly, but instead:
- * - asks the caller to enable Shift one-shot via callbacks, and
- * - tracks whether that Shift came from a "smart" rule so it can be cleared
- *   on selection / context changes without affecting manually pressed Shift.
- *
- * All auto-cap entry points (field start, after Enter, after punctuation,
- * selection changes, restarts) should be routed through this helper so
- * there is a single place that decides "should Shift one-shot be active?".
+ * Central helper for smart auto-capitalization rules.
+ * Provides a single decision path and a single entry point to enable/clear smart Shift.
  */
 object AutoCapitalizeHelper {
-    /**
-     * Tracks whether the current Shift one-shot was requested by a smart
-     * auto-capitalization rule (first letter / after punctuation / double-space).
-     * This allows selection/field changes to clear only smart one-shot Shift
-     * without interfering with manually pressed Shift.
-     */
     private var smartShiftRequested = false
 
-    /**
-     * Returns true if, given the current cursor position, smart auto-cap rules
-     * (first-letter / after-period) suggest enabling Shift one-shot.
-     *
-     * This is the single place where we look at:
-     * - user settings (first-letter / after-period),
-     * - smart-features disabled flag,
-     * - surrounding text (start of field, after newline, after ". ! ?").
-     */
-    private fun shouldApplySmartAutoCap(
+    private data class AutoCapSettings(
+        val autoCapFirstLetter: Boolean,
+        val autoCapAfterPeriod: Boolean
+    )
+
+    data class CursorContext(
+        val before: CharSequence,
+        val after: CharSequence
+    )
+
+    private fun resolveAutoCapSettings(
         context: android.content.Context,
-        inputConnection: InputConnection,
-        shouldDisableSmartFeatures: Boolean
-    ): Boolean {
-        if (shouldDisableSmartFeatures) {
-            return false
-        }
+        inputConnection: InputConnection
+    ): AutoCapSettings {
+        val userAutoCapFirstLetter = SettingsManager.getAutoCapitalizeFirstLetter(context)
+        val userAutoCapAfterPeriod = SettingsManager.getAutoCapitalizeAfterPeriod(context)
 
-        val autoCapFirstLetter = SettingsManager.getAutoCapitalizeFirstLetter(context)
-        val autoCapAfterPeriod = SettingsManager.getAutoCapitalizeAfterPeriod(context)
-        if (!autoCapFirstLetter && !autoCapAfterPeriod) {
-            return false
-        }
-
-        val textBeforeCursor = inputConnection.getTextBeforeCursor(100, 0) ?: return false
-        val textAfterCursor = inputConnection.getTextAfterCursor(1, 0) ?: ""
-
-        return shouldApplySmartAutoCap(
-            autoCapFirstLetter = autoCapFirstLetter,
-            autoCapAfterPeriod = autoCapAfterPeriod,
-            textBeforeCursor = textBeforeCursor,
-            textAfterCursor = textAfterCursor
+        val capsMode = inputConnection.getCursorCapsMode(
+            TextUtils.CAP_MODE_SENTENCES or TextUtils.CAP_MODE_WORDS
         )
+        val capsSentences = capsMode and TextUtils.CAP_MODE_SENTENCES != 0
+        val capsWords = capsMode and TextUtils.CAP_MODE_WORDS != 0
+
+        val autoCapFirstLetter = userAutoCapFirstLetter || capsSentences || capsWords
+        val autoCapAfterPeriod = userAutoCapAfterPeriod || capsSentences
+
+        return AutoCapSettings(autoCapFirstLetter, autoCapAfterPeriod)
     }
 
-    private fun shouldApplySmartAutoCap(
-        autoCapFirstLetter: Boolean,
-        autoCapAfterPeriod: Boolean,
-        textBeforeCursor: CharSequence,
-        textAfterCursor: CharSequence
-    ): Boolean {
-        val isCursorAtStart = textBeforeCursor.isEmpty()
-        val isAfterNewline = textBeforeCursor.lastOrNull() == '\n'
+    /**
+     * Reads the cursor context, ignoring any selected text (treated as removed/replaced).
+     * Prefers ExtractedText; falls back to surrounding text APIs.
+     */
+    private fun readContext(inputConnection: InputConnection): CursorContext? {
+        val extracted = inputConnection.getExtractedText(ExtractedTextRequest(), 0)
+        if (extracted != null && extracted.text != null) {
+            val text = extracted.text
+            val selStart = extracted.selectionStart
+            val selEnd = extracted.selectionEnd
+            if (selStart >= 0 && selEnd >= selStart && selEnd <= text.length) {
+                val before = text.subSequence(0, selStart)
+                val after = text.subSequence(selEnd, text.length)
+                return CursorContext(before, after)
+            }
+        }
 
-        if (autoCapFirstLetter && (isCursorAtStart || isAfterNewline)) {
+        val before = inputConnection.getTextBeforeCursor(200, 0) ?: return null
+        val after = inputConnection.getTextAfterCursor(200, 0) ?: ""
+        val selected = inputConnection.getSelectedText(0) ?: ""
+
+        val beforeEffective = when {
+            selected.isEmpty() -> before
+            before.length >= selected.length && before.endsWith(selected) ->
+                before.dropLast(selected.length)
+            else -> before
+        }
+        val afterEffective = when {
+            selected.isEmpty() -> after
+            after.length >= selected.length && after.startsWith(selected) ->
+                after.drop(selected.length)
+            else -> after
+        }
+
+        return CursorContext(beforeEffective, afterEffective)
+    }
+
+    /**
+     * Pure decision: should smart auto-cap request Shift given before/after?
+     */
+    private fun shouldAutoCap(
+        settings: AutoCapSettings,
+        before: CharSequence,
+        after: CharSequence
+    ): Boolean {
+        val isCursorAtStart = before.isEmpty()
+        val isAfterNewline = before.lastOrNull() == '\n'
+
+        if (settings.autoCapFirstLetter && (isCursorAtStart || isAfterNewline)) {
             return true
         }
 
-        if (autoCapAfterPeriod && textBeforeCursor.isNotEmpty()) {
-            // Look for the last non-whitespace character before the cursor
-            val lastNonWhitespaceIndex = textBeforeCursor.indexOfLast { !it.isWhitespace() }
+        if (settings.autoCapAfterPeriod && before.isNotEmpty()) {
+            val lastNonWhitespaceIndex = before.indexOfLast { !it.isWhitespace() }
             if (lastNonWhitespaceIndex >= 0) {
-                val lastNonWhitespaceChar = textBeforeCursor[lastNonWhitespaceIndex]
+                val lastNonWhitespaceChar = before[lastNonWhitespaceIndex]
                 val isSentencePunctuation = when (lastNonWhitespaceChar) {
                     '.' -> {
-                        // Avoid treating "..." as end of sentence.
                         val prevIndex = lastNonWhitespaceIndex - 1
-                        !(prevIndex >= 0 && textBeforeCursor[prevIndex] == '.')
+                        !(prevIndex >= 0 && before[prevIndex] == '.')
                     }
                     '!', '?' -> true
                     else -> false
@@ -96,61 +114,6 @@ object AutoCapitalizeHelper {
         return false
     }
 
-    private fun shouldApplySmartAutoCapForSelection(
-        context: android.content.Context,
-        inputConnection: InputConnection,
-        shouldDisableSmartFeatures: Boolean
-    ): Boolean {
-        if (shouldDisableSmartFeatures) {
-            return false
-        }
-
-        val autoCapFirstLetter = SettingsManager.getAutoCapitalizeFirstLetter(context)
-        val autoCapAfterPeriod = SettingsManager.getAutoCapitalizeAfterPeriod(context)
-        if (!autoCapFirstLetter && !autoCapAfterPeriod) {
-            return false
-        }
-
-        // Prefer a precise selection window via ExtractedText when available.
-        val extracted = inputConnection.getExtractedText(ExtractedTextRequest(), 0)
-        if (extracted != null && extracted.text != null) {
-            val text = extracted.text
-            val selStart = extracted.selectionStart
-            val selEnd = extracted.selectionEnd
-            if (selStart >= 0 && selEnd >= 0 && selStart <= selEnd && selEnd <= text.length) {
-                val before = text.subSequence(0, selStart)
-                val after = text.subSequence(selEnd, text.length)
-                return shouldApplySmartAutoCap(
-                    autoCapFirstLetter = autoCapFirstLetter,
-                    autoCapAfterPeriod = autoCapAfterPeriod,
-                    textBeforeCursor = before,
-                    textAfterCursor = after
-                )
-            }
-        }
-
-        // Fallback to a conservative heuristic around the cursor.
-        val selectedText = inputConnection.getSelectedText(0) ?: ""
-        val textBeforeCursor = inputConnection.getTextBeforeCursor(200, 0) ?: return false
-        val textAfterCursor = inputConnection.getTextAfterCursor(200, 0) ?: ""
-
-        val effectiveTextBefore = when {
-            selectedText.isEmpty() -> textBeforeCursor
-            textBeforeCursor.length >= selectedText.length && textBeforeCursor.endsWith(selectedText) ->
-                textBeforeCursor.dropLast(selectedText.length)
-            textAfterCursor.length >= selectedText.length && textAfterCursor.startsWith(selectedText) ->
-                textBeforeCursor // selection on the right of cursor
-            else -> textBeforeCursor
-        }
-
-        return shouldApplySmartAutoCap(
-            autoCapFirstLetter = autoCapFirstLetter,
-            autoCapAfterPeriod = autoCapAfterPeriod,
-            textBeforeCursor = effectiveTextBefore,
-            textAfterCursor = textAfterCursor
-        )
-    }
-
     private fun clearSmartShift(
         disableShift: () -> Boolean,
         onUpdateStatusBar: () -> Unit
@@ -162,20 +125,39 @@ object AutoCapitalizeHelper {
         }
     }
 
-    private fun applyAutoCapitalizeFirstLetter(
+    /**
+     * Single entry point to evaluate and set/clear smart Shift.
+     */
+    fun maybeEnableSmartShift(
         context: android.content.Context,
         inputConnection: InputConnection?,
         shouldDisableSmartFeatures: Boolean,
         enableShift: () -> Boolean,
-        disableShift: () -> Boolean,
+        disableShift: () -> Boolean = { false },
         onUpdateStatusBar: () -> Unit
     ) {
+        if (shouldDisableSmartFeatures) {
+            clearSmartShift(disableShift, onUpdateStatusBar)
+            return
+        }
+
         val ic = inputConnection ?: run {
             clearSmartShift(disableShift, onUpdateStatusBar)
             return
         }
 
-        val shouldCapitalize = shouldApplySmartAutoCap(context, ic, shouldDisableSmartFeatures)
+        val settings = resolveAutoCapSettings(context, ic)
+        if (!settings.autoCapFirstLetter && !settings.autoCapAfterPeriod) {
+            clearSmartShift(disableShift, onUpdateStatusBar)
+            return
+        }
+
+        val cursorContext = readContext(ic) ?: run {
+            clearSmartShift(disableShift, onUpdateStatusBar)
+            return
+        }
+
+        val shouldCapitalize = shouldAutoCap(settings, cursorContext.before, cursorContext.after)
         if (shouldCapitalize) {
             if (enableShift()) {
                 smartShiftRequested = true
@@ -186,6 +168,21 @@ object AutoCapitalizeHelper {
         }
     }
 
+    fun shouldAutoCapitalizeAtCursor(
+        context: android.content.Context,
+        inputConnection: InputConnection?,
+        shouldDisableSmartFeatures: Boolean
+    ): Boolean {
+        if (inputConnection == null || shouldDisableSmartFeatures) return false
+        val settings = resolveAutoCapSettings(context, inputConnection)
+        if (!settings.autoCapFirstLetter && !settings.autoCapAfterPeriod) {
+            return false
+        }
+        val cursorContext = readContext(inputConnection) ?: return false
+        return shouldAutoCap(settings, cursorContext.before, cursorContext.after)
+    }
+
+    // Thin wrappers kept for call sites; all delegate to maybeEnableSmartShift.
     fun checkAndEnableAutoCapitalize(
         context: android.content.Context,
         inputConnection: InputConnection?,
@@ -194,7 +191,7 @@ object AutoCapitalizeHelper {
         disableShift: () -> Boolean = { false },
         onUpdateStatusBar: () -> Unit
     ) {
-        applyAutoCapitalizeFirstLetter(
+        maybeEnableSmartShift(
             context = context,
             inputConnection = inputConnection,
             shouldDisableSmartFeatures = shouldDisableSmartFeatures,
@@ -216,53 +213,13 @@ object AutoCapitalizeHelper {
         disableShift: () -> Boolean,
         onUpdateStatusBar: () -> Unit
     ) {
-        if (newSelStart != newSelEnd) {
-            val ic = inputConnection ?: run {
-                clearSmartShift(disableShift, onUpdateStatusBar)
-                return
-            }
-
-            val shouldCapitalize = shouldApplySmartAutoCapForSelection(
-                context = context,
-                inputConnection = ic,
-                shouldDisableSmartFeatures = shouldDisableSmartFeatures
-            )
-
-            if (shouldCapitalize) {
-                if (enableShift()) {
-                    smartShiftRequested = true
-                    onUpdateStatusBar()
-                }
-            } else {
-                clearSmartShift(disableShift, onUpdateStatusBar)
-            }
-            return
-        }
-        applyAutoCapitalizeFirstLetter(
+        maybeEnableSmartShift(
             context = context,
             inputConnection = inputConnection,
             shouldDisableSmartFeatures = shouldDisableSmartFeatures,
             enableShift = enableShift,
             disableShift = disableShift,
             onUpdateStatusBar = onUpdateStatusBar
-        )
-    }
-
-    /**
-     * Returns whether smart auto-cap rules would enable Shift at the current cursor,
-     * taking into account selection (the selected text is treated as replaced/absent).
-     * Useful for actions that commit text directly (e.g., suggestion taps).
-     */
-    fun shouldAutoCapitalizeAtCursor(
-        context: android.content.Context,
-        inputConnection: InputConnection?,
-        shouldDisableSmartFeatures: Boolean
-    ): Boolean {
-        val ic = inputConnection ?: return false
-        return shouldApplySmartAutoCapForSelection(
-            context = context,
-            inputConnection = ic,
-            shouldDisableSmartFeatures = shouldDisableSmartFeatures
         )
     }
 
@@ -274,7 +231,7 @@ object AutoCapitalizeHelper {
         disableShift: () -> Boolean = { false },
         onUpdateStatusBar: () -> Unit
     ) {
-        applyAutoCapitalizeFirstLetter(
+        maybeEnableSmartShift(
             context = context,
             inputConnection = inputConnection,
             shouldDisableSmartFeatures = shouldDisableSmartFeatures,
@@ -292,21 +249,14 @@ object AutoCapitalizeHelper {
         disableShift: () -> Boolean,
         onUpdateStatusBar: () -> Unit
     ) {
-        val ic = inputConnection ?: run {
-            clearSmartShift(disableShift, onUpdateStatusBar)
-            return
-        }
-
-        val shouldCapitalize = shouldApplySmartAutoCap(context, ic, shouldDisableSmartFeatures)
-        if (!shouldCapitalize) {
-            clearSmartShift(disableShift, onUpdateStatusBar)
-            return
-        }
-
-        if (onEnableShift()) {
-            smartShiftRequested = true
-            onUpdateStatusBar()
-        }
+        maybeEnableSmartShift(
+            context = context,
+            inputConnection = inputConnection,
+            shouldDisableSmartFeatures = shouldDisableSmartFeatures,
+            enableShift = onEnableShift,
+            disableShift = disableShift,
+            onUpdateStatusBar = onUpdateStatusBar
+        )
     }
 
     fun enableAfterEnter(
@@ -317,7 +267,7 @@ object AutoCapitalizeHelper {
         disableShift: () -> Boolean,
         onUpdateStatusBar: () -> Unit
     ) {
-        applyAutoCapitalizeFirstLetter(
+        maybeEnableSmartShift(
             context = context,
             inputConnection = inputConnection,
             shouldDisableSmartFeatures = shouldDisableSmartFeatures,
