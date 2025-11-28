@@ -909,6 +909,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             shouldDisableAutoCapitalize = state.shouldDisableAutoCapitalize,
             shouldDisableDoubleSpaceToPeriod = state.shouldDisableDoubleSpaceToPeriod,
             shouldDisableVariations = state.shouldDisableVariations,
+            isEmailField = state.isEmailField,
             // Legacy flag for backward compatibility
             shouldDisableSmartFeatures = shouldDisableSmartFeatures
         )

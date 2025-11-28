@@ -28,8 +28,10 @@ import it.palsoftware.pastiera.inputmethod.TextSelectionHelper
 import it.palsoftware.pastiera.inputmethod.VariationButtonHandler
 import it.palsoftware.pastiera.inputmethod.SpeechRecognitionActivity
 import it.palsoftware.pastiera.data.variation.VariationRepository
+import android.graphics.Paint
 import kotlin.math.abs
 import kotlin.math.max
+import kotlin.math.min
 
 /**
  * Handles the variations row (suggestions + microphone/settings) rendered above the LED strip.
@@ -47,6 +49,7 @@ class VariationBarView(
 
     private var wrapper: FrameLayout? = null
     private var container: LinearLayout? = null
+    private var buttonsContainer: LinearLayout? = null
     private var overlay: FrameLayout? = null
     private var swipeIndicator: View? = null
     private var emptyHintView: TextView? = null
@@ -64,6 +67,7 @@ class VariationBarView(
     private var lastCursorMoveX = 0f
     private var currentInputConnection: android.view.inputmethod.InputConnection? = null
     private var staticVariations: List<String> = emptyList()
+    private var emailVariations: List<String> = emptyList()
     private var lastInputConnectionUsed: android.view.inputmethod.InputConnection? = null
     private var lastIsStaticContent: Boolean? = null
 
@@ -99,6 +103,17 @@ class VariationBarView(
             )
             visibility = View.GONE
         }
+        
+        // Container for mic and settings buttons (fixed position on the right)
+        buttonsContainer = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.END or Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        }
+        container?.addView(buttonsContainer)
 
         wrapper = FrameLayout(context).apply {
             layoutParams = LinearLayout.LayoutParams(
@@ -232,10 +247,18 @@ class VariationBarView(
                 isStaticContent = false
             }
             allowStaticFallback -> {
-                if (staticVariations.isEmpty()) {
-                    staticVariations = VariationRepository.loadStaticVariations(context.assets, context)
+                val variations = if (snapshot.isEmailField) {
+                    if (emailVariations.isEmpty()) {
+                        emailVariations = VariationRepository.loadEmailVariations(context.assets, context)
+                    }
+                    emailVariations
+                } else {
+                    if (staticVariations.isEmpty()) {
+                        staticVariations = VariationRepository.loadStaticVariations(context.assets, context)
+                    }
+                    staticVariations
                 }
-                effectiveVariations = staticVariations
+                effectiveVariations = variations
                 isStaticContent = true
             }
             else -> {
@@ -281,8 +304,29 @@ class VariationBarView(
             3f,
             context.resources.displayMetrics
         ).toInt()
-        val totalSpacing = spacingBetweenButtons * 8
-        val buttonWidth = max(1, (availableWidth - totalSpacing) / 9)
+        
+        // Calculate space for mic and settings buttons
+        val micAndSettingsWidth = (availableWidth - spacingBetweenButtons * 8) / 9 * 2
+        val spacingForMicAndSettings = spacingBetweenButtons * 2
+        val variationsAvailableWidth = availableWidth - micAndSettingsWidth - spacingForMicAndSettings
+        
+        // Calculate base button width (for when we have 7 variations)
+        val baseButtonWidth = max(1, (variationsAvailableWidth - spacingBetweenButtons * 6) / 7)
+        
+        // If we have less than 7 variations, distribute available width among them
+        val variationCount = limitedVariations.size
+        val buttonWidth: Int
+        val maxButtonWidth: Int
+        if (variationCount < 7 && variationCount > 0) {
+            // Distribute available width among existing variations
+            val totalSpacingForVariations = spacingBetweenButtons * (variationCount - 1)
+            val widthPerVariation = (variationsAvailableWidth - totalSpacingForVariations) / variationCount
+            buttonWidth = max(1, widthPerVariation)
+            maxButtonWidth = widthPerVariation // No cap when we have fewer variations
+        } else {
+            buttonWidth = baseButtonWidth
+            maxButtonWidth = baseButtonWidth * 3 // Cap at 3x when we have 7 variations
+        }
 
         val variationsRow = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -290,6 +334,7 @@ class VariationBarView(
         }
         currentVariationsRow = variationsRow
 
+        // Variations row takes available space (weight=1)
         val rowLayoutParams = LinearLayout.LayoutParams(
             0,
             ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -302,35 +347,33 @@ class VariationBarView(
         lastIsStaticContent = isStaticContent
 
         for (variation in limitedVariations) {
-            val button = createVariationButton(variation, inputConnection, buttonWidth, isStaticContent)
+            val button = createVariationButton(variation, inputConnection, buttonWidth, maxButtonWidth, isStaticContent)
             variationButtons.add(button)
             variationsRow.addView(button)
         }
 
-        val placeholderCount = 7 - limitedVariations.size
-        for (i in 0 until placeholderCount) {
-            val placeholderButton = createPlaceholderButton(buttonWidth)
-            variationsRow.addView(placeholderButton)
-        }
-
-        val microphoneButton = microphoneButtonView ?: createMicrophoneButton(buttonWidth)
+        // Add buttons to the fixed-position container on the right
+        val buttonsContainerView = buttonsContainer ?: return
+        buttonsContainerView.removeAllViews()
+        
+        val microphoneButton = microphoneButtonView ?: createMicrophoneButton(baseButtonWidth)
         microphoneButtonView = microphoneButton
         (microphoneButton.parent as? ViewGroup)?.removeView(microphoneButton)
-        val micParams = LinearLayout.LayoutParams(buttonWidth, buttonWidth)
-        containerView.addView(microphoneButton, micParams)
+        val micParams = LinearLayout.LayoutParams(baseButtonWidth, baseButtonWidth)
+        buttonsContainerView.addView(microphoneButton, micParams)
         microphoneButton.setOnClickListener {
             startSpeechRecognition(inputConnection)
         }
         microphoneButton.alpha = 1f
         microphoneButton.visibility = View.VISIBLE
 
-        val settingsButton = settingsButtonView ?: createStatusBarSettingsButton(buttonWidth)
+        val settingsButton = settingsButtonView ?: createStatusBarSettingsButton(baseButtonWidth)
         settingsButtonView = settingsButton
         (settingsButton.parent as? ViewGroup)?.removeView(settingsButton)
-        val settingsParams = LinearLayout.LayoutParams(buttonWidth, buttonWidth).apply {
-            topMargin = (-buttonWidth * 0.1f).toInt()
+        val settingsParams = LinearLayout.LayoutParams(baseButtonWidth, baseButtonWidth).apply {
+            topMargin = (-baseButtonWidth * 0.1f).toInt()
         }
-        containerView.addView(settingsButton, settingsParams)
+        buttonsContainerView.addView(settingsButton, settingsParams)
         settingsButton.setOnClickListener {
             openSettings()
         }
@@ -607,16 +650,17 @@ class VariationBarView(
         variation: String,
         inputConnection: android.view.inputmethod.InputConnection?,
         buttonWidth: Int,
+        maxButtonWidth: Int,
         isStatic: Boolean
     ): TextView {
+        val dp2 = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            2f,
+            context.resources.displayMetrics
+        ).toInt()
         val dp4 = TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP,
             4f,
-            context.resources.displayMetrics
-        ).toInt()
-        val dp6 = TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP,
-            6f,
             context.resources.displayMetrics
         ).toInt()
         val dp3 = TypedValue.applyDimension(
@@ -625,6 +669,23 @@ class VariationBarView(
             context.resources.displayMetrics
         ).toInt()
 
+        // Calculate text width needed
+        val paint = Paint().apply {
+            textSize = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_SP,
+                16f,
+                context.resources.displayMetrics
+            )
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+        }
+        val textWidth = paint.measureText(variation).toInt()
+        val horizontalPadding = 0 // Testing with 0 padding
+        val requiredWidth = textWidth + horizontalPadding
+        
+        // Use max of minimum width (buttonWidth) and required width, but cap at maxButtonWidth
+        val calculatedWidth = max(buttonWidth, min(requiredWidth, maxButtonWidth))
+        
+        // Keep height fixed (square based on minimum width)
         val buttonHeight = buttonWidth
 
         val drawable = GradientDrawable().apply {
@@ -642,13 +703,14 @@ class VariationBarView(
 
         return TextView(context).apply {
             text = variation
-            textSize = 17.6f
+            textSize = 16f
             setTextColor(Color.WHITE)
             setTypeface(null, android.graphics.Typeface.BOLD)
             gravity = Gravity.CENTER
-            setPadding(dp6, dp4, dp6, dp4)
+            maxLines = 1
+            setPadding(0, 0, 0, 0) // Testing with 0 padding
             background = stateListDrawable
-            layoutParams = LinearLayout.LayoutParams(buttonWidth, buttonHeight).apply {
+            layoutParams = LinearLayout.LayoutParams(calculatedWidth, buttonHeight).apply {
                 marginEnd = dp3
             }
             isClickable = true
@@ -823,5 +885,6 @@ class VariationBarView(
 
     fun invalidateStaticVariations() {
         staticVariations = emptyList()
+        emailVariations = emptyList()
     }
 }

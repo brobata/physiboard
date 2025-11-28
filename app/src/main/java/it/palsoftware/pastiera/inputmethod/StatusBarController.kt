@@ -88,6 +88,7 @@ class StatusBarController(
         val shouldDisableAutoCapitalize: Boolean = false,
         val shouldDisableDoubleSpaceToPeriod: Boolean = false,
         val shouldDisableVariations: Boolean = false,
+        val isEmailField: Boolean = false,
         // Legacy flag for backward compatibility
         val shouldDisableSmartFeatures: Boolean = false
     ) {
