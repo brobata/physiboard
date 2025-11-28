@@ -42,7 +42,7 @@ class FullSuggestionsBar(private val context: Context) {
         shouldShow: Boolean,
         inputConnection: android.view.inputmethod.InputConnection?,
         listener: VariationButtonHandler.OnVariationSelectedListener?,
-        shouldDisableSmartFeatures: Boolean
+        shouldDisableSuggestions: Boolean
     ) {
         val bar = container ?: return
         if (!shouldShow) {
@@ -58,7 +58,7 @@ class FullSuggestionsBar(private val context: Context) {
             return
         }
 
-        renderSlots(bar, slots, inputConnection, listener, shouldDisableSmartFeatures)
+        renderSlots(bar, slots, inputConnection, listener, shouldDisableSuggestions)
         lastSlots = slots
     }
 
@@ -67,7 +67,7 @@ class FullSuggestionsBar(private val context: Context) {
         slots: List<String?>,
         inputConnection: android.view.inputmethod.InputConnection?,
         listener: VariationButtonHandler.OnVariationSelectedListener?,
-        shouldDisableSmartFeatures: Boolean
+        shouldDisableSuggestions: Boolean
     ) {
         bar.removeAllViews()
         bar.visibility = View.VISIBLE
@@ -105,7 +105,7 @@ class FullSuggestionsBar(private val context: Context) {
                             suggestion,
                             inputConnection,
                             listener,
-                            shouldDisableSmartFeatures
+                            shouldDisableSuggestions
                         )
                     )
                 }

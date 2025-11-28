@@ -27,14 +27,15 @@ class TextInputController(
     fun handleDoubleSpaceToPeriod(
         keyCode: Int,
         inputConnection: InputConnection?,
-        shouldDisableSmartFeatures: Boolean,
+        shouldDisableDoubleSpaceToPeriod: Boolean,
+        shouldDisableAutoCapitalize: Boolean,
         onStatusBarUpdate: () -> Unit
     ): Boolean {
         // Detects a "double space" pattern and replaces the trailing space
         // with ". ". The decision to enable Shift one-shot after that is
         // delegated to AutoCapitalizeHelper so it can be tracked as a
         // smart auto-capitalization (and cleared when context changes).
-        if (keyCode != KeyEvent.KEYCODE_SPACE || shouldDisableSmartFeatures) {
+        if (keyCode != KeyEvent.KEYCODE_SPACE || shouldDisableDoubleSpaceToPeriod) {
             if (lastSpacePressTime > 0) {
                 val currentTime = System.currentTimeMillis()
                 if (currentTime - lastSpacePressTime >= doubleTapThreshold) {
@@ -59,25 +60,27 @@ class TextInputController(
         }
 
         val textBeforeCursor = inputConnection.getTextBeforeCursor(100, 0) ?: return false
-        if (!textBeforeCursor.endsWith(" ") || 
-            (textBeforeCursor.length >= 2 && textBeforeCursor[textBeforeCursor.length - 2] == ' ')) {
+        
+        // Simplified: check that we have exactly one space at the end
+        // (not two or more, and not zero)
+        if (textBeforeCursor.isEmpty() || !textBeforeCursor.endsWith(" ")) {
+            lastSpacePressTime = currentTime
+            return false
+        }
+        
+        // Check that the character before the space is not a space (avoid triple+ spaces)
+        if (textBeforeCursor.length >= 2 && textBeforeCursor[textBeforeCursor.length - 2] == ' ') {
             lastSpacePressTime = currentTime
             return false
         }
 
-        var lastCharIndex = textBeforeCursor.length - 2
-        while (lastCharIndex >= 0 && textBeforeCursor[lastCharIndex].isWhitespace()) {
-            lastCharIndex--
-        }
-
-        if (lastCharIndex < 0) {
-            lastSpacePressTime = currentTime
-            return false
-        }
-
-        val lastChar = textBeforeCursor[lastCharIndex]
-        val isEndPunctuation = lastChar in ".!?"
-        if (isEndPunctuation) {
+        // Reuse AutoCapitalizeHelper logic to check if already has sentence-ending punctuation
+        // (don't convert if punctuation already exists)
+        // Note: We check without requiring whitespace after, since we're about to add ". "
+        if (AutoCapitalizeHelper.hasSentenceEndingPunctuation(
+            textBeforeCursor, 
+            requireWhitespaceAfter = false
+        )) {
             lastSpacePressTime = currentTime
             return false
         }
@@ -87,7 +90,7 @@ class TextInputController(
         AutoCapitalizeHelper.enableAfterPunctuation(
             context = context,
             inputConnection = inputConnection,
-            shouldDisableSmartFeatures = shouldDisableSmartFeatures,
+            shouldDisableAutoCapitalize = shouldDisableAutoCapitalize,
             onEnableShift = { modifierStateController.requestShiftOneShotFromAutoCap() },
             disableShift = { modifierStateController.consumeShiftOneShot() },
             onUpdateStatusBar = onStatusBarUpdate
@@ -99,7 +102,7 @@ class TextInputController(
     fun handleAutoCapAfterPeriod(
         keyCode: Int,
         inputConnection: InputConnection?,
-        shouldDisableSmartFeatures: Boolean,
+        shouldDisableAutoCapitalize: Boolean,
         onStatusBarUpdate: () -> Unit
     ) {
         // If user presses Space after punctuation and Shift is not already
@@ -112,7 +115,7 @@ class TextInputController(
             AutoCapitalizeHelper.enableAfterPunctuation(
                 context = context,
                 inputConnection = inputConnection,
-                shouldDisableSmartFeatures = shouldDisableSmartFeatures,
+                shouldDisableAutoCapitalize = shouldDisableAutoCapitalize,
                 onEnableShift = { modifierStateController.requestShiftOneShotFromAutoCap() },
                 disableShift = { modifierStateController.consumeShiftOneShot() },
                 onUpdateStatusBar = onStatusBarUpdate
@@ -123,17 +126,17 @@ class TextInputController(
     fun handleAutoCapAfterEnter(
         keyCode: Int,
         inputConnection: InputConnection?,
-        shouldDisableSmartFeatures: Boolean,
+        shouldDisableAutoCapitalize: Boolean,
         onStatusBarUpdate: () -> Unit
     ) {
         // After Enter, we reuse the same smart auto-cap logic used for
         // "first letter in empty field" by delegating to AutoCapitalizeHelper.
         // This keeps all "start of sentence" detection in a single place.
-        if (keyCode == KeyEvent.KEYCODE_ENTER && !shouldDisableSmartFeatures) {
+        if (keyCode == KeyEvent.KEYCODE_ENTER && !shouldDisableAutoCapitalize) {
             AutoCapitalizeHelper.enableAfterEnter(
                 context,
                 inputConnection,
-                shouldDisableSmartFeatures,
+                shouldDisableAutoCapitalize,
                 onEnableShift = { modifierStateController.requestShiftOneShotFromAutoCap() },
                 disableShift = { modifierStateController.consumeShiftOneShot() },
                 onUpdateStatusBar = onStatusBarUpdate

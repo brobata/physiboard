@@ -29,14 +29,11 @@ object AutoCapitalizeHelper {
         val userAutoCapFirstLetter = SettingsManager.getAutoCapitalizeFirstLetter(context)
         val userAutoCapAfterPeriod = SettingsManager.getAutoCapitalizeAfterPeriod(context)
 
-        val capsMode = inputConnection.getCursorCapsMode(
-            TextUtils.CAP_MODE_SENTENCES or TextUtils.CAP_MODE_WORDS
-        )
-        val capsSentences = capsMode and TextUtils.CAP_MODE_SENTENCES != 0
-        val capsWords = capsMode and TextUtils.CAP_MODE_WORDS != 0
-
-        val autoCapFirstLetter = userAutoCapFirstLetter || capsSentences || capsWords
-        val autoCapAfterPeriod = userAutoCapAfterPeriod || capsSentences
+        // Respect user preferences: if explicitly disabled, don't apply auto-cap
+        // even if the input field requests it. If enabled, always apply.
+        // This gives users full control over the feature.
+        val autoCapFirstLetter = userAutoCapFirstLetter
+        val autoCapAfterPeriod = userAutoCapAfterPeriod
 
         return AutoCapSettings(autoCapFirstLetter, autoCapAfterPeriod)
     }
@@ -79,6 +76,56 @@ object AutoCapitalizeHelper {
     }
 
     /**
+     * Checks if the given text ends with sentence-ending punctuation (.!?)
+     * followed by whitespace. Used for auto-capitalization and double-space-to-period.
+     * 
+     * @param textBeforeCursor The text before the cursor position
+     * @param requireWhitespaceAfter If true, requires whitespace after punctuation (for auto-cap).
+     *                               If false, only checks if punctuation exists (for double-space prevention).
+     * @return true if text ends with sentence-ending punctuation (with optional whitespace requirement)
+     */
+    fun hasSentenceEndingPunctuation(
+        textBeforeCursor: CharSequence,
+        requireWhitespaceAfter: Boolean = true
+    ): Boolean {
+        if (textBeforeCursor.isEmpty()) return false
+        
+        val lastNonWhitespaceIndex = textBeforeCursor.indexOfLast { !it.isWhitespace() }
+        if (lastNonWhitespaceIndex < 0) return false
+        
+        val lastNonWhitespaceChar = textBeforeCursor[lastNonWhitespaceIndex]
+        val isSentencePunctuation = when (lastNonWhitespaceChar) {
+            '.' -> {
+                val prevIndex = lastNonWhitespaceIndex - 1
+                val isNotDoublePeriod = !(prevIndex >= 0 && textBeforeCursor[prevIndex] == '.')
+                if (!isNotDoublePeriod) return false
+                
+                if (requireWhitespaceAfter) {
+                    // All characters after period must be whitespace (end of sentence)
+                    lastNonWhitespaceIndex < textBeforeCursor.length - 1 &&
+                        (lastNonWhitespaceIndex + 1 until textBeforeCursor.length)
+                            .all { textBeforeCursor[it].isWhitespace() }
+                } else {
+                    true // Just check if it's a period (not double)
+                }
+            }
+            '!', '?' -> {
+                if (requireWhitespaceAfter) {
+                    // All characters after punctuation must be whitespace (end of sentence)
+                    lastNonWhitespaceIndex < textBeforeCursor.length - 1 &&
+                        (lastNonWhitespaceIndex + 1 until textBeforeCursor.length)
+                            .all { textBeforeCursor[it].isWhitespace() }
+                } else {
+                    true // Just check if it's sentence-ending punctuation
+                }
+            }
+            else -> false
+        }
+        
+        return isSentencePunctuation
+    }
+
+    /**
      * Pure decision: should smart auto-cap request Shift given before/after?
      */
     private fun shouldAutoCap(
@@ -94,20 +141,8 @@ object AutoCapitalizeHelper {
         }
 
         if (settings.autoCapAfterPeriod && before.isNotEmpty()) {
-            val lastNonWhitespaceIndex = before.indexOfLast { !it.isWhitespace() }
-            if (lastNonWhitespaceIndex >= 0) {
-                val lastNonWhitespaceChar = before[lastNonWhitespaceIndex]
-                val isSentencePunctuation = when (lastNonWhitespaceChar) {
-                    '.' -> {
-                        val prevIndex = lastNonWhitespaceIndex - 1
-                        !(prevIndex >= 0 && before[prevIndex] == '.')
-                    }
-                    '!', '?' -> true
-                    else -> false
-                }
-                if (isSentencePunctuation) {
-                    return true
-                }
+            if (hasSentenceEndingPunctuation(before, requireWhitespaceAfter = true)) {
+                return true
             }
         }
 
@@ -131,12 +166,12 @@ object AutoCapitalizeHelper {
     fun maybeEnableSmartShift(
         context: android.content.Context,
         inputConnection: InputConnection?,
-        shouldDisableSmartFeatures: Boolean,
+        shouldDisableAutoCapitalize: Boolean,
         enableShift: () -> Boolean,
         disableShift: () -> Boolean = { false },
         onUpdateStatusBar: () -> Unit
     ) {
-        if (shouldDisableSmartFeatures) {
+        if (shouldDisableAutoCapitalize) {
             clearSmartShift(disableShift, onUpdateStatusBar)
             return
         }
@@ -171,9 +206,9 @@ object AutoCapitalizeHelper {
     fun shouldAutoCapitalizeAtCursor(
         context: android.content.Context,
         inputConnection: InputConnection?,
-        shouldDisableSmartFeatures: Boolean
+        shouldDisableAutoCapitalize: Boolean
     ): Boolean {
-        if (inputConnection == null || shouldDisableSmartFeatures) return false
+        if (inputConnection == null || shouldDisableAutoCapitalize) return false
         val settings = resolveAutoCapSettings(context, inputConnection)
         if (!settings.autoCapFirstLetter && !settings.autoCapAfterPeriod) {
             return false
@@ -186,7 +221,7 @@ object AutoCapitalizeHelper {
     fun checkAndEnableAutoCapitalize(
         context: android.content.Context,
         inputConnection: InputConnection?,
-        shouldDisableSmartFeatures: Boolean,
+        shouldDisableAutoCapitalize: Boolean,
         enableShift: () -> Boolean,
         disableShift: () -> Boolean = { false },
         onUpdateStatusBar: () -> Unit
@@ -194,7 +229,7 @@ object AutoCapitalizeHelper {
         maybeEnableSmartShift(
             context = context,
             inputConnection = inputConnection,
-            shouldDisableSmartFeatures = shouldDisableSmartFeatures,
+            shouldDisableAutoCapitalize = shouldDisableAutoCapitalize,
             enableShift = enableShift,
             disableShift = disableShift,
             onUpdateStatusBar = onUpdateStatusBar
@@ -204,7 +239,7 @@ object AutoCapitalizeHelper {
     fun checkAutoCapitalizeOnSelectionChange(
         context: android.content.Context,
         inputConnection: InputConnection?,
-        shouldDisableSmartFeatures: Boolean,
+        shouldDisableAutoCapitalize: Boolean,
         oldSelStart: Int,
         oldSelEnd: Int,
         newSelStart: Int,
@@ -216,7 +251,7 @@ object AutoCapitalizeHelper {
         maybeEnableSmartShift(
             context = context,
             inputConnection = inputConnection,
-            shouldDisableSmartFeatures = shouldDisableSmartFeatures,
+            shouldDisableAutoCapitalize = shouldDisableAutoCapitalize,
             enableShift = enableShift,
             disableShift = disableShift,
             onUpdateStatusBar = onUpdateStatusBar
@@ -226,7 +261,7 @@ object AutoCapitalizeHelper {
     fun checkAutoCapitalizeOnRestart(
         context: android.content.Context,
         inputConnection: InputConnection?,
-        shouldDisableSmartFeatures: Boolean,
+        shouldDisableAutoCapitalize: Boolean,
         enableShift: () -> Boolean,
         disableShift: () -> Boolean = { false },
         onUpdateStatusBar: () -> Unit
@@ -234,7 +269,7 @@ object AutoCapitalizeHelper {
         maybeEnableSmartShift(
             context = context,
             inputConnection = inputConnection,
-            shouldDisableSmartFeatures = shouldDisableSmartFeatures,
+            shouldDisableAutoCapitalize = shouldDisableAutoCapitalize,
             enableShift = enableShift,
             disableShift = disableShift,
             onUpdateStatusBar = onUpdateStatusBar
@@ -244,7 +279,7 @@ object AutoCapitalizeHelper {
     fun enableAfterPunctuation(
         context: android.content.Context,
         inputConnection: InputConnection?,
-        shouldDisableSmartFeatures: Boolean,
+        shouldDisableAutoCapitalize: Boolean,
         onEnableShift: () -> Boolean,
         disableShift: () -> Boolean,
         onUpdateStatusBar: () -> Unit
@@ -252,7 +287,7 @@ object AutoCapitalizeHelper {
         maybeEnableSmartShift(
             context = context,
             inputConnection = inputConnection,
-            shouldDisableSmartFeatures = shouldDisableSmartFeatures,
+            shouldDisableAutoCapitalize = shouldDisableAutoCapitalize,
             enableShift = onEnableShift,
             disableShift = disableShift,
             onUpdateStatusBar = onUpdateStatusBar
@@ -262,7 +297,7 @@ object AutoCapitalizeHelper {
     fun enableAfterEnter(
         context: android.content.Context,
         inputConnection: InputConnection?,
-        shouldDisableSmartFeatures: Boolean,
+        shouldDisableAutoCapitalize: Boolean,
         onEnableShift: () -> Boolean,
         disableShift: () -> Boolean,
         onUpdateStatusBar: () -> Unit
@@ -270,7 +305,7 @@ object AutoCapitalizeHelper {
         maybeEnableSmartShift(
             context = context,
             inputConnection = inputConnection,
-            shouldDisableSmartFeatures = shouldDisableSmartFeatures,
+            shouldDisableAutoCapitalize = shouldDisableAutoCapitalize,
             enableShift = onEnableShift,
             disableShift = disableShift,
             onUpdateStatusBar = onUpdateStatusBar

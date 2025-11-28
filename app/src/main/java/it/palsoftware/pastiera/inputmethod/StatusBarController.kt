@@ -82,6 +82,13 @@ class StatusBarController(
         val variations: List<String> = emptyList(),
         val suggestions: List<String> = emptyList(),
         val lastInsertedChar: Char? = null,
+        // Granular smart features flags
+        val shouldDisableSuggestions: Boolean = false,
+        val shouldDisableAutoCorrect: Boolean = false,
+        val shouldDisableAutoCapitalize: Boolean = false,
+        val shouldDisableDoubleSpaceToPeriod: Boolean = false,
+        val shouldDisableVariations: Boolean = false,
+        // Legacy flag for backward compatibility
         val shouldDisableSmartFeatures: Boolean = false
     ) {
         val navModeActive: Boolean
@@ -904,14 +911,14 @@ class StatusBarController(
         val showFullBar = !forceMinimalUi &&
             experimentalEnabled &&
             suggestionsEnabledSetting &&
-            !snapshot.shouldDisableSmartFeatures &&
+            !snapshot.shouldDisableSuggestions &&
             snapshot.symPage == 0
         fullSuggestionsBar?.update(
             snapshot.suggestions,
             showFullBar,
             inputConnection,
             onVariationSelectedListener,
-            snapshot.shouldDisableSmartFeatures
+            snapshot.shouldDisableSuggestions
         )
         
         if (snapshot.symPage > 0 && symMappings != null) {

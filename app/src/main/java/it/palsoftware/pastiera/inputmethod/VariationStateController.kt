@@ -29,9 +29,9 @@ class VariationStateController(
 
     fun refreshFromCursor(
         inputConnection: InputConnection?,
-        shouldDisableSmartFeatures: Boolean
+        shouldDisableVariations: Boolean
     ): Snapshot {
-        if (shouldDisableSmartFeatures || inputConnection == null) {
+        if (shouldDisableVariations || inputConnection == null) {
             clear()
             return snapshot()
         }

@@ -18,7 +18,7 @@ object SuggestionButtonHandler {
         suggestion: String,
         inputConnection: InputConnection?,
         listener: VariationButtonHandler.OnVariationSelectedListener? = null,
-        shouldDisableSmartFeatures: Boolean
+        shouldDisableAutoCapitalize: Boolean
     ): View.OnClickListener {
         return View.OnClickListener {
             Log.d(TAG, "Click on suggestion button: $suggestion")
@@ -32,7 +32,7 @@ object SuggestionButtonHandler {
             val forceLeadingCapital = AutoCapitalizeHelper.shouldAutoCapitalizeAtCursor(
                 context = context,
                 inputConnection = inputConnection,
-                shouldDisableSmartFeatures = shouldDisableSmartFeatures
+                shouldDisableAutoCapitalize = shouldDisableAutoCapitalize
             ) && SettingsManager.getAutoCapitalizeFirstLetter(context)
 
             replaceCurrentWord(inputConnection, suggestion, forceLeadingCapital)

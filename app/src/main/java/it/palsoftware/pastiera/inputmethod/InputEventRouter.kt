@@ -566,7 +566,10 @@ class InputEventRouter(
         keyCode: Int,
         event: KeyEvent?,
         inputConnection: InputConnection?,
-        shouldDisableSmartFeatures: Boolean,
+        shouldDisableSuggestions: Boolean,
+        shouldDisableAutoCorrect: Boolean,
+        shouldDisableAutoCapitalize: Boolean,
+        shouldDisableDoubleSpaceToPeriod: Boolean,
         isAutoCorrectEnabled: Boolean,
         textInputController: TextInputController,
         autoCorrectionManager: AutoCorrectionManager,
@@ -591,32 +594,37 @@ class InputEventRouter(
             return true
         }
 
-        if (keyCode == KeyEvent.KEYCODE_DEL && !shouldDisableSmartFeatures && inputConnection != null) {
+        // Refresh suggestions on DEL (if suggestions enabled)
+        if (keyCode == KeyEvent.KEYCODE_DEL && !shouldDisableSuggestions && inputConnection != null) {
             suggestionController?.refreshFromInputConnection(inputConnection)
         }
 
+        // Handle double-space-to-period (if enabled)
         if (
             textInputController.handleDoubleSpaceToPeriod(
                 keyCode,
                 inputConnection,
-                shouldDisableSmartFeatures,
+                shouldDisableDoubleSpaceToPeriod,
+                shouldDisableAutoCapitalize,
                 onStatusBarUpdate = updateStatusBar
             )
         ) {
             return true
         }
 
+        // Handle auto-capitalization after period (if enabled)
         textInputController.handleAutoCapAfterPeriod(
             keyCode,
             inputConnection,
-            shouldDisableSmartFeatures,
+            shouldDisableAutoCapitalize,
             onStatusBarUpdate = updateStatusBar
         )
 
+        // Handle auto-capitalization after Enter (if enabled)
         textInputController.handleAutoCapAfterEnter(
             keyCode,
             inputConnection,
-            shouldDisableSmartFeatures,
+            shouldDisableAutoCapitalize,
             onStatusBarUpdate = updateStatusBar
         )
 
@@ -636,7 +644,8 @@ class InputEventRouter(
             if (handled) {
                 suggestionController?.onContextReset()
             }
-            if (!shouldDisableSmartFeatures && inputConnection != null) {
+            // Trigger suggestions on Enter (if suggestions enabled)
+            if (!shouldDisableSuggestions && inputConnection != null) {
                 val sc = suggestionController
                 // Trigger auto-replace/suggestions without committing a newline;
                 // use an unknown key to avoid boundary-char commit inside the tracker.
@@ -659,7 +668,8 @@ class InputEventRouter(
             return true
         }
 
-        if (!shouldDisableSmartFeatures && inputConnection != null && (isBoundaryKey || isPunctuation) && suggestionController != null) {
+        // Handle suggestions on boundary keys/punctuation (if suggestions enabled)
+        if (!shouldDisableSuggestions && inputConnection != null && (isBoundaryKey || isPunctuation) && suggestionController != null) {
             suggestionController?.onBoundaryKey(keyCode, event, inputConnection)
             return true
         }

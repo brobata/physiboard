@@ -287,7 +287,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         textInputController.handleAutoCapAfterEnter(
             keyCode,
             ic,
-            shouldDisableSmartFeatures
+            inputContextState.shouldDisableAutoCapitalize
         ) { updateStatusBarText() }
         val performed = ic.performEditorAction(actionId)
         if (performed) {
@@ -323,7 +323,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         val state = inputContextState
         val isEditable = state.isEditable
         val isReallyEditable = state.isReallyEditable
-        val canCheckAutoCapitalize = isEditable && !state.shouldDisableSmartFeatures
+        val canCheckAutoCapitalize = isEditable && !state.shouldDisableAutoCapitalize
         
         if (!isReallyEditable) {
             isInputViewActive = false
@@ -332,7 +332,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 AutoCapitalizeHelper.checkAndEnableAutoCapitalize(
                     this,
                     currentInputConnection,
-                    shouldDisableSmartFeatures,
+                    state.shouldDisableAutoCapitalize,
                     enableShift = { modifierStateController.requestShiftOneShotFromAutoCap() },
                     disableShift = { modifierStateController.consumeShiftOneShot() },
                     onUpdateStatusBar = { updateStatusBarText() }
@@ -355,7 +355,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         AutoCapitalizeHelper.checkAndEnableAutoCapitalize(
             this,
             currentInputConnection,
-            shouldDisableSmartFeatures,
+            state.shouldDisableAutoCapitalize,
             enableShift = { modifierStateController.requestShiftOneShotFromAutoCap() },
             disableShift = { modifierStateController.consumeShiftOneShot() },
             onUpdateStatusBar = { updateStatusBarText() }
@@ -368,10 +368,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     }
     
     private fun enforceSmartFeatureDisabledState() {
-        if (!shouldDisableSmartFeatures) {
-            return
+        val state = inputContextState
+        // Hide candidates view if suggestions are disabled
+        if (state.shouldDisableSuggestions) {
+            setCandidatesViewShown(false)
         }
-        setCandidatesViewShown(false)
         deactivateVariations()
     }
     
@@ -644,7 +645,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             updateStatusBarText()
             if (char in ".,;:!?()[]{}\"'") {
                 val ic = currentInputConnection
-                val isAutoCorrectEnabled = SettingsManager.getAutoCorrectEnabled(this) && !shouldDisableSmartFeatures
+                val isAutoCorrectEnabled = SettingsManager.getAutoCorrectEnabled(this) && !inputContextState.shouldDisableAutoCorrect
                 autoCorrectionManager.handleBoundaryKey(
                     keyCode = KeyEvent.KEYCODE_UNKNOWN,
                     event = null,
@@ -882,10 +883,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private fun updateStatusBarText() {
         val variationSnapshot = variationStateController.refreshFromCursor(
             currentInputConnection,
-            shouldDisableSmartFeatures
+            inputContextState.shouldDisableVariations
         )
         
         val modifierSnapshot = modifierStateController.snapshot()
+        val state = inputContextState
         val snapshot = StatusBarController.StatusSnapshot(
             capsLockEnabled = modifierSnapshot.capsLockEnabled,
             shiftPhysicallyPressed = modifierSnapshot.shiftPhysicallyPressed,
@@ -901,6 +903,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             variations = variationSnapshot.variations,
             suggestions = if (SettingsManager.isExperimentalSuggestionsEnabled(this) && SettingsManager.getSuggestionsEnabled(this)) latestSuggestions else emptyList(),
             lastInsertedChar = variationSnapshot.lastInsertedChar,
+            // Granular smart features flags
+            shouldDisableSuggestions = state.shouldDisableSuggestions,
+            shouldDisableAutoCorrect = state.shouldDisableAutoCorrect,
+            shouldDisableAutoCapitalize = state.shouldDisableAutoCapitalize,
+            shouldDisableDoubleSpaceToPeriod = state.shouldDisableDoubleSpaceToPeriod,
+            shouldDisableVariations = state.shouldDisableVariations,
+            // Legacy flag for backward compatibility
             shouldDisableSmartFeatures = shouldDisableSmartFeatures
         )
         // Passa anche la mappa emoji quando SYM è attivo (solo pagina 1)
@@ -969,11 +978,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         initializeInputContext(restarting)
         suggestionController.onContextReset()
 
-        if (restarting && isEditable && !shouldDisableSmartFeatures) {
+        if (restarting && isEditable && !state.shouldDisableAutoCapitalize) {
             AutoCapitalizeHelper.checkAutoCapitalizeOnRestart(
                 this,
                 currentInputConnection,
-                shouldDisableSmartFeatures,
+                state.shouldDisableAutoCapitalize,
                 enableShift = { modifierStateController.requestShiftOneShotFromAutoCap() },
                 disableShift = { modifierStateController.consumeShiftOneShot() },
                 onUpdateStatusBar = { updateStatusBarText() }
@@ -989,12 +998,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         suggestionController.onContextReset()
 
         val isEditable = inputContextState.isEditable
+        val state = inputContextState
         
-        if (restarting && isEditable && !shouldDisableSmartFeatures) {
+        if (restarting && isEditable && !state.shouldDisableAutoCapitalize) {
             AutoCapitalizeHelper.checkAutoCapitalizeOnRestart(
                 this,
                 currentInputConnection,
-                shouldDisableSmartFeatures,
+                state.shouldDisableAutoCapitalize,
                 enableShift = { modifierStateController.requestShiftOneShotFromAutoCap() },
                 disableShift = { modifierStateController.consumeShiftOneShot() },
                 onUpdateStatusBar = { updateStatusBarText() }
@@ -1053,7 +1063,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     ) {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
         
-        if (!shouldDisableSmartFeatures) {
+        val state = inputContextState
+        // Update suggestions on cursor movement (if suggestions enabled)
+        if (!state.shouldDisableSuggestions) {
             val cursorPositionChanged = (oldSelStart != newSelStart) || (oldSelEnd != newSelEnd)
             // Skip the reset when the selection moved forward by 1 as a direct result of our own commit.
             val movedByCommit = oldSelStart == oldSelEnd &&
@@ -1067,10 +1079,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             }
         }
         
+        // Check auto-capitalization on selection change (if auto-cap enabled)
         AutoCapitalizeHelper.checkAutoCapitalizeOnSelectionChange(
             this,
             currentInputConnection,
-            shouldDisableSmartFeatures,
+            state.shouldDisableAutoCapitalize,
             oldSelStart,
             oldSelEnd,
             newSelStart,
@@ -1218,7 +1231,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
         
         val ic = currentInputConnection
-        val isAutoCorrectEnabled = SettingsManager.getAutoCorrectEnabled(this) && !shouldDisableSmartFeatures
+        val state = inputContextState
+        val isAutoCorrectEnabled = SettingsManager.getAutoCorrectEnabled(this) && !state.shouldDisableAutoCorrect
 
         clearAltOnBoundaryIfNeeded(keyCode) { updateStatusBarText() }
 
@@ -1237,7 +1251,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 keyCode = keyCode,
                 event = event,
                 inputConnection = ic,
-                shouldDisableSmartFeatures = shouldDisableSmartFeatures,
+                shouldDisableSuggestions = state.shouldDisableSuggestions,
+                shouldDisableAutoCorrect = state.shouldDisableAutoCorrect,
+                shouldDisableAutoCapitalize = state.shouldDisableAutoCapitalize,
+                shouldDisableDoubleSpaceToPeriod = state.shouldDisableDoubleSpaceToPeriod,
                 isAutoCorrectEnabled = isAutoCorrectEnabled,
                 textInputController = textInputController,
                 autoCorrectionManager = autoCorrectionManager
