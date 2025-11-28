@@ -566,13 +566,20 @@ class InputEventRouter(
         keyCode: Int,
         event: KeyEvent?,
         inputConnection: InputConnection?,
-        shouldDisableSmartFeatures: Boolean,
+        shouldDisableSuggestions: Boolean,
+        shouldDisableAutoCorrect: Boolean,
+        shouldDisableAutoCapitalize: Boolean,
+        shouldDisableDoubleSpaceToPeriod: Boolean,
         isAutoCorrectEnabled: Boolean,
         textInputController: TextInputController,
         autoCorrectionManager: AutoCorrectionManager,
+        inputContextState: it.palsoftware.pastiera.core.InputContextState?,
+        enableShiftOneShot: (() -> Boolean)?,
         updateStatusBar: () -> Unit
     ): Boolean {
-        val isBoundaryKey = keyCode == KeyEvent.KEYCODE_SPACE || keyCode == KeyEvent.KEYCODE_ENTER
+        val isEnterKey = keyCode == KeyEvent.KEYCODE_ENTER
+        val isSpaceKey = keyCode == KeyEvent.KEYCODE_SPACE
+        val isBoundaryKey = isSpaceKey || isEnterKey
         val isPunctuation = event?.unicodeChar != null &&
             event.unicodeChar != 0 &&
             event.unicodeChar.toChar() in ".,;:!?()[]{}\"'"
@@ -589,34 +596,79 @@ class InputEventRouter(
             return true
         }
 
-        if (keyCode == KeyEvent.KEYCODE_DEL && !shouldDisableSmartFeatures && inputConnection != null) {
+        // Refresh suggestions on DEL (if suggestions enabled)
+        if (keyCode == KeyEvent.KEYCODE_DEL && !shouldDisableSuggestions && inputConnection != null) {
             suggestionController?.refreshFromInputConnection(inputConnection)
         }
 
+        // Handle double-space-to-period (if enabled)
         if (
             textInputController.handleDoubleSpaceToPeriod(
                 keyCode,
                 inputConnection,
-                shouldDisableSmartFeatures,
+                shouldDisableDoubleSpaceToPeriod,
+                shouldDisableAutoCapitalize,
                 onStatusBarUpdate = updateStatusBar
             )
         ) {
             return true
         }
 
+        // Handle auto-capitalization after period (if enabled)
         textInputController.handleAutoCapAfterPeriod(
             keyCode,
             inputConnection,
-            shouldDisableSmartFeatures,
+            shouldDisableAutoCapitalize,
             onStatusBarUpdate = updateStatusBar
         )
 
+        // Handle auto-capitalization after Enter (if enabled)
         textInputController.handleAutoCapAfterEnter(
             keyCode,
             inputConnection,
-            shouldDisableSmartFeatures,
+            shouldDisableAutoCapitalize,
             onStatusBarUpdate = updateStatusBar
         )
+
+        // Handle field-specific capitalization flags (CAP_WORDS, CAP_SENTENCES) after boundary keys
+        if (inputContextState != null && enableShiftOneShot != null) {
+            val shouldCap = it.palsoftware.pastiera.inputmethod.AutoCapitalizeHelper.shouldCapitalizeAfterBoundary(
+                state = inputContextState,
+                inputConnection = inputConnection,
+                keyCode = keyCode
+            )
+            if (shouldCap) {
+                if (enableShiftOneShot()) {
+                    updateStatusBar()
+                }
+            }
+        }
+
+        // For Enter, run autocorrect/auto-cap but do NOT consume/commit a newline.
+        // This lets apps with custom Enter handling (e.g., "Enter to send") receive the key,
+        // while still preserving our boundary corrections.
+        if (isEnterKey) {
+            val handled = autoCorrectionManager.handleBoundaryKey(
+                keyCode,
+                event,
+                inputConnection,
+                isAutoCorrectEnabled,
+                commitBoundary = false,
+                onStatusBarUpdate = updateStatusBar,
+                boundaryCharOverride = '\n'
+            )
+            if (handled) {
+                suggestionController?.onContextReset()
+            }
+            // Trigger suggestions on Enter (if suggestions enabled)
+            if (!shouldDisableSuggestions && inputConnection != null) {
+                val sc = suggestionController
+                // Trigger auto-replace/suggestions without committing a newline;
+                // use an unknown key to avoid boundary-char commit inside the tracker.
+                sc?.onBoundaryKey(KeyEvent.KEYCODE_UNKNOWN, null, inputConnection)
+            }
+            return false
+        }
 
         if (
             autoCorrectionManager.handleBoundaryKey(
@@ -632,7 +684,8 @@ class InputEventRouter(
             return true
         }
 
-        if (!shouldDisableSmartFeatures && inputConnection != null && (isBoundaryKey || isPunctuation) && suggestionController != null) {
+        // Handle suggestions on boundary keys/punctuation (if suggestions enabled)
+        if (!shouldDisableSuggestions && inputConnection != null && (isBoundaryKey || isPunctuation) && suggestionController != null) {
             suggestionController?.onBoundaryKey(keyCode, event, inputConnection)
             return true
         }

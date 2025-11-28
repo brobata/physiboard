@@ -17,22 +17,7 @@ object VariationRepository {
     fun loadVariations(assets: AssetManager, context: Context? = null): Map<Char, List<String>> {
         val variationsMap = mutableMapOf<Char, List<String>>()
         return try {
-            val jsonString = if (context != null) {
-                // Check if custom file exists in files directory
-                val customFile = File(context.filesDir, VARIATIONS_FILE_NAME)
-                if (customFile.exists()) {
-                    customFile.readText()
-                } else {
-                    // Fall back to assets
-                    val filePath = "common/variations/variations.json"
-                    assets.open(filePath).bufferedReader().use { it.readText() }
-                }
-            } else {
-                // Legacy: only load from assets if context not provided
-                val filePath = "common/variations/variations.json"
-                assets.open(filePath).bufferedReader().use { it.readText() }
-            }
-            
+            val jsonString = loadJsonString(assets, context)
             val jsonObject = JSONObject(jsonString)
             val variationsObject = jsonObject.getJSONObject("variations")
 
@@ -51,59 +36,81 @@ object VariationRepository {
             variationsMap
         } catch (e: Exception) {
             Log.e(TAG, "Error loading character variations", e)
-            // Fallback to basic variations
-            variationsMap['e'] = listOf("è", "é", "€")
-            variationsMap['a'] = listOf("à", "á", "ä")
-            variationsMap
+            // Return empty map - always load from JSON
+            emptyMap()
         }
     }
 
     /**
      * Loads static utility variations from JSON assets or custom file.
-     * Checks files/variations.json first, then falls back to assets/variations.json.
+     * Always loads from JSON, returns empty list if not found.
      * These are shown in the variation bar when static mode is enabled
      * or when smart features are disabled for the current field.
      */
     fun loadStaticVariations(assets: AssetManager, context: Context? = null): List<String> {
+        return loadVariationsArray(assets, context, "staticVariations")
+    }
+
+    /**
+     * Loads email-specific variations from JSON assets or custom file.
+     * Always loads from JSON, returns empty list if not found.
+     * These are shown in the variation bar when the current field is an email field.
+     */
+    fun loadEmailVariations(assets: AssetManager, context: Context? = null): List<String> {
+        return loadVariationsArray(assets, context, "emailVariations")
+    }
+
+    /**
+     * Common method to load a JSON array of variations.
+     * Always loads from JSON, returns empty list if key not found or on error.
+     */
+    private fun loadVariationsArray(
+        assets: AssetManager,
+        context: Context?,
+        jsonKey: String
+    ): List<String> {
         return try {
-            val jsonString = if (context != null) {
-                // Check if custom file exists in files directory
-                val customFile = File(context.filesDir, VARIATIONS_FILE_NAME)
-                if (customFile.exists()) {
-                    customFile.readText()
-                } else {
-                    // Fall back to assets
-                    val filePath = "common/variations/variations.json"
-                    assets.open(filePath).bufferedReader().use { it.readText() }
-                }
-            } else {
-                // Legacy: only load from assets if context not provided
-                val filePath = "common/variations/variations.json"
-                assets.open(filePath).bufferedReader().use { it.readText() }
-            }
-            
+            val jsonString = loadJsonString(assets, context)
             val jsonObject = JSONObject(jsonString)
 
-            if (jsonObject.has("staticVariations")) {
-                val staticArray = jsonObject.getJSONArray("staticVariations")
+            if (jsonObject.has(jsonKey)) {
+                val array = jsonObject.getJSONArray(jsonKey)
                 val result = mutableListOf<String>()
-                for (i in 0 until staticArray.length()) {
-                    val value = staticArray.getString(i)
-                    if (!value.isNullOrEmpty()) {
+                for (i in 0 until array.length()) {
+                    val value = array.getString(i)
+                    if (value.isNotEmpty()) {
                         result.add(value)
                     }
                 }
-                if (result.isNotEmpty()) {
-                    return result
-                }
+                result
+            } else {
+                Log.w(TAG, "JSON key '$jsonKey' not found, returning empty list")
+                emptyList()
             }
-
-            // Fallback: a small set of utility symbols
-            listOf(";", ",", ":", "…", "?", "!", "\"")
         } catch (e: Exception) {
-            Log.e(TAG, "Error loading static variations", e)
-            // Fallback: same default set
-            listOf(";", ",", ":", "…", "?", "!", "\"")
+            Log.e(TAG, "Error loading $jsonKey from JSON", e)
+            emptyList()
+        }
+    }
+
+    /**
+     * Common method to load JSON string from file or assets.
+     */
+    private fun loadJsonString(assets: AssetManager, context: Context?): String {
+        return if (context != null) {
+            // Check if custom file exists in files directory
+            val customFile = File(context.filesDir, VARIATIONS_FILE_NAME)
+            if (customFile.exists()) {
+                customFile.readText()
+            } else {
+                // Fall back to assets
+                val filePath = "common/variations/variations.json"
+                assets.open(filePath).bufferedReader().use { it.readText() }
+            }
+        } else {
+            // Legacy: only load from assets if context not provided
+            val filePath = "common/variations/variations.json"
+            assets.open(filePath).bufferedReader().use { it.readText() }
         }
     }
 }

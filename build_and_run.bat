@@ -22,10 +22,12 @@ if %ERRORLEVEL% EQU 0 (
     if %ERRORLEVEL% EQU 0 (
         echo.
         echo App avviata con successo!
+        exit /b 0
     ) else (
         echo.
         echo ERRORE: Impossibile avviare l'app.
         echo Verifica che il dispositivo sia connesso e che ADB sia configurato correttamente.
+        exit /b %ERRORLEVEL%
     )
 ) else (
     echo.
@@ -33,6 +35,4 @@ if %ERRORLEVEL% EQU 0 (
     echo Verifica gli errori sopra.
     exit /b %ERRORLEVEL%
 )
-
-pause
 

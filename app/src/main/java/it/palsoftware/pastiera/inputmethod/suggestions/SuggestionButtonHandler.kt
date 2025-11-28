@@ -3,6 +3,8 @@ package it.palsoftware.pastiera.inputmethod.suggestions
 import android.util.Log
 import android.view.View
 import android.view.inputmethod.InputConnection
+import it.palsoftware.pastiera.SettingsManager
+import it.palsoftware.pastiera.inputmethod.AutoCapitalizeHelper
 import it.palsoftware.pastiera.inputmethod.VariationButtonHandler
 import java.util.Locale
 
@@ -15,7 +17,8 @@ object SuggestionButtonHandler {
     fun createSuggestionClickListener(
         suggestion: String,
         inputConnection: InputConnection?,
-        listener: VariationButtonHandler.OnVariationSelectedListener? = null
+        listener: VariationButtonHandler.OnVariationSelectedListener? = null,
+        shouldDisableAutoCapitalize: Boolean
     ): View.OnClickListener {
         return View.OnClickListener {
             Log.d(TAG, "Click on suggestion button: $suggestion")
@@ -25,7 +28,14 @@ object SuggestionButtonHandler {
                 return@OnClickListener
             }
 
-            replaceCurrentWord(inputConnection, suggestion)
+            val context = it.context.applicationContext
+            val forceLeadingCapital = AutoCapitalizeHelper.shouldAutoCapitalizeAtCursor(
+                context = context,
+                inputConnection = inputConnection,
+                shouldDisableAutoCapitalize = shouldDisableAutoCapitalize
+            ) && SettingsManager.getAutoCapitalizeFirstLetter(context)
+
+            replaceCurrentWord(inputConnection, suggestion, forceLeadingCapital)
             listener?.onVariationSelected(suggestion)
         }
     }
@@ -35,7 +45,11 @@ object SuggestionButtonHandler {
      * Deletes up to the nearest whitespace/punctuation boundary and applies basic casing
      * (leading capital only). All-caps input (e.g., CapsLock) will not force the suggestion to uppercase.
      */
-    private fun replaceCurrentWord(inputConnection: InputConnection, suggestion: String) {
+    private fun replaceCurrentWord(
+        inputConnection: InputConnection,
+        suggestion: String,
+        forceLeadingCapital: Boolean
+    ) {
         val before = inputConnection.getTextBeforeCursor(64, 0)?.toString().orEmpty()
         val after = inputConnection.getTextAfterCursor(64, 0)?.toString().orEmpty()
         val boundaryChars = " \t\n\r.,;:!?()[]{}\"'"
@@ -58,7 +72,7 @@ object SuggestionButtonHandler {
         // Delete the full word around the cursor
         val deleteBefore = wordBeforeCursor.length
         val deleteAfter = wordAfterCursor.length
-        val replacement = applyCasing(suggestion, currentWord)
+        val replacement = applyCasing(suggestion, currentWord, forceLeadingCapital)
 
         val deleted = inputConnection.deleteSurroundingText(deleteBefore, deleteAfter)
         if (deleted) {
@@ -71,7 +85,14 @@ object SuggestionButtonHandler {
         Log.d(TAG, "Suggestion inserted as '$replacement '")
     }
 
-    private fun applyCasing(candidate: String, original: String): String {
+    private fun applyCasing(
+        candidate: String,
+        original: String,
+        forceLeadingCapital: Boolean
+    ): String {
+        if (forceLeadingCapital && candidate.isNotEmpty()) {
+            return candidate.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+        }
         if (original.isEmpty()) return candidate
         return when {
             original.first().isUpperCase() && original.drop(1).all { it.isLowerCase() } ->
