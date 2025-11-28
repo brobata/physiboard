@@ -986,6 +986,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             
             // Handle input field capitalization flags (CAP_CHARACTERS, CAP_WORDS, CAP_SENTENCES)
             AutoCapitalizeHelper.handleInputFieldCapitalizationFlags(
+                context = this,
                 state = state,
                 inputConnection = currentInputConnection,
                 enableCapsLock = { modifierStateController.capsLockEnabled = true },
@@ -1022,6 +1023,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             
             // Handle input field capitalization flags (CAP_CHARACTERS, CAP_WORDS, CAP_SENTENCES)
             AutoCapitalizeHelper.handleInputFieldCapitalizationFlags(
+                context = this,
                 state = state,
                 inputConnection = currentInputConnection,
                 enableCapsLock = { modifierStateController.capsLockEnabled = true },
@@ -1278,6 +1280,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         
         if (
             inputEventRouter.handleTextInputPipeline(
+                context = this,
                 keyCode = keyCode,
                 event = event,
                 inputConnection = ic,

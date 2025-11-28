@@ -165,7 +165,8 @@ object AutoCapitalizeHelper {
     /**
      * Single entry point to evaluate and set/clear smart Shift.
      * Also considers field-specific capitalization flags (CAP_WORDS, CAP_SENTENCES).
-     * Field-specific flags take precedence over user settings.
+     * For CAP_SENTENCES, user settings take precedence over field flags.
+     * Field-specific flags take precedence over user settings only for CAP_WORDS and CAP_CHARACTERS.
      */
     fun maybeEnableSmartShift(
         context: android.content.Context,
@@ -204,17 +205,47 @@ object AutoCapitalizeHelper {
                 }
             }
             
-            // CAP_SENTENCES: capitalize at start of sentence (ignore user settings)
+            // CAP_SENTENCES: capitalize at start of sentence, but respect user settings
             if (inputContextState.requiresCapSentences) {
-                if (isAtStartOfSentence(ic)) {
-                    if (enableShift()) {
-                        smartShiftRequested = true
-                        onUpdateStatusBar()
-                    }
-                    return
+                // Check user settings first - if both disabled, skip and fall through to normal logic
+                val userAutoCapFirstLetter = SettingsManager.getAutoCapitalizeFirstLetter(context)
+                val userAutoCapAfterPeriod = SettingsManager.getAutoCapitalizeAfterPeriod(context)
+                
+                if (!userAutoCapFirstLetter && !userAutoCapAfterPeriod) {
+                    // User has disabled auto-cap, skip this block and continue to normal logic below
+                    // (which will also check shouldDisableAutoCapitalize and user settings)
                 } else {
-                    clearSmartShift(disableShift, onUpdateStatusBar)
-                    return
+                    // User has at least one setting enabled, proceed with CAP_SENTENCES logic
+                    val cursorContext = readContext(ic)
+                    if (cursorContext != null) {
+                        val before = cursorContext.before
+                        val isCursorAtStart = before.isEmpty()
+                        val isAfterNewline = before.lastOrNull() == '\n'
+                        val isAfterSentenceEnd = hasSentenceEndingPunctuation(before, requireWhitespaceAfter = true)
+                        
+                        // Check if we should capitalize based on user settings
+                        val shouldCapitalize = when {
+                            // Capitalize at start of field or after newline if "first letter" is enabled
+                            (isCursorAtStart || isAfterNewline) && userAutoCapFirstLetter -> true
+                            // Capitalize after sentence-ending punctuation if "after period" is enabled
+                            isAfterSentenceEnd && userAutoCapAfterPeriod -> true
+                            else -> false
+                        }
+                        
+                        if (shouldCapitalize) {
+                            if (enableShift()) {
+                                smartShiftRequested = true
+                                onUpdateStatusBar()
+                            }
+                            return
+                        } else {
+                            clearSmartShift(disableShift, onUpdateStatusBar)
+                            return
+                        }
+                    } else {
+                        clearSmartShift(disableShift, onUpdateStatusBar)
+                        return
+                    }
                 }
             }
         }
@@ -400,8 +431,10 @@ object AutoCapitalizeHelper {
      * Handles input field capitalization flags (CAP_CHARACTERS, CAP_WORDS, CAP_SENTENCES).
      * This is called when entering a new input field to apply field-specific
      * capitalization rules.
+     * For CAP_SENTENCES, user settings take precedence over field flags.
      */
     fun handleInputFieldCapitalizationFlags(
+        context: android.content.Context,
         state: InputContextState,
         inputConnection: InputConnection?,
         enableCapsLock: () -> Unit,
@@ -428,22 +461,50 @@ object AutoCapitalizeHelper {
         }
         
         // Handle textCapSentences: enable shift one-shot if at start of sentence
-        // Note: This works together with the existing auto-cap logic
+        // But respect user settings first (only for CAP_SENTENCES)
         if (state.requiresCapSentences) {
-            if (isAtStartOfSentence(inputConnection)) {
-                if (enableShiftOneShot()) {
-                    smartShiftRequested = true
-                    onUpdateStatusBar()
+            val userAutoCapFirstLetter = SettingsManager.getAutoCapitalizeFirstLetter(context)
+            val userAutoCapAfterPeriod = SettingsManager.getAutoCapitalizeAfterPeriod(context)
+            
+            // Only proceed if user has at least one auto-cap setting enabled
+            if (userAutoCapFirstLetter || userAutoCapAfterPeriod) {
+                if (inputConnection != null) {
+                    val cursorContext = readContext(inputConnection)
+                    if (cursorContext != null) {
+                        val before = cursorContext.before
+                        val isCursorAtStart = before.isEmpty()
+                        val isAfterNewline = before.lastOrNull() == '\n'
+                        val isAfterSentenceEnd = hasSentenceEndingPunctuation(before, requireWhitespaceAfter = true)
+                        
+                        // Check if we should capitalize based on user settings
+                        val shouldCapitalize = when {
+                            // Capitalize at start of field or after newline if "first letter" is enabled
+                            (isCursorAtStart || isAfterNewline) && userAutoCapFirstLetter -> true
+                            // Capitalize after sentence-ending punctuation if "after period" is enabled
+                            isAfterSentenceEnd && userAutoCapAfterPeriod -> true
+                            else -> false
+                        }
+                        
+                        if (shouldCapitalize) {
+                            if (enableShiftOneShot()) {
+                                smartShiftRequested = true
+                                onUpdateStatusBar()
+                            }
+                        }
+                    }
                 }
             }
+            // If user disabled both, do nothing (don't force capitalization)
         }
     }
     
     /**
      * Checks if capitalization should be applied after a boundary key (space, enter, punctuation)
      * based on field capitalization flags. This is called when a boundary key is pressed.
+     * For CAP_SENTENCES, user settings take precedence over field flags.
      */
     fun shouldCapitalizeAfterBoundary(
+        context: android.content.Context,
         state: InputContextState,
         inputConnection: InputConnection?,
         keyCode: Int
@@ -462,7 +523,13 @@ object AutoCapitalizeHelper {
         }
         
         // For CAP_SENTENCES: capitalize after space/enter if text ends with sentence-ending punctuation
+        // But respect user settings first (only for CAP_SENTENCES)
         if (state.requiresCapSentences && (isSpace || isEnter)) {
+            // Check if user has enabled auto-cap after period
+            if (!SettingsManager.getAutoCapitalizeAfterPeriod(context)) {
+                return false
+            }
+            
             val cursorContext = readContext(inputConnection) ?: return false
             val before = cursorContext.before
             // Use hasSentenceEndingPunctuation to properly check for ". " or "! " or "? "

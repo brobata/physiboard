@@ -58,8 +58,8 @@ android {
         applicationId = "it.palsoftware.pastiera"
         minSdk = 29
         targetSdk = 36
-        versionCode = 6
-        versionName = "0.61beta"
+        versionCode = 7
+        versionName = "0.65beta"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         

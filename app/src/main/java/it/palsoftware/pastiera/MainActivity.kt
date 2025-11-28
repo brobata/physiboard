@@ -35,6 +35,8 @@ import androidx.compose.foundation.background
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.inputmethod.KeyboardEventTracker
 import it.palsoftware.pastiera.inputmethod.NotificationHelper
@@ -444,7 +446,10 @@ fun KeyboardSetupScreen(
                 .padding(horizontal = 16.dp),
             placeholder = { Text(stringResource(R.string.test_field_placeholder)) },
             minLines = 2,
-            maxLines = 5
+            maxLines = 5,
+            keyboardOptions = KeyboardOptions(
+                capitalization = KeyboardCapitalization.Sentences
+            )
         )
         
         // Last keyboard event (only if present)

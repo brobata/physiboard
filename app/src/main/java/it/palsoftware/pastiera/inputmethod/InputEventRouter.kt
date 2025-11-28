@@ -563,6 +563,7 @@ class InputEventRouter(
     }
 
     fun handleTextInputPipeline(
+        context: android.content.Context,
         keyCode: Int,
         event: KeyEvent?,
         inputConnection: InputConnection?,
@@ -633,6 +634,7 @@ class InputEventRouter(
         // Handle field-specific capitalization flags (CAP_WORDS, CAP_SENTENCES) after boundary keys
         if (inputContextState != null && enableShiftOneShot != null) {
             val shouldCap = it.palsoftware.pastiera.inputmethod.AutoCapitalizeHelper.shouldCapitalizeAfterBoundary(
+                context = context,
                 state = inputContextState,
                 inputConnection = inputConnection,
                 keyCode = keyCode
