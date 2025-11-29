@@ -54,9 +54,9 @@ object NotificationHelper {
     /**
      * Triggers a haptic feedback vibration.
      * @param context The context to get the vibrator service
-     * @param durationMs Duration of the vibration in milliseconds (default: 30ms)
+     * @param durationMs Duration of the vibration in milliseconds (default: 70ms)
      */
-    fun triggerHapticFeedback(context: Context, durationMs: Long = 30) {
+    fun triggerHapticFeedback(context: Context, durationMs: Long = 70) {
         try {
             if (tryModernHapticFeedback(context)) {
                 return
@@ -92,7 +92,7 @@ object NotificationHelper {
      * Triggers a short vibration for nav mode activation, without showing a notification.
      */
     fun vibrateNavModeActivated(context: Context) {
-        triggerHapticFeedback(context, 50)
+        triggerHapticFeedback(context, 70)
     }
     
     private fun tryModernHapticFeedback(context: Context): Boolean {

@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import it.palsoftware.pastiera.inputmethod.NotificationHelper
 
 class SuggestionController(
     context: Context,
@@ -86,6 +87,7 @@ class SuggestionController(
         val result = autoReplaceController.handleBoundary(keyCode, event, tracker, inputConnection)
         if (result.replaced) {
             dictionaryRepository.refreshUserEntries()
+            NotificationHelper.triggerHapticFeedback(appContext)
         }
         suggestionsListener?.invoke(emptyList())
         return result

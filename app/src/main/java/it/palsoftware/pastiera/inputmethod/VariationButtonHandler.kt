@@ -1,5 +1,6 @@
 package it.palsoftware.pastiera.inputmethod
 
+import android.content.Context
 import android.util.Log
 import android.view.View
 import android.view.inputmethod.InputConnection
@@ -28,6 +29,7 @@ object VariationButtonHandler {
     fun createVariationClickListener(
         variation: String,
         inputConnection: InputConnection?,
+        context: Context,
         listener: OnVariationSelectedListener? = null
     ): View.OnClickListener {
         return View.OnClickListener {
@@ -45,8 +47,11 @@ object VariationButtonHandler {
                 Log.w(TAG, "Unable to delete character before cursor")
             }
 
-            inputConnection.commitText(variation, 1)
-            Log.d(TAG, "Variation '$variation' inserted")
+            val committed = inputConnection.commitText(variation, 1)
+            Log.d(TAG, "Variation '$variation' inserted (committed=$committed)")
+            if (committed) {
+                NotificationHelper.triggerHapticFeedback(context)
+            }
             
             // Notify listener if present
             listener?.onVariationSelected(variation)
@@ -60,6 +65,7 @@ object VariationButtonHandler {
     fun createStaticVariationClickListener(
         variation: String,
         inputConnection: InputConnection?,
+        context: Context,
         listener: OnVariationSelectedListener? = null
     ): View.OnClickListener {
         return View.OnClickListener {
@@ -71,8 +77,11 @@ object VariationButtonHandler {
             }
 
             // Insert variation without deleting previous character
-            inputConnection.commitText(variation, 1)
-            Log.d(TAG, "Static variation '$variation' inserted")
+            val committed = inputConnection.commitText(variation, 1)
+            Log.d(TAG, "Static variation '$variation' inserted (committed=$committed)")
+            if (committed) {
+                NotificationHelper.triggerHapticFeedback(context)
+            }
 
             // Notify listener if present
             listener?.onVariationSelected(variation)

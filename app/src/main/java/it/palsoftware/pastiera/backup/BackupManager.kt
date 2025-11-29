@@ -236,11 +236,15 @@ object FileBackupHelper {
                         target.copyTo(backupFile, overwrite = true)
                         backups.add(target to backupFile)
                     }
-                    source.copyTo(target, overwrite = true)
-                    restored.add(relative)
+                    
+                    // Special handling for variations.json: merge with defaults instead of overwriting
                     if (relative.equals("variations.json", ignoreCase = true)) {
+                        mergeVariationsFile(context, source, target)
                         restoredVariations = true
+                    } else {
+                        source.copyTo(target, overwrite = true)
                     }
+                    restored.add(relative)
                 }
         } catch (e: Exception) {
             backups.reversed().forEach { (target, backup) ->
@@ -289,6 +293,64 @@ object FileBackupHelper {
             SettingsManager.initializeNavModeMappingsFile(context)
         } catch (e: Exception) {
             Log.w(TAG, "Failed to ensure default config files", e)
+        }
+    }
+
+    /**
+     * Merges variations.json from backup with current/default values.
+     * Preserves default keys (like emailVariations) that may not exist in older backups.
+     */
+    private fun mergeVariationsFile(context: Context, backupFile: File, targetFile: File) {
+        try {
+            // Load current/default JSON (from file or assets)
+            val currentJson = loadCurrentVariationsJson(context)
+            
+            // Load backup JSON
+            val backupJsonString = backupFile.readText()
+            val backupJson = JSONObject(backupJsonString)
+            
+            // Create merged JSON starting with current/default
+            val mergedJson = if (currentJson != null) {
+                JSONObject(currentJson.toString())
+            } else {
+                JSONObject()
+            }
+            
+            // Merge backup values into merged JSON
+            // This preserves user customizations from backup while keeping defaults for missing keys
+            val backupKeys = backupJson.keys()
+            while (backupKeys.hasNext()) {
+                val key = backupKeys.next()
+                val backupValue = backupJson.get(key)
+                mergedJson.put(key, backupValue)
+            }
+            
+            // Write merged JSON to target file
+            targetFile.writeText(mergedJson.toString(2))
+            Log.d(TAG, "Merged variations.json from backup, preserving default keys")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error merging variations.json, falling back to direct copy", e)
+            // Fallback: if merge fails, copy directly
+            backupFile.copyTo(targetFile, overwrite = true)
+        }
+    }
+    
+    /**
+     * Loads current variations.json from file or assets (default).
+     */
+    private fun loadCurrentVariationsJson(context: Context): JSONObject? {
+        return try {
+            val variationsFile = File(context.filesDir, "variations.json")
+            val jsonString = if (variationsFile.exists()) {
+                variationsFile.readText()
+            } else {
+                // Load from assets (default)
+                context.assets.open("common/variations/variations.json").bufferedReader().use { it.readText() }
+            }
+            JSONObject(jsonString)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error loading current variations.json", e)
+            null
         }
     }
 }

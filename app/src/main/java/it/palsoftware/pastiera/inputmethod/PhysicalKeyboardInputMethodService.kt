@@ -1095,19 +1095,22 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
         
         val state = inputContextState
-        // Update suggestions on cursor movement (if suggestions enabled)
-        if (!state.shouldDisableSuggestions) {
-            val cursorPositionChanged = (oldSelStart != newSelStart) || (oldSelEnd != newSelEnd)
-            // Skip the reset when the selection moved forward by 1 as a direct result of our own commit.
-            val movedByCommit = oldSelStart == oldSelEnd &&
-                newSelEnd == newSelStart &&
-                newSelStart == oldSelStart + 1
-            if (cursorPositionChanged && newSelStart == newSelEnd && !movedByCommit) {
+        val cursorPositionChanged = (oldSelStart != newSelStart) || (oldSelEnd != newSelEnd)
+        // Skip the reset when the selection moved forward by 1 as a direct result of our own commit.
+        val movedByCommit = oldSelStart == oldSelEnd &&
+            newSelEnd == newSelStart &&
+            newSelStart == oldSelStart + 1
+        
+        if (cursorPositionChanged && newSelStart == newSelEnd && !movedByCommit) {
+            // Update suggestions on cursor movement (if suggestions enabled)
+            if (!state.shouldDisableSuggestions) {
                 suggestionController.onCursorMoved(currentInputConnection)
-                Handler(Looper.getMainLooper()).postDelayed({
-                    updateStatusBarText()
-                }, CURSOR_UPDATE_DELAY)
             }
+            
+            // Always update status bar (it handles variations/suggestions internally based on flags)
+            Handler(Looper.getMainLooper()).postDelayed({
+                updateStatusBarText()
+            }, CURSOR_UPDATE_DELAY)
         }
         
         // Check auto-capitalization on selection change (if auto-cap enabled)

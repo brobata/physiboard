@@ -25,6 +25,7 @@ import it.palsoftware.pastiera.SettingsActivity
 import it.palsoftware.pastiera.SettingsManager
 import it.palsoftware.pastiera.inputmethod.StatusBarController
 import it.palsoftware.pastiera.inputmethod.TextSelectionHelper
+import it.palsoftware.pastiera.inputmethod.NotificationHelper
 import it.palsoftware.pastiera.inputmethod.VariationButtonHandler
 import it.palsoftware.pastiera.inputmethod.SpeechRecognitionActivity
 import it.palsoftware.pastiera.data.variation.VariationRepository
@@ -42,6 +43,7 @@ class VariationBarView(
     companion object {
         private const val TAG = "VariationBarView"
         private const val SWIPE_HINT_SHOW_DELAY_MS = 1000L
+        private val PRESSED_BLUE = Color.rgb(100, 150, 255) // Same as LED active blue
     }
 
     var onVariationSelectedListener: VariationButtonHandler.OnVariationSelectedListener? = null
@@ -70,6 +72,7 @@ class VariationBarView(
     private var emailVariations: List<String> = emptyList()
     private var lastInputConnectionUsed: android.view.inputmethod.InputConnection? = null
     private var lastIsStaticContent: Boolean? = null
+    private var pressedView: View? = null
 
     fun ensureView(): FrameLayout {
         if (wrapper != null) {
@@ -362,6 +365,7 @@ class VariationBarView(
         val micParams = LinearLayout.LayoutParams(baseButtonWidth, baseButtonWidth)
         buttonsContainerView.addView(microphoneButton, micParams)
         microphoneButton.setOnClickListener {
+            NotificationHelper.triggerHapticFeedback(context)
             startSpeechRecognition(inputConnection)
         }
         microphoneButton.alpha = 1f
@@ -402,6 +406,10 @@ class VariationBarView(
 
             when (motionEvent.action) {
                 MotionEvent.ACTION_DOWN -> {
+                    // Track the view under the finger so we can show pressed state despite the overlay intercepting the touch.
+                    pressedView?.isPressed = false
+                    pressedView = container?.let { findClickableViewAt(it, motionEvent.x, motionEvent.y) }
+                    pressedView?.isPressed = true
                     isSwipeInProgress = false
                     swipeDirection = null
                     touchStartX = motionEvent.x
@@ -421,6 +429,9 @@ class VariationBarView(
                         if (!isSwipeInProgress) {
                             isSwipeInProgress = true
                             swipeDirection = if (deltaX > 0) 1 else -1
+                            // Clear pressed state when a swipe starts to avoid stuck highlights.
+                            pressedView?.isPressed = false
+                            pressedView = null
                             revealSwipeIndicator(overlayView, motionEvent.x)
                             Log.d(TAG, "Swipe started: ${if (swipeDirection == 1) "RIGHT" else "LEFT"}")
                         } else {
@@ -460,10 +471,20 @@ class VariationBarView(
                         }
                         true
                     } else {
+                        // No swipe detected yet: update pressed highlight if we moved onto another button.
+                        val currentTarget = container?.let { findClickableViewAt(it, motionEvent.x, motionEvent.y) }
+                        if (pressedView != currentTarget) {
+                            pressedView?.isPressed = false
+                            pressedView = currentTarget
+                            pressedView?.isPressed = true
+                        }
                         true
                     }
                 }
                 MotionEvent.ACTION_UP -> {
+                    pressedView?.isPressed = false
+                    val pressedTarget = pressedView
+                    pressedView = null
                     hideSwipeIndicator()
                     updateSwipeHintVisibility(animate = true)
                     if (isSwipeInProgress) {
@@ -475,13 +496,15 @@ class VariationBarView(
                         val x = motionEvent.x
                         val y = motionEvent.y
                         val clickedView = container?.let { findClickableViewAt(it, x, y) }
-                        if (clickedView != null) {
+                        if (clickedView != null && clickedView == pressedTarget) {
                             clickedView.performClick()
                         }
                         true
                     }
                 }
                 MotionEvent.ACTION_CANCEL -> {
+                    pressedView?.isPressed = false
+                    pressedView = null
                     hideSwipeIndicator()
                     updateSwipeHintVisibility(animate = true)
                     isSwipeInProgress = false
@@ -693,7 +716,7 @@ class VariationBarView(
             cornerRadius = 0f
         }
         val pressedDrawable = GradientDrawable().apply {
-            setColor(Color.rgb(38, 0, 255))
+            setColor(PRESSED_BLUE)
             cornerRadius = 0f
         }
         val stateListDrawable = android.graphics.drawable.StateListDrawable().apply {
@@ -720,12 +743,14 @@ class VariationBarView(
                     VariationButtonHandler.createStaticVariationClickListener(
                         variation,
                         inputConnection,
+                        context,
                         onVariationSelectedListener
                     )
                 } else {
                     VariationButtonHandler.createVariationClickListener(
                         variation,
                         inputConnection,
+                        context,
                         onVariationSelectedListener
                     )
                 }
@@ -780,14 +805,22 @@ class VariationBarView(
     }
 
     private fun createMicrophoneButton(buttonSize: Int): ImageView {
-        val drawable = GradientDrawable().apply {
+        val normalDrawable = GradientDrawable().apply {
             setColor(Color.rgb(17, 17, 17))
             cornerRadius = 0f
+        }
+        val pressedDrawable = GradientDrawable().apply {
+            setColor(PRESSED_BLUE)
+            cornerRadius = 0f
+        }
+        val stateList = android.graphics.drawable.StateListDrawable().apply {
+            addState(intArrayOf(android.R.attr.state_pressed), pressedDrawable)
+            addState(intArrayOf(), normalDrawable)
         }
         return ImageView(context).apply {
             setImageResource(R.drawable.ic_baseline_mic_24)
             setColorFilter(Color.WHITE)
-            background = drawable
+            background = stateList
             scaleType = ImageView.ScaleType.CENTER
             isClickable = true
             isFocusable = true

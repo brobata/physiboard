@@ -5,6 +5,7 @@ import android.view.View
 import android.view.inputmethod.InputConnection
 import it.palsoftware.pastiera.SettingsManager
 import it.palsoftware.pastiera.inputmethod.AutoCapitalizeHelper
+import it.palsoftware.pastiera.inputmethod.NotificationHelper
 import it.palsoftware.pastiera.inputmethod.VariationButtonHandler
 import java.util.Locale
 
@@ -35,7 +36,10 @@ object SuggestionButtonHandler {
                 shouldDisableAutoCapitalize = shouldDisableAutoCapitalize
             ) && SettingsManager.getAutoCapitalizeFirstLetter(context)
 
-            replaceCurrentWord(inputConnection, suggestion, forceLeadingCapital)
+            val committed = replaceCurrentWord(inputConnection, suggestion, forceLeadingCapital)
+            if (committed) {
+                NotificationHelper.triggerHapticFeedback(context)
+            }
             listener?.onVariationSelected(suggestion)
         }
     }
@@ -49,7 +53,7 @@ object SuggestionButtonHandler {
         inputConnection: InputConnection,
         suggestion: String,
         forceLeadingCapital: Boolean
-    ) {
+    ): Boolean {
         val before = inputConnection.getTextBeforeCursor(64, 0)?.toString().orEmpty()
         val after = inputConnection.getTextAfterCursor(64, 0)?.toString().orEmpty()
         val boundaryChars = " \t\n\r.,;:!?()[]{}\"'"
@@ -81,8 +85,9 @@ object SuggestionButtonHandler {
             Log.w(TAG, "Unable to delete surrounding word; inserting anyway")
         }
 
-        inputConnection.commitText("$replacement ", 1)
-        Log.d(TAG, "Suggestion inserted as '$replacement '")
+        val committed = inputConnection.commitText("$replacement ", 1)
+        Log.d(TAG, "Suggestion inserted as '$replacement ' (committed=$committed)")
+        return committed
     }
 
     private fun applyCasing(
