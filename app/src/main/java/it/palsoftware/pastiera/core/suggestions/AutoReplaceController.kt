@@ -41,6 +41,20 @@ class AutoReplaceController(
             return ReplaceResult(false, unicodeChar != 0)
         }
 
+        // If cursor is after non-letter/digit and not standard punctuation (e.g., emoji),
+        // skip auto-replace to avoid dropping trailing symbols.
+        val textBefore = inputConnection.getTextBeforeCursor(16, 0)?.toString().orEmpty()
+        val lastCharBeforeCursor = textBefore.lastOrNull()
+        val allowedPunctuation = ".,;:!?()[]{}\"'-"
+        if (lastCharBeforeCursor != null &&
+            !lastCharBeforeCursor.isLetterOrDigit() &&
+            lastCharBeforeCursor !in allowedPunctuation &&
+            !lastCharBeforeCursor.isWhitespace()
+        ) {
+            tracker.onBoundaryReached(boundaryChar, inputConnection)
+            return ReplaceResult(false, unicodeChar != 0)
+        }
+
         val word = tracker.currentWord
         if (word.isBlank()) {
             tracker.onBoundaryReached(boundaryChar, inputConnection)

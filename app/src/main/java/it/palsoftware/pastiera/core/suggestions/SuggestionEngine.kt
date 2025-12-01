@@ -24,8 +24,11 @@ class SuggestionEngine(
     private val accentCache: MutableMap<String, String> = mutableMapOf()
     private val tag = "SuggestionEngine"
     private val wordNormalizeCache: MutableMap<String, String> = mutableMapOf()
-    private var lastNormalized: String = ""
-    private var lastBucket: List<DictionaryEntry> = emptyList()
+    // Limits to avoid processing thousands of entries on short prefixes
+    private val maxCandidatesByPrefixLength = mapOf(
+        1 to 600,
+        2 to 300
+    )
 
     fun suggest(
         currentWord: String,
@@ -38,39 +41,28 @@ class SuggestionEngine(
         // Require at least 1 character to start suggesting.
         if (normalizedWord.length < 1) return emptyList()
 
-        val prefixKey = normalizedWord.take(4)
-
-        val candidates: List<DictionaryEntry> = when {
-            lastNormalized.isNotEmpty() &&
-                normalizedWord.startsWith(lastNormalized) &&
-                normalizedWord.length == lastNormalized.length + 1 -> {
-                // Extend typed prefix by 1: filter previous bucket.
-                lastBucket.filter { normalizeCached(it.word).startsWith(normalizedWord) }
-            }
-            lastNormalized.length > normalizedWord.length &&
-                lastNormalized.startsWith(normalizedWord) -> {
-                // Backspace/shorter prefix: reload bucket for new prefix.
-                repository.lookupByPrefix(normalizedWord)
-            }
-            else -> {
-                // Fresh lookup for the current prefix.
-                repository.lookupByPrefix(normalizedWord)
-            }
+        // Always pull the dedicated prefix bucket; it is already ordered by frequency.
+        val candidates: List<DictionaryEntry> = repository.lookupByPrefix(normalizedWord)
+        val maxCandidates = maxCandidatesByPrefixLength[normalizedWord.length]
+        val limitedCandidates = if (maxCandidates != null && candidates.size > maxCandidates) {
+            candidates.take(maxCandidates)
+        } else {
+            candidates
         }
 
         if (debugLogging) {
-            Log.d(tag, "suggest '$currentWord' normalized='$normalizedWord' candidates=${candidates.size}")
+            Log.d(tag, "suggest '$currentWord' normalized='$normalizedWord' candidates=${limitedCandidates.size}")
         }
-
-        lastNormalized = normalizedWord
-        lastBucket = candidates
 
         if (debugLogging) {
-            Log.d(tag, "suggest '$currentWord' normalized='$normalizedWord' candidates=${candidates.size}")
+            Log.d(tag, "suggest '$currentWord' normalized='$normalizedWord' candidates=${limitedCandidates.size}")
         }
 
-        val scored = mutableListOf<SuggestionResult>()
-        for (entry in candidates) {
+        val top = ArrayList<SuggestionResult>(limit)
+        val comparator = compareBy<SuggestionResult> { it.distance }
+            .thenByDescending { it.score }
+            .thenBy { it.candidate.length }
+        for (entry in limitedCandidates) {
             val normalizedCandidate = normalizeCached(entry.word)
             val distance = if (normalizedCandidate.startsWith(normalizedWord)) {
                 0 // treat prefix match as perfect to surface completions early
@@ -93,23 +85,24 @@ class SuggestionEngine(
             val frequencyScore = entry.frequency / 10_000.0
             val sourceBoost = if (entry.source == SuggestionSource.USER) 2.0 else 1.0
             val score = (distanceScore + frequencyScore) * sourceBoost
-            scored.add(
-                SuggestionResult(
-                    candidate = entry.word,
-                    distance = effectiveDistance,
-                    score = score,
-                    source = entry.source
-                )
+            val suggestion = SuggestionResult(
+                candidate = entry.word,
+                distance = effectiveDistance,
+                score = score,
+                source = entry.source
             )
+
+            if (top.size < limit) {
+                top.add(suggestion)
+                top.sortWith(comparator)
+            } else if (comparator.compare(suggestion, top.last()) < 0) {
+                top.add(suggestion)
+                top.sortWith(comparator)
+                while (top.size > limit) top.removeAt(top.lastIndex)
+            }
         }
 
-        return scored
-            .sortedWith(
-                compareBy<SuggestionResult> { it.distance }
-                    .thenByDescending { it.score }
-                    .thenBy { it.candidate.length }
-            )
-            .take(limit)
+        return top
     }
 
     private fun boundedLevenshtein(a: String, b: String, maxDistance: Int): Int {

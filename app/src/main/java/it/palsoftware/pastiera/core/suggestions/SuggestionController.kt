@@ -72,7 +72,8 @@ class SuggestionController(
         suggestionsListener?.invoke(emptyList())
     }
     private val latestSuggestions: AtomicReference<List<SuggestionResult>> = AtomicReference(emptyList())
-    private val loadScope = CoroutineScope(Dispatchers.Default)
+    // Dedicated IO scope so dictionary preload never blocks the main thread.
+    private val loadScope = CoroutineScope(Dispatchers.IO)
     private val cursorHandler = Handler(Looper.getMainLooper())
     private var cursorRunnable: Runnable? = null
     private val cursorDebounceMs = 120L

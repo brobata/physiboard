@@ -18,4 +18,7 @@
     
     <!-- Include variations file -->
     <include domain="file" path="variations.json"/>
+
+    <!-- Include default/user dictionary file stored in app-private files -->
+    <include domain="file" path="user_defaults.json"/>
 </full-backup-content>

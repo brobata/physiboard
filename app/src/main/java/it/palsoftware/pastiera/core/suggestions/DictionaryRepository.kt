@@ -9,6 +9,7 @@ import java.text.Normalizer
 import java.util.Locale
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.SerializationException
 
 /**
  * Loads and indexes lightweight dictionaries from assets and merges them with the user dictionary.
@@ -50,7 +51,7 @@ class DictionaryRepository(
             if (loadedSerialized) {
                 // Serialized format already populated the indices
                 val loadTime = System.currentTimeMillis() - startTime
-                Log.i(tag, "✓ Loaded SERIALIZED dictionary (.dict) in ${loadTime}ms - normalizedIndex=${normalizedIndex.size} prefixCache=${prefixCache.size}")
+                Log.i(tag, "Loaded SERIALIZED dictionary (.dict) in ${loadTime}ms - normalizedIndex=${normalizedIndex.size} prefixCache=${prefixCache.size}")
             } else {
                 // Fallback to JSON format
                 val mainEntries = loadFromAssets("common/dictionaries/${baseLocale.language}_base.json")
@@ -61,9 +62,15 @@ class DictionaryRepository(
                     index(mainEntries)
                 }
                 val loadTime = System.currentTimeMillis() - startTime
-                Log.i(tag, "✗ Loaded JSON dictionary (fallback) in ${loadTime}ms - normalizedIndex=${normalizedIndex.size} prefixCache=${prefixCache.size}")
+                Log.i(tag, "Loaded JSON dictionary (fallback) in ${loadTime}ms - normalizedIndex=${normalizedIndex.size} prefixCache=${prefixCache.size}")
             }
             
+            // Optional default user entries (editable copy stored in app files dir, fallback to asset)
+            val defaultUserEntries = loadUserDefaults()
+            if (defaultUserEntries.isNotEmpty()) {
+                index(defaultUserEntries, keepExisting = true)
+            }
+
             // Always add user entries
             val userEntries = userDictionaryStore.loadUserEntries(context)
             if (userEntries.isNotEmpty()) {
@@ -84,8 +91,13 @@ class DictionaryRepository(
         if (!isReady && !loadStarted) {
             loadIfNeeded()
         }
-        // Refresh user entries - this works even if base dictionary is still loading
+        // Refresh defaults and user entries - this works even if base dictionary is still loading
         // because index() with keepExisting=true will merge with existing entries
+        val defaultUserEntries = loadUserDefaults()
+        if (defaultUserEntries.isNotEmpty()) {
+            index(defaultUserEntries, keepExisting = true)
+        }
+
         val userEntries = userDictionaryStore.loadUserEntries(context)
         index(userEntries, keepExisting = true)
     }
@@ -149,12 +161,19 @@ class DictionaryRepository(
      * Returns true if successful, false otherwise (fallback to JSON).
      */
     private fun loadSerializedFromAssets(path: String): Boolean {
+        Log.i(tag, "Attempting to load serialized dictionary from: $path")
         return try {
+            val fileSize = assets.open(path).use { it.available().toLong() }
+            Log.i(tag, "Found serialized file: $path (${fileSize / 1024}KB)")
+            
             val serializedString = assets.open(path).bufferedReader().use { it.readText() }
+            Log.i(tag, "Read file content: ${serializedString.length} characters")
+            
             val json = Json {
                 ignoreUnknownKeys = true
             }
             val index = json.decodeFromString<DictionaryIndex>(serializedString)
+            Log.i(tag, "Deserialized successfully: normalizedIndex=${index.normalizedIndex.size}, prefixCache=${index.prefixCache.size}")
             
             // Populate indices directly from serialized data
             index.normalizedIndex.forEach { (normalized, entries) ->
@@ -165,11 +184,16 @@ class DictionaryRepository(
                 prefixCache[prefix] = entries.map { it.toDictionaryEntry() }.toMutableList()
             }
             
+            Log.i(tag, "Successfully populated indices from serialized format")
             true
+        } catch (e: java.io.FileNotFoundException) {
+            Log.w(tag, "Serialized dictionary file not found: $path - ${e.message}")
+            false
+        } catch (e: SerializationException) {
+            Log.e(tag, "Failed to deserialize dictionary from $path: ${e.message}", e)
+            false
         } catch (e: Exception) {
-            if (debugLogging) {
-                Log.d(tag, "Serialized dictionary not found or invalid: $path, falling back to JSON", e)
-            }
+            Log.e(tag, "Error loading serialized dictionary from $path: ${e.javaClass.simpleName} - ${e.message}", e)
             false
         }
     }
@@ -191,6 +215,46 @@ class DictionaryRepository(
             }
         } catch (e: Exception) {
             if (debugLogging) Log.e(tag, "Failed to load dictionary from assets: $path", e)
+            emptyList()
+        }
+    }
+    
+    /**
+     * Loads optional default user entries from a writable file, falling back to the asset.
+     * Format: [{ "w": "word", "f": 10 }, ...]
+     */
+    private fun loadUserDefaults(): List<DictionaryEntry> {
+        val fileName = "user_defaults.json"
+        val file = context.getFileStreamPath(fileName)
+        
+        // Ensure we have a local editable copy if asset exists
+        if (!file.exists()) {
+            try {
+                assets.open("common/dictionaries/$fileName").use { input ->
+                    file.outputStream().use { output -> input.copyTo(output) }
+                }
+            } catch (_: Exception) {
+                // No asset; leave file absent
+            }
+        }
+        
+        return try {
+            val jsonString = if (file.exists()) {
+                file.readText()
+            } else {
+                assets.open("common/dictionaries/$fileName").bufferedReader().use { it.readText() }
+            }
+            val jsonArray = JSONArray(jsonString)
+            buildList {
+                for (i in 0 until jsonArray.length()) {
+                    val obj = jsonArray.getJSONObject(i)
+                    val word = obj.getString("w")
+                    val freq = obj.optInt("f", 1)
+                    add(DictionaryEntry(word, freq, SuggestionSource.USER))
+                }
+            }
+        } catch (e: Exception) {
+            if (debugLogging) Log.d(tag, "No default user dictionary at $fileName (${e.javaClass.simpleName}: ${e.message})")
             emptyList()
         }
     }

@@ -61,9 +61,12 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     // Speech recognition using SpeechRecognizer (modern approach)
     private var speechRecognitionManager: SpeechRecognitionManager? = null
     private var isSpeechRecognitionActive: Boolean = false
+    private var pendingSpeechRecognition: Boolean = false
     
     // Broadcast receiver for speech recognition (deprecated, kept for backwards compatibility)
     private var speechResultReceiver: BroadcastReceiver? = null
+    // Broadcast receiver for permission request result
+    private var permissionResultReceiver: BroadcastReceiver? = null
     // Broadcast receiver for user dictionary updates
     private var userDictionaryReceiver: BroadcastReceiver? = null
     private lateinit var candidatesBarController: CandidatesBarController
@@ -215,6 +218,18 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             return
         }
         
+        // Check microphone permission first
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) 
+            != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            Log.i(TAG, "RECORD_AUDIO permission not granted, requesting...")
+            pendingSpeechRecognition = true
+            val intent = Intent(this, PermissionRequestActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            startActivity(intent)
+            return
+        }
+        
         // Initialize manager if not already created
         if (speechRecognitionManager == null) {
             speechRecognitionManager = SpeechRecognitionManager(
@@ -226,6 +241,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 onRecognitionStateChanged = { isActive ->
                     // Update internal state
                     isSpeechRecognitionActive = isActive
+                    
+                    // Reset Alt and Ctrl modifiers when recognition starts
+                    if (isActive) {
+                        modifierStateController.clearAltState()
+                        modifierStateController.clearCtrlState()
+                    }
+                    
                     // Update microphone button color and hint message based on recognition state
                     uiHandler.post {
                         candidatesBarController.setMicrophoneButtonActive(isActive)
@@ -233,6 +255,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                         // Reset audio level when recognition stops
                         if (!isActive) {
                             candidatesBarController.updateMicrophoneAudioLevel(-10f)
+                        } else {
+                            // Update status bar after resetting modifiers
+                            updateStatusBarText()
                         }
                     }
                 },
@@ -856,6 +881,39 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         
         Log.d(TAG, "Broadcast receiver registered for: ${SpeechRecognitionActivity.ACTION_SPEECH_RESULT}")
         
+        // Register broadcast receiver for permission request result
+        permissionResultReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                when (intent?.action) {
+                    PermissionRequestActivity.ACTION_PERMISSION_GRANTED -> {
+                        Log.d(TAG, "RECORD_AUDIO permission granted, retrying speech recognition")
+                        if (pendingSpeechRecognition) {
+                            pendingSpeechRecognition = false
+                            // Retry speech recognition now that permission is granted
+                            startSpeechRecognition()
+                        }
+                    }
+                    PermissionRequestActivity.ACTION_PERMISSION_DENIED -> {
+                        Log.w(TAG, "RECORD_AUDIO permission denied by user")
+                        pendingSpeechRecognition = false
+                    }
+                }
+            }
+        }
+        
+        val permissionFilter = IntentFilter().apply {
+            addAction(PermissionRequestActivity.ACTION_PERMISSION_GRANTED)
+            addAction(PermissionRequestActivity.ACTION_PERMISSION_DENIED)
+        }
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(permissionResultReceiver, permissionFilter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(permissionResultReceiver, permissionFilter)
+        }
+        
+        Log.d(TAG, "Broadcast receiver registered for permission request results")
+        
         // Register broadcast receiver for user dictionary updates
         userDictionaryReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
@@ -895,6 +953,15 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 unregisterReceiver(it)
             } catch (e: Exception) {
                 Log.e(TAG, "Error while unregistering broadcast receiver", e)
+            }
+        }
+        
+        // Unregister permission result receiver
+        permissionResultReceiver?.let {
+            try {
+                unregisterReceiver(it)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error while unregistering permission result receiver", e)
             }
         }
         

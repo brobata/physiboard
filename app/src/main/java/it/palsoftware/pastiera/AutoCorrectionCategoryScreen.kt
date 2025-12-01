@@ -28,8 +28,10 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import it.palsoftware.pastiera.R
-import it.palsoftware.pastiera.core.suggestions.UserDictionaryStore
 import android.content.Intent
+import android.content.Context
+import org.json.JSONArray
+import org.json.JSONObject
 
 /**
  * Auto-correction category screen.
@@ -516,19 +518,19 @@ private fun UserDictionaryScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
-    val store = remember { UserDictionaryStore() }
-    var entries by remember { mutableStateOf(store.loadUserEntries(context)) }
+    val defaultStore = remember(context) { DefaultUserDefaultsStore(context) }
+    var entries by remember { mutableStateOf(defaultStore.loadEntries()) }
     var showAddDialog by remember { mutableStateOf(false) }
     var newWord by remember { mutableStateOf("") }
 
     fun refreshEntries() {
-        entries = store.loadUserEntries(context)
+        entries = defaultStore.loadEntries()
     }
     
     fun addWord(word: String) {
         val trimmed = word.trim()
         if (trimmed.isNotEmpty()) {
-            store.addWord(context, trimmed)
+            defaultStore.addOrBump(trimmed)
             refreshEntries()
             // Notify IME service to refresh user dictionary
             val intent = Intent("it.palsoftware.pastiera.ACTION_USER_DICTIONARY_UPDATED").apply {
@@ -607,7 +609,7 @@ private fun UserDictionaryScreen(
                                 modifier = Modifier.weight(1f)
                             )
                             IconButton(onClick = {
-                                store.removeWord(context, entry.word)
+                                defaultStore.remove(entry.word)
                                 refreshEntries()
                                 // Notify IME service to refresh user dictionary
                                 val intent = Intent("it.palsoftware.pastiera.ACTION_USER_DICTIONARY_UPDATED").apply {
@@ -680,4 +682,83 @@ private fun UserDictionaryScreen(
 private enum class LocalNavigationDirection {
     Push,
     Pop
+}
+
+private data class DefaultUserWord(val word: String, val frequency: Int)
+
+/**
+ * Handles editable default user dictionary stored in app-private storage.
+ * Uses JSON format aligned with assets/common/dictionaries/user_defaults.json.
+ */
+private class DefaultUserDefaultsStore(private val context: Context) {
+    private val fileName = "user_defaults.json"
+    private val assetPath = "common/dictionaries/$fileName"
+
+    private fun ensureLocalFile(): java.io.File {
+        val file = context.getFileStreamPath(fileName)
+        if (!file.exists()) {
+            try {
+                context.assets.open(assetPath).use { input ->
+                    file.outputStream().use { output -> input.copyTo(output) }
+                }
+            } catch (_: Exception) {
+                // Asset missing; create empty file
+                file.parentFile?.mkdirs()
+                file.writeText("[]")
+            }
+        }
+        return file
+    }
+
+    fun loadEntries(): List<DefaultUserWord> {
+        val file = ensureLocalFile()
+        return try {
+            val jsonString = file.readText()
+            val jsonArray = JSONArray(jsonString)
+            buildList {
+                for (i in 0 until jsonArray.length()) {
+                    val obj = jsonArray.getJSONObject(i)
+                    val word = obj.getString("w")
+                    val freq = obj.optInt("f", 1)
+                    add(DefaultUserWord(word, freq))
+                }
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    fun addOrBump(word: String, baseFrequency: Int = 10) {
+        val file = ensureLocalFile()
+        val entries = loadEntries().toMutableList()
+        val existingIndex = entries.indexOfFirst { it.word.equals(word, ignoreCase = true) }
+        if (existingIndex >= 0) {
+            val existing = entries[existingIndex]
+            entries[existingIndex] = existing.copy(frequency = existing.frequency + 1)
+        } else {
+            entries.add(DefaultUserWord(word, baseFrequency))
+        }
+        persist(entries, file)
+    }
+
+    fun remove(word: String) {
+        val file = ensureLocalFile()
+        val entries = loadEntries().filterNot { it.word.equals(word, ignoreCase = true) }
+        persist(entries, file)
+    }
+
+    private fun persist(entries: List<DefaultUserWord>, file: java.io.File) {
+        try {
+            val array = JSONArray()
+            entries.forEach { entry ->
+                val obj = JSONObject()
+                obj.put("w", entry.word)
+                obj.put("f", entry.frequency)
+                array.put(obj)
+            }
+            file.writeText(array.toString())
+        } catch (_: Exception) {
+            // Ignore persistence errors; UI will just not reflect changes
+        }
+    }
 }

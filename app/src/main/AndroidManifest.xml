@@ -92,6 +92,15 @@
             android:launchMode="singleTask"
             android:taskAffinity="com.google.android.inputmethod.latin" />
         
+        <!-- Attività helper per richiedere il permesso del microfono -->
+        <activity
+            android:name=".inputmethod.PermissionRequestActivity"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:taskAffinity="" />
+        
         <!-- Attività per assegnare scorciatoie del launcher -->
         <activity
             android:name=".inputmethod.LauncherShortcutAssignmentActivity"

@@ -1,10 +1,14 @@
 package it.palsoftware.pastiera.inputmethod
 
+import android.Manifest
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.speech.RecognizerIntent
 import android.util.Log
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import it.palsoftware.pastiera.R
 
 /**
@@ -15,14 +19,55 @@ class SpeechRecognitionActivity : Activity() {
     companion object {
         private const val TAG = "SpeechRecognition"
         const val REQUEST_CODE_SPEECH = 1000
+        const val REQUEST_CODE_PERMISSION = 1001
         const val ACTION_SPEECH_RESULT = "it.palsoftware.pastiera.SPEECH_RESULT"
         const val EXTRA_TEXT = "text"
     }
+    
+    private var pendingSpeechRecognition = false
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.i(TAG, "SpeechRecognitionActivity onCreate - starting speech recognition")
         
+        // Check microphone permission
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) 
+            != PackageManager.PERMISSION_GRANTED) {
+            Log.i(TAG, "RECORD_AUDIO permission not granted, requesting...")
+            pendingSpeechRecognition = true
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.RECORD_AUDIO),
+                REQUEST_CODE_PERMISSION
+            )
+            return
+        }
+        
+        startSpeechRecognition()
+    }
+    
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        
+        if (requestCode == REQUEST_CODE_PERMISSION) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Log.i(TAG, "RECORD_AUDIO permission granted")
+                if (pendingSpeechRecognition) {
+                    pendingSpeechRecognition = false
+                    startSpeechRecognition()
+                }
+            } else {
+                Log.w(TAG, "RECORD_AUDIO permission denied by user")
+                finish()
+            }
+        }
+    }
+    
+    private fun startSpeechRecognition() {
         try {
             // Google Voice Typing package (may vary on different devices)
             val GOOGLE_VOICE_TYPING_PACKAGES = listOf(
