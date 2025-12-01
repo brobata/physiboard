@@ -3,6 +3,7 @@ package it.palsoftware.pastiera.inputmethod.suggestions.ui
 import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
+import android.text.TextUtils
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
@@ -89,7 +90,9 @@ class FullSuggestionsBar(private val context: Context) {
                 gravity = Gravity.CENTER
                 textSize = 18f
                 setTextColor(Color.WHITE)
-                setTypeface(null, android.graphics.Typeface.BOLD)
+                setTypeface(null, android.graphics.Typeface.NORMAL)
+                maxLines = 1
+                ellipsize = TextUtils.TruncateAt.END
                 setPadding(padH, padV, padH, padV)
                 background = GradientDrawable().apply {
                     setColor(Color.rgb(17, 17, 17))

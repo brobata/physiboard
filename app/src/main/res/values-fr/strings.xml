@@ -90,15 +90,15 @@
     <string name="close">Fermer</string>
     
     <!-- Auto-Correction Section -->
-    <string name="auto_correct_title">Auto-Correction</string>
-    <string name="auto_correct_languages_title">Langues</string>
-    <string name="auto_correct_settings_title">Langues d\'Auto-Correction</string>
-    <string name="auto_correct_settings_description">Sélectionnez les langues à utiliser pour l\'auto-correction. La langue du système est affichée en haut.</string>
+    <string name="auto_correct_title">Auto Substitutions</string>
+    <string name="auto_correct_languages_title">Substitutions</string>
+    <string name="auto_correct_settings_title">Substitutions d\'Auto-Correction</string>
+    <string name="auto_correct_settings_description">Sélectionnez les substitutions à utiliser pour l\'auto-correction. La langue du système est affichée en haut.</string>
     <string name="auto_correct_system_language">Langue du système</string>
-    <string name="auto_correct_ricette_pastiera_description">Personnalisations valides pour toutes les langues</string>
-    <string name="auto_correct_other_languages">Autres Langues</string>
-    <string name="auto_correct_custom_languages">Langues Personnalisées</string>
-    <string name="auto_correct_at_least_one_language_required">Au moins une langue est nécessaire pour le fonctionnement</string>
+    <string name="auto_correct_ricette_pastiera_description">Personnalisations valides pour toutes les substitutions</string>
+    <string name="auto_correct_other_languages">Autres Substitutions</string>
+    <string name="auto_correct_custom_languages">Substitutions Personnalisées</string>
+    <string name="auto_correct_at_least_one_language_required">Au moins une substitution est nécessaire pour le fonctionnement</string>
     <string name="auto_correct_edit">Modifier</string>
     <string name="auto_correct_edit_description">Appuyez sur une correction pour la modifier, ou utilisez le bouton + pour en ajouter une nouvelle.</string>
     <string name="auto_correct_add_correction">Ajouter une Correction</string>
@@ -109,12 +109,12 @@
     <string name="auto_correct_save">Enregistrer</string>
     <string name="auto_correct_cancel">Annuler</string>
     <string name="auto_correct_no_corrections">Aucune correction disponible. Appuyez sur le bouton + pour en ajouter une.</string>
-    <string name="auto_correct_add_language">Ajouter une Nouvelle Langue</string>
-    <string name="auto_correct_language_code">Code de Langue</string>
-    <string name="auto_correct_language_name">Nom de la Langue</string>
-    <string name="auto_correct_language_code_hint">Entrez un code et un nom pour votre langue personnalisée (ex. \"fr\" / \"Français\", \"mydict\" / \"Mon Dictionnaire\")</string>
-    <string name="auto_correct_language_code_required">Le nom de la langue est requis</string>
-    <string name="auto_correct_language_already_exists">Cette langue existe déjà</string>
+    <string name="auto_correct_add_language">Ajouter une Nouvelle Substitution</string>
+    <string name="auto_correct_language_code">Code de Substitution</string>
+    <string name="auto_correct_language_name">Nom de la Substitution</string>
+    <string name="auto_correct_language_code_hint">Entrez un code et un nom pour votre substitution personnalisée (ex. \"fr\" / \"Français\", \"mydict\" / \"Mon Dictionnaire\")</string>
+    <string name="auto_correct_language_code_required">Le nom de la substitution est requis</string>
+    <string name="auto_correct_language_already_exists">Cette substitution existe déjà</string>
     
     <!-- SYM Customization Screen -->
     <string name="sym_customize_title">Personnaliser le Clavier SYM</string>

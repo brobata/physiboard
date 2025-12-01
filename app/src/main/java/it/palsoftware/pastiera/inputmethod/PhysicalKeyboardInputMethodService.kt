@@ -8,7 +8,9 @@ import android.content.SharedPreferences
 import it.palsoftware.pastiera.SettingsManager
 import android.inputmethodservice.InputMethodService
 import android.os.Build
+import android.os.Bundle
 import android.util.Log
+import androidx.core.content.ContextCompat
 import android.view.KeyEvent
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
@@ -18,8 +20,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import android.os.Handler
 import android.os.Looper
-import androidx.core.content.ContextCompat
 import android.view.View
+import android.widget.Toast
 import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.inputmethod.NotificationHelper
 import it.palsoftware.pastiera.core.AutoCorrectionManager
@@ -37,6 +39,8 @@ import it.palsoftware.pastiera.data.layout.LayoutMapping
 import it.palsoftware.pastiera.data.mappings.KeyMappingLoader
 import it.palsoftware.pastiera.data.variation.VariationRepository
 import it.palsoftware.pastiera.inputmethod.SpeechRecognitionActivity
+import java.util.Locale
+import android.view.inputmethod.InputMethodManager
 
 /**
  * Input method service specialized for physical keyboards.
@@ -54,8 +58,14 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
 
     private lateinit var altSymManager: AltSymManager
     
-    // Broadcast receiver for speech recognition
+    // Speech recognition using SpeechRecognizer (modern approach)
+    private var speechRecognitionManager: SpeechRecognitionManager? = null
+    private var isSpeechRecognitionActive: Boolean = false
+    
+    // Broadcast receiver for speech recognition (deprecated, kept for backwards compatibility)
     private var speechResultReceiver: BroadcastReceiver? = null
+    // Broadcast receiver for user dictionary updates
+    private var userDictionaryReceiver: BroadcastReceiver? = null
     private lateinit var candidatesBarController: CandidatesBarController
 
     // Keycode for the SYM key
@@ -195,18 +205,55 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         updateStatusBarText()
     }
     
+    /**
+     * Starts voice input using SpeechRecognizer via SpeechRecognitionManager.
+     */
     private fun startSpeechRecognition() {
-        try {
-            val intent = Intent(this, SpeechRecognitionActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or
-                        Intent.FLAG_ACTIVITY_NO_HISTORY or
-                        Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
-            }
-            startActivity(intent)
-            Log.d(TAG, "Speech recognition started via Alt+Ctrl shortcut")
-        } catch (e: Exception) {
-            Log.e(TAG, "Unable to launch speech recognition", e)
+        // If recognition is already active, toggle it off
+        if (isSpeechRecognitionActive) {
+            stopSpeechRecognition()
+            return
         }
+        
+        // Initialize manager if not already created
+        if (speechRecognitionManager == null) {
+            speechRecognitionManager = SpeechRecognitionManager(
+                context = this,
+                inputConnectionProvider = { currentInputConnection },
+                onError = { errorMessage ->
+                    Log.e(TAG, "Speech recognition error: $errorMessage")
+                },
+                onRecognitionStateChanged = { isActive ->
+                    // Update internal state
+                    isSpeechRecognitionActive = isActive
+                    // Update microphone button color and hint message based on recognition state
+                    uiHandler.post {
+                        candidatesBarController.setMicrophoneButtonActive(isActive)
+                        candidatesBarController.showSpeechRecognitionHint(isActive)
+                        // Reset audio level when recognition stops
+                        if (!isActive) {
+                            candidatesBarController.updateMicrophoneAudioLevel(-10f)
+                        }
+                    }
+                },
+                shouldDisableAutoCapitalize = { inputContextState.shouldDisableAutoCapitalize },
+                onAudioLevelChanged = { rmsdB ->
+                    // Update microphone button based on audio level
+                    uiHandler.post {
+                        candidatesBarController.updateMicrophoneAudioLevel(rmsdB)
+                    }
+                }
+            )
+        }
+        
+        speechRecognitionManager?.startRecognition()
+    }
+
+    /**
+     * Stops voice input if active.
+     */
+    private fun stopSpeechRecognition() {
+        speechRecognitionManager?.stopRecognition()
     }
 
     private fun getSuggestionSettings(): SuggestionSettings {
@@ -215,6 +262,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             suggestionsEnabled = suggestionsEnabled,
             accentMatching = SettingsManager.getAccentMatchingEnabled(this),
             autoReplaceOnSpaceEnter = SettingsManager.getAutoReplaceOnSpaceEnter(this),
+            maxAutoReplaceDistance = SettingsManager.getMaxAutoReplaceDistance(this),
             maxSuggestions = 3
         )
     }
@@ -611,14 +659,23 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         )
         autoCorrectionManager = AutoCorrectionManager(this)
         val suggestionDebugLogging = SettingsManager.isSuggestionDebugLoggingEnabled(this)
+        
+        // Get locale from current IME subtype
+        val initialLocale = getLocaleFromSubtype()
+        
         suggestionController = SuggestionController(
             context = this,
             assets = assets,
             settingsProvider = { getSuggestionSettings() },
             isEnabled = { SettingsManager.isExperimentalSuggestionsEnabled(this) },
-            debugLogging = suggestionDebugLogging
-        ) { suggestions -> handleSuggestionsUpdated(suggestions) }
+            debugLogging = suggestionDebugLogging,
+            onSuggestionsUpdated = { suggestions -> handleSuggestionsUpdated(suggestions) },
+            currentLocale = initialLocale
+        )
         inputEventRouter.suggestionController = suggestionController
+        
+        // Preload dictionary in background so it's ready when user focuses a field
+        suggestionController.preloadDictionary()
 
         candidatesBarController = CandidatesBarController(this)
 
@@ -636,6 +693,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             updateStatusBarText()
         }
         candidatesBarController.onCursorMovedListener = cursorListener
+        
+        // Register listener for speech recognition
+        candidatesBarController.onSpeechRecognitionRequested = {
+            startSpeechRecognition()
+        }
         altSymManager = AltSymManager(assets, prefs, this)
         altSymManager.reloadSymMappings() // Load custom mappings for page 1 if present
         altSymManager.reloadSymMappings2() // Load custom mappings for page 2 if present
@@ -793,6 +855,27 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
         
         Log.d(TAG, "Broadcast receiver registered for: ${SpeechRecognitionActivity.ACTION_SPEECH_RESULT}")
+        
+        // Register broadcast receiver for user dictionary updates
+        userDictionaryReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                if (intent?.action == "it.palsoftware.pastiera.ACTION_USER_DICTIONARY_UPDATED") {
+                    Log.d(TAG, "User dictionary updated, refreshing...")
+                    if (::suggestionController.isInitialized) {
+                        suggestionController.refreshUserDictionary()
+                    }
+                }
+            }
+        }
+        
+        val userDictFilter = IntentFilter("it.palsoftware.pastiera.ACTION_USER_DICTIONARY_UPDATED")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(userDictionaryReceiver, userDictFilter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(userDictionaryReceiver, userDictFilter)
+        }
+        
+        Log.d(TAG, "Broadcast receiver registered for user dictionary updates")
     }
     
     override fun onDestroy() {
@@ -802,7 +885,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             prefs.unregisterOnSharedPreferenceChangeListener(it)
         }
         
-        // Unregister broadcast receiver
+        // Cleanup SpeechRecognitionManager
+        speechRecognitionManager?.destroy()
+        speechRecognitionManager = null
+        
+        // Unregister broadcast receiver (deprecated, but kept for backwards compatibility)
         speechResultReceiver?.let {
             try {
                 unregisterReceiver(it)
@@ -810,11 +897,19 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 Log.e(TAG, "Error while unregistering broadcast receiver", e)
             }
         }
+        
+        userDictionaryReceiver?.let {
+            try {
+                unregisterReceiver(it)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error while unregistering user dictionary receiver", e)
+            }
+        }
         speechResultReceiver = null
         cancelSpaceLongPress()
         multiTapController.cancelAll()
         updateNavModeStatusIcon(false)
-        
+
     }
 
     override fun onCreateInputView(): View? = keyboardVisibilityController.onCreateInputView()
@@ -1071,6 +1166,44 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     override fun onWindowShown() {
         super.onWindowShown()
         updateStatusBarText()
+    }
+    
+    /**
+     * Gets the locale from the current IME subtype.
+     * Falls back to Italian if no subtype is available.
+     */
+    private fun getLocaleFromSubtype(): Locale {
+        val imm = getSystemService(InputMethodManager::class.java)
+        val subtype = imm.currentInputMethodSubtype
+        val localeString = subtype?.locale ?: "it_IT"
+        return try {
+            // Convert "en_US" format to Locale
+            val parts = localeString.split("_")
+            when (parts.size) {
+                2 -> Locale(parts[0], parts[1])
+                1 -> Locale(parts[0])
+                else -> Locale.ITALIAN
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to parse locale from subtype: $localeString", e)
+            Locale.ITALIAN
+        }
+    }
+    
+    /**
+     * Called when the user switches IME subtypes (languages).
+     * Reloads the dictionary for the new language.
+     */
+    override fun onCurrentInputMethodSubtypeChanged(newSubtype: android.view.inputmethod.InputMethodSubtype) {
+        super.onCurrentInputMethodSubtypeChanged(newSubtype)
+        
+        if (::suggestionController.isInitialized) {
+            val newLocale = getLocaleFromSubtype()
+            suggestionController.updateLocale(newLocale)
+            if (Log.isLoggable(TAG, Log.DEBUG)) {
+                Log.d(TAG, "IME subtype changed, updating locale to: ${newLocale.language}")
+            }
+        }
     }
     
     override fun onWindowHidden() {

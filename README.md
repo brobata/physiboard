@@ -1,109 +1,76 @@
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/C0C31OHWF2)
 # Pastiera
 
-A physical keyboard input method for Android, made for devices like the Unihertz Titan 2. Built as a hobby project to make typing on physical keyboards more efficient and enjoyable.
+Input method per tastiere fisiche (es. Unihertz Titan 2) pensato per rendere la digitazione piu veloce, con tante scorciatoie e personalizzazioni su file JSON.
 
-## Features
+## Panoramica veloce
+- Barra di stato compatta con LED per Shift/SYM/Ctrl/Alt, barra varianti/suggerimenti e gesture swipe-pad per muovere il cursore.
+- Layout multipli (QWERTY/AZERTY/QWERTZ, Greek, Cyrillic, Arabic, translit, ecc.) ciclabili con Ctrl+Space; import/export JSON dall'app. Frontend per la personalizzazione delle mappe diposibile su https://pastierakeyedit.vercel.app/
+- Due pagine SYM lanciabili da touch o tasti fisici (emoji + simboli) riordinabili/disattivabili, con editor integrato e tanti caratteri Unicode nuovi.
+- Backup/restore completo (impostazioni, layout, variazioni, dizionari), UI tradotta in piu lingue e controllo aggiornamenti GitHub.
 
-### Long Press for Special Characters or Capital Letters
+## Digitazione e modificatori
+- Pressione lunga: Alt+key di default o maiuscole; tempo configurabile.
+- Shift/Ctrl/Alt in modalita one-shot o latch (doppio tap), doppio Shift per Caps Lock; opzione per cancellare Alt allo spazio.
+- Multi-tap per tasti con varianti definite dal layout.
+- Scorciatoie standard: Ctrl+C/X/V, Ctrl+A, Ctrl+Backspace, Ctrl+E/D/S/F o I/J/K/L per frecce, Ctrl+W/R per selezione, Ctrl+T per Tab, Ctrl+Y/H per Page Up/Down, Ctrl+Q per Esc (Tutte personalizzabili nella schermata Customize Nav)
 
-Long-press any key to get its Alt+key combination. For example:
-- Long-press Q → 0
-- Long-press A → @
-- Long-press Z → !
+## Navigazione e gesture
+- Nav Mode: doppio Ctrl fuori dai campi di testo per usare ESDF/IJKL/T come frecce/Tab; rimappabile per ogni tasto alfabetico dal menu "Nav Mode".
+- Barra varianti come swipe pad: trascina per muovere il cursore con soglia regolabile; hint automatico se non ci sono varianti.
+- Helper di selezione testo (Ctrl+W/R) e annulla per gli auto-replace.
+- Launcher shortcuts: nel launcher premi una lettera per aprire/assegnare un'app.
+- Power shortcuts: premi SYM (timeout 5s) e poi una lettera per usare le stesse scorciatoie ovunque, anche fuori dal launcher.
+- Gear sulla barra della tastiera per aprire le impostazioni senza lasciare il campo di testo.
 
-Alternatively, the long press can be set to type capital letters. For example:
-- Long-press a → A
+## Layout tastiera
+- Layout inclusi: qwerty, azerty, qwertz, greek, arabic, russian/armenian phonetic, translit, piu mappe Alt dedicate al Titan 2.
+- Conversione/ciclo layout: Ctrl+Space passa al layout successivo nella lista abilitata (configurabile).
+- Supporto multi-tap e mapping per caratteri complessi nei layout.
+- Import/export da file JSON direttamente dall'app, anteprima grafica e gestione lista (abilita/disabilita, elimina).
+- Le mappe sono salvate in `files/keyboard_layouts` e modificabili anche a mano.
 
-The long-press duration is configurable in settings (default 500ms).
-### Modifier Keys
+## Simboli, emoji e variazioni
+- Due pagine SYM (emoji + simboli) touch: puoi riordinarle/attivarle, chiusura automatica dopo input, keycaps personalizzabili.
+- Editor SYM in-app con griglia emoji, picker Unicode e seconda pagina piena di nuovi caratteri.
+- Barra variazioni sopra la tastiera: mostra accenti/varianti della lettera appena digitata o set statici (utility/email) quando serve.
+- Editor variazioni dedicato per sostituire/aggiungere varianti via JSON o picker Unicode; barra statica opzionale.
+- Modalita emoji/simboli accessibile anche toccando direttamente la barra.
 
-**Shift, Ctrl, and Alt** work in two modes:
+## Suggerimenti e autocorrezione
+- Auto-replace opzionale su spazio/enter; auto-cap smart dopo ., !, ?.
+- Dizionario utente con frequenza/priorita e ricerca; voci personali sempre in cima.
+- Editor autocorrezioni per lingua, ricerca rapida, e set globale "Ricette Pastiera" valido per tutte le lingue.
+- Modalita debug/esperimenti disattivabile; funzioni smart spente automaticamente in password/email dove non servono.
 
-- **One-shot**: Tap once to activate for the next key only (so you don't need to press 2 keys to do a combination)
-- **Latch**: Double-tap to keep it active until you tap it again
+## Comfort e input extra
+- Doppio spazio -> punto+spazio+maiuscola; swipe a sinistra sulla tastiera per cancellare parola (Titan 2).
+- Tasto SYM per doppia pagina emoji/simboli; auto close SYM configurabile.
+- Scorciatoia Alt+Ctrl (opzionale) per avviare il microfono Google Voice Typing; microfono sempre disponibile sulla barra varianti.
+- Stato compatto della barra per occupare poco spazio verticale. Con tastiera on screen off dal selettore ime occupa ancora meno spazio grazie alla modalità Pastierina.
+- UI tradotta (it/en/de/es/fr/pl/ru/hy) e tutorial iniziale.
 
-**Caps Lock**: Double-tap Shift to enable/disable caps lock. Tap Shift once while caps lock is on to turn it off.
+## Backup, update e dati
+- Backup/restore da UI in formato ZIP: include preferenze, layout personalizzati, variazioni, sym/ctrl map, dizionari utente.
+- Ripristino unisce le variazioni salvate con quelle di default per non perdere chiavi nuove.
+- Controllo aggiornamenti GitHub integrato all'apertura delle impostazioni (con possibilita di ignorare una release).
+- File personalizzabili in `files/`: `variations.json`, `ctrl_key_mappings.json`, `sym_key_mappings*.json`, `keyboard_layouts/*.json`, dizionari utente.
 
-### Keyboard Shortcuts
+## Installazione
+1. Compila l'APK o installa una build esistente.
+2. Impostazioni Android -> Sistema -> Lingue e immissione -> Tastiera virtuale -> Gestisci tastiere.
+3. Abilita "Pastiera Physical Keyboard" e selezionala dal selettore input quando digiti.
 
-Standard shortcuts work as you'd expect:
-- `Ctrl+C` / `Ctrl+X` / `Ctrl+V` - Copy, cut, paste
-- `Ctrl+A` - Select all
-- `Ctrl+Z` - Undo
-- `Ctrl+Backspace` - Delete last word
-- `Ctrl+E, S, D, F or I, J, K, L` - Navigate (E=Up, D=Down, S=Left, F=Right)
-- `Ctrl+W` / `Ctrl+R` - Expand text selection left/right
-- `Ctrl+T` - Tab
-- `Ctrl+Y` / `Ctrl+H` - Page up/down
-- `Ctrl+Q` - Escape
+## Configurazione rapida
+- Tempi pressione: Impostazioni -> Keyboard timing (long press, multi-tap).
+- Testo: auto-maiuscole (inizio frase e post-punteggiatura), doppio spazio, cancella Alt su spazio, swipe-to-delete, mostra tastiera, scorciatoia voce Alt+Ctrl.
+- Autocorrezione: toggle suggerimenti/accenti/auto-replace, lingue attive, dizionario utente, Ricette Pastiera, debug.
+- Personalizzazione: layout tastiera (scelta, import/export, ciclo), SYM/emoji (mapping, ordine pagine, chiusura automatica), variazioni, Nav Mode mapping, launcher/power shortcuts, sensibilita swipe cursore.
+- Avanzate: backup/restore, test IME, info build.
 
-### Navigation Mode
+## Requisiti
+- Android 10 (API 29) o superiore.
+- Dispositivo con tastiera fisica (profilato su Unihertz Titan 2, adattabile via JSON).
 
-Double-tap Ctrl when not in a text field to enter navigation mode. This lets you use ESDF or IJKL keys to navigate around the UI, T to tab and other commands when there's no text input active. Press Back or Ctrl again to exit.
-
-### Launcher Shortcuts (Experimental)
-
-When you're on the home screen (launcher) and not in a text field, you can assign keys to launch apps. Press any unassigned key to open a dialog where you can select which app to launch with that key. This feature is experimental and can be enabled/disabled in settings.
-
-### Character Variations
-
-After typing a letter, the status bar shows available accent variations (à, é, ñ, ç, etc.). Tap any variation to replace the character.
-
-### SYM Key for Emojis and other characters
-
-Press the SYM key (if your keyboard has one) to activate emoji mode. Then press any letter key to insert its mapped emoji. You can customize which emoji each key produces in the settings.
-Press again the SYM key to enter the second page of the SYM layout, reserved to special characters (you can customize this layout too)
-
-
-### Voice Input
-
-A microphone button appears in the status bar when typing. Tap it to launch Google Voice Typing for speech-to-text input.
-
-### Auto-Capitalization
-
-Automatically capitalizes the first letter when you start typing in an empty text field. Can be disabled in settings. (Automatically disabled in password fields)
-
-### Auto-Correction
-
-Built-in auto-correction only for punctuation and similar (for example im → I'm) with support for multiple languages. You can add custom languages and corrections in the settings, and easily add your own custom words. Dictionaries are stored in an easily customizable JSON format.
-
-### Other Conveniences
-
-- **Double space to period**: Tap space twice to insert a period, space, and capitalize the next letter
-- **Swipe to delete**: Swipe left on the keyboard to delete à word (if enabled, works on Unihertz Titan 2)
-- **Compact status bar**: The status bar is minimal and takes up very little vertical space
-
-## Installation
-
-1. Build the app or install the APK
-2. Open the app and go to Settings → System → Languages & input → Virtual keyboard → Manage keyboards
-3. Enable "Pastiera Physical Keyboard"
-4. When typing, switch to Pastiera from your keyboard selector
-
-## Configuration
-
-Open the Pastiera app to access settings:
-
-- **Long Press Duration**: Adjust how long you need to hold a key for long-press to activate
-- **Auto-Capitalize First Letter**: Toggle automatic capitalization
-- **Double Space to Period**: Toggle the double-space feature
-- **Swipe to Delete**: Enable/disable swipe-to-delete
-- **Auto-Correction Languages**: Configure which languages to use for auto-correction
-- **Customize SYM Keyboard**: Change which emoji each key produces when SYM is active
-- **Long Press Modifier**: Choose whether long-press simulates Alt+key or Shift+key
-- **Launcher Shortcuts**: Enable/disable and configure keyboard shortcuts to launch apps from the home screen
-
-## Requirements
-
-- Android 10 (API 29) or higher
-- A device with a physical keyboard (optimized for Unihertz Titan 2, can easily be customized via json map for other devices)
-
-## Building
-
-This is an Android project built with Kotlin and Jetpack Compose. Open it in Android Studio and build as usual.
-
-## License
-
-This is a personal hobby project. Use it as you like, but no guarantees.
-Made in Italy :D
+## Build
+Progetto Android in Kotlin/Jetpack Compose. Apri in Android Studio e builda normalmente.

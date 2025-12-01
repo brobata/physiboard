@@ -21,6 +21,7 @@ class SpeechRecognitionActivity : Activity() {
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Log.i(TAG, "SpeechRecognitionActivity onCreate - starting speech recognition")
         
         try {
             // Google Voice Typing package (may vary on different devices)
@@ -75,12 +76,56 @@ class SpeechRecognitionActivity : Activity() {
         super.onActivityResult(requestCode, resultCode, data)
         
         if (requestCode == REQUEST_CODE_SPEECH) {
+            Log.i(TAG, "onActivityResult called - requestCode: $requestCode, resultCode: $resultCode")
+            
             if (resultCode == RESULT_OK && data != null) {
+                // Debug: log all extras to see what Google Voice Typing returns
+                Log.i(TAG, "=== All extras in speech recognition result ===")
+                data.extras?.let { bundle ->
+                    if (bundle.isEmpty) {
+                        Log.i(TAG, "Bundle is empty")
+                    } else {
+                        Log.i(TAG, "Bundle contains ${bundle.keySet().size} keys")
+                        for (key in bundle.keySet()) {
+                            val value = bundle.get(key)
+                            val valueType = value?.javaClass?.simpleName ?: "null"
+                            val valueString = when (value) {
+                                is ArrayList<*> -> {
+                                    val list = value as ArrayList<*>
+                                    "ArrayList(${list.size} items): ${list.joinToString(", ") { "'$it'" }}"
+                                }
+                                is Bundle -> "Bundle(${value.keySet().size} keys)"
+                                else -> value.toString()
+                            }
+                            Log.i(TAG, "  Extra: '$key' = $valueString (type: $valueType)")
+                        }
+                    }
+                } ?: Log.w(TAG, "Bundle is null")
+                
                 val results = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+                Log.i(TAG, "EXTRA_RESULTS: ${if (results == null) "null" else "ArrayList(${results.size} items)"}")
+                results?.forEachIndexed { index, result ->
+                    Log.i(TAG, "  Result[$index]: '$result'")
+                }
+                
+                // Check for other known RecognizerIntent extras
+                val confidenceScores = data.getFloatArrayExtra(RecognizerIntent.EXTRA_CONFIDENCE_SCORES)
+                if (confidenceScores != null) {
+                    Log.i(TAG, "EXTRA_CONFIDENCE_SCORES: ${confidenceScores.joinToString(", ")}")
+                }
+                
+                // Also check all extras directly from data
+                Log.i(TAG, "=== Checking data.extras directly ===")
+                data.extras?.let { bundle ->
+                    for (key in bundle.keySet()) {
+                        Log.i(TAG, "  data.extras['$key'] = ${bundle.get(key)}")
+                    }
+                }
+                
                 val spokenText = results?.get(0) ?: ""
                 
                 if (spokenText.isNotEmpty()) {
-                    Log.d(TAG, "Recognized text: $spokenText")
+                    Log.i(TAG, "Using recognized text: '$spokenText'")
                     
                     // Send result via broadcast with explicit package
                     val broadcastIntent = Intent(ACTION_SPEECH_RESULT).apply {
@@ -88,12 +133,12 @@ class SpeechRecognitionActivity : Activity() {
                         setPackage(packageName) // Specify package explicitly
                     }
                     sendBroadcast(broadcastIntent)
-                    Log.d(TAG, "Broadcast sent: $ACTION_SPEECH_RESULT with text: $spokenText")
+                    Log.i(TAG, "Broadcast sent: $ACTION_SPEECH_RESULT with text: $spokenText")
                 } else {
-                    Log.d(TAG, "No text recognized")
+                    Log.w(TAG, "No text recognized (empty result)")
                 }
             } else {
-                Log.d(TAG, "Speech recognition cancelled or failed")
+                Log.w(TAG, "Speech recognition cancelled or failed (resultCode: $resultCode, data: ${if (data == null) "null" else "not null"})")
             }
         }
 

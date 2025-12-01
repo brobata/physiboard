@@ -58,8 +58,45 @@ class StatusBarController(
             variationBarView?.onCursorMovedListener = value
         }
     
+    // Listener for speech recognition request
+    var onSpeechRecognitionRequested: (() -> Unit)? = null
+        set(value) {
+            field = value
+            variationBarView?.onSpeechRecognitionRequested = value
+        }
+    
+    // Callback for speech recognition state changes (active/inactive)
+    var onSpeechRecognitionStateChanged: ((Boolean) -> Unit)? = null
+        set(value) {
+            field = value
+            // Note: VariationBarView doesn't need this directly, but we can add it if needed
+        }
+    
     fun invalidateStaticVariations() {
         variationBarView?.invalidateStaticVariations()
+    }
+    
+    /**
+     * Sets the microphone button active state.
+     */
+    fun setMicrophoneButtonActive(isActive: Boolean) {
+        variationBarView?.setMicrophoneButtonActive(isActive)
+    }
+    
+    /**
+     * Updates the microphone button visual feedback based on audio level.
+     * @param rmsdB The RMS audio level in decibels (typically -10 to 0)
+     */
+    fun updateMicrophoneAudioLevel(rmsdB: Float) {
+        variationBarView?.updateMicrophoneAudioLevel(rmsdB)
+    }
+    
+    /**
+     * Shows or hides the speech recognition hint message.
+     * When showing, replaces the swipe hint with speech recognition message.
+     */
+    fun showSpeechRecognitionHint(show: Boolean) {
+        variationBarView?.showSpeechRecognitionHint(show)
     }
 
     companion object {

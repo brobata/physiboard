@@ -29,6 +29,13 @@ class CandidatesBarController(
             candidatesStatusBar.onCursorMovedListener = value
         }
 
+    var onSpeechRecognitionRequested: (() -> Unit)? = null
+        set(value) {
+            field = value
+            inputStatusBar.onSpeechRecognitionRequested = value
+            candidatesStatusBar.onSpeechRecognitionRequested = value
+        }
+
     fun getInputView(emojiMapText: String = ""): LinearLayout {
         return inputStatusBar.getOrCreateLayout(emojiMapText)
     }
@@ -44,6 +51,21 @@ class CandidatesBarController(
     fun invalidateStaticVariations() {
         inputStatusBar.invalidateStaticVariations()
         candidatesStatusBar.invalidateStaticVariations()
+    }
+
+    fun setMicrophoneButtonActive(isActive: Boolean) {
+        inputStatusBar.setMicrophoneButtonActive(isActive)
+        candidatesStatusBar.setMicrophoneButtonActive(isActive)
+    }
+    
+    fun updateMicrophoneAudioLevel(rmsdB: Float) {
+        inputStatusBar.updateMicrophoneAudioLevel(rmsdB)
+        candidatesStatusBar.updateMicrophoneAudioLevel(rmsdB)
+    }
+    
+    fun showSpeechRecognitionHint(show: Boolean) {
+        inputStatusBar.showSpeechRecognitionHint(show)
+        candidatesStatusBar.showSpeechRecognitionHint(show)
     }
 
     fun updateStatusBars(

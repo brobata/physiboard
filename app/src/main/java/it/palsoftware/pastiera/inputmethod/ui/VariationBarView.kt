@@ -44,10 +44,121 @@ class VariationBarView(
         private const val TAG = "VariationBarView"
         private const val SWIPE_HINT_SHOW_DELAY_MS = 1000L
         private val PRESSED_BLUE = Color.rgb(100, 150, 255) // Same as LED active blue
+        private val RECOGNITION_RED = Color.rgb(255, 80, 80) // Red color for active recognition
     }
 
     var onVariationSelectedListener: VariationButtonHandler.OnVariationSelectedListener? = null
     var onCursorMovedListener: (() -> Unit)? = null
+    var onSpeechRecognitionRequested: (() -> Unit)? = null
+    
+    /**
+     * Sets the microphone button active state (red pulsing background) during speech recognition.
+     */
+    fun setMicrophoneButtonActive(isActive: Boolean) {
+        microphoneButtonView?.let { button ->
+            isMicrophoneActive = isActive
+            if (isActive) {
+                // Initialize red background (will be updated by audio level)
+                startMicrophoneAudioFeedback(button)
+            } else {
+                // Stop animation and restore normal state
+                stopMicrophoneAudioFeedback(button)
+            }
+        }
+    }
+    
+    /**
+     * Updates the microphone button visual feedback based on audio level.
+     * Changes the red color intensity based on audio volume.
+     * @param rmsdB The RMS audio level in decibels (typically -10 to 0, lower is quieter)
+     */
+    fun updateMicrophoneAudioLevel(rmsdB: Float) {
+        microphoneButtonView?.let { button ->
+            if (!isMicrophoneActive) return@let
+            
+            // Map RMS value (-10 to 0) to a normalized value (0.0 to 1.0)
+            // Clamp the value to reasonable bounds
+            val minRms = -10f
+            val maxRms = 0f
+            val normalizedLevel = ((rmsdB - minRms) / (maxRms - minRms)).coerceIn(0f, 1f)
+            
+            // Map to color intensity: darker red at 0.0, brighter red at 1.0
+            // Use a curve to make the effect more visible (power of 2)
+            val intensity = normalizedLevel * normalizedLevel // Quadratic curve for more noticeable effect
+            
+            // Calculate red color values: from dark red (128, 0, 0) to bright red (255, 50, 50)
+            // Keep it red by maintaining lower G and B values relative to R
+            val r = (128 + (255 - 128) * intensity).toInt()
+            val g = (0 + (50 - 0) * intensity).toInt()
+            val b = (0 + (50 - 0) * intensity).toInt()
+            val color = Color.rgb(r, g, b)
+            
+            // Update the drawable color
+            currentMicrophoneDrawable?.setColor(color)
+            button.background?.invalidateSelf()
+        }
+    }
+    
+    /**
+     * Initializes the microphone button for audio feedback (red background).
+     */
+    private fun startMicrophoneAudioFeedback(button: ImageView) {
+        // Stop any existing animation
+        stopMicrophoneAudioFeedback(button)
+        
+        // Create base drawable with initial red color (medium intensity)
+        currentMicrophoneDrawable = GradientDrawable().apply {
+            setColor(RECOGNITION_RED)
+            cornerRadius = 0f
+        }
+        
+        // Store original background for pressed state
+        val pressedDrawable = GradientDrawable().apply {
+            setColor(PRESSED_BLUE)
+            cornerRadius = 0f
+        }
+        
+        // Create state list with red as normal state
+        val stateList = android.graphics.drawable.StateListDrawable().apply {
+            addState(intArrayOf(android.R.attr.state_pressed), pressedDrawable)
+            addState(intArrayOf(), currentMicrophoneDrawable)
+        }
+        button.background = stateList
+        
+        // Set initial alpha
+        button.alpha = 1f
+    }
+    
+    /**
+     * Stops the audio feedback and restores normal button state.
+     */
+    private fun stopMicrophoneAudioFeedback(button: ImageView) {
+        // Cancel any pulse animation if still running
+        microphonePulseAnimator?.cancel()
+        microphonePulseAnimator = null
+        
+        // Reset alpha
+        button.alpha = 1f
+        
+        // Clear reference to drawable
+        currentMicrophoneDrawable = null
+        
+        // Restore normal state
+        val normalDrawable = GradientDrawable().apply {
+            setColor(Color.rgb(17, 17, 17))
+            cornerRadius = 0f
+        }
+        val pressedDrawable = GradientDrawable().apply {
+            setColor(PRESSED_BLUE)
+            cornerRadius = 0f
+        }
+        val stateList = android.graphics.drawable.StateListDrawable().apply {
+            addState(intArrayOf(android.R.attr.state_pressed), pressedDrawable)
+            addState(intArrayOf(), normalDrawable)
+        }
+        button.background = stateList
+    }
+
 
     private var wrapper: FrameLayout? = null
     private var container: LinearLayout? = null
@@ -55,13 +166,18 @@ class VariationBarView(
     private var overlay: FrameLayout? = null
     private var swipeIndicator: View? = null
     private var emptyHintView: TextView? = null
+    private var microphonePulseAnimator: ValueAnimator? = null
     private var shouldShowSwipeHint: Boolean = false
     private var currentVariationsRow: LinearLayout? = null
     private var variationButtons: MutableList<TextView> = mutableListOf()
     private var microphoneButtonView: ImageView? = null
     private var settingsButtonView: ImageView? = null
+    private var isMicrophoneActive: Boolean = false
+    private var currentMicrophoneDrawable: GradientDrawable? = null
     private var lastDisplayedVariations: List<String> = emptyList()
     private var isSymModeActive = false
+    private var isShowingSpeechRecognitionHint: Boolean = false
+    private var originalHintText: CharSequence? = null
     private var isSwipeInProgress = false
     private var swipeDirection: Int? = null
     private var touchStartX = 0f
@@ -366,7 +482,12 @@ class VariationBarView(
         buttonsContainerView.addView(microphoneButton, micParams)
         microphoneButton.setOnClickListener {
             NotificationHelper.triggerHapticFeedback(context)
-            startSpeechRecognition(inputConnection)
+            // Use callback if available (modern SpeechRecognizer approach), otherwise fallback to Activity
+            if (onSpeechRecognitionRequested != null) {
+                onSpeechRecognitionRequested?.invoke()
+            } else {
+                startSpeechRecognition(inputConnection)
+            }
         }
         microphoneButton.alpha = 1f
         microphoneButton.visibility = View.VISIBLE
@@ -552,7 +673,8 @@ class VariationBarView(
     private fun updateSwipeHintVisibility(animate: Boolean) {
         val hint = emptyHintView ?: return
         val overlayView = overlay ?: return
-        val shouldShow = shouldShowSwipeHint && overlayView.visibility == View.VISIBLE
+        // Don't show swipe hint if we're showing speech recognition hint
+        val shouldShow = shouldShowSwipeHint && overlayView.visibility == View.VISIBLE && !isShowingSpeechRecognitionHint
         hint.animate().cancel()
         if (shouldShow) {
             if (hint.visibility != View.VISIBLE) {
@@ -570,21 +692,24 @@ class VariationBarView(
                 hint.alpha = 0.7f
             }
         } else {
-            if (animate) {
-                hint.animate()
-                    .setStartDelay(0)
-                    .alpha(0f)
-                    .setDuration(120)
-                    .setListener(object : AnimatorListenerAdapter() {
-                        override fun onAnimationEnd(animation: Animator) {
-                            hint.visibility = View.GONE
-                            hint.alpha = 0f
-                        }
-                    })
-                    .start()
-            } else {
-                hint.alpha = 0f
-                hint.visibility = View.GONE
+            // Don't hide if we're showing speech recognition hint
+            if (!isShowingSpeechRecognitionHint) {
+                if (animate) {
+                    hint.animate()
+                        .setStartDelay(0)
+                        .alpha(0f)
+                        .setDuration(120)
+                        .setListener(object : AnimatorListenerAdapter() {
+                            override fun onAnimationEnd(animation: Animator) {
+                                hint.visibility = View.GONE
+                                hint.alpha = 0f
+                            }
+                        })
+                        .start()
+                } else {
+                    hint.alpha = 0f
+                    hint.visibility = View.GONE
+                }
             }
         }
     }
@@ -594,6 +719,62 @@ class VariationBarView(
         hint.animate().cancel()
         hint.alpha = 0f
         hint.visibility = View.GONE
+    }
+    
+    /**
+     * Shows or hides the speech recognition hint message in the hint view.
+     * When showing, replaces the swipe hint text with speech recognition message.
+     * When hiding, restores the original swipe hint behavior.
+     */
+    fun showSpeechRecognitionHint(show: Boolean) {
+        val hint = emptyHintView ?: return
+        val overlayView = overlay ?: return
+        
+        isShowingSpeechRecognitionHint = show
+        
+        if (show) {
+            // Ensure overlay is visible
+            overlayView.visibility = View.VISIBLE
+            
+            // Save original hint text if not already saved
+            if (originalHintText == null) {
+                originalHintText = hint.text
+            }
+            
+            // Set speech recognition message
+            hint.text = context.getString(R.string.speech_recognition_prompt)
+            
+            // Show hint immediately (no delay) with animation
+            hint.animate().cancel()
+            hint.visibility = View.VISIBLE
+            hint.alpha = 0f
+            hint.animate()
+                .alpha(0.7f)
+                .setDuration(300)
+                .setStartDelay(0)
+                .start()
+        } else {
+            // Restore original hint text
+            if (originalHintText != null) {
+                hint.text = originalHintText
+                originalHintText = null
+            }
+            
+            // Hide hint with animation
+            hint.animate().cancel()
+            hint.animate()
+                .alpha(0f)
+                .setDuration(200)
+                .setStartDelay(0)
+                .setListener(object : AnimatorListenerAdapter() {
+                    override fun onAnimationEnd(animation: Animator) {
+                        hint.visibility = View.GONE
+                        // Restore swipe hint visibility logic
+                        updateSwipeHintVisibility(animate = false)
+                    }
+                })
+                .start()
+        }
     }
 
     private fun createSwipeHintView(): TextView {

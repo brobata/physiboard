@@ -95,15 +95,15 @@
     <string name="close">Chiudi</string>
     
     <!-- Auto-Correction Section -->
-    <string name="auto_correct_title">Auto-Correzione</string>
-    <string name="auto_correct_languages_title">Lingue</string>
-    <string name="auto_correct_settings_title">Lingue Auto-Correzione</string>
-    <string name="auto_correct_settings_description">Seleziona quali lingue usare per l\'auto-correzione. La lingua di sistema è mostrata in alto.</string>
+    <string name="auto_correct_title">Auto Sostituzioni</string>
+    <string name="auto_correct_languages_title">Sostituzioni</string>
+    <string name="auto_correct_settings_title">Sostituzioni Auto-Correzione</string>
+    <string name="auto_correct_settings_description">Seleziona quali sostituzioni usare per l\'auto-correzione. La lingua di sistema è mostrata in alto.</string>
     <string name="auto_correct_system_language">Lingua di sistema</string>
-    <string name="auto_correct_ricette_pastiera_description">Personalizzazioni valide per tutte le lingue</string>
-    <string name="auto_correct_other_languages">Altre Lingue</string>
-    <string name="auto_correct_custom_languages">Lingue Personalizzate</string>
-    <string name="auto_correct_at_least_one_language_required">Almeno una lingua necessaria per il funzionamento</string>
+    <string name="auto_correct_ricette_pastiera_description">Personalizzazioni valide per tutte le sostituzioni</string>
+    <string name="auto_correct_other_languages">Altre Sostituzioni</string>
+    <string name="auto_correct_custom_languages">Sostituzioni Personalizzate</string>
+    <string name="auto_correct_at_least_one_language_required">Almeno una sostituzione necessaria per il funzionamento</string>
     <string name="auto_correct_edit">Modifica</string>
     <string name="auto_correct_edit_description">Tocca una correzione per modificarla, oppure usa il pulsante + per aggiungerne una nuova.</string>
     <string name="auto_correct_add_correction">Aggiungi Correzione</string>
@@ -114,12 +114,12 @@
     <string name="auto_correct_save">Salva</string>
     <string name="auto_correct_cancel">Annulla</string>
     <string name="auto_correct_no_corrections">Nessuna correzione disponibile. Tocca il pulsante + per aggiungerne una.</string>
-    <string name="auto_correct_add_language">Aggiungi Nuova Lingua</string>
-    <string name="auto_correct_language_code">Codice Lingua</string>
-    <string name="auto_correct_language_name">Nome Lingua</string>
-    <string name="auto_correct_language_code_hint">Inserisci un codice e un nome per la tua lingua personalizzata (es. \"fr\" / \"Francese\", \"mydict\" / \"Mio Dizionario\")</string>
-    <string name="auto_correct_language_code_required">Il nome della lingua è obbligatorio</string>
-    <string name="auto_correct_language_already_exists">Questa lingua esiste già</string>
+    <string name="auto_correct_add_language">Aggiungi Nuova Sostituzione</string>
+    <string name="auto_correct_language_code">Codice Sostituzione</string>
+    <string name="auto_correct_language_name">Nome Sostituzione</string>
+    <string name="auto_correct_language_code_hint">Inserisci un codice e un nome per la tua sostituzione personalizzata (es. \"fr\" / \"Francese\", \"mydict\" / \"Mio Dizionario\")</string>
+    <string name="auto_correct_language_code_required">Il nome della sostituzione è obbligatorio</string>
+    <string name="auto_correct_language_already_exists">Questa sostituzione esiste già</string>
     
     <!-- SYM Customization Screen -->
     <string name="sym_customize_title">Personalizza Tastiera SYM</string>
@@ -226,6 +226,12 @@
     
     <!-- Speech Recognition -->
     <string name="speech_recognition_prompt">Parla ora...</string>
+    <string name="speech_recognition_error_no_match">Nessun testo riconosciuto. Riprova.</string>
+    <string name="speech_recognition_error_timeout">Nessun input vocale rilevato.</string>
+    <string name="speech_recognition_error_permission">Permesso microfono negato.</string>
+    <string name="speech_recognition_error_network">Errore di rete.</string>
+    <string name="speech_recognition_error_generic">Errore riconoscimento vocale.</string>
+    <string name="speech_recognition_error_not_available">Riconoscimento vocale non disponibile.</string>
     <!-- Static Variation Bar Mode -->
     <string name="static_variation_bar_mode_title">Barra variazioni statica</string>
     <string name="static_variation_bar_mode_description">Mostra sempre una serie fissa di tasti di utilità nella barra variazioni invece delle variazioni contestuali.</string>

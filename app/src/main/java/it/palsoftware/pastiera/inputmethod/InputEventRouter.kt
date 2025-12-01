@@ -585,6 +585,22 @@ class InputEventRouter(
             event.unicodeChar != 0 &&
             event.unicodeChar.toChar() in ".,;:!?()[]{}\"'"
 
+        // Try new dictionary-based auto-replace undo first (if experimental suggestions enabled)
+        if (keyCode == KeyEvent.KEYCODE_DEL && 
+            SettingsManager.isExperimentalSuggestionsEnabled(context) &&
+            SettingsManager.getAutoReplaceOnSpaceEnter(context)) {
+            
+            val sc = suggestionController
+            if (sc != null) {
+                val undoHandled = sc.handleBackspaceUndo(keyCode, inputConnection)
+                if (undoHandled) {
+                    sc.onContextReset()
+                    return true
+                }
+            }
+        }
+
+        // Then try legacy auto-correction undo
         if (
             autoCorrectionManager.handleBackspaceUndo(
                 keyCode,

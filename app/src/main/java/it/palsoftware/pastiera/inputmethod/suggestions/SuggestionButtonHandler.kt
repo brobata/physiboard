@@ -4,10 +4,10 @@ import android.util.Log
 import android.view.View
 import android.view.inputmethod.InputConnection
 import it.palsoftware.pastiera.SettingsManager
+import it.palsoftware.pastiera.core.suggestions.CasingHelper
 import it.palsoftware.pastiera.inputmethod.AutoCapitalizeHelper
 import it.palsoftware.pastiera.inputmethod.NotificationHelper
 import it.palsoftware.pastiera.inputmethod.VariationButtonHandler
-import java.util.Locale
 
 /**
  * Handles clicks on suggestion buttons (full word replacements).
@@ -76,7 +76,7 @@ object SuggestionButtonHandler {
         // Delete the full word around the cursor
         val deleteBefore = wordBeforeCursor.length
         val deleteAfter = wordAfterCursor.length
-        val replacement = applyCasing(suggestion, currentWord, forceLeadingCapital)
+        val replacement = CasingHelper.applyCasing(suggestion, currentWord, forceLeadingCapital)
 
         val deleted = inputConnection.deleteSurroundingText(deleteBefore, deleteAfter)
         if (deleted) {
@@ -88,21 +88,5 @@ object SuggestionButtonHandler {
         val committed = inputConnection.commitText("$replacement ", 1)
         Log.d(TAG, "Suggestion inserted as '$replacement ' (committed=$committed)")
         return committed
-    }
-
-    private fun applyCasing(
-        candidate: String,
-        original: String,
-        forceLeadingCapital: Boolean
-    ): String {
-        if (forceLeadingCapital && candidate.isNotEmpty()) {
-            return candidate.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
-        }
-        if (original.isEmpty()) return candidate
-        return when {
-            original.first().isUpperCase() && original.drop(1).all { it.isLowerCase() } ->
-                candidate.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
-            else -> candidate
-        }
     }
 }

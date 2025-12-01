@@ -25,6 +25,9 @@ class DictionaryRepository(
     @Volatile var isReady: Boolean = false
         private set
     @Volatile private var loadStarted: Boolean = false
+    
+    val isLoadStarted: Boolean
+        get() = loadStarted
     private val tag = "DictionaryRepo"
     private val debugLogging: Boolean = debugLogging
 
@@ -51,6 +54,12 @@ class DictionaryRepository(
     }
 
     fun refreshUserEntries() {
+        // Ensure dictionary base is loaded first (if not already)
+        if (!isReady && !loadStarted) {
+            loadIfNeeded()
+        }
+        // Refresh user entries - this works even if base dictionary is still loading
+        // because index() with keepExisting=true will merge with existing entries
         val userEntries = userDictionaryStore.loadUserEntries(context)
         index(userEntries, keepExisting = true)
     }
@@ -73,6 +82,21 @@ class DictionaryRepository(
         if (!isReady) return false
         val normalized = normalize(word)
         return normalizedIndex[normalized]?.isNotEmpty() == true
+    }
+
+    /**
+     * Gets the frequency of an exact word (case-insensitive match).
+     * Returns the maximum frequency if multiple entries exist (e.g., different sources).
+     * Returns 0 if the word doesn't exist.
+     */
+    fun getExactWordFrequency(word: String): Int {
+        if (!isReady) return 0
+        val normalized = normalize(word)
+        val bucket = normalizedIndex[normalized] ?: return 0
+        // Find exact match (case-insensitive) and return max frequency
+        return bucket
+            .filter { it.word.equals(word, ignoreCase = true) }
+            .maxOfOrNull { it.frequency } ?: 0
     }
 
     fun lookupByPrefix(prefix: String): List<DictionaryEntry> {
@@ -140,6 +164,10 @@ class DictionaryRepository(
 
     private fun normalize(word: String): String {
         val normalized = Normalizer.normalize(word.lowercase(baseLocale), Normalizer.Form.NFD)
-        return normalized.replace("[^a-z]".toRegex(), "")
+        // Remove combining marks (accents) explicitly - same logic as SuggestionEngine
+        val withoutAccents = normalized.replace("\\p{Mn}".toRegex(), "")
+        // Keep only Unicode letters (supports Latin, Cyrillic, Greek, Arabic, Chinese, etc.)
+        // Removes: punctuation, numbers, spaces, emoji, symbols
+        return withoutAccents.replace("[^\\p{L}]".toRegex(), "")
     }
 }

@@ -32,6 +32,7 @@ object SettingsManager {
     private const val KEY_SUGGESTIONS_ENABLED = "suggestions_enabled"
     private const val KEY_ACCENT_MATCHING_ENABLED = "accent_matching_enabled"
     private const val KEY_AUTO_REPLACE_ON_SPACE_ENTER = "auto_replace_on_space_enter"
+    private const val KEY_MAX_AUTO_REPLACE_DISTANCE = "max_auto_replace_distance"
     private const val KEY_AUTO_CAPITALIZE_AFTER_PERIOD = "auto_capitalize_after_period"
     private const val KEY_LONG_PRESS_MODIFIER = "long_press_modifier" // "alt" or "shift"
     private const val KEY_KEYBOARD_LAYOUT = "keyboard_layout" // "qwerty", "azerty", etc.
@@ -65,6 +66,7 @@ object SettingsManager {
     private const val DEFAULT_SUGGESTIONS_ENABLED = true
     private const val DEFAULT_ACCENT_MATCHING_ENABLED = true
     private const val DEFAULT_AUTO_REPLACE_ON_SPACE_ENTER = false
+    private const val DEFAULT_MAX_AUTO_REPLACE_DISTANCE = 1
     private const val DEFAULT_AUTO_CAPITALIZE_AFTER_PERIOD = true
     private const val DEFAULT_LONG_PRESS_MODIFIER = "alt"
     private const val DEFAULT_KEYBOARD_LAYOUT = "qwerty"
@@ -570,6 +572,25 @@ object SettingsManager {
     fun setAutoReplaceOnSpaceEnter(context: Context, enabled: Boolean) {
         getPreferences(context).edit()
             .putBoolean(KEY_AUTO_REPLACE_ON_SPACE_ENTER, enabled)
+            .apply()
+    }
+
+    /**
+     * Returns the maximum edit distance for auto-replace (0-3).
+     * 0 = off (no auto-replace), 1-3 = maximum distance allowed.
+     */
+    fun getMaxAutoReplaceDistance(context: Context): Int {
+        return getPreferences(context).getInt(KEY_MAX_AUTO_REPLACE_DISTANCE, DEFAULT_MAX_AUTO_REPLACE_DISTANCE)
+            .coerceIn(0, 3)
+    }
+
+    /**
+     * Sets the maximum edit distance for auto-replace (0-3).
+     * 0 = off (no auto-replace), 1-3 = maximum distance allowed.
+     */
+    fun setMaxAutoReplaceDistance(context: Context, distance: Int) {
+        getPreferences(context).edit()
+            .putInt(KEY_MAX_AUTO_REPLACE_DISTANCE, distance.coerceIn(0, 3))
             .apply()
     }
     

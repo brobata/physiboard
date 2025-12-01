@@ -90,15 +90,15 @@
     <string name="close">Zamknij</string>
     
     <!-- Auto-Correction Section -->
-    <string name="auto_correct_title">Auto-Korekta</string>
-    <string name="auto_correct_languages_title">Języki</string>
-    <string name="auto_correct_settings_title">Języki Auto-Korekty</string>
-    <string name="auto_correct_settings_description">Wybierz, które języki używać do auto-korekty. Język systemowy jest wyświetlany na górze.</string>
+    <string name="auto_correct_title">Auto Podstawienia</string>
+    <string name="auto_correct_languages_title">Podstawienia</string>
+    <string name="auto_correct_settings_title">Podstawienia Auto-Korekty</string>
+    <string name="auto_correct_settings_description">Wybierz, które podstawienia używać do auto-korekty. Język systemowy jest wyświetlany na górze.</string>
     <string name="auto_correct_system_language">Język systemowy</string>
-    <string name="auto_correct_ricette_pastiera_description">Personalizacje ważne dla wszystkich języków</string>
-    <string name="auto_correct_other_languages">Inne Języki</string>
-    <string name="auto_correct_custom_languages">Języki Niestandardowe</string>
-    <string name="auto_correct_at_least_one_language_required">Co najmniej jeden język jest wymagany do działania</string>
+    <string name="auto_correct_ricette_pastiera_description">Personalizacje ważne dla wszystkich podstawień</string>
+    <string name="auto_correct_other_languages">Inne Podstawienia</string>
+    <string name="auto_correct_custom_languages">Podstawienia Niestandardowe</string>
+    <string name="auto_correct_at_least_one_language_required">Co najmniej jedno podstawienie jest wymagane do działania</string>
     <string name="auto_correct_edit">Edytuj</string>
     <string name="auto_correct_edit_description">Naciśnij korektę, aby ją edytować, lub użyj przycisku +, aby dodać nową.</string>
     <string name="auto_correct_add_correction">Dodaj Korektę</string>
@@ -109,12 +109,12 @@
     <string name="auto_correct_save">Zapisz</string>
     <string name="auto_correct_cancel">Anuluj</string>
     <string name="auto_correct_no_corrections">Brak dostępnych korekt. Naciśnij przycisk +, aby dodać jedną.</string>
-    <string name="auto_correct_add_language">Dodaj Nowy Język</string>
-    <string name="auto_correct_language_code">Kod Języka</string>
-    <string name="auto_correct_language_name">Nazwa Języka</string>
-    <string name="auto_correct_language_code_hint">Wprowadź kod i nazwę dla swojego niestandardowego języka (np. \"fr\" / \"Francuski\", \"mydict\" / \"Mój Słownik\")</string>
-    <string name="auto_correct_language_code_required">Nazwa języka jest wymagana</string>
-    <string name="auto_correct_language_already_exists">Ten język już istnieje</string>
+    <string name="auto_correct_add_language">Dodaj Nowe Podstawienie</string>
+    <string name="auto_correct_language_code">Kod Podstawienia</string>
+    <string name="auto_correct_language_name">Nazwa Podstawienia</string>
+    <string name="auto_correct_language_code_hint">Wprowadź kod i nazwę dla swojego niestandardowego podstawienia (np. \"fr\" / \"Francuski\", \"mydict\" / \"Mój Słownik\")</string>
+    <string name="auto_correct_language_code_required">Nazwa podstawienia jest wymagana</string>
+    <string name="auto_correct_language_already_exists">To podstawienie już istnieje</string>
     
     <!-- SYM Customization Screen -->
     <string name="sym_customize_title">Dostosuj Klawiaturę SYM</string>

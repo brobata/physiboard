@@ -35,7 +35,9 @@ class UserDictionaryStore {
                             source = SuggestionSource.USER
                         )
                     )
-                    cache[word.lowercase(Locale.getDefault())] = UserEntry(word, frequency, lastUsed)
+                    // Store in cache using lowercase for case-insensitive lookup
+                    // The actual normalization (with locale and accent stripping) is done by DictionaryRepository
+                    cache[word.lowercase()] = UserEntry(word, frequency, lastUsed)
                 }
             }
         } catch (e: Exception) {
@@ -45,26 +47,29 @@ class UserDictionaryStore {
     }
 
     fun addWord(context: Context, word: String) {
-        val normalized = word.lowercase(Locale.getDefault())
-        val entry = cache[normalized]
+        // Store word as-is (case preserved), but use lowercase for cache key
+        // DictionaryRepository will normalize it properly with baseLocale
+        val cacheKey = word.lowercase()
+        val entry = cache[cacheKey]
         val updated = if (entry != null) {
             entry.copy(frequency = entry.frequency + 1, lastUsed = System.currentTimeMillis())
         } else {
             UserEntry(word, 1, System.currentTimeMillis())
         }
-        cache[normalized] = updated
+        cache[cacheKey] = updated
         persist(context)
     }
 
     fun removeWord(context: Context, word: String) {
-        cache.remove(word.lowercase(Locale.getDefault()))
+        // Remove using lowercase key for case-insensitive lookup
+        cache.remove(word.lowercase())
         persist(context)
     }
 
     fun markUsed(context: Context, word: String) {
-        val normalized = word.lowercase(Locale.getDefault())
-        cache[normalized]?.let {
-            cache[normalized] = it.copy(lastUsed = System.currentTimeMillis(), frequency = it.frequency + 1)
+        val cacheKey = word.lowercase()
+        cache[cacheKey]?.let {
+            cache[cacheKey] = it.copy(lastUsed = System.currentTimeMillis(), frequency = it.frequency + 1)
             persist(context)
         }
     }

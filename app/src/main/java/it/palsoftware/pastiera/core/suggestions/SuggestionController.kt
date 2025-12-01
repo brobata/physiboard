@@ -8,6 +8,7 @@ import android.view.KeyEvent
 import android.view.inputmethod.InputConnection
 import android.util.Log
 import java.util.concurrent.atomic.AtomicReference
+import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -15,19 +16,20 @@ import it.palsoftware.pastiera.inputmethod.NotificationHelper
 
 class SuggestionController(
     context: Context,
-    assets: AssetManager,
+    private val assets: AssetManager,
     private val settingsProvider: () -> SuggestionSettings,
     private val isEnabled: () -> Boolean = { true },
     debugLogging: Boolean = false,
-    onSuggestionsUpdated: (List<SuggestionResult>) -> Unit
+    private val onSuggestionsUpdated: (List<SuggestionResult>) -> Unit,
+    private var currentLocale: Locale = Locale.ITALIAN
 ) {
 
     private val appContext = context.applicationContext
     private val debugLogging: Boolean = debugLogging
     private val userDictionaryStore = UserDictionaryStore()
-    private val dictionaryRepository = DictionaryRepository(appContext, assets, userDictionaryStore, debugLogging = debugLogging)
-    private val suggestionEngine = SuggestionEngine(dictionaryRepository, debugLogging = debugLogging)
-    private val tracker = CurrentWordTracker(
+    private var dictionaryRepository = DictionaryRepository(appContext, assets, userDictionaryStore, baseLocale = currentLocale, debugLogging = debugLogging)
+    private var suggestionEngine = SuggestionEngine(dictionaryRepository, locale = currentLocale, debugLogging = debugLogging)
+    private var tracker = CurrentWordTracker(
         onWordChanged = { word ->
             val settings = settingsProvider()
             if (settings.suggestionsEnabled) {
@@ -36,7 +38,39 @@ class SuggestionController(
         },
         onWordReset = { onSuggestionsUpdated(emptyList()) }
     )
-    private val autoReplaceController = AutoReplaceController(dictionaryRepository, suggestionEngine, settingsProvider)
+    private var autoReplaceController = AutoReplaceController(dictionaryRepository, suggestionEngine, settingsProvider)
+    
+    /**
+     * Updates the locale and reloads the dictionary for the new language.
+     */
+    fun updateLocale(newLocale: Locale) {
+        if (newLocale == currentLocale) return
+        
+        currentLocale = newLocale
+        dictionaryRepository = DictionaryRepository(appContext, assets, userDictionaryStore, baseLocale = currentLocale, debugLogging = debugLogging)
+        suggestionEngine = SuggestionEngine(dictionaryRepository, locale = currentLocale, debugLogging = debugLogging)
+        autoReplaceController = AutoReplaceController(dictionaryRepository, suggestionEngine, settingsProvider)
+        
+        // Recreate tracker to use new engine (tracker captures suggestionEngine in closure)
+        tracker = CurrentWordTracker(
+            onWordChanged = { word ->
+                val settings = settingsProvider()
+                if (settings.suggestionsEnabled) {
+                    onSuggestionsUpdated(suggestionEngine.suggest(word, settings.maxSuggestions, settings.accentMatching))
+                }
+            },
+            onWordReset = { onSuggestionsUpdated(emptyList()) }
+        )
+        
+        // Reload dictionary in background
+        loadScope.launch {
+            dictionaryRepository.loadIfNeeded()
+        }
+        
+        // Reset tracker and clear suggestions
+        tracker.reset()
+        suggestionsListener?.invoke(emptyList())
+    }
     private val latestSuggestions: AtomicReference<List<SuggestionResult>> = AtomicReference(emptyList())
     private val loadScope = CoroutineScope(Dispatchers.Default)
     private val cursorHandler = Handler(Looper.getMainLooper())
@@ -49,6 +83,15 @@ class SuggestionController(
         if (!isEnabled()) return
         if (debugLogging) Log.d("PastieraIME", "SuggestionController.onCharacterCommitted('$text')")
         ensureDictionaryLoaded()
+        
+        // Clear last replacement if user types new characters
+        autoReplaceController.clearLastReplacement()
+        
+        // Clear rejected words when user types a new letter (allows re-correction)
+        if (text.isNotEmpty() && text.any { it.isLetterOrDigit() }) {
+            autoReplaceController.clearRejectedWords()
+        }
+        
         tracker.onCharacterCommitted(text)
         updateSuggestions()
     }
@@ -150,6 +193,21 @@ class SuggestionController(
 
     fun userDictionarySnapshot(): List<UserDictionaryStore.UserEntry> = userDictionaryStore.getSnapshot()
 
+    /**
+     * Forces a refresh of user dictionary entries.
+     * Should be called when words are added/removed from settings.
+     */
+    fun refreshUserDictionary() {
+        if (!isEnabled()) return
+        ensureDictionaryLoaded()
+        dictionaryRepository.refreshUserEntries()
+    }
+
+    fun handleBackspaceUndo(keyCode: Int, inputConnection: InputConnection?): Boolean {
+        if (!isEnabled()) return false
+        return autoReplaceController.handleBackspaceUndo(keyCode, inputConnection)
+    }
+
     private fun extractWordAtCursor(inputConnection: InputConnection?): String? {
         if (inputConnection == null) return null
         return try {
@@ -168,6 +226,18 @@ class SuggestionController(
             if (word.isBlank()) null else word
         } catch (_: Exception) {
             null
+        }
+    }
+
+    /**
+     * Preloads the dictionary in background.
+     * Should be called during initialization to have dictionary ready when user focuses a field.
+     */
+    fun preloadDictionary() {
+        if (!dictionaryRepository.isReady && !dictionaryRepository.isLoadStarted) {
+            loadScope.launch {
+                dictionaryRepository.loadIfNeeded()
+            }
         }
     }
 

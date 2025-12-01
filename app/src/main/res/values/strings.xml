@@ -7,6 +7,8 @@
     <string name="input_method_name_de">Deutsch</string>
     <string name="input_method_name_pl">Polski</string>
     <string name="input_method_name_es">Español</string>
+    <string name="input_method_name_pt">Português</string>
+    <string name="input_method_name_ru">Русский</string>
     
     <!-- Settings Screen -->
     <string name="settings_title">Settings</string>
@@ -109,15 +111,15 @@
     <string name="close">Close</string>
     
     <!-- Auto-Correction Section -->
-    <string name="auto_correct_title">Auto-Correction</string>
-    <string name="auto_correct_languages_title">Languages</string>
-    <string name="auto_correct_settings_title">Auto-Correction Languages</string>
-    <string name="auto_correct_settings_description">Select which languages to use for auto-correction. The system language is shown at the top.</string>
+    <string name="auto_correct_title">Auto Substitutions</string>
+    <string name="auto_correct_languages_title">Substitutions</string>
+    <string name="auto_correct_settings_title">Auto-Correction Substitutions</string>
+    <string name="auto_correct_settings_description">Select which substitutions to use for auto-correction. The system language is shown at the top.</string>
     <string name="auto_correct_system_language">System language</string>
-    <string name="auto_correct_ricette_pastiera_description">Customizations valid for all languages</string>
-    <string name="auto_correct_other_languages">Other Languages</string>
-    <string name="auto_correct_custom_languages">Custom Languages</string>
-    <string name="auto_correct_at_least_one_language_required">At least one language required for operation</string>
+    <string name="auto_correct_ricette_pastiera_description">Customizations valid for all substitutions</string>
+    <string name="auto_correct_other_languages">Other Substitutions</string>
+    <string name="auto_correct_custom_languages">Custom Substitutions</string>
+    <string name="auto_correct_at_least_one_language_required">At least one substitution required for operation</string>
     <string name="auto_correct_edit">Edit</string>
     <string name="auto_correct_edit_description">Tap on a correction to edit it, or use the + button to add a new one.</string>
     <string name="auto_correct_add_correction">Add Correction</string>
@@ -128,15 +130,18 @@
     <string name="auto_correct_save">Save</string>
     <string name="auto_correct_cancel">Cancel</string>
     <string name="auto_correct_no_corrections">No corrections available. Tap the + button to add one.</string>
-    <string name="auto_correct_add_language">Add New Language</string>
-    <string name="auto_correct_language_code">Language Code</string>
-    <string name="auto_correct_language_name">Language Name</string>
-    <string name="auto_correct_language_code_hint">Enter a code and name for your custom language (e.g., \"fr\" / \"French\", \"mydict\" / \"My Dictionary\")</string>
-    <string name="auto_correct_language_code_required">Language name is required</string>
-    <string name="auto_correct_language_already_exists">This language already exists</string>
+    <string name="auto_correct_add_language">Add New Substitution</string>
+    <string name="auto_correct_language_code">Substitution Code</string>
+    <string name="auto_correct_language_name">Substitution Name</string>
+    <string name="auto_correct_language_code_hint">Enter a code and name for your custom substitution (e.g., \"fr\" / \"French\", \"mydict\" / \"My Dictionary\")</string>
+    <string name="auto_correct_language_code_required">Substitution name is required</string>
+    <string name="auto_correct_language_already_exists">This substitution already exists</string>
     <string name="auto_correct_suggestions_toggle_title">Suggestions while typing</string>
     <string name="auto_correct_accent_matching_title">Match accented words</string>
     <string name="auto_correct_auto_replace_title">Auto-replace on space/enter</string>
+    <string name="auto_correct_max_distance_title">Maximum correction distance</string>
+    <string name="auto_correct_max_distance_off">Off</string>
+    <string name="auto_correct_max_distance_description">Maximum number of character differences allowed for auto-correction. 0 = disabled, 1-3 = increasing tolerance.</string>
     <string name="auto_correct_manage_user_dict_title">Manage user dictionary</string>
     <string name="experimental_suggestions_title">Experimental suggestions</string>
     <string name="experimental_suggestions_subtitle">Enable the new dictionary/suggestion engine (beta)</string>
@@ -260,6 +265,12 @@
     
     <!-- Speech Recognition -->
     <string name="speech_recognition_prompt">Speak now...</string>
+    <string name="speech_recognition_error_no_match">No text recognized. Try again.</string>
+    <string name="speech_recognition_error_timeout">No speech input detected.</string>
+    <string name="speech_recognition_error_permission">Microphone permission denied.</string>
+    <string name="speech_recognition_error_network">Network error.</string>
+    <string name="speech_recognition_error_generic">Speech recognition error.</string>
+    <string name="speech_recognition_error_not_available">Speech recognition not available.</string>
     
     <!-- Auto Correct Edit Screen -->
     <string name="auto_correct_search_placeholder">Search corrections...</string>
