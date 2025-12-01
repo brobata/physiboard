@@ -41,25 +41,29 @@ object VariationButtonHandler {
                 return@OnClickListener
             }
 
+            val punctuationSet = ".,;:!?()[]{}\"'"
+            if (variation.isNotEmpty() && variation[0] in punctuationSet) {
+                val applied = AutoSpaceTracker.replaceAutoSpaceWithPunctuation(inputConnection, variation)
+                if (applied) {
+                    Log.d(TAG, "Variation applied with auto-space replacement for '$variation'")
+                    listener?.onVariationSelected(variation)
+                    return@OnClickListener
+                }
+                // For punctuation variations, skip deleting the previous character; just commit punctuation as-is.
+                val committed = inputConnection.commitText(variation, 1)
+                Log.d(TAG, "Variation '$variation' inserted (committed=$committed)")
+                if (committed) {
+                    NotificationHelper.triggerHapticFeedback(context)
+                }
+                listener?.onVariationSelected(variation)
+                return@OnClickListener
+            }
+
             val deleted = inputConnection.deleteSurroundingText(1, 0)
             if (deleted) {
                 Log.d(TAG, "Character before cursor deleted")
             } else {
                 Log.w(TAG, "Unable to delete character before cursor")
-            }
-
-            val punctuationSet = ".,;:!?()[]{}\"'"
-            if (variation.isNotEmpty() && variation[0] in punctuationSet) {
-                val hadAutoSpace = AutoSpaceTracker.consumeAutoSpace()
-                val beforeTwo = inputConnection.getTextBeforeCursor(2, 0)?.toString().orEmpty()
-                val lastIsSpace = beforeTwo.lastOrNull() == ' '
-                val prevIsWordChar = beforeTwo.dropLast(1).lastOrNull()?.isLetterOrDigit() == true
-                if (lastIsSpace && prevIsWordChar) {
-                    inputConnection.deleteSurroundingText(1, 0)
-                    Log.d(TAG, "Variation trim: removed ${if (hadAutoSpace) "auto" else "manual"} space before '$variation'")
-                } else if (hadAutoSpace) {
-                    Log.d(TAG, "Auto-space pending but not trimming (before='$beforeTwo')")
-                }
             }
 
             val committed = inputConnection.commitText(variation, 1)
@@ -89,6 +93,16 @@ object VariationButtonHandler {
             if (inputConnection == null) {
                 Log.w(TAG, "No inputConnection available to insert static variation")
                 return@OnClickListener
+            }
+
+            val punctuationSet = ".,;:!?()[]{}\"'"
+            if (variation.isNotEmpty() && variation[0] in punctuationSet) {
+                val applied = AutoSpaceTracker.replaceAutoSpaceWithPunctuation(inputConnection, variation)
+                if (applied) {
+                    Log.d(TAG, "Static variation applied with auto-space replacement for '$variation'")
+                    listener?.onVariationSelected(variation)
+                    return@OnClickListener
+                }
             }
 
             // Insert variation without deleting previous character

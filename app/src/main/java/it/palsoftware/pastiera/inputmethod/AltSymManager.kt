@@ -225,20 +225,15 @@ class AltSymManager(
     ): Boolean {
         val altChar = altKeyMap[keyCode]
         return if (altChar != null) {
-            // Trim auto-space if we just accepted a suggestion/auto-correction.
-            if (altChar.isNotEmpty() && altChar[0] in ".,;:!?()[]{}\"'") {
-                val beforeTwo = inputConnection.getTextBeforeCursor(2, 0)?.toString().orEmpty()
-                val lastIsSpace = beforeTwo.lastOrNull() == ' '
-                val prevIsWordChar = beforeTwo.dropLast(1).lastOrNull()?.isLetterOrDigit() == true
-                if (lastIsSpace && prevIsWordChar) {
-                    inputConnection.deleteSurroundingText(1, 0)
-                    Log.d(TAG, "Alt trim: removed space before '$altChar'")
+            val punctuationSet = ".,;:!?()[]{}\"'"
+            if (altChar.isNotEmpty() && altChar[0] in punctuationSet) {
+                val applied = AutoSpaceTracker.replaceAutoSpaceWithPunctuation(inputConnection, altChar)
+                if (applied) {
+                    Log.d(TAG, "Alt mapping applied with auto-space replacement for '$altChar'")
+                    return true
                 }
-                AutoSpaceTracker.consumeAutoSpace()
-            } else {
-                AutoSpaceTracker.clear()
             }
-
+            AutoSpaceTracker.clear()
             inputConnection.commitText(altChar, 1)
             true
         } else {
@@ -343,18 +338,16 @@ class AltSymManager(
                         }
 
                         if (altChar.isNotEmpty() && altChar[0] in ".,;:!?()[]{}\"'") {
-                            val beforeTwo = inputConnection.getTextBeforeCursor(2, 0)?.toString().orEmpty()
-                            val lastIsSpace = beforeTwo.lastOrNull() == ' '
-                            val prevIsWordChar = beforeTwo.dropLast(1).lastOrNull()?.isLetterOrDigit() == true
-                            if (lastIsSpace && prevIsWordChar) {
-                                inputConnection.deleteSurroundingText(1, 0)
-                                Log.d(TAG, "Long press Alt trim: removed space before '$altChar'")
+                            val applied = AutoSpaceTracker.replaceAutoSpaceWithPunctuation(inputConnection, altChar)
+                            if (applied) {
+                                Log.d(TAG, "Long press Alt mapping applied with auto-space replacement for '$altChar'")
+                                insertedNormalChars.remove(keyCode)
+                                longPressRunnables.remove(keyCode)
+                                return@Runnable
                             }
-                            AutoSpaceTracker.consumeAutoSpace()
-                        } else {
-                            AutoSpaceTracker.clear()
                         }
 
+                        AutoSpaceTracker.clear()
                         inputConnection.commitText(altChar, 1)
                         insertedNormalChars.remove(keyCode)
                         longPressRunnables.remove(keyCode)

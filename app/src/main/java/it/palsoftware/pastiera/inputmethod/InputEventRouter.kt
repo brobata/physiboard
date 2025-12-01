@@ -709,17 +709,6 @@ class InputEventRouter(
             return true
         }
 
-        // If next key is punctuation and an auto-committed space is pending, trim it first.
-        if (isPunctuation && inputConnection != null && AutoSpaceTracker.consumeAutoSpace()) {
-            val before = inputConnection.getTextBeforeCursor(1, 0)?.toString().orEmpty()
-            if (before == " ") {
-                inputConnection.deleteSurroundingText(1, 0)
-                Log.d("PastieraIME", "Trimmed auto-space before punctuation")
-            } else {
-                Log.d("PastieraIME", "Auto-space pending but before cursor was '${before}'")
-            }
-        }
-
         // Handle suggestions on boundary keys/punctuation (if suggestions enabled)
         if (!shouldDisableSuggestions && inputConnection != null && (isBoundaryKey || isPunctuation) && suggestionController != null) {
             suggestionController?.onBoundaryKey(keyCode, event, inputConnection)

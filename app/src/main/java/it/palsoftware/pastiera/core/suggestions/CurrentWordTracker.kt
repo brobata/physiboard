@@ -2,6 +2,7 @@ package it.palsoftware.pastiera.core.suggestions
 
 import android.util.Log
 import android.view.inputmethod.InputConnection
+import it.palsoftware.pastiera.core.AutoSpaceTracker
 
 class CurrentWordTracker(
     private val onWordChanged: (String) -> Unit,
@@ -57,6 +58,18 @@ class CurrentWordTracker(
 
     fun onBoundaryReached(boundaryChar: Char? = null, inputConnection: InputConnection? = null) {
         if (boundaryChar != null) {
+            // If an auto-space is pending, replace it with "<punctuation> " when punctuation is pressed.
+            val punctuationSet = ".,;:!?()[]{}\"'"
+            if (inputConnection != null && boundaryChar in punctuationSet) {
+                val replaced = AutoSpaceTracker.replaceAutoSpaceWithPunctuation(
+                    inputConnection,
+                    boundaryChar.toString()
+                )
+                if (replaced) {
+                    reset()
+                    return
+                }
+            }
             inputConnection?.commitText(boundaryChar.toString(), 1)
         }
         reset()
