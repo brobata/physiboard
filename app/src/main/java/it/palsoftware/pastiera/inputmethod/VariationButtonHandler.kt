@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import android.view.View
 import android.view.inputmethod.InputConnection
+import it.palsoftware.pastiera.core.AutoSpaceTracker
 
 /**
  * Handles clicks on variation buttons.
@@ -45,6 +46,20 @@ object VariationButtonHandler {
                 Log.d(TAG, "Character before cursor deleted")
             } else {
                 Log.w(TAG, "Unable to delete character before cursor")
+            }
+
+            val punctuationSet = ".,;:!?()[]{}\"'"
+            if (variation.isNotEmpty() && variation[0] in punctuationSet) {
+                val hadAutoSpace = AutoSpaceTracker.consumeAutoSpace()
+                val beforeTwo = inputConnection.getTextBeforeCursor(2, 0)?.toString().orEmpty()
+                val lastIsSpace = beforeTwo.lastOrNull() == ' '
+                val prevIsWordChar = beforeTwo.dropLast(1).lastOrNull()?.isLetterOrDigit() == true
+                if (lastIsSpace && prevIsWordChar) {
+                    inputConnection.deleteSurroundingText(1, 0)
+                    Log.d(TAG, "Variation trim: removed ${if (hadAutoSpace) "auto" else "manual"} space before '$variation'")
+                } else if (hadAutoSpace) {
+                    Log.d(TAG, "Auto-space pending but not trimming (before='$beforeTwo')")
+                }
             }
 
             val committed = inputConnection.commitText(variation, 1)

@@ -8,6 +8,7 @@ import it.palsoftware.pastiera.core.suggestions.CasingHelper
 import it.palsoftware.pastiera.inputmethod.AutoCapitalizeHelper
 import it.palsoftware.pastiera.inputmethod.NotificationHelper
 import it.palsoftware.pastiera.inputmethod.VariationButtonHandler
+import it.palsoftware.pastiera.core.AutoSpaceTracker
 
 /**
  * Handles clicks on suggestion buttons (full word replacements).
@@ -86,6 +87,10 @@ object SuggestionButtonHandler {
         }
 
         val committed = inputConnection.commitText("$replacement ", 1)
+        if (committed) {
+            AutoSpaceTracker.markAutoSpace()
+            Log.d(TAG, "Suggestion auto-space marked")
+        }
         Log.d(TAG, "Suggestion inserted as '$replacement ' (committed=$committed)")
         return committed
     }

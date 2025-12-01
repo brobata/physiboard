@@ -2,6 +2,8 @@ package it.palsoftware.pastiera.core.suggestions
 
 import android.view.KeyEvent
 import android.view.inputmethod.InputConnection
+import it.palsoftware.pastiera.core.AutoSpaceTracker
+import android.util.Log
 
 class AutoReplaceController(
     private val repository: DictionaryRepository,
@@ -113,6 +115,10 @@ class AutoReplaceController(
             inputConnection.endBatchEdit()
             if (boundaryChar != null) {
                 inputConnection.commitText(boundaryChar.toString(), 1)
+                if (boundaryChar == ' ') {
+                    AutoSpaceTracker.markAutoSpace()
+                }
+                Log.d("AutoReplaceController", "Committed boundary '$boundaryChar', markAutoSpace=${boundaryChar == ' '}")
             }
             return ReplaceResult(true, true)
         }

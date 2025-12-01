@@ -11,6 +11,7 @@ import android.view.inputmethod.InputConnection
 import it.palsoftware.pastiera.SettingsManager
 import it.palsoftware.pastiera.data.layout.LayoutMappingRepository
 import it.palsoftware.pastiera.data.mappings.KeyMappingLoader
+import it.palsoftware.pastiera.core.AutoSpaceTracker
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -224,6 +225,20 @@ class AltSymManager(
     ): Boolean {
         val altChar = altKeyMap[keyCode]
         return if (altChar != null) {
+            // Trim auto-space if we just accepted a suggestion/auto-correction.
+            if (altChar.isNotEmpty() && altChar[0] in ".,;:!?()[]{}\"'") {
+                val beforeTwo = inputConnection.getTextBeforeCursor(2, 0)?.toString().orEmpty()
+                val lastIsSpace = beforeTwo.lastOrNull() == ' '
+                val prevIsWordChar = beforeTwo.dropLast(1).lastOrNull()?.isLetterOrDigit() == true
+                if (lastIsSpace && prevIsWordChar) {
+                    inputConnection.deleteSurroundingText(1, 0)
+                    Log.d(TAG, "Alt trim: removed space before '$altChar'")
+                }
+                AutoSpaceTracker.consumeAutoSpace()
+            } else {
+                AutoSpaceTracker.clear()
+            }
+
             inputConnection.commitText(altChar, 1)
             true
         } else {
@@ -326,7 +341,20 @@ class AltSymManager(
                         if (insertedChar != null && insertedChar.isNotEmpty()) {
                             inputConnection.deleteSurroundingText(1, 0)
                         }
-                        
+
+                        if (altChar.isNotEmpty() && altChar[0] in ".,;:!?()[]{}\"'") {
+                            val beforeTwo = inputConnection.getTextBeforeCursor(2, 0)?.toString().orEmpty()
+                            val lastIsSpace = beforeTwo.lastOrNull() == ' '
+                            val prevIsWordChar = beforeTwo.dropLast(1).lastOrNull()?.isLetterOrDigit() == true
+                            if (lastIsSpace && prevIsWordChar) {
+                                inputConnection.deleteSurroundingText(1, 0)
+                                Log.d(TAG, "Long press Alt trim: removed space before '$altChar'")
+                            }
+                            AutoSpaceTracker.consumeAutoSpace()
+                        } else {
+                            AutoSpaceTracker.clear()
+                        }
+
                         inputConnection.commitText(altChar, 1)
                         insertedNormalChars.remove(keyCode)
                         longPressRunnables.remove(keyCode)

@@ -6,6 +6,7 @@ import android.view.KeyEvent
 import android.view.inputmethod.InputConnection
 import it.palsoftware.pastiera.inputmethod.AutoCorrector
 import it.palsoftware.pastiera.inputmethod.NotificationHelper
+import it.palsoftware.pastiera.core.AutoSpaceTracker
 
 class AutoCorrectionManager(
     private val context: Context
@@ -126,7 +127,11 @@ class AutoCorrectionManager(
 
         if (commitBoundary) {
             when {
-                isSpaceBoundary -> inputConnection.commitText(" ", 1)
+                isSpaceBoundary -> {
+                    inputConnection.commitText(" ", 1)
+                    AutoSpaceTracker.markAutoSpace()
+                    Log.d(TAG, "AutoCorrection marked auto-space")
+                }
                 isEnterBoundary -> inputConnection.commitText("\n", 1)
                 isPunctuationBoundary -> {
                     inputConnection.commitText(boundaryChar.toString(), 1)
