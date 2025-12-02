@@ -25,6 +25,8 @@ class DictionaryRepository(
 
     private val prefixCache: MutableMap<String, MutableList<DictionaryEntry>> = mutableMapOf()
     private val normalizedIndex: MutableMap<String, MutableList<DictionaryEntry>> = mutableMapOf()
+    @Volatile private var symSpell: SymSpell? = null
+    @Volatile private var symSpellBuilt: Boolean = false
     @Volatile var isReady: Boolean = false
         private set
     @Volatile private var loadStarted: Boolean = false
@@ -76,6 +78,8 @@ class DictionaryRepository(
             if (userEntries.isNotEmpty()) {
                 index(userEntries, keepExisting = true)
             }
+
+            buildSymSpell()
             
             isReady = true
         }
@@ -100,6 +104,7 @@ class DictionaryRepository(
 
         val userEntries = userDictionaryStore.loadUserEntries(context)
         index(userEntries, keepExisting = true)
+        addToSymSpell(defaultUserEntries + userEntries)
     }
 
     fun addUserEntry(word: String) {
@@ -151,6 +156,43 @@ class DictionaryRepository(
         return emptyList()
     }
 
+    /**
+     * Returns a merged list of candidates from the most specific prefix bucket down to the
+     * single-letter bucket, stopping when maxSize is reached. This helps capture common
+     * transpositions (e.g., "teh" -> "the", "caio" -> "ciao") that would otherwise live
+     * under a different prefix.
+     */
+    fun lookupByPrefixMerged(prefix: String, maxSize: Int): List<DictionaryEntry> {
+        if (!isReady || prefix.isBlank()) return emptyList()
+        val normalizedPrefix = normalize(prefix)
+        val maxPrefixLength = normalizedPrefix.length.coerceAtMost(cachePrefixLength)
+        val seen = LinkedHashMap<String, DictionaryEntry>()
+
+        for (length in maxPrefixLength downTo 1) {
+            val bucket = prefixCache[normalizedPrefix.take(length)] ?: continue
+            for (entry in bucket) {
+                val key = entry.word.lowercase(baseLocale)
+                if (!seen.containsKey(key)) {
+                    seen[key] = entry
+                    if (seen.size >= maxSize) {
+                        return seen.values.toList()
+                    }
+                }
+            }
+        }
+
+        return seen.values.toList()
+    }
+
+    fun symSpellLookup(term: String, maxSuggestions: Int): List<SymSpell.SuggestItem> {
+        val engine = symSpell ?: return emptyList()
+        return engine.lookup(term, maxSuggestions)
+    }
+
+    fun bestEntryForNormalized(normalized: String): DictionaryEntry? {
+        return normalizedIndex[normalized]?.maxByOrNull { it.frequency }
+    }
+
     fun allCandidates(): List<DictionaryEntry> {
         if (!isReady) return emptyList()
         return normalizedIndex.values.flatten()
@@ -182,6 +224,42 @@ class DictionaryRepository(
             
             index.prefixCache.forEach { (prefix, entries) ->
                 prefixCache[prefix] = entries.map { it.toDictionaryEntry() }.toMutableList()
+            }
+
+            // If SymSpell deletes are precomputed, hydrate the engine here
+            if (index.symDeletes != null && index.symMeta != null) {
+                val engine = SymSpell(
+                    maxEditDistance = index.symMeta.maxEditDistance,
+                    prefixLength = index.symMeta.prefixLength
+                )
+                val termFrequencies = index.normalizedIndex.mapValues { (_, entries) ->
+                    entries.maxOfOrNull { it.frequency } ?: 0
+                }
+                // Expand deletes entries that might store only prefixes (old format) to full terms
+                val prefixToTerms = mutableMapOf<String, MutableList<String>>()
+                termFrequencies.keys.forEach { term ->
+                    val prefix = term.take(index.symMeta.prefixLength.coerceAtMost(term.length))
+                    val list = prefixToTerms.getOrPut(prefix) { mutableListOf() }
+                    list.add(term)
+                }
+                val expandedDeletes = mutableMapOf<String, MutableList<String>>()
+                index.symDeletes.forEach { (deleteKey, terms) ->
+                    val targets = LinkedHashSet<String>()
+                    terms.forEach { t ->
+                        if (termFrequencies.containsKey(t)) {
+                            targets.add(t)
+                        } else {
+                            prefixToTerms[t]?.let { targets.addAll(it) }
+                        }
+                    }
+                    if (targets.isNotEmpty()) {
+                        expandedDeletes[deleteKey] = targets.toMutableList()
+                    }
+                }
+                engine.loadSerialized(termFrequencies, expandedDeletes)
+                symSpell = engine
+                symSpellBuilt = true
+                Log.i(tag, "Loaded precomputed SymSpell deletes: ${expandedDeletes.size} keys")
             }
             
             Log.i(tag, "Successfully populated indices from serialized format")
@@ -263,6 +341,7 @@ class DictionaryRepository(
         if (!keepExisting) {
             prefixCache.clear()
             normalizedIndex.clear()
+            symSpellBuilt = false
         }
 
         entries.forEach { entry ->
@@ -282,6 +361,28 @@ class DictionaryRepository(
         prefixCache.values.forEach { list -> list.sortByDescending { it.frequency } }
         if (debugLogging) {
             Log.d(tag, "index built: normalizedIndex=${normalizedIndex.size} prefixCache=${prefixCache.size}")
+        }
+    }
+
+    private fun buildSymSpell() {
+        if (symSpellBuilt && symSpell != null) return
+        val engine = SymSpell(maxEditDistance = 2, prefixLength = cachePrefixLength)
+        normalizedIndex.forEach { (normalized, entries) ->
+            val best = entries.maxByOrNull { it.frequency } ?: return@forEach
+            engine.addWord(normalized, best.frequency)
+        }
+        symSpell = engine
+        symSpellBuilt = true
+    }
+
+    private fun addToSymSpell(entries: List<DictionaryEntry>) {
+        val engine = symSpell ?: run {
+            buildSymSpell()
+            symSpell ?: return
+        }
+        entries.forEach { entry ->
+            val normalized = normalize(entry.word)
+            engine.addWord(normalized, entry.frequency)
         }
     }
 

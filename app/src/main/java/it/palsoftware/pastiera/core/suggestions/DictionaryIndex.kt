@@ -9,7 +9,9 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class DictionaryIndex(
     val normalizedIndex: Map<String, List<SerializableDictionaryEntry>>,
-    val prefixCache: Map<String, List<SerializableDictionaryEntry>>
+    val prefixCache: Map<String, List<SerializableDictionaryEntry>>,
+    val symDeletes: Map<String, List<String>>? = null,
+    val symMeta: SymSpellMeta? = null
 )
 
 /**
@@ -21,6 +23,12 @@ data class SerializableDictionaryEntry(
     val word: String,
     val frequency: Int,
     val source: Int // 0 = MAIN, 1 = USER
+)
+
+@Serializable
+data class SymSpellMeta(
+    val maxEditDistance: Int,
+    val prefixLength: Int
 )
 
 /**

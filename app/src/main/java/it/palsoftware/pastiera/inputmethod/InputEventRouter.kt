@@ -297,6 +297,14 @@ class InputEventRouter(
         }
 
         if (keyCode == KeyEvent.KEYCODE_SYM) {
+            // Reset Alt state if physically pressed when Sym is pressed.
+            // Alt+Sym is Android's language switch shortcut, so we reset Alt to prevent
+            // the one-shot state from being applied after the user switches languages.
+            if (event?.isAltPressed == true) {
+                controllers.modifierStateController.clearAltState(resetPressedState = true)
+                callbacks.updateStatusBar()
+            }
+            
             controllers.symLayoutController.toggleSymPage()
             callbacks.updateStatusBar()
             return EditableFieldRoutingResult.Consume

@@ -24,11 +24,6 @@ class SuggestionEngine(
     private val accentCache: MutableMap<String, String> = mutableMapOf()
     private val tag = "SuggestionEngine"
     private val wordNormalizeCache: MutableMap<String, String> = mutableMapOf()
-    // Limits to avoid processing thousands of entries on short prefixes
-    private val maxCandidatesByPrefixLength = mapOf(
-        1 to 600,
-        2 to 300
-    )
 
     fun suggest(
         currentWord: String,
@@ -41,53 +36,57 @@ class SuggestionEngine(
         // Require at least 1 character to start suggesting.
         if (normalizedWord.length < 1) return emptyList()
 
-        // Always pull the dedicated prefix bucket; it is already ordered by frequency.
-        val candidates: List<DictionaryEntry> = repository.lookupByPrefix(normalizedWord)
-        val maxCandidates = maxCandidatesByPrefixLength[normalizedWord.length]
-        val limitedCandidates = if (maxCandidates != null && candidates.size > maxCandidates) {
-            candidates.take(maxCandidates)
-        } else {
-            candidates
-        }
+        // SymSpell lookup on normalized input
+        val symResultsPrimary = repository.symSpellLookup(normalizedWord, maxSuggestions = limit * 8)
+        val symResultsAccent = if (includeAccentMatching) {
+            val normalizedAccentless = stripAccents(normalizedWord)
+            if (normalizedAccentless != normalizedWord) {
+                repository.symSpellLookup(normalizedAccentless, maxSuggestions = limit * 4)
+            } else emptyList()
+        } else emptyList()
 
-        if (debugLogging) {
-            Log.d(tag, "suggest '$currentWord' normalized='$normalizedWord' candidates=${limitedCandidates.size}")
-        }
-
-        if (debugLogging) {
-            Log.d(tag, "suggest '$currentWord' normalized='$normalizedWord' candidates=${limitedCandidates.size}")
-        }
-
-        val top = ArrayList<SuggestionResult>(limit)
-        val comparator = compareBy<SuggestionResult> { it.distance }
-            .thenByDescending { it.score }
-            .thenBy { it.candidate.length }
-        for (entry in limitedCandidates) {
-            val normalizedCandidate = normalizeCached(entry.word)
-            val distance = if (normalizedCandidate.startsWith(normalizedWord)) {
-                0 // treat prefix match as perfect to surface completions early
-            } else {
-                boundedLevenshtein(normalizedWord, normalizedCandidate, 2)
+        val allSymResults = (symResultsPrimary + symResultsAccent)
+        // Force prefix completions: take frequent words that start with the input (distance 0)
+        val completions = repository.lookupByPrefixMerged(normalizedWord, maxSize = 120)
+            .filter {
+                val norm = normalizeCached(it.word)
+                norm.startsWith(normalizedWord) && it.word.length > currentWord.length
             }
-            if (distance < 0) continue
 
-            val accentDistance = if (includeAccentMatching) {
-                val normalizedNoAccent = stripAccents(normalizedCandidate)
-                if (normalizedNoAccent.startsWith(normalizedWord)) {
-                    0
-                } else {
-                    boundedLevenshtein(normalizedWord, normalizedNoAccent, 2)
-                }
-            } else distance
+        val seen = HashSet<String>(limit * 3)
+        val top = ArrayList<SuggestionResult>(limit)
+        val inputLen = normalizedWord.length
+        val comparator = Comparator<SuggestionResult> { a, b ->
+            val d = a.distance.compareTo(b.distance)
+            if (d != 0) return@Comparator d
+            val scoreCmp = b.score.compareTo(a.score)
+            if (scoreCmp != 0) return@Comparator scoreCmp
+            a.candidate.length.compareTo(b.candidate.length)
+        }
 
-            val effectiveDistance = min(distance, accentDistance)
-            val distanceScore = 1.0 / (1 + effectiveDistance)
-            val frequencyScore = entry.frequency / 10_000.0
-            val sourceBoost = if (entry.source == SuggestionSource.USER) 2.0 else 1.0
-            val score = (distanceScore + frequencyScore) * sourceBoost
+        fun consider(term: String, distance: Int, frequency: Int, isForcedPrefix: Boolean = false) {
+            // For very short inputs, avoid suggesting single-char tokens unless exact
+            if (inputLen <= 2 && term.length == 1 && term != normalizedWord) return
+            if (inputLen <= 2 && distance > 1) return
+
+            val entry = repository.bestEntryForNormalized(term) ?: DictionaryEntry(term, frequency, SuggestionSource.MAIN)
+            val isPrefix = entry.word.startsWith(currentWord, ignoreCase = true)
+            val distanceScore = 1.0 / (1 + distance)
+            val isCompletion = isPrefix && entry.word.length > currentWord.length
+            val prefixBonus = when {
+                isForcedPrefix -> 1.5
+                isCompletion -> 1.2
+                isPrefix -> 0.8
+                else -> 0.0
+            }
+            val frequencyScore = (entry.frequency / 2_000.0)
+            val sourceBoost = if (entry.source == SuggestionSource.USER) 5.0 else 1.0
+            val score = (distanceScore + frequencyScore + prefixBonus) * sourceBoost
+            val key = entry.word.lowercase(locale)
+            if (!seen.add(key)) return
             val suggestion = SuggestionResult(
                 candidate = entry.word,
-                distance = effectiveDistance,
+                distance = distance,
                 score = score,
                 source = entry.source
             )
@@ -102,30 +101,57 @@ class SuggestionEngine(
             }
         }
 
+        // Consider completions first to surface them even if SymSpell returns other close words
+        for (entry in completions) {
+            val norm = normalizeCached(entry.word)
+            consider(norm, 0, entry.frequency, isForcedPrefix = true)
+        }
+
+        for (item in allSymResults) {
+            consider(item.term, item.distance, item.frequency)
+        }
+
         return top
     }
 
     private fun boundedLevenshtein(a: String, b: String, maxDistance: Int): Int {
+        // Optimal String Alignment distance (Damerau-Levenshtein with adjacent transpositions cost=1)
         if (kotlin.math.abs(a.length - b.length) > maxDistance) return -1
-        val dp = IntArray(b.length + 1) { it }
+        val prev = IntArray(b.length + 1) { it }
+        val curr = IntArray(b.length + 1)
+
         for (i in 1..a.length) {
-            var prev = dp[0]
-            dp[0] = i
-            var minRow = dp[0]
+            curr[0] = i
+            var minRow = curr[0]
             for (j in 1..b.length) {
-                val temp = dp[j]
                 val cost = if (a[i - 1] == b[j - 1]) 0 else 1
-                dp[j] = minOf(
-                    dp[j] + 1,
-                    dp[j - 1] + 1,
-                    prev + cost
+                var value = minOf(
+                    prev[j] + 1,      // deletion
+                    curr[j - 1] + 1,  // insertion
+                    prev[j - 1] + cost // substitution
                 )
-                prev = temp
-                minRow = min(minRow, dp[j])
+
+                if (i > 1 && j > 1 &&
+                    a[i - 1] == b[j - 2] &&
+                    a[i - 2] == b[j - 1]
+                ) {
+                    // adjacent transposition
+                    value = min(value, prev[j - 2] + 1)
+                }
+
+                curr[j] = value
+                minRow = min(minRow, value)
             }
+
             if (minRow > maxDistance) return -1
+            // swap arrays
+            for (k in 0..b.length) {
+                val tmp = prev[k]
+                prev[k] = curr[k]
+                curr[k] = tmp
+            }
         }
-        return if (dp[b.length] <= maxDistance) dp[b.length] else -1
+        return if (prev[b.length] <= maxDistance) prev[b.length] else -1
     }
 
     private fun normalize(word: String): String {
