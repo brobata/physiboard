@@ -114,11 +114,15 @@ class AutoReplaceController(
             tracker.reset()
             inputConnection.endBatchEdit()
             if (boundaryChar != null) {
-                inputConnection.commitText(boundaryChar.toString(), 1)
-                if (boundaryChar == ' ') {
-                    AutoSpaceTracker.markAutoSpace()
+                // Skip auto-space if replacement ends with apostrophe (elision, e.g., "dell'")
+                val shouldAppendBoundary = !(boundaryChar == ' ' && replacement.endsWith("'"))
+                if (shouldAppendBoundary) {
+                    inputConnection.commitText(boundaryChar.toString(), 1)
+                    if (boundaryChar == ' ') {
+                        AutoSpaceTracker.markAutoSpace()
+                    }
                 }
-                Log.d("AutoReplaceController", "Committed boundary '$boundaryChar', markAutoSpace=${boundaryChar == ' '}")
+                Log.d("AutoReplaceController", "Committed boundary '$boundaryChar', markAutoSpace=${shouldAppendBoundary && boundaryChar == ' '}")
             }
             return ReplaceResult(true, true)
         }

@@ -41,7 +41,8 @@ object VariationButtonHandler {
                 return@OnClickListener
             }
 
-            val punctuationSet = ".,;:!?()[]{}\"'"
+            val punctuationSet = ".,;:!?\"'"
+            val bracketSet = "()[]{}"
             if (variation.isNotEmpty() && variation[0] in punctuationSet) {
                 val applied = AutoSpaceTracker.replaceAutoSpaceWithPunctuation(inputConnection, variation)
                 if (applied) {
@@ -52,6 +53,16 @@ object VariationButtonHandler {
                 // For punctuation variations, skip deleting the previous character; just commit punctuation as-is.
                 val committed = inputConnection.commitText(variation, 1)
                 Log.d(TAG, "Variation '$variation' inserted (committed=$committed)")
+                if (committed) {
+                    NotificationHelper.triggerHapticFeedback(context)
+                }
+                listener?.onVariationSelected(variation)
+                return@OnClickListener
+            } else if (variation.isNotEmpty() && variation[0] in bracketSet) {
+                // Brackets should not remove the preceding space; just insert and clear any pending auto-space.
+                AutoSpaceTracker.clear()
+                val committed = inputConnection.commitText(variation, 1)
+                Log.d(TAG, "Variation bracket '$variation' inserted (committed=$committed)")
                 if (committed) {
                     NotificationHelper.triggerHapticFeedback(context)
                 }
@@ -95,7 +106,8 @@ object VariationButtonHandler {
                 return@OnClickListener
             }
 
-            val punctuationSet = ".,;:!?()[]{}\"'"
+            val punctuationSet = ".,;:!?\"'"
+            val bracketSet = "()[]{}"
             if (variation.isNotEmpty() && variation[0] in punctuationSet) {
                 val applied = AutoSpaceTracker.replaceAutoSpaceWithPunctuation(inputConnection, variation)
                 if (applied) {
@@ -103,6 +115,16 @@ object VariationButtonHandler {
                     listener?.onVariationSelected(variation)
                     return@OnClickListener
                 }
+            } else if (variation.isNotEmpty() && variation[0] in bracketSet) {
+                // Brackets should not remove preceding space; just insert and clear pending auto-space.
+                AutoSpaceTracker.clear()
+                val committed = inputConnection.commitText(variation, 1)
+                Log.d(TAG, "Static variation bracket '$variation' inserted (committed=$committed)")
+                if (committed) {
+                    NotificationHelper.triggerHapticFeedback(context)
+                }
+                listener?.onVariationSelected(variation)
+                return@OnClickListener
             }
 
             // Insert variation without deleting previous character

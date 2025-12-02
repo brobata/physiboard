@@ -78,6 +78,7 @@ object SuggestionButtonHandler {
         val deleteBefore = wordBeforeCursor.length
         val deleteAfter = wordAfterCursor.length
         val replacement = CasingHelper.applyCasing(suggestion, currentWord, forceLeadingCapital)
+        val shouldAppendSpace = !replacement.endsWith("'")
 
         val deleted = inputConnection.deleteSurroundingText(deleteBefore, deleteAfter)
         if (deleted) {
@@ -86,12 +87,13 @@ object SuggestionButtonHandler {
             Log.w(TAG, "Unable to delete surrounding word; inserting anyway")
         }
 
-        val committed = inputConnection.commitText("$replacement ", 1)
-        if (committed) {
+        val textToCommit = if (shouldAppendSpace) "$replacement " else replacement
+        val committed = inputConnection.commitText(textToCommit, 1)
+        if (committed && shouldAppendSpace) {
             AutoSpaceTracker.markAutoSpace()
             Log.d(TAG, "Suggestion auto-space marked")
         }
-        Log.d(TAG, "Suggestion inserted as '$replacement ' (committed=$committed)")
+        Log.d(TAG, "Suggestion inserted as '$textToCommit' (committed=$committed)")
         return committed
     }
 }

@@ -59,7 +59,7 @@ class CurrentWordTracker(
     fun onBoundaryReached(boundaryChar: Char? = null, inputConnection: InputConnection? = null) {
         if (boundaryChar != null) {
             // If an auto-space is pending, replace it with "<punctuation> " when punctuation is pressed.
-            val punctuationSet = ".,;:!?()[]{}\"'"
+            val punctuationSet = ".,;:!?\"'"
             if (inputConnection != null && boundaryChar in punctuationSet) {
                 val replaced = AutoSpaceTracker.replaceAutoSpaceWithPunctuation(
                     inputConnection,

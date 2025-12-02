@@ -126,8 +126,9 @@ class AutoCorrectionManager(
         NotificationHelper.triggerHapticFeedback(context)
 
         if (commitBoundary) {
+            val skipSpace = correctedWord.endsWith("'") && isSpaceBoundary
             when {
-                isSpaceBoundary -> {
+                isSpaceBoundary && !skipSpace -> {
                     inputConnection.commitText(" ", 1)
                     AutoSpaceTracker.markAutoSpace()
                     Log.d(TAG, "AutoCorrection marked auto-space")

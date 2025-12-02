@@ -225,7 +225,7 @@ class AltSymManager(
     ): Boolean {
         val altChar = altKeyMap[keyCode]
         return if (altChar != null) {
-            val punctuationSet = ".,;:!?()[]{}\"'"
+            val punctuationSet = ".,;:!?\"'"
             if (altChar.isNotEmpty() && altChar[0] in punctuationSet) {
                 val applied = AutoSpaceTracker.replaceAutoSpaceWithPunctuation(inputConnection, altChar)
                 if (applied) {
@@ -337,7 +337,8 @@ class AltSymManager(
                             inputConnection.deleteSurroundingText(1, 0)
                         }
 
-                        if (altChar.isNotEmpty() && altChar[0] in ".,;:!?()[]{}\"'") {
+                        val punctuationSet = ".,;:!?\"'"
+                        if (altChar.isNotEmpty() && altChar[0] in punctuationSet) {
                             val applied = AutoSpaceTracker.replaceAutoSpaceWithPunctuation(inputConnection, altChar)
                             if (applied) {
                                 Log.d(TAG, "Long press Alt mapping applied with auto-space replacement for '$altChar'")
