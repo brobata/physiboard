@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
 import android.view.KeyEvent
+import it.palsoftware.pastiera.R
 import org.json.JSONObject
 import java.io.InputStream
 import java.io.File
@@ -1525,6 +1526,39 @@ object SettingsManager {
     fun notifyVariationsUpdated(context: Context) {
         getPreferences(context).edit()
             .putLong(KEY_VARIATIONS_UPDATED, System.currentTimeMillis())
+            .apply()
+    }
+    
+    // Custom Input Styles (Additional Subtypes)
+    private const val KEY_CUSTOM_INPUT_STYLES = "custom_input_styles"
+    
+    /**
+     * Gets the custom input styles preference string.
+     * Returns default from predefined_subtypes resource if not set.
+     */
+    fun getCustomInputStyles(context: Context): String {
+        val prefs = getPreferences(context)
+        val custom = prefs.getString(KEY_CUSTOM_INPUT_STYLES, null)
+        if (custom != null) {
+            return custom
+        }
+        
+        // Load default from predefined_subtypes resource
+        return try {
+            val array = context.resources.getStringArray(R.array.predefined_subtypes)
+            array.joinToString(";")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error loading predefined subtypes", e)
+            ""
+        }
+    }
+    
+    /**
+     * Sets the custom input styles preference string.
+     */
+    fun setCustomInputStyles(context: Context, stylesString: String) {
+        getPreferences(context).edit()
+            .putString(KEY_CUSTOM_INPUT_STYLES, stylesString)
             .apply()
     }
 }

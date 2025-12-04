@@ -39,6 +39,7 @@ import it.palsoftware.pastiera.data.layout.LayoutMapping
 import it.palsoftware.pastiera.data.mappings.KeyMappingLoader
 import it.palsoftware.pastiera.data.variation.VariationRepository
 import it.palsoftware.pastiera.inputmethod.SpeechRecognitionActivity
+import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils
 import java.util.Locale
 import android.view.inputmethod.InputMethodManager
 
@@ -780,6 +781,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // Load auto-correction rules
         AutoCorrector.loadCorrections(assets, this)
         
+        // Register additional subtypes (custom input styles)
+        registerAdditionalSubtypes()
+        
         // Register listener for SharedPreferences changes
         prefsListener = SharedPreferences.OnSharedPreferenceChangeListener { sharedPrefs, key ->
             if (key == "sym_mappings_custom") {
@@ -831,6 +835,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                     val layoutName = SettingsManager.getKeyboardLayout(this)
                     switchToLayout(layoutName, showToast = true)
                 }
+            } else if (key == AdditionalSubtypeUtils.PREF_CUSTOM_INPUT_STYLES) {
+                Log.d(TAG, "Custom input styles changed, re-registering subtypes...")
+                registerAdditionalSubtypes()
             }
         }
         prefs.registerOnSharedPreferenceChangeListener(prefsListener)
@@ -1245,6 +1252,236 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     override fun onWindowShown() {
         super.onWindowShown()
         updateStatusBarText()
+    }
+    
+    /**
+     * Registers additional subtypes (custom input styles) with the system.
+     * Called on startup and when custom input styles are modified.
+     */
+    private fun registerAdditionalSubtypes() {
+        try {
+            val imm = getSystemService(InputMethodManager::class.java)
+            
+            // Get IME ID - try both formats
+            val componentName = android.content.ComponentName(this, PhysicalKeyboardInputMethodService::class.java)
+            val imeIdShort = componentName.flattenToShortString()
+            val imeIdFull = componentName.flattenToString()
+            
+            // Find the actual IME in the system list to get the correct ID format
+            val inputMethodInfo = imm.getInputMethodList().firstOrNull { info ->
+                info.packageName == packageName && 
+                info.serviceName == PhysicalKeyboardInputMethodService::class.java.name
+            }
+            
+            val imeId = inputMethodInfo?.id ?: imeIdFull
+            
+            Log.d(TAG, "Registering additional subtypes")
+            Log.d(TAG, "Component: $componentName")
+            Log.d(TAG, "IME ID (short): $imeIdShort")
+            Log.d(TAG, "IME ID (full): $imeIdFull")
+            Log.d(TAG, "IME ID (from system): ${inputMethodInfo?.id}")
+            Log.d(TAG, "Using IME ID: $imeId")
+            Log.d(TAG, "IME found in system: ${inputMethodInfo != null}")
+            
+            val prefString = SettingsManager.getCustomInputStyles(this)
+            Log.d(TAG, "Custom input styles pref string: $prefString")
+            
+            val subtypes = AdditionalSubtypeUtils.createAdditionalSubtypesArray(
+                prefString,
+                assets,
+                this
+            )
+            
+            Log.d(TAG, "Created ${subtypes.size} additional subtypes")
+            subtypes.forEachIndexed { index, subtype ->
+                Log.d(TAG, "Subtype $index: locale=${subtype.locale}, nameResId=${subtype.nameResId}, extraValue=${subtype.extraValue}")
+            }
+            
+            if (subtypes.isNotEmpty() && inputMethodInfo != null) {
+                // Note: setAdditionalInputMethodSubtypes is deprecated but still works on most Android versions
+                // The subtypes will appear in the IME picker but may need to be enabled manually by the user
+                imm.setAdditionalInputMethodSubtypes(imeId, subtypes)
+                Log.d(TAG, "Successfully called setAdditionalInputMethodSubtypes with ${subtypes.size} subtypes")
+                
+                // Send broadcast to notify system of IME subtype changes (if supported)
+                try {
+                    val intent = Intent("android.view.InputMethod.SUBTYPE_CHANGED").apply {
+                        setPackage("android")
+                        putExtra("imeId", imeId)
+                    }
+                    sendBroadcast(intent)
+                    Log.d(TAG, "Sent SUBTYPE_CHANGED broadcast")
+                } catch (e: Exception) {
+                    Log.w(TAG, "Could not send SUBTYPE_CHANGED broadcast", e)
+                }
+                
+                // Try to explicitly enable the additional subtypes after a delay
+                // This ensures the system has processed the registration first
+                Handler(Looper.getMainLooper()).postDelayed({
+                    try {
+                        // Re-fetch InputMethodInfo to get updated subtype list
+                        val updatedInfo = imm.getInputMethodList().firstOrNull { 
+                            it.packageName == packageName && 
+                            it.serviceName == PhysicalKeyboardInputMethodService::class.java.name
+                        }
+                        
+                        if (updatedInfo != null) {
+                            // Get all subtypes from InputMethodInfo (including the newly added ones)
+                            val allSubtypes = mutableListOf<android.view.inputmethod.InputMethodSubtype>()
+                            for (i in 0 until updatedInfo.subtypeCount) {
+                                allSubtypes.add(updatedInfo.getSubtypeAt(i))
+                            }
+                            
+                            // Get currently enabled subtypes
+                            val currentlyEnabled = imm.getEnabledInputMethodSubtypeList(updatedInfo, false)
+                            val enabledHashCodes = currentlyEnabled.map { it.hashCode() }.toMutableSet()
+                            
+                            // Add hash codes of additional subtypes to enabled set
+                            subtypes.forEach { additionalSubtype ->
+                                // Find matching subtype in allSubtypes by locale and extraValue
+                                val matchingSubtype = allSubtypes.firstOrNull { subtype ->
+                                    subtype.locale == additionalSubtype.locale &&
+                                    AdditionalSubtypeUtils.isAdditionalSubtype(subtype)
+                                }
+                                if (matchingSubtype != null) {
+                                    enabledHashCodes.add(matchingSubtype.hashCode())
+                                    Log.d(TAG, "Adding subtype to enabled list: locale=${matchingSubtype.locale}, hashCode=${matchingSubtype.hashCode()}")
+                                }
+                            }
+                            
+                            // Enable all subtypes (original + additional)
+                            if (enabledHashCodes.isNotEmpty()) {
+                                imm.setExplicitlyEnabledInputMethodSubtypes(
+                                    updatedInfo.id,
+                                    enabledHashCodes.toIntArray()
+                                )
+                                Log.d(TAG, "Explicitly enabled ${enabledHashCodes.size} subtypes (${subtypes.size} additional)")
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Could not explicitly enable subtypes", e)
+                        e.printStackTrace()
+                    }
+                }, 500) // Wait 500ms for system to process registration
+            } else {
+                if (subtypes.isEmpty()) {
+                    Log.d(TAG, "No subtypes to register")
+                } else {
+                    Log.w(TAG, "Cannot register subtypes: InputMethodInfo not found")
+                }
+            }
+            
+            // Refresh subtype caches if needed
+            refreshSubtypeCaches()
+            
+            // Force a small delay to ensure system processes the registration
+            Handler(Looper.getMainLooper()).postDelayed({
+                try {
+                    val verifyInfo = imm.getInputMethodList().firstOrNull { 
+                        it.packageName == packageName && 
+                        it.serviceName == PhysicalKeyboardInputMethodService::class.java.name
+                    }
+                    if (verifyInfo != null) {
+                        // Check all subtypes (enabled and disabled)
+                        val allSubtypes = imm.getEnabledInputMethodSubtypeList(verifyInfo, true)
+                        Log.d(TAG, "Verification: ${allSubtypes.size} total subtypes found after registration")
+                        allSubtypes.forEachIndexed { index, subtype ->
+                            val isAdditional = AdditionalSubtypeUtils.isAdditionalSubtype(subtype)
+                            Log.d(TAG, "Subtype $index: locale=${subtype.locale}, isAdditional=$isAdditional, extraValue=${subtype.extraValue}")
+                        }
+                        
+                        // Also try to get subtypes directly from InputMethodInfo
+                        try {
+                            val subtypeCount = verifyInfo.subtypeCount
+                            Log.d(TAG, "InputMethodInfo reports $subtypeCount subtypes")
+                            for (i in 0 until subtypeCount) {
+                                val subtype = verifyInfo.getSubtypeAt(i)
+                                val isAdditional = AdditionalSubtypeUtils.isAdditionalSubtype(subtype)
+                                Log.d(TAG, "InputMethodInfo subtype $i: locale=${subtype.locale}, isAdditional=$isAdditional, extraValue=${subtype.extraValue}")
+                            }
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Error getting subtypes from InputMethodInfo", e)
+                        }
+                    } else {
+                        Log.w(TAG, "IME not found in system list for verification")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error verifying subtype registration", e)
+                }
+            }, 1000)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error registering additional subtypes", e)
+            e.printStackTrace()
+        }
+    }
+    
+    /**
+     * Refreshes subtype caches after registration.
+     * This ensures getEnabledInputMethodSubtypeList reflects the new subtypes.
+     */
+    private fun refreshSubtypeCaches() {
+        try {
+            val imm = getSystemService(InputMethodManager::class.java)
+            // Force refresh by getting the enabled subtypes list
+            val inputMethodInfo = imm.getInputMethodList().firstOrNull { 
+                it.id == packageName + "/" + PhysicalKeyboardInputMethodService::class.java.name 
+            }
+            if (inputMethodInfo != null) {
+                val enabledSubtypes = imm.getEnabledInputMethodSubtypeList(inputMethodInfo, true)
+                Log.d(TAG, "Refreshed subtype caches, ${enabledSubtypes.size} enabled subtypes")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error refreshing subtype caches", e)
+        }
+    }
+    
+    /**
+     * Finds a subtype by locale.
+     */
+    private fun findSubtypeByLocale(locale: String): android.view.inputmethod.InputMethodSubtype? {
+        return try {
+            val imm = getSystemService(InputMethodManager::class.java)
+            val inputMethodInfo = imm.getInputMethodList().firstOrNull { 
+                it.id == packageName + "/" + PhysicalKeyboardInputMethodService::class.java.name 
+            }
+            if (inputMethodInfo != null) {
+                val enabledSubtypes = imm.getEnabledInputMethodSubtypeList(inputMethodInfo, true)
+                AdditionalSubtypeUtils.findSubtypeByLocale(enabledSubtypes.toTypedArray(), locale)
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error finding subtype by locale: $locale", e)
+            null
+        }
+    }
+    
+    /**
+     * Finds a subtype by locale and keyboard layout set.
+     */
+    private fun findSubtypeByLocaleAndKeyboardLayoutSet(
+        locale: String,
+        layoutName: String
+    ): android.view.inputmethod.InputMethodSubtype? {
+        return try {
+            val imm = getSystemService(InputMethodManager::class.java)
+            val inputMethodInfo = imm.getInputMethodList().firstOrNull { 
+                it.id == packageName + "/" + PhysicalKeyboardInputMethodService::class.java.name 
+            }
+            if (inputMethodInfo != null) {
+                val enabledSubtypes = imm.getEnabledInputMethodSubtypeList(inputMethodInfo, true)
+                AdditionalSubtypeUtils.findSubtypeByLocaleAndKeyboardLayoutSet(
+                    enabledSubtypes.toTypedArray(),
+                    locale,
+                    layoutName
+                )
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error finding subtype by locale and layout: $locale:$layoutName", e)
+            null
+        }
     }
     
     /**
