@@ -526,7 +526,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         suppressNextLayoutReload = true
         val nextLayout = SettingsManager.cycleKeyboardLayout(this)
         if (nextLayout != null) {
-            switchToLayout(nextLayout, showToast = true)
+            switchToLayout(nextLayout, showToast = false)
         }
     }
 
@@ -691,7 +691,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // Preload dictionary in background so it's ready when user focuses a field
         suggestionController.preloadDictionary()
 
-        candidatesBarController = CandidatesBarController(this)
+        candidatesBarController = CandidatesBarController(this, assets, PhysicalKeyboardInputMethodService::class.java)
         candidatesBarController.onAddUserWord = { word ->
             suggestionController.addUserWord(word)
             suggestionController.clearPendingAddWord()
@@ -821,7 +821,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 } else {
                     Log.d(TAG, "Keyboard layout changed, reloading...")
                     val layoutName = SettingsManager.getKeyboardLayout(this)
-                    switchToLayout(layoutName, showToast = true)
+                    switchToLayout(layoutName, showToast = false)
                 }
             } else if (key == AdditionalSubtypeUtils.PREF_CUSTOM_INPUT_STYLES) {
                 Log.d(TAG, "Custom input styles changed, re-registering subtypes...")
@@ -1176,6 +1176,12 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
+
+        // Register additional subtypes when IME becomes active
+        // This ensures dynamic languages are loaded even if service was already created
+        if (!restarting) {
+            registerAdditionalSubtypes()
+        }
 
         updateInputContextState(info)
         initializeInputContext(restarting)
@@ -1678,6 +1684,48 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             InputEventRouter.EditableFieldRoutingResult.Consume -> return true
             InputEventRouter.EditableFieldRoutingResult.CallSuper -> return super.onKeyDown(keyCode, event)
             InputEventRouter.EditableFieldRoutingResult.Continue -> {}
+        }
+        
+        // Handle Ctrl+Space for subtype cycling
+        if (
+            hasEditableField &&
+            keyCode == KeyEvent.KEYCODE_SPACE &&
+            (event?.isCtrlPressed == true || ctrlPressed || ctrlLatchActive || ctrlOneShot)
+        ) {
+            var shouldUpdateStatusBar = false
+
+            // Clear Alt state if active so we don't leave Alt latched.
+            val hadAlt = altLatchActive || altOneShot || altPressed
+            if (hadAlt) {
+                modifierStateController.clearAltState(resetPressedState = true)
+                shouldUpdateStatusBar = true
+            }
+
+            // Always reset Ctrl state after Ctrl+Space to avoid leaving it active.
+            val hadCtrl = ctrlLatchActive ||
+                ctrlOneShot ||
+                ctrlPressed ||
+                ctrlPhysicallyPressed ||
+                ctrlLatchFromNavMode
+            if (hadCtrl) {
+                val navModeLatched = ctrlLatchFromNavMode
+                modifierStateController.clearCtrlState(resetPressedState = true)
+                if (navModeLatched) {
+                    navModeController.cancelNotification()
+                    navModeController.refreshNavModeState()
+                }
+                shouldUpdateStatusBar = true
+            }
+
+            // Cycle to next subtype
+            if (SubtypeCycler.cycleToNextSubtype(this, PhysicalKeyboardInputMethodService::class.java, assets, showToast = true)) {
+                shouldUpdateStatusBar = true
+            }
+
+            if (shouldUpdateStatusBar) {
+                updateStatusBarText()
+            }
+            return true
         }
         
         val ic = currentInputConnection

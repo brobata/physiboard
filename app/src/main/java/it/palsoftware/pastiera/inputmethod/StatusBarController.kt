@@ -30,6 +30,7 @@ import kotlin.math.abs
 import it.palsoftware.pastiera.inputmethod.ui.LedStatusView
 import it.palsoftware.pastiera.inputmethod.ui.VariationBarView
 import it.palsoftware.pastiera.inputmethod.suggestions.ui.FullSuggestionsBar
+import android.content.res.AssetManager
 
 /**
  * Manages the status bar shown by the IME, handling view creation
@@ -37,7 +38,9 @@ import it.palsoftware.pastiera.inputmethod.suggestions.ui.FullSuggestionsBar
  */
 class StatusBarController(
     private val context: Context,
-    private val mode: Mode = Mode.FULL
+    private val mode: Mode = Mode.FULL,
+    private val assets: AssetManager? = null,
+    private val imeServiceClass: Class<*>? = null
 ) {
     enum class Mode {
         FULL,
@@ -245,6 +248,10 @@ class StatusBarController(
             statusBarLayout?.apply {
                 // Full-width suggestions bar above the rest
                 fullSuggestionsBar = FullSuggestionsBar(context)
+                // Set subtype cycling parameters if available
+                if (assets != null && imeServiceClass != null) {
+                    fullSuggestionsBar?.setSubtypeCyclingParams(assets, imeServiceClass)
+                }
                 addView(fullSuggestionsBar?.ensureView())
                 addView(modifiersContainer)
                 variationsWrapper?.let { addView(it) }

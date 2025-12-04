@@ -1,6 +1,7 @@
 package it.palsoftware.pastiera.inputmethod.suggestions.ui
 
 import android.content.Context
+import android.content.res.AssetManager
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.text.TextUtils
@@ -8,35 +9,119 @@ import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import it.palsoftware.pastiera.inputmethod.suggestions.SuggestionButtonHandler
 import it.palsoftware.pastiera.inputmethod.VariationButtonHandler
+import it.palsoftware.pastiera.inputmethod.SubtypeCycler
+import android.view.inputmethod.InputMethodManager
+import android.inputmethodservice.InputMethodService
 
 /**
  * Renders the full-width suggestion bar with up to 3 items. Always occupies
  * a row (with placeholders) so the UI stays stable. Hidden when minimal UI
  * is forced or smart features are disabled by the caller.
+ * Includes a language button on the right that cycles through IME subtypes.
  */
 class FullSuggestionsBar(private val context: Context) {
 
     private var container: LinearLayout? = null
+    private var frameContainer: FrameLayout? = null
+    private var languageButton: TextView? = null
     private var lastSlots: List<String?> = emptyList()
+    private var assets: AssetManager? = null
+    private var imeServiceClass: Class<*>? = null
 
-    fun ensureView(): LinearLayout {
-        if (container == null) {
-            container = LinearLayout(context).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER
-                layoutParams = LinearLayout.LayoutParams(
+    /**
+     * Sets the assets and IME service class needed for subtype cycling.
+     */
+    fun setSubtypeCyclingParams(assets: AssetManager, imeServiceClass: Class<*>) {
+        this.assets = assets
+        this.imeServiceClass = imeServiceClass
+    }
+
+    fun ensureView(): FrameLayout {
+        if (frameContainer == null) {
+            // Create frame container to allow overlaying the language button
+            frameContainer = FrameLayout(context).apply {
+                layoutParams = ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT
                 )
                 visibility = View.GONE
             }
+            
+            // Create the suggestions container
+            container = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER
+                layoutParams = FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+                visibility = View.GONE
+            }
+            
+            // Create language button positioned absolutely on the right
+            languageButton = TextView(context).apply {
+                text = getCurrentLanguageCode()
+                gravity = Gravity.CENTER
+                textSize = 12f
+                setTextColor(Color.WHITE)
+                setTypeface(null, android.graphics.Typeface.BOLD)
+                setPadding(dpToPx(8f), dpToPx(4f), dpToPx(8f), dpToPx(4f))
+                background = GradientDrawable().apply {
+                    setColor(Color.rgb(50, 50, 50))
+                    cornerRadius = dpToPx(4f).toFloat()
+                }
+                layoutParams = FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    gravity = Gravity.END or Gravity.CENTER_VERTICAL
+                    marginEnd = dpToPx(4f)
+                }
+                isClickable = true
+                isFocusable = true
+                setOnClickListener {
+                    cycleToNextSubtype()
+                }
+            }
+            
+            frameContainer?.addView(container)
+            frameContainer?.addView(languageButton)
         }
-        return container!!
+        return frameContainer!!
+    }
+    
+    private fun getCurrentLanguageCode(): String {
+        return try {
+            val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+            val currentSubtype = imm?.currentInputMethodSubtype
+            val locale = currentSubtype?.locale ?: "en_US"
+            // Extract country code from locale (e.g., "it_IT" -> "IT", "en_US" -> "US")
+            val parts = locale.split("_")
+            if (parts.size >= 2) {
+                parts[1].uppercase()
+            } else {
+                // Fallback: use first two letters of language code
+                parts[0].uppercase().take(2)
+            }
+        } catch (e: Exception) {
+            "EN"
+        }
+    }
+    
+    private fun cycleToNextSubtype() {
+        val assets = this.assets
+        val imeServiceClass = this.imeServiceClass
+        if (assets != null && imeServiceClass != null) {
+            SubtypeCycler.cycleToNextSubtype(context, imeServiceClass, assets, showToast = true)
+            // Update button text after cycling
+            languageButton?.text = getCurrentLanguageCode()
+        }
     }
 
     fun update(
@@ -49,12 +134,21 @@ class FullSuggestionsBar(private val context: Context) {
         onAddUserWord: ((String) -> Unit)?
     ) {
         val bar = container ?: return
+        val frame = frameContainer ?: return
+        
         if (!shouldShow) {
+            frame.visibility = View.GONE
             bar.visibility = View.GONE
             bar.removeAllViews()
+            languageButton?.visibility = View.GONE
             lastSlots = emptyList()
             return
         }
+
+        frame.visibility = View.VISIBLE
+        languageButton?.visibility = View.VISIBLE
+        // Update language button text in case subtype changed externally
+        languageButton?.text = getCurrentLanguageCode()
 
         val slots = buildSlots(suggestions)
         if (slots == lastSlots && bar.childCount > 0) {

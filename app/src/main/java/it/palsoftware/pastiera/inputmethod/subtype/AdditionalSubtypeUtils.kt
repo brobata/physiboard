@@ -2,10 +2,15 @@ package it.palsoftware.pastiera.inputmethod.subtype
 
 import android.content.Context
 import android.content.res.AssetManager
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
+import android.view.inputmethod.InputMethodManager
 import android.view.inputmethod.InputMethodSubtype
 import it.palsoftware.pastiera.R
+import it.palsoftware.pastiera.SettingsManager
 import it.palsoftware.pastiera.data.layout.LayoutMappingRepository
+import it.palsoftware.pastiera.inputmethod.PhysicalKeyboardInputMethodService
 import org.json.JSONObject
 import java.util.Locale
 
@@ -299,6 +304,108 @@ object AdditionalSubtypeUtils {
         } catch (e: Exception) {
             Log.w(TAG, "Error loading layout for locale $locale, defaulting to qwerty", e)
             "qwerty"
+        }
+    }
+    
+    /**
+     * Registers additional subtypes (custom input styles) with the system.
+     * Can be called from MainActivity or from the IME service.
+     * 
+     * @param context Context for accessing system services and assets
+     */
+    fun registerAdditionalSubtypes(context: Context) {
+        try {
+            val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+                ?: run {
+                    Log.e(TAG, "InputMethodManager not available")
+                    return
+                }
+            
+            // Get IME ID
+            val componentName = android.content.ComponentName(
+                context,
+                PhysicalKeyboardInputMethodService::class.java
+            )
+            
+            // Find the actual IME in the system list to get the correct ID format
+            val inputMethodInfo = imm.inputMethodList.firstOrNull { info ->
+                info.packageName == context.packageName && 
+                info.serviceName == PhysicalKeyboardInputMethodService::class.java.name
+            }
+            
+            if (inputMethodInfo == null) {
+                Log.d(TAG, "IME not found in system list, will retry when IME is enabled")
+                return
+            }
+            
+            val imeId = inputMethodInfo.id
+            Log.d(TAG, "Registering additional subtypes for IME: $imeId")
+            
+            val prefString = SettingsManager.getCustomInputStyles(context)
+            val subtypes = createAdditionalSubtypesArray(
+                prefString,
+                context.assets,
+                context
+            )
+            
+            Log.d(TAG, "Created ${subtypes.size} additional subtypes")
+            
+            if (subtypes.isNotEmpty()) {
+                // Register subtypes
+                imm.setAdditionalInputMethodSubtypes(imeId, subtypes)
+                Log.d(TAG, "Successfully called setAdditionalInputMethodSubtypes with ${subtypes.size} subtypes")
+                
+                // Try to explicitly enable the additional subtypes after a delay
+                Handler(Looper.getMainLooper()).postDelayed({
+                    try {
+                        // Re-fetch InputMethodInfo to get updated subtype list
+                        val updatedInfo = imm.inputMethodList.firstOrNull { 
+                            it.packageName == context.packageName && 
+                            it.serviceName == PhysicalKeyboardInputMethodService::class.java.name
+                        }
+                        
+                        if (updatedInfo != null) {
+                            // Get all subtypes from InputMethodInfo (including the newly added ones)
+                            val allSubtypes = mutableListOf<InputMethodSubtype>()
+                            for (i in 0 until updatedInfo.subtypeCount) {
+                                allSubtypes.add(updatedInfo.getSubtypeAt(i))
+                            }
+                            
+                            // Get currently enabled subtypes (include implicit ones from method.xml)
+                            val currentlyEnabled = imm.getEnabledInputMethodSubtypeList(updatedInfo, true)
+                            val enabledHashCodes = currentlyEnabled.map { it.hashCode() }.toMutableSet()
+                            
+                            // Add hash codes of additional subtypes to enabled set
+                            subtypes.forEach { additionalSubtype ->
+                                // Find matching subtype in allSubtypes by locale and extraValue
+                                val matchingSubtype = allSubtypes.firstOrNull { subtype ->
+                                    subtype.locale == additionalSubtype.locale &&
+                                    isAdditionalSubtype(subtype)
+                                }
+                                if (matchingSubtype != null) {
+                                    enabledHashCodes.add(matchingSubtype.hashCode())
+                                    Log.d(TAG, "Adding subtype to enabled list: locale=${matchingSubtype.locale}, hashCode=${matchingSubtype.hashCode()}")
+                                }
+                            }
+                            
+                            // Enable all subtypes (original + additional)
+                            if (enabledHashCodes.isNotEmpty()) {
+                                imm.setExplicitlyEnabledInputMethodSubtypes(
+                                    updatedInfo.id,
+                                    enabledHashCodes.toIntArray()
+                                )
+                                Log.d(TAG, "Explicitly enabled ${enabledHashCodes.size} subtypes (${subtypes.size} additional)")
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Could not explicitly enable subtypes", e)
+                    }
+                }, 500) // Wait 500ms for system to process registration
+            } else {
+                Log.d(TAG, "No subtypes to register")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error registering additional subtypes", e)
         }
     }
 }

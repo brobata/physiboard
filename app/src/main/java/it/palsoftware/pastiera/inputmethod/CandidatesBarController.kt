@@ -1,6 +1,7 @@
 package it.palsoftware.pastiera.inputmethod
 
 import android.content.Context
+import android.content.res.AssetManager
 import android.widget.LinearLayout
 import android.view.inputmethod.InputConnection
 
@@ -9,11 +10,13 @@ import android.view.inputmethod.InputConnection
  * candidates-only view) so the IME service can treat them as a single surface.
  */
 class CandidatesBarController(
-    context: Context
+    context: Context,
+    assets: AssetManager? = null,
+    imeServiceClass: Class<*>? = null
 ) {
 
-    private val inputStatusBar = StatusBarController(context, StatusBarController.Mode.FULL)
-    private val candidatesStatusBar = StatusBarController(context, StatusBarController.Mode.CANDIDATES_ONLY)
+    private val inputStatusBar = StatusBarController(context, StatusBarController.Mode.FULL, assets, imeServiceClass)
+    private val candidatesStatusBar = StatusBarController(context, StatusBarController.Mode.CANDIDATES_ONLY, assets, imeServiceClass)
 
     var onVariationSelectedListener: VariationButtonHandler.OnVariationSelectedListener? = null
         set(value) {
