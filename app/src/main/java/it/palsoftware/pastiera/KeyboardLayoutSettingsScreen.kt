@@ -29,6 +29,7 @@ import androidx.compose.animation.core.tween
 import androidx.activity.compose.BackHandler
 import it.palsoftware.pastiera.data.layout.LayoutFileStore
 import it.palsoftware.pastiera.data.layout.LayoutMappingRepository
+import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils
 import it.palsoftware.pastiera.R
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -43,23 +44,24 @@ private data class PendingLayoutSave(
 )
 
 /**
- * Settings screen for keyboard layout selection.
+ * Settings screen for keyboard layout selection for a specific locale.
+ * @param locale The locale for which to select the layout (required).
+ * @param onLayoutSelected Callback when a layout is selected (locale, layout).
  */
 @Composable
 fun KeyboardLayoutSettingsScreen(
     modifier: Modifier = Modifier,
-    onBack: () -> Unit
+    locale: String,
+    onBack: () -> Unit,
+    onLayoutSelected: (String, String) -> Unit
 ) {
     val context = LocalContext.current
     
-    // Load saved keyboard layout value
-    var selectedLayout by remember { 
-        mutableStateOf(SettingsManager.getKeyboardLayout(context))
-    }
-
-    // Layouts enabled for cycling (space long-press)
-    var enabledLayouts by remember {
-        mutableStateOf(SettingsManager.getKeyboardLayoutList(context).toMutableSet())
+    // Get layout from locale-layout mapping
+    var selectedLayout by remember(locale) { 
+        mutableStateOf(
+            AdditionalSubtypeUtils.getLayoutForLocale(context.assets, locale, context)
+        )
     }
     
     // Refresh trigger for custom layouts
@@ -187,7 +189,7 @@ fun KeyboardLayoutSettingsScreen(
                         )
                     }
                     Text(
-                        text = stringResource(R.string.keyboard_layout_title),
+                        text = "${stringResource(R.string.keyboard_layout_title)} - ${getLocaleDisplayNameForTitle(locale)}",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier
@@ -261,14 +263,6 @@ fun KeyboardLayoutSettingsScreen(
                     .padding(paddingValues)
                     .verticalScroll(rememberScrollState())
             ) {
-                // Description
-                Text(
-                    text = stringResource(R.string.keyboard_layout_description),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)
-                )
-                
                 // Keyboard Layout Editor Link
                 Surface(
                     modifier = Modifier
@@ -318,11 +312,7 @@ fun KeyboardLayoutSettingsScreen(
                         .height(72.dp)
                         .clickable {
                             selectedLayout = "qwerty"
-                            SettingsManager.setKeyboardLayout(context, "qwerty")
-                            if (!enabledLayouts.contains("qwerty")) {
-                                enabledLayouts = (enabledLayouts + "qwerty").toMutableSet()
-                                SettingsManager.setKeyboardLayoutList(context, enabledLayouts.toList())
-                            }
+                            onLayoutSelected(locale, "qwerty")
                         }
                 ) {
                     Row(
@@ -365,26 +355,11 @@ fun KeyboardLayoutSettingsScreen(
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                            Checkbox(
-                                checked = enabledLayouts.contains("qwerty"),
-                                onCheckedChange = { enabled ->
-                                    enabledLayouts = if (enabled) {
-                                        (enabledLayouts + "qwerty").toMutableSet()
-                                    } else {
-                                        (enabledLayouts - "qwerty").toMutableSet()
-                                    }
-                                    SettingsManager.setKeyboardLayoutList(context, enabledLayouts.toList())
-                                }
-                            )
                         RadioButton(
                             selected = selectedLayout == "qwerty",
                             onClick = {
                                 selectedLayout = "qwerty"
-                                SettingsManager.setKeyboardLayout(context, "qwerty")
-                                if (!enabledLayouts.contains("qwerty")) {
-                                    enabledLayouts = (enabledLayouts + "qwerty").toMutableSet()
-                                    SettingsManager.setKeyboardLayoutList(context, enabledLayouts.toList())
-                                }
+                                onLayoutSelected(locale, "qwerty")
                             }
                         )
                         }
@@ -462,11 +437,7 @@ fun KeyboardLayoutSettingsScreen(
                                     selected = selectedLayout == layout,
                                     onClick = {
                                         selectedLayout = layout
-                                        SettingsManager.setKeyboardLayout(context, layout)
-                                        if (!enabledLayouts.contains(layout)) {
-                                            enabledLayouts = (enabledLayouts + layout).toMutableSet()
-                                            SettingsManager.setKeyboardLayoutList(context, enabledLayouts.toList())
-                                        }
+                                        onLayoutSelected(locale, layout)
                                     }
                                 )
                             }
@@ -516,40 +487,6 @@ fun KeyboardLayoutSettingsScreen(
                                     }
                                 }
                                 
-                                // Enable for cycling checkbox with label
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clickable {
-                                            val enabled = !enabledLayouts.contains(layout)
-                                            enabledLayouts = if (enabled) {
-                                                (enabledLayouts + layout).toMutableSet()
-                                            } else {
-                                                (enabledLayouts - layout).toMutableSet()
-                                            }
-                                            SettingsManager.setKeyboardLayoutList(context, enabledLayouts.toList())
-                                        }
-                                ) {
-                                    Checkbox(
-                                        checked = enabledLayouts.contains(layout),
-                                        onCheckedChange = { enabled ->
-                                            enabledLayouts = if (enabled) {
-                                                (enabledLayouts + layout).toMutableSet()
-                                            } else {
-                                                (enabledLayouts - layout).toMutableSet()
-                                            }
-                                            SettingsManager.setKeyboardLayoutList(context, enabledLayouts.toList())
-                                        }
-                                    )
-                                    Text(
-                                        text = stringResource(R.string.layout_enable_for_cycling),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                }
                             }
                         }
                     }
@@ -584,13 +521,7 @@ fun KeyboardLayoutSettingsScreen(
                             // If deleted layout was selected, switch to qwerty
                             if (selectedLayout == layoutName) {
                                 selectedLayout = "qwerty"
-                                SettingsManager.setKeyboardLayout(context, "qwerty")
-                            }
-                            
-                            // Remove from enabled layouts if present
-                            if (enabledLayouts.contains(layoutName)) {
-                                enabledLayouts = (enabledLayouts - layoutName).toMutableSet()
-                                SettingsManager.setKeyboardLayoutList(context, enabledLayouts.toList())
+                                onLayoutSelected(locale, "qwerty")
                             }
                             
                             refreshTrigger++
@@ -679,5 +610,24 @@ private fun hasLayoutMultiTap(assets: AssetManager, context: Context, layoutName
         }
     } catch (e: Exception) {
         false
+    }
+}
+
+/**
+ * Gets display name for a locale (for title display).
+ */
+private fun getLocaleDisplayNameForTitle(locale: String): String {
+    return try {
+        val parts = locale.split("_")
+        val lang = parts[0]
+        val country = if (parts.size > 1) parts[1] else ""
+        val localeObj = if (country.isNotEmpty()) {
+            Locale(lang, country)
+        } else {
+            Locale(lang)
+        }
+        localeObj.getDisplayName(Locale.ENGLISH)
+    } catch (e: Exception) {
+        locale
     }
 }

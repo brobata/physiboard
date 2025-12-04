@@ -285,7 +285,7 @@
     <string name="layout_delete_failed">Error al eliminar el layout</string>
     <string name="layout_view_mapping">Ver asignación</string>
     <string name="layout_delete">Eliminar</string>
-    <string name="layout_enable_for_cycling">Activar (Ctrl + Espacio para cambiar)</string>
+    <string name="layout_enable_for_cycling">Activar para el ciclo</string>
     <string name="layout_select_as_active">Seleccionar como layout activo</string>
     
     <!-- Main Activity Event Display -->

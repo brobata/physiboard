@@ -176,11 +176,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     // Stato per ricordare se il nav mode era attivo prima di entrare in un campo di testo
     private var navModeWasActiveBeforeEditableField: Boolean = false
 
-    // Space long-press for layout cycling
-    private val spaceLongPressHandler = Handler(Looper.getMainLooper())
-    private var spaceLongPressRunnable: Runnable? = null
-    private var spaceLongPressTriggered: Boolean = false
-
     private val multiTapHandler = Handler(Looper.getMainLooper())
     private val multiTapController = MultiTapController(
         handler = multiTapHandler,
@@ -451,10 +446,34 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     }
     
     /**
-     * Reloads nav mode key mappings from the file.
+     * Loads keyboard layout from the current subtype if available, otherwise from JSON mapping or preferences.
      */
     private fun loadKeyboardLayout() {
-        val layoutName = SettingsManager.getKeyboardLayout(this)
+        val layoutName = try {
+            // First, try to get layout from current subtype
+            val imm = getSystemService(InputMethodManager::class.java)
+            val currentSubtype = imm.currentInputMethodSubtype
+            if (currentSubtype != null) {
+                val layoutFromSubtype = AdditionalSubtypeUtils.getKeyboardLayoutFromSubtype(currentSubtype)
+                if (layoutFromSubtype != null) {
+                    Log.d(TAG, "Loading layout from subtype: $layoutFromSubtype")
+                    layoutFromSubtype
+                } else {
+                    // If not in subtype, get from JSON mapping based on locale
+                    val locale = currentSubtype.locale ?: "en_US"
+                            val layoutFromMapping = AdditionalSubtypeUtils.getLayoutForLocale(assets, locale, this)
+                    Log.d(TAG, "Loading layout from JSON mapping for locale $locale: $layoutFromMapping")
+                    layoutFromMapping
+                }
+            } else {
+                // No subtype available, use preferences
+                SettingsManager.getKeyboardLayout(this)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Error getting layout from subtype, using preferences", e)
+            SettingsManager.getKeyboardLayout(this)
+        }
+        
         val layout = LayoutMappingRepository.loadLayout(assets, layoutName, this)
         Log.d(TAG, "Keyboard layout loaded: $layoutName")
     }
@@ -553,37 +572,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
     }
 
-    private fun cancelSpaceLongPress() {
-        spaceLongPressRunnable?.let { spaceLongPressHandler.removeCallbacks(it) }
-        spaceLongPressRunnable = null
-        spaceLongPressTriggered = false
-    }
-
-    private fun scheduleSpaceLongPress() {
-        if (spaceLongPressRunnable != null) {
-            return
-        }
-        spaceLongPressTriggered = false
-        val threshold = SettingsManager.getLongPressThreshold(this)
-        val runnable = Runnable {
-            spaceLongPressRunnable = null
-
-            // Clear Alt if active so layout switching does not leave Alt latched.
-            val hadAlt = altLatchActive || altOneShot || altPressed
-            if (hadAlt) {
-                modifierStateController.clearAltState()
-                altLatchActive = false
-                altOneShot = false
-                altPressed = false
-                updateStatusBarText()
-            }
-
-            cycleLayoutFromShortcut()
-            spaceLongPressTriggered = true
-        }
-        spaceLongPressRunnable = runnable
-        spaceLongPressHandler.postDelayed(runnable, threshold)
-    }
 
     private fun handleMultiTapCommit(
         keyCode: Int,
@@ -985,7 +973,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             }
         }
         speechResultReceiver = null
-        cancelSpaceLongPress()
         multiTapController.cancelAll()
         updateNavModeStatusIcon(false)
 
@@ -1229,7 +1216,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         isInputViewActive = false
         inputContextState = InputContextState.EMPTY
         multiTapController.cancelAll()
-        cancelSpaceLongPress()
         resetModifierStates(preserveNavMode = true)
         // Se nav mode era attivo prima di entrare nel campo di testo, riattivalo ora
         if (navModeWasActiveBeforeEditableField) {
@@ -1243,7 +1229,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         isInputViewActive = false
         if (finishingInput) {
             multiTapController.cancelAll()
-            cancelSpaceLongPress()
             resetModifierStates(preserveNavMode = true)
             suggestionController.onContextReset()
         }
@@ -1508,7 +1493,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     
     /**
      * Called when the user switches IME subtypes (languages).
-     * Reloads the dictionary for the new language.
+     * Reloads the dictionary for the new language and switches to the layout specified in the subtype or JSON mapping.
      */
     override fun onCurrentInputMethodSubtypeChanged(newSubtype: android.view.inputmethod.InputMethodSubtype) {
         super.onCurrentInputMethodSubtypeChanged(newSubtype)
@@ -1520,12 +1505,32 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 Log.d(TAG, "IME subtype changed, updating locale to: ${newLocale.language}")
             }
         }
+        
+        // Get layout from subtype if specified, otherwise from JSON mapping
+        val layoutToUse = AdditionalSubtypeUtils.getKeyboardLayoutFromSubtype(newSubtype)
+            ?: run {
+                val locale = newSubtype.locale ?: "en_US"
+                AdditionalSubtypeUtils.getLayoutForLocale(assets, locale, this)
+            }
+        
+        // Always switch to the layout for the current locale (they are strictly linked)
+        // Update preferences to keep them in sync
+        val currentLayout = SettingsManager.getKeyboardLayout(this)
+        if (layoutToUse != currentLayout) {
+            Log.d(TAG, "Switching layout for locale ${newSubtype.locale}: $layoutToUse (was: $currentLayout)")
+            // Update preferences first to keep them in sync
+            SettingsManager.setKeyboardLayout(this, layoutToUse)
+            // Then load the layout
+            switchToLayout(layoutToUse, showToast = false)
+        } else {
+            // Even if layout matches, ensure it's loaded (in case it was changed manually)
+            switchToLayout(layoutToUse, showToast = false)
+        }
     }
     
     override fun onWindowHidden() {
         super.onWindowHidden()
         multiTapController.finalizeCycle()
-        cancelSpaceLongPress()
         resetModifierStates(preserveNavMode = true)
         suggestionController.onContextReset()
     }
@@ -1620,45 +1625,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             keyCode == KeyEvent.KEYCODE_CTRL_RIGHT ||
             keyCode == KeyEvent.KEYCODE_ALT_LEFT ||
             keyCode == KeyEvent.KEYCODE_ALT_RIGHT
-        // Handle Ctrl+Space layout switching even when Alt is active.
-        if (
-            hasEditableField &&
-            keyCode == KeyEvent.KEYCODE_SPACE &&
-            (event?.isCtrlPressed == true || ctrlPressed || ctrlLatchActive || ctrlOneShot)
-        ) {
-            var shouldUpdateStatusBar = false
-
-            // Clear Alt state if active so we don't leave Alt latched.
-            val hadAlt = altLatchActive || altOneShot || altPressed
-            if (hadAlt) {
-                modifierStateController.clearAltState(resetPressedState = true)
-                shouldUpdateStatusBar = true
-            }
-
-            // Always reset Ctrl state after Ctrl+Space to avoid leaving it active.
-            val hadCtrl = ctrlLatchActive ||
-                ctrlOneShot ||
-                ctrlPressed ||
-                ctrlPhysicallyPressed ||
-                ctrlLatchFromNavMode
-            if (hadCtrl) {
-                val navModeLatched = ctrlLatchFromNavMode
-                modifierStateController.clearCtrlState(resetPressedState = true)
-                if (navModeLatched) {
-                    navModeController.cancelNotification()
-                    navModeController.refreshNavModeState()
-                }
-                shouldUpdateStatusBar = true
-            }
-
-            cycleLayoutFromShortcut()
-            shouldUpdateStatusBar = true
-
-            if (shouldUpdateStatusBar) {
-                updateStatusBarText()
-            }
-            return true
-        }
 
         multiTapController.resetForNewKey(keyCode)
         if (!isModifierKey) {

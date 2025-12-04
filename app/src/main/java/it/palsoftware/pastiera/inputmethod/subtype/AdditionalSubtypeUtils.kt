@@ -6,6 +6,7 @@ import android.util.Log
 import android.view.inputmethod.InputMethodSubtype
 import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.data.layout.LayoutMappingRepository
+import org.json.JSONObject
 import java.util.Locale
 
 /**
@@ -188,7 +189,7 @@ object AdditionalSubtypeUtils {
     
     /**
      * Gets the resource ID for a locale's display name.
-     * Falls back to a generic name if not found.
+     * Returns 0 for custom locales - Android will auto-generate the name from the locale.
      */
     private fun getLocaleNameResId(localeStr: String): Int {
         val langCode = localeStr.split("_")[0].lowercase()
@@ -201,7 +202,7 @@ object AdditionalSubtypeUtils {
             "es" -> R.string.input_method_name_es
             "pt" -> R.string.input_method_name_pt
             "ru" -> R.string.input_method_name_ru
-            else -> R.string.input_method_name // Fallback
+            else -> 0 // Use 0 for custom locales - Android will auto-generate name from locale
         }
     }
     
@@ -261,6 +262,44 @@ object AdditionalSubtypeUtils {
      */
     fun getKeyboardLayoutFromSubtype(subtype: InputMethodSubtype): String? {
         return extractLayoutFromExtraValue(subtype.extraValue ?: "")
+    }
+    
+    /**
+     * Gets the default keyboard layout for a locale from the JSON mapping.
+     * First checks custom file (if context provided), then falls back to assets.
+     * Falls back to "qwerty" if not found.
+     */
+    fun getLayoutForLocale(assets: AssetManager, locale: String, context: Context? = null): String {
+        // First, try custom file if context is provided
+        if (context != null) {
+            try {
+                val customMappingFile = java.io.File(context.filesDir, "locale_layout_mapping.json")
+                if (customMappingFile.exists() && customMappingFile.canRead()) {
+                    val jsonString = customMappingFile.readText()
+                    val json = JSONObject(jsonString)
+                    if (json.has(locale)) {
+                        val layout = json.getString(locale)
+                        if (layout.isNotEmpty()) {
+                            return layout
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Error reading custom locale-layout mapping, falling back to assets", e)
+            }
+        }
+        
+        // Fallback to assets
+        return try {
+            assets.open("common/locale_layout_mapping.json").use { input ->
+                val jsonString = input.bufferedReader().use { it.readText() }
+                val json = JSONObject(jsonString)
+                json.optString(locale, "qwerty")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Error loading layout for locale $locale, defaulting to qwerty", e)
+            "qwerty"
+        }
     }
 }
 

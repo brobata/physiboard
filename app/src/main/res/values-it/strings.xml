@@ -166,7 +166,7 @@
     
     <!-- Keyboard Layout Section -->
     <string name="keyboard_layout_title">Layout Tastiera</string>
-    <string name="keyboard_layout_description">Seleziona il layout della tastiera. Le mappature ALT, SYM e Ctrl rimangono basate sulla posizione fisica del tasto. Cambia la mappatura rapidamente con CTRL+SPACE.</string>
+    <string name="keyboard_layout_description">Seleziona il layout della tastiera. Le mappature ALT, SYM e Ctrl rimangono basate sulla posizione fisica del tasto.</string>
     <string name="keyboard_layout_editor_title">Keyboard Layout Editor</string>
     <string name="keyboard_layout_multitap_badge">multitap</string>
     <string name="keyboard_layout_no_conversion">Standard</string>
@@ -323,7 +323,7 @@
     <string name="layout_delete_failed">Impossibile eliminare il layout</string>
     <string name="layout_view_mapping">Visualizza mappa</string>
     <string name="layout_delete">Elimina</string>
-    <string name="layout_enable_for_cycling">Abilita (Ctrl + Space per cambiare)</string>
+    <string name="layout_enable_for_cycling">Abilita per il ciclo</string>
     <string name="layout_select_as_active">Seleziona come layout attivo</string>
     
     <!-- Main Activity Event Display -->

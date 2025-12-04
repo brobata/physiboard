@@ -110,7 +110,7 @@
     <string name="long_press_modifier_title">Модификатор долгого нажатия</string>
     <string name="long_press_modifier_description">Выберите эмулирует ли долгое нажатие Alt+клав. или Shift+клав.</string>
     <string name="keyboard_layout_title">Раскладка клавиатуры</string>
-    <string name="keyboard_layout_description">Выберите вашу раскладку. ALT, SYM и Ctrl раксладки зависят от физического расположения клавишы. Переключайте быстро на CTRL+SPACE.</string>
+    <string name="keyboard_layout_description">Выберите вашу раскладку. ALT, SYM и Ctrl раксладки зависят от физического расположения клавишы.</string>
     <string name="keyboard_layout_no_conversion">Стандартная</string>
     <string name="keyboard_layout_no_conversion_description">Стандартная QWERTY (без конверсии)</string>
     <string name="keyboard_layout_conversions_title">Конверсии Раскладки</string>
@@ -221,7 +221,7 @@
     <string name="layout_delete_failed">Не удалось удалить раскладку</string>
     <string name="layout_view_mapping">Посмотреть раскладку</string>
     <string name="layout_delete">Удалить</string>
-    <string name="layout_enable_for_cycling">Добавить в активные (Ctrl + Пробел)</string>
+    <string name="layout_enable_for_cycling">Добавить в активные</string>
     <string name="layout_select_as_active">Выбрать активную раскладку</string>
     <string name="event_unicode_label">Юникод:</string>
     <string name="event_output_label">Вывод:</string>

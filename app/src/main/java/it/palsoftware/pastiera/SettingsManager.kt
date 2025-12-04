@@ -1204,7 +1204,7 @@ object SettingsManager {
 
     /**
      * Cycles to the next keyboard layout in the configured list and returns its id.
-     * Always loops: even with a single entry we "cycle" back to it, so Ctrl+Space/long press
+     * Always loops: even with a single entry we "cycle" back to it, so long press
      * consistently triggers a layout reload/toast and never becomes a no-op.
      */
     fun cycleKeyboardLayout(context: Context): String? {
