@@ -1332,8 +1332,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                                 allSubtypes.add(updatedInfo.getSubtypeAt(i))
                             }
                             
-                            // Get currently enabled subtypes
-                            val currentlyEnabled = imm.getEnabledInputMethodSubtypeList(updatedInfo, false)
+                            // Get currently enabled subtypes (include implicit ones from method.xml)
+                            val currentlyEnabled = imm.getEnabledInputMethodSubtypeList(updatedInfo, true)
                             val enabledHashCodes = currentlyEnabled.map { it.hashCode() }.toMutableSet()
                             
                             // Add hash codes of additional subtypes to enabled set

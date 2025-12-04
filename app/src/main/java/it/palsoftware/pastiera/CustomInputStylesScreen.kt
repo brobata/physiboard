@@ -1,8 +1,6 @@
 package it.palsoftware.pastiera
 
 import android.content.Context
-import android.content.Intent
-import android.provider.Settings
 import android.view.inputmethod.InputMethodManager
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -32,6 +30,7 @@ import it.palsoftware.pastiera.data.layout.LayoutMappingRepository
 import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils
 import it.palsoftware.pastiera.R
 import java.util.Locale
+import android.content.res.AssetManager
 
 /**
  * Data class representing a custom input style entry.
@@ -101,23 +100,7 @@ fun CustomInputStylesScreen(
                 .padding(paddingValues)
                 .windowInsetsPadding(WindowInsets.statusBars)
         ) {
-            // Description
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-            ) {
-                Text(
-                    text = stringResource(R.string.custom_input_styles_description),
-                    modifier = Modifier.padding(16.dp),
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-            
-            // Open IME Picker button
+            // Open IME Settings button (to enable keyboard)
             OutlinedButton(
                 onClick = {
                     openImePicker(context)
@@ -279,43 +262,9 @@ private fun AddCustomInputStyleDialog(
         LayoutMappingRepository.getAvailableLayouts(context.assets, context).sorted()
     }
     
+    // Get available locales based on dictionary availability
     val availableLocales = remember {
-        listOf(
-            "en_US", "en_GB", "en_CA", "en_AU",
-            "it_IT", "it_CH",
-            "fr_FR", "fr_CA", "fr_CH", "fr_BE",
-            "de_DE", "de_AT", "de_CH",
-            "es_ES", "es_MX", "es_AR", "es_CO",
-            "pt_PT", "pt_BR",
-            "pl_PL",
-            "ru_RU",
-            "nl_NL", "nl_BE",
-            "sv_SE",
-            "da_DK",
-            "no_NO",
-            "fi_FI",
-            "cs_CZ",
-            "sk_SK",
-            "hu_HU",
-            "ro_RO",
-            "bg_BG",
-            "hr_HR",
-            "sr_RS",
-            "sl_SI",
-            "et_EE",
-            "lv_LV",
-            "lt_LT",
-            "el_GR",
-            "tr_TR",
-            "he_IL",
-            "ar_SA", "ar_EG",
-            "ja_JP",
-            "ko_KR",
-            "zh_CN", "zh_TW",
-            "th_TH",
-            "vi_VN",
-            "hi_IN"
-        ).sorted()
+        getLocalesWithDictionary(context).sorted()
     }
     
     AlertDialog(
@@ -507,27 +456,80 @@ private fun getLocaleDisplayName(locale: String): String {
 }
 
 /**
- * Opens the system IME picker to enable/select input methods.
+ * Gets list of locales that have dictionary files available.
+ * Checks both serialized (.dict) and JSON (.json) formats.
+ */
+private fun getLocalesWithDictionary(context: Context): List<String> {
+    val localesWithDict = mutableSetOf<String>()
+    
+    try {
+        val assets = context.assets
+        
+        // Check serialized dictionaries first
+        try {
+            val serializedFiles = assets.list("common/dictionaries_serialized")
+            serializedFiles?.forEach { fileName ->
+                if (fileName.endsWith("_base.dict")) {
+                    val langCode = fileName.removeSuffix("_base.dict")
+                    // Map language code to common locale variants
+                    localesWithDict.addAll(getLocaleVariantsForLanguage(langCode))
+                }
+            }
+        } catch (e: Exception) {
+            // If serialized directory doesn't exist, try JSON
+        }
+        
+        // Also check JSON dictionaries (fallback)
+        try {
+            val jsonFiles = assets.list("common/dictionaries")
+            jsonFiles?.forEach { fileName ->
+                if (fileName.endsWith("_base.json") && fileName != "user_defaults.json") {
+                    val langCode = fileName.removeSuffix("_base.json")
+                    // Map language code to common locale variants
+                    localesWithDict.addAll(getLocaleVariantsForLanguage(langCode))
+                }
+            }
+        } catch (e: Exception) {
+            // If dictionaries directory doesn't exist, continue
+        }
+    } catch (e: Exception) {
+        android.util.Log.e("CustomInputStyles", "Error checking dictionaries", e)
+    }
+    
+    return localesWithDict.toList()
+}
+
+/**
+ * Maps a language code (e.g., "en", "it") to common locale variants.
+ */
+private fun getLocaleVariantsForLanguage(langCode: String): List<String> {
+    return when (langCode.lowercase()) {
+        "en" -> listOf("en_US", "en_GB", "en_CA", "en_AU")
+        "it" -> listOf("it_IT", "it_CH")
+        "fr" -> listOf("fr_FR", "fr_CA", "fr_CH", "fr_BE")
+        "de" -> listOf("de_DE", "de_AT", "de_CH")
+        "es" -> listOf("es_ES", "es_MX", "es_AR", "es_CO")
+        "pt" -> listOf("pt_PT", "pt_BR")
+        "pl" -> listOf("pl_PL")
+        "ru" -> listOf("ru_RU")
+        else -> listOf("${langCode}_${langCode.uppercase()}") // Generic fallback
+    }
+}
+
+/**
+ * Opens the system IME picker (selector) to choose input method.
  */
 private fun openImePicker(context: Context) {
     try {
-        val intent = Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        context.startActivity(intent)
+        val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        imm.showInputMethodPicker()
     } catch (e: Exception) {
-        // Fallback: try to open language settings
-        try {
-            val intent = Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)
-            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            context.startActivity(intent)
-        } catch (e2: Exception) {
-            // If both fail, show a message
-            android.widget.Toast.makeText(
-                context,
-                "Please open Settings > System > Languages & input > Virtual keyboard",
-                android.widget.Toast.LENGTH_LONG
-            ).show()
-        }
+        android.util.Log.e("CustomInputStyles", "Error opening IME picker", e)
+        android.widget.Toast.makeText(
+            context,
+            "Error opening input method picker",
+            android.widget.Toast.LENGTH_SHORT
+        ).show()
     }
 }
 
