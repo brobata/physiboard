@@ -440,7 +440,7 @@
     <string name="dip_unit">DIP</string>
     
     <!-- Custom Input Styles -->
-    <string name="custom_input_styles_title">Custom Input Styles</string>
+    <string name="custom_input_styles_title">Lingue e mappe</string>
     <string name="custom_input_styles_description">Add additional languages and keyboard layouts that are not tied to system locale</string>
     <string name="custom_input_styles_add">Add Input Style</string>
     <string name="custom_input_styles_empty">No custom input styles added yet. Tap the + button to add one.</string>

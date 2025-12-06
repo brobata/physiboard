@@ -260,47 +260,6 @@ fun CustomizationSettingsScreen(
                             }
                         }
                     
-                        // Custom Input Styles
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(64.dp)
-                                .clickable { navigateTo(CustomizationDestination.CustomInputStyles) }
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.Language,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = stringResource(R.string.custom_input_styles_title),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Medium,
-                                        maxLines = 1
-                                    )
-                                    Text(
-                                        text = stringResource(R.string.custom_input_styles_description),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1
-                                    )
-                                }
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
                     }
                 }
             }
@@ -318,13 +277,6 @@ fun CustomizationSettingsScreen(
                     onBack = { navigateBack() }
                 )
             }
-            
-            CustomizationDestination.CustomInputStyles -> {
-                CustomInputStylesScreen(
-                    modifier = modifier,
-                    onBack = { navigateBack() }
-                )
-            }
         }
     }
 }
@@ -333,7 +285,6 @@ private sealed class CustomizationDestination {
     object Main : CustomizationDestination()
     object Variations : CustomizationDestination()
     object NavMode : CustomizationDestination()
-    object CustomInputStyles : CustomizationDestination()
 }
 
 private enum class CustomizationNavigationDirection {

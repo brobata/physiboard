@@ -23,6 +23,7 @@ object AdditionalSubtypeUtils {
     private const val TAG = "AdditionalSubtypeUtils"
     
     const val PREF_CUSTOM_INPUT_STYLES = "custom_input_styles"
+    private const val PREF_AUTO_ADDED_SYSTEM_LOCALES = "auto_added_system_locales"
     private const val EXTRA_KEY_KEYBOARD_LAYOUT_SET = "KeyboardLayoutSet"
     private const val EXTRA_KEY_ASCII_CAPABLE = "AsciiCapable"
     private const val EXTRA_KEY_EMOJI_CAPABLE = "EmojiCapable"
@@ -309,54 +310,53 @@ object AdditionalSubtypeUtils {
     }
     
     /**
-     * Removes system locales without dictionary from custom input styles when they are removed from system.
-     * This cleans up automatically added subtypes when the system locale is removed.
+     * Loads the set of system locales that were auto-added (no dictionary).
+     */
+    private fun loadAutoAddedLocales(context: Context): Set<String> {
+        return SettingsManager.getPreferences(context)
+            .getStringSet(PREF_AUTO_ADDED_SYSTEM_LOCALES, emptySet())
+            ?: emptySet()
+    }
+    
+    /**
+     * Saves the set of system locales that were auto-added.
+     */
+    private fun saveAutoAddedLocales(context: Context, locales: Set<String>) {
+        SettingsManager.getPreferences(context)
+            .edit()
+            .putStringSet(PREF_AUTO_ADDED_SYSTEM_LOCALES, locales)
+            .apply()
+    }
+    
+    /**
+     * Removes only the system locales (without dictionary) that were auto-added and are no longer present in the system.
+     * Does NOT remove user-created custom input styles.
      */
     fun removeSystemLocalesWithoutDictionary(context: Context) {
         try {
             val currentSystemLocales = getSystemEnabledLocales(context).toSet()
-            val localesWithDict = getLocalesWithDictionary(context)
-            val baseSubtypesInMethodXml = setOf("en_US", "it_IT", "fr_FR", "de_DE", "pl_PL", "es_ES", "pt_PT", "ru_RU")
+            val trackedAutoAdded = loadAutoAddedLocales(context)
             
-            // Get current custom input styles
+            // Locales that were auto-added but are no longer in system
+            val toRemove = trackedAutoAdded.filterNot { currentSystemLocales.contains(it) }.toSet()
+            if (toRemove.isEmpty()) return
+            
             val currentStyles = SettingsManager.getCustomInputStyles(context)
-            if (currentStyles.isBlank()) {
-                return
-            }
+            if (currentStyles.isBlank()) return
             
-            // Parse and filter entries
             val entries = currentStyles.split(";").map { it.trim() }.filter { it.isNotEmpty() }
-            val validEntries = mutableListOf<String>()
-            
-            entries.forEach { entry ->
-                val parts = entry.split(":").map { it.trim() }
-                if (parts.isNotEmpty()) {
-                    val locale = parts[0]
-                    // Keep entry if:
-                    // 1. It's a system locale that still exists in system, OR
-                    // 2. It has a dictionary (manual custom input style), OR
-                    // 3. It's a base subtype from method.xml (shouldn't be here, but keep it just in case)
-                    val shouldKeep = currentSystemLocales.contains(locale) ||
-                                     localesWithDict.contains(locale) ||
-                                     baseSubtypesInMethodXml.contains(locale)
-                    
-                    if (shouldKeep) {
-                        validEntries.add(entry)
-                    } else {
-                        Log.d(TAG, "Removing auto-added system locale without dictionary: $locale")
-                    }
-                } else {
-                    // Keep malformed entries (they will be filtered out later)
-                    validEntries.add(entry)
-                }
+            val kept = entries.filterNot { entry ->
+                val locale = entry.substringBefore(":")
+                toRemove.contains(locale)
             }
             
-            // Update styles if changed
-            val updatedStyles = validEntries.joinToString(";")
-            if (updatedStyles != currentStyles) {
-                SettingsManager.setCustomInputStyles(context, updatedStyles)
-                Log.d(TAG, "Removed ${entries.size - validEntries.size} auto-added system locales without dictionary")
-            }
+            SettingsManager.setCustomInputStyles(context, kept.joinToString(";"))
+            
+            // Update tracking: keep only those still in system
+            val updatedTracked = trackedAutoAdded.intersect(currentSystemLocales)
+            saveAutoAddedLocales(context, updatedTracked)
+            
+            Log.d(TAG, "Removed ${entries.size - kept.size} auto-added system locales without dictionary (no longer in system)")
         } catch (e: Exception) {
             Log.e(TAG, "Error removing system locales without dictionary", e)
         }
@@ -367,31 +367,24 @@ object AdditionalSubtypeUtils {
      * Returns true if the subtype should be kept, false if it should be removed.
      */
     fun shouldKeepSubtype(subtype: InputMethodSubtype, currentSystemLocales: Set<String>, systemLanguageCodes: Set<String>): Boolean {
+        // Keep ALL additional (custom) subtypes. They may not be present in system locales.
+        if (isAdditionalSubtype(subtype)) return true
+
+        // For system subtypes (from method.xml), keep only if locale (or language root) is still in system.
         val subtypeLocale = subtype.locale ?: ""
-        
-        // For additional subtypes (custom input styles)
-        if (isAdditionalSubtype(subtype)) {
-            // Keep if locale is still in system (it was auto-added for a system locale)
-            // OR if locale matches a system language code (partial match)
-            return currentSystemLocales.contains(subtypeLocale) || 
-                   systemLanguageCodes.contains(subtypeLocale.split("_").first().lowercase())
-        } else {
-            // For system subtypes (from method.xml), check if locale is still in system
-            val languageCode = subtypeLocale.split("_").first().lowercase()
-            return currentSystemLocales.contains(subtypeLocale) || 
-                   systemLanguageCodes.contains(languageCode)
-        }
+        val languageCode = subtypeLocale.split("_").first().lowercase()
+        return currentSystemLocales.contains(subtypeLocale) || systemLanguageCodes.contains(languageCode)
     }
     
     /**
      * Automatically adds system locales without dictionary to custom input styles.
      * This ensures that new system languages are immediately usable even if they don't have a dictionary.
+     * 
+     * NOTE: This function does NOT remove locales - that should be done separately via
+     * removeSystemLocalesWithoutDictionary() only when system configuration changes.
      */
     fun autoAddSystemLocalesWithoutDictionary(context: Context) {
         try {
-            // First, remove locales that are no longer in system
-            removeSystemLocalesWithoutDictionary(context)
-            
             val systemLocales = getSystemEnabledLocales(context)
             val localesWithDict = getLocalesWithDictionary(context)
             val baseSubtypesInMethodXml = setOf("en_US", "it_IT", "fr_FR", "de_DE", "pl_PL", "es_ES", "pt_PT", "ru_RU")
@@ -440,6 +433,10 @@ object AdditionalSubtypeUtils {
             
             // Save updated styles
             SettingsManager.setCustomInputStyles(context, updatedStyles)
+            // Track auto-added locales for future cleanup
+            val tracked = loadAutoAddedLocales(context).toMutableSet()
+            tracked.addAll(localesToAdd)
+            saveAutoAddedLocales(context, tracked)
             Log.d(TAG, "Auto-added ${localesToAdd.size} system locales without dictionary to custom input styles")
         } catch (e: Exception) {
             Log.e(TAG, "Error auto-adding system locales without dictionary", e)

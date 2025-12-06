@@ -229,6 +229,48 @@ fun AutoCorrectionCategoryScreen(
                             }
                         }
 
+                        // Custom Input Styles (Lingue e mappe)
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(64.dp)
+                                .clickable { navigateTo(AutoCorrectionDestination.CustomInputStyles) }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Language,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = stringResource(R.string.custom_input_styles_title),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.custom_input_styles_description),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1
+                                    )
+                                }
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
                         // Experimental suggestions master toggle
                         Surface(
                                 modifier = Modifier
@@ -501,6 +543,13 @@ fun AutoCorrectionCategoryScreen(
                     onBack = { navigateBack() }
                 )
             }
+
+            AutoCorrectionDestination.CustomInputStyles -> {
+                CustomInputStylesScreen(
+                    modifier = modifier,
+                    onBack = { navigateBack() }
+                )
+            }
         }
     }
 }
@@ -510,6 +559,7 @@ private sealed class AutoCorrectionDestination {
     object Settings : AutoCorrectionDestination()
     data class Edit(val languageCode: String) : AutoCorrectionDestination()
     object UserDictionary : AutoCorrectionDestination()
+    object CustomInputStyles : AutoCorrectionDestination()
 }
 
 private enum class UserDictSource { DEFAULT, USER }

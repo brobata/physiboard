@@ -26,6 +26,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBars
@@ -70,6 +72,9 @@ fun CustomInputStylesScreen(
     var editStyle by remember { mutableStateOf<CustomInputStyle?>(null) }
     var showLayoutSettingsForLocale by remember { mutableStateOf<String?>(null) }
     var wasDialogOpenBeforeLayoutSettings by remember { mutableStateOf(false) }
+    // Preserve dialog selections across layout screen
+    var lastDialogLocale by remember { mutableStateOf<String?>(null) }
+    var lastDialogLayout by remember { mutableStateOf<String?>(null) }
     
     // Snackbar host state
     val snackbarHostState = remember { SnackbarHostState() }
@@ -194,6 +199,9 @@ fun CustomInputStylesScreen(
                         inputStyles = loadCustomInputStyles(context)
                     }
                 }
+                // Preserve selection to prefill dialog on return
+                lastDialogLocale = locale
+                lastDialogLayout = layout
             }
         )
         return
@@ -202,15 +210,20 @@ fun CustomInputStylesScreen(
     // Add dialog
     if (showAddDialog) {
         AddCustomInputStyleDialog(
-            initialLocale = editStyle?.locale,
-            initialLayout = editStyle?.layout,
+            initialLocale = lastDialogLocale ?: editStyle?.locale,
+            initialLayout = lastDialogLayout ?: editStyle?.layout,
             isSystemLocale = editStyle?.isSystemLocale ?: false,
             onDismiss = {
                 showAddDialog = false
                 editStyle = null
+                lastDialogLocale = null
+                lastDialogLayout = null
             },
             onOpenLayoutSettings = { locale ->
-                wasDialogOpenBeforeLayoutSettings = showAddDialog
+                // Preserve current selections before opening layout picker
+                lastDialogLocale = locale
+                lastDialogLayout = lastDialogLayout ?: AdditionalSubtypeUtils.getLayoutForLocale(context.assets, locale, context)
+                wasDialogOpenBeforeLayoutSettings = true
                 showLayoutSettingsForLocale = locale
                 showAddDialog = false
             },
@@ -240,6 +253,8 @@ fun CustomInputStylesScreen(
                         inputStyles = loadCustomInputStyles(context)
                         showAddDialog = false
                         editStyle = null
+                        lastDialogLocale = null
+                        lastDialogLayout = null
                         val msg = if (targetOld != null) {
                             "Input style updated: ${getLocaleDisplayName(locale)} - $layout"
                         } else {
@@ -614,7 +629,12 @@ private fun AddCustomInputStyleDialog(
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
+                        singleLine = true,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                            capitalization = KeyboardCapitalization.None,
+                            autoCorrect = false,
+                            keyboardType = KeyboardType.Uri
+                        )
                     )
                 }
             },

@@ -1,6 +1,8 @@
 package it.palsoftware.pastiera
 
 import android.content.Context
+import android.app.Activity
+import android.content.Intent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -23,6 +25,8 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import it.palsoftware.pastiera.data.layout.LayoutFileStore
 import it.palsoftware.pastiera.data.layout.LayoutMappingRepository
 import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils
@@ -32,6 +36,7 @@ import java.util.Locale
 import android.content.res.AssetManager
 import org.json.JSONObject
 import java.io.InputStream
+import java.nio.charset.StandardCharsets
 
 /**
  * Settings screen for keyboard layout selection for a specific locale.
@@ -69,6 +74,51 @@ fun KeyboardLayoutSettingsScreen(
     val coroutineScope = rememberCoroutineScope()
     var previewLayout by remember { mutableStateOf<String?>(null) }
     var layoutToDelete by remember { mutableStateOf<String?>(null) }
+
+    // Launcher per importare layout JSON via SAF
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val uri = result.data?.data
+            if (uri != null) {
+                try {
+                    val jsonString = context.contentResolver.openInputStream(uri)?.use { input ->
+                        input.bufferedReader(Charsets.UTF_8).readText()
+                    }
+                    if (!jsonString.isNullOrBlank()) {
+                        val layoutName = runCatching {
+                            val obj = JSONObject(jsonString)
+                            obj.optString("name").takeIf { it.isNotBlank() }
+                        }.getOrNull() ?: "imported_${System.currentTimeMillis()}"
+                        
+                        val saved = LayoutFileStore.saveLayoutFromJson(context, layoutName, jsonString)
+                        if (saved) {
+                            refreshTrigger++            // ricarica lista layout
+                            selectedLayout = layoutName // seleziona l'importato
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar(
+                                    context.getString(R.string.layout_imported_successfully)
+                                )
+                            }
+                        } else {
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar(
+                                    context.getString(R.string.layout_import_failed)
+                                )
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    coroutineScope.launch {
+                        snackbarHostState.showSnackbar(
+                            context.getString(R.string.layout_import_error, e.message ?: "")
+                        )
+                    }
+                }
+            }
+        }
+    }
 
     if (previewLayout != null) {
         KeyboardLayoutViewerScreen(
@@ -110,6 +160,21 @@ fun KeyboardLayoutSettingsScreen(
                             .padding(start = 8.dp)
                             .weight(1f)
                     )
+                    // Import layout (JSON) button
+                    IconButton(
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                                addCategory(Intent.CATEGORY_OPENABLE)
+                                type = "application/json"
+                            }
+                            importLauncher.launch(intent)
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = stringResource(R.string.layout_import_content_description)
+                        )
+                    }
                     // Save button
                     IconButton(
                         onClick = {

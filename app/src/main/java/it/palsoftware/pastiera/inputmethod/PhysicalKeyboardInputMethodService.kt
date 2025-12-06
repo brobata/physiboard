@@ -1635,7 +1635,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // This ensures new system locales are available in IME picker without restarting IME
         Log.d(TAG, "Configuration changed, re-registering subtypes to pick up new system locales")
         Handler(Looper.getMainLooper()).postDelayed({
-            // Auto-add system locales without dictionary first
+            // First, remove system locales without dictionary that are no longer in system
+            // (only when configuration changes, not when manually adding styles)
+            AdditionalSubtypeUtils.removeSystemLocalesWithoutDictionary(this)
+            // Then, auto-add new system locales without dictionary
             AdditionalSubtypeUtils.autoAddSystemLocalesWithoutDictionary(this)
             registerAdditionalSubtypes()
         }, 500) // Small delay to ensure system has processed locale changes
