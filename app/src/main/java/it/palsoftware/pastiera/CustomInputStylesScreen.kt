@@ -30,8 +30,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.activity.compose.BackHandler
 import it.palsoftware.pastiera.data.layout.LayoutMappingRepository
 import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils
+import it.palsoftware.pastiera.SettingsManager
 import it.palsoftware.pastiera.R
 import java.util.Locale
 import android.content.res.AssetManager
@@ -67,36 +69,53 @@ fun CustomInputStylesScreen(
     var deleteConfirmStyle by remember { mutableStateOf<CustomInputStyle?>(null) }
     var editStyle by remember { mutableStateOf<CustomInputStyle?>(null) }
     var showLayoutSettingsForLocale by remember { mutableStateOf<String?>(null) }
+    var wasDialogOpenBeforeLayoutSettings by remember { mutableStateOf(false) }
     
     // Snackbar host state
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     
+    // Handle system back button
+    BackHandler { onBack() }
+    
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.custom_input_styles_title)) },
-                navigationIcon = {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.statusBars),
+                tonalElevation = 1.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.back)
+                            contentDescription = stringResource(R.string.settings_back_content_description)
                         )
                     }
-                },
-                windowInsets = WindowInsets.statusBars
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showAddDialog = true },
-                modifier = Modifier.padding(16.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = stringResource(R.string.custom_input_styles_add)
-                )
+                    Text(
+                        text = stringResource(R.string.custom_input_styles_title),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier
+                            .padding(start = 8.dp)
+                            .weight(1f)
+                    )
+                    IconButton(
+                        onClick = { showAddDialog = true }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = stringResource(R.string.custom_input_styles_add)
+                        )
+                    }
+                }
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -105,26 +124,7 @@ fun CustomInputStylesScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .windowInsetsPadding(WindowInsets.statusBars)
         ) {
-            // Open IME Settings button (to enable keyboard)
-            OutlinedButton(
-                onClick = {
-                    openImePicker(context)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Keyboard,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(stringResource(R.string.custom_input_styles_open_ime_picker))
-            }
-            
             // List of custom input styles
             if (inputStyles.isEmpty()) {
                 Box(
@@ -176,14 +176,21 @@ fun CustomInputStylesScreen(
                 showLayoutSettingsForLocale = null
                 // Reload input styles to reflect any layout changes
                 inputStyles = loadCustomInputStyles(context)
+                // Reopen the dialog if it was open before opening layout settings
+                if (wasDialogOpenBeforeLayoutSettings) {
+                    showAddDialog = true
+                    wasDialogOpenBeforeLayoutSettings = false
+                }
             },
             onLayoutSelected = { locale, layout ->
                 // Update locale-layout mapping in JSON
                 updateLocaleLayoutMapping(context, locale, layout)
-                // If editing, also update the custom input style
+                // If editing, also update the custom input style and editStyle state
                 editStyle?.let { oldStyle ->
                     if (oldStyle.locale == locale) {
                         updateCustomInputStyle(context, oldStyle, locale, layout)
+                        // Update editStyle to reflect the new layout
+                        editStyle = oldStyle.copy(layout = layout)
                         inputStyles = loadCustomInputStyles(context)
                     }
                 }
@@ -203,6 +210,7 @@ fun CustomInputStylesScreen(
                 editStyle = null
             },
             onOpenLayoutSettings = { locale ->
+                wasDialogOpenBeforeLayoutSettings = showAddDialog
                 showLayoutSettingsForLocale = locale
                 showAddDialog = false
             },
@@ -262,6 +270,8 @@ fun CustomInputStylesScreen(
                         removeCustomInputStyle(context, style.locale, style.layout)
                         inputStyles = loadCustomInputStyles(context)
                         deleteConfirmStyle = null
+                        // Immediately re-register subtypes to remove deleted one from Android
+                        AdditionalSubtypeUtils.registerAdditionalSubtypes(context)
                         coroutineScope.launch {
                             snackbarHostState.showSnackbar("Input style deleted")
                         }
@@ -379,7 +389,17 @@ private fun AddCustomInputStyleDialog(
     
     // Get available locales based on dictionary availability
     val availableLocales = remember {
-        getLocalesWithDictionary(context).sorted()
+        val allLocales = getLocalesWithDictionary(context).sorted()
+        val systemLocales = getSystemEnabledLocales(context)
+        // Extract language codes (first part before underscore) from system locales
+        val systemLanguageCodes = systemLocales.map { locale ->
+            locale.split("_").first().lowercase()
+        }.toSet()
+        // Exclude locales that match system locales exactly or have the same language root
+        allLocales.filterNot { locale ->
+            systemLocales.contains(locale) || 
+            systemLanguageCodes.contains(locale.split("_").first().lowercase())
+        }
     }
     
     AlertDialog(
@@ -871,23 +891,6 @@ private fun getLocaleVariantsForLanguage(langCode: String): List<String> {
 }
 
 /**
- * Opens the system IME picker (selector) to choose input method.
- */
-private fun openImePicker(context: Context) {
-    try {
-        val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-        imm.showInputMethodPicker()
-    } catch (e: Exception) {
-        android.util.Log.e("CustomInputStyles", "Error opening IME picker", e)
-        android.widget.Toast.makeText(
-            context,
-            "Error opening input method picker",
-            android.widget.Toast.LENGTH_SHORT
-        ).show()
-    }
-}
-
-/**
  * Validates a locale code format.
  * Accepts formats like "en", "en_US", "en-US", etc.
  */
@@ -942,6 +945,7 @@ private fun hasDictionaryForLocale(context: Context, locale: String): Boolean {
 /**
  * Updates the locale-layout mapping in the JSON file.
  * Reads from assets first, then merges with custom file, and saves to custom file.
+ * If the locale being updated is currently active in the IME, immediately applies the layout change.
  */
 private fun updateLocaleLayoutMapping(context: Context, locale: String, layout: String) {
     try {
@@ -975,6 +979,21 @@ private fun updateLocaleLayoutMapping(context: Context, locale: String, layout: 
         customMappingFile.writeText(json.toString(2))
         
         android.util.Log.d("CustomInputStyles", "Updated locale-layout mapping: $locale -> $layout")
+        
+        // Check if the locale being updated is currently active in the IME
+        try {
+            val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+            val currentSubtype = imm?.currentInputMethodSubtype
+            val currentLocale = currentSubtype?.locale
+            
+            if (currentLocale == locale) {
+                // The locale being updated is currently active, immediately apply the layout change
+                android.util.Log.d("CustomInputStyles", "Locale $locale is currently active, applying layout change immediately")
+                SettingsManager.setKeyboardLayout(context, layout)
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("CustomInputStyles", "Error checking current IME locale", e)
+        }
     } catch (e: Exception) {
         android.util.Log.e("CustomInputStyles", "Error updating locale-layout mapping", e)
     }

@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.SharedPreferences
+import android.content.res.Configuration
 import it.palsoftware.pastiera.SettingsManager
 import android.inputmethodservice.InputMethodService
 import android.os.Build
@@ -1317,37 +1318,46 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                         }
                         
                         if (updatedInfo != null) {
-                            // Get all subtypes from InputMethodInfo (including the newly added ones)
+                            // Get all subtypes from InputMethodInfo (including base from method.xml and additional)
                             val allSubtypes = mutableListOf<android.view.inputmethod.InputMethodSubtype>()
                             for (i in 0 until updatedInfo.subtypeCount) {
                                 allSubtypes.add(updatedInfo.getSubtypeAt(i))
                             }
                             
-                            // Get currently enabled subtypes (include implicit ones from method.xml)
-                            val currentlyEnabled = imm.getEnabledInputMethodSubtypeList(updatedInfo, true)
-                            val enabledHashCodes = currentlyEnabled.map { it.hashCode() }.toMutableSet()
+                            // Get current system locales to filter out removed ones
+                            val currentSystemLocales = getSystemEnabledLocales()
+                            val systemLanguageCodes = currentSystemLocales.map { locale ->
+                                locale.split("_").first().lowercase()
+                            }.toSet()
                             
-                            // Add hash codes of additional subtypes to enabled set
-                            subtypes.forEach { additionalSubtype ->
-                                // Find matching subtype in allSubtypes by locale and extraValue
-                                val matchingSubtype = allSubtypes.firstOrNull { subtype ->
-                                    subtype.locale == additionalSubtype.locale &&
-                                    AdditionalSubtypeUtils.isAdditionalSubtype(subtype)
-                                }
-                                if (matchingSubtype != null) {
-                                    enabledHashCodes.add(matchingSubtype.hashCode())
-                                    Log.d(TAG, "Adding subtype to enabled list: locale=${matchingSubtype.locale}, hashCode=${matchingSubtype.hashCode()}")
+                            // Filter ALL subtypes (base + additional) to keep only those with valid system locales
+                            val validSubtypes = allSubtypes.filter { subtype ->
+                                val subtypeLocale = subtype.locale ?: ""
+                                // Keep if it's an additional subtype (custom input style)
+                                if (AdditionalSubtypeUtils.isAdditionalSubtype(subtype)) {
+                                    true // Keep all additional subtypes
+                                } else {
+                                    // For system subtypes (from method.xml), check if locale is still in system
+                                    val localeStr = subtypeLocale
+                                    val languageCode = localeStr.split("_").first().lowercase()
+                                    // Keep if locale matches exactly or language code is in system
+                                    currentSystemLocales.contains(localeStr) || 
+                                    systemLanguageCodes.contains(languageCode)
                                 }
                             }
                             
-                            // Enable all subtypes (original + additional)
-                            if (enabledHashCodes.isNotEmpty()) {
-                                imm.setExplicitlyEnabledInputMethodSubtypes(
-                                    updatedInfo.id,
-                                    enabledHashCodes.toIntArray()
-                                )
-                                Log.d(TAG, "Explicitly enabled ${enabledHashCodes.size} subtypes (${subtypes.size} additional)")
-                            }
+                            // Convert to hash codes for setExplicitlyEnabledInputMethodSubtypes
+                            val validEnabledHashCodes = validSubtypes.map { it.hashCode() }.toIntArray()
+                            
+                            // Always update enabled subtypes, even if empty (to disable removed ones)
+                            imm.setExplicitlyEnabledInputMethodSubtypes(
+                                updatedInfo.id,
+                                validEnabledHashCodes
+                            )
+                            val removedBase = allSubtypes.count { !AdditionalSubtypeUtils.isAdditionalSubtype(it) } - 
+                                             validSubtypes.count { !AdditionalSubtypeUtils.isAdditionalSubtype(it) }
+                            val removedAdditional = subtypes.size - validSubtypes.count { AdditionalSubtypeUtils.isAdditionalSubtype(it) }
+                            Log.d(TAG, "Updated enabled subtypes: ${validEnabledHashCodes.size} valid (removed ${removedBase} base, ${removedAdditional} additional)")
                         }
                     } catch (e: Exception) {
                         Log.w(TAG, "Could not explicitly enable subtypes", e)
@@ -1355,6 +1365,58 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                     }
                 }, 500) // Wait 500ms for system to process registration
             } else {
+                // Even when there are no additional subtypes, we should still filter enabled subtypes
+                // to remove base subtypes corresponding to removed system locales
+                if (inputMethodInfo != null) {
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        try {
+                            val updatedInfo = imm.getInputMethodList().firstOrNull { 
+                                it.packageName == packageName && 
+                                it.serviceName == PhysicalKeyboardInputMethodService::class.java.name
+                            }
+                            
+                            if (updatedInfo != null) {
+                                // Get all subtypes from InputMethodInfo (base subtypes from method.xml)
+                                val allSubtypes = mutableListOf<android.view.inputmethod.InputMethodSubtype>()
+                                for (i in 0 until updatedInfo.subtypeCount) {
+                                    allSubtypes.add(updatedInfo.getSubtypeAt(i))
+                                }
+                                
+                                val currentSystemLocales = getSystemEnabledLocales()
+                                val systemLanguageCodes = currentSystemLocales.map { locale ->
+                                    locale.split("_").first().lowercase()
+                                }.toSet()
+                                
+                                // Filter to keep only subtypes with valid system locales
+                                val validSubtypes = allSubtypes.filter { subtype ->
+                                    val subtypeLocale = subtype.locale ?: ""
+                                    // Keep additional subtypes (shouldn't be any, but just in case)
+                                    if (AdditionalSubtypeUtils.isAdditionalSubtype(subtype)) {
+                                        true
+                                    } else {
+                                        // For system subtypes, check if locale is still in system
+                                        val localeStr = subtypeLocale
+                                        val languageCode = localeStr.split("_").first().lowercase()
+                                        currentSystemLocales.contains(localeStr) || 
+                                        systemLanguageCodes.contains(languageCode)
+                                    }
+                                }
+                                
+                                val validEnabledHashCodes = validSubtypes.map { it.hashCode() }.toIntArray()
+                                
+                                // Always update to disable removed subtypes
+                                imm.setExplicitlyEnabledInputMethodSubtypes(
+                                    updatedInfo.id,
+                                    validEnabledHashCodes
+                                )
+                                Log.d(TAG, "Filtered base subtypes: kept ${validEnabledHashCodes.size}, removed ${allSubtypes.size - validSubtypes.size}")
+                            }
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Could not filter enabled subtypes", e)
+                        }
+                    }, 500)
+                }
+                
                 if (subtypes.isEmpty()) {
                     Log.d(TAG, "No subtypes to register")
                 } else {
@@ -1476,6 +1538,52 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     }
     
     /**
+     * Gets the list of system-enabled locales.
+     * Returns locales in format "en_US", "it_IT", etc.
+     */
+    private fun getSystemEnabledLocales(): Set<String> {
+        val locales = mutableSetOf<String>()
+        try {
+            val config = resources.configuration
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                // Android N+ (API 24+)
+                val localeList = config.locales
+                for (i in 0 until localeList.size()) {
+                    val locale = localeList[i]
+                    val localeStr = formatLocaleStringForSystem(locale)
+                    if (localeStr.isNotEmpty()) {
+                        locales.add(localeStr)
+                    }
+                }
+            } else {
+                // Pre-Android N
+                @Suppress("DEPRECATION")
+                val locale = config.locale
+                val localeStr = formatLocaleStringForSystem(locale)
+                if (localeStr.isNotEmpty()) {
+                    locales.add(localeStr)
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Error getting system locales", e)
+        }
+        return locales
+    }
+    
+    /**
+     * Formats a Locale object to "en_US" format.
+     */
+    private fun formatLocaleStringForSystem(locale: Locale): String {
+        val language = locale.language
+        val country = locale.country
+        return if (country.isNotEmpty()) {
+            "${language}_$country"
+        } else {
+            language
+        }
+    }
+    
+    /**
      * Gets the locale from the current IME subtype.
      * Falls back to Italian if no subtype is available.
      */
@@ -1539,6 +1647,17 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         multiTapController.finalizeCycle()
         resetModifierStates(preserveNavMode = true)
         suggestionController.onContextReset()
+    }
+    
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        
+        // Re-register subtypes when configuration changes (including when new system locales are added)
+        // This ensures new system locales are available in IME picker without restarting IME
+        Log.d(TAG, "Configuration changed, re-registering subtypes to pick up new system locales")
+        Handler(Looper.getMainLooper()).postDelayed({
+            registerAdditionalSubtypes()
+        }, 500) // Small delay to ensure system has processed locale changes
     }
     
     /**

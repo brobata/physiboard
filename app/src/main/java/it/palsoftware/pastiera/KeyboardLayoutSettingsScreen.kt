@@ -1,10 +1,6 @@
 package it.palsoftware.pastiera
 
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -35,13 +31,7 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 import android.content.res.AssetManager
 import org.json.JSONObject
-import java.io.File
 import java.io.InputStream
-
-private data class PendingLayoutSave(
-    val fileName: String,
-    val json: String
-)
 
 /**
  * Settings screen for keyboard layout selection for a specific locale.
@@ -77,84 +67,8 @@ fun KeyboardLayoutSettingsScreen(
     // Snackbar host state for showing messages
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
-    var pendingLayoutSave by remember { mutableStateOf<PendingLayoutSave?>(null) }
     var previewLayout by remember { mutableStateOf<String?>(null) }
     var layoutToDelete by remember { mutableStateOf<String?>(null) }
-    
-    // File picker launcher for importing layouts
-    val filePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri ->
-        uri?.let {
-            try {
-                context.contentResolver.openInputStream(it)?.use { inputStream ->
-                    // Read JSON as string
-                    val jsonString = inputStream.bufferedReader().use { it.readText() }
-                    
-                    // Validate JSON by creating a temp file and loading it
-                    val tempFile = File.createTempFile("temp_validate", ".json", context.cacheDir)
-                    try {
-                        tempFile.writeText(jsonString)
-                        val layout = LayoutFileStore.loadLayoutFromFile(tempFile)
-                        
-                        if (layout != null) {
-                            // Generate a unique name based on timestamp
-                            val layoutName = "custom_${System.currentTimeMillis()}"
-                            val layoutFile = LayoutFileStore.getLayoutFile(context, layoutName)
-                            
-                            // Copy the validated JSON directly to the layouts directory
-                            layoutFile.writeText(jsonString)
-                            
-                            refreshTrigger++
-                            coroutineScope.launch {
-                                snackbarHostState.showSnackbar(context.getString(R.string.layout_imported_successfully))
-                            }
-                        } else {
-                            coroutineScope.launch {
-                                snackbarHostState.showSnackbar(context.getString(R.string.layout_invalid_file))
-                            }
-                        }
-                    } finally {
-                        tempFile.delete()
-                    }
-                }
-            } catch (e: Exception) {
-                coroutineScope.launch {
-                    snackbarHostState.showSnackbar(context.getString(R.string.layout_import_error, e.message ?: ""))
-                }
-            }
-        }
-    }
-    
-    val createDocumentLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("application/json")
-    ) { uri ->
-        val pending = pendingLayoutSave
-        pendingLayoutSave = null
-        if (pending == null) {
-            return@rememberLauncherForActivityResult
-        }
-
-        if (uri == null) {
-            coroutineScope.launch {
-                snackbarHostState.showSnackbar(context.getString(R.string.layout_save_canceled))
-            }
-            return@rememberLauncherForActivityResult
-        }
-
-        try {
-            context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-                outputStream.write(pending.json.toByteArray())
-            }
-            coroutineScope.launch {
-                snackbarHostState.showSnackbar(context.getString(R.string.layout_saved_successfully))
-            }
-        } catch (e: Exception) {
-            coroutineScope.launch {
-                snackbarHostState.showSnackbar(context.getString(R.string.layout_save_error, e.message ?: ""))
-            }
-        }
-    }
 
     if (previewLayout != null) {
         KeyboardLayoutViewerScreen(
@@ -199,50 +113,14 @@ fun KeyboardLayoutSettingsScreen(
                     // Save button
                     IconButton(
                         onClick = {
-                            val currentLayout = LayoutMappingRepository.getLayout()
-                            if (currentLayout.isNotEmpty()) {
-                                val metadata = LayoutFileStore.getLayoutMetadataFromAssets(
-                                    context.assets,
-                                    selectedLayout
-                                ) ?: LayoutFileStore.getLayoutMetadata(context, selectedLayout)
-
-                                val displayName = metadata?.name ?: selectedLayout
-                                val description = metadata?.description
-
-                                val jsonString = LayoutFileStore.buildLayoutJsonString(
-                                    layoutName = selectedLayout,
-                                    layout = currentLayout,
-                                    name = displayName,
-                                    description = description
-                                )
-
-                                val sanitizedName = displayName
-                                    .lowercase(Locale.ROOT)
-                                    .replace("\\s+".toRegex(), "_")
-                                val suggestedFileName = "${sanitizedName}_${System.currentTimeMillis()}.json"
-
-                                pendingLayoutSave = PendingLayoutSave(
-                                    fileName = suggestedFileName,
-                                    json = jsonString
-                                )
-                                createDocumentLauncher.launch(suggestedFileName)
-                            }
+                            // Save the layout selection and go back
+                            onLayoutSelected(locale, selectedLayout)
+                            onBack()
                         }
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Save,
                             contentDescription = stringResource(R.string.layout_save_content_description)
-                        )
-                    }
-                    // Import button
-                    IconButton(
-                        onClick = {
-                            filePickerLauncher.launch("application/json")
-                        }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Add,
-                            contentDescription = stringResource(R.string.layout_import_content_description)
                         )
                     }
                 }
@@ -263,47 +141,6 @@ fun KeyboardLayoutSettingsScreen(
                     .padding(paddingValues)
                     .verticalScroll(rememberScrollState())
             ) {
-                // Keyboard Layout Editor Link
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(64.dp)
-                        .clickable {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://pastierakeyedit.vercel.app/"))
-                            context.startActivity(intent)
-                        }
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Language,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = stringResource(R.string.keyboard_layout_editor_title),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Medium,
-                                maxLines = 1
-                            )
-                        }
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(8.dp))
                 
                 // No Conversion (QWERTY - default, passes keycodes as-is)
                 Surface(
@@ -312,7 +149,6 @@ fun KeyboardLayoutSettingsScreen(
                         .height(72.dp)
                         .clickable {
                             selectedLayout = "qwerty"
-                            onLayoutSelected(locale, "qwerty")
                         }
                 ) {
                     Row(
@@ -359,7 +195,6 @@ fun KeyboardLayoutSettingsScreen(
                             selected = selectedLayout == "qwerty",
                             onClick = {
                                 selectedLayout = "qwerty"
-                                onLayoutSelected(locale, "qwerty")
                             }
                         )
                         }
@@ -437,7 +272,6 @@ fun KeyboardLayoutSettingsScreen(
                                     selected = selectedLayout == layout,
                                     onClick = {
                                         selectedLayout = layout
-                                        onLayoutSelected(locale, layout)
                                     }
                                 )
                             }

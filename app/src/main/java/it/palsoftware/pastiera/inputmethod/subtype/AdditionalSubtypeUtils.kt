@@ -350,11 +350,11 @@ object AdditionalSubtypeUtils {
             
             Log.d(TAG, "Created ${subtypes.size} additional subtypes")
             
+            // Always call setAdditionalInputMethodSubtypes, even with empty array to remove old subtypes
+            imm.setAdditionalInputMethodSubtypes(imeId, subtypes)
+            Log.d(TAG, "Successfully called setAdditionalInputMethodSubtypes with ${subtypes.size} subtypes")
+            
             if (subtypes.isNotEmpty()) {
-                // Register subtypes
-                imm.setAdditionalInputMethodSubtypes(imeId, subtypes)
-                Log.d(TAG, "Successfully called setAdditionalInputMethodSubtypes with ${subtypes.size} subtypes")
-                
                 // Try to explicitly enable the additional subtypes after a delay
                 Handler(Looper.getMainLooper()).postDelayed({
                     try {
@@ -402,7 +402,36 @@ object AdditionalSubtypeUtils {
                     }
                 }, 500) // Wait 500ms for system to process registration
             } else {
-                Log.d(TAG, "No subtypes to register")
+                Log.d(TAG, "No subtypes to register, removed all additional subtypes")
+                // When removing all subtypes, also clean up enabled subtypes list
+                Handler(Looper.getMainLooper()).postDelayed({
+                    try {
+                        val updatedInfo = imm.inputMethodList.firstOrNull { 
+                            it.packageName == context.packageName && 
+                            it.serviceName == PhysicalKeyboardInputMethodService::class.java.name
+                        }
+                        
+                        if (updatedInfo != null) {
+                            // Get currently enabled subtypes (include implicit ones from method.xml)
+                            val currentlyEnabled = imm.getEnabledInputMethodSubtypeList(updatedInfo, true)
+                            // Filter out additional subtypes (keep only system subtypes)
+                            val systemSubtypes = currentlyEnabled.filterNot { subtype ->
+                                isAdditionalSubtype(subtype)
+                            }
+                            
+                            if (systemSubtypes.isNotEmpty()) {
+                                val systemHashCodes = systemSubtypes.map { it.hashCode() }.toIntArray()
+                                imm.setExplicitlyEnabledInputMethodSubtypes(
+                                    updatedInfo.id,
+                                    systemHashCodes
+                                )
+                                Log.d(TAG, "Cleaned up enabled subtypes, kept ${systemHashCodes.size} system subtypes")
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Could not clean up enabled subtypes", e)
+                    }
+                }, 500) // Wait 500ms for system to process removal
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error registering additional subtypes", e)
