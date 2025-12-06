@@ -188,8 +188,10 @@ fun CustomInputStylesScreen(
                 }
             },
             onLayoutSelected = { locale, layout ->
-                // Update locale-layout mapping in JSON
-                updateLocaleLayoutMapping(context, locale, layout)
+                // Update locale-layout mapping in JSON only when editing a system locale
+                if (editStyle?.isSystemLocale == true) {
+                    updateLocaleLayoutMapping(context, locale, layout)
+                }
                 // If editing, also update the custom input style and editStyle state
                 editStyle?.let { oldStyle ->
                     if (oldStyle.locale == locale) {
@@ -243,6 +245,19 @@ fun CustomInputStylesScreen(
                     }
                 } else {
                     // For custom styles, update preferences
+                    // Guard: prevent duplicate locale+layout (including system entries)
+                    val isDuplicateCombo = inputStyles.any { existing ->
+                        existing.locale == locale && existing.layout == layout &&
+                                // allow same entry when editing without changes
+                                (targetOld == null || existing.locale != targetOld.locale || existing.layout != targetOld.layout)
+                    }
+                    if (isDuplicateCombo) {
+                        coroutineScope.launch {
+                            snackbarHostState.showSnackbar(duplicateErrorMsg)
+                        }
+                        return@AddCustomInputStyleDialog
+                    }
+
                     val success = if (targetOld != null) {
                         updateCustomInputStyle(context, targetOld, locale, layout)
                     } else {
@@ -402,19 +417,9 @@ private fun AddCustomInputStyleDialog(
         }
     }
     
-    // Get available locales based on dictionary availability
+    // Get available locales based on dictionary availability (no filtering of system locales)
     val availableLocales = remember {
-        val allLocales = getLocalesWithDictionary(context).sorted()
-        val systemLocales = getSystemEnabledLocales(context)
-        // Extract language codes (first part before underscore) from system locales
-        val systemLanguageCodes = systemLocales.map { locale ->
-            locale.split("_").first().lowercase()
-        }.toSet()
-        // Exclude locales that match system locales exactly or have the same language root
-        allLocales.filterNot { locale ->
-            systemLocales.contains(locale) || 
-            systemLanguageCodes.contains(locale.split("_").first().lowercase())
-        }
+        getLocalesWithDictionary(context).sorted()
     }
     
     AlertDialog(
@@ -697,16 +702,23 @@ private fun loadCustomInputStyles(context: Context): List<CustomInputStyle> {
             if (parts.size >= 2) {
                 val locale = parts[0]
                 val layout = parts[1]
-                // Skip if this locale is already in system locales (avoid duplicates)
-                if (!systemLocales.contains(locale)) {
-                    val displayName = "${getLocaleDisplayName(locale)} - $layout"
-                    styles.add(CustomInputStyle(locale, layout, displayName, isSystemLocale = false))
-                }
+                val displayName = "${getLocaleDisplayName(locale)} - $layout"
+                styles.add(CustomInputStyle(locale, layout, displayName, isSystemLocale = false))
             }
         }
     }
     
-    return styles
+    // De-duplicate exact locale+layout to avoid LazyColumn key collisions
+    val seen = mutableSetOf<String>()
+    val uniqueStyles = mutableListOf<CustomInputStyle>()
+    styles.forEach { style ->
+        val key = "${style.locale}:${style.layout}"
+        if (seen.add(key)) {
+            uniqueStyles.add(style)
+        }
+    }
+    
+    return uniqueStyles
 }
 
 /**
