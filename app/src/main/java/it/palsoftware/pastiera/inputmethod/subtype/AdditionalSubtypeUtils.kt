@@ -2,6 +2,7 @@ package it.palsoftware.pastiera.inputmethod.subtype
 
 import android.content.Context
 import android.content.res.AssetManager
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -308,6 +309,247 @@ object AdditionalSubtypeUtils {
     }
     
     /**
+     * Removes system locales without dictionary from custom input styles when they are removed from system.
+     * This cleans up automatically added subtypes when the system locale is removed.
+     */
+    fun removeSystemLocalesWithoutDictionary(context: Context) {
+        try {
+            val currentSystemLocales = getSystemEnabledLocales(context).toSet()
+            val localesWithDict = getLocalesWithDictionary(context)
+            val baseSubtypesInMethodXml = setOf("en_US", "it_IT", "fr_FR", "de_DE", "pl_PL", "es_ES", "pt_PT", "ru_RU")
+            
+            // Get current custom input styles
+            val currentStyles = SettingsManager.getCustomInputStyles(context)
+            if (currentStyles.isBlank()) {
+                return
+            }
+            
+            // Parse and filter entries
+            val entries = currentStyles.split(";").map { it.trim() }.filter { it.isNotEmpty() }
+            val validEntries = mutableListOf<String>()
+            
+            entries.forEach { entry ->
+                val parts = entry.split(":").map { it.trim() }
+                if (parts.isNotEmpty()) {
+                    val locale = parts[0]
+                    // Keep entry if:
+                    // 1. It's a system locale that still exists in system, OR
+                    // 2. It has a dictionary (manual custom input style), OR
+                    // 3. It's a base subtype from method.xml (shouldn't be here, but keep it just in case)
+                    val shouldKeep = currentSystemLocales.contains(locale) ||
+                                     localesWithDict.contains(locale) ||
+                                     baseSubtypesInMethodXml.contains(locale)
+                    
+                    if (shouldKeep) {
+                        validEntries.add(entry)
+                    } else {
+                        Log.d(TAG, "Removing auto-added system locale without dictionary: $locale")
+                    }
+                } else {
+                    // Keep malformed entries (they will be filtered out later)
+                    validEntries.add(entry)
+                }
+            }
+            
+            // Update styles if changed
+            val updatedStyles = validEntries.joinToString(";")
+            if (updatedStyles != currentStyles) {
+                SettingsManager.setCustomInputStyles(context, updatedStyles)
+                Log.d(TAG, "Removed ${entries.size - validEntries.size} auto-added system locales without dictionary")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error removing system locales without dictionary", e)
+        }
+    }
+    
+    /**
+     * Checks if a subtype should be kept based on current system locales.
+     * Returns true if the subtype should be kept, false if it should be removed.
+     */
+    fun shouldKeepSubtype(subtype: InputMethodSubtype, currentSystemLocales: Set<String>, systemLanguageCodes: Set<String>): Boolean {
+        val subtypeLocale = subtype.locale ?: ""
+        
+        // For additional subtypes (custom input styles)
+        if (isAdditionalSubtype(subtype)) {
+            // Keep if locale is still in system (it was auto-added for a system locale)
+            // OR if locale matches a system language code (partial match)
+            return currentSystemLocales.contains(subtypeLocale) || 
+                   systemLanguageCodes.contains(subtypeLocale.split("_").first().lowercase())
+        } else {
+            // For system subtypes (from method.xml), check if locale is still in system
+            val languageCode = subtypeLocale.split("_").first().lowercase()
+            return currentSystemLocales.contains(subtypeLocale) || 
+                   systemLanguageCodes.contains(languageCode)
+        }
+    }
+    
+    /**
+     * Automatically adds system locales without dictionary to custom input styles.
+     * This ensures that new system languages are immediately usable even if they don't have a dictionary.
+     */
+    fun autoAddSystemLocalesWithoutDictionary(context: Context) {
+        try {
+            // First, remove locales that are no longer in system
+            removeSystemLocalesWithoutDictionary(context)
+            
+            val systemLocales = getSystemEnabledLocales(context)
+            val localesWithDict = getLocalesWithDictionary(context)
+            val baseSubtypesInMethodXml = setOf("en_US", "it_IT", "fr_FR", "de_DE", "pl_PL", "es_ES", "pt_PT", "ru_RU")
+            
+            // Get current custom input styles
+            val currentStyles = SettingsManager.getCustomInputStyles(context)
+            val existingLocales = mutableSetOf<String>()
+            if (currentStyles.isNotBlank()) {
+                currentStyles.split(";").forEach { entry ->
+                    val parts = entry.split(":").map { it.trim() }
+                    if (parts.isNotEmpty()) {
+                        existingLocales.add(parts[0])
+                    }
+                }
+            }
+            
+            // Find system locales that need to be added
+            val localesToAdd = systemLocales.filter { locale ->
+                // Must not have dictionary
+                !localesWithDict.contains(locale) &&
+                // Must not be in method.xml
+                !baseSubtypesInMethodXml.contains(locale) &&
+                // Must not already be in custom input styles
+                !existingLocales.contains(locale)
+            }
+            
+            if (localesToAdd.isEmpty()) {
+                Log.d(TAG, "No system locales without dictionary to add")
+                return
+            }
+            
+            // Add each locale with default layout
+            val newEntries = mutableListOf<String>()
+            localesToAdd.forEach { locale ->
+                val defaultLayout = getLayoutForLocale(context.assets, locale, context)
+                newEntries.add("$locale:$defaultLayout")
+                Log.d(TAG, "Auto-adding system locale without dictionary: $locale with layout $defaultLayout")
+            }
+            
+            // Merge with existing styles
+            val updatedStyles = if (currentStyles.isBlank()) {
+                newEntries.joinToString(";")
+            } else {
+                "$currentStyles;${newEntries.joinToString(";")}"
+            }
+            
+            // Save updated styles
+            SettingsManager.setCustomInputStyles(context, updatedStyles)
+            Log.d(TAG, "Auto-added ${localesToAdd.size} system locales without dictionary to custom input styles")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error auto-adding system locales without dictionary", e)
+        }
+    }
+    
+    /**
+     * Gets the list of system-enabled locales.
+     * Returns locales in format "en_US", "it_IT", etc.
+     */
+    private fun getSystemEnabledLocales(context: Context): List<String> {
+        val locales = mutableListOf<String>()
+        try {
+            val config = context.resources.configuration
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                val localeList = config.locales
+                for (i in 0 until localeList.size()) {
+                    val locale = localeList[i]
+                    val localeStr = formatLocaleStringForSystem(locale)
+                    if (localeStr.isNotEmpty() && !locales.contains(localeStr)) {
+                        locales.add(localeStr)
+                    }
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                val locale = config.locale
+                val localeStr = formatLocaleStringForSystem(locale)
+                if (localeStr.isNotEmpty()) {
+                    locales.add(localeStr)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting system locales", e)
+        }
+        return locales
+    }
+    
+    /**
+     * Formats a Locale object to "en_US" format.
+     */
+    private fun formatLocaleStringForSystem(locale: Locale): String {
+        val language = locale.language
+        val country = locale.country
+        return if (country.isNotEmpty()) {
+            "${language}_$country"
+        } else {
+            language
+        }
+    }
+    
+    /**
+     * Gets the list of locales that have dictionaries available.
+     * Checks both serialized (.dict) and JSON (.json) formats.
+     */
+    private fun getLocalesWithDictionary(context: Context): Set<String> {
+        val localesWithDict = mutableSetOf<String>()
+        try {
+            val assets = context.assets
+            
+            // Check serialized dictionaries
+            try {
+                val serializedFiles = assets.list("common/dictionaries_serialized")
+                serializedFiles?.forEach { fileName ->
+                    if (fileName.endsWith("_base.dict")) {
+                        val langCode = fileName.removeSuffix("_base.dict")
+                        localesWithDict.addAll(getLocaleVariantsForLanguage(langCode))
+                    }
+                }
+            } catch (e: Exception) {
+                // If serialized directory doesn't exist, try JSON
+            }
+            
+            // Check JSON dictionaries
+            try {
+                val jsonFiles = assets.list("common/dictionaries")
+                jsonFiles?.forEach { fileName ->
+                    if (fileName.endsWith("_base.json") && fileName != "user_defaults.json") {
+                        val langCode = fileName.removeSuffix("_base.json")
+                        localesWithDict.addAll(getLocaleVariantsForLanguage(langCode))
+                    }
+                }
+            } catch (e: Exception) {
+                // If dictionaries directory doesn't exist, continue
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking dictionaries", e)
+        }
+        return localesWithDict
+    }
+    
+    /**
+     * Maps a language code (e.g., "en", "it") to common locale variants.
+     */
+    private fun getLocaleVariantsForLanguage(langCode: String): List<String> {
+        // Common locale variants for each language
+        val variants = when (langCode.lowercase()) {
+            "en" -> listOf("en_US", "en_GB", "en_AU", "en_CA", "en")
+            "it" -> listOf("it_IT", "it_CH", "it")
+            "fr" -> listOf("fr_FR", "fr_CA", "fr_CH", "fr_BE", "fr")
+            "de" -> listOf("de_DE", "de_AT", "de_CH", "de")
+            "pl" -> listOf("pl_PL", "pl")
+            "es" -> listOf("es_ES", "es_MX", "es_AR", "es")
+            "pt" -> listOf("pt_PT", "pt_BR", "pt")
+            "ru" -> listOf("ru_RU", "ru")
+            else -> listOf(langCode)
+        }
+        return variants
+    }
+    
+    /**
      * Registers additional subtypes (custom input styles) with the system.
      * Can be called from MainActivity or from the IME service.
      * 
@@ -315,6 +557,9 @@ object AdditionalSubtypeUtils {
      */
     fun registerAdditionalSubtypes(context: Context) {
         try {
+            // Auto-add system locales without dictionary first
+            autoAddSystemLocalesWithoutDictionary(context)
+            
             val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
                 ?: run {
                     Log.e(TAG, "InputMethodManager not available")

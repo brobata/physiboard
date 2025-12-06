@@ -1332,18 +1332,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                             
                             // Filter ALL subtypes (base + additional) to keep only those with valid system locales
                             val validSubtypes = allSubtypes.filter { subtype ->
-                                val subtypeLocale = subtype.locale ?: ""
-                                // Keep if it's an additional subtype (custom input style)
-                                if (AdditionalSubtypeUtils.isAdditionalSubtype(subtype)) {
-                                    true // Keep all additional subtypes
-                                } else {
-                                    // For system subtypes (from method.xml), check if locale is still in system
-                                    val localeStr = subtypeLocale
-                                    val languageCode = localeStr.split("_").first().lowercase()
-                                    // Keep if locale matches exactly or language code is in system
-                                    currentSystemLocales.contains(localeStr) || 
-                                    systemLanguageCodes.contains(languageCode)
-                                }
+                                AdditionalSubtypeUtils.shouldKeepSubtype(subtype, currentSystemLocales, systemLanguageCodes)
                             }
                             
                             // Convert to hash codes for setExplicitlyEnabledInputMethodSubtypes
@@ -1389,17 +1378,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                                 
                                 // Filter to keep only subtypes with valid system locales
                                 val validSubtypes = allSubtypes.filter { subtype ->
-                                    val subtypeLocale = subtype.locale ?: ""
-                                    // Keep additional subtypes (shouldn't be any, but just in case)
-                                    if (AdditionalSubtypeUtils.isAdditionalSubtype(subtype)) {
-                                        true
-                                    } else {
-                                        // For system subtypes, check if locale is still in system
-                                        val localeStr = subtypeLocale
-                                        val languageCode = localeStr.split("_").first().lowercase()
-                                        currentSystemLocales.contains(localeStr) || 
-                                        systemLanguageCodes.contains(languageCode)
-                                    }
+                                    AdditionalSubtypeUtils.shouldKeepSubtype(subtype, currentSystemLocales, systemLanguageCodes)
                                 }
                                 
                                 val validEnabledHashCodes = validSubtypes.map { it.hashCode() }.toIntArray()
@@ -1656,6 +1635,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // This ensures new system locales are available in IME picker without restarting IME
         Log.d(TAG, "Configuration changed, re-registering subtypes to pick up new system locales")
         Handler(Looper.getMainLooper()).postDelayed({
+            // Auto-add system locales without dictionary first
+            AdditionalSubtypeUtils.autoAddSystemLocalesWithoutDictionary(this)
             registerAdditionalSubtypes()
         }, 500) // Small delay to ensure system has processed locale changes
     }
