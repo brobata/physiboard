@@ -725,8 +725,28 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // Variations are updated automatically by updateStatusBarText().
         altSymManager.onAltCharInserted = { char ->
             updateStatusBarText()
-            if (char in ".,;:!?()[]{}\"'") {
-                val ic = currentInputConnection
+            val ic = currentInputConnection
+            val punctuationSet = ".,;:!?()[]{}\"'"
+            // Treat apostrophe after a word character as part of the word (no boundary/reset).
+            if (char == '\'' && ic != null) {
+                val before = ic.getTextBeforeCursor(2, 0)?.toString().orEmpty()
+                val prevChar = before.dropLast(1).lastOrNull()
+                val isWordApostrophe = prevChar?.isLetterOrDigit() == true
+                if (isWordApostrophe) {
+                    suggestionController?.onCharacterCommitted("'", ic)
+                } else if (char in punctuationSet) {
+                    val isAutoCorrectEnabled = SettingsManager.getAutoCorrectEnabled(this) && !inputContextState.shouldDisableAutoCorrect
+                    autoCorrectionManager.handleBoundaryKey(
+                        keyCode = KeyEvent.KEYCODE_UNKNOWN,
+                        event = null,
+                        inputConnection = ic,
+                        isAutoCorrectEnabled = isAutoCorrectEnabled,
+                        commitBoundary = true,
+                        onStatusBarUpdate = { updateStatusBarText() },
+                        boundaryCharOverride = char
+                    )
+                }
+            } else if (char in punctuationSet) {
                 val isAutoCorrectEnabled = SettingsManager.getAutoCorrectEnabled(this) && !inputContextState.shouldDisableAutoCorrect
                 autoCorrectionManager.handleBoundaryKey(
                     keyCode = KeyEvent.KEYCODE_UNKNOWN,
@@ -1000,9 +1020,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
 
     /**
      * Computes the insets for the IME window.
-     * This increases the "content" area to include the candidate view area,
-     * allowing the application to shift upwards properly without the candidates view
-     * covering system UI.
+     * This is critical for candidates view to receive touch events properly.
+     * Setting contentTopInsets = visibleTopInsets ensures touch events reach the candidates view.
      */
     override fun onComputeInsets(outInsets: InputMethodService.Insets?) {
         super.onComputeInsets(outInsets)
@@ -1010,6 +1029,16 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         if (outInsets != null && !isFullscreenMode()) {
             outInsets.contentTopInsets = outInsets.visibleTopInsets
         }
+    }
+
+    /**
+     * Evaluates whether the IME should run in fullscreen mode.
+     * This is important for candidates view to receive touch events properly.
+     */
+    override fun onEvaluateFullscreenMode(): Boolean {
+        // Return false to allow candidates view to receive touch events
+        // Fullscreen mode can sometimes limit touch event handling
+        return false
     }
 
     /**

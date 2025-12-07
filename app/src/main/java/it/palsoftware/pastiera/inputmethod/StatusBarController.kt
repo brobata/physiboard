@@ -31,6 +31,9 @@ import it.palsoftware.pastiera.inputmethod.ui.LedStatusView
 import it.palsoftware.pastiera.inputmethod.ui.VariationBarView
 import it.palsoftware.pastiera.inputmethod.suggestions.ui.FullSuggestionsBar
 import android.content.res.AssetManager
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 
 /**
  * Manages the status bar shown by the IME, handling view creation
@@ -154,10 +157,11 @@ class StatusBarController(
     private var wasSymActive: Boolean = false
     private var symShown: Boolean = false
     private val ledStatusView = LedStatusView(context)
-    private val variationBarView: VariationBarView? = if (mode == Mode.FULL) VariationBarView(context) else null
+    private val variationBarView: VariationBarView? = if (mode == Mode.FULL) VariationBarView(context, assets, imeServiceClass) else null
     private var variationsWrapper: View? = null
     private var forceMinimalUi: Boolean = false
     private var fullSuggestionsBar: FullSuggestionsBar? = null
+    private var baseBottomPadding: Int = 0
 
     fun setForceMinimalUi(force: Boolean) {
         if (mode != Mode.FULL) {
@@ -183,6 +187,18 @@ class StatusBarController(
                     ViewGroup.LayoutParams.WRAP_CONTENT
                 )
                 setBackgroundColor(DEFAULT_BACKGROUND)
+            }
+            statusBarLayout?.let { layout ->
+                baseBottomPadding = layout.paddingBottom
+                ViewCompat.setOnApplyWindowInsetsListener(layout) { view, insets ->
+                    val navAndGestures = insets.getInsetsIgnoringVisibility(
+                        WindowInsetsCompat.Type.navigationBars() or WindowInsetsCompat.Type.systemGestures()
+                    )
+                    val cutout = insets.getInsets(WindowInsetsCompat.Type.displayCutout())
+                    val bottomInset = max(navAndGestures.bottom, cutout.bottom)
+                    view.updatePadding(bottom = baseBottomPadding + bottomInset)
+                    insets
+                }
             }
 
             // Container for modifier indicators (horizontal, left-aligned).
@@ -258,6 +274,7 @@ class StatusBarController(
                 addView(emojiKeyboardContainer) // Griglia emoji prima dei LED
                 addView(ledStrip) // LED sempre in fondo
             }
+            statusBarLayout?.let { ViewCompat.requestApplyInsets(it) }
         } else if (emojiMapText.isNotEmpty()) {
             emojiMapTextView?.text = emojiMapText
         }
@@ -960,7 +977,8 @@ class StatusBarController(
         val variationsWrapperView = if (!forceMinimalUi) variationsWrapper else null
         val experimentalEnabled = SettingsManager.isExperimentalSuggestionsEnabled(context)
         val suggestionsEnabledSetting = SettingsManager.getSuggestionsEnabled(context)
-        val showFullBar = !forceMinimalUi &&
+        // Show full suggestions bar in CANDIDATES_ONLY mode or when not in minimal UI mode
+        val showFullBar = (mode == Mode.CANDIDATES_ONLY || !forceMinimalUi) &&
             experimentalEnabled &&
             suggestionsEnabledSetting &&
             !snapshot.shouldDisableSuggestions &&
@@ -1052,5 +1070,4 @@ class StatusBarController(
         view.measure(widthSpec, heightSpec)
         return view.measuredHeight
     }
-
 }

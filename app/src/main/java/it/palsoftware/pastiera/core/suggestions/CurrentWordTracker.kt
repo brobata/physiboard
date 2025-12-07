@@ -31,7 +31,9 @@ class CurrentWordTracker(
     fun onCharacterCommitted(text: CharSequence) {
         if (text.isEmpty()) return
         text.forEach { char ->
-            if (char.isLetterOrDigit()) {
+            val isWordChar = char.isLetterOrDigit() ||
+                (char == '\'' && current.isNotEmpty() && current.last().isLetterOrDigit())
+            if (isWordChar) {
                 if (current.length < maxLength) {
                     current.append(char)
                     if (debugLogging) Log.d(tag, "currentWord='$current'")

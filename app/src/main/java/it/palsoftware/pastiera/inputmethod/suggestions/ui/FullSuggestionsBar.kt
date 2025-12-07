@@ -33,6 +33,11 @@ class FullSuggestionsBar(private val context: Context) {
     private var lastSlots: List<String?> = emptyList()
     private var assets: AssetManager? = null
     private var imeServiceClass: Class<*>? = null
+    private var showLanguageButton: Boolean = false // Control visibility of language button
+    private val targetHeightPx: Int by lazy {
+        // Base era circa 55dp: la riduciamo del ~20% per comprimere la barra
+        (dpToPx(55f) * 0.8f).toInt()
+    }
 
     /**
      * Sets the assets and IME service class needed for subtype cycling.
@@ -48,9 +53,10 @@ class FullSuggestionsBar(private val context: Context) {
             frameContainer = FrameLayout(context).apply {
                 layoutParams = ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
+                    targetHeightPx
                 )
                 visibility = View.GONE
+                minimumHeight = targetHeightPx
             }
             
             // Create the suggestions container
@@ -59,9 +65,10 @@ class FullSuggestionsBar(private val context: Context) {
                 gravity = Gravity.CENTER
                 layoutParams = FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
+                    targetHeightPx
                 )
                 visibility = View.GONE
+                minimumHeight = targetHeightPx
             }
             
             // Create language button positioned absolutely on the right
@@ -69,9 +76,12 @@ class FullSuggestionsBar(private val context: Context) {
                 text = getCurrentLanguageCode()
                 gravity = Gravity.CENTER
                 textSize = 12f
+                includeFontPadding = false
+                minHeight = 0
+                maxLines = 1
                 setTextColor(Color.WHITE)
                 setTypeface(null, android.graphics.Typeface.BOLD)
-                setPadding(dpToPx(8f), dpToPx(4f), dpToPx(8f), dpToPx(4f))
+                setPadding(dpToPx(8f), dpToPx(2f), dpToPx(8f), dpToPx(2f))
                 background = GradientDrawable().apply {
                     setColor(Color.rgb(50, 50, 50))
                     cornerRadius = dpToPx(4f).toFloat()
@@ -92,6 +102,9 @@ class FullSuggestionsBar(private val context: Context) {
             
             frameContainer?.addView(container)
             frameContainer?.addView(languageButton)
+            // Ensure the outer layout (when attached to parent LinearLayout) keeps the target height
+            frameContainer?.layoutParams = (frameContainer?.layoutParams as? LinearLayout.LayoutParams)
+                ?: LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, targetHeightPx)
         }
         return frameContainer!!
     }
@@ -146,7 +159,8 @@ class FullSuggestionsBar(private val context: Context) {
         }
 
         frame.visibility = View.VISIBLE
-        languageButton?.visibility = View.VISIBLE
+        // Show or hide language button based on showLanguageButton flag
+        languageButton?.visibility = if (showLanguageButton) View.VISIBLE else View.GONE
         // Update language button text in case subtype changed externally
         languageButton?.text = getCurrentLanguageCode()
 
@@ -172,11 +186,28 @@ class FullSuggestionsBar(private val context: Context) {
         bar.removeAllViews()
         bar.visibility = View.VISIBLE
 
-        val padV = dpToPx(10f)
+        // Force bar and frame to the target height to avoid fallback to wrap_content.
+        (bar.layoutParams as? FrameLayout.LayoutParams)?.let { lp ->
+            lp.height = targetHeightPx
+            bar.layoutParams = lp
+        } ?: run {
+            bar.layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                targetHeightPx
+            )
+        }
+        (frameContainer?.layoutParams as? ViewGroup.LayoutParams)?.let { lp ->
+            lp.height = targetHeightPx
+            frameContainer?.layoutParams = lp
+        }
+        bar.minimumHeight = targetHeightPx
+        frameContainer?.minimumHeight = targetHeightPx
+
+        val padV = dpToPx(4f) // tighter vertical padding to further reduce height
         val padH = dpToPx(12f)
         val weightLayoutParams = LinearLayout.LayoutParams(
             0,
-            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.MATCH_PARENT,
             1f
         ).apply {
             marginEnd = dpToPx(3f)
@@ -187,7 +218,9 @@ class FullSuggestionsBar(private val context: Context) {
             val button = TextView(context).apply {
                 text = (suggestion ?: "")
                 gravity = Gravity.CENTER
-                textSize = 18f
+                textSize = 15f // reduce text size to align with shorter bar
+                includeFontPadding = false
+                minHeight = 0
                 setTextColor(Color.WHITE)
                 setTypeface(null, android.graphics.Typeface.NORMAL)
                 maxLines = 1
