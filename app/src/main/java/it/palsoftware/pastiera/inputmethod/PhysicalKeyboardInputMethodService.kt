@@ -569,62 +569,23 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
      * Prevents multiple simultaneous switches to avoid dictionary loading conflicts.
      */
     private fun cycleToNextLanguage() {
-        // Prevent multiple simultaneous language switches
         if (isLanguageSwitchInProgress) {
             Log.d(TAG, "Language switch already in progress, ignoring request")
             return
         }
-        
+
         isLanguageSwitchInProgress = true
-        
         try {
-            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
-            val packageName = packageName
-            
-            // Find our IME in the enabled list
-            val imi = imm.enabledInputMethodList.firstOrNull { it.packageName == packageName }
-                ?: run {
-                    Log.w(TAG, "IME not found in enabled list")
-                    isLanguageSwitchInProgress = false
-                    return
-                }
-            
-            // Get enabled subtypes
-            val enabledSubtypes = imm.getEnabledInputMethodSubtypeList(imi, true)
-            if (enabledSubtypes.isEmpty()) {
-                Log.w(TAG, "No enabled subtypes found")
-                isLanguageSwitchInProgress = false
-                return
-            }
-            
-            // Get current subtype from InputMethodManager
-            val currentSubtype = imm.currentInputMethodSubtype
-            val currentIndex = if (currentSubtype != null) {
-                enabledSubtypes.indexOfFirst { subtype ->
-                    subtype.locale == currentSubtype.locale 
-                }.takeIf { it >= 0 } ?: 0
-            } else {
-                0
-            }
-            
-            // Cycle to next subtype
-            val nextIndex = (currentIndex + 1) % enabledSubtypes.size
-            val nextSubtype = enabledSubtypes[nextIndex]
-            
-            // Apply the new subtype
-            val token = window?.window?.attributes?.token
-            if (token != null) {
-                imm.setInputMethodAndSubtype(token, imi.id, nextSubtype)
-                Log.d(TAG, "Switched to language: ${nextSubtype.locale}")
-                
-                // Reset flag after a delay to allow dictionary loading to complete
-                uiHandler.postDelayed({
-                    isLanguageSwitchInProgress = false
-                }, 800) // Delay to allow dictionary loading
-            } else {
-                Log.w(TAG, "Window token is null, cannot switch language")
-                isLanguageSwitchInProgress = false
-            }
+            val switched = SubtypeCycler.cycleToNextSubtype(
+                context = this,
+                imeServiceClass = PhysicalKeyboardInputMethodService::class.java,
+                assets = assets,
+                showToast = true // show toast "LANGUAGE - LAYOUT"
+            )
+
+            // Reset flag; keep a short delay when a switch happened to avoid rapid repeats
+            val delayMs = if (switched) 800L else 0L
+            uiHandler.postDelayed({ isLanguageSwitchInProgress = false }, delayMs)
         } catch (e: Exception) {
             Log.e(TAG, "Error cycling language", e)
             isLanguageSwitchInProgress = false

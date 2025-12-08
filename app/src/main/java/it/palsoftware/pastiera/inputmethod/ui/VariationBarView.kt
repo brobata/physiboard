@@ -36,7 +36,6 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 import android.content.res.AssetManager
-import android.view.inputmethod.InputMethodManager
 import it.palsoftware.pastiera.inputmethod.SubtypeCycler
 
 /**
@@ -511,19 +510,6 @@ class VariationBarView(
         microphoneButton.alpha = 1f
         microphoneButton.visibility = View.VISIBLE
 
-        val settingsButton = settingsButtonView ?: createStatusBarSettingsButton(baseButtonWidth)
-        settingsButtonView = settingsButton
-        (settingsButton.parent as? ViewGroup)?.removeView(settingsButton)
-        val settingsParams = LinearLayout.LayoutParams(baseButtonWidth, baseButtonWidth).apply {
-            topMargin = (-baseButtonWidth * 0.1f).toInt()
-        }
-        buttonsContainerView.addView(settingsButton, settingsParams)
-        settingsButton.setOnClickListener {
-            openSettings()
-        }
-        settingsButton.alpha = 1f
-        settingsButton.visibility = View.VISIBLE
-
         // Language switch button (language code)
         val languageButton = languageButtonView ?: createLanguageButton(baseButtonWidth)
         languageButtonView = languageButton
@@ -560,6 +546,10 @@ class VariationBarView(
                 languageButton.alpha = 1f
                 updateLanguageButtonText(languageButton)
             }, 300)
+        }
+        languageButton.setOnLongClickListener {
+            openSettings()
+            true
         }
         languageButton.alpha = 1f
         languageButton.visibility = View.VISIBLE
@@ -1141,20 +1131,30 @@ class VariationBarView(
     }
 
     private fun createLanguageButton(buttonSize: Int): TextView {
-        val dp6 = TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP,
-            6f,
-            context.resources.displayMetrics
-        ).toInt()
+        val normalDrawable = GradientDrawable().apply {
+            setColor(Color.rgb(17, 17, 17))
+            cornerRadius = 0f
+        }
+        val pressedDrawable = GradientDrawable().apply {
+            setColor(PRESSED_BLUE)
+            cornerRadius = 0f
+        }
+        val stateList = android.graphics.drawable.StateListDrawable().apply {
+            addState(intArrayOf(android.R.attr.state_pressed), pressedDrawable)
+            addState(intArrayOf(), normalDrawable)
+        }
+
         return TextView(context).apply {
             textSize = 12f
-            setTextColor(Color.rgb(100, 100, 100))
+            setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
-            background = null
+            background = stateList
             isClickable = true
             isFocusable = true
-            setPadding(dp6, dp6, dp6, dp6)
+            includeFontPadding = false
+            setPadding(0, 0, 0, 0)
             layoutParams = LinearLayout.LayoutParams(buttonSize, buttonSize)
+            applyLanguageSettingsIcon(this)
         }
     }
 
@@ -1173,6 +1173,7 @@ class VariationBarView(
                 "??"
             }
             button.text = languageCode
+            applyLanguageSettingsIcon(button)
         } catch (e: Exception) {
             Log.e(TAG, "Error updating language button text", e)
             button.text = "??"
@@ -1261,5 +1262,25 @@ class VariationBarView(
         languageButtonView?.let { button ->
             updateLanguageButtonText(button)
         }
+    }
+
+    private fun applyLanguageSettingsIcon(button: TextView) {
+        val gearSize = dpToPx(6f) // 50% smaller
+        val gearDrawable = ContextCompat.getDrawable(context, R.drawable.ic_settings_24)?.mutate()
+        gearDrawable?.setBounds(0, 0, gearSize, gearSize)
+        gearDrawable?.setTint(Color.rgb(150, 150, 150))
+        button.setCompoundDrawablesWithIntrinsicBounds(null, null, gearDrawable, null)
+        button.compoundDrawablePadding = dpToPx(2f)
+        // Slight inset so the icon sits toward bottom-right visually
+        val inset = dpToPx(2f)
+        button.setPadding(button.paddingLeft, button.paddingTop, inset, inset)
+    }
+
+    private fun dpToPx(dp: Float): Int {
+        return TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            dp,
+            context.resources.displayMetrics
+        ).toInt()
     }
 }

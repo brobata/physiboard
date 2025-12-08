@@ -95,6 +95,29 @@ object SettingsManager {
     fun getPreferences(context: Context): SharedPreferences {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
+
+    /**
+     * Returns the additional IME subtypes saved in preferences.
+     */
+    fun getAdditionalImeSubtypes(context: Context): Set<String> {
+        return getPreferences(context)
+            .getStringSet(KEY_ADDITIONAL_IME_SUBTYPES, emptySet())
+            ?: emptySet()
+    }
+
+    /**
+     * Persists the additional IME subtypes collection into preferences.
+     */
+    fun setAdditionalImeSubtypes(context: Context, subtypes: Collection<String>) {
+        val normalized = subtypes
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .toSet()
+
+        getPreferences(context).edit()
+            .putStringSet(KEY_ADDITIONAL_IME_SUBTYPES, normalized)
+            .apply()
+    }
     
     /**
      * Returns the long-press threshold in milliseconds.

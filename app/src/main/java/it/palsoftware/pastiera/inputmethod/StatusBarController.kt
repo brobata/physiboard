@@ -1328,7 +1328,6 @@ class StatusBarController(
         view.measure(widthSpec, heightSpec)
         return view.measuredHeight
     }
-<<<<<<< HEAD
 
     private fun dpToPx(dp: Float): Int {
         return TypedValue.applyDimension(
@@ -1337,7 +1336,4 @@ class StatusBarController(
             context.resources.displayMetrics
         ).toInt()
     }
-
-=======
->>>>>>> upstream/main
 }

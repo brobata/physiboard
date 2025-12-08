@@ -1,6 +1,7 @@
 package it.palsoftware.pastiera.inputmethod.suggestions.ui
 
 import android.content.Context
+import android.content.Intent
 import android.content.res.AssetManager
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
@@ -13,6 +14,7 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import it.palsoftware.pastiera.SettingsActivity
 import it.palsoftware.pastiera.inputmethod.suggestions.SuggestionButtonHandler
 import it.palsoftware.pastiera.inputmethod.VariationButtonHandler
 import it.palsoftware.pastiera.inputmethod.SubtypeCycler
@@ -98,6 +100,10 @@ class FullSuggestionsBar(private val context: Context) {
                 setOnClickListener {
                     cycleToNextSubtype()
                 }
+                setOnLongClickListener {
+                    openSettings()
+                    true
+                }
             }
             
             frameContainer?.addView(container)
@@ -172,6 +178,17 @@ class FullSuggestionsBar(private val context: Context) {
 
         renderSlots(bar, slots, inputConnection, listener, shouldDisableSuggestions, addWordCandidate, onAddUserWord)
         lastSlots = slots
+    }
+
+    private fun openSettings() {
+        try {
+            val intent = Intent(context, SettingsActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+        } catch (_: Exception) {
+            // Ignore failures to avoid crashing the suggestions bar
+        }
     }
 
     private fun renderSlots(
