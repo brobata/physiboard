@@ -6,9 +6,14 @@ import android.animation.ValueAnimator
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
-import android.view.inputmethod.InputMethodManager
+import android.graphics.DashPathEffect
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.TextPaint
+import android.text.style.UnderlineSpan
+import android.view.inputmethod.InputMethodManager
 import androidx.core.content.ContextCompat
 import android.os.Handler
 import android.os.Looper
@@ -520,7 +525,7 @@ class VariationBarView(
             context.resources.displayMetrics
         ).toInt()
         val languageParams = LinearLayout.LayoutParams(baseButtonWidth, baseButtonWidth).apply {
-            topMargin = (-baseButtonWidth * 0.1f).toInt()
+            topMargin = 0
             marginStart = languageMarginStart
         }
         buttonsContainerView.addView(languageButton, languageParams)
@@ -1145,16 +1150,18 @@ class VariationBarView(
         }
 
         return TextView(context).apply {
-            textSize = 12f
+            textSize = 14f
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
+            textAlignment = View.TEXT_ALIGNMENT_CENTER
             background = stateList
             isClickable = true
             isFocusable = true
             includeFontPadding = false
+            minHeight = buttonSize
+            maxHeight = buttonSize
             setPadding(0, 0, 0, 0)
             layoutParams = LinearLayout.LayoutParams(buttonSize, buttonSize)
-            applyLanguageSettingsIcon(this)
         }
     }
 
@@ -1173,10 +1180,10 @@ class VariationBarView(
                 "??"
             }
             button.text = languageCode
-            applyLanguageSettingsIcon(button)
+            applyLanguageLongPressHint(button, languageCode)
         } catch (e: Exception) {
             Log.e(TAG, "Error updating language button text", e)
-            button.text = "??"
+            applyLanguageLongPressHint(button, "??")
         }
     }
 
@@ -1264,16 +1271,39 @@ class VariationBarView(
         }
     }
 
-    private fun applyLanguageSettingsIcon(button: TextView) {
-        val gearSize = dpToPx(6f) // 50% smaller
-        val gearDrawable = ContextCompat.getDrawable(context, R.drawable.ic_settings_24)?.mutate()
-        gearDrawable?.setBounds(0, 0, gearSize, gearSize)
-        gearDrawable?.setTint(Color.rgb(150, 150, 150))
-        button.setCompoundDrawablesWithIntrinsicBounds(null, null, gearDrawable, null)
-        button.compoundDrawablePadding = dpToPx(2f)
-        // Slight inset so the icon sits toward bottom-right visually
-        val inset = dpToPx(2f)
-        button.setPadding(button.paddingLeft, button.paddingTop, inset, inset)
+    private fun applyLanguageLongPressHint(button: TextView, languageCode: String) {
+        // Clear any icons so the label stays perfectly centered.
+        button.setCompoundDrawables(null, null, null, null)
+        button.compoundDrawablePadding = 0
+        button.gravity = Gravity.CENTER
+        button.textAlignment = View.TEXT_ALIGNMENT_CENTER
+        button.setPadding(0, 0, 0, 0)
+
+        val paintCopy = TextPaint(button.paint).apply {
+            textSize = button.textSize
+        }
+        val textWidth = paintCopy.measureText(languageCode).coerceAtLeast(1f)
+        // Target 3 dashes -> 3 dash segments + 2 gaps = 5 units.
+        val dashLength = max(dpToPx(2f).toFloat(), textWidth / 5f)
+        val gapLength = dashLength
+        val dashEffect = DashPathEffect(floatArrayOf(dashLength, gapLength), 0f)
+
+        val dottedText = SpannableString(languageCode).apply {
+            setSpan(
+                object : UnderlineSpan() {
+                    override fun updateDrawState(tp: TextPaint) {
+                        super.updateDrawState(tp)
+                        tp.isUnderlineText = true
+                        // Use a dashed underline to hint the long-press action.
+                        tp.pathEffect = dashEffect
+                    }
+                },
+                0,
+                length,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+        }
+        button.text = dottedText
     }
 
     private fun dpToPx(dp: Float): Int {
