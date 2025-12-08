@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicReference
 import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import it.palsoftware.pastiera.inputmethod.NotificationHelper
 
@@ -21,19 +22,22 @@ class SuggestionController(
     private val isEnabled: () -> Boolean = { true },
     debugLogging: Boolean = false,
     private val onSuggestionsUpdated: (List<SuggestionResult>) -> Unit,
-    private var currentLocale: Locale = Locale.ITALIAN
+    private var currentLocale: Locale = Locale.ITALIAN,
+    private val keyboardLayoutProvider: () -> String = { "qwerty" }
 ) {
 
     private val appContext = context.applicationContext
     private val debugLogging: Boolean = debugLogging
     private val userDictionaryStore = UserDictionaryStore()
     private var dictionaryRepository = DictionaryRepository(appContext, assets, userDictionaryStore, baseLocale = currentLocale, debugLogging = debugLogging)
-    private var suggestionEngine = SuggestionEngine(dictionaryRepository, locale = currentLocale, debugLogging = debugLogging)
+    private var suggestionEngine = SuggestionEngine(dictionaryRepository, locale = currentLocale, debugLogging = debugLogging).apply {
+        setKeyboardLayout(keyboardLayoutProvider())
+    }
     private var tracker = CurrentWordTracker(
         onWordChanged = { word ->
             val settings = settingsProvider()
             if (settings.suggestionsEnabled) {
-                onSuggestionsUpdated(suggestionEngine.suggest(word, settings.maxSuggestions, settings.accentMatching))
+                onSuggestionsUpdated(suggestionEngine.suggest(word, settings.maxSuggestions, settings.accentMatching, settings.useKeyboardProximity, settings.useEditTypeRanking))
             }
         },
         onWordReset = { onSuggestionsUpdated(emptyList()) }
@@ -46,9 +50,15 @@ class SuggestionController(
     fun updateLocale(newLocale: Locale) {
         if (newLocale == currentLocale) return
         
+        // Cancel previous load job if still running to prevent conflicts
+        currentLoadJob?.cancel()
+        currentLoadJob = null
+        
         currentLocale = newLocale
         dictionaryRepository = DictionaryRepository(appContext, assets, userDictionaryStore, baseLocale = currentLocale, debugLogging = debugLogging)
-        suggestionEngine = SuggestionEngine(dictionaryRepository, locale = currentLocale, debugLogging = debugLogging)
+        suggestionEngine = SuggestionEngine(dictionaryRepository, locale = currentLocale, debugLogging = debugLogging).apply {
+            setKeyboardLayout(keyboardLayoutProvider())
+        }
         autoReplaceController = AutoReplaceController(dictionaryRepository, suggestionEngine, settingsProvider)
         
         // Recreate tracker to use new engine (tracker captures suggestionEngine in closure)
@@ -56,14 +66,14 @@ class SuggestionController(
             onWordChanged = { word ->
                 val settings = settingsProvider()
                 if (settings.suggestionsEnabled) {
-                    onSuggestionsUpdated(suggestionEngine.suggest(word, settings.maxSuggestions, settings.accentMatching))
+                    onSuggestionsUpdated(suggestionEngine.suggest(word, settings.maxSuggestions, settings.accentMatching, settings.useKeyboardProximity, settings.useEditTypeRanking))
                 }
             },
             onWordReset = { onSuggestionsUpdated(emptyList()) }
         )
         
         // Reload dictionary in background
-        loadScope.launch {
+        currentLoadJob = loadScope.launch {
             dictionaryRepository.loadIfNeeded()
         }
         
@@ -71,9 +81,18 @@ class SuggestionController(
         tracker.reset()
         suggestionsListener?.invoke(emptyList())
     }
+
+    /**
+     * Updates the keyboard layout for proximity-based ranking.
+     */
+    fun updateKeyboardLayout(layout: String) {
+        suggestionEngine.setKeyboardLayout(layout)
+    }
+
     private val latestSuggestions: AtomicReference<List<SuggestionResult>> = AtomicReference(emptyList())
     // Dedicated IO scope so dictionary preload never blocks the main thread.
     private val loadScope = CoroutineScope(Dispatchers.IO)
+    private var currentLoadJob: Job? = null
     private val cursorHandler = Handler(Looper.getMainLooper())
     private var cursorRunnable: Runnable? = null
     private val cursorDebounceMs = 120L
@@ -108,7 +127,7 @@ class SuggestionController(
     private fun updateSuggestions() {
         val settings = settingsProvider()
         if (settings.suggestionsEnabled) {
-            val next = suggestionEngine.suggest(tracker.currentWord, settings.maxSuggestions, settings.accentMatching)
+            val next = suggestionEngine.suggest(tracker.currentWord, settings.maxSuggestions, settings.accentMatching, settings.useKeyboardProximity, settings.useEditTypeRanking)
             val summary = next.take(3).joinToString { "${it.candidate}:${it.distance}" }
             if (debugLogging) Log.d("PastieraIME", "suggestions (${next.size}): $summary")
             latestSuggestions.set(next)

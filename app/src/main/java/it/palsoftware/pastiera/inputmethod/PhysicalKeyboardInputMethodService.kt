@@ -43,6 +43,8 @@ import it.palsoftware.pastiera.inputmethod.SpeechRecognitionActivity
 import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils
 import java.util.Locale
 import android.view.inputmethod.InputMethodManager
+import android.view.inputmethod.InputMethodSubtype
+import it.palsoftware.pastiera.clipboard.ClipboardHistoryManager
 
 /**
  * Input method service specialized for physical keyboards.
@@ -71,6 +73,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private var permissionResultReceiver: BroadcastReceiver? = null
     // Broadcast receiver for user dictionary updates
     private var userDictionaryReceiver: BroadcastReceiver? = null
+    // Broadcast receiver for additional IME subtypes updates
+    private var additionalSubtypesReceiver: BroadcastReceiver? = null
     private lateinit var candidatesBarController: CandidatesBarController
 
     // Keycode for the SYM key
@@ -172,8 +176,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private lateinit var inputEventRouter: InputEventRouter
     private lateinit var keyboardVisibilityController: KeyboardVisibilityController
     private lateinit var launcherShortcutController: LauncherShortcutController
+    private lateinit var clipboardHistoryManager: ClipboardHistoryManager
     private var latestSuggestions: List<String> = emptyList()
     private var clearAltOnSpaceEnabled: Boolean = false
+    private var isLanguageSwitchInProgress: Boolean = false
     // Stato per ricordare se il nav mode era attivo prima di entrare in un campo di testo
     private var navModeWasActiveBeforeEditableField: Boolean = false
 
@@ -285,7 +291,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             accentMatching = SettingsManager.getAccentMatchingEnabled(this),
             autoReplaceOnSpaceEnter = SettingsManager.getAutoReplaceOnSpaceEnter(this),
             maxAutoReplaceDistance = SettingsManager.getMaxAutoReplaceDistance(this),
-            maxSuggestions = 3
+            maxSuggestions = 3,
+            useKeyboardProximity = SettingsManager.getUseKeyboardProximity(this),
+            useEditTypeRanking = SettingsManager.getUseEditTypeRanking(this)
         )
     }
 
@@ -521,6 +529,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             showLayoutSwitchToast(displayName)
         }
         updateStatusBarText()
+
+        // Update suggestion engine's keyboard layout for proximity-based ranking
+        suggestionController?.updateKeyboardLayout(layoutName)
     }
 
     private fun cycleLayoutFromShortcut() {
@@ -550,6 +561,34 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 android.widget.Toast.LENGTH_SHORT
             )
             layoutSwitchToast?.show()
+        }
+    }
+
+    /**
+     * Cycles to the next enabled input method subtype (language).
+     * Prevents multiple simultaneous switches to avoid dictionary loading conflicts.
+     */
+    private fun cycleToNextLanguage() {
+        if (isLanguageSwitchInProgress) {
+            Log.d(TAG, "Language switch already in progress, ignoring request")
+            return
+        }
+
+        isLanguageSwitchInProgress = true
+        try {
+            val switched = SubtypeCycler.cycleToNextSubtype(
+                context = this,
+                imeServiceClass = PhysicalKeyboardInputMethodService::class.java,
+                assets = assets,
+                showToast = true // show toast "LANGUAGE - LAYOUT"
+            )
+
+            // Reset flag; keep a short delay when a switch happened to avoid rapid repeats
+            val delayMs = if (switched) 800L else 0L
+            uiHandler.postDelayed({ isLanguageSwitchInProgress = false }, delayMs)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error cycling language", e)
+            isLanguageSwitchInProgress = false
         }
     }
     
@@ -685,18 +724,26 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             isEnabled = { SettingsManager.isExperimentalSuggestionsEnabled(this) },
             debugLogging = suggestionDebugLogging,
             onSuggestionsUpdated = { suggestions -> handleSuggestionsUpdated(suggestions) },
-            currentLocale = initialLocale
+            currentLocale = initialLocale,
+            keyboardLayoutProvider = { SettingsManager.getKeyboardLayout(this) }
         )
         inputEventRouter.suggestionController = suggestionController
         
         // Preload dictionary in background so it's ready when user focuses a field
         suggestionController.preloadDictionary()
 
-        candidatesBarController = CandidatesBarController(this, assets, PhysicalKeyboardInputMethodService::class.java)
+        // Initialize clipboard history manager first (needed by candidatesBarController)
+        clipboardHistoryManager = ClipboardHistoryManager(this)
+        clipboardHistoryManager.onCreate()
+
+        candidatesBarController = CandidatesBarController(this, clipboardHistoryManager, assets, PhysicalKeyboardInputMethodService::class.java)
         candidatesBarController.onAddUserWord = { word ->
             suggestionController.addUserWord(word)
             suggestionController.clearPendingAddWord()
             updateStatusBarText()
+        }
+        candidatesBarController.onLanguageSwitchRequested = {
+            cycleToNextLanguage()
         }
 
         // Register listener for variation selection (both controllers)
@@ -713,7 +760,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             updateStatusBarText()
         }
         candidatesBarController.onCursorMovedListener = cursorListener
-        
+
         // Register listener for speech recognition
         candidatesBarController.onSpeechRecognitionRequested = {
             startSpeechRecognition()
@@ -778,7 +825,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             exitNavMode = { navModeController.exitNavMode() },
             enterNavMode = { navModeController.enterNavMode() }
         )
-        
+
         // Initialize keyboard layout
         loadKeyboardLayout()
         
@@ -955,6 +1002,28 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
         
         Log.d(TAG, "Broadcast receiver registered for user dictionary updates")
+        
+        // Register broadcast receiver for additional IME subtypes updates
+        additionalSubtypesReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                if (intent?.action == "it.palsoftware.pastiera.ACTION_ADDITIONAL_SUBTYPES_UPDATED") {
+                    Log.d(TAG, "Additional subtypes updated, refreshing...")
+                    updateAdditionalSubtypes()
+                }
+            }
+        }
+        
+        val subtypesFilter = IntentFilter("it.palsoftware.pastiera.ACTION_ADDITIONAL_SUBTYPES_UPDATED")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(additionalSubtypesReceiver, subtypesFilter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(additionalSubtypesReceiver, subtypesFilter)
+        }
+        
+        Log.d(TAG, "Broadcast receiver registered for additional subtypes updates")
+        
+        // Update additional subtypes on startup
+        updateAdditionalSubtypes()
     }
     
     override fun onDestroy() {
@@ -967,7 +1036,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // Cleanup SpeechRecognitionManager
         speechRecognitionManager?.destroy()
         speechRecognitionManager = null
-        
+
+        // Cleanup ClipboardHistoryManager
+        clipboardHistoryManager.onDestroy()
+
         // Unregister broadcast receiver (deprecated, but kept for backwards compatibility)
         speechResultReceiver?.let {
             try {
@@ -991,6 +1063,14 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 unregisterReceiver(it)
             } catch (e: Exception) {
                 Log.e(TAG, "Error while unregistering user dictionary receiver", e)
+            }
+        }
+        
+        additionalSubtypesReceiver?.let {
+            try {
+                unregisterReceiver(it)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error while unregistering additional subtypes receiver", e)
             }
         }
         speechResultReceiver = null
@@ -2058,4 +2138,89 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         altSymManager.removeAltKeyMapping(keyCode)
     }
     
+    /**
+     * Updates additional IME subtypes from SharedPreferences.
+     * This must be called from within the IME service process.
+     */
+    private fun updateAdditionalSubtypes() {
+        try {
+            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            val packageName = packageName
+            val serviceName = "${packageName}.inputmethod.PhysicalKeyboardInputMethodService"
+            
+            val imeInfo = imm.enabledInputMethodList.find {
+                it.packageName == packageName && 
+                it.serviceName == serviceName
+            } ?: run {
+                Log.w(TAG, "IME not found, cannot update additional subtypes")
+                return
+            }
+            
+            val imeId = imeInfo.id
+            val additionalSubtypes = SettingsManager.getAdditionalImeSubtypes(this)
+            
+            Log.d(TAG, "Updating additional subtypes from IME service: ${additionalSubtypes.joinToString(", ")}")
+            
+            if (additionalSubtypes.isEmpty()) {
+                // Clear additional subtypes
+                imm.setAdditionalInputMethodSubtypes(imeId, emptyArray())
+                Log.d(TAG, "Cleared additional subtypes")
+                return
+            }
+            
+            // Build subtypes
+            val subtypes = additionalSubtypes.map { langCode ->
+                val localeTag = getLocaleTagForLanguage(langCode)
+                val nameResId = getSubtypeNameResourceId(langCode)
+                InputMethodSubtype.InputMethodSubtypeBuilder()
+                    .setSubtypeNameResId(nameResId)
+                    .setSubtypeLocale(localeTag)
+                    .setSubtypeMode("keyboard")
+                    .setSubtypeExtraValue("noSuggestions=true")
+                    .build()
+            }
+            
+            imm.setAdditionalInputMethodSubtypes(imeId, subtypes.toTypedArray())
+            Log.d(TAG, "Updated ${subtypes.size} additional subtypes from IME service")
+            
+            // Verify
+            val verifySubtypes = imm.getEnabledInputMethodSubtypeList(imeInfo, true)
+            Log.d(TAG, "Verification: Android reports ${verifySubtypes.size} enabled subtypes after update")
+            verifySubtypes.forEach { subtype ->
+                val name = try {
+                    if (subtype.nameResId != 0) {
+                        getString(subtype.nameResId)
+                    } else {
+                        "N/A"
+                    }
+                } catch (e: Exception) {
+                    "Error: ${e.message}"
+                }
+                Log.d(TAG, "  - locale: ${subtype.locale}, name: $name")
+            }
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "Error updating additional subtypes from IME service", e)
+        }
+    }
+    
+    private fun getLocaleTagForLanguage(languageCode: String): String {
+        val localeMap = mapOf(
+            "ru" to "ru_RU",
+            "pt" to "pt_PT",
+            "de" to "de_DE",
+            "fr" to "fr_FR",
+            "es" to "es_ES",
+            "pl" to "pl_PL",
+            "it" to "it_IT",
+            "en" to "en_US"
+        )
+        return localeMap[languageCode.lowercase()] ?: languageCode
+    }
+    
+    private fun getSubtypeNameResourceId(languageCode: String): Int {
+        val resourceName = "input_method_name_$languageCode"
+        return resources.getIdentifier(resourceName, "string", packageName)
+            .takeIf { it != 0 } ?: R.string.input_method_name
+    }
 }

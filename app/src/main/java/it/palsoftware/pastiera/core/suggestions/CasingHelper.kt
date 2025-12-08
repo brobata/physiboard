@@ -34,7 +34,9 @@ object CasingHelper {
         // Determina il pattern di capitalizzazione della parola originale
         val firstUpper = original.first().isUpperCase()
         val restLower = original.drop(1).all { it.isLowerCase() }
-        val allUpper = original.all { it.isUpperCase() }
+        val uppercaseLetters = original.count { it.isUpperCase() }
+        // Require at least two uppercase letters to force an all-caps output
+        val allUpper = uppercaseLetters >= 2 && original.all { !it.isLetter() || it.isUpperCase() }
         val allLower = original.all { it.isLowerCase() }
         
         return when {

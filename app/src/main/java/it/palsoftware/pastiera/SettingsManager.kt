@@ -47,7 +47,10 @@ object SettingsManager {
     private const val KEY_SWIPE_INCREMENTAL_THRESHOLD = "swipe_incremental_threshold" // Distance in DIP for cursor movement
     private const val KEY_STATIC_VARIATION_BAR_MODE = "static_variation_bar_mode" // Use static variation bar instead of dynamic cursor-based variations
     private const val KEY_VARIATIONS_UPDATED = "variations_updated" // Trigger for reloading variations in input method service
-    
+    private const val KEY_ADDITIONAL_IME_SUBTYPES = "additional_ime_subtypes" // Comma-separated list of language codes for additional IME subtypes
+    private const val KEY_CLIPBOARD_HISTORY_ENABLED = "clipboard_history_enabled" // Whether clipboard history is enabled
+    private const val KEY_CLIPBOARD_RETENTION_TIME = "clipboard_retention_time" // How long to keep clipboard entries (in minutes)
+
     private const val VARIATIONS_FILE_NAME = "variations.json"
     
     // Default values
@@ -78,12 +81,42 @@ object SettingsManager {
     private const val DEFAULT_SUGGESTION_DEBUG_LOGGING = false
     private const val KEY_EXPERIMENTAL_SUGGESTIONS_ENABLED = "experimental_suggestions_enabled"
     private const val KEY_SUGGESTION_DEBUG_LOGGING = "suggestion_debug_logging"
-    
+    private const val KEY_USE_KEYBOARD_PROXIMITY = "use_keyboard_proximity"
+    private const val KEY_USE_EDIT_TYPE_RANKING = "use_edit_type_ranking"
+
+    private const val DEFAULT_USE_KEYBOARD_PROXIMITY = true
+    private const val DEFAULT_USE_EDIT_TYPE_RANKING = true
+    private const val DEFAULT_CLIPBOARD_HISTORY_ENABLED = true
+    private const val DEFAULT_CLIPBOARD_RETENTION_TIME = 120L // 2 hours in minutes
+
     /**
      * Returns the SharedPreferences instance for Pastiera.
      */
     fun getPreferences(context: Context): SharedPreferences {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    }
+
+    /**
+     * Returns the additional IME subtypes saved in preferences.
+     */
+    fun getAdditionalImeSubtypes(context: Context): Set<String> {
+        return getPreferences(context)
+            .getStringSet(KEY_ADDITIONAL_IME_SUBTYPES, emptySet())
+            ?: emptySet()
+    }
+
+    /**
+     * Persists the additional IME subtypes collection into preferences.
+     */
+    fun setAdditionalImeSubtypes(context: Context, subtypes: Collection<String>) {
+        val normalized = subtypes
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .toSet()
+
+        getPreferences(context).edit()
+            .putStringSet(KEY_ADDITIONAL_IME_SUBTYPES, normalized)
+            .apply()
     }
     
     /**
@@ -594,7 +627,41 @@ object SettingsManager {
             .putInt(KEY_MAX_AUTO_REPLACE_DISTANCE, distance.coerceIn(0, 3))
             .apply()
     }
-    
+
+    /**
+     * Returns whether keyboard proximity ranking is enabled for suggestions.
+     * When enabled, suggestions consider keyboard distance to filter out unlikely typos.
+     */
+    fun getUseKeyboardProximity(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_USE_KEYBOARD_PROXIMITY, DEFAULT_USE_KEYBOARD_PROXIMITY)
+    }
+
+    /**
+     * Enables or disables keyboard proximity ranking for suggestions.
+     */
+    fun setUseKeyboardProximity(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_USE_KEYBOARD_PROXIMITY, enabled)
+            .apply()
+    }
+
+    /**
+     * Returns whether edit type ranking is enabled for suggestions.
+     * When enabled, suggestions are ranked by edit type (insert > substitute > delete).
+     */
+    fun getUseEditTypeRanking(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_USE_EDIT_TYPE_RANKING, DEFAULT_USE_EDIT_TYPE_RANKING)
+    }
+
+    /**
+     * Enables or disables edit type ranking for suggestions.
+     */
+    fun setUseEditTypeRanking(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_USE_EDIT_TYPE_RANKING, enabled)
+            .apply()
+    }
+
     /**
      * Returns the list of languages enabled for auto-correction.
      * @return Set of language codes (e.g. "it", "en")
@@ -1311,6 +1378,7 @@ object SettingsManager {
             SymPagesConfig(
                 emojiEnabled = jsonObject.optBoolean("emojiEnabled", true),
                 symbolsEnabled = jsonObject.optBoolean("symbolsEnabled", true),
+                clipboardEnabled = jsonObject.optBoolean("clipboardEnabled", true),
                 emojiFirst = jsonObject.optBoolean("emojiFirst", true)
             )
         } catch (e: Exception) {
@@ -1327,6 +1395,7 @@ object SettingsManager {
             val jsonObject = JSONObject().apply {
                 put("emojiEnabled", config.emojiEnabled)
                 put("symbolsEnabled", config.symbolsEnabled)
+                put("clipboardEnabled", config.clipboardEnabled)
                 put("emojiFirst", config.emojiFirst)
             }
 
@@ -1425,7 +1494,48 @@ object SettingsManager {
             .putBoolean(KEY_TUTORIAL_COMPLETED, false)
             .apply()
     }
-    
+
+    /**
+     * Returns whether clipboard history is enabled.
+     * @param context The context
+     * @return true if clipboard history is enabled, false otherwise
+     */
+    fun getClipboardHistoryEnabled(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_CLIPBOARD_HISTORY_ENABLED, DEFAULT_CLIPBOARD_HISTORY_ENABLED)
+    }
+
+    /**
+     * Sets whether clipboard history is enabled.
+     * @param context The context
+     * @param enabled Whether to enable clipboard history
+     */
+    fun setClipboardHistoryEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_CLIPBOARD_HISTORY_ENABLED, enabled)
+            .apply()
+    }
+
+    /**
+     * Returns the clipboard retention time in minutes.
+     * Entries older than this will be automatically deleted (unless pinned).
+     * @param context The context
+     * @return Retention time in minutes (e.g. 120 = 2 hours)
+     */
+    fun getClipboardRetentionTime(context: Context): Long {
+        return getPreferences(context).getLong(KEY_CLIPBOARD_RETENTION_TIME, DEFAULT_CLIPBOARD_RETENTION_TIME)
+    }
+
+    /**
+     * Sets the clipboard retention time in minutes.
+     * @param context The context
+     * @param minutes Retention time in minutes (e.g. 120 = 2 hours)
+     */
+    fun setClipboardRetentionTime(context: Context, minutes: Long) {
+        getPreferences(context).edit()
+            .putLong(KEY_CLIPBOARD_RETENTION_TIME, minutes)
+            .apply()
+    }
+
     /**
      * Returns the File for variations.json in filesDir.
      */
@@ -1528,10 +1638,10 @@ object SettingsManager {
             .putLong(KEY_VARIATIONS_UPDATED, System.currentTimeMillis())
             .apply()
     }
-    
+
     // Custom Input Styles (Additional Subtypes)
     private const val KEY_CUSTOM_INPUT_STYLES = "custom_input_styles"
-    
+
     /**
      * Gets the custom input styles preference string.
      * Returns default from predefined_subtypes resource if not set.
@@ -1542,7 +1652,7 @@ object SettingsManager {
         if (custom != null) {
             return custom
         }
-        
+
         // Load default from predefined_subtypes resource
         return try {
             val array = context.resources.getStringArray(R.array.predefined_subtypes)
@@ -1552,7 +1662,7 @@ object SettingsManager {
             ""
         }
     }
-    
+
     /**
      * Sets the custom input styles preference string.
      */

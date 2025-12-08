@@ -11,12 +11,13 @@ import android.view.inputmethod.InputConnection
  */
 class CandidatesBarController(
     context: Context,
+    clipboardHistoryManager: it.palsoftware.pastiera.clipboard.ClipboardHistoryManager? = null,
     assets: AssetManager? = null,
     imeServiceClass: Class<*>? = null
 ) {
 
-    private val inputStatusBar = StatusBarController(context, StatusBarController.Mode.FULL, assets, imeServiceClass)
-    private val candidatesStatusBar = StatusBarController(context, StatusBarController.Mode.CANDIDATES_ONLY, assets, imeServiceClass)
+    private val inputStatusBar = StatusBarController(context, StatusBarController.Mode.FULL, clipboardHistoryManager, assets, imeServiceClass)
+    private val candidatesStatusBar = StatusBarController(context, StatusBarController.Mode.CANDIDATES_ONLY, clipboardHistoryManager, assets, imeServiceClass)
 
     var onVariationSelectedListener: VariationButtonHandler.OnVariationSelectedListener? = null
         set(value) {
@@ -44,6 +45,13 @@ class CandidatesBarController(
             field = value
             inputStatusBar.onAddUserWord = value
             candidatesStatusBar.onAddUserWord = value
+        }
+
+    var onLanguageSwitchRequested: (() -> Unit)? = null
+        set(value) {
+            field = value
+            inputStatusBar.onLanguageSwitchRequested = value
+            candidatesStatusBar.onLanguageSwitchRequested = value
         }
 
     fun getInputView(emojiMapText: String = ""): LinearLayout {
