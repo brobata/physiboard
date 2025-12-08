@@ -294,7 +294,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             accentMatching = SettingsManager.getAccentMatchingEnabled(this),
             autoReplaceOnSpaceEnter = SettingsManager.getAutoReplaceOnSpaceEnter(this),
             maxAutoReplaceDistance = SettingsManager.getMaxAutoReplaceDistance(this),
-            maxSuggestions = 3
+            maxSuggestions = 3,
+            useKeyboardProximity = SettingsManager.getUseKeyboardProximity(this),
+            useEditTypeRanking = SettingsManager.getUseEditTypeRanking(this)
         )
     }
 
@@ -506,6 +508,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             showLayoutSwitchToast(displayName)
         }
         updateStatusBarText()
+
+        // Update suggestion engine's keyboard layout for proximity-based ranking
+        suggestionController?.updateKeyboardLayout(layoutName)
     }
 
     private fun cycleLayoutFromShortcut() {
@@ -768,7 +773,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             isEnabled = { SettingsManager.isExperimentalSuggestionsEnabled(this) },
             debugLogging = suggestionDebugLogging,
             onSuggestionsUpdated = { suggestions -> handleSuggestionsUpdated(suggestions) },
-            currentLocale = initialLocale
+            currentLocale = initialLocale,
+            keyboardLayoutProvider = { SettingsManager.getKeyboardLayout(this) }
         )
         inputEventRouter.suggestionController = suggestionController
         
