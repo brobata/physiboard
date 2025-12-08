@@ -16,6 +16,7 @@ import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.ImageView
 import android.widget.FrameLayout
 import android.widget.LinearLayout
+import android.widget.PopupMenu
 import android.widget.TextView
 import android.util.Log
 import android.util.TypedValue
@@ -420,7 +421,7 @@ class StatusBarController(
         header.addView(clearButton)
         container.addView(header)
 
-        // Create scrollable container for clipboard entries
+        // Create scrollable grid container for clipboard entries
         val scrollView = android.widget.ScrollView(context).apply {
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -428,7 +429,7 @@ class StatusBarController(
             )
         }
 
-        val entriesContainer = LinearLayout(context).apply {
+        val gridContainer = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -436,14 +437,41 @@ class StatusBarController(
             )
         }
 
-        // Add clipboard entries to scrollable container
+        // Add clipboard entries to grid (2 columns)
+        val columnCount = 2
+        var currentRow: LinearLayout? = null
+
         for (i in 0 until count) {
+            if (i % columnCount == 0) {
+                // Create new row
+                currentRow = LinearLayout(context).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    layoutParams = LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                    )
+                }
+                gridContainer.addView(currentRow)
+            }
+
             val entry = clipboardHistoryManager?.getHistoryEntry(i) ?: continue
-            val entryView = createClipboardEntryView(entry, inputConnection)
-            entriesContainer.addView(entryView)
+            val entryView = createClipboardEntryView(entry, inputConnection, isInGrid = true)
+            currentRow?.addView(entryView)
         }
 
-        scrollView.addView(entriesContainer)
+        // Add empty cell if last row has only one item
+        if (count % columnCount == 1 && currentRow != null) {
+            val spacer = View(context).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    0,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    1f
+                )
+            }
+            currentRow.addView(spacer)
+        }
+
+        scrollView.addView(gridContainer)
         container.addView(scrollView)
 
         lastSymPageRendered = 3
@@ -451,85 +479,114 @@ class StatusBarController(
 
     private fun createClipboardEntryView(
         entry: it.palsoftware.pastiera.clipboard.ClipboardHistoryEntry,
-        inputConnection: android.view.inputmethod.InputConnection?
+        inputConnection: android.view.inputmethod.InputConnection?,
+        isInGrid: Boolean = false
     ): View {
-        val marginHorizontal = dpToPx(8f)
+        val marginHorizontal = dpToPx(4f)
         val marginVertical = dpToPx(4f)
-        val paddingHorizontal = dpToPx(16f)
-        val paddingVertical = dpToPx(16f)
+        val paddingHorizontal = dpToPx(12f)
+        val paddingVertical = dpToPx(12f)
+        val fixedHeight = dpToPx(90f)
 
-        val entryContainer = LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
+        // Use FrameLayout so pin can overlay the text without pushing it down
+        val entryContainer = FrameLayout(context).apply {
             background = createRoundedBackground()
             setPadding(paddingHorizontal, paddingVertical, paddingHorizontal, paddingVertical)
             layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
+                if (isInGrid) 0 else ViewGroup.LayoutParams.MATCH_PARENT,
+                fixedHeight,
+                if (isInGrid) 1f else 0f
             ).apply {
                 setMargins(marginHorizontal, marginVertical, marginHorizontal, marginVertical)
             }
-            gravity = Gravity.CENTER_VERTICAL
         }
 
-        // Text content (clickable to paste)
         val textView = TextView(context).apply {
             text = entry.text
-            textSize = 15f
+            textSize = 13f
             setTextColor(Color.WHITE)
-            maxLines = 4
+            maxLines = 5
             ellipsize = android.text.TextUtils.TruncateAt.END
-            isClickable = true
-            isFocusable = true
-            layoutParams = LinearLayout.LayoutParams(
-                0,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                1f
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
             )
-            setOnClickListener {
-                inputConnection?.commitText(entry.text, 1)
-            }
-        }
-
-        // Pin button
-        val buttonSize = dpToPx(40f)
-        val pinButton = TextView(context).apply {
-            text = if (entry.isPinned) "📌" else "📍"
-            textSize = 18f
-            gravity = Gravity.CENTER
-            alpha = if (entry.isPinned) 1.0f else 0.5f
-            isClickable = true
-            isFocusable = true
-            layoutParams = LinearLayout.LayoutParams(buttonSize, buttonSize)
-            setOnClickListener {
-                clipboardHistoryManager?.toggleClipPinned(entry.id)
-                updateClipboardView(inputConnection)
-            }
-        }
-
-        // Delete button (trash icon)
-        val deleteButton = ImageView(context).apply {
-            setImageResource(R.drawable.ic_delete_24)
-            setColorFilter(Color.argb(180, 255, 255, 255))
-            scaleType = ImageView.ScaleType.CENTER
-            isClickable = true
-            isFocusable = true
-            layoutParams = LinearLayout.LayoutParams(buttonSize, buttonSize)
-            setOnClickListener {
-                // Find the index of this entry and delete it
-                val index = (0 until (clipboardHistoryManager?.getHistorySize() ?: 0)).find { idx ->
-                    clipboardHistoryManager?.getHistoryEntry(idx)?.id == entry.id
-                }
-                index?.let {
-                    clipboardHistoryManager?.removeEntry(it)
-                    updateClipboardView(inputConnection)
-                }
-            }
         }
 
         entryContainer.addView(textView)
-        entryContainer.addView(pinButton)
-        entryContainer.addView(deleteButton)
+
+        // Pin indicator at top-right (overlays the text)
+        if (entry.isPinned) {
+            val pinIndicator = TextView(context).apply {
+                text = "📌"
+                textSize = 14f
+                layoutParams = FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    Gravity.TOP or Gravity.END
+                )
+            }
+            entryContainer.addView(pinIndicator)
+        }
+
+        // Set click and long-click on the entire container
+        entryContainer.apply {
+            isClickable = true
+            isFocusable = true
+            isLongClickable = true
+
+            // Click to paste
+            setOnClickListener {
+                inputConnection?.commitText(entry.text, 1)
+            }
+
+            // Long-press to show context menu
+            setOnLongClickListener { view ->
+                showClipboardContextMenu(view, entry, inputConnection)
+                true
+            }
+        }
+
         return entryContainer
+    }
+
+    private fun showClipboardContextMenu(
+        view: View,
+        entry: it.palsoftware.pastiera.clipboard.ClipboardHistoryEntry,
+        inputConnection: android.view.inputmethod.InputConnection?
+    ) {
+        val popup = android.widget.PopupMenu(context, view)
+
+        // Add menu items
+        if (entry.isPinned) {
+            popup.menu.add("Unpin")
+        } else {
+            popup.menu.add("Pin")
+        }
+        popup.menu.add("Delete")
+
+        popup.setOnMenuItemClickListener { item ->
+            when (item.title.toString()) {
+                "Pin", "Unpin" -> {
+                    clipboardHistoryManager?.toggleClipPinned(entry.id)
+                    updateClipboardView(inputConnection)
+                    true
+                }
+                "Delete" -> {
+                    val index = (0 until (clipboardHistoryManager?.getHistorySize() ?: 0)).find { idx ->
+                        clipboardHistoryManager?.getHistoryEntry(idx)?.id == entry.id
+                    }
+                    index?.let {
+                        clipboardHistoryManager?.removeEntry(it)
+                        updateClipboardView(inputConnection)
+                    }
+                    true
+                }
+                else -> false
+            }
+        }
+
+        popup.show()
     }
 
     private fun createRoundedBackground(): android.graphics.drawable.GradientDrawable {
