@@ -471,20 +471,6 @@ class StatusBarController(
             gravity = Gravity.CENTER_VERTICAL
         }
 
-        // Pin icon (only shown if pinned)
-        if (entry.isPinned) {
-            val pinIcon = TextView(context).apply {
-                text = "📌"
-                textSize = 16f
-                setPadding(0, 0, dpToPx(12f), 0)
-                layoutParams = LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                )
-            }
-            entryContainer.addView(pinIcon)
-        }
-
         // Text content (clickable to paste)
         val textView = TextView(context).apply {
             text = entry.text
@@ -504,8 +490,23 @@ class StatusBarController(
             }
         }
 
-        // Delete button (trash icon)
+        // Pin button
         val buttonSize = dpToPx(40f)
+        val pinButton = TextView(context).apply {
+            text = if (entry.isPinned) "📌" else "📍"
+            textSize = 18f
+            gravity = Gravity.CENTER
+            alpha = if (entry.isPinned) 1.0f else 0.5f
+            isClickable = true
+            isFocusable = true
+            layoutParams = LinearLayout.LayoutParams(buttonSize, buttonSize)
+            setOnClickListener {
+                clipboardHistoryManager?.toggleClipPinned(entry.id)
+                updateClipboardView(inputConnection)
+            }
+        }
+
+        // Delete button (trash icon)
         val deleteButton = ImageView(context).apply {
             setImageResource(R.drawable.ic_delete_24)
             setColorFilter(Color.argb(180, 255, 255, 255))
@@ -526,6 +527,7 @@ class StatusBarController(
         }
 
         entryContainer.addView(textView)
+        entryContainer.addView(pinButton)
         entryContainer.addView(deleteButton)
         return entryContainer
     }
