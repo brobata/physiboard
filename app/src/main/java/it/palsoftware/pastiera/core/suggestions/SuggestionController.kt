@@ -104,17 +104,24 @@ class SuggestionController(
         if (!isEnabled()) return
         if (debugLogging) Log.d("PastieraIME", "SuggestionController.onCharacterCommitted('$text')")
         ensureDictionaryLoaded()
+
+        // Normalize curly/variant apostrophes to straight for tracking and suggestions.
+        val normalizedText = text
+            .toString()
+            .replace("’", "'")
+            .replace("‘", "'")
+            .replace("ʼ", "'")
         
         // Clear last replacement if user types new characters
         autoReplaceController.clearLastReplacement()
         
         // Clear rejected words when user types a new letter (allows re-correction)
-        if (text.isNotEmpty() && text.any { it.isLetterOrDigit() }) {
+        if (normalizedText.isNotEmpty() && normalizedText.any { it.isLetterOrDigit() }) {
             autoReplaceController.clearRejectedWords()
             pendingAddUserWord = null
         }
         
-        tracker.onCharacterCommitted(text)
+        tracker.onCharacterCommitted(normalizedText)
         updateSuggestions()
     }
 
@@ -246,7 +253,7 @@ class SuggestionController(
         return try {
             val before = inputConnection.getTextBeforeCursor(12, 0)?.toString() ?: ""
             val after = inputConnection.getTextAfterCursor(12, 0)?.toString() ?: ""
-            val boundary = " \t\n\r.,;:!?()[]{}\"'"
+            val boundary = " \t\n\r" + it.palsoftware.pastiera.core.Punctuation.BOUNDARY
             var start = before.length
             while (start > 0 && !boundary.contains(before[start - 1])) {
                 start--

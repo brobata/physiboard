@@ -773,27 +773,12 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         altSymManager.onAltCharInserted = { char ->
             updateStatusBarText()
             val ic = currentInputConnection
-            val punctuationSet = ".,;:!?()[]{}\"'"
-            // Treat apostrophe after a word character as part of the word (no boundary/reset).
-            if (char == '\'' && ic != null) {
-                val before = ic.getTextBeforeCursor(2, 0)?.toString().orEmpty()
-                val prevChar = before.dropLast(1).lastOrNull()
-                val isWordApostrophe = prevChar?.isLetterOrDigit() == true
-                if (isWordApostrophe) {
-                    suggestionController?.onCharacterCommitted("'", ic)
-                } else if (char in punctuationSet) {
-                    val isAutoCorrectEnabled = SettingsManager.getAutoCorrectEnabled(this) && !inputContextState.shouldDisableAutoCorrect
-                    autoCorrectionManager.handleBoundaryKey(
-                        keyCode = KeyEvent.KEYCODE_UNKNOWN,
-                        event = null,
-                        inputConnection = ic,
-                        isAutoCorrectEnabled = isAutoCorrectEnabled,
-                        commitBoundary = true,
-                        onStatusBarUpdate = { updateStatusBarText() },
-                        boundaryCharOverride = char
-                    )
-                }
-            } else if (char in punctuationSet) {
+            // Apostrophe is never a boundary: use centralized punctuation set.
+            val punctuationSet = it.palsoftware.pastiera.core.Punctuation.BOUNDARY
+            val normalizedChar = it.palsoftware.pastiera.core.Punctuation.normalizeApostrophe(char)
+            if (normalizedChar == '\'') {
+                inputEventRouter.handleInWordApostrophe(ic, pendingApostrophe = false)
+            } else if (normalizedChar in punctuationSet && ic != null) {
                 val isAutoCorrectEnabled = SettingsManager.getAutoCorrectEnabled(this) && !inputContextState.shouldDisableAutoCorrect
                 autoCorrectionManager.handleBoundaryKey(
                     keyCode = KeyEvent.KEYCODE_UNKNOWN,
@@ -802,7 +787,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                     isAutoCorrectEnabled = isAutoCorrectEnabled,
                     commitBoundary = true,
                     onStatusBarUpdate = { updateStatusBarText() },
-                    boundaryCharOverride = char
+                    boundaryCharOverride = normalizedChar
                 )
             }
         }

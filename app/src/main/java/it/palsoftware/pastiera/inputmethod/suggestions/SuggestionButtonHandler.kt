@@ -57,7 +57,7 @@ object SuggestionButtonHandler {
     ): Boolean {
         val before = inputConnection.getTextBeforeCursor(64, 0)?.toString().orEmpty()
         val after = inputConnection.getTextAfterCursor(64, 0)?.toString().orEmpty()
-        val boundaryChars = " \t\n\r.,;:!?()[]{}\"'"
+        val boundaryChars = " \t\n\r" + it.palsoftware.pastiera.core.Punctuation.BOUNDARY
 
         fun isApostropheWithinWord(prev: Char?, next: Char?): Boolean {
             if (prev?.isLetterOrDigit() != true) return false
