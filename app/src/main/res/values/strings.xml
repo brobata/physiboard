@@ -200,7 +200,7 @@
     
     <!-- Keyboard Layout Section -->
     <string name="keyboard_layout_title">Keyboard Layout</string>
-    <string name="keyboard_layout_description">Select your keyboard layout. ALT, SYM and Ctrl mappings remain based on physical key position. Change mapping quickly with CTRL+SPACE.</string>
+    <string name="keyboard_layout_description">Select your keyboard layout. ALT, SYM and Ctrl mappings remain based on physical key position.</string>
     <string name="keyboard_layout_editor_title">Keyboard Layout Editor</string>
     <string name="keyboard_layout_no_conversion">Standard</string>
     <string name="keyboard_layout_no_conversion_description">Standard QWERTY layout (no conversion)</string>
@@ -376,7 +376,7 @@
     <string name="layout_delete_failed">Failed to delete layout</string>
     <string name="layout_view_mapping">View mapping</string>
     <string name="layout_delete">Delete</string>
-    <string name="layout_enable_for_cycling">Enable (Ctrl + Space to switch)</string>
+    <string name="layout_enable_for_cycling">Enable for cycling</string>
     <string name="layout_select_as_active">Select as active layout</string>
     <string name="delete">Delete</string>
     
@@ -445,4 +445,31 @@
     
     <!-- Units -->
     <string name="dip_unit">DIP</string>
+    
+    <!-- Custom Input Styles -->
+    <string name="custom_input_styles_title">Lingue e mappe</string>
+    <string name="custom_input_styles_description">Add additional languages and keyboard layouts that are not tied to system locale</string>
+    <string name="custom_input_styles_add">Add Input Style</string>
+    <string name="custom_input_styles_empty">No custom input styles added yet. Tap the + button to add one.</string>
+    <string name="custom_input_styles_delete">Delete</string>
+    <string name="custom_input_styles_delete_confirm_title">Delete Input Style</string>
+    <string name="custom_input_styles_delete_confirm_message">Are you sure you want to delete this input style?</string>
+    <string name="custom_input_styles_add_dialog_title">Add Input Style</string>
+    <string name="custom_input_styles_edit_dialog_title">Edit Input Style</string>
+    <string name="custom_input_styles_edit_system_locale_title">Edit System Locale Layout</string>
+    <string name="custom_input_styles_select_locale">Select Language</string>
+    <string name="custom_input_styles_select_layout">Select Keyboard Layout</string>
+    <string name="custom_input_styles_save">Save</string>
+    <string name="custom_input_styles_cancel">Cancel</string>
+    <string name="custom_input_styles_duplicate_error">This language and layout combination already exists</string>
+    <string name="custom_input_styles_open_ime_picker">Open IME Picker</string>
+    <string name="custom_input_styles_open_ime_picker_description">Open system input method picker to enable the new language</string>
+    <string name="custom_input_styles_format">%1$s - %2$s</string>
+    <string name="custom_input_styles_add_custom_locale">Add Custom Locale…</string>
+    <string name="custom_input_styles_custom_locale_title">Enter Custom Locale Code</string>
+    <string name="custom_input_styles_custom_locale_label">Locale Code</string>
+    <string name="custom_input_styles_custom_locale_hint">Enter a locale code (e.g., en_US, it_IT, fr_FR)</string>
+    <string name="custom_input_styles_custom_locale_empty_error">Locale code cannot be empty</string>
+    <string name="custom_input_styles_custom_locale_invalid_error">Invalid locale code format. Use format: xx_XX or xx</string>
+    <string name="custom_input_styles_no_dictionary_warning">No dictionary available for this locale. Suggestions and auto-correction will be disabled.</string>
 </resources>

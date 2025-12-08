@@ -35,12 +35,17 @@ import android.graphics.Paint
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
+import android.content.res.AssetManager
+import android.view.inputmethod.InputMethodManager
+import it.palsoftware.pastiera.inputmethod.SubtypeCycler
 
 /**
- * Handles the variations row (suggestions + microphone/settings) rendered above the LED strip.
+ * Handles the variations row (suggestions + microphone/language) rendered above the LED strip.
  */
 class VariationBarView(
-    private val context: Context
+    private val context: Context,
+    private val assets: AssetManager? = null,
+    private val imeServiceClass: Class<*>? = null
 ) {
     companion object {
         private const val TAG = "VariationBarView"
@@ -196,6 +201,9 @@ class VariationBarView(
     private var lastInputConnectionUsed: android.view.inputmethod.InputConnection? = null
     private var lastIsStaticContent: Boolean? = null
     private var pressedView: View? = null
+    private var longPressHandler: Handler? = null
+    private var longPressRunnable: Runnable? = null
+    private var longPressExecuted: Boolean = false
 
     fun ensureView(): FrameLayout {
         if (wrapper != null) {
@@ -210,7 +218,7 @@ class VariationBarView(
         val rightPadding = (leftPadding * 0.31f).toInt()
         val variationsVerticalPadding = TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP,
-            8.8f,
+            8f,
             context.resources.displayMetrics
         ).toInt()
         val variationsContainerHeight = TypedValue.applyDimension(
@@ -300,6 +308,7 @@ class VariationBarView(
         variationButtons.clear()
         removeMicrophoneImmediate()
         removeSettingsImmediate()
+        removeLanguageButtonImmediate()
         hideSwipeIndicator(immediate = true)
         hideSwipeHintImmediate()
         shouldShowSwipeHint = false
@@ -318,6 +327,7 @@ class VariationBarView(
 
         removeMicrophoneImmediate()
         removeSettingsImmediate()
+        removeLanguageButtonImmediate()
         hideSwipeIndicator(immediate = true)
         hideSwipeHintImmediate()
         shouldShowSwipeHint = false
@@ -559,6 +569,8 @@ class VariationBarView(
         } else {
             variationsRow.alpha = 1f
             variationsRow.visibility = View.VISIBLE
+            // Update language button text even when variations haven't changed
+            languageButtonView?.let { updateLanguageButtonText(it) }
         }
     }
 
@@ -586,6 +598,19 @@ class VariationBarView(
                     touchStartY = motionEvent.y
                     lastCursorMoveX = motionEvent.x
                     hideSwipeHintImmediate()
+                    
+                    // Setup long press detection
+                    cancelLongPress()
+                    longPressExecuted = false
+                    if (pressedView != null && pressedView?.isLongClickable == true) {
+                        longPressHandler = Handler(Looper.getMainLooper())
+                        longPressRunnable = Runnable {
+                            longPressExecuted = true
+                            pressedView?.performLongClick()
+                        }
+                        longPressHandler?.postDelayed(longPressRunnable!!, 500) // 500ms for long press
+                    }
+                    
                     Log.d(TAG, "Touch down on overlay at ($touchStartX, $touchStartY)")
                     true
                 }
@@ -594,6 +619,11 @@ class VariationBarView(
                     val deltaY = abs(motionEvent.y - touchStartY)
                     val incrementalDeltaX = motionEvent.x - lastCursorMoveX
                     updateSwipeIndicatorPosition(overlayView, motionEvent.x)
+
+                    // Cancel long press if user moves too much
+                    if (abs(deltaX) > swipeThreshold || deltaY > swipeThreshold) {
+                        cancelLongPress()
+                    }
 
                     if (isSwipeInProgress || (abs(deltaX) > swipeThreshold && abs(deltaX) > deltaY)) {
                         if (!isSwipeInProgress) {
@@ -652,6 +682,8 @@ class VariationBarView(
                     }
                 }
                 MotionEvent.ACTION_UP -> {
+                    val wasLongPress = longPressExecuted
+                    cancelLongPress()
                     pressedView?.isPressed = false
                     val pressedTarget = pressedView
                     pressedView = null
@@ -663,16 +695,20 @@ class VariationBarView(
                         Log.d(TAG, "Swipe ended on overlay")
                         true
                     } else {
-                        val x = motionEvent.x
-                        val y = motionEvent.y
-                        val clickedView = container?.let { findClickableViewAt(it, x, y) }
-                        if (clickedView != null && clickedView == pressedTarget) {
-                            clickedView.performClick()
+                        // Don't execute click if long press was executed
+                        if (!wasLongPress) {
+                            val x = motionEvent.x
+                            val y = motionEvent.y
+                            val clickedView = container?.let { findClickableViewAt(it, x, y) }
+                            if (clickedView != null && clickedView == pressedTarget) {
+                                clickedView.performClick()
+                            }
                         }
                         true
                     }
                 }
                 MotionEvent.ACTION_CANCEL -> {
+                    cancelLongPress()
                     pressedView?.isPressed = false
                     pressedView = null
                     hideSwipeIndicator()
@@ -882,12 +918,29 @@ class VariationBarView(
             Log.e(TAG, "Error opening Settings", e)
         }
     }
+    
+    private fun cancelLongPress() {
+        longPressRunnable?.let { runnable ->
+            longPressHandler?.removeCallbacks(runnable)
+        }
+        longPressHandler = null
+        longPressRunnable = null
+        // Don't reset longPressExecuted here, it needs to persist until ACTION_UP
+    }
 
     private fun removeMicrophoneImmediate() {
         microphoneButtonView?.let { microphone ->
             (microphone.parent as? ViewGroup)?.removeView(microphone)
             microphone.visibility = View.GONE
             microphone.alpha = 1f
+        }
+    }
+
+    private fun removeLanguageButtonImmediate() {
+        languageButtonView?.let { language ->
+            (language.parent as? ViewGroup)?.removeView(language)
+            language.visibility = View.GONE
+            language.alpha = 1f
         }
     }
 

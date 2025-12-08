@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.SharedPreferences
+import android.content.res.Configuration
 import it.palsoftware.pastiera.SettingsManager
 import android.inputmethodservice.InputMethodService
 import android.os.Build
@@ -39,6 +40,7 @@ import it.palsoftware.pastiera.data.layout.LayoutMapping
 import it.palsoftware.pastiera.data.mappings.KeyMappingLoader
 import it.palsoftware.pastiera.data.variation.VariationRepository
 import it.palsoftware.pastiera.inputmethod.SpeechRecognitionActivity
+import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils
 import java.util.Locale
 import android.view.inputmethod.InputMethodManager
 import android.view.inputmethod.InputMethodSubtype
@@ -180,11 +182,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private var isLanguageSwitchInProgress: Boolean = false
     // Stato per ricordare se il nav mode era attivo prima di entrare in un campo di testo
     private var navModeWasActiveBeforeEditableField: Boolean = false
-
-    // Space long-press for layout cycling
-    private val spaceLongPressHandler = Handler(Looper.getMainLooper())
-    private var spaceLongPressRunnable: Runnable? = null
-    private var spaceLongPressTriggered: Boolean = false
 
     private val multiTapHandler = Handler(Looper.getMainLooper())
     private val multiTapController = MultiTapController(
@@ -458,10 +455,34 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     }
     
     /**
-     * Reloads nav mode key mappings from the file.
+     * Loads keyboard layout from the current subtype if available, otherwise from JSON mapping or preferences.
      */
     private fun loadKeyboardLayout() {
-        val layoutName = SettingsManager.getKeyboardLayout(this)
+        val layoutName = try {
+            // First, try to get layout from current subtype
+            val imm = getSystemService(InputMethodManager::class.java)
+            val currentSubtype = imm.currentInputMethodSubtype
+            if (currentSubtype != null) {
+                val layoutFromSubtype = AdditionalSubtypeUtils.getKeyboardLayoutFromSubtype(currentSubtype)
+                if (layoutFromSubtype != null) {
+                    Log.d(TAG, "Loading layout from subtype: $layoutFromSubtype")
+                    layoutFromSubtype
+                } else {
+                    // If not in subtype, get from JSON mapping based on locale
+                    val locale = currentSubtype.locale ?: "en_US"
+                            val layoutFromMapping = AdditionalSubtypeUtils.getLayoutForLocale(assets, locale, this)
+                    Log.d(TAG, "Loading layout from JSON mapping for locale $locale: $layoutFromMapping")
+                    layoutFromMapping
+                }
+            } else {
+                // No subtype available, use preferences
+                SettingsManager.getKeyboardLayout(this)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Error getting layout from subtype, using preferences", e)
+            SettingsManager.getKeyboardLayout(this)
+        }
+        
         val layout = LayoutMappingRepository.loadLayout(assets, layoutName, this)
         Log.d(TAG, "Keyboard layout loaded: $layoutName")
     }
@@ -517,7 +538,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         suppressNextLayoutReload = true
         val nextLayout = SettingsManager.cycleKeyboardLayout(this)
         if (nextLayout != null) {
-            switchToLayout(nextLayout, showToast = true)
+            switchToLayout(nextLayout, showToast = false)
         }
     }
 
@@ -630,37 +651,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
     }
 
-    private fun cancelSpaceLongPress() {
-        spaceLongPressRunnable?.let { spaceLongPressHandler.removeCallbacks(it) }
-        spaceLongPressRunnable = null
-        spaceLongPressTriggered = false
-    }
-
-    private fun scheduleSpaceLongPress() {
-        if (spaceLongPressRunnable != null) {
-            return
-        }
-        spaceLongPressTriggered = false
-        val threshold = SettingsManager.getLongPressThreshold(this)
-        val runnable = Runnable {
-            spaceLongPressRunnable = null
-
-            // Clear Alt if active so layout switching does not leave Alt latched.
-            val hadAlt = altLatchActive || altOneShot || altPressed
-            if (hadAlt) {
-                modifierStateController.clearAltState()
-                altLatchActive = false
-                altOneShot = false
-                altPressed = false
-                updateStatusBarText()
-            }
-
-            cycleLayoutFromShortcut()
-            spaceLongPressTriggered = true
-        }
-        spaceLongPressRunnable = runnable
-        spaceLongPressHandler.postDelayed(runnable, threshold)
-    }
 
     private fun handleMultiTapCommit(
         keyCode: Int,
@@ -785,7 +775,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         clipboardHistoryManager = ClipboardHistoryManager(this)
         clipboardHistoryManager.onCreate()
 
-        candidatesBarController = CandidatesBarController(this, clipboardHistoryManager)
+        candidatesBarController = CandidatesBarController(this, clipboardHistoryManager, assets, PhysicalKeyboardInputMethodService::class.java)
         candidatesBarController.onAddUserWord = { word ->
             suggestionController.addUserWord(word)
             suggestionController.clearPendingAddWord()
@@ -821,8 +811,28 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // Variations are updated automatically by updateStatusBarText().
         altSymManager.onAltCharInserted = { char ->
             updateStatusBarText()
-            if (char in ".,;:!?()[]{}\"'") {
-                val ic = currentInputConnection
+            val ic = currentInputConnection
+            val punctuationSet = ".,;:!?()[]{}\"'"
+            // Treat apostrophe after a word character as part of the word (no boundary/reset).
+            if (char == '\'' && ic != null) {
+                val before = ic.getTextBeforeCursor(2, 0)?.toString().orEmpty()
+                val prevChar = before.dropLast(1).lastOrNull()
+                val isWordApostrophe = prevChar?.isLetterOrDigit() == true
+                if (isWordApostrophe) {
+                    suggestionController?.onCharacterCommitted("'", ic)
+                } else if (char in punctuationSet) {
+                    val isAutoCorrectEnabled = SettingsManager.getAutoCorrectEnabled(this) && !inputContextState.shouldDisableAutoCorrect
+                    autoCorrectionManager.handleBoundaryKey(
+                        keyCode = KeyEvent.KEYCODE_UNKNOWN,
+                        event = null,
+                        inputConnection = ic,
+                        isAutoCorrectEnabled = isAutoCorrectEnabled,
+                        commitBoundary = true,
+                        onStatusBarUpdate = { updateStatusBarText() },
+                        boundaryCharOverride = char
+                    )
+                }
+            } else if (char in punctuationSet) {
                 val isAutoCorrectEnabled = SettingsManager.getAutoCorrectEnabled(this) && !inputContextState.shouldDisableAutoCorrect
                 autoCorrectionManager.handleBoundaryKey(
                     keyCode = KeyEvent.KEYCODE_UNKNOWN,
@@ -865,6 +875,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         
         // Load auto-correction rules
         AutoCorrector.loadCorrections(assets, this)
+        
+        // Register additional subtypes (custom input styles)
+        registerAdditionalSubtypes()
         
         // Register listener for SharedPreferences changes
         prefsListener = SharedPreferences.OnSharedPreferenceChangeListener { sharedPrefs, key ->
@@ -915,8 +928,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 } else {
                     Log.d(TAG, "Keyboard layout changed, reloading...")
                     val layoutName = SettingsManager.getKeyboardLayout(this)
-                    switchToLayout(layoutName, showToast = true)
+                    switchToLayout(layoutName, showToast = false)
                 }
+            } else if (key == AdditionalSubtypeUtils.PREF_CUSTOM_INPUT_STYLES) {
+                Log.d(TAG, "Custom input styles changed, re-registering subtypes...")
+                registerAdditionalSubtypes()
             }
         }
         prefs.registerOnSharedPreferenceChangeListener(prefsListener)
@@ -1097,7 +1113,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             }
         }
         speechResultReceiver = null
-        cancelSpaceLongPress()
         multiTapController.cancelAll()
         updateNavModeStatusIcon(false)
 
@@ -1124,9 +1139,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
 
     /**
      * Computes the insets for the IME window.
-     * This increases the "content" area to include the candidate view area,
-     * allowing the application to shift upwards properly without the candidates view
-     * covering system UI.
+     * This is critical for candidates view to receive touch events properly.
+     * Setting contentTopInsets = visibleTopInsets ensures touch events reach the candidates view.
      */
     override fun onComputeInsets(outInsets: InputMethodService.Insets?) {
         super.onComputeInsets(outInsets)
@@ -1134,6 +1148,16 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         if (outInsets != null && !isFullscreenMode()) {
             outInsets.contentTopInsets = outInsets.visibleTopInsets
         }
+    }
+
+    /**
+     * Evaluates whether the IME should run in fullscreen mode.
+     * This is important for candidates view to receive touch events properly.
+     */
+    override fun onEvaluateFullscreenMode(): Boolean {
+        // Return false to allow candidates view to receive touch events
+        // Fullscreen mode can sometimes limit touch event handling
+        return false
     }
 
     /**
@@ -1302,6 +1326,12 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
 
+        // Register additional subtypes when IME becomes active
+        // This ensures dynamic languages are loaded even if service was already created
+        if (!restarting) {
+            registerAdditionalSubtypes()
+        }
+
         updateInputContextState(info)
         initializeInputContext(restarting)
         suggestionController.onContextReset()
@@ -1341,7 +1371,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         isInputViewActive = false
         inputContextState = InputContextState.EMPTY
         multiTapController.cancelAll()
-        cancelSpaceLongPress()
         resetModifierStates(preserveNavMode = true)
         // Se nav mode era attivo prima di entrare nel campo di testo, riattivalo ora
         if (navModeWasActiveBeforeEditableField) {
@@ -1355,7 +1384,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         isInputViewActive = false
         if (finishingInput) {
             multiTapController.cancelAll()
-            cancelSpaceLongPress()
             resetModifierStates(preserveNavMode = true)
             suggestionController.onContextReset()
         }
@@ -1364,6 +1392,322 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     override fun onWindowShown() {
         super.onWindowShown()
         updateStatusBarText()
+    }
+    
+    /**
+     * Registers additional subtypes (custom input styles) with the system.
+     * Called on startup and when custom input styles are modified.
+     */
+    private fun registerAdditionalSubtypes() {
+        try {
+            val imm = getSystemService(InputMethodManager::class.java)
+            
+            // Get IME ID - try both formats
+            val componentName = android.content.ComponentName(this, PhysicalKeyboardInputMethodService::class.java)
+            val imeIdShort = componentName.flattenToShortString()
+            val imeIdFull = componentName.flattenToString()
+            
+            // Find the actual IME in the system list to get the correct ID format
+            val inputMethodInfo = imm.getInputMethodList().firstOrNull { info ->
+                info.packageName == packageName && 
+                info.serviceName == PhysicalKeyboardInputMethodService::class.java.name
+            }
+            
+            val imeId = inputMethodInfo?.id ?: imeIdFull
+            
+            Log.d(TAG, "Registering additional subtypes")
+            Log.d(TAG, "Component: $componentName")
+            Log.d(TAG, "IME ID (short): $imeIdShort")
+            Log.d(TAG, "IME ID (full): $imeIdFull")
+            Log.d(TAG, "IME ID (from system): ${inputMethodInfo?.id}")
+            Log.d(TAG, "Using IME ID: $imeId")
+            Log.d(TAG, "IME found in system: ${inputMethodInfo != null}")
+            
+            val prefString = SettingsManager.getCustomInputStyles(this)
+            Log.d(TAG, "Custom input styles pref string: $prefString")
+            
+            val subtypes = AdditionalSubtypeUtils.createAdditionalSubtypesArray(
+                prefString,
+                assets,
+                this
+            )
+            
+            Log.d(TAG, "Created ${subtypes.size} additional subtypes")
+            subtypes.forEachIndexed { index, subtype ->
+                Log.d(TAG, "Subtype $index: locale=${subtype.locale}, nameResId=${subtype.nameResId}, extraValue=${subtype.extraValue}")
+            }
+            
+            if (subtypes.isNotEmpty() && inputMethodInfo != null) {
+                // Note: setAdditionalInputMethodSubtypes is deprecated but still works on most Android versions
+                // The subtypes will appear in the IME picker but may need to be enabled manually by the user
+                imm.setAdditionalInputMethodSubtypes(imeId, subtypes)
+                Log.d(TAG, "Successfully called setAdditionalInputMethodSubtypes with ${subtypes.size} subtypes")
+                
+                // Send broadcast to notify system of IME subtype changes (if supported)
+                try {
+                    val intent = Intent("android.view.InputMethod.SUBTYPE_CHANGED").apply {
+                        setPackage("android")
+                        putExtra("imeId", imeId)
+                    }
+                    sendBroadcast(intent)
+                    Log.d(TAG, "Sent SUBTYPE_CHANGED broadcast")
+                } catch (e: Exception) {
+                    Log.w(TAG, "Could not send SUBTYPE_CHANGED broadcast", e)
+                }
+                
+                // Try to explicitly enable the additional subtypes after a delay
+                // This ensures the system has processed the registration first
+                Handler(Looper.getMainLooper()).postDelayed({
+                    try {
+                        // Re-fetch InputMethodInfo to get updated subtype list
+                        val updatedInfo = imm.getInputMethodList().firstOrNull { 
+                            it.packageName == packageName && 
+                            it.serviceName == PhysicalKeyboardInputMethodService::class.java.name
+                        }
+                        
+                        if (updatedInfo != null) {
+                            // Get all subtypes from InputMethodInfo (including base from method.xml and additional)
+                            val allSubtypes = mutableListOf<android.view.inputmethod.InputMethodSubtype>()
+                            for (i in 0 until updatedInfo.subtypeCount) {
+                                allSubtypes.add(updatedInfo.getSubtypeAt(i))
+                            }
+                            
+                            // Get current system locales to filter out removed ones
+                            val currentSystemLocales = getSystemEnabledLocales()
+                            val systemLanguageCodes = currentSystemLocales.map { locale ->
+                                locale.split("_").first().lowercase()
+                            }.toSet()
+                            
+                            // Filter ALL subtypes (base + additional) to keep only those with valid system locales
+                            val validSubtypes = allSubtypes.filter { subtype ->
+                                AdditionalSubtypeUtils.shouldKeepSubtype(subtype, currentSystemLocales, systemLanguageCodes)
+                            }
+                            
+                            // Convert to hash codes for setExplicitlyEnabledInputMethodSubtypes
+                            val validEnabledHashCodes = validSubtypes.map { it.hashCode() }.toIntArray()
+                            
+                            // Always update enabled subtypes, even if empty (to disable removed ones)
+                            imm.setExplicitlyEnabledInputMethodSubtypes(
+                                updatedInfo.id,
+                                validEnabledHashCodes
+                            )
+                            val removedBase = allSubtypes.count { !AdditionalSubtypeUtils.isAdditionalSubtype(it) } - 
+                                             validSubtypes.count { !AdditionalSubtypeUtils.isAdditionalSubtype(it) }
+                            val removedAdditional = subtypes.size - validSubtypes.count { AdditionalSubtypeUtils.isAdditionalSubtype(it) }
+                            Log.d(TAG, "Updated enabled subtypes: ${validEnabledHashCodes.size} valid (removed ${removedBase} base, ${removedAdditional} additional)")
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Could not explicitly enable subtypes", e)
+                        e.printStackTrace()
+                    }
+                }, 500) // Wait 500ms for system to process registration
+            } else {
+                // Even when there are no additional subtypes, we should still filter enabled subtypes
+                // to remove base subtypes corresponding to removed system locales
+                if (inputMethodInfo != null) {
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        try {
+                            val updatedInfo = imm.getInputMethodList().firstOrNull { 
+                                it.packageName == packageName && 
+                                it.serviceName == PhysicalKeyboardInputMethodService::class.java.name
+                            }
+                            
+                            if (updatedInfo != null) {
+                                // Get all subtypes from InputMethodInfo (base subtypes from method.xml)
+                                val allSubtypes = mutableListOf<android.view.inputmethod.InputMethodSubtype>()
+                                for (i in 0 until updatedInfo.subtypeCount) {
+                                    allSubtypes.add(updatedInfo.getSubtypeAt(i))
+                                }
+                                
+                                val currentSystemLocales = getSystemEnabledLocales()
+                                val systemLanguageCodes = currentSystemLocales.map { locale ->
+                                    locale.split("_").first().lowercase()
+                                }.toSet()
+                                
+                                // Filter to keep only subtypes with valid system locales
+                                val validSubtypes = allSubtypes.filter { subtype ->
+                                    AdditionalSubtypeUtils.shouldKeepSubtype(subtype, currentSystemLocales, systemLanguageCodes)
+                                }
+                                
+                                val validEnabledHashCodes = validSubtypes.map { it.hashCode() }.toIntArray()
+                                
+                                // Always update to disable removed subtypes
+                                imm.setExplicitlyEnabledInputMethodSubtypes(
+                                    updatedInfo.id,
+                                    validEnabledHashCodes
+                                )
+                                Log.d(TAG, "Filtered base subtypes: kept ${validEnabledHashCodes.size}, removed ${allSubtypes.size - validSubtypes.size}")
+                            }
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Could not filter enabled subtypes", e)
+                        }
+                    }, 500)
+                }
+                
+                if (subtypes.isEmpty()) {
+                    Log.d(TAG, "No subtypes to register")
+                } else {
+                    Log.w(TAG, "Cannot register subtypes: InputMethodInfo not found")
+                }
+            }
+            
+            // Refresh subtype caches if needed
+            refreshSubtypeCaches()
+            
+            // Force a small delay to ensure system processes the registration
+            Handler(Looper.getMainLooper()).postDelayed({
+                try {
+                    val verifyInfo = imm.getInputMethodList().firstOrNull { 
+                        it.packageName == packageName && 
+                        it.serviceName == PhysicalKeyboardInputMethodService::class.java.name
+                    }
+                    if (verifyInfo != null) {
+                        // Check all subtypes (enabled and disabled)
+                        val allSubtypes = imm.getEnabledInputMethodSubtypeList(verifyInfo, true)
+                        Log.d(TAG, "Verification: ${allSubtypes.size} total subtypes found after registration")
+                        allSubtypes.forEachIndexed { index, subtype ->
+                            val isAdditional = AdditionalSubtypeUtils.isAdditionalSubtype(subtype)
+                            Log.d(TAG, "Subtype $index: locale=${subtype.locale}, isAdditional=$isAdditional, extraValue=${subtype.extraValue}")
+                        }
+                        
+                        // Also try to get subtypes directly from InputMethodInfo
+                        try {
+                            val subtypeCount = verifyInfo.subtypeCount
+                            Log.d(TAG, "InputMethodInfo reports $subtypeCount subtypes")
+                            for (i in 0 until subtypeCount) {
+                                val subtype = verifyInfo.getSubtypeAt(i)
+                                val isAdditional = AdditionalSubtypeUtils.isAdditionalSubtype(subtype)
+                                Log.d(TAG, "InputMethodInfo subtype $i: locale=${subtype.locale}, isAdditional=$isAdditional, extraValue=${subtype.extraValue}")
+                            }
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Error getting subtypes from InputMethodInfo", e)
+                        }
+                    } else {
+                        Log.w(TAG, "IME not found in system list for verification")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error verifying subtype registration", e)
+                }
+            }, 1000)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error registering additional subtypes", e)
+            e.printStackTrace()
+        }
+    }
+    
+    /**
+     * Refreshes subtype caches after registration.
+     * This ensures getEnabledInputMethodSubtypeList reflects the new subtypes.
+     */
+    private fun refreshSubtypeCaches() {
+        try {
+            val imm = getSystemService(InputMethodManager::class.java)
+            // Force refresh by getting the enabled subtypes list
+            val inputMethodInfo = imm.getInputMethodList().firstOrNull { 
+                it.id == packageName + "/" + PhysicalKeyboardInputMethodService::class.java.name 
+            }
+            if (inputMethodInfo != null) {
+                val enabledSubtypes = imm.getEnabledInputMethodSubtypeList(inputMethodInfo, true)
+                Log.d(TAG, "Refreshed subtype caches, ${enabledSubtypes.size} enabled subtypes")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error refreshing subtype caches", e)
+        }
+    }
+    
+    /**
+     * Finds a subtype by locale.
+     */
+    private fun findSubtypeByLocale(locale: String): android.view.inputmethod.InputMethodSubtype? {
+        return try {
+            val imm = getSystemService(InputMethodManager::class.java)
+            val inputMethodInfo = imm.getInputMethodList().firstOrNull { 
+                it.id == packageName + "/" + PhysicalKeyboardInputMethodService::class.java.name 
+            }
+            if (inputMethodInfo != null) {
+                val enabledSubtypes = imm.getEnabledInputMethodSubtypeList(inputMethodInfo, true)
+                AdditionalSubtypeUtils.findSubtypeByLocale(enabledSubtypes.toTypedArray(), locale)
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error finding subtype by locale: $locale", e)
+            null
+        }
+    }
+    
+    /**
+     * Finds a subtype by locale and keyboard layout set.
+     */
+    private fun findSubtypeByLocaleAndKeyboardLayoutSet(
+        locale: String,
+        layoutName: String
+    ): android.view.inputmethod.InputMethodSubtype? {
+        return try {
+            val imm = getSystemService(InputMethodManager::class.java)
+            val inputMethodInfo = imm.getInputMethodList().firstOrNull { 
+                it.id == packageName + "/" + PhysicalKeyboardInputMethodService::class.java.name 
+            }
+            if (inputMethodInfo != null) {
+                val enabledSubtypes = imm.getEnabledInputMethodSubtypeList(inputMethodInfo, true)
+                AdditionalSubtypeUtils.findSubtypeByLocaleAndKeyboardLayoutSet(
+                    enabledSubtypes.toTypedArray(),
+                    locale,
+                    layoutName
+                )
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error finding subtype by locale and layout: $locale:$layoutName", e)
+            null
+        }
+    }
+    
+    /**
+     * Gets the list of system-enabled locales.
+     * Returns locales in format "en_US", "it_IT", etc.
+     */
+    private fun getSystemEnabledLocales(): Set<String> {
+        val locales = mutableSetOf<String>()
+        try {
+            val config = resources.configuration
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                // Android N+ (API 24+)
+                val localeList = config.locales
+                for (i in 0 until localeList.size()) {
+                    val locale = localeList[i]
+                    val localeStr = formatLocaleStringForSystem(locale)
+                    if (localeStr.isNotEmpty()) {
+                        locales.add(localeStr)
+                    }
+                }
+            } else {
+                // Pre-Android N
+                @Suppress("DEPRECATION")
+                val locale = config.locale
+                val localeStr = formatLocaleStringForSystem(locale)
+                if (localeStr.isNotEmpty()) {
+                    locales.add(localeStr)
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Error getting system locales", e)
+        }
+        return locales
+    }
+    
+    /**
+     * Formats a Locale object to "en_US" format.
+     */
+    private fun formatLocaleStringForSystem(locale: Locale): String {
+        val language = locale.language
+        val country = locale.country
+        return if (country.isNotEmpty()) {
+            "${language}_$country"
+        } else {
+            language
+        }
     }
     
     /**
@@ -1390,7 +1734,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     
     /**
      * Called when the user switches IME subtypes (languages).
-     * Reloads the dictionary for the new language.
+     * Reloads the dictionary for the new language and switches to the layout specified in the subtype or JSON mapping.
      */
     override fun onCurrentInputMethodSubtypeChanged(newSubtype: android.view.inputmethod.InputMethodSubtype) {
         super.onCurrentInputMethodSubtypeChanged(newSubtype)
@@ -1402,14 +1746,50 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 Log.d(TAG, "IME subtype changed, updating locale to: ${newLocale.language}")
             }
         }
+        
+        // Get layout from subtype if specified, otherwise from JSON mapping
+        val layoutToUse = AdditionalSubtypeUtils.getKeyboardLayoutFromSubtype(newSubtype)
+            ?: run {
+                val locale = newSubtype.locale ?: "en_US"
+                AdditionalSubtypeUtils.getLayoutForLocale(assets, locale, this)
+            }
+        
+        // Always switch to the layout for the current locale (they are strictly linked)
+        // Update preferences to keep them in sync
+        val currentLayout = SettingsManager.getKeyboardLayout(this)
+        if (layoutToUse != currentLayout) {
+            Log.d(TAG, "Switching layout for locale ${newSubtype.locale}: $layoutToUse (was: $currentLayout)")
+            // Update preferences first to keep them in sync
+            SettingsManager.setKeyboardLayout(this, layoutToUse)
+            // Then load the layout
+            switchToLayout(layoutToUse, showToast = false)
+        } else {
+            // Even if layout matches, ensure it's loaded (in case it was changed manually)
+            switchToLayout(layoutToUse, showToast = false)
+        }
     }
     
     override fun onWindowHidden() {
         super.onWindowHidden()
         multiTapController.finalizeCycle()
-        cancelSpaceLongPress()
         resetModifierStates(preserveNavMode = true)
         suggestionController.onContextReset()
+    }
+    
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        
+        // Re-register subtypes when configuration changes (including when new system locales are added)
+        // This ensures new system locales are available in IME picker without restarting IME
+        Log.d(TAG, "Configuration changed, re-registering subtypes to pick up new system locales")
+        Handler(Looper.getMainLooper()).postDelayed({
+            // First, remove system locales without dictionary that are no longer in system
+            // (only when configuration changes, not when manually adding styles)
+            AdditionalSubtypeUtils.removeSystemLocalesWithoutDictionary(this)
+            // Then, auto-add new system locales without dictionary
+            AdditionalSubtypeUtils.autoAddSystemLocalesWithoutDictionary(this)
+            registerAdditionalSubtypes()
+        }, 500) // Small delay to ensure system has processed locale changes
     }
     
     /**
@@ -1502,45 +1882,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             keyCode == KeyEvent.KEYCODE_CTRL_RIGHT ||
             keyCode == KeyEvent.KEYCODE_ALT_LEFT ||
             keyCode == KeyEvent.KEYCODE_ALT_RIGHT
-        // Handle Ctrl+Space layout switching even when Alt is active.
-        if (
-            hasEditableField &&
-            keyCode == KeyEvent.KEYCODE_SPACE &&
-            (event?.isCtrlPressed == true || ctrlPressed || ctrlLatchActive || ctrlOneShot)
-        ) {
-            var shouldUpdateStatusBar = false
-
-            // Clear Alt state if active so we don't leave Alt latched.
-            val hadAlt = altLatchActive || altOneShot || altPressed
-            if (hadAlt) {
-                modifierStateController.clearAltState(resetPressedState = true)
-                shouldUpdateStatusBar = true
-            }
-
-            // Always reset Ctrl state after Ctrl+Space to avoid leaving it active.
-            val hadCtrl = ctrlLatchActive ||
-                ctrlOneShot ||
-                ctrlPressed ||
-                ctrlPhysicallyPressed ||
-                ctrlLatchFromNavMode
-            if (hadCtrl) {
-                val navModeLatched = ctrlLatchFromNavMode
-                modifierStateController.clearCtrlState(resetPressedState = true)
-                if (navModeLatched) {
-                    navModeController.cancelNotification()
-                    navModeController.refreshNavModeState()
-                }
-                shouldUpdateStatusBar = true
-            }
-
-            cycleLayoutFromShortcut()
-            shouldUpdateStatusBar = true
-
-            if (shouldUpdateStatusBar) {
-                updateStatusBarText()
-            }
-            return true
-        }
 
         multiTapController.resetForNewKey(keyCode)
         if (!isModifierKey) {
@@ -1594,6 +1935,48 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             InputEventRouter.EditableFieldRoutingResult.Consume -> return true
             InputEventRouter.EditableFieldRoutingResult.CallSuper -> return super.onKeyDown(keyCode, event)
             InputEventRouter.EditableFieldRoutingResult.Continue -> {}
+        }
+        
+        // Handle Ctrl+Space for subtype cycling
+        if (
+            hasEditableField &&
+            keyCode == KeyEvent.KEYCODE_SPACE &&
+            (event?.isCtrlPressed == true || ctrlPressed || ctrlLatchActive || ctrlOneShot)
+        ) {
+            var shouldUpdateStatusBar = false
+
+            // Clear Alt state if active so we don't leave Alt latched.
+            val hadAlt = altLatchActive || altOneShot || altPressed
+            if (hadAlt) {
+                modifierStateController.clearAltState(resetPressedState = true)
+                shouldUpdateStatusBar = true
+            }
+
+            // Always reset Ctrl state after Ctrl+Space to avoid leaving it active.
+            val hadCtrl = ctrlLatchActive ||
+                ctrlOneShot ||
+                ctrlPressed ||
+                ctrlPhysicallyPressed ||
+                ctrlLatchFromNavMode
+            if (hadCtrl) {
+                val navModeLatched = ctrlLatchFromNavMode
+                modifierStateController.clearCtrlState(resetPressedState = true)
+                if (navModeLatched) {
+                    navModeController.cancelNotification()
+                    navModeController.refreshNavModeState()
+                }
+                shouldUpdateStatusBar = true
+            }
+
+            // Cycle to next subtype
+            if (SubtypeCycler.cycleToNextSubtype(this, PhysicalKeyboardInputMethodService::class.java, assets, showToast = true)) {
+                shouldUpdateStatusBar = true
+            }
+
+            if (shouldUpdateStatusBar) {
+                updateStatusBarText()
+            }
+            return true
         }
         
         val ic = currentInputConnection

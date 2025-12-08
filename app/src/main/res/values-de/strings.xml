@@ -286,7 +286,7 @@
     <string name="layout_delete_failed">Layout konnte nicht gelöscht werden</string>
     <string name="layout_view_mapping">Zuordnung anzeigen</string>
     <string name="layout_delete">Löschen</string>
-    <string name="layout_enable_for_cycling">Aktivieren (Strg + Leertaste zum Wechseln)</string>
+    <string name="layout_enable_for_cycling">Aktivieren für den Zyklus</string>
     <string name="layout_select_as_active">Als aktives Layout auswählen</string>
     
     <!-- Main Activity Event Display -->

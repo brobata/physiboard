@@ -110,7 +110,7 @@
     <string name="long_press_modifier_title">Երկար սեղմման մոդիֆիկատոր</string>
     <string name="long_press_modifier_description">Ընտրեք՝ երկար սեղմումը կէմուլացնի Alt+կամ Shift+կոճակը։</string>
     <string name="keyboard_layout_title">Ստեղնաշարի դասավորություն</string>
-    <string name="keyboard_layout_description">Ընտրեք ձեր դասավորությունը։ ALT, SYM և Ctrl դասավորությունները կախված են ֆիզիկական ստեղների տեղաբաշխումից։ Փոխեք արագ՝ CTRL+SPACE-ով։</string>
+    <string name="keyboard_layout_description">Ընտրեք ձեր դասավորությունը։ ALT, SYM և Ctrl դասավորությունները կախված են ֆիզիկական ստեղների տեղաբաշխումից։</string>
     <string name="keyboard_layout_no_conversion">Ստանդարտ</string>
     <string name="keyboard_layout_no_conversion_description">Ստանդարտ QWERTY (առանց փոխակերպման)</string>
     <string name="keyboard_layout_conversions_title">Դասավորության փոխակերպումներ</string>
@@ -221,7 +221,7 @@
     <string name="layout_delete_failed">Չհաջողվեց ջնջել դասավորությունը</string>
     <string name="layout_view_mapping">Դիտել դասավորությունը</string>
     <string name="layout_delete">Ջնջել</string>
-    <string name="layout_enable_for_cycling">Ավելացնել ակտիվների մեջ (Ctrl + Բացատ)</string>
+    <string name="layout_enable_for_cycling">Ավելացնել ակտիվների մեջ</string>
     <string name="layout_select_as_active">Ընտրել որպես ակտիվ դասավորություն</string>
     <string name="event_unicode_label">Յունիքոդ՝</string>
     <string name="event_output_label">Արտածում՝</string>

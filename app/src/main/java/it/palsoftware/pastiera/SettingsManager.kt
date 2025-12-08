@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
 import android.view.KeyEvent
+import it.palsoftware.pastiera.R
 import org.json.JSONObject
 import java.io.InputStream
 import java.io.File
@@ -1247,7 +1248,7 @@ object SettingsManager {
 
     /**
      * Cycles to the next keyboard layout in the configured list and returns its id.
-     * Always loops: even with a single entry we "cycle" back to it, so Ctrl+Space/long press
+     * Always loops: even with a single entry we "cycle" back to it, so long press
      * consistently triggers a layout reload/toast and never becomes a no-op.
      */
     fun cycleKeyboardLayout(context: Context): String? {
@@ -1614,29 +1615,37 @@ object SettingsManager {
             .putLong(KEY_VARIATIONS_UPDATED, System.currentTimeMillis())
             .apply()
     }
-    
+
+    // Custom Input Styles (Additional Subtypes)
+    private const val KEY_CUSTOM_INPUT_STYLES = "custom_input_styles"
+
     /**
-     * Get the list of additional IME subtypes (language codes) that were added dynamically.
-     * These are subtypes that are not declared in method.xml.
+     * Gets the custom input styles preference string.
+     * Returns default from predefined_subtypes resource if not set.
      */
-    fun getAdditionalImeSubtypes(context: Context): Set<String> {
+    fun getCustomInputStyles(context: Context): String {
         val prefs = getPreferences(context)
-        val subtypesString = prefs.getString(KEY_ADDITIONAL_IME_SUBTYPES, null)
-        return if (subtypesString != null && subtypesString.isNotEmpty()) {
-            subtypesString.split(",").toSet()
-        } else {
-            emptySet()
+        val custom = prefs.getString(KEY_CUSTOM_INPUT_STYLES, null)
+        if (custom != null) {
+            return custom
+        }
+
+        // Load default from predefined_subtypes resource
+        return try {
+            val array = context.resources.getStringArray(R.array.predefined_subtypes)
+            array.joinToString(";")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error loading predefined subtypes", e)
+            ""
         }
     }
-    
+
     /**
-     * Set the list of additional IME subtypes (language codes).
-     * These are subtypes that are not declared in method.xml.
+     * Sets the custom input styles preference string.
      */
-    fun setAdditionalImeSubtypes(context: Context, subtypes: Set<String>) {
-        val subtypesString = subtypes.joinToString(",")
+    fun setCustomInputStyles(context: Context, stylesString: String) {
         getPreferences(context).edit()
-            .putString(KEY_ADDITIONAL_IME_SUBTYPES, subtypesString)
+            .putString(KEY_CUSTOM_INPUT_STYLES, stylesString)
             .apply()
     }
 }

@@ -589,13 +589,15 @@ class InputEventRouter(
     ): Boolean {
         val isEnterKey = keyCode == KeyEvent.KEYCODE_ENTER
         val isSpaceKey = keyCode == KeyEvent.KEYCODE_SPACE
+        val typedChar = event?.unicodeChar?.takeIf { it != 0 }?.toChar()
+        val prevChar = inputConnection?.getTextBeforeCursor(1, 0)?.lastOrNull()
+        val isWordApostrophe = typedChar == '\'' && prevChar?.isLetterOrDigit() == true
         val isBoundaryKey = isSpaceKey || isEnterKey
-        val isPunctuation = event?.unicodeChar != null &&
-            event.unicodeChar != 0 &&
-            event.unicodeChar.toChar() in ".,;:!?()[]{}\"'"
+        val isPunctuation = typedChar != null &&
+            typedChar in ".,;:!?()[]{}\"'" &&
+            !(typedChar == '\'' && isWordApostrophe)
 
         // Clear pending auto-space flag on backspace (avoid stale state); keep it for letters to handle long-press punctuation.
-        val typedChar = event?.unicodeChar?.takeIf { it != 0 }?.toChar()
         if (typedChar == null && keyCode == KeyEvent.KEYCODE_DEL) {
             AutoSpaceTracker.clear()
         }

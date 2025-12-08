@@ -285,7 +285,7 @@
     <string name="layout_delete_failed">Nie udało się usunąć layoutu</string>
     <string name="layout_view_mapping">Wyświetl mapowanie</string>
     <string name="layout_delete">Usuń</string>
-    <string name="layout_enable_for_cycling">Włącz (Ctrl + Spacja, aby przełączyć)</string>
+    <string name="layout_enable_for_cycling">Włącz do cyklicznego przełączania</string>
     <string name="layout_select_as_active">Wybierz jako aktywny layout</string>
     
     <!-- Main Activity Event Display -->

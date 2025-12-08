@@ -288,7 +288,7 @@
     <string name="layout_delete_failed">Échec de la suppression du layout</string>
     <string name="layout_view_mapping">Voir le mappage</string>
     <string name="layout_delete">Supprimer</string>
-    <string name="layout_enable_for_cycling">Activer (Ctrl + Espace pour changer)</string>
+    <string name="layout_enable_for_cycling">Activer pour le cycle</string>
     <string name="layout_select_as_active">Sélectionner comme layout actif</string>
     
     <!-- Main Activity Event Display -->

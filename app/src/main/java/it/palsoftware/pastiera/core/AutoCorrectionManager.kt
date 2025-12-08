@@ -89,11 +89,13 @@ class AutoCorrectionManager(
         val punctuationChar = if (event?.unicodeChar != null && event.unicodeChar != 0) {
             event.unicodeChar.toChar()
         } else null
+        val prevChar = inputConnection?.getTextBeforeCursor(1, 0)?.lastOrNull()
+        val isWordApostrophe = punctuationChar == '\'' && prevChar?.isLetterOrDigit() == true
 
         val boundaryChar: Char? = boundaryCharOverride ?: when {
             isSpaceKey -> ' '
             isEnterKey -> '\n'
-            punctuationChar != null && punctuationChar in ".,;:!?()[]{}\"'" -> punctuationChar
+            punctuationChar != null && punctuationChar in ".,;:!?()[]{}\"'" && !isWordApostrophe -> punctuationChar
             else -> null
         }
 
