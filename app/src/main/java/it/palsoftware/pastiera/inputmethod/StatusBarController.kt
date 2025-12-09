@@ -210,11 +210,11 @@ class StatusBarController(
             statusBarLayout?.let { layout ->
                 baseBottomPadding = layout.paddingBottom
                 ViewCompat.setOnApplyWindowInsetsListener(layout) { view, insets ->
-                    val navAndGestures = insets.getInsetsIgnoringVisibility(
-                        WindowInsetsCompat.Type.navigationBars() or WindowInsetsCompat.Type.systemGestures()
-                    )
+                    // Preserve space for the system IME switcher / nav bar while keeping zero extra gap otherwise
+                    val navInsets = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
+                    val imeInsets = insets.getInsets(WindowInsetsCompat.Type.ime())
                     val cutout = insets.getInsets(WindowInsetsCompat.Type.displayCutout())
-                    val bottomInset = max(navAndGestures.bottom, cutout.bottom)
+                    val bottomInset = maxOf(navInsets.bottom, imeInsets.bottom, cutout.bottom)
                     view.updatePadding(bottom = baseBottomPadding + bottomInset)
                     insets
                 }

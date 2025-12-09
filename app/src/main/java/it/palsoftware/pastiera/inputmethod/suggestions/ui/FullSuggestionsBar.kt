@@ -37,8 +37,8 @@ class FullSuggestionsBar(private val context: Context) {
     private var imeServiceClass: Class<*>? = null
     private var showLanguageButton: Boolean = false // Control visibility of language button
     private val targetHeightPx: Int by lazy {
-        // Base era circa 55dp: la riduciamo del ~20% per comprimere la barra
-        (dpToPx(55f) * 0.8f).toInt()
+        // Compact row sized around three suggestion pills
+        dpToPx(36f)
     }
 
     /**
@@ -220,7 +220,7 @@ class FullSuggestionsBar(private val context: Context) {
         bar.minimumHeight = targetHeightPx
         frameContainer?.minimumHeight = targetHeightPx
 
-        val padV = dpToPx(4f) // tighter vertical padding to further reduce height
+        val padV = dpToPx(3f) // tighter vertical padding to further reduce height
         val padH = dpToPx(12f)
         val weightLayoutParams = LinearLayout.LayoutParams(
             0,
@@ -235,7 +235,7 @@ class FullSuggestionsBar(private val context: Context) {
             val button = TextView(context).apply {
                 text = (suggestion ?: "")
                 gravity = Gravity.CENTER
-                textSize = 15f // reduce text size to align with shorter bar
+                textSize = 14f // keep readable while shrinking the bar
                 includeFontPadding = false
                 minHeight = 0
                 setTextColor(Color.WHITE)
