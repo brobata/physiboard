@@ -8,6 +8,7 @@ import android.view.KeyEvent
 import android.view.inputmethod.InputConnection
 import android.util.Log
 import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.CancellationException
 import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -213,6 +214,7 @@ class SuggestionController(
     fun removeUserWord(word: String) {
         if (!isEnabled()) return
         dictionaryRepository.removeUserEntry(word)
+        refreshUserDictionary()
     }
 
     fun markUsed(word: String) {
@@ -230,8 +232,15 @@ class SuggestionController(
      */
     fun refreshUserDictionary() {
         if (!isEnabled()) return
-        ensureDictionaryLoaded()
-        dictionaryRepository.refreshUserEntries()
+        loadScope.launch {
+            try {
+                dictionaryRepository.refreshUserEntries()
+            } catch (_: CancellationException) {
+                // Cancelled due to rapid switches; safe to ignore.
+            } catch (e: Exception) {
+                Log.e("PastieraIME", "Failed to refresh user dictionary", e)
+            }
+        }
     }
 
     fun handleBackspaceUndo(keyCode: Int, inputConnection: InputConnection?): Boolean {

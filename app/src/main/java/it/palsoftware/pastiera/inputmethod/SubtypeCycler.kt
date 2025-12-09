@@ -17,6 +17,7 @@ import it.palsoftware.pastiera.data.layout.LayoutFileStore
  */
 object SubtypeCycler {
     private const val TAG = "SubtypeCycler"
+    private var unifiedSubtypeToast: Toast? = null
     
     /**
      * Cycles to the next IME subtype.
@@ -166,21 +167,23 @@ object SubtypeCycler {
                 
                 // Show unified toast: "Language - Layout"
                 val toastText = "$subtypeName - $layoutDisplayName"
-                val toast = Toast.makeText(
+                unifiedSubtypeToast?.cancel()
+                unifiedSubtypeToast = Toast.makeText(
                     context.applicationContext,
                     toastText,
                     Toast.LENGTH_SHORT
                 )
-                toast.show()
+                unifiedSubtypeToast?.show()
             } catch (e: Exception) {
                 // Fallback: use locale if display name fails
                 val locale = subtype.locale ?: "Unknown"
-                val toast = Toast.makeText(
+                unifiedSubtypeToast?.cancel()
+                unifiedSubtypeToast = Toast.makeText(
                     context.applicationContext,
                     locale,
                     Toast.LENGTH_SHORT
                 )
-                toast.show()
+                unifiedSubtypeToast?.show()
                 Log.e(TAG, "Error showing unified subtype toast, using locale fallback", e)
             }
         }

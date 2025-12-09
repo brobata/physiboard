@@ -521,6 +521,20 @@ object AdditionalSubtypeUtils {
             } catch (e: Exception) {
                 // If dictionaries directory doesn't exist, continue
             }
+
+            // Check imported serialized dictionaries in app storage
+            try {
+                val localDir = java.io.File(context.filesDir, "dictionaries_serialized")
+                val localFiles = localDir.listFiles { file ->
+                    file.isFile && file.name.endsWith("_base.dict")
+                }
+                localFiles?.forEach { file ->
+                    val langCode = file.name.removeSuffix("_base.dict")
+                    localesWithDict.addAll(getLocaleVariantsForLanguage(langCode))
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Error checking local dictionaries_serialized", e)
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error checking dictionaries", e)
         }

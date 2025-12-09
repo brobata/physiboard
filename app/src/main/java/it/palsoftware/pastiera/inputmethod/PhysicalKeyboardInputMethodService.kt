@@ -80,8 +80,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     // Keycode for the SYM key
     private val KEYCODE_SYM = 63
 
-    // Single instance to show layout switch toasts without overlapping
-    private var layoutSwitchToast: android.widget.Toast? = null
+    // Single instance to show toasts without overlapping
     private var lastLayoutToastText: String? = null
     private var lastLayoutToastTime: Long = 0
     private var suppressNextLayoutReload: Boolean = false
@@ -518,17 +517,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
 
     private fun switchToLayout(layoutName: String, showToast: Boolean) {
         LayoutMappingRepository.loadLayout(assets, layoutName, this)
-        if (showToast) {
-            val metadata = try {
-                LayoutFileStore.getLayoutMetadataFromAssets(assets, layoutName)
-                    ?: LayoutFileStore.getLayoutMetadata(this, layoutName)
-            } catch (e: Exception) {
-                Log.e(TAG, "Error getting layout metadata for toast", e)
-                null
-            }
-            val displayName = metadata?.name ?: layoutName
-            showLayoutSwitchToast(displayName)
-        }
         updateStatusBarText()
 
         // Update suggestion engine's keyboard layout for proximity-based ranking
@@ -540,28 +528,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         val nextLayout = SettingsManager.cycleKeyboardLayout(this)
         if (nextLayout != null) {
             switchToLayout(nextLayout, showToast = false)
-        }
-    }
-
-    private fun showLayoutSwitchToast(displayName: String) {
-        uiHandler.post {
-            val now = System.currentTimeMillis()
-            // Avoid spamming identical toasts and keep a minimum gap to satisfy system quota.
-            val sameText = lastLayoutToastText == displayName
-            val sinceLast = now - lastLayoutToastTime
-            if (sinceLast < 1000 || (sameText && sinceLast < 4000)) {
-                return@post
-            }
-
-            lastLayoutToastText = displayName
-            lastLayoutToastTime = now
-            layoutSwitchToast?.cancel()
-            layoutSwitchToast = android.widget.Toast.makeText(
-                applicationContext,
-                displayName,
-                android.widget.Toast.LENGTH_SHORT
-            )
-            layoutSwitchToast?.show()
         }
     }
 
@@ -585,7 +551,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             )
 
             // Reset flag; keep a short delay when a switch happened to avoid rapid repeats
-            val delayMs = if (switched) 800L else 0L
+            val delayMs = if (switched) 300L else 0L
             uiHandler.postDelayed({ isLanguageSwitchInProgress = false }, delayMs)
         } catch (e: Exception) {
             Log.e(TAG, "Error cycling language", e)

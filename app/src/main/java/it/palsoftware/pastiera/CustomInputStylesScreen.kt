@@ -1,6 +1,7 @@
 package it.palsoftware.pastiera
 
 import android.content.Context
+import android.content.Intent
 import android.content.res.Configuration
 import android.os.Build
 import android.view.inputmethod.InputMethodManager
@@ -17,6 +18,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,6 +39,7 @@ import it.palsoftware.pastiera.data.layout.LayoutMappingRepository
 import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils
 import it.palsoftware.pastiera.SettingsManager
 import it.palsoftware.pastiera.R
+import it.palsoftware.pastiera.InstalledDictionariesActivity
 import java.util.Locale
 import android.content.res.AssetManager
 
@@ -112,6 +115,18 @@ fun CustomInputStylesScreen(
                             .padding(start = 8.dp)
                             .weight(1f)
                     )
+                    IconButton(
+                        onClick = {
+                            context.startActivity(
+                                Intent(context, InstalledDictionariesActivity::class.java)
+                            )
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Outlined.MenuBook,
+                            contentDescription = stringResource(R.string.custom_input_styles_installed_dictionaries)
+                        )
+                    }
                     IconButton(
                         onClick = { showAddDialog = true }
                     ) {
@@ -241,7 +256,7 @@ fun CustomInputStylesScreen(
                     showAddDialog = false
                     editStyle = null
                     coroutineScope.launch {
-                        snackbarHostState.showSnackbar("Layout mapping updated: ${getLocaleDisplayName(locale)} - $layout")
+                        snackbarHostState.showSnackbar(context.getString(R.string.custom_input_styles_layout_mapping_updated, getLocaleDisplayName(locale), layout))
                     }
                 } else {
                     // For custom styles, update preferences
@@ -271,9 +286,9 @@ fun CustomInputStylesScreen(
                         lastDialogLocale = null
                         lastDialogLayout = null
                         val msg = if (targetOld != null) {
-                            "Input style updated: ${getLocaleDisplayName(locale)} - $layout"
+                            context.getString(R.string.custom_input_styles_input_style_updated, getLocaleDisplayName(locale), layout)
                         } else {
-                            "Input style added: ${getLocaleDisplayName(locale)} - $layout"
+                            context.getString(R.string.custom_input_styles_input_style_added, getLocaleDisplayName(locale), layout)
                         }
                         coroutineScope.launch {
                             snackbarHostState.showSnackbar(msg)
@@ -303,7 +318,7 @@ fun CustomInputStylesScreen(
                         // Immediately re-register subtypes to remove deleted one from Android
                         AdditionalSubtypeUtils.registerAdditionalSubtypes(context)
                         coroutineScope.launch {
-                            snackbarHostState.showSnackbar("Input style deleted")
+                            snackbarHostState.showSnackbar(context.getString(R.string.custom_input_styles_input_style_deleted))
                         }
                     }
                 ) {
@@ -356,7 +371,7 @@ private fun CustomInputStyleItem(
                             shape = MaterialTheme.shapes.extraSmall
                         ) {
                             Text(
-                                text = "System",
+                                text = stringResource(R.string.custom_input_styles_system_badge),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -455,7 +470,7 @@ private fun AddCustomInputStyleDialog(
                         onValueChange = {},
                         readOnly = true,
                         enabled = !isSystemLocale, // Disable editing for system locales
-                        label = { Text("Language") },
+                        label = { Text(stringResource(R.string.custom_input_styles_language_label)) },
                         trailingIcon = { 
                             if (!isSystemLocale) {
                                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedLocale)
@@ -472,7 +487,7 @@ private fun AddCustomInputStyleDialog(
                         ) {
                             availableLocales.forEach { locale ->
                                 DropdownMenuItem(
-                                    text = { Text("$locale (${getLocaleDisplayName(locale)})") },
+                                    text = { Text(stringResource(R.string.custom_input_styles_locale_display, locale, getLocaleDisplayName(locale))) },
                                     onClick = {
                                         selectedLocale = locale
                                         expandedLocale = false
@@ -504,7 +519,7 @@ private fun AddCustomInputStyleDialog(
                 }
                 if (isSystemLocale) {
                     Text(
-                        text = "System locale - cannot be changed",
+                        text = stringResource(R.string.custom_input_styles_system_locale_hint),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -562,12 +577,12 @@ private fun AddCustomInputStyleDialog(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = currentLayout ?: "qwerty",
+                                    text = currentLayout ?: stringResource(R.string.custom_input_styles_default_layout),
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Medium
                                 )
                                 Text(
-                                    text = "Tap to change layout",
+                                    text = stringResource(R.string.custom_input_styles_change_layout_hint),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -624,7 +639,7 @@ private fun AddCustomInputStyleDialog(
                             customLocaleError = null
                         },
                         label = { Text(stringResource(R.string.custom_input_styles_custom_locale_label)) },
-                        placeholder = { Text("en_US, it_IT, fr_FR, etc.") },
+                        placeholder = { Text(stringResource(R.string.custom_input_styles_custom_locale_placeholder)) },
                         isError = customLocaleError != null,
                         supportingText = {
                             if (customLocaleError != null) {
@@ -898,6 +913,20 @@ private fun getLocalesWithDictionary(context: Context): List<String> {
         } catch (e: Exception) {
             // If dictionaries directory doesn't exist, continue
         }
+
+        // Check imported serialized dictionaries in app storage
+        try {
+            val localDir = java.io.File(context.filesDir, "dictionaries_serialized")
+            val localFiles = localDir.listFiles { file ->
+                file.isFile && file.name.endsWith("_base.dict")
+            }
+            localFiles?.forEach { file ->
+                val langCode = file.name.removeSuffix("_base.dict")
+                localesWithDict.addAll(getLocaleVariantsForLanguage(langCode))
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("CustomInputStyles", "Error reading local dictionaries_serialized", e)
+        }
     } catch (e: Exception) {
         android.util.Log.e("CustomInputStyles", "Error checking dictionaries", e)
     }
@@ -966,6 +995,19 @@ private fun hasDictionaryForLocale(context: Context, locale: String): Boolean {
             }
         } catch (e: Exception) {
             // If dictionaries directory doesn't exist, continue
+        }
+
+        // Check imported serialized dictionaries in app storage
+        try {
+            val localDir = java.io.File(context.filesDir, "dictionaries_serialized")
+            val localFiles = localDir.listFiles { file ->
+                file.isFile && file.name == "${langCode}_base.dict"
+            }
+            if (!localFiles.isNullOrEmpty()) {
+                return true
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("CustomInputStyles", "Error checking local dictionaries for locale $locale", e)
         }
     } catch (e: Exception) {
         android.util.Log.e("CustomInputStyles", "Error checking dictionary for locale $locale", e)

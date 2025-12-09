@@ -452,13 +452,13 @@ fun AutoCorrectionCategoryScreen(
                                 )
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = "Keyboard Proximity Ranking",
+                                        text = stringResource(R.string.auto_correct_keyboard_proximity_title),
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Medium,
                                         maxLines = 1
                                     )
                                     Text(
-                                        text = "Filter unlikely typos based on key distance (QWERTY/AZERTY/QWERTZ)",
+                                        text = stringResource(R.string.auto_correct_keyboard_proximity_description),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         maxLines = 2
@@ -495,13 +495,13 @@ fun AutoCorrectionCategoryScreen(
                                 )
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = "Edit Type Ranking",
+                                        text = stringResource(R.string.auto_correct_edit_type_ranking_title),
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Medium,
                                         maxLines = 1
                                     )
                                     Text(
-                                        text = "Rank suggestions by edit type (insert > substitute > delete)",
+                                        text = stringResource(R.string.auto_correct_edit_type_ranking_description),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         maxLines = 1
@@ -806,7 +806,7 @@ private fun UserDictionaryScreen(
                             IconButton(onClick = { newWord = "" }) {
                                 Icon(
                                     imageVector = Icons.Filled.Clear,
-                                    contentDescription = "Clear"
+                                    contentDescription = stringResource(R.string.clear)
                                 )
                             }
                         }
