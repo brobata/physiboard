@@ -63,6 +63,7 @@ class VariationBarView(
     var onSpeechRecognitionRequested: (() -> Unit)? = null
     var onAddUserWord: ((String) -> Unit)? = null
     var onLanguageSwitchRequested: (() -> Unit)? = null
+    var onClipboardRequested: (() -> Unit)? = null
     
     /**
      * Sets the microphone button active state (red pulsing background) during speech recognition.
@@ -208,18 +209,22 @@ class VariationBarView(
     private var longPressHandler: Handler? = null
     private var longPressRunnable: Runnable? = null
     private var longPressExecuted: Boolean = false
+    private var clipboardButtonView: ImageView? = null
+    private var clipboardContainer: FrameLayout? = null
+    private var clipboardBadgeView: TextView? = null
 
     fun ensureView(): FrameLayout {
         if (wrapper != null) {
             return wrapper!!
         }
 
-        val leftPadding = TypedValue.applyDimension(
+        val basePadding = TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP,
             64f,
             context.resources.displayMetrics
         ).toInt()
-        val rightPadding = (leftPadding * 0.31f).toInt()
+        val leftPadding = 0 // clipboard flush to the left edge
+        val rightPadding = 0 // remove trailing gap so language button sits flush to the right
         val variationsVerticalPadding = TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP,
             8f,
@@ -313,6 +318,7 @@ class VariationBarView(
         removeMicrophoneImmediate()
         removeSettingsImmediate()
         removeLanguageButtonImmediate()
+        removeClipboardButtonImmediate()
         hideSwipeIndicator(immediate = true)
         hideSwipeHintImmediate()
         shouldShowSwipeHint = false
@@ -332,6 +338,7 @@ class VariationBarView(
         removeMicrophoneImmediate()
         removeSettingsImmediate()
         removeLanguageButtonImmediate()
+        removeClipboardButtonImmediate()
         hideSwipeIndicator(immediate = true)
         hideSwipeHintImmediate()
         shouldShowSwipeHint = false
@@ -444,25 +451,27 @@ class VariationBarView(
             3f,
             context.resources.displayMetrics
         ).toInt()
-        
-        // Calculate space for mic and settings buttons
-        val micAndSettingsWidth = (availableWidth - spacingBetweenButtons * 8) / 9 * 2
-        val spacingForMicAndSettings = spacingBetweenButtons * 2
-        val variationsAvailableWidth = availableWidth - micAndSettingsWidth - spacingForMicAndSettings
-        
-        // Calculate base button width (for when we have 7 variations)
-        val baseButtonWidth = max(1, (variationsAvailableWidth - spacingBetweenButtons * 6) / 7)
-        
-        // If we have less than 7 variations, distribute available width among them
+
+        // Fixed-size square buttons (clipboard, mic, language)
+        val fixedButtonSize = max(1, (availableWidth - spacingBetweenButtons * 10) / 10)
+        val fixedButtonsTotalWidth = fixedButtonSize * 3
+        // Spacing: clipboard->variations, variations->mic, mic->language
+        val fixedButtonsSpacing = spacingBetweenButtons * 3
+
         val variationCount = limitedVariations.size
+        val variationsAvailableWidth = availableWidth - fixedButtonsTotalWidth - fixedButtonsSpacing
+
+        val baseButtonWidth = if (variationCount > 0) {
+            max(1, (variationsAvailableWidth - spacingBetweenButtons * (variationCount - 1)) / variationCount)
+        } else {
+            // If no variations, fall back to fixed button size to avoid division by zero
+            fixedButtonSize
+        }
         val buttonWidth: Int
         val maxButtonWidth: Int
         if (variationCount < 7 && variationCount > 0) {
-            // Distribute available width among existing variations
-            val totalSpacingForVariations = spacingBetweenButtons * (variationCount - 1)
-            val widthPerVariation = (variationsAvailableWidth - totalSpacingForVariations) / variationCount
-            buttonWidth = max(1, widthPerVariation)
-            maxButtonWidth = widthPerVariation // No cap when we have fewer variations
+            buttonWidth = baseButtonWidth
+            maxButtonWidth = baseButtonWidth
         } else {
             buttonWidth = baseButtonWidth
             maxButtonWidth = baseButtonWidth * 3 // Cap at 3x when we have 7 variations
@@ -486,6 +495,43 @@ class VariationBarView(
         lastInputConnectionUsed = inputConnection
         lastIsStaticContent = isStaticContent
 
+        // Add clipboard button with badge container at the start of variations row
+        val clipboardButton = clipboardButtonView ?: createClipboardButton(fixedButtonSize)
+        clipboardButtonView = clipboardButton
+        val badge = clipboardBadgeView ?: createClipboardBadge()
+        clipboardBadgeView = badge
+
+        val container = clipboardContainer ?: FrameLayout(context).apply {
+            layoutParams = LinearLayout.LayoutParams(fixedButtonSize, fixedButtonSize).apply {
+                marginEnd = spacingBetweenButtons
+            }
+        }.also { clipboardContainer = it }
+        (container.parent as? ViewGroup)?.removeView(container)
+        container.removeAllViews()
+        container.addView(clipboardButton, FrameLayout.LayoutParams(fixedButtonSize, fixedButtonSize))
+        container.addView(
+            badge,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.END or Gravity.TOP
+            ).apply {
+                val m = dpToPx(2f)
+                val offset = dpToPx(2f) // push badge slightly downward
+                setMargins(m, m + offset, m, m)
+            }
+        )
+
+        variationsRow.addView(container, 0)
+        clipboardButton.setOnClickListener {
+            NotificationHelper.triggerHapticFeedback(context)
+            onClipboardRequested?.invoke()
+        }
+        clipboardButton.alpha = 1f
+        clipboardButton.visibility = View.VISIBLE
+        // Update badge with current clipboard count
+        updateClipboardBadge(snapshot.clipboardCount)
+
         val addCandidate = snapshot.addWordCandidate
         for (variation in limitedVariations) {
             val isAddCandidate = addCandidate != null && variation.equals(addCandidate, ignoreCase = true)
@@ -498,10 +544,12 @@ class VariationBarView(
         val buttonsContainerView = buttonsContainer ?: return
         buttonsContainerView.removeAllViews()
         
-        val microphoneButton = microphoneButtonView ?: createMicrophoneButton(baseButtonWidth)
+        val microphoneButton = microphoneButtonView ?: createMicrophoneButton(fixedButtonSize)
         microphoneButtonView = microphoneButton
         (microphoneButton.parent as? ViewGroup)?.removeView(microphoneButton)
-        val micParams = LinearLayout.LayoutParams(baseButtonWidth, baseButtonWidth)
+        val micParams = LinearLayout.LayoutParams(fixedButtonSize, fixedButtonSize).apply {
+            marginStart = spacingBetweenButtons
+        }
         buttonsContainerView.addView(microphoneButton, micParams)
         microphoneButton.setOnClickListener {
             NotificationHelper.triggerHapticFeedback(context)
@@ -516,17 +564,12 @@ class VariationBarView(
         microphoneButton.visibility = View.VISIBLE
 
         // Language switch button (language code)
-        val languageButton = languageButtonView ?: createLanguageButton(baseButtonWidth)
+        val languageButton = languageButtonView ?: createLanguageButton(fixedButtonSize)
         languageButtonView = languageButton
         (languageButton.parent as? ViewGroup)?.removeView(languageButton)
-        val languageMarginStart = TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP,
-            4f,
-            context.resources.displayMetrics
-        ).toInt()
-        val languageParams = LinearLayout.LayoutParams(baseButtonWidth, baseButtonWidth).apply {
+        val languageParams = LinearLayout.LayoutParams(fixedButtonSize, fixedButtonSize).apply {
             topMargin = 0
-            marginStart = languageMarginStart
+            marginStart = spacingBetweenButtons
         }
         buttonsContainerView.addView(languageButton, languageParams)
         // Update language code text
@@ -938,6 +981,16 @@ class VariationBarView(
             language.alpha = 1f
         }
     }
+    
+    private fun removeClipboardButtonImmediate() {
+        clipboardContainer?.let { container ->
+            (container.parent as? ViewGroup)?.removeView(container)
+        }
+        clipboardButtonView?.apply {
+            visibility = View.GONE
+            alpha = 1f
+        }
+    }
 
     private fun removeSettingsImmediate() {
         settingsButtonView?.let { settings ->
@@ -1115,6 +1168,55 @@ class VariationBarView(
             isFocusable = true
             layoutParams = LinearLayout.LayoutParams(buttonSize, buttonSize)
         }
+    }
+
+    private fun createClipboardButton(buttonSize: Int): ImageView {
+        val normalDrawable = GradientDrawable().apply {
+            setColor(Color.rgb(17, 17, 17))
+            cornerRadius = 0f
+        }
+        val pressedDrawable = GradientDrawable().apply {
+            setColor(PRESSED_BLUE)
+            cornerRadius = 0f
+        }
+        val stateList = android.graphics.drawable.StateListDrawable().apply {
+            addState(intArrayOf(android.R.attr.state_pressed), pressedDrawable)
+            addState(intArrayOf(), normalDrawable)
+        }
+        return ImageView(context).apply {
+            setImageResource(R.drawable.ic_content_paste_24)
+            setColorFilter(Color.WHITE)
+            background = stateList
+            scaleType = ImageView.ScaleType.CENTER
+            isClickable = true
+            isFocusable = true
+            layoutParams = LinearLayout.LayoutParams(buttonSize, buttonSize)
+        }
+    }
+
+    private fun createClipboardBadge(): TextView {
+        val padding = dpToPx(2f)
+        return TextView(context).apply {
+            background = null
+            setTextColor(Color.WHITE)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setPadding(padding, padding, padding, padding)
+            minWidth = 0
+            minHeight = 0
+            visibility = View.GONE
+        }
+    }
+
+    private fun updateClipboardBadge(count: Int) {
+        val badge = clipboardBadgeView ?: return
+        if (count <= 0) {
+            badge.visibility = View.GONE
+            return
+        }
+        badge.visibility = View.VISIBLE
+        badge.text = count.toString()
     }
 
     private fun createStatusBarSettingsButton(buttonSize: Int): ImageView {

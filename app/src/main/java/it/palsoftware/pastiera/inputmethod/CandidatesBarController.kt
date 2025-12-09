@@ -53,6 +53,13 @@ class CandidatesBarController(
             inputStatusBar.onLanguageSwitchRequested = value
             candidatesStatusBar.onLanguageSwitchRequested = value
         }
+    
+    var onClipboardRequested: (() -> Unit)? = null
+        set(value) {
+            field = value
+            inputStatusBar.onClipboardRequested = value
+            candidatesStatusBar.onClipboardRequested = value
+        }
 
     fun getInputView(emojiMapText: String = ""): LinearLayout {
         return inputStatusBar.getOrCreateLayout(emojiMapText)

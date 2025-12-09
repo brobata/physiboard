@@ -180,6 +180,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private var latestSuggestions: List<String> = emptyList()
     private var clearAltOnSpaceEnabled: Boolean = false
     private var isLanguageSwitchInProgress: Boolean = false
+    private var clipboardOverlayActive: Boolean = false
     // Stato per ricordare se il nav mode era attivo prima di entrare in un campo di testo
     private var navModeWasActiveBeforeEditableField: Boolean = false
 
@@ -765,6 +766,17 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         candidatesBarController.onSpeechRecognitionRequested = {
             startSpeechRecognition()
         }
+        // Register listener for clipboard page
+        candidatesBarController.onClipboardRequested = {
+            ensureInputViewCreated()
+            // Toggle dedicated clipboard overlay (not part of SYM pages)
+            clipboardOverlayActive = !clipboardOverlayActive
+            // Ensure SYM state is closed when opening overlay
+            if (clipboardOverlayActive && symLayoutController.isSymActive()) {
+                symLayoutController.closeSymPage()
+            }
+            updateStatusBarText()
+        }
         altSymManager = AltSymManager(assets, prefs, this)
         altSymManager.reloadSymMappings() // Load custom mappings for page 1 if present
         altSymManager.reloadSymMappings2() // Load custom mappings for page 2 if present
@@ -1137,10 +1149,15 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
      * Aggiorna la status bar delegando al controller dedicato.
      */
     private fun updateStatusBarText() {
+        // If SYM is active, ensure clipboard overlay is dismissed so SYM renders correctly.
+        if (symLayoutController.isSymActive() && clipboardOverlayActive) {
+            clipboardOverlayActive = false
+        }
         val variationSnapshot = variationStateController.refreshFromCursor(
             currentInputConnection,
             inputContextState.shouldDisableVariations
         )
+        val clipboardCount = clipboardHistoryManager?.getHistorySize() ?: 0
         
         val modifierSnapshot = modifierStateController.snapshot()
         val state = inputContextState
@@ -1162,6 +1179,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             altPhysicallyPressed = modifierSnapshot.altPhysicallyPressed,
             altOneShot = modifierSnapshot.altOneShot,
             symPage = symPage,
+            clipboardOverlay = clipboardOverlayActive,
+            clipboardCount = clipboardCount,
             variations = variationSnapshot.variations,
             suggestions = suggestionsWithAdd,
             addWordCandidate = addWordCandidate,
@@ -1200,6 +1219,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         
         currentPackageName = info?.packageName
         
+        // Reset clipboard overlay when starting new input
+        clipboardOverlayActive = false
+
         updateInputContextState(info)
         val state = inputContextState
         val isEditable = state.isEditable
@@ -1818,6 +1840,24 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         val hasEditableField = initialInputConnection != null && inputType != EditorInfo.TYPE_NULL
         if (hasEditableField && !isInputViewActive) {
             isInputViewActive = true
+        }
+
+        // If any SYM page or clipboard overlay is open, close on BACK and consume
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            var consumed = false
+            if (symLayoutController.isSymActive()) {
+                if (symLayoutController.closeSymPage()) {
+                    consumed = true
+                }
+            }
+            if (clipboardOverlayActive) {
+                clipboardOverlayActive = false
+                consumed = true
+            }
+            if (consumed) {
+                updateStatusBarText()
+                return true
+            }
         }
 
         val navModeBefore = navModeController.isNavModeActive()

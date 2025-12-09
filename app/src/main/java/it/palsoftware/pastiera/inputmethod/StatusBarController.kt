@@ -85,6 +85,12 @@ class StatusBarController(
             variationBarView?.onLanguageSwitchRequested = value
         }
     
+    var onClipboardRequested: (() -> Unit)? = null
+        set(value) {
+            field = value
+            variationBarView?.onClipboardRequested = value
+        }
+    
     // Callback for speech recognition state changes (active/inactive)
     var onSpeechRecognitionStateChanged: ((Boolean) -> Unit)? = null
         set(value) {
@@ -136,6 +142,8 @@ class StatusBarController(
         val altPhysicallyPressed: Boolean,
         val altOneShot: Boolean,
         val symPage: Int, // 0=disattivato, 1=pagina1 emoji, 2=pagina2 caratteri
+        val clipboardOverlay: Boolean = false, // mostra la clipboard come view dedicata
+        val clipboardCount: Int = 0, // numero di elementi in clipboard
         val variations: List<String> = emptyList(),
         val suggestions: List<String> = emptyList(),
         val addWordCandidate: String? = null,
@@ -164,6 +172,9 @@ class StatusBarController(
     private var lastInputConnectionUsed: android.view.inputmethod.InputConnection? = null
     private var wasSymActive: Boolean = false
     private var symShown: Boolean = false
+    private var lastSymHeight: Int = 0
+    private val defaultSymHeightPx: Int
+        get() = dpToPx(600f) // fallback when nothing measured yet
     private val ledStatusView = LedStatusView(context)
     private val variationBarView: VariationBarView? = if (mode == Mode.FULL) VariationBarView(context, assets, imeServiceClass) else null
     private var variationsWrapper: View? = null
@@ -1207,7 +1218,7 @@ class StatusBarController(
         variationBarView?.onVariationSelectedListener = onVariationSelectedListener
         variationBarView?.onCursorMovedListener = onCursorMovedListener
         variationBarView?.updateInputConnection(inputConnection)
-        variationBarView?.setSymModeActive(snapshot.symPage > 0)
+        variationBarView?.setSymModeActive(snapshot.symPage > 0 || snapshot.clipboardOverlay)
         variationBarView?.updateLanguageButtonText()
         
         val layout = ensureLayoutCreated(emojiMapText) ?: return
@@ -1239,7 +1250,8 @@ class StatusBarController(
             experimentalEnabled &&
             suggestionsEnabledSetting &&
             !snapshot.shouldDisableSuggestions &&
-            snapshot.symPage == 0
+            snapshot.symPage == 0 &&
+            !snapshot.clipboardOverlay
         fullSuggestionsBar?.update(
             snapshot.suggestions,
             showFullBar,
@@ -1250,6 +1262,51 @@ class StatusBarController(
             onAddUserWord
         )
         
+        if (snapshot.clipboardOverlay) {
+            // Show clipboard as dedicated overlay (not part of SYM pages)
+            updateClipboardView(inputConnection)
+            variationsBar?.resetVariationsState()
+
+            // Pin background and hide variations while showing clipboard grid
+            if (layout.background !is ColorDrawable) {
+                layout.background = ColorDrawable(DEFAULT_BACKGROUND)
+            }
+            (layout.background as? ColorDrawable)?.alpha = 255
+            variationsWrapperView?.apply {
+                visibility = View.INVISIBLE
+                isEnabled = false
+                isClickable = false
+            }
+            variationsBar?.hideImmediate()
+
+            val measured = ensureEmojiKeyboardMeasuredHeight(emojiKeyboardView, layout, forceReMeasure = true)
+            // Prefer cached height; otherwise measured; fallback to default only if zero.
+            val targetHeight = when {
+                lastSymHeight > 0 -> lastSymHeight
+                measured > 0 -> measured
+                else -> defaultSymHeightPx
+            }
+            lastSymHeight = targetHeight
+            emojiKeyboardView.setBackgroundColor(DEFAULT_BACKGROUND)
+            emojiKeyboardView.visibility = View.VISIBLE
+            emojiKeyboardView.layoutParams = (emojiKeyboardView.layoutParams ?: LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                targetHeight
+            )).apply { height = targetHeight }
+            if (!symShown && !wasSymActive) {
+                emojiKeyboardView.alpha = 1f
+                emojiKeyboardView.translationY = targetHeight.toFloat()
+                animateEmojiKeyboardIn(emojiKeyboardView, layout)
+                symShown = true
+                wasSymActive = true
+            } else {
+                emojiKeyboardView.alpha = 1f
+                emojiKeyboardView.translationY = 0f
+                wasSymActive = true
+            }
+            return
+        }
+
         if (snapshot.symPage > 0) {
             // Handle page 3 (clipboard) vs pages 1-2 (emoji/symbols)
             if (snapshot.symPage == 3) {
@@ -1272,7 +1329,9 @@ class StatusBarController(
             }
             variationsBar?.hideImmediate()
 
-            val symHeight = ensureEmojiKeyboardMeasuredHeight(emojiKeyboardView, layout)
+            val measured = ensureEmojiKeyboardMeasuredHeight(emojiKeyboardView, layout, forceReMeasure = true)
+            val symHeight = if (measured > 0) measured else defaultSymHeightPx
+            lastSymHeight = symHeight
             emojiKeyboardView.setBackgroundColor(DEFAULT_BACKGROUND)
             emojiKeyboardView.visibility = View.VISIBLE
             emojiKeyboardView.layoutParams = (emojiKeyboardView.layoutParams ?: LinearLayout.LayoutParams(
@@ -1323,8 +1382,8 @@ class StatusBarController(
         }
     }
 
-    private fun ensureEmojiKeyboardMeasuredHeight(view: View, parent: View): Int {
-        if (view.height > 0) {
+    private fun ensureEmojiKeyboardMeasuredHeight(view: View, parent: View, forceReMeasure: Boolean = false): Int {
+        if (view.height > 0 && !forceReMeasure) {
             return view.height
         }
         val width = if (parent.width > 0) parent.width else context.resources.displayMetrics.widthPixels
