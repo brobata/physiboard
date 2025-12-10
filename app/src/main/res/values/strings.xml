@@ -514,4 +514,34 @@
     <string name="clipboard_pin">Pin</string>
     <string name="clipboard_unpin">Unpin</string>
     <string name="clipboard_delete">Delete</string>
+
+    <!-- Trackpad Gesture Settings -->
+    <string name="trackpad_gestures_title">Trackpad Gesture Suggestions</string>
+    <string name="trackpad_gestures_description">Swipe up on the trackpad to accept suggestions</string>
+    <string name="trackpad_gestures_enabled_title">Enable Trackpad Gestures</string>
+    <string name="trackpad_gestures_enabled_description">Swipe up on trackpad to accept word suggestions</string>
+    <string name="trackpad_gestures_show_tutorial">Show Tutorial</string>
+    <string name="trackpad_gestures_tutorial_description">Learn how to use trackpad gestures</string>
+    <string name="trackpad_gestures_install_shizuku">Install Shizuku</string>
+    <string name="trackpad_gestures_install_shizuku_description">Required for trackpad gesture detection</string>
+    <string name="trackpad_gestures_shizuku_url">https://github.com/RikkaApps/Shizuku/releases/</string>
+    <string name="trackpad_gestures_shizuku_connected">Shizuku Connected</string>
+    <string name="trackpad_gestures_shizuku_not_connected">Shizuku Not Connected</string>
+
+    <!-- Trackpad Gesture Tutorial -->
+    <string name="trackpad_tutorial_title">Trackpad Gesture Suggestions</string>
+    <string name="trackpad_tutorial_welcome_title">Trackpad Gesture Suggestions</string>
+    <string name="trackpad_tutorial_welcome_description">Swipe up on your trackpad to quickly accept word suggestions without clicking!</string>
+    <string name="trackpad_tutorial_how_it_works_title">How It Works</string>
+    <string name="trackpad_tutorial_how_it_works_description">The trackpad is divided into three sections:\n\n• Left third → Accept left suggestion\n• Center third → Accept center suggestion\n• Right third → Accept right suggestion\n\nSimply swipe up in the corresponding area to insert that suggestion.</string>
+    <string name="trackpad_tutorial_shizuku_required_title">Shizuku Required</string>
+    <string name="trackpad_tutorial_shizuku_required_description">This feature requires Shizuku to access trackpad events.\n\n1. Install Shizuku from GitHub releases\n2. Enable developer options in Android settings\n3. Plug your device into a PC with ADB installed\n4. Run the command that Shizuku shows in its app\n5. Grant permission to Pastiera in Shizuku\n\nThe feature will work automatically once Shizuku is running.</string>
+    <string name="trackpad_tutorial_tips_title">Tips</string>
+    <string name="trackpad_tutorial_tips_description">• Make sure your swipe is primarily vertical\n• The gesture works best with quick, deliberate swipes\n• If other fingers are on the keyboard, gestures may not be detected (hardware palm rejection)\n• The feature can be enabled/disabled in Advanced Settings</string>
+    <string name="trackpad_tutorial_complete">Got It</string>
+    <string name="trackpad_tutorial_next">Next</string>
+    <string name="trackpad_tutorial_previous">Previous</string>
+
+    <!-- Trackpad Debug Accessibility Service -->
+    <string name="trackpad_debug_service_description">Displays trackpad events in a small overlay for debugging purposes</string>
 </resources>

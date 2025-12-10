@@ -28,6 +28,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Keyboard
@@ -67,6 +69,8 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import rikka.shizuku.Shizuku
+import androidx.compose.runtime.LaunchedEffect
 
 /**
  * Advanced settings screen.
@@ -88,9 +92,10 @@ fun AdvancedSettingsScreen(
         mutableStateOf(SettingsManager.getPowerShortcutsEnabled(context))
     }
     // Store the actual value (3 to 25), but display it inverted in the slider (25 to 3)
-    var swipeIncrementalThreshold by remember { 
+    var swipeIncrementalThreshold by remember {
         mutableStateOf(SettingsManager.getSwipeIncrementalThreshold(context))
     }
+    var shizukuConnected by remember { mutableStateOf(false) }
     var navigationDirection by remember { mutableStateOf(AdvancedNavigationDirection.Push) }
     val navigationStack = remember {
         mutableStateListOf<AdvancedDestination>(AdvancedDestination.Main)
@@ -119,7 +124,19 @@ fun AdvancedSettingsScreen(
             prefs.unregisterOnSharedPreferenceChangeListener(listener)
         }
     }
-    
+
+    // Check Shizuku connection status periodically
+    LaunchedEffect(Unit) {
+        while (true) {
+            shizukuConnected = try {
+                Shizuku.pingBinder()
+            } catch (e: Exception) {
+                false
+            }
+            delay(2000) // Check every 2 seconds
+        }
+    }
+
     fun navigateTo(destination: AdvancedDestination) {
         navigationDirection = AdvancedNavigationDirection.Push
         navigationStack.add(destination)
@@ -375,7 +392,82 @@ fun AdvancedSettingsScreen(
                                 )
                             }
                         }
-                    
+
+                        // Trackpad Gesture Settings
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { navigateTo(AdvancedDestination.TrackpadGestures) }
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.TouchApp,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = stringResource(R.string.trackpad_gestures_title),
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Medium,
+                                            maxLines = 1
+                                        )
+                                        Text(
+                                            text = stringResource(R.string.trackpad_gestures_description),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1
+                                        )
+                                    }
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                // Shizuku Status Row
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(start = 36.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = if (shizukuConnected) Icons.Filled.CheckCircle else Icons.Filled.Error,
+                                        contentDescription = null,
+                                        tint = if (shizukuConnected)
+                                            MaterialTheme.colorScheme.primary
+                                        else
+                                            MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Text(
+                                        text = if (shizukuConnected)
+                                            stringResource(R.string.trackpad_gestures_shizuku_connected)
+                                        else
+                                            stringResource(R.string.trackpad_gestures_shizuku_not_connected),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = if (shizukuConnected)
+                                            MaterialTheme.colorScheme.primary
+                                        else
+                                            MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
+                        }
+
                         // Backup
                         Surface(
                             modifier = Modifier
@@ -608,7 +700,7 @@ fun AdvancedSettingsScreen(
                     }
                 }
             }
-            
+
             AdvancedDestination.LauncherShortcuts -> {
                 LauncherShortcutsScreen(
                     modifier = modifier,
@@ -622,7 +714,14 @@ fun AdvancedSettingsScreen(
                     onBack = { navigateBack() }
                 )
             }
-            
+
+            AdvancedDestination.TrackpadGestures -> {
+                TrackpadGestureSettingsScreen(
+                    modifier = modifier,
+                    onBack = { navigateBack() }
+                )
+            }
+
         }
     }
 }
@@ -631,6 +730,7 @@ private sealed class AdvancedDestination {
     object Main : AdvancedDestination()
     object LauncherShortcuts : AdvancedDestination()
     object ImeTest : AdvancedDestination()
+    object TrackpadGestures : AdvancedDestination()
 }
 
 private enum class AdvancedNavigationDirection {

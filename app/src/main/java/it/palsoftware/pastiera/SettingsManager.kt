@@ -50,6 +50,7 @@ object SettingsManager {
     private const val KEY_ADDITIONAL_IME_SUBTYPES = "additional_ime_subtypes" // Comma-separated list of language codes for additional IME subtypes
     private const val KEY_CLIPBOARD_HISTORY_ENABLED = "clipboard_history_enabled" // Whether clipboard history is enabled
     private const val KEY_CLIPBOARD_RETENTION_TIME = "clipboard_retention_time" // How long to keep clipboard entries (in minutes)
+    private const val KEY_TRACKPAD_GESTURES_ENABLED = "trackpad_gestures_enabled" // Whether trackpad gesture suggestions are enabled
 
     private const val VARIATIONS_FILE_NAME = "variations.json"
     
@@ -88,6 +89,7 @@ object SettingsManager {
     private const val DEFAULT_USE_EDIT_TYPE_RANKING = true
     private const val DEFAULT_CLIPBOARD_HISTORY_ENABLED = true
     private const val DEFAULT_CLIPBOARD_RETENTION_TIME = 120L // 2 hours in minutes
+    private const val DEFAULT_TRACKPAD_GESTURES_ENABLED = false
 
     /**
      * Returns the SharedPreferences instance for Pastiera.
@@ -1533,6 +1535,26 @@ object SettingsManager {
     fun setClipboardRetentionTime(context: Context, minutes: Long) {
         getPreferences(context).edit()
             .putLong(KEY_CLIPBOARD_RETENTION_TIME, minutes)
+            .apply()
+    }
+
+    /**
+     * Returns whether trackpad gesture suggestions are enabled.
+     * @param context The context
+     * @return Whether trackpad gestures are enabled
+     */
+    fun getTrackpadGesturesEnabled(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_TRACKPAD_GESTURES_ENABLED, DEFAULT_TRACKPAD_GESTURES_ENABLED)
+    }
+
+    /**
+     * Sets whether trackpad gesture suggestions are enabled.
+     * @param context The context
+     * @param enabled Whether to enable trackpad gestures
+     */
+    fun setTrackpadGesturesEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_TRACKPAD_GESTURES_ENABLED, enabled)
             .apply()
     }
 

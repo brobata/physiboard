@@ -45,6 +45,12 @@ import java.util.Locale
 import android.view.inputmethod.InputMethodManager
 import android.view.inputmethod.InputMethodSubtype
 import it.palsoftware.pastiera.clipboard.ClipboardHistoryManager
+import rikka.shizuku.Shizuku
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.isActive
 
 /**
  * Input method service specialized for physical keyboards.
@@ -182,6 +188,18 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private var clipboardOverlayActive: Boolean = false
     // Stato per ricordare se il nav mode era attivo prima di entrare in un campo di testo
     private var navModeWasActiveBeforeEditableField: Boolean = false
+
+    // Trackpad gesture detection
+    private var geteventJob: Job? = null
+    private val trackpadScope = CoroutineScope(Dispatchers.IO)
+    private var touchDown = false
+    private var startX = 0
+    private var startY = 0
+    private var currentX = 0
+    private var currentY = 0
+    private var startPosSet = false
+    private val trackpadMaxX = 1440  // Trackpad width matches screen width
+    private val SWIPE_UP_THRESHOLD = 150  // Balanced to allow comfortable swipes while avoiding false positives
 
     private val multiTapHandler = Handler(Looper.getMainLooper())
     private val multiTapController = MultiTapController(
@@ -857,6 +875,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             } else if (key == AdditionalSubtypeUtils.PREF_CUSTOM_INPUT_STYLES) {
                 Log.d(TAG, "Custom input styles changed, re-registering subtypes...")
                 registerAdditionalSubtypes()
+            } else if (key == "trackpad_gestures_enabled") {
+                Log.d(TAG, "Trackpad gestures setting changed, restarting detection...")
+                stopTrackpadGestureDetection()
+                startTrackpadGestureDetection()
             }
         }
         prefs.registerOnSharedPreferenceChangeListener(prefsListener)
@@ -984,9 +1006,12 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
         
         Log.d(TAG, "Broadcast receiver registered for additional subtypes updates")
-        
+
         // Update additional subtypes on startup
         updateAdditionalSubtypes()
+
+        // Start trackpad gesture detection
+        startTrackpadGestureDetection()
     }
     
     override fun onDestroy() {
@@ -1040,6 +1065,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         multiTapController.cancelAll()
         updateNavModeStatusIcon(false)
 
+        // Stop trackpad gesture detection
+        stopTrackpadGestureDetection()
+        trackpadScope.cancel()
     }
 
     override fun onCreateInputView(): View? = keyboardVisibilityController.onCreateInputView()
@@ -2213,5 +2241,223 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         val resourceName = "input_method_name_$languageCode"
         return resources.getIdentifier(resourceName, "string", packageName)
             .takeIf { it != 0 } ?: R.string.input_method_name
+    }
+
+    // ========== Trackpad Gesture Detection ==========
+
+    private fun startTrackpadGestureDetection() {
+        // Check if trackpad gestures are enabled in settings
+        if (!SettingsManager.getTrackpadGesturesEnabled(this)) {
+            Log.d(TAG, "Trackpad gestures disabled in settings")
+            return
+        }
+
+        if (!Shizuku.pingBinder()) {
+            Log.w(TAG, "Shizuku not available, trackpad gesture detection disabled")
+            return
+        }
+
+        geteventJob?.cancel()
+        geteventJob = trackpadScope.launch {
+            try {
+                val newProcessMethod = Shizuku::class.java.getDeclaredMethod(
+                    "newProcess",
+                    Array<String>::class.java,
+                    Array<String>::class.java,
+                    String::class.java
+                )
+                newProcessMethod.isAccessible = true
+
+                val process = newProcessMethod.invoke(
+                    null,
+                    arrayOf("getevent", "-l", "/dev/input/event7"),
+                    null,
+                    null
+                ) as Process
+
+                BufferedReader(InputStreamReader(process.inputStream)).use { reader ->
+                    while (isActive) {
+                        val line = reader.readLine() ?: break
+                        parseTrackpadEvent(line)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Trackpad getevent failed", e)
+            }
+        }
+        Log.d(TAG, "Trackpad gesture detection started")
+    }
+
+    private fun stopTrackpadGestureDetection() {
+        geteventJob?.cancel()
+        geteventJob = null
+        Log.d(TAG, "Trackpad gesture detection stopped")
+    }
+
+    private fun parseTrackpadEvent(line: String) {
+        when {
+            line.contains("BTN_TOUCH") && line.contains("DOWN") -> {
+                touchDown = true
+                startPosSet = false
+            }
+            line.contains("BTN_TOUCH") && line.contains("UP") -> {
+                if (touchDown) {
+                    detectGesture()
+                }
+                touchDown = false
+                startPosSet = false
+            }
+            line.contains("ABS_MT_POSITION_X") -> {
+                val parts = line.trim().split(Regex("\\s+"))
+                if (parts.size >= 3) {
+                    val hexValue = parts.last()
+                    val newX = hexValue.toIntOrNull(16)
+                    if (newX != null) {
+                        currentX = newX
+                        if (touchDown && !startPosSet) {
+                            startX = newX
+                        }
+                    }
+                }
+            }
+            line.contains("ABS_MT_POSITION_Y") -> {
+                val parts = line.trim().split(Regex("\\s+"))
+                if (parts.size >= 3) {
+                    val hexValue = parts.last()
+                    val newY = hexValue.toIntOrNull(16)
+                    if (newY != null) {
+                        currentY = newY
+                        if (touchDown && !startPosSet) {
+                            startY = newY
+                            startPosSet = true
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun detectGesture() {
+        val deltaY = startY - currentY  // Positive = swipe up
+        val deltaX = currentX - startX
+        val absDeltaX = Math.abs(deltaX)
+
+        // Require primarily vertical swipe: deltaY must be at least 3x larger than horizontal drift
+        if (deltaY > SWIPE_UP_THRESHOLD && absDeltaX < deltaY / 3) {
+            // Determine which third of the trackpad the swipe occurred in
+            // Use startX (where swipe started) not currentX (where it ended)
+            val third = when {
+                startX < trackpadMaxX / 3 -> 0  // Left
+                startX < (trackpadMaxX * 2) / 3 -> 1  // Center
+                else -> 2  // Right
+            }
+
+            Log.d(TAG, ">>> SWIPE UP DETECTED in third $third (deltaY=$deltaY, absDeltaX=$absDeltaX, startX=$startX) <<<")
+            acceptSuggestionAtIndex(third)
+        }
+    }
+
+    private fun acceptSuggestionAtIndex(third: Int) {
+        // Log current suggestions
+        Log.d(TAG, "Current latestSuggestions: $latestSuggestions")
+
+        // Map third to suggestion index based on FullSuggestionsBar slot layout
+        // slots[0] = left = suggestions[2]
+        // slots[1] = center = suggestions[0]
+        // slots[2] = right = suggestions[1]
+        val suggestionIndex = when (third) {
+            0 -> 2  // Left third → suggestions[2]
+            1 -> 0  // Center third → suggestions[0]
+            2 -> 1  // Right third → suggestions[1]
+            else -> return
+        }
+
+        val suggestion = latestSuggestions.getOrNull(suggestionIndex)
+        if (suggestion == null) {
+            Log.d(TAG, "No suggestion at index $suggestionIndex (third=$third), latestSuggestions=$latestSuggestions")
+            return
+        }
+
+        uiHandler.post {
+            val ic = currentInputConnection
+            if (ic == null) {
+                Log.w(TAG, "No InputConnection available")
+                return@post
+            }
+
+            val forceLeadingCapital = AutoCapitalizeHelper.shouldAutoCapitalizeAtCursor(
+                context = this,
+                inputConnection = ic,
+                shouldDisableAutoCapitalize = shouldDisableSmartFeatures
+            ) && SettingsManager.getAutoCapitalizeFirstLetter(this)
+
+            Log.d(TAG, "Accepting suggestion '$suggestion' from third=$third (index=$suggestionIndex)")
+
+            // Use the same logic as SuggestionButtonHandler
+            val before = ic.getTextBeforeCursor(64, 0)?.toString().orEmpty()
+            val after = ic.getTextAfterCursor(64, 0)?.toString().orEmpty()
+            val boundaryChars = " \t\n\r" + it.palsoftware.pastiera.core.Punctuation.BOUNDARY
+
+            fun isApostropheWithinWord(prev: Char?, next: Char?): Boolean {
+                if (prev?.isLetterOrDigit() != true) return false
+                return next == null || next.isLetterOrDigit()
+            }
+
+            // Find start of word in 'before'
+            var start = before.length
+            while (start > 0) {
+                val ch = before[start - 1]
+                if (!boundaryChars.contains(ch)) {
+                    start--
+                    continue
+                }
+                val prev = before.getOrNull(start - 2)
+                val next = before.getOrNull(start)
+                if (ch == '\'' && isApostropheWithinWord(prev, next)) {
+                    start--
+                    continue
+                }
+                break
+            }
+
+            // Find end of word in 'after'
+            var end = 0
+            while (end < after.length) {
+                val ch = after[end]
+                if (!boundaryChars.contains(ch)) {
+                    end++
+                    continue
+                }
+                val prev = if (end == 0) before.lastOrNull() else after[end - 1]
+                val next = after.getOrNull(end + 1)
+                if (ch == '\'' && isApostropheWithinWord(prev, next)) {
+                    end++
+                    continue
+                }
+                break
+            }
+
+            val wordBeforeCursor = before.substring(start)
+            val wordAfterCursor = after.substring(0, end)
+            val currentWord = wordBeforeCursor + wordAfterCursor
+
+            val deleteBefore = wordBeforeCursor.length
+            val deleteAfter = wordAfterCursor.length
+            val replacement = it.palsoftware.pastiera.core.suggestions.CasingHelper.applyCasing(
+                suggestion, currentWord, forceLeadingCapital
+            )
+            val shouldAppendSpace = !replacement.endsWith("'")
+
+            ic.deleteSurroundingText(deleteBefore, deleteAfter)
+            val textToCommit = if (shouldAppendSpace) "$replacement " else replacement
+            ic.commitText(textToCommit, 1)
+
+            if (shouldAppendSpace) {
+                it.palsoftware.pastiera.core.AutoSpaceTracker.markAutoSpace()
+            }
+
+            NotificationHelper.triggerHapticFeedback(this)
+            Log.d(TAG, "Suggestion '$suggestion' inserted successfully")
+        }
     }
 }

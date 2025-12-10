@@ -14,6 +14,9 @@
     <!-- Permesso per l'accesso a Internet (richiesto per il controllo aggiornamenti) -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Permesso per mostrare finestre overlay (per debug trackpad) -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
     <!-- Query per vedere tutte le app installate che possono essere avviate -->
     <queries>
         <intent>
@@ -81,7 +84,16 @@
             android:exported="false"
             android:label="@string/installed_dictionaries_title"
             android:theme="@style/Theme.Pastiera" />
-        
+
+        <!-- Activity for trackpad debug -->
+        <activity
+            android:name=".TrackpadDebugActivity"
+            android:exported="false"
+            android:label="Trackpad Debug"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true"
+            android:launchMode="singleInstance" />
+
         <!-- Servizio di immissione per tastiera fisica -->
         <service
             android:name=".inputmethod.PhysicalKeyboardInputMethodService"
@@ -95,7 +107,7 @@
                 android:name="android.view.im"
                 android:resource="@xml/method" />
         </service>
-        
+
         <!-- Attività helper per il riconoscimento vocale -->
         <activity
             android:name=".inputmethod.SpeechRecognitionActivity"
@@ -124,6 +136,15 @@
             android:taskAffinity=""
             android:noHistory="true"
             android:finishOnTaskLaunch="true" />
+
+        <!-- Shizuku provider -->
+        <provider
+            android:name="rikka.shizuku.ShizukuProvider"
+            android:authorities="${applicationId}.shizuku"
+            android:multiprocess="false"
+            android:enabled="true"
+            android:exported="true"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
     </application>
 
 </manifest>

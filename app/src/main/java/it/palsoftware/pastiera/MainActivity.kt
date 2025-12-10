@@ -52,6 +52,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.filled.BugReport
 import androidx.activity.compose.BackHandler
 import kotlinx.coroutines.delay
 
@@ -441,7 +442,7 @@ fun KeyboardSetupScreen(
                 }
             }
         }
-        
+
         // Test field
         OutlinedTextField(
             value = testText,
