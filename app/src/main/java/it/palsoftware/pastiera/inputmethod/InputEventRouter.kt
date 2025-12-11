@@ -70,10 +70,11 @@ class InputEventRouter(
     }
 
     private fun commitTextWithTracking(ic: InputConnection?, text: CharSequence, trackWord: Boolean = true) {
+        Log.d("PastieraIME", "commitTextWithTracking enter: '$text', trackWord=$trackWord")
         onCommitText?.invoke()
         ic?.commitText(text, 1)
-        Log.d("PastieraIME", "commitTextWithTracking: '$text', trackWord=$trackWord")
         if (trackWord) {
+            Log.d("PastieraIME", "commitTextWithTracking notify SC: '$text'")
             suggestionController?.onCharacterCommitted(text, ic)
         }
     }

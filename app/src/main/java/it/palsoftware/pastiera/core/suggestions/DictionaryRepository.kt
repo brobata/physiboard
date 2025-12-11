@@ -20,6 +20,7 @@ import kotlinx.serialization.SerializationException
 import java.io.File
 import java.io.FileInputStream
 import java.io.InputStream
+import kotlin.math.pow
 
 /**
  * Loads and indexes lightweight dictionaries from assets and merges them with the user dictionary.
@@ -50,6 +51,8 @@ class DictionaryRepository(
         get() = loadStarted
     private val tag = "DictionaryRepo"
     private val debugLogging: Boolean = debugLogging
+    private val maxRawFrequency = 255.0
+    private val scaledFrequencyMax = 2000.0
 
     suspend fun loadIfNeeded() {
         if (isReady) return
@@ -191,6 +194,18 @@ class DictionaryRepository(
     }
 
     /**
+     * Applies a non-linear scaling to compact dictionary frequencies (0–255) to
+     * restore a meaningful range for ranking and SymSpell. The exponent (<1)
+     * boosts mid/high values without making low values explode.
+     */
+    fun effectiveFrequency(entry: DictionaryEntry): Int {
+        val raw = entry.frequency.coerceAtLeast(0).coerceAtMost(maxRawFrequency.toInt())
+        val normalized = raw / maxRawFrequency
+        val scaled = (normalized.pow(0.8) * scaledFrequencyMax).toInt()
+        return scaled.coerceAtLeast(1)
+    }
+
+    /**
      * Gets the frequency of an exact word (case-insensitive match).
      * Returns the maximum frequency if multiple entries exist (e.g., different sources).
      * Returns 0 if the word doesn't exist.
@@ -253,7 +268,7 @@ class DictionaryRepository(
     }
 
     fun bestEntryForNormalized(normalized: String): DictionaryEntry? {
-        return normalizedIndex[normalized]?.maxByOrNull { it.frequency }
+        return normalizedIndex[normalized]?.maxByOrNull { effectiveFrequency(it) }
     }
 
     fun allCandidates(): List<DictionaryEntry> {
@@ -268,7 +283,7 @@ class DictionaryRepository(
     fun topByNormalized(normalized: String, limit: Int = 5): List<DictionaryEntry> {
         if (!isReady) return emptyList()
         return normalizedIndex[normalized]
-            ?.sortedByDescending { it.frequency }
+            ?.sortedByDescending { effectiveFrequency(it) }
             ?.take(limit)
             .orEmpty()
     }
@@ -339,7 +354,7 @@ class DictionaryRepository(
                 prefixLength = index.symMeta.prefixLength
             )
             val termFrequencies = index.normalizedIndex.mapValues { (_, entries) ->
-                entries.maxOfOrNull { it.frequency } ?: 0
+                entries.maxOfOrNull { effectiveFrequency(it.toDictionaryEntry()) } ?: 0
             }
             val prefixToTerms = mutableMapOf<String, MutableList<String>>()
             termFrequencies.keys.forEach { term ->
@@ -367,6 +382,8 @@ class DictionaryRepository(
             Log.i(tag, "Loaded precomputed SymSpell deletes: ${expandedDeletes.size} keys")
         }
 
+        // Re-sort caches using the runtime effective frequency scaling.
+        sortCachesByEffectiveFrequency()
         Log.i(tag, "Successfully populated indices from serialized format")
     }
 
@@ -452,7 +469,7 @@ class DictionaryRepository(
             }
         }
 
-        prefixCache.values.forEach { list -> list.sortByDescending { it.frequency } }
+        sortCachesByEffectiveFrequency()
         if (debugLogging) {
             Log.d(tag, "index built: normalizedIndex=${normalizedIndex.size} prefixCache=${prefixCache.size}")
         }
@@ -483,15 +500,15 @@ class DictionaryRepository(
                 prefixList.addAll(list)
             }
         }
-        prefixCache.values.forEach { it.sortByDescending { entry -> entry.frequency } }
+        sortCachesByEffectiveFrequency()
     }
 
     private fun buildSymSpell() {
         if (symSpellBuilt && symSpell != null) return
         val engine = SymSpell(maxEditDistance = 2, prefixLength = cachePrefixLength)
         normalizedIndex.forEach { (normalized, entries) ->
-            val best = entries.maxByOrNull { it.frequency } ?: return@forEach
-            engine.addWord(normalized, best.frequency)
+            val best = entries.maxByOrNull { effectiveFrequency(it) } ?: return@forEach
+            engine.addWord(normalized, effectiveFrequency(best))
         }
         symSpell = engine
         symSpellBuilt = true
@@ -504,7 +521,7 @@ class DictionaryRepository(
         }
         entries.forEach { entry ->
             val normalized = normalize(entry.word)
-            engine.addWord(normalized, entry.frequency)
+            engine.addWord(normalized, effectiveFrequency(entry))
         }
     }
 
@@ -515,5 +532,14 @@ class DictionaryRepository(
         // Keep only Unicode letters (supports Latin, Cyrillic, Greek, Arabic, Chinese, etc.)
         // Removes: punctuation, numbers, spaces, emoji, symbols
         return withoutAccents.replace("[^\\p{L}]".toRegex(), "")
+    }
+
+    private fun sortCachesByEffectiveFrequency() {
+        prefixCache.values.forEach { list ->
+            list.sortByDescending { effectiveFrequency(it) }
+        }
+        normalizedIndex.values.forEach { list ->
+            list.sortByDescending { effectiveFrequency(it) }
+        }
     }
 }

@@ -80,7 +80,7 @@ object SettingsManager {
     private val DEFAULT_SYM_PAGES_CONFIG = SymPagesConfig()
     private const val DEFAULT_STATIC_VARIATION_BAR_MODE = false
     private const val DEFAULT_EXPERIMENTAL_SUGGESTIONS_ENABLED = false
-    private const val DEFAULT_SUGGESTION_DEBUG_LOGGING = false
+    private const val DEFAULT_SUGGESTION_DEBUG_LOGGING = true
     private const val KEY_EXPERIMENTAL_SUGGESTIONS_ENABLED = "experimental_suggestions_enabled"
     private const val KEY_SUGGESTION_DEBUG_LOGGING = "suggestion_debug_logging"
     private const val KEY_USE_KEYBOARD_PROXIMITY = "use_keyboard_proximity"

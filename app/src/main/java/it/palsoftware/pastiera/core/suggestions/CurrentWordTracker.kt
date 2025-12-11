@@ -31,6 +31,11 @@ class CurrentWordTracker(
     fun onCharacterCommitted(text: CharSequence) {
         if (text.isEmpty()) return
         text.forEach { char ->
+            // Special case: "\bX" pattern means "replace last with X" (used by multi-tap).
+            if (char == '\b') {
+                onBackspace()
+                return@forEach
+            }
             val normalizedChar = normalizeApostrophe(char)
             val isWordChar = normalizedChar.isLetterOrDigit() ||
                 (normalizedChar == '\'' && current.isNotEmpty() && current.last().isLetterOrDigit())

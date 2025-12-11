@@ -13,7 +13,8 @@ data class MultiTapState(
     var active: Boolean = false,
     var suppressLongPress: Boolean = false,
     var lastCommitLength: Int = 0,
-    var useUppercase: Boolean = false
+    var useUppercase: Boolean = false,
+    var replacedInWindow: Boolean = false
 )
 
 /**
@@ -40,15 +41,21 @@ class MultiTapController(
         return state.active && state.suppressLongPress && state.lastKeyCode == keyCode
     }
 
+    data class TapResult(
+        val handled: Boolean,
+        val committedText: String?,
+        val replacedInWindow: Boolean
+    )
+
     fun handleTap(
         keyCode: Int,
         mapping: LayoutMapping,
         useUppercase: Boolean,
         inputConnection: InputConnection
-    ): Boolean {
+    ): TapResult {
         if (!mapping.isRealMultiTap) {
             finalizeCycle()
-            return false
+            return TapResult(handled = false, committedText = null, replacedInWindow = false)
         }
 
         val now = System.currentTimeMillis()
@@ -63,7 +70,8 @@ class MultiTapController(
         }
 
         val activeUppercase = if (isSameKeyWithinWindow && state.active) state.useUppercase else useUppercase
-        val text = LayoutMappingRepository.resolveText(mapping, activeUppercase, nextTapIndex) ?: return false
+        val text = LayoutMappingRepository.resolveText(mapping, activeUppercase, nextTapIndex)
+            ?: return TapResult(handled = false, committedText = null, replacedInWindow = false)
 
         if (isSameKeyWithinWindow) {
             // Replace previous character atomically to avoid flicker in apps like Messages.
@@ -88,10 +96,11 @@ class MultiTapController(
         state.suppressLongPress = true
         state.lastCommitLength = text.length
         state.useUppercase = activeUppercase
+        state.replacedInWindow = isSameKeyWithinWindow
 
         handler.removeCallbacks(timeoutRunnable)
         handler.postDelayed(timeoutRunnable, timeoutMs)
-        return true
+        return TapResult(handled = true, committedText = text, replacedInWindow = isSameKeyWithinWindow)
     }
 
     fun finalizeCycle() {

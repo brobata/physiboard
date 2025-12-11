@@ -273,6 +273,9 @@ class SuggestionEngine(
         useKeyboardProximity: Boolean = true,
         useEditTypeRanking: Boolean = true
     ): List<SuggestionResult> {
+        if (debugLogging) {
+            Log.d(tag, "suggest() input='$currentWord' len=${currentWord.length}")
+        }
         if (currentWord.isBlank()) return emptyList()
         if (!repository.isReady) return emptyList()
 
@@ -316,12 +319,16 @@ class SuggestionEngine(
         useEditTypeRanking: Boolean
     ): List<SuggestionResult> {
         val normalizedWord = normalize(currentWord)
+        val inputLen = normalizedWord.length
         // Require at least 1 character to start suggesting.
-        if (normalizedWord.length < 1) return emptyList()
-
-        // SymSpell lookup on normalized input
-        val symResultsPrimary = repository.symSpellLookup(normalizedWord, maxSuggestions = limit * 8)
-        val symResultsAccent = if (includeAccentMatching) {
+        if (inputLen < 1) return emptyList()
+        // SymSpell lookup on normalized input (skip for single-char to avoid noise)
+        val symResultsPrimary = if (inputLen == 1) {
+            emptyList()
+        } else {
+            repository.symSpellLookup(normalizedWord, maxSuggestions = limit * 8)
+        }
+        val symResultsAccent = if (includeAccentMatching && inputLen > 1) {
             val normalizedAccentless = stripAccents(normalizedWord)
             if (normalizedAccentless != normalizedWord) {
                 repository.symSpellLookup(normalizedAccentless, maxSuggestions = limit * 4)
@@ -338,7 +345,6 @@ class SuggestionEngine(
 
         val seen = HashSet<String>(limit * 3)
         val top = ArrayList<SuggestionResult>(limit)
-        val inputLen = normalizedWord.length
         val comparator = Comparator<SuggestionResult> { a, b ->
             val d = a.distance.compareTo(b.distance)
             if (d != 0) return@Comparator d
@@ -371,7 +377,9 @@ class SuggestionEngine(
 
             candidateList.forEach { entry ->
                 val candidateLen = entry.word.length
+                val effectiveFreq = repository.effectiveFrequency(entry)
                 val hasAccent = entry.word.any { it in accentChars }
+                val hasDigit = entry.word.any { it.isDigit() }
                 val isSameBaseLetter = entry.word.equals(currentWord, ignoreCase = true)
                 val isShortElision = candidateLen in 2..3 &&
                         entry.word.length >= 2 &&
@@ -388,12 +396,22 @@ class SuggestionEngine(
                     isPrefix -> 0.8
                     else -> 0.0
                 }
-                val frequencyScore = (entry.frequency / 2_000.0)
+                val frequencyScore = (effectiveFreq / 2_000.0)
                 val sourceBoost = if (entry.source == SuggestionSource.USER) 5.0 else 1.0
                 val accentBonus = if (isSingleCharInput && candidateLen == 1 && hasAccent) 0.4 else 0.0
                 val baseLetterMalus = if (isSingleCharInput && candidateLen == 1 && !hasAccent && isSameBaseLetter) -2.0 else 0.0
                 val elisionBonus = if (isSingleCharInput && isShortElision) 0.5 else 0.0
                 val lengthPenalty = if (isSingleCharInput && candidateLen > 2) -0.2 * (candidateLen - 2) else 0.0
+                // Small preference for lengths close to the current word; penalize large gaps.
+                val lenDiff = kotlin.math.abs(candidateLen - currentWord.length)
+                val lengthSimilarityBonus = when {
+                    lenDiff == 0 -> 0.35
+                    lenDiff == 1 -> 0.2
+                    lenDiff == 2 -> 0.05
+                    else -> -0.15 * kotlin.math.min(lenDiff, 4)
+                }
+                // Strong malus for numeric candidates, especially on short inputs.
+                val numericMalus = if (hasDigit && inputLen <= 2) -3.0 else if (hasDigit) -1.5 else 0.0
 
                 // Apply edit type ranking when enabled
                 var editTypeBonus = 0.0
@@ -431,7 +449,9 @@ class SuggestionEngine(
                         accentBonus +
                         baseLetterMalus +
                         elisionBonus +
-                        lengthPenalty
+                        lengthPenalty +
+                        lengthSimilarityBonus +
+                        numericMalus
                     ) * sourceBoost
                 val key = entry.word.lowercase(locale)
                 if (!seen.add(key)) return@forEach
@@ -451,6 +471,16 @@ class SuggestionEngine(
                     while (top.size > limit) top.removeAt(top.lastIndex)
                 }
             }
+        }
+
+        // For single-character input, explicitly surface normalized variants (accented and base).
+        if (inputLen == 1) {
+            consider(
+                term = normalizedWord,
+                distance = 0,
+                frequency = repository.getExactWordFrequency(currentWord),
+                isForcedPrefix = false
+            )
         }
 
         // Consider completions first to surface them even if SymSpell returns other close words

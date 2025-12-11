@@ -207,6 +207,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
 
     private fun markSelectionUpdateSkipAfterCommit() {
         skipNextSelectionUpdateAfterCommit = true
+        if (SettingsManager.isSuggestionDebugLoggingEnabled(this)) {
+            Log.d(TAG, "markSelectionUpdateSkipAfterCommit() set skip flag")
+        }
     }
 
     @Suppress("DEPRECATION")
@@ -600,28 +603,27 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         allowLongPress: Boolean
     ): Boolean {
         val ic = inputConnection ?: return false
-        val handled = multiTapController.handleTap(keyCode, mapping, useUppercase, ic)
-        if (handled && allowLongPress) {
-            val committedText = LayoutMappingRepository.resolveText(
-                mapping,
-                multiTapController.state.useUppercase,
-                multiTapController.state.tapIndex
-            )
-            if (!committedText.isNullOrEmpty()) {
+        val tapResult = multiTapController.handleTap(keyCode, mapping, useUppercase, ic)
+        if (tapResult.handled && allowLongPress) {
+            tapResult.committedText?.let { committedText ->
                 altSymManager.scheduleLongPressOnly(keyCode, ic, committedText)
             }
         }
-        if (handled) {
-            val committedText = LayoutMappingRepository.resolveText(
-                mapping,
-                multiTapController.state.useUppercase,
-                multiTapController.state.tapIndex
-            )
-            if (!committedText.isNullOrEmpty()) {
-                suggestionController.onCharacterCommitted(committedText, inputConnection)
+        if (tapResult.handled) {
+            Log.d(TAG, "multiTap commit text='${tapResult.committedText}' replaced=${tapResult.replacedInWindow}")
+            // Prevent onUpdateSelection from re-triggering suggestion recalculation for the same commit.
+            markSelectionUpdateSkipAfterCommit()
+            tapResult.committedText?.let { committedText ->
+                if (tapResult.replacedInWindow) {
+                    // Replace the last character in the tracker to stay in sync with the text field.
+                    suggestionController.currentSuggestions() // touch to keep listener consistent (noop)
+                    suggestionController.onCharacterCommitted("\b$committedText", inputConnection)
+                } else {
+                    suggestionController.onCharacterCommitted(committedText, inputConnection)
+                }
             }
         }
-        return handled
+        return tapResult.handled
     }
     
     private fun reloadNavModeMappings() {
@@ -808,7 +810,14 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // Track normal characters committed via Alt short press (no long press triggered)
         altSymManager.onNormalCharCommitted = { text ->
             if (::suggestionController.isInitialized) {
-                suggestionController.onCharacterCommitted(text, currentInputConnection)
+                // Avoid double-tracking plain letters already handled by the main pipeline.
+                val ch = text.firstOrNull()
+                val shouldTrack = ch == null || !ch.isLetter()
+                if (shouldTrack) {
+                    // Avoid double suggestion dispatch: skip the immediate selection update after commit.
+                    markSelectionUpdateSkipAfterCommit()
+                    suggestionController.onCharacterCommitted(text, currentInputConnection)
+                }
             }
         }
         symLayoutController = SymLayoutController(this, prefs, altSymManager)
@@ -1830,11 +1839,19 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             if (!state.shouldDisableSuggestions) {
                 suggestionController.onCursorMoved(currentInputConnection)
             }
+            // Drop add-word candidate if cursor leaves its word
+            suggestionController.clearPendingAddWordIfCursorOutside(currentInputConnection)
             
             // Always update status bar (it handles variations/suggestions internally based on flags)
             Handler(Looper.getMainLooper()).postDelayed({
                 updateStatusBarText()
             }, CURSOR_UPDATE_DELAY)
+        }
+        if (SettingsManager.isSuggestionDebugLoggingEnabled(this)) {
+            Log.d(
+                TAG,
+                "onUpdateSelection old=($oldSelStart,$oldSelEnd) new=($newSelStart,$newSelEnd) collapsed=$collapsedSelection forwardByOne=$forwardByOne skipForCommit=$shouldSkipForCommit"
+            )
         }
         
         // Check auto-capitalization on selection change (if auto-cap enabled)

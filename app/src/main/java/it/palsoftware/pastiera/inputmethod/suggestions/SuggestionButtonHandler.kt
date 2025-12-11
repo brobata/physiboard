@@ -105,7 +105,9 @@ object SuggestionButtonHandler {
         val deleteBefore = wordBeforeCursor.length
         val deleteAfter = wordAfterCursor.length
         val replacement = CasingHelper.applyCasing(suggestion, currentWord, forceLeadingCapital)
-        val shouldAppendSpace = !replacement.endsWith("'")
+        val nextChar = after.getOrNull(end)
+        val shouldAppendSpace = !replacement.endsWith("'") &&
+            (nextChar == null || (!nextChar.isWhitespace() && !boundaryChars.contains(nextChar)))
 
         val deleted = inputConnection.deleteSurroundingText(deleteBefore, deleteAfter)
         if (deleted) {

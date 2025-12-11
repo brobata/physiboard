@@ -38,10 +38,18 @@ class SuggestionController(
         onWordChanged = { word ->
             val settings = settingsProvider()
             if (settings.suggestionsEnabled) {
-                onSuggestionsUpdated(suggestionEngine.suggest(word, settings.maxSuggestions, settings.accentMatching, settings.useKeyboardProximity, settings.useEditTypeRanking))
+                if (debugLogging) {
+                    Log.d("PastieraIME", "trackerWordChanged='$word' len=${word.length}")
+                }
+                val next = suggestionEngine.suggest(word, settings.maxSuggestions, settings.accentMatching, settings.useKeyboardProximity, settings.useEditTypeRanking)
+                latestSuggestions.set(next)
+                suggestionsListener?.invoke(next)
             }
         },
-        onWordReset = { onSuggestionsUpdated(emptyList()) }
+        onWordReset = {
+            latestSuggestions.set(emptyList())
+            suggestionsListener?.invoke(emptyList())
+        }
     )
     private var autoReplaceController = AutoReplaceController(dictionaryRepository, suggestionEngine, settingsProvider)
     
@@ -67,10 +75,15 @@ class SuggestionController(
             onWordChanged = { word ->
                 val settings = settingsProvider()
                 if (settings.suggestionsEnabled) {
-                    onSuggestionsUpdated(suggestionEngine.suggest(word, settings.maxSuggestions, settings.accentMatching, settings.useKeyboardProximity, settings.useEditTypeRanking))
+                    val next = suggestionEngine.suggest(word, settings.maxSuggestions, settings.accentMatching, settings.useKeyboardProximity, settings.useEditTypeRanking)
+                    latestSuggestions.set(next)
+                    suggestionsListener?.invoke(next)
                 }
             },
-            onWordReset = { onSuggestionsUpdated(emptyList()) }
+            onWordReset = {
+                latestSuggestions.set(emptyList())
+                suggestionsListener?.invoke(emptyList())
+            }
         )
         
         // Reload dictionary in background
@@ -103,7 +116,10 @@ class SuggestionController(
 
     fun onCharacterCommitted(text: CharSequence, inputConnection: InputConnection?) {
         if (!isEnabled()) return
-        if (debugLogging) Log.d("PastieraIME", "SuggestionController.onCharacterCommitted('$text')")
+        if (debugLogging) {
+            val caller = Throwable().stackTrace.getOrNull(1)?.let { "${it.className}#${it.methodName}:${it.lineNumber}" }
+            Log.d("PastieraIME", "SuggestionController.onCharacterCommitted('$text') caller=$caller")
+        }
         ensureDictionaryLoaded()
 
         // Normalize curly/variant apostrophes to straight for tracking and suggestions.
@@ -123,26 +139,11 @@ class SuggestionController(
         }
         
         tracker.onCharacterCommitted(normalizedText)
-        updateSuggestions()
     }
 
     fun refreshFromInputConnection(inputConnection: InputConnection?) {
         if (!isEnabled()) return
         tracker.onBackspace()
-        updateSuggestions()
-    }
-
-    private fun updateSuggestions() {
-        val settings = settingsProvider()
-        if (settings.suggestionsEnabled) {
-            val next = suggestionEngine.suggest(tracker.currentWord, settings.maxSuggestions, settings.accentMatching, settings.useKeyboardProximity, settings.useEditTypeRanking)
-            val summary = next.take(3).joinToString { "${it.candidate}:${it.distance}" }
-            if (debugLogging) Log.d("PastieraIME", "suggestions (${next.size}): $summary")
-            latestSuggestions.set(next)
-            suggestionsListener?.invoke(next)
-        } else {
-            suggestionsListener?.invoke(emptyList())
-        }
     }
 
     fun onBoundaryKey(
@@ -185,7 +186,6 @@ class SuggestionController(
             val word = extractWordAtCursor(inputConnection)
             if (!word.isNullOrBlank()) {
                 tracker.setWord(word)
-                updateSuggestions()
             } else {
                 tracker.reset()
                 suggestionsListener?.invoke(emptyList())
@@ -255,6 +255,18 @@ class SuggestionController(
     fun pendingAddWord(): String? = pendingAddUserWord
     fun clearPendingAddWord() {
         pendingAddUserWord = null
+    }
+
+    /**
+     * Clears the pending add-word candidate if the cursor is no longer on that word.
+     * Keeps the candidate only while the cursor remains on the originating token.
+     */
+    fun clearPendingAddWordIfCursorOutside(inputConnection: InputConnection?) {
+        val pending = pendingAddUserWord ?: return
+        val currentWord = extractWordAtCursor(inputConnection)
+        if (currentWord == null || !currentWord.equals(pending, ignoreCase = true)) {
+            pendingAddUserWord = null
+        }
     }
 
     private fun extractWordAtCursor(inputConnection: InputConnection?): String? {
