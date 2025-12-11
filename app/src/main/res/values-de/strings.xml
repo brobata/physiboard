@@ -1,4 +1,4 @@
-﻿<resources>
+<resources>
     <string name="app_name">Pastiera</string>
     <string name="input_method_name">Pastiera</string>
     <string name="input_method_name_en">English</string>
@@ -415,4 +415,33 @@
     <string name="installed_dictionaries_import_invalid_format">Ungültiges Wörterbuchformat</string>
     <string name="installed_dictionaries_import_failed">Import fehlgeschlagen</string>
     <string name="installed_dictionaries_imported_badge">Importiert</string>
+
+    <!-- Trackpad Gesture Settings -->
+    <string name="trackpad_gestures_title">Trackpad-Gesten-Vorschläge</string>
+    <string name="trackpad_gestures_description">Nach oben wischen auf dem Trackpad, um Vorschläge zu akzeptieren</string>
+    <string name="trackpad_gestures_enabled_title">Trackpad-Gesten Aktivieren</string>
+    <string name="trackpad_gestures_enabled_description">Nach oben wischen auf dem Trackpad, um Wortvorschläge zu akzeptieren</string>
+    <string name="trackpad_gestures_show_tutorial">Tutorial Anzeigen</string>
+    <string name="trackpad_gestures_tutorial_description">Lernen Sie, wie Sie Trackpad-Gesten verwenden</string>
+    <string name="trackpad_gestures_install_shizuku">Shizuku Installieren</string>
+    <string name="trackpad_gestures_install_shizuku_description">Erforderlich für die Erkennung von Trackpad-Gesten</string>
+    <string name="trackpad_gestures_shizuku_url">https://github.com/RikkaApps/Shizuku/releases/</string>
+    <string name="trackpad_gestures_shizuku_connected">Shizuku Verbunden</string>
+    <string name="trackpad_gestures_shizuku_not_connected">Shizuku Nicht Verbunden</string>
+    <string name="trackpad_swipe_threshold_title">Trackpad-Wisch-Empfindlichkeit</string>
+    <string name="trackpad_swipe_threshold_description">Passen Sie an, wie weit Sie nach oben wischen müssen, um einen Vorschlag zu akzeptieren.</string>
+
+    <!-- Trackpad Gesture Tutorial -->
+    <string name="trackpad_tutorial_title">Trackpad-Gesten-Vorschläge</string>
+    <string name="trackpad_tutorial_welcome_title">Trackpad-Gesten-Vorschläge</string>
+    <string name="trackpad_tutorial_welcome_description">Wischen Sie nach oben auf Ihrem Trackpad, um schnell Wortvorschläge zu akzeptieren, ohne zu klicken!</string>
+    <string name="trackpad_tutorial_how_it_works_title">Wie Es Funktioniert</string>
+    <string name="trackpad_tutorial_how_it_works_description">Das Trackpad ist in drei Bereiche unterteilt:\n\n• Linkes Drittel → Linken Vorschlag akzeptieren\n• Mittleres Drittel → Mittleren Vorschlag akzeptieren\n• Rechtes Drittel → Rechten Vorschlag akzeptieren\n\nWischen Sie einfach nach oben im entsprechenden Bereich, um diesen Vorschlag einzufügen.</string>
+    <string name="trackpad_tutorial_shizuku_required_title">Shizuku Erforderlich</string>
+    <string name="trackpad_tutorial_shizuku_required_description">Diese Funktion erfordert Shizuku, um auf Trackpad-Ereignisse zuzugreifen.\n\n1. Installieren Sie Shizuku von GitHub-Releases\n2. Aktivieren Sie Entwickleroptionen in den Android-Einstellungen\n3. Schließen Sie Ihr Gerät an einen PC mit installiertem ADB an\n4. Führen Sie den Befehl aus, den Shizuku in seiner App anzeigt\n5. Erteilen Sie Pastiera die Berechtigung in Shizuku\n\nDie Funktion funktioniert automatisch, sobald Shizuku läuft.</string>
+    <string name="trackpad_tutorial_tips_title">Tipps</string>
+    <string name="trackpad_tutorial_tips_description">• Stellen Sie sicher, dass Ihre Wischbewegung hauptsächlich vertikal ist\n• Die Geste funktioniert am besten mit schnellen, gezielten Wischbewegungen\n• Wenn andere Finger auf der Tastatur sind, werden Gesten möglicherweise nicht erkannt (Hardware-Handflächen-Ablehnung)\n• Die Funktion kann in den Erweiterten Einstellungen aktiviert/deaktiviert werden</string>
+    <string name="trackpad_tutorial_complete">Verstanden</string>
+    <string name="trackpad_tutorial_next">Weiter</string>
+    <string name="trackpad_tutorial_previous">Zurück</string>
 </resources>

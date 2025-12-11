@@ -1,4 +1,4 @@
-﻿<resources>
+<resources>
     <string name="app_name">Pastiera</string>
     <string name="input_method_name">Pastiera</string>
     <string name="input_method_name_en">English</string>
@@ -418,5 +418,34 @@
     <string name="installed_dictionaries_import_invalid_format">Format de dictionnaire invalide</string>
     <string name="installed_dictionaries_import_failed">Échec de l\'import</string>
     <string name="installed_dictionaries_imported_badge">Importé</string>
+
+    <!-- Trackpad Gesture Settings -->
+    <string name="trackpad_gestures_title">Suggestions de Gestes Trackpad</string>
+    <string name="trackpad_gestures_description">Glissez vers le haut sur le trackpad pour accepter les suggestions</string>
+    <string name="trackpad_gestures_enabled_title">Activer les Gestes Trackpad</string>
+    <string name="trackpad_gestures_enabled_description">Glissez vers le haut sur le trackpad pour accepter les suggestions de mots</string>
+    <string name="trackpad_gestures_show_tutorial">Afficher le Tutoriel</string>
+    <string name="trackpad_gestures_tutorial_description">Apprenez à utiliser les gestes du trackpad</string>
+    <string name="trackpad_gestures_install_shizuku">Installer Shizuku</string>
+    <string name="trackpad_gestures_install_shizuku_description">Requis pour la détection des gestes du trackpad</string>
+    <string name="trackpad_gestures_shizuku_url">https://github.com/RikkaApps/Shizuku/releases/</string>
+    <string name="trackpad_gestures_shizuku_connected">Shizuku Connecté</string>
+    <string name="trackpad_gestures_shizuku_not_connected">Shizuku Non Connecté</string>
+    <string name="trackpad_swipe_threshold_title">Sensibilité du Glissement Trackpad</string>
+    <string name="trackpad_swipe_threshold_description">Ajustez la distance à glisser vers le haut pour accepter une suggestion.</string>
+
+    <!-- Trackpad Gesture Tutorial -->
+    <string name="trackpad_tutorial_title">Suggestions de Gestes Trackpad</string>
+    <string name="trackpad_tutorial_welcome_title">Suggestions de Gestes Trackpad</string>
+    <string name="trackpad_tutorial_welcome_description">Glissez vers le haut sur votre trackpad pour accepter rapidement les suggestions de mots sans cliquer !</string>
+    <string name="trackpad_tutorial_how_it_works_title">Comment ça Marche</string>
+    <string name="trackpad_tutorial_how_it_works_description">Le trackpad est divisé en trois sections :\n\n• Tiers gauche → Accepter la suggestion gauche\n• Tiers central → Accepter la suggestion centrale\n• Tiers droit → Accepter la suggestion droite\n\nGlissez simplement vers le haut dans la zone correspondante pour insérer cette suggestion.</string>
+    <string name="trackpad_tutorial_shizuku_required_title">Shizuku Requis</string>
+    <string name="trackpad_tutorial_shizuku_required_description">Cette fonctionnalité nécessite Shizuku pour accéder aux événements du trackpad.\n\n1. Installez Shizuku depuis les versions GitHub\n2. Activez les options développeur dans les paramètres Android\n3. Branchez votre appareil à un PC avec ADB installé\n4. Exécutez la commande que Shizuku affiche dans son app\n5. Accordez la permission à Pastiera dans Shizuku\n\nLa fonctionnalité fonctionnera automatiquement une fois Shizuku en cours d\'exécution.</string>
+    <string name="trackpad_tutorial_tips_title">Conseils</string>
+    <string name="trackpad_tutorial_tips_description">• Assurez-vous que votre glissement soit principalement vertical\n• Le geste fonctionne mieux avec des glissements rapides et délibérés\n• Si d\'autres doigts sont sur le clavier, les gestes peuvent ne pas être détectés (rejet de paume matériel)\n• La fonctionnalité peut être activée/désactivée dans les Paramètres Avancés</string>
+    <string name="trackpad_tutorial_complete">Compris</string>
+    <string name="trackpad_tutorial_next">Suivant</string>
+    <string name="trackpad_tutorial_previous">Précédent</string>
 </resources>
 

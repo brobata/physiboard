@@ -453,6 +453,31 @@
     <string name="installed_dictionaries_imported_badge">Importato</string>
 
     <!-- Trackpad gestures -->
+    <string name="trackpad_gestures_title">Suggerimenti Gesture Trackpad</string>
+    <string name="trackpad_gestures_description">Scorri verso l\'alto sul trackpad per accettare i suggerimenti</string>
+    <string name="trackpad_gestures_enabled_title">Abilita Gesture Trackpad</string>
+    <string name="trackpad_gestures_enabled_description">Scorri verso l\'alto sul trackpad per accettare i suggerimenti di parole</string>
+    <string name="trackpad_gestures_show_tutorial">Mostra Tutorial</string>
+    <string name="trackpad_gestures_tutorial_description">Impara come usare le gesture del trackpad</string>
+    <string name="trackpad_gestures_install_shizuku">Installa Shizuku</string>
+    <string name="trackpad_gestures_install_shizuku_description">Richiesto per il rilevamento delle gesture del trackpad</string>
+    <string name="trackpad_gestures_shizuku_url">https://github.com/RikkaApps/Shizuku/releases/</string>
+    <string name="trackpad_gestures_shizuku_connected">Shizuku Connesso</string>
+    <string name="trackpad_gestures_shizuku_not_connected">Shizuku Non Connesso</string>
     <string name="trackpad_swipe_threshold_title">Sensibilità swipe trackpad</string>
-    <string name="trackpad_swipe_threshold_description">Regola quanto devi trascinare verso l alto per accettare un suggerimento.</string>
+    <string name="trackpad_swipe_threshold_description">Regola quanto devi trascinare verso l\'alto per accettare un suggerimento.</string>
+
+    <!-- Trackpad Gesture Tutorial -->
+    <string name="trackpad_tutorial_title">Suggerimenti Gesture Trackpad</string>
+    <string name="trackpad_tutorial_welcome_title">Suggerimenti Gesture Trackpad</string>
+    <string name="trackpad_tutorial_welcome_description">Scorri verso l\'alto sul tuo trackpad per accettare rapidamente i suggerimenti di parole senza cliccare!</string>
+    <string name="trackpad_tutorial_how_it_works_title">Come Funziona</string>
+    <string name="trackpad_tutorial_how_it_works_description">Il trackpad è diviso in tre sezioni:\n\n• Terzo sinistro → Accetta suggerimento sinistro\n• Terzo centrale → Accetta suggerimento centrale\n• Terzo destro → Accetta suggerimento destro\n\nScorri semplicemente verso l\'alto nell\'area corrispondente per inserire quel suggerimento.</string>
+    <string name="trackpad_tutorial_shizuku_required_title">Shizuku Richiesto</string>
+    <string name="trackpad_tutorial_shizuku_required_description">Questa funzionalità richiede Shizuku per accedere agli eventi del trackpad.\n\n1. Installa Shizuku dalle release di GitHub\n2. Abilita le opzioni sviluppatore nelle impostazioni Android\n3. Collega il dispositivo a un PC con ADB installato\n4. Esegui il comando che Shizuku mostra nella sua app\n5. Concedi il permesso a Pastiera in Shizuku\n\nLa funzionalità funzionerà automaticamente una volta che Shizuku è in esecuzione.</string>
+    <string name="trackpad_tutorial_tips_title">Suggerimenti</string>
+    <string name="trackpad_tutorial_tips_description">• Assicurati che lo swipe sia principalmente verticale\n• Il gesto funziona meglio con swipe rapidi e deliberati\n• Se altre dita sono sulla tastiera, i gesti potrebbero non essere rilevati (reiezione palmo hardware)\n• La funzionalità può essere abilitata/disabilitata nelle Impostazioni Avanzate</string>
+    <string name="trackpad_tutorial_complete">Capito</string>
+    <string name="trackpad_tutorial_next">Successivo</string>
+    <string name="trackpad_tutorial_previous">Precedente</string>
 </resources>

@@ -300,5 +300,34 @@
     <string name="installed_dictionaries_import_invalid_format">Неверный формат словаря</string>
     <string name="installed_dictionaries_import_failed">Не удалось импортировать</string>
     <string name="installed_dictionaries_imported_badge">Импортировано</string>
+
+    <!-- Trackpad Gesture Settings -->
+    <string name="trackpad_gestures_title">Предложения жестов тачпада</string>
+    <string name="trackpad_gestures_description">Проведите вверх по тачпаду, чтобы принять предложения</string>
+    <string name="trackpad_gestures_enabled_title">Включить жесты тачпада</string>
+    <string name="trackpad_gestures_enabled_description">Проведите вверх по тачпаду, чтобы принять предложения слов</string>
+    <string name="trackpad_gestures_show_tutorial">Показать руководство</string>
+    <string name="trackpad_gestures_tutorial_description">Узнайте, как использовать жесты тачпада</string>
+    <string name="trackpad_gestures_install_shizuku">Установить Shizuku</string>
+    <string name="trackpad_gestures_install_shizuku_description">Требуется для обнаружения жестов тачпада</string>
+    <string name="trackpad_gestures_shizuku_url">https://github.com/RikkaApps/Shizuku/releases/</string>
+    <string name="trackpad_gestures_shizuku_connected">Shizuku подключен</string>
+    <string name="trackpad_gestures_shizuku_not_connected">Shizuku не подключен</string>
+    <string name="trackpad_swipe_threshold_title">Чувствительность свайпа тачпада</string>
+    <string name="trackpad_swipe_threshold_description">Настройте, как далеко нужно провести вверх, чтобы принять предложение.</string>
+
+    <!-- Trackpad Gesture Tutorial -->
+    <string name="trackpad_tutorial_title">Предложения жестов тачпада</string>
+    <string name="trackpad_tutorial_welcome_title">Предложения жестов тачпада</string>
+    <string name="trackpad_tutorial_welcome_description">Проведите вверх по тачпаду, чтобы быстро принять предложения слов без нажатия!</string>
+    <string name="trackpad_tutorial_how_it_works_title">Как это работает</string>
+    <string name="trackpad_tutorial_how_it_works_description">Тачпад разделен на три секции:\n\n• Левая треть → Принять левое предложение\n• Центральная треть → Принять центральное предложение\n• Правая треть → Принять правое предложение\n\nПросто проведите вверх в соответствующей области, чтобы вставить это предложение.</string>
+    <string name="trackpad_tutorial_shizuku_required_title">Требуется Shizuku</string>
+    <string name="trackpad_tutorial_shizuku_required_description">Эта функция требует Shizuku для доступа к событиям тачпада.\n\n1. Установите Shizuku из релизов GitHub\n2. Включите опции разработчика в настройках Android\n3. Подключите устройство к ПК с установленным ADB\n4. Запустите команду, которую Shizuku показывает в своем приложении\n5. Предоставьте разрешение Pastiera в Shizuku\n\nФункция будет работать автоматически, как только Shizuku запущен.</string>
+    <string name="trackpad_tutorial_tips_title">Советы</string>
+    <string name="trackpad_tutorial_tips_description">• Убедитесь, что ваш свайп в основном вертикальный\n• Жест работает лучше с быстрыми, целенаправленными свайпами\n• Если другие пальцы на клавиатуре, жесты могут не обнаруживаться (аппаратное отклонение ладони)\n• Функция может быть включена/выключена в Расширенных настройках</string>
+    <string name="trackpad_tutorial_complete">Понятно</string>
+    <string name="trackpad_tutorial_next">Далее</string>
+    <string name="trackpad_tutorial_previous">Назад</string>
 </resources>
 
