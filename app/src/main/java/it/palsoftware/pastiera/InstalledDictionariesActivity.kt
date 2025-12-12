@@ -258,7 +258,7 @@ private fun loadSerializedDictionaries(context: Context): List<InstalledDictiona
             ?.filter { it.endsWith("_base.dict") }
             ?: emptyList()
 
-        val importedDir = File(context.filesDir, "dictionaries_serialized")
+        val importedDir = File(context.filesDir, "dictionaries_serialized/custom")
         val importedFiles = importedDir.listFiles { file ->
             file.isFile && file.name.endsWith(".dict")
         }?.map { it.name } ?: emptyList()
@@ -302,7 +302,7 @@ private fun importDictionaryFromSaf(context: Context, uri: android.net.Uri): Imp
         return ImportResult.InvalidName
     }
 
-    val destDir = File(context.filesDir, "dictionaries_serialized").apply { mkdirs() }
+    val destDir = File(context.filesDir, "dictionaries_serialized/custom").apply { mkdirs() }
     val destFile = File(destDir, name)
 
     return try {

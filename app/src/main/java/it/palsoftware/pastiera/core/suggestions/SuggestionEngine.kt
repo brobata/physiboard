@@ -370,6 +370,8 @@ class SuggestionEngine(
             val isSingleCharInput = inputLen == 1
             val candidateList: List<DictionaryEntry> = if (isSingleCharInput) {
                 repository.topByNormalized(term, limit = 5)
+            } else if (distance == 0) {
+                repository.topByNormalized(term, limit = 3)
             } else {
                 listOfNotNull(repository.bestEntryForNormalized(term))
             }
@@ -377,6 +379,7 @@ class SuggestionEngine(
 
             candidateList.forEach { entry ->
                 val candidateLen = entry.word.length
+                val normCandidate = normalizeCached(entry.word)
                 val effectiveFreq = repository.effectiveFrequency(entry)
                 val hasAccent = entry.word.any { it in accentChars }
                 val hasDigit = entry.word.any { it.isDigit() }
@@ -385,20 +388,24 @@ class SuggestionEngine(
                         entry.word.length >= 2 &&
                         entry.word[0].equals(currentWord.firstOrNull() ?: ' ', ignoreCase = true) &&
                         entry.word.getOrNull(1) == '\''
-                val isPrefix = entry.word.startsWith(currentWord, ignoreCase = true)
+                val isPrefix = normCandidate.startsWith(normalizedWord)
                 val distanceScore = 1.0 / (1 + distance)
                 val isCompletion = isPrefix && entry.word.length > currentWord.length
                 val prefixBonus = when {
                     // Avoid boosting completions when input is a single character
                     inputLen == 1 && isForcedPrefix -> 0.0
+                    inputLen <= 2 && isForcedPrefix -> 0.5
+                    inputLen <= 2 && isCompletion -> 0.6
+                    inputLen <= 2 && isPrefix -> 0.4
                     isForcedPrefix -> 1.5
                     isCompletion -> 1.2
                     isPrefix -> 0.8
                     else -> 0.0
                 }
-                val frequencyScore = (effectiveFreq / 2_000.0)
+                val frequencyScore = (effectiveFreq / 1_200.0)
                 val sourceBoost = if (entry.source == SuggestionSource.USER) 5.0 else 1.0
                 val accentBonus = if (isSingleCharInput && candidateLen == 1 && hasAccent) 0.4 else 0.0
+                val accentSameLengthBonus = if (!isSingleCharInput && candidateLen == currentWord.length && hasAccent) 0.4 else 0.0
                 val baseLetterMalus = if (isSingleCharInput && candidateLen == 1 && !hasAccent && isSameBaseLetter) -2.0 else 0.0
                 val elisionBonus = if (isSingleCharInput && isShortElision) 0.5 else 0.0
                 val lengthPenalty = if (isSingleCharInput && candidateLen > 2) -0.2 * (candidateLen - 2) else 0.0
@@ -447,6 +454,7 @@ class SuggestionEngine(
                         prefixBonus +
                         editTypeBonus +
                         accentBonus +
+                        accentSameLengthBonus +
                         baseLetterMalus +
                         elisionBonus +
                         lengthPenalty +

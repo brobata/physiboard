@@ -2,9 +2,9 @@ package it.palsoftware.pastiera.core.suggestions
 
 import android.content.Context
 import android.content.res.AssetManager
-import org.json.JSONArray
 import android.util.Log
 import android.os.Looper
+import org.json.JSONArray
 import java.util.concurrent.CancellationException
 import kotlin.coroutines.coroutineContext
 import java.text.Normalizer
@@ -15,7 +15,6 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.ensureActive
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.SerializationException
 import java.io.File
 import java.io.FileInputStream
@@ -67,35 +66,35 @@ class DictionaryRepository(
             }
             try {
                 val startTime = System.currentTimeMillis()
-                
-                // Try to load serialized format first (much faster)
+
+                // Move legacy local dictionaries into the custom folder to isolate imports.
+                migrateLegacyLocalDictionaries()
+
+                // Determine paths for custom and bundled dictionaries
+                val customDir = File(context.filesDir, "dictionaries_serialized/custom").apply { mkdirs() }
+                val customFile = File(customDir, "${baseLocale.language}_base.dict")
                 coroutineContext.ensureActive()
-                val localFile = File(context.filesDir, "dictionaries_serialized/${baseLocale.language}_base.dict")
                 val serializedPath = "common/dictionaries_serialized/${baseLocale.language}_base.dict"
-                val loadedSerialized = if (localFile.exists()) {
-                    loadSerializedFromFile(localFile)
-                } else {
-                    loadSerializedFromAssets(serializedPath)
-                }
-                
-                if (loadedSerialized) {
-                    // Serialized format already populated the indices
-                    val loadTime = System.currentTimeMillis() - startTime
-                    Log.i(tag, "Loaded SERIALIZED dictionary (.dict) in ${loadTime}ms - normalizedIndex=${normalizedIndex.size} prefixCache=${prefixCache.size}")
-                } else {
-                    // Fallback to JSON format
-                    val mainEntries = loadFromAssets("common/dictionaries/${baseLocale.language}_base.json")
-                    coroutineContext.ensureActive()
-                    if (debugLogging) {
-                        Log.d(tag, "Loaded JSON dictionary: ${mainEntries.size} entries")
+                val loadedSerialized = when {
+                    customFile.exists() -> {
+                        Log.i(tag, "Loading CUSTOM dictionary from ${customFile.absolutePath}")
+                        loadSerializedFromFile(customFile)
                     }
-                    if (mainEntries.isNotEmpty()) {
-                        index(mainEntries)
+                    else -> {
+                        Log.i(tag, "Loading BUNDLED dictionary from assets: $serializedPath")
+                        loadSerializedFromAssets(serializedPath)
                     }
-                    val loadTime = System.currentTimeMillis() - startTime
-                    Log.i(tag, "Loaded JSON dictionary (fallback) in ${loadTime}ms - normalizedIndex=${normalizedIndex.size} prefixCache=${prefixCache.size}")
                 }
-                
+
+                if (!loadedSerialized) {
+                    Log.e(tag, "Failed to load serialized dictionary for locale=${baseLocale.language}")
+                    synchronized(this) { loadStarted = false }
+                    return
+                }
+
+                val loadTime = System.currentTimeMillis() - startTime
+                Log.i(tag, "Loaded dictionary (.dict) in ${loadTime}ms - normalizedIndex=${normalizedIndex.size} prefixCache=${prefixCache.size}")
+
                 coroutineContext.ensureActive()
                 // Optional default user entries (editable copy stored in app files dir, fallback to asset)
                 val defaultUserEntries = loadUserDefaults()
@@ -388,27 +387,6 @@ class DictionaryRepository(
     }
 
     /**
-     * Loads dictionary from JSON format (fallback).
-     */
-    private fun loadFromAssets(path: String): List<DictionaryEntry> {
-        return try {
-            val jsonString = assets.open(path).bufferedReader().use { it.readText() }
-            val jsonArray = JSONArray(jsonString)
-            buildList {
-                for (i in 0 until jsonArray.length()) {
-                    val obj = jsonArray.getJSONObject(i)
-                    val word = obj.getString("w")
-                    val freq = obj.optInt("f", 1)
-                    add(DictionaryEntry(word, freq, SuggestionSource.MAIN))
-                }
-            }
-        } catch (e: Exception) {
-            if (debugLogging) Log.e(tag, "Failed to load dictionary from assets: $path", e)
-            emptyList()
-        }
-    }
-    
-    /**
      * Loads optional default user entries from a writable file, falling back to the asset.
      * Format: [{ "w": "word", "f": 10 }, ...]
      */
@@ -512,6 +490,34 @@ class DictionaryRepository(
         }
         symSpell = engine
         symSpellBuilt = true
+    }
+
+    /**
+     * Move legacy dictionaries from the root local directory into the custom folder.
+     * This isolates user-imported dictionaries from bundled assets.
+     */
+    private fun migrateLegacyLocalDictionaries() {
+        val rootDir = File(context.filesDir, "dictionaries_serialized")
+        val customDir = File(rootDir, "custom").apply { mkdirs() }
+        if (!rootDir.exists() || rootDir == customDir) return
+
+        rootDir.listFiles()?.forEach { file ->
+            if (file.isDirectory && file.name == "custom") return@forEach
+            if (file.isFile && file.extension == "dict") {
+                val dest = File(customDir, file.name)
+                if (!dest.exists()) {
+                    val moved = file.renameTo(dest)
+                    Log.i(tag, "Migrating legacy dictionary ${file.name} to custom folder: success=$moved")
+                    if (!moved) {
+                        file.copyTo(dest, overwrite = false)
+                        file.delete()
+                    }
+                } else {
+                    Log.i(tag, "Removing duplicate legacy dictionary ${file.name}")
+                    file.delete()
+                }
+            }
+        }
     }
 
     private fun addToSymSpell(entries: List<DictionaryEntry>) {

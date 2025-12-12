@@ -496,7 +496,7 @@ object AdditionalSubtypeUtils {
         try {
             val assets = context.assets
             
-            // Check serialized dictionaries
+            // Check serialized dictionaries from assets
             try {
                 val serializedFiles = assets.list("common/dictionaries_serialized")
                 serializedFiles?.forEach { fileName ->
@@ -506,25 +506,12 @@ object AdditionalSubtypeUtils {
                     }
                 }
             } catch (e: Exception) {
-                // If serialized directory doesn't exist, try JSON
-            }
-            
-            // Check JSON dictionaries
-            try {
-                val jsonFiles = assets.list("common/dictionaries")
-                jsonFiles?.forEach { fileName ->
-                    if (fileName.endsWith("_base.json") && fileName != "user_defaults.json") {
-                        val langCode = fileName.removeSuffix("_base.json")
-                        localesWithDict.addAll(getLocaleVariantsForLanguage(langCode))
-                    }
-                }
-            } catch (e: Exception) {
-                // If dictionaries directory doesn't exist, continue
+                // If serialized directory doesn't exist, continue
             }
 
-            // Check imported serialized dictionaries in app storage
+            // Check custom/imported serialized dictionaries in app storage
             try {
-                val localDir = java.io.File(context.filesDir, "dictionaries_serialized")
+                val localDir = java.io.File(context.filesDir, "dictionaries_serialized/custom")
                 val localFiles = localDir.listFiles { file ->
                     file.isFile && file.name.endsWith("_base.dict")
                 }

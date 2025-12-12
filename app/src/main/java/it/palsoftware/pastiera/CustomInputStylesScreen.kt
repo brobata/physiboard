@@ -878,7 +878,7 @@ private fun getLocaleDisplayName(locale: String): String {
 
 /**
  * Gets list of locales that have dictionary files available.
- * Checks both serialized (.dict) and JSON (.json) formats.
+ * Uses serialized (.dict) from assets and custom/imported folder.
  */
 private fun getLocalesWithDictionary(context: Context): List<String> {
     val localesWithDict = mutableSetOf<String>()
@@ -886,7 +886,7 @@ private fun getLocalesWithDictionary(context: Context): List<String> {
     try {
         val assets = context.assets
         
-        // Check serialized dictionaries first
+        // Check serialized dictionaries from assets
         try {
             val serializedFiles = assets.list("common/dictionaries_serialized")
             serializedFiles?.forEach { fileName ->
@@ -897,26 +897,12 @@ private fun getLocalesWithDictionary(context: Context): List<String> {
                 }
             }
         } catch (e: Exception) {
-            // If serialized directory doesn't exist, try JSON
-        }
-        
-        // Also check JSON dictionaries (fallback)
-        try {
-            val jsonFiles = assets.list("common/dictionaries")
-            jsonFiles?.forEach { fileName ->
-                if (fileName.endsWith("_base.json") && fileName != "user_defaults.json") {
-                    val langCode = fileName.removeSuffix("_base.json")
-                    // Map language code to common locale variants
-                    localesWithDict.addAll(getLocaleVariantsForLanguage(langCode))
-                }
-            }
-        } catch (e: Exception) {
-            // If dictionaries directory doesn't exist, continue
+            // If serialized directory doesn't exist, continue
         }
 
-        // Check imported serialized dictionaries in app storage
+        // Check custom/imported serialized dictionaries in app storage
         try {
-            val localDir = java.io.File(context.filesDir, "dictionaries_serialized")
+            val localDir = java.io.File(context.filesDir, "dictionaries_serialized/custom")
             val localFiles = localDir.listFiles { file ->
                 file.isFile && file.name.endsWith("_base.dict")
             }
@@ -966,14 +952,14 @@ private fun isValidLocaleCode(localeCode: String): Boolean {
 
 /**
  * Checks if a dictionary file exists for the given locale.
- * Returns true if a dictionary is found (serialized or JSON format).
+ * Returns true if a dictionary is found (serialized format).
  */
 private fun hasDictionaryForLocale(context: Context, locale: String): Boolean {
     try {
         val assets = context.assets
         val langCode = locale.split("_")[0].lowercase()
         
-        // Check serialized dictionaries
+        // Check serialized dictionaries from assets
         try {
             val serializedFiles = assets.list("common/dictionaries_serialized")
             serializedFiles?.forEach { fileName ->
@@ -982,24 +968,12 @@ private fun hasDictionaryForLocale(context: Context, locale: String): Boolean {
                 }
             }
         } catch (e: Exception) {
-            // If serialized directory doesn't exist, try JSON
-        }
-        
-        // Check JSON dictionaries
-        try {
-            val jsonFiles = assets.list("common/dictionaries")
-            jsonFiles?.forEach { fileName ->
-                if (fileName == "${langCode}_base.json" && fileName != "user_defaults.json") {
-                    return true
-                }
-            }
-        } catch (e: Exception) {
-            // If dictionaries directory doesn't exist, continue
+            // If serialized directory doesn't exist, continue
         }
 
-        // Check imported serialized dictionaries in app storage
+        // Check custom/imported serialized dictionaries in app storage
         try {
-            val localDir = java.io.File(context.filesDir, "dictionaries_serialized")
+            val localDir = java.io.File(context.filesDir, "dictionaries_serialized/custom")
             val localFiles = localDir.listFiles { file ->
                 file.isFile && file.name == "${langCode}_base.dict"
             }
