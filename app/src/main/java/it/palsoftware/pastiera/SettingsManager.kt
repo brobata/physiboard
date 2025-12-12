@@ -676,11 +676,9 @@ object SettingsManager {
         val prefs = getPreferences(context)
         val languagesString = prefs.getString(KEY_AUTO_CORRECT_ENABLED_LANGUAGES, null)
         
-        // If languages are explicitly set, return them (ensuring x-pastiera is always included)
+        // If languages are explicitly set, return them as-is (user controlled)
         if (languagesString != null && languagesString.isNotEmpty()) {
-            val languages = languagesString.split(",").toMutableSet()
-            languages.add("x-pastiera") // Always include x-pastiera
-            return languages
+            return languagesString.split(",").toSet()
         }
         
         // Default: system language + x-pastiera, with fallback to English
@@ -699,12 +697,9 @@ object SettingsManager {
     /**
      * Sets the list of languages enabled for auto-correction.
      * @param languages Set of language codes (e.g. "it", "en")
-     * Note: x-pastiera is always included automatically in getAutoCorrectEnabledLanguages()
      */
     fun setAutoCorrectEnabledLanguages(context: Context, languages: Set<String>) {
-        // Filter out x-pastiera from the saved list (it's always included automatically)
-        val languagesToSave = languages.filter { it != "x-pastiera" }
-        val languagesString = languagesToSave.joinToString(",")
+        val languagesString = languages.joinToString(",")
         getPreferences(context).edit()
             .putString(KEY_AUTO_CORRECT_ENABLED_LANGUAGES, languagesString)
             .apply()

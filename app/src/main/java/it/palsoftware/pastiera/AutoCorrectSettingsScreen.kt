@@ -1,6 +1,8 @@
 package it.palsoftware.pastiera
 
 import android.content.Context
+import android.util.Log
+import android.view.inputmethod.InputMethodManager
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -15,7 +17,6 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Language
 import androidx.activity.compose.BackHandler
@@ -29,6 +30,43 @@ import it.palsoftware.pastiera.R
 import java.util.Locale
 import android.widget.Toast
 
+/**
+ * Gets language codes from all enabled IME subtypes.
+ * Returns a set of language codes (e.g., "it", "en", "fr").
+ */
+private fun getImeSubtypeLanguageCodes(context: Context): Set<String> {
+    return try {
+        val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+            ?: return emptySet()
+
+        val packageName = context.packageName
+        val serviceName = "$packageName.inputmethod.PhysicalKeyboardInputMethodService"
+
+        val imeInfo = imm.enabledInputMethodList.find {
+            it.packageName == packageName && it.serviceName == serviceName
+        } ?: return emptySet()
+
+        val enabledSubtypes = imm.getEnabledInputMethodSubtypeList(imeInfo, true)
+        enabledSubtypes.mapNotNull { subtype ->
+            val localeString = subtype.locale
+            if (!localeString.isNullOrEmpty()) {
+                try {
+                    val locale = java.util.Locale.forLanguageTag(localeString.replace("_", "-"))
+                    locale.language.lowercase()
+                } catch (_: Exception) {
+                    // Fallback: first segment before underscore
+                    localeString.split("_").firstOrNull()?.lowercase()
+                }
+            } else {
+                null
+            }
+        }.toSet()
+    } catch (e: Exception) {
+        Log.e("AutoCorrectSettings", "Error getting IME subtype language codes", e)
+        emptySet()
+    }
+}
+
 @Composable
 private fun LanguageItem(
     languageCode: String,
@@ -39,7 +77,7 @@ private fun LanguageItem(
     onEdit: () -> Unit = {}
 ) {
     val isRicettePastiera = languageCode == "x-pastiera"
-    val showToggle = !isRicettePastiera // Hide toggle for Ricette Pastiera (always active)
+    val showToggle = true
     
     Surface(
         modifier = Modifier
@@ -142,82 +180,6 @@ private fun getLanguageDisplayName(context: Context, languageCode: String): Stri
     }
 }
 
-@Composable
-private fun AddNewLanguageDialog(
-    onDismiss: () -> Unit,
-    onSave: (String, String) -> Unit, // (languageCode, languageName)
-    existingLanguages: Set<String>
-) {
-    val context = LocalContext.current
-    var languageCode by remember { mutableStateOf("") }
-    var languageName by remember { mutableStateOf("") }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(stringResource(R.string.auto_correct_add_language))
-        },
-        text = {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedTextField(
-                    value = languageCode,
-                    onValueChange = { 
-                        languageCode = it.trim()
-                        errorMessage = null
-                    },
-                    label = { Text(stringResource(R.string.auto_correct_language_code)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    isError = errorMessage != null,
-                    supportingText = errorMessage?.let { { Text(it) } }
-                )
-                OutlinedTextField(
-                    value = languageName,
-                    onValueChange = { 
-                        languageName = it.trim()
-                        errorMessage = null
-                    },
-                    label = { Text(stringResource(R.string.auto_correct_language_name)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                Text(
-                    text = stringResource(R.string.auto_correct_language_code_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    val code = languageCode.trim()
-                    val name = languageName.trim()
-                    if (code.isEmpty()) {
-                        errorMessage = context.getString(R.string.auto_correct_language_code_required)
-                    } else if (code.lowercase() in existingLanguages.map { it.lowercase() }) {
-                        errorMessage = context.getString(R.string.auto_correct_language_already_exists)
-                    } else {
-                        onSave(code.lowercase(), if (name.isNotEmpty()) name else code)
-                    }
-                },
-                enabled = languageCode.isNotBlank()
-            ) {
-                Text(stringResource(R.string.auto_correct_save))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.auto_correct_cancel))
-            }
-        }
-    )
-}
-
 /**
  * Screen for managing auto-correction settings.
  * Allows enabling/disabling languages for auto-correction.
@@ -230,9 +192,9 @@ fun AutoCorrectSettingsScreen(
 ) {
     val context = LocalContext.current
     
-    // Load available languages (updatable), excluding x-pastiera from UI
+    // Load available languages (updatable)
     var allLanguages by remember { 
-        mutableStateOf(AutoCorrector.getAllAvailableLanguages().filter { it != "x-pastiera" }) 
+        mutableStateOf(AutoCorrector.getAllAvailableLanguages().toList()) 
     }
     val systemLocale = remember {
         context.resources.configuration.locales[0].language.lowercase()
@@ -243,15 +205,21 @@ fun AutoCorrectSettingsScreen(
         mutableStateOf(SettingsManager.getAutoCorrectEnabledLanguages(context))
     }
     
-    // State for new language dialog
-    var showNewLanguageDialog by remember { mutableStateOf(false) }
-    
     // Load corrections when screen is opened to ensure languages are available
     LaunchedEffect(Unit) {
         try {
             val assets = context.assets
             AutoCorrector.loadCorrections(assets, context)
-            allLanguages = AutoCorrector.getAllAvailableLanguages().filter { it != "x-pastiera" }
+
+            // Languages from corrections
+            val correctionLanguages = AutoCorrector.getAllAvailableLanguages().toSet()
+
+            // Languages from IME subtypes
+            val imeLanguages = getImeSubtypeLanguageCodes(context)
+
+            // Combine, ensure x-pastiera present if available, and sort
+            val combined = (correctionLanguages + imeLanguages).toSet()
+            allLanguages = combined.sorted()
         } catch (e: Exception) {
             android.util.Log.e("AutoCorrectSettings", "Error loading corrections", e)
         }
@@ -266,10 +234,9 @@ fun AutoCorrectSettingsScreen(
     // Helper to count how many languages are enabled (excluding x-pastiera which is always enabled)
     fun countEnabledLanguages(): Int {
         return if (enabledLanguages.isEmpty()) {
-            allLanguages.size // All enabled (excluding x-pastiera from count)
+            allLanguages.size // All enabled
         } else {
-            // Count only visible languages (exclude x-pastiera)
-            enabledLanguages.filter { it != "x-pastiera" }.size
+            enabledLanguages.size
         }
     }
     
@@ -362,12 +329,6 @@ fun AutoCorrectSettingsScreen(
                             modifier = Modifier.padding(start = 8.dp)
                         )
                     }
-                    IconButton(onClick = { showNewLanguageDialog = true }) {
-                        Icon(
-                            imageVector = Icons.Filled.Add,
-                            contentDescription = stringResource(R.string.auto_correct_add_language)
-                        )
-                    }
                 }
             }
         }
@@ -422,13 +383,15 @@ fun AutoCorrectSettingsScreen(
                         )
                     }
                     
-                    // Ricette Pastiera (always active, no toggle, shown after system language)
+                    // Ricette Pastiera (shown after system language)
                     LanguageItem(
                         languageCode = "x-pastiera",
                         languageName = getLanguageDisplayName(context, "x-pastiera"),
                         isSystemLanguage = false,
-                        isEnabled = true, // Always enabled
-                        onToggle = { /* No toggle for Ricette Pastiera */ },
+                        isEnabled = isLanguageEnabled("x-pastiera"),
+                        onToggle = { enabled ->
+                            toggleLanguage("x-pastiera", isLanguageEnabled("x-pastiera"))
+                        },
                         onEdit = {
                             onEditLanguage("x-pastiera")
                         }
@@ -520,47 +483,4 @@ fun AutoCorrectSettingsScreen(
                 }
             }
         }
-            
-            // Dialog to add a new language (outside Scaffold)
-            if (showNewLanguageDialog) {
-        AddNewLanguageDialog(
-            onDismiss = { showNewLanguageDialog = false },
-            onSave = { languageCode, languageName ->
-                // Create empty dictionary for new language with saved name
-                SettingsManager.saveCustomAutoCorrections(
-                    context, 
-                    languageCode, 
-                    emptyMap(),
-                    languageName = languageName
-                )
-                
-                // Reload all corrections (including new language)
-                try {
-                    val assets = context.assets
-                    AutoCorrector.loadCorrections(assets, context)
-                } catch (e: Exception) {
-                    // Fallback: load only the new language
-                    AutoCorrector.loadCustomCorrections(languageCode, "{}")
-                }
-                
-                // Update list of available languages (excluding x-pastiera)
-                allLanguages = AutoCorrector.getAllAvailableLanguages().filter { it != "x-pastiera" }
-                
-                // Automatically enable the new language
-                val newSet = if (enabledLanguages.isEmpty()) {
-                    setOf(languageCode)
-                } else {
-                    enabledLanguages + languageCode
-                }
-                enabledLanguages = newSet
-                SettingsManager.setAutoCorrectEnabledLanguages(context, newSet)
-                
-                showNewLanguageDialog = false
-                
-                // Navigate to edit screen for the new language
-                onEditLanguage(languageCode)
-            },
-            existingLanguages = allLanguages.toSet()
-        )
-    }
 }

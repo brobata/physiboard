@@ -264,6 +264,10 @@
     <string name="clipboard_pin">Закрепить</string>
     <string name="clipboard_unpin">Открепить</string>
     <string name="clipboard_delete">Удалить</string>
+    <string name="clipboard_retention_apply">Применить</string>
+    <string name="clipboard_retention_time_title">Время хранения буфера обмена</string>
+    <string name="clipboard_retention_time_description">0 = не удалять</string>
+    <string name="clipboard_retention_time_minutes">%1$d минут</string>
     <string name="update_dialog_title">Доступно новое обновление</string>
     <string name="update_dialog_message">Версия %1$s доступна на GitHub.</string>
     <string name="update_dialog_open_github">Открыть GitHub</string>

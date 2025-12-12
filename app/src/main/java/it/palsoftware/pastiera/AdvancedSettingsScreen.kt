@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -28,6 +29,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.History
@@ -56,9 +58,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import it.palsoftware.pastiera.BuildConfig
 import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.backup.BackupManager
@@ -81,6 +89,8 @@ fun AdvancedSettingsScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val prefs = remember { SettingsManager.getPreferences(context) }
@@ -94,6 +104,9 @@ fun AdvancedSettingsScreen(
     // Store the actual value (3 to 25), but display it inverted in the slider (25 to 3)
     var swipeIncrementalThreshold by remember {
         mutableStateOf(SettingsManager.getSwipeIncrementalThreshold(context))
+    }
+    var clipboardRetentionTime by remember {
+        mutableStateOf(SettingsManager.getClipboardRetentionTime(context).toString())
     }
     var shizukuConnected by remember { mutableStateOf(false) }
     var navigationDirection by remember { mutableStateOf(AdvancedNavigationDirection.Push) }
@@ -116,6 +129,9 @@ fun AdvancedSettingsScreen(
                 }
                 "swipe_incremental_threshold" -> {
                     swipeIncrementalThreshold = SettingsManager.getSwipeIncrementalThreshold(context)
+                }
+                "clipboard_retention_time" -> {
+                    clipboardRetentionTime = SettingsManager.getClipboardRetentionTime(context).toString()
                 }
             }
         }
@@ -196,6 +212,7 @@ fun AdvancedSettingsScreen(
                 launcherShortcutsEnabled = SettingsManager.getLauncherShortcutsEnabled(context)
                 powerShortcutsEnabled = SettingsManager.getPowerShortcutsEnabled(context)
                 swipeIncrementalThreshold = SettingsManager.getSwipeIncrementalThreshold(context)
+                clipboardRetentionTime = SettingsManager.getClipboardRetentionTime(context).toString()
             }
         }
     }
@@ -605,6 +622,71 @@ fun AdvancedSettingsScreen(
                                         .weight(1.0f)
                                         .height(24.dp)
                                 )
+                            }
+                        }
+                    
+                        // Clipboard Retention Time
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.History,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.clipboard_retention_time_title),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.clipboard_retention_time_description),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1
+                                    )
+                                }
+                                OutlinedTextField(
+                                    value = clipboardRetentionTime,
+                                    onValueChange = { text ->
+                                        val filtered = text.filter { it.isDigit() }.take(5)
+                                        clipboardRetentionTime = filtered
+                                    },
+                                    placeholder = { Text("min") },
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    modifier = Modifier.widthIn(max = 120.dp),
+                                    singleLine = true
+                                )
+                                OutlinedButton(
+                                    onClick = {
+                                        val minutes = clipboardRetentionTime.toLongOrNull()
+                                        if (minutes != null) {
+                                            SettingsManager.setClipboardRetentionTime(context, minutes)
+                                        }
+                                        keyboardController?.hide()
+                                        focusManager.clearFocus()
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Check,
+                                        contentDescription = stringResource(R.string.clipboard_retention_apply)
+                                    )
+                                }
                             }
                         }
                     

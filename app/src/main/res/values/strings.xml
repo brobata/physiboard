@@ -514,6 +514,10 @@
     <string name="clipboard_pin">Pin</string>
     <string name="clipboard_unpin">Unpin</string>
     <string name="clipboard_delete">Delete</string>
+    <string name="clipboard_retention_apply">Apply</string>
+    <string name="clipboard_retention_time_title">Clipboard Retention Time</string>
+    <string name="clipboard_retention_time_description">0 = never delete clips</string>
+    <string name="clipboard_retention_time_minutes">%1$d minutes</string>
 
     <!-- Trackpad Gesture Settings -->
     <string name="trackpad_gestures_title">Trackpad Gesture Suggestions</string>

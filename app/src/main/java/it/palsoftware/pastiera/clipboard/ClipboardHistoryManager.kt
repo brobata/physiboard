@@ -51,7 +51,8 @@ class ClipboardHistoryManager(
             val content = clipItem.coerceToText(context)
             if (TextUtils.isEmpty(content)) return
 
-            clipboardDao?.addClip(timeStamp, false, content.toString())
+            val retentionMinutes = getClipboardRetentionTime()
+            clipboardDao?.addClip(timeStamp, false, content.toString(), retentionMinutes)
         }
     }
 

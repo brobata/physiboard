@@ -197,6 +197,29 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         timeoutMs = MULTI_TAP_TIMEOUT_MS
     )
     private val uiHandler = Handler(Looper.getMainLooper())
+    private val clipboardCleanupIntervalMs = 60_000L
+    private val clipboardCleanupRunnable = object : Runnable {
+        override fun run() {
+            val retention = SettingsManager.getClipboardRetentionTime(this@PhysicalKeyboardInputMethodService)
+            clipboardHistoryManager.prepareClipboardHistory()
+            val count = clipboardHistoryManager.getHistorySize()
+            uiHandler.post {
+                if (::candidatesBarController.isInitialized) {
+                    candidatesBarController.updateClipboardCount(count)
+                }
+            }
+            uiHandler.postDelayed(this, clipboardCleanupIntervalMs)
+        }
+    }
+
+    private fun startClipboardCleanupTimer() {
+        uiHandler.removeCallbacks(clipboardCleanupRunnable)
+        uiHandler.postDelayed(clipboardCleanupRunnable, clipboardCleanupIntervalMs)
+    }
+
+    private fun stopClipboardCleanupTimer() {
+        uiHandler.removeCallbacks(clipboardCleanupRunnable)
+    }
 
     private val symPage: Int
         get() = if (::symLayoutController.isInitialized) symLayoutController.currentSymPage() else 0
@@ -1070,6 +1093,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     
     override fun onDestroy() {
         super.onDestroy()
+        stopClipboardCleanupTimer()
         // Remove listener when service is destroyed
         prefsListener?.let {
             prefs.unregisterOnSharedPreferenceChangeListener(it)
@@ -1338,6 +1362,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 inputContextState = state
             )
         }
+
+        startClipboardCleanupTimer()
     }
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
@@ -1399,6 +1425,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
         isInputViewActive = false
+        stopClipboardCleanupTimer()
         if (finishingInput) {
             multiTapController.cancelAll()
             resetModifierStates(preserveNavMode = true)
@@ -2312,6 +2339,21 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     }
 
     private fun acceptSuggestionAtIndex(third: Int) {
+        // Allow gesture only when suggestions bar should be visible/usable
+        val allowGesture =
+            symPage == 0 &&
+            !clipboardOverlayActive &&
+            latestSuggestions.isNotEmpty() &&
+            SettingsManager.getSuggestionsEnabled(this) &&
+            !shouldDisableSmartFeatures
+        if (!allowGesture) {
+            Log.d(
+                TAG,
+                "Trackpad gesture ignored: bar not visible/usable (sym=$symPage, clipboard=$clipboardOverlayActive, suggestions=${latestSuggestions.size})"
+            )
+            return
+        }
+
         // Log current suggestions
         Log.d(TAG, "Current latestSuggestions: $latestSuggestions")
 

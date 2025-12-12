@@ -47,16 +47,17 @@ class ClipboardDao private constructor(private val db: ClipboardDatabase) {
 
     /**
      * Add a new clipboard entry or update existing one with same text.
+     * @param retentionMinutes Optional retention time in minutes. If provided, will clear old clips using this value.
      */
-    fun addClip(timestamp: Long, pinned: Boolean, text: String) {
-        clearOldClips()
+    fun addClip(timestamp: Long, pinned: Boolean, text: String, retentionMinutes: Long? = null) {
+        if (retentionMinutes != null) {
+            clearOldClips(now = true, retentionMinutes = retentionMinutes)
+        } else {
+            clearOldClips() // Use default if not provided (for backwards compatibility)
+        }
 
         // Check if this exact text already exists
         val existingIndex = cache.indexOfFirst { it.text == text }
-        if (existingIndex >= 0 && cache[existingIndex].timeStamp == timestamp) {
-            return // Nothing to do - exact same entry
-        }
-
         if (existingIndex >= 0) {
             // Update timestamp of existing entry
             updateTimestampAt(existingIndex, timestamp)
@@ -133,22 +134,31 @@ class ClipboardDao private constructor(private val db: ClipboardDatabase) {
     /**
      * Remove old clipboard entries based on retention time setting.
      * @param now If true, force clear immediately; otherwise respect debounce
+     * @param retentionMinutes Retention time in minutes. If <= 0, no cleanup is performed.
+     *                         Values > 0 will remove entries older than this time (except pinned ones).
      */
     fun clearOldClips(now: Boolean = false, retentionMinutes: Long = 120) {
-        if (listener != null) return // Never clear while clipboard UI is visible
-
         if (!now && lastClearOldClips > SystemClock.elapsedRealtime() - 5 * 1000) {
             return // Debounce: only clear every 5 seconds
         }
 
         lastClearOldClips = SystemClock.elapsedRealtime()
 
-        if (retentionMinutes > 120) return // No retention limit
+        // If retentionMinutes <= 0, disable automatic cleanup (infinite retention)
+        if (retentionMinutes <= 0) return
 
         val minTime = System.currentTimeMillis() - retentionMinutes * 60 * 1000L
-        if (!cache.removeAll { it.timeStamp < minTime && !it.isPinned }) {
-            return // Nothing was removed
+
+        val indicesToRemove = mutableListOf<Int>()
+        cache.forEachIndexed { idx, clip ->
+            if (clip.timeStamp < minTime && !clip.isPinned) {
+                indicesToRemove.add(idx)
+            }
         }
+        if (indicesToRemove.isEmpty()) return
+
+        cache.removeAll { it.timeStamp < minTime && !it.isPinned }
+        listener?.onClipsRemoved(indicesToRemove.first(), indicesToRemove.size)
 
         db.writableDatabase.delete(TABLE, "$COLUMN_TIMESTAMP < $minTime AND $COLUMN_PINNED = 0", null)
     }

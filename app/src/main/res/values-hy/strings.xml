@@ -264,6 +264,10 @@
     <string name="clipboard_pin">Ամրացնել</string>
     <string name="clipboard_unpin">Ապամրացնել</string>
     <string name="clipboard_delete">Ջնջել</string>
+    <string name="clipboard_retention_apply">Կիրառել</string>
+    <string name="clipboard_retention_time_title">Պահոցի պահպանման ժամանակ</string>
+    <string name="clipboard_retention_time_description">0 = երբեք չջնջել</string>
+    <string name="clipboard_retention_time_minutes">%1$d րոպե</string>
     <string name="update_dialog_title">Նոր թարմացում հասանելի է</string>
     <string name="update_dialog_message">Տարբերակ %1$s-ը հասանելի է GitHub-ում։</string>
     <string name="update_dialog_open_github">Բացել GitHub-ը</string>

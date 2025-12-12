@@ -378,6 +378,10 @@
     <string name="clipboard_pin">Fijar</string>
     <string name="clipboard_unpin">Desfijar</string>
     <string name="clipboard_delete">Eliminar</string>
+    <string name="clipboard_retention_apply">Aplicar</string>
+    <string name="clipboard_retention_time_title">Tiempo de retención del portapapeles</string>
+    <string name="clipboard_retention_time_description">0 = no borrar nunca</string>
+    <string name="clipboard_retention_time_minutes">%1$d minutos</string>
     <string name="update_dialog_title">Nueva actualización disponible</string>
     <string name="update_dialog_message">La versión %1$s está disponible en GitHub.</string>
     <string name="update_dialog_open_github">Abrir GitHub</string>

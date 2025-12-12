@@ -382,6 +382,10 @@
     <string name="clipboard_pin">Épingler</string>
     <string name="clipboard_unpin">Retirer l\'épingle</string>
     <string name="clipboard_delete">Supprimer</string>
+    <string name="clipboard_retention_apply">Appliquer</string>
+    <string name="clipboard_retention_time_title">Durée de rétention du presse-papiers</string>
+    <string name="clipboard_retention_time_description">0 = ne jamais supprimer</string>
+    <string name="clipboard_retention_time_minutes">%1$d minutes</string>
     <string name="update_dialog_title">Nouvelle mise à jour disponible</string>
     <string name="update_dialog_message">La version %1$s est disponible sur GitHub.</string>
     <string name="update_dialog_open_github">Ouvrir GitHub</string>

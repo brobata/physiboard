@@ -194,6 +194,22 @@ object AutoCorrector {
     }
 
     /**
+     * Gets the current IME subtype language code (e.g., "it" from "it_IT").
+     * Returns null if the IME or subtype is not available.
+     */
+    private fun getCurrentImeLanguageCode(context: Context): String? {
+        return try {
+            val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
+            val localeString = imm?.currentInputMethodSubtype?.locale ?: return null
+            val locale = java.util.Locale.forLanguageTag(localeString.replace("_", "-"))
+            locale.language.lowercase()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting IME language code", e)
+            null
+        }
+    }
+
+    /**
      * Gets all supported locales.
      */
     fun getSupportedLocales(): Set<String> {
@@ -254,22 +270,14 @@ object AutoCorrector {
      * @return The corrected word with preserved capitalization, or null if no correction.
      */
     fun getCorrection(word: String, locale: String? = null, context: Context? = null): String? {
-        val targetLocale = locale ?: (context?.let { getCurrentLocale(it) } ?: "en")
+        val targetLocale = locale
+            ?: context?.let { getCurrentImeLanguageCode(it) }
+            ?: return null
 
         // Verify if language is enabled
         if (context != null) {
             val enabledLanguages = it.palsoftware.pastiera.SettingsManager.getAutoCorrectEnabledLanguages(context)
             if (enabledLanguages.isNotEmpty() && !enabledLanguages.contains(targetLocale)) {
-                // Language not enabled, try fallback only if "en" is enabled
-                if (enabledLanguages.contains("en") && targetLocale != "en") {
-                    // Try "en" as fallback
-                    corrections["en"]?.let { enCorrections ->
-                        val wordLower = word.lowercase()
-                        enCorrections[wordLower]?.let { correction ->
-                            return applyCapitalization(word, correction)
-                        }
-                    }
-                }
                 return null
             }
         }
@@ -282,19 +290,6 @@ object AutoCorrector {
             localeCorrections[wordLower]?.let { correction ->
                 // Applica la capitalizzazione originale alla correzione
                 return applyCapitalization(word, correction)
-            }
-        }
-
-        // Fallback: try "en" if target locale has no matches
-        if (targetLocale != "en") {
-            // Verify if "en" is enabled (if we have context)
-            if (context == null || it.palsoftware.pastiera.SettingsManager.isAutoCorrectLanguageEnabled(context, "en")) {
-                corrections["en"]?.let { enCorrections ->
-                    enCorrections[wordLower]?.let { correction ->
-                        // Apply original capitalization to correction
-                        return applyCapitalization(word, correction)
-                    }
-                }
             }
         }
 
@@ -338,15 +333,25 @@ object AutoCorrector {
         } else {
             emptySet<String>()
         }
-        
-        // If there are specific enabled languages, use those, otherwise use all available languages
-        val languagesToSearch = if (enabledLanguages.isNotEmpty()) {
-            enabledLanguages
-        } else {
-            corrections.keys.toSet()
+
+        // Determine current IME language; if unavailable, do not apply autosubstitution
+        val imeLanguage = if (context != null) getCurrentImeLanguageCode(context) else null
+        if (imeLanguage == null) {
+            return null
         }
-        
-        // If no languages available, exit
+
+        // Build candidate languages: IME language + x-pastiera (if available)
+        val candidates = buildSet {
+            if (corrections.containsKey(imeLanguage)) add(imeLanguage)
+            if (corrections.containsKey("x-pastiera")) add("x-pastiera")
+        }
+
+        // Apply toggle filter (if not empty). x-pastiera remains only if enabled.
+        val languagesToSearch = candidates.filter { lang ->
+            enabledLanguages.isEmpty() || enabledLanguages.contains(lang)
+        }.toSet()
+
+        // If no languages available after filtering, exit
         if (languagesToSearch.isEmpty()) {
             return null
         }

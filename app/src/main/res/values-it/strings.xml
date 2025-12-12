@@ -415,6 +415,10 @@
     <string name="clipboard_pin">Fissa</string>
     <string name="clipboard_unpin">Rimuovi pin</string>
     <string name="clipboard_delete">Elimina</string>
+    <string name="clipboard_retention_apply">Applica</string>
+    <string name="clipboard_retention_time_title">Tempo di ritenzione appunti</string>
+    <string name="clipboard_retention_time_description">0 = non cancellare mai appunti</string>
+    <string name="clipboard_retention_time_minutes">%1$d minuti</string>
     <string name="update_dialog_title">Nuovo aggiornamento disponibile</string>
     <string name="update_dialog_message">La versione %1$s è disponibile su GitHub.</string>
     <string name="update_dialog_open_github">Apri GitHub</string>

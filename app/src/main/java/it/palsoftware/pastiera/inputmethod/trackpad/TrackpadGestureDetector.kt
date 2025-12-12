@@ -21,6 +21,7 @@ class TrackpadGestureDetector(
     private val eventDevice: String = DEFAULT_EVENT_DEVICE,
     private val trackpadMaxX: Int = DEFAULT_TRACKPAD_MAX_X,
     private val swipeUpThreshold: Int = DEFAULT_SWIPE_UP_THRESHOLD,
+    private val minVelocityThreshold: Double = DEFAULT_MIN_VELOCITY_THRESHOLD,
     private val logTag: String = DEFAULT_LOG_TAG,
     private val shizukuPing: () -> Boolean = { Shizuku.pingBinder() }
 ) {
@@ -32,6 +33,8 @@ class TrackpadGestureDetector(
     private var currentX = 0
     private var currentY = 0
     private var startPosSet = false
+    private var startTime: Long = 0
+    private var endTime: Long = 0
 
     fun start() {
         if (!isEnabled()) {
@@ -86,10 +89,12 @@ class TrackpadGestureDetector(
             line.contains("BTN_TOUCH") && line.contains("DOWN") -> {
                 touchDown = true
                 startPosSet = false
+                startTime = System.nanoTime()
             }
 
             line.contains("BTN_TOUCH") && line.contains("UP") -> {
                 if (touchDown) {
+                    endTime = System.nanoTime()
                     detectGesture()
                 }
                 touchDown = false
@@ -132,8 +137,15 @@ class TrackpadGestureDetector(
         val deltaX = currentX - startX
         val absDeltaX = kotlin.math.abs(deltaX)
 
-        // Require primarily vertical swipe: deltaY must be at least 3x larger than horizontal drift
-        if (deltaY > swipeUpThreshold && absDeltaX < deltaY / 3) {
+        // Calculate duration in milliseconds
+        val durationMs = (endTime - startTime) / 1_000_000.0
+        
+        // Calculate velocity (pixels per millisecond)
+        val velocity = if (durationMs > 0) deltaY / durationMs else 0.0
+
+        // Require primarily vertical swipe: deltaY must be at least 5x larger than horizontal drift
+        // AND velocity must exceed minimum threshold
+        if (deltaY > swipeUpThreshold && absDeltaX < deltaY / 4 && velocity >= minVelocityThreshold) {
             val third = when {
                 startX < trackpadMaxX / 3 -> 0  // Left
                 startX < (trackpadMaxX * 2) / 3 -> 1  // Center
@@ -142,7 +154,7 @@ class TrackpadGestureDetector(
 
             Log.d(
                 logTag,
-                ">>> SWIPE UP DETECTED in third $third (deltaY=$deltaY, absDeltaX=$absDeltaX, startX=$startX) <<<"
+                ">>> SWIPE UP DETECTED in third $third (deltaY=$deltaY, absDeltaX=$absDeltaX, velocity=${String.format("%.2f", velocity)} px/ms, duration=${String.format("%.1f", durationMs)}ms, startX=$startX) <<<"
             )
             onSwipeUp(third)
         }
@@ -150,10 +162,12 @@ class TrackpadGestureDetector(
 
     companion object {
         const val DEFAULT_TRACKPAD_MAX_X = 1440
-        const val DEFAULT_SWIPE_UP_THRESHOLD = 300
+        const val DEFAULT_SWIPE_UP_THRESHOLD = 450
+        const val DEFAULT_MIN_VELOCITY_THRESHOLD = 2.6  // pixels per millisecond (e.g., 1.0 px/ms = 1000 px/s)
         const val DEFAULT_EVENT_DEVICE = "/dev/input/event7"
         const val DEFAULT_LOG_TAG = "PastieraIME"
     }
 }
+
 
 

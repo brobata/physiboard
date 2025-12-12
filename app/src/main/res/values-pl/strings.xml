@@ -378,6 +378,10 @@
     <string name="clipboard_pin">Przypnij</string>
     <string name="clipboard_unpin">Odepnij</string>
     <string name="clipboard_delete">Usuń</string>
+    <string name="clipboard_retention_apply">Zastosuj</string>
+    <string name="clipboard_retention_time_title">Czas przechowywania schowka</string>
+    <string name="clipboard_retention_time_description">0 = nigdy nie usuwaj</string>
+    <string name="clipboard_retention_time_minutes">%1$d minut</string>
     <string name="update_dialog_title">Dostępna nowa aktualizacja</string>
     <string name="update_dialog_message">Wersja %1$s jest dostępna na GitHubie.</string>
     <string name="update_dialog_open_github">Otwórz GitHub</string>

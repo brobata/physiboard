@@ -379,6 +379,10 @@
     <string name="clipboard_pin">Anheften</string>
     <string name="clipboard_unpin">Loslösen</string>
     <string name="clipboard_delete">Löschen</string>
+    <string name="clipboard_retention_apply">Anwenden</string>
+    <string name="clipboard_retention_time_title">Aufbewahrungszeit der Zwischenablage</string>
+    <string name="clipboard_retention_time_description">0 = nie löschen</string>
+    <string name="clipboard_retention_time_minutes">%1$d Minuten</string>
     <string name="update_dialog_title">Neues Update verfügbar</string>
     <string name="update_dialog_message">Version %1$s ist auf GitHub verfügbar.</string>
     <string name="update_dialog_open_github">GitHub öffnen</string>
