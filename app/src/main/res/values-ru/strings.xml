@@ -130,6 +130,12 @@
     <string name="emoji_category_objects">Объекты</string>
     <string name="emoji_category_symbols">Символы</string>
     <string name="emoji_category_flags">Флаги</string>
+    <string name="emoji_category_smileys_and_emotion">Смайлы и эмоции</string>
+    <string name="emoji_category_people_and_body">Люди и тело</string>
+    <string name="emoji_category_animals_and_nature">Животные и природа</string>
+    <string name="emoji_category_food_and_drink">Еда и напитки</string>
+    <string name="emoji_category_travel_and_places">Путешествия и места</string>
+    <string name="emoji_picker_error">Не удалось загрузить эмодзи</string>
     <string name="long_press_modifier_title">Модификатор долгого нажатия</string>
     <string name="long_press_modifier_description">Выберите эмулирует ли долгое нажатие Alt+клав. или Shift+клав.</string>
     <string name="keyboard_layout_title">Раскладка клавиатуры</string>

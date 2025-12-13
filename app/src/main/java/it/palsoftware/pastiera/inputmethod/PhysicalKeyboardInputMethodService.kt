@@ -183,7 +183,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private var latestSuggestions: List<String> = emptyList()
     private var clearAltOnSpaceEnabled: Boolean = false
     private var isLanguageSwitchInProgress: Boolean = false
-    private var clipboardOverlayActive: Boolean = false
     // Stato per ricordare se il nav mode era attivo prima di entrare in un campo di testo
     private var navModeWasActiveBeforeEditableField: Boolean = false
 
@@ -767,12 +766,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // Register listener for clipboard page
         candidatesBarController.onClipboardRequested = {
             ensureInputViewCreated()
-            // Toggle dedicated clipboard overlay (not part of SYM pages)
-            clipboardOverlayActive = !clipboardOverlayActive
-            // Ensure SYM state is closed when opening overlay
-            if (clipboardOverlayActive && symLayoutController.isSymActive()) {
-                symLayoutController.closeSymPage()
-            }
+            // Toggle clipboard as SYM page 3
+            symLayoutController.openClipboardPage()
             updateStatusBarText()
         }
         val postClipboardBadgeUpdate: () -> Unit = {
@@ -1215,10 +1210,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
      * Aggiorna la status bar delegando al controller dedicato.
      */
     private fun updateStatusBarText() {
-        // If SYM is active, ensure clipboard overlay is dismissed so SYM renders correctly.
-        if (symLayoutController.isSymActive() && clipboardOverlayActive) {
-            clipboardOverlayActive = false
-        }
         val variationSnapshot = variationStateController.refreshFromCursor(
             currentInputConnection,
             inputContextState.shouldDisableVariations
@@ -1245,7 +1236,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             altPhysicallyPressed = modifierSnapshot.altPhysicallyPressed,
             altOneShot = modifierSnapshot.altOneShot,
             symPage = symPage,
-            clipboardOverlay = clipboardOverlayActive,
             clipboardCount = clipboardCount,
             variations = variationSnapshot.variations,
             suggestions = suggestionsWithAdd,
@@ -1286,7 +1276,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         currentPackageName = info?.packageName
         
         // Reset clipboard overlay when starting new input
-        clipboardOverlayActive = false
 
         updateInputContextState(info)
         val state = inputContextState
@@ -1929,16 +1918,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             var consumed = false
             if (symLayoutController.isSymActive()) {
                 if (symLayoutController.closeSymPage()) {
-                    consumed = true
+                    updateStatusBarText()
+                    return true
                 }
-            }
-            if (clipboardOverlayActive) {
-                clipboardOverlayActive = false
-                consumed = true
-            }
-            if (consumed) {
-                updateStatusBarText()
-                return true
             }
         }
 
@@ -2338,14 +2320,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // Allow gesture only when suggestions bar should be visible/usable
         val allowGesture =
             symPage == 0 &&
-            !clipboardOverlayActive &&
             latestSuggestions.isNotEmpty() &&
             SettingsManager.getSuggestionsEnabled(this) &&
             !shouldDisableSmartFeatures
         if (!allowGesture) {
             Log.d(
                 TAG,
-                "Trackpad gesture ignored: bar not visible/usable (sym=$symPage, clipboard=$clipboardOverlayActive, suggestions=${latestSuggestions.size})"
+                "Trackpad gesture ignored: bar not visible/usable (sym=$symPage, suggestions=${latestSuggestions.size})"
             )
             return
         }

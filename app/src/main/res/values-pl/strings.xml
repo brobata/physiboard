@@ -167,6 +167,12 @@
     <string name="emoji_category_objects">Obiekty</string>
     <string name="emoji_category_symbols">Symbole</string>
     <string name="emoji_category_flags">Flagi</string>
+    <string name="emoji_category_smileys_and_emotion">Uśmiechy i emocje</string>
+    <string name="emoji_category_people_and_body">Ludzie i ciało</string>
+    <string name="emoji_category_animals_and_nature">Zwierzęta i natura</string>
+    <string name="emoji_category_food_and_drink">Jedzenie i napoje</string>
+    <string name="emoji_category_travel_and_places">Podróże i miejsca</string>
+    <string name="emoji_picker_error">Nie można załadować emoji</string>
     
     <!-- Modifiers -->
     <string name="modifier_shift">SHIFT</string>

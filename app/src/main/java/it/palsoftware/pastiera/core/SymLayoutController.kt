@@ -72,12 +72,10 @@ class SymLayoutController(
     }
     
     fun openClipboardPage(): Boolean {
-        val config = SettingsManager.getSymPagesConfig(context)
-        val pages = buildActivePages(config)
         val clipboardPageValue = SymPage.CLIPBOARD.toPrefValue()
-        if (!pages.contains(SymPage.CLIPBOARD)) {
-            return false
-        }
+        
+        // Toggle behavior: open if closed, close if already open
+        // Always allow direct access to clipboard page, even if disabled in cycling settings
         if (symPage == clipboardPageValue) {
             closeSymPage()
             return false
@@ -219,7 +217,8 @@ class SymLayoutController(
     private fun alignSymPageToConfig(config: SymPagesConfig = SettingsManager.getSymPagesConfig(context)) {
         val allowedValues = buildActivePages(config).map { it.toPrefValue() }
         if (allowedValues.isEmpty()) {
-            if (symPage != 0) {
+            if (symPage != 0 && symPage != 3) {
+                // Allow clipboard page (3) even if all cycling pages are disabled
                 symPage = 0
                 persistSymPage()
             }
@@ -227,6 +226,11 @@ class SymLayoutController(
         }
 
         if (symPage == 0) {
+            return
+        }
+
+        // Allow clipboard page (3) to remain active even if disabled in cycling settings
+        if (symPage == 3) {
             return
         }
 
