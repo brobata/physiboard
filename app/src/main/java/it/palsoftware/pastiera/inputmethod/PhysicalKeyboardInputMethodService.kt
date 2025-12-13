@@ -2062,26 +2062,28 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         if (!isInputViewShown && isInputViewActive) {
             ensureInputViewCreated()
         }
-        
-        if (
-            inputEventRouter.handleTextInputPipeline(
-                context = this,
-                keyCode = keyCode,
-                event = event,
-                inputConnection = ic,
-                shouldDisableSuggestions = state.shouldDisableSuggestions,
-                shouldDisableAutoCorrect = state.shouldDisableAutoCorrect,
-                shouldDisableAutoCapitalize = state.shouldDisableAutoCapitalize,
-                shouldDisableDoubleSpaceToPeriod = state.shouldDisableDoubleSpaceToPeriod,
-                isAutoCorrectEnabled = isAutoCorrectEnabled,
-                textInputController = textInputController,
-                autoCorrectionManager = autoCorrectionManager,
-                inputContextState = state,
-                enableShiftOneShot = { modifierStateController.requestShiftOneShotFromAutoCap() },
-                editorInfo = info
-            ) { updateStatusBarText() }
-        ) {
-            return true
+        val altActiveNow = event?.isAltPressed == true || altLatchActive || altOneShot
+        if (!altActiveNow) {
+            if (
+                inputEventRouter.handleTextInputPipeline(
+                    context = this,
+                    keyCode = keyCode,
+                    event = event,
+                    inputConnection = ic,
+                    shouldDisableSuggestions = state.shouldDisableSuggestions,
+                    shouldDisableAutoCorrect = state.shouldDisableAutoCorrect,
+                    shouldDisableAutoCapitalize = state.shouldDisableAutoCapitalize,
+                    shouldDisableDoubleSpaceToPeriod = state.shouldDisableDoubleSpaceToPeriod,
+                    isAutoCorrectEnabled = isAutoCorrectEnabled,
+                    textInputController = textInputController,
+                    autoCorrectionManager = autoCorrectionManager,
+                    inputContextState = state,
+                    enableShiftOneShot = { modifierStateController.requestShiftOneShotFromAutoCap() },
+                    editorInfo = info
+                ) { updateStatusBarText() }
+            ) {
+                return true
+            }
         }
         
         val routingDecision = inputEventRouter.routeEditableFieldKeyDown(
