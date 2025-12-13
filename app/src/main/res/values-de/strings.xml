@@ -123,6 +123,13 @@
     <string name="auto_correct_max_distance_off">Aus</string>
     <string name="auto_correct_max_distance_description">Maximale Anzahl von Zeichenunterschieden, die für die Autokorrektur erlaubt sind. 0 = deaktiviert, 1-3 = zunehmende Toleranz.</string>
     <string name="auto_correct_manage_user_dict_title">Benutzerwörterbuch verwalten</string>
+    
+    <!-- User dictionary management -->
+    <string name="user_dict_title">Benutzerwörterbuch</string>
+    <string name="user_dict_add_hint">Wort hinzufügen</string>
+    <string name="user_dict_add_button">Wort speichern</string>
+    <string name="user_dict_empty_state">Noch keine Benutzerwörter gespeichert.</string>
+    
     <string name="auto_correct_keyboard_proximity_title">Tastatur-Näherungsbewertung</string>
     <string name="auto_correct_keyboard_proximity_description">Unwahrscheinliche Tippfehler basierend auf Tastenabstand filtern (QWERTY/AZERTY/QWERTZ)</string>
     <string name="auto_correct_edit_type_ranking_title">Bearbeitungstyp-Bewertung</string>

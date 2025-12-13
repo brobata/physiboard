@@ -3,6 +3,7 @@ package it.palsoftware.pastiera.inputmethod
 import android.content.Context
 import android.view.KeyEvent
 import android.view.inputmethod.EditorInfo
+import android.text.InputType
 import android.util.Log
 import android.view.inputmethod.InputConnection
 import it.palsoftware.pastiera.R
@@ -621,6 +622,7 @@ class InputEventRouter(
         autoCorrectionManager: AutoCorrectionManager,
         inputContextState: it.palsoftware.pastiera.core.InputContextState?,
         enableShiftOneShot: (() -> Boolean)?,
+        editorInfo: EditorInfo? = null,
         updateStatusBar: () -> Unit
     ): Boolean {
         val isEnterKey = keyCode == KeyEvent.KEYCODE_ENTER
@@ -730,29 +732,72 @@ class InputEventRouter(
             }
         }
 
-        // For Enter, run autocorrect/auto-cap but do NOT consume/commit a newline.
-        // This lets apps with custom Enter handling (e.g., "Enter to send") receive the key,
-        // while still preserving our boundary corrections.
+        // For Enter, apply autocorrect only when there is NO IME action.
+        // This avoids altering text for fields that map Enter to actions (e.g., Send).
         if (isEnterKey) {
+            val imeOptions = editorInfo?.imeOptions ?: 0
+            val actionId = editorInfo?.actionId ?: 0
+            val actionLabel = editorInfo?.actionLabel
+            val maskedAction = imeOptions and EditorInfo.IME_MASK_ACTION
+            val resolvedAction = if (actionId != 0) actionId else maskedAction
+            // Treat masked action or custom actionLabel as an IME action, even if NO_ENTER_ACTION is set.
+            val hasImeAction = actionLabel != null || resolvedAction in listOf(
+                EditorInfo.IME_ACTION_GO,
+                EditorInfo.IME_ACTION_SEARCH,
+                EditorInfo.IME_ACTION_SEND,
+                EditorInfo.IME_ACTION_NEXT,
+                EditorInfo.IME_ACTION_DONE,
+                EditorInfo.IME_ACTION_PREVIOUS
+            )
+
+            Log.d(
+                "EnterPipeline",
+                "imeOptions=0x${Integer.toHexString(imeOptions)}, " +
+                        "maskedAction=0x${Integer.toHexString(maskedAction)}, " +
+                        "actionId=$actionId, actionLabel=${actionLabel ?: "null"}, " +
+                        "hasImeAction=$hasImeAction"
+            )
+
+            if (hasImeAction) {
+                // Skip autocorrection/haptics when Enter is used as an IME action.
+                Log.d("EnterPipeline", "Skipping autocorrection and suggestions: hasImeAction=true")
+                return false
+            }
+
+            val inputType = editorInfo?.inputType ?: 0
+            val isMultiline = (inputType and InputType.TYPE_TEXT_FLAG_MULTI_LINE) != 0
+
             val handled = autoCorrectionManager.handleBoundaryKey(
                 keyCode,
                 event,
                 inputConnection,
                 isAutoCorrectEnabled,
-                commitBoundary = false,
+                commitBoundary = isMultiline, // commit newline inside autocorrect only for multiline
                 onStatusBarUpdate = updateStatusBar,
                 boundaryCharOverride = '\n'
             )
             if (handled) {
                 suggestionController?.onContextReset()
+                // For multiline with commitBoundary=true, newline was already committed; consume Enter.
+                if (isMultiline) {
+                    Log.d("EnterPipeline", "Autocorrected; boundary committed (multiline, no IME action)")
+                    return true
+                }
+                // Single-line: let app handle Enter/newline.
+                return false
             }
-            // Trigger suggestions on Enter (if suggestions enabled)
+
+            // No autocorrection: run suggestions/auto-replace on Enter with the real keycode/event.
+            var replaceResult: it.palsoftware.pastiera.core.suggestions.AutoReplaceController.ReplaceResult? = null
             if (!shouldDisableSuggestions && inputConnection != null) {
-                val sc = suggestionController
-                // Trigger auto-replace/suggestions without committing a newline;
-                // use an unknown key to avoid boundary-char commit inside the tracker.
-                sc?.onBoundaryKey(KeyEvent.KEYCODE_UNKNOWN, null, inputConnection)
+                replaceResult = suggestionController?.onBoundaryKey(keyCode, event, inputConnection)
             }
+            // If auto-replace committed the boundary, consume Enter to avoid double newline.
+            if (replaceResult?.committed == true) {
+                Log.d("EnterPipeline", "Auto-replace committed boundary on Enter; consuming")
+                return true
+            }
+            Log.d("EnterPipeline", "No autocorrection/auto-replace commit; letting app handle Enter/newline")
             return false
         }
 

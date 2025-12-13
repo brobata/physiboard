@@ -158,6 +158,30 @@ data class InputContextState(
             }
         }
 
+        private fun getImeActionName(info: EditorInfo): String? {
+            val imeOptions = info.imeOptions
+            if (imeOptions and EditorInfo.IME_FLAG_NO_ENTER_ACTION != 0) {
+                return "NO_ENTER_ACTION"
+            }
+
+            val action = when {
+                info.actionId != 0 -> info.actionId
+                else -> imeOptions and EditorInfo.IME_MASK_ACTION
+            }
+
+            return when (action) {
+                EditorInfo.IME_ACTION_GO -> "IME_ACTION_GO"
+                EditorInfo.IME_ACTION_SEARCH -> "IME_ACTION_SEARCH"
+                EditorInfo.IME_ACTION_SEND -> "IME_ACTION_SEND"
+                EditorInfo.IME_ACTION_NEXT -> "IME_ACTION_NEXT"
+                EditorInfo.IME_ACTION_DONE -> "IME_ACTION_DONE"
+                EditorInfo.IME_ACTION_PREVIOUS -> "IME_ACTION_PREVIOUS"
+                EditorInfo.IME_ACTION_NONE -> "IME_ACTION_NONE"
+                0 -> "NONE"
+                else -> "UNKNOWN(0x${Integer.toHexString(action)})"
+            }
+        }
+
         fun fromEditorInfo(info: EditorInfo?): InputContextState {
             if (info == null) {
                 Log.d(TAG, "Input field: NULL (no EditorInfo)")
@@ -220,6 +244,10 @@ data class InputContextState(
             val className = getInputClassName(inputClass)
             val variationName = getInputVariationName(inputVariation)
             val flags = mutableListOf<String>()
+            val imeOptionsRaw = info.imeOptions
+            val actionIdRaw = info.actionId
+            val actionLabelRaw = info.actionLabel
+            val maskedAction = imeOptionsRaw and EditorInfo.IME_MASK_ACTION
             
             if ((inputType and InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS) != 0) flags.add("CAP_CHARACTERS")
             if ((inputType and InputType.TYPE_TEXT_FLAG_CAP_WORDS) != 0) flags.add("CAP_WORDS")
@@ -230,6 +258,24 @@ data class InputContextState(
             if ((inputType and InputType.TYPE_TEXT_FLAG_IME_MULTI_LINE) != 0) flags.add("IME_MULTI_LINE")
             if ((inputType and InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS) != 0) flags.add("NO_SUGGESTIONS")
 
+            // Detect IME action
+            val imeActionName = getImeActionName(info)
+            val hasImeAction = imeActionName != null && 
+                imeActionName != "NO_ENTER_ACTION" && 
+                imeActionName != "NONE" && 
+                imeActionName != "IME_ACTION_NONE"
+            
+            // Check if masked action is a valid standard action
+            val resolvedAction = if (actionIdRaw != 0) actionIdRaw else maskedAction
+            val hasValidMaskedAction = resolvedAction in listOf(
+                EditorInfo.IME_ACTION_GO,
+                EditorInfo.IME_ACTION_SEARCH,
+                EditorInfo.IME_ACTION_SEND,
+                EditorInfo.IME_ACTION_NEXT,
+                EditorInfo.IME_ACTION_DONE,
+                EditorInfo.IME_ACTION_PREVIOUS
+            ) && resolvedAction != 0 && resolvedAction != EditorInfo.IME_ACTION_NONE
+
             Log.d(TAG, """
                 |=== Input Field Detected ===
                 |Package: $packageName
@@ -237,6 +283,13 @@ data class InputContextState(
                 |InputClass: $className (0x${Integer.toHexString(inputClass)})
                 |InputVariation: $variationName (0x${Integer.toHexString(inputVariation)})
                 |Flags: ${if (flags.isEmpty()) "NONE" else flags.joinToString(", ")}
+                |ImeOptions (raw): 0x${Integer.toHexString(imeOptionsRaw)}
+                |Masked Action: 0x${Integer.toHexString(maskedAction)}
+                |Has Valid Masked Action: $hasValidMaskedAction
+                |ActionId: $actionIdRaw
+                |ActionLabel: ${actionLabelRaw ?: "null"}
+                |IME Action: $imeActionName
+                |Has IME Action: $hasImeAction
                 |isEditable: $isEditable
                 |isReallyEditable: $isReallyEditable
                 |isNumericField: ${state.isNumericField}

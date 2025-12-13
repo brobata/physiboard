@@ -85,6 +85,13 @@
     <string name="auto_correct_max_distance_off">Անջատված</string>
     <string name="auto_correct_max_distance_description">Նիշերի առավելագույն քանակի տարբերություններ, թույլատրված ավտո-ուղղման համար։ 0 = անջատված, 1-3 = աճող հանդուրժողականություն։</string>
     <string name="auto_correct_manage_user_dict_title">Կառավարել օգտագործողի բառարանը</string>
+    
+    <!-- User dictionary management -->
+    <string name="user_dict_title">Օգտագործողի բառարան</string>
+    <string name="user_dict_add_hint">Ավելացնել բառ</string>
+    <string name="user_dict_add_button">Պահպանել բառ</string>
+    <string name="user_dict_empty_state">Օգտագործողի բառեր դեռ չեն պահպանվել:</string>
+    
     <string name="auto_correct_keyboard_proximity_title">Դասակարգում ստեղնաշարի մոտիկությամբ</string>
     <string name="auto_correct_keyboard_proximity_description">Ֆիլտրել անհավանական տառասխալները՝ հիմնված ստեղների հեռավորության վրա (QWERTY/AZERTY/QWERTZ)</string>
     <string name="auto_correct_edit_type_ranking_title">Դասակարգում խմբագրման տեսակով</string>

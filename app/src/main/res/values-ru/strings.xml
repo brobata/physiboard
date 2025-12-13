@@ -85,6 +85,13 @@
     <string name="auto_correct_max_distance_off">Выключено</string>
     <string name="auto_correct_max_distance_description">Максимальное количество различий символов, разрешенных для авто-коррекции. 0 = выключено, 1-3 = увеличивающаяся толерантность.</string>
     <string name="auto_correct_manage_user_dict_title">Управление словарем пользователя</string>
+    
+    <!-- User dictionary management -->
+    <string name="user_dict_title">Словарь пользователя</string>
+    <string name="user_dict_add_hint">Добавить слово</string>
+    <string name="user_dict_add_button">Сохранить слово</string>
+    <string name="user_dict_empty_state">Пользовательские слова еще не сохранены.</string>
+    
     <string name="auto_correct_keyboard_proximity_title">Ранжирование по Близости Клавиатуры</string>
     <string name="auto_correct_keyboard_proximity_description">Фильтровать маловероятные опечатки на основе расстояния клавиш (QWERTY/AZERTY/QWERTZ)</string>
     <string name="auto_correct_edit_type_ranking_title">Ранжирование по Типу Редактирования</string>

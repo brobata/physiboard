@@ -2,6 +2,8 @@ package it.palsoftware.pastiera
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -13,6 +15,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.activity.compose.BackHandler
@@ -669,6 +673,18 @@ private fun UserDictionaryScreen(
     var entries by remember { mutableStateOf(emptyList<UserDictItem>()) }
     var showAddDialog by remember { mutableStateOf(false) }
     var newWord by remember { mutableStateOf("") }
+    var searchQuery by remember { mutableStateOf("") }
+    var searchActive by remember { mutableStateOf(false) }
+
+    val filteredEntries = remember(entries, searchQuery) {
+        if (searchQuery.isBlank()) {
+            entries
+        } else {
+            val query = searchQuery.lowercase()
+            entries.filter { it.word.lowercase().contains(query) }
+        }
+    }
+    val hasEntries = entries.isNotEmpty()
 
     fun refreshEntries() {
         // Ensure cache is populated from persistent storage before snapshots/removals.
@@ -703,50 +719,108 @@ private fun UserDictionaryScreen(
                     .windowInsetsPadding(WindowInsets.statusBars),
                 tonalElevation = 1.dp
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.settings_back_content_description)
-                        )
-                    }
-                    Text(
-                        text = stringResource(R.string.user_dict_title),
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.SemiBold,
+                    Row(
                         modifier = Modifier
-                            .padding(start = 8.dp)
-                            .weight(1f)
-                    )
-                    IconButton(onClick = { showAddDialog = true }) {
-                        Icon(
-                            imageVector = Icons.Filled.Add,
-                            contentDescription = stringResource(R.string.user_dict_add_button)
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = stringResource(R.string.settings_back_content_description)
+                            )
+                        }
+                        Text(
+                            text = stringResource(R.string.user_dict_title),
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier
+                                .padding(start = 8.dp)
+                                .weight(1f)
+                        )
+                        IconButton(
+                            onClick = {
+                                if (searchActive) {
+                                    searchActive = false
+                                    searchQuery = ""
+                                } else {
+                                    searchActive = true
+                                }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = if (searchActive) Icons.Filled.Close else Icons.Filled.Search,
+                                contentDescription = stringResource(
+                                    if (searchActive) R.string.auto_correct_clear_search
+                                    else R.string.auto_correct_search_description
+                                )
+                            )
+                        }
+                        IconButton(onClick = { showAddDialog = true }) {
+                            Icon(
+                                imageVector = Icons.Filled.Add,
+                                contentDescription = stringResource(R.string.user_dict_add_button)
+                            )
+                        }
+                    }
+                    if (searchActive) {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            placeholder = {
+                                Text(stringResource(R.string.auto_correct_search_placeholder))
+                            },
+                            singleLine = true,
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Filled.Search,
+                                    contentDescription = stringResource(R.string.auto_correct_search_description)
+                                )
+                            },
+                            trailingIcon = {
+                                if (searchQuery.isNotBlank()) {
+                                    IconButton(onClick = { searchQuery = "" }) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Close,
+                                            contentDescription = stringResource(R.string.auto_correct_clear_search)
+                                        )
+                                    }
+                                }
+                            }
                         )
                     }
                 }
             }
         }
     ) { paddingValues ->
-        Column(
+        LazyColumn(
             modifier = modifier
                 .fillMaxWidth()
                 .padding(paddingValues)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            if (entries.isEmpty()) {
-                Text(
-                    text = stringResource(R.string.user_dict_empty_state),
-                    style = MaterialTheme.typography.bodyMedium
-                )
+            if (filteredEntries.isEmpty()) {
+                item {
+                    Text(
+                        text = if (hasEntries) {
+                            stringResource(R.string.auto_correct_no_corrections_found)
+                        } else {
+                            stringResource(R.string.user_dict_empty_state)
+                        },
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
             } else {
-                entries.forEach { entry ->
+                items(filteredEntries) { entry ->
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         tonalElevation = 1.dp

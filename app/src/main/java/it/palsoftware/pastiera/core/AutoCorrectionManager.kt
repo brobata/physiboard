@@ -80,6 +80,12 @@ class AutoCorrectionManager(
         onStatusBarUpdate: () -> Unit,
         boundaryCharOverride: Char? = null
     ): Boolean {
+        Log.d(
+            TAG,
+            "handleBoundaryKey: keyCode=$keyCode, boundaryOverride=$boundaryCharOverride, " +
+                    "commitBoundary=$commitBoundary, isAutoCorrectEnabled=$isAutoCorrectEnabled, " +
+                    "eventKeyCode=${event?.keyCode}"
+        )
         if (!isAutoCorrectEnabled || inputConnection == null) {
             return false
         }

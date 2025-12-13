@@ -392,14 +392,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         val ic = inputConnection ?: return false
 
         ic.finishComposingText()
-        autoCorrectionManager.handleBoundaryKey(
-            keyCode = keyCode,
-            event = event,
-            inputConnection = ic,
-            isAutoCorrectEnabled = isAutoCorrectEnabled,
-            commitBoundary = false,
-            onStatusBarUpdate = { updateStatusBarText() }
-        )
+        // Skip autocorrection when Enter is mapped to an IME action.
         textInputController.handleAutoCapAfterEnter(
             keyCode,
             ic,
@@ -2084,7 +2077,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 textInputController = textInputController,
                 autoCorrectionManager = autoCorrectionManager,
                 inputContextState = state,
-                enableShiftOneShot = { modifierStateController.requestShiftOneShotFromAutoCap() }
+                enableShiftOneShot = { modifierStateController.requestShiftOneShotFromAutoCap() },
+                editorInfo = info
             ) { updateStatusBarText() }
         ) {
             return true

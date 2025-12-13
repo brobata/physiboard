@@ -127,6 +127,13 @@
     <string name="auto_correct_max_distance_off">Disattivato</string>
     <string name="auto_correct_max_distance_description">Numero massimo di differenze di caratteri consentite per l\'auto-correzione. 0 = disabilitato, 1-3 = tolleranza crescente.</string>
     <string name="auto_correct_manage_user_dict_title">Gestisci dizionario utente</string>
+    
+    <!-- User dictionary management -->
+    <string name="user_dict_title">Dizionario utente</string>
+    <string name="user_dict_add_hint">Aggiungi una parola</string>
+    <string name="user_dict_add_button">Salva parola</string>
+    <string name="user_dict_empty_state">Nessuna parola utente salvata ancora.</string>
+    
     <string name="auto_correct_keyboard_proximity_title">Classifica per prossimità tasti</string>
     <string name="auto_correct_keyboard_proximity_description">Filtra errori di battitura improbabili in base alla distanza dei tasti (QWERTY/AZERTY/QWERTZ)</string>
     <string name="auto_correct_edit_type_ranking_title">Classifica per tipo di modifica</string>
