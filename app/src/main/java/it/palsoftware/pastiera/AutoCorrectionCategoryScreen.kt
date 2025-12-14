@@ -12,6 +12,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.Clear
@@ -672,7 +673,8 @@ private fun UserDictionaryScreen(
     val userStore = remember { it.palsoftware.pastiera.core.suggestions.UserDictionaryStore() }
     var entries by remember { mutableStateOf(emptyList<UserDictItem>()) }
     var showAddDialog by remember { mutableStateOf(false) }
-    var newWord by remember { mutableStateOf("") }
+    var editingEntry by remember { mutableStateOf<UserDictItem?>(null) }
+    var dialogWord by remember { mutableStateOf("") }
     var searchQuery by remember { mutableStateOf("") }
     var searchActive by remember { mutableStateOf(false) }
 
@@ -698,16 +700,31 @@ private fun UserDictionaryScreen(
         refreshEntries()
     }
 
+    fun notifyDictionaryUpdated() {
+        val intent = Intent("it.palsoftware.pastiera.ACTION_USER_DICTIONARY_UPDATED").apply {
+            setPackage(context.packageName)
+        }
+        context.sendBroadcast(intent)
+    }
+
     fun addWord(word: String) {
         val trimmed = word.trim()
         if (trimmed.isNotEmpty()) {
             userStore.addWord(context, trimmed)
             refreshEntries()
-            // Notify IME service to refresh user dictionary
-            val intent = Intent("it.palsoftware.pastiera.ACTION_USER_DICTIONARY_UPDATED").apply {
-                setPackage(context.packageName)
+            notifyDictionaryUpdated()
+        }
+    }
+
+    fun updateWord(entry: UserDictItem, newWord: String) {
+        val trimmed = newWord.trim()
+        if (trimmed.isNotEmpty() && trimmed != entry.word) {
+            when (entry.source) {
+                UserDictSource.DEFAULT -> defaultStore.update(entry.word, trimmed)
+                UserDictSource.USER -> userStore.updateWord(context, entry.word, trimmed)
             }
-            context.sendBroadcast(intent)
+            refreshEntries()
+            notifyDictionaryUpdated()
         }
     }
 
@@ -838,16 +855,18 @@ private fun UserDictionaryScreen(
                                 modifier = Modifier.weight(1f)
                             )
                             IconButton(onClick = {
+                                editingEntry = entry
+                                dialogWord = entry.word
+                            }) {
+                                Icon(imageVector = Icons.Filled.Edit, contentDescription = null)
+                            }
+                            IconButton(onClick = {
                                 when (entry.source) {
                                     UserDictSource.DEFAULT -> defaultStore.remove(entry.word)
                                     UserDictSource.USER -> userStore.removeWord(context, entry.word)
                                 }
                                 refreshEntries()
-                                // Notify IME service to refresh user dictionary
-                                val intent = Intent("it.palsoftware.pastiera.ACTION_USER_DICTIONARY_UPDATED").apply {
-                                    setPackage(context.packageName)
-                                }
-                                context.sendBroadcast(intent)
+                                notifyDictionaryUpdated()
                             }) {
                                 Icon(imageVector = Icons.Filled.Delete, contentDescription = null)
                             }
@@ -860,55 +879,85 @@ private fun UserDictionaryScreen(
     
     // Add word dialog
     if (showAddDialog) {
-        AlertDialog(
-            onDismissRequest = { 
+        UserDictWordDialog(
+            title = stringResource(R.string.user_dict_add_hint),
+            word = dialogWord,
+            onWordChange = { dialogWord = it },
+            onConfirm = {
+                addWord(dialogWord)
                 showAddDialog = false
-                newWord = ""
+                dialogWord = ""
             },
-            title = {
-                Text(stringResource(R.string.user_dict_add_hint))
-            },
-            text = {
-                OutlinedTextField(
-                    value = newWord,
-                    onValueChange = { newWord = it },
-                    label = { Text(stringResource(R.string.user_dict_add_hint)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    trailingIcon = {
-                        if (newWord.isNotBlank()) {
-                            IconButton(onClick = { newWord = "" }) {
-                                Icon(
-                                    imageVector = Icons.Filled.Clear,
-                                    contentDescription = stringResource(R.string.clear)
-                                )
-                            }
-                        }
-                    }
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        addWord(newWord)
-                        showAddDialog = false
-                        newWord = ""
-                    },
-                    enabled = newWord.isNotBlank()
-                ) {
-                    Text(stringResource(R.string.user_dict_add_button))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { 
-                    showAddDialog = false
-                    newWord = ""
-                }) {
-                    Text(stringResource(android.R.string.cancel))
-                }
+            onDismiss = {
+                showAddDialog = false
+                dialogWord = ""
             }
         )
     }
+
+    // Edit word dialog
+    editingEntry?.let { entry ->
+        UserDictWordDialog(
+            title = stringResource(R.string.user_dict_edit_title),
+            word = dialogWord,
+            onWordChange = { dialogWord = it },
+            onConfirm = {
+                updateWord(entry, dialogWord)
+                editingEntry = null
+                dialogWord = ""
+            },
+            onDismiss = {
+                editingEntry = null
+                dialogWord = ""
+            }
+        )
+    }
+}
+
+@Composable
+private fun UserDictWordDialog(
+    title: String,
+    word: String,
+    onWordChange: (String) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            OutlinedTextField(
+                value = word,
+                onValueChange = onWordChange,
+                label = { Text(title) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                trailingIcon = {
+                    if (word.isNotBlank()) {
+                        IconButton(onClick = { onWordChange("") }) {
+                            Icon(
+                                imageVector = Icons.Filled.Clear,
+                                contentDescription = null
+                            )
+                        }
+                    }
+                }
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                enabled = word.isNotBlank()
+            ) {
+                Text(stringResource(android.R.string.ok))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(android.R.string.cancel))
+            }
+        }
+    )
 }
 
 private enum class LocalNavigationDirection {
@@ -976,6 +1025,14 @@ private class DefaultUserDefaultsStore(private val context: Context) {
     fun remove(word: String) {
         val file = ensureLocalFile()
         val entries = loadEntries().filterNot { it.word.equals(word, ignoreCase = true) }
+        persist(entries, file)
+    }
+
+    fun update(oldWord: String, newWord: String) {
+        val file = ensureLocalFile()
+        val entries = loadEntries().map {
+            if (it.word.equals(oldWord, ignoreCase = true)) it.copy(word = newWord) else it
+        }
         persist(entries, file)
     }
 

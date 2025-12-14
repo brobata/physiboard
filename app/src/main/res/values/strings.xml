@@ -156,6 +156,7 @@
     <string name="user_dict_add_hint">Add a word</string>
     <string name="user_dict_add_button">Save word</string>
     <string name="user_dict_empty_state">No user words saved yet.</string>
+    <string name="user_dict_edit_title">Edit word</string>
     <string name="user_dict_frequency_label">Uses: %1$d</string>
     
     <!-- SYM Customization Screen -->

@@ -132,6 +132,7 @@
     <string name="user_dict_add_hint">Ajouter un mot</string>
     <string name="user_dict_add_button">Enregistrer le mot</string>
     <string name="user_dict_empty_state">Aucun mot utilisateur enregistré pour le moment.</string>
+    <string name="user_dict_edit_title">Modifier le mot</string>
     
     <string name="auto_correct_keyboard_proximity_title">Classement par Proximité Clavier</string>
     <string name="auto_correct_keyboard_proximity_description">Filtrer les fautes de frappe improbables basées sur la distance des touches (QWERTY/AZERTY/QWERTZ)</string>

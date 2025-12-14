@@ -66,6 +66,15 @@ class UserDictionaryStore {
         persist(context)
     }
 
+    fun updateWord(context: Context, oldWord: String, newWord: String) {
+        val oldKey = oldWord.lowercase()
+        val newKey = newWord.lowercase()
+        val existing = cache[oldKey] ?: return
+        cache.remove(oldKey)
+        cache[newKey] = existing.copy(word = newWord, lastUsed = System.currentTimeMillis())
+        persist(context)
+    }
+
     fun markUsed(context: Context, word: String) {
         val cacheKey = word.lowercase()
         cache[cacheKey]?.let {

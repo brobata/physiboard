@@ -133,6 +133,7 @@
     <string name="user_dict_add_hint">Wort hinzufügen</string>
     <string name="user_dict_add_button">Wort speichern</string>
     <string name="user_dict_empty_state">Noch keine Benutzerwörter gespeichert.</string>
+    <string name="user_dict_edit_title">Wort bearbeiten</string>
     
     <string name="auto_correct_keyboard_proximity_title">Tastatur-Näherungsbewertung</string>
     <string name="auto_correct_keyboard_proximity_description">Unwahrscheinliche Tippfehler basierend auf Tastenabstand filtern (QWERTY/AZERTY/QWERTZ)</string>

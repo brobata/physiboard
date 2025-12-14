@@ -132,6 +132,7 @@
     <string name="user_dict_add_hint">Dodaj słowo</string>
     <string name="user_dict_add_button">Zapisz słowo</string>
     <string name="user_dict_empty_state">Nie zapisano jeszcze żadnych słów użytkownika.</string>
+    <string name="user_dict_edit_title">Edytuj słowo</string>
     
     <string name="auto_correct_keyboard_proximity_title">Ranking Proximity Klawiatury</string>
     <string name="auto_correct_keyboard_proximity_description">Filtruj nieprawdopodobne literówki na podstawie odległości klawiszy (QWERTY/AZERTY/QWERTZ)</string>

@@ -91,6 +91,7 @@
     <string name="user_dict_add_hint">Добавить слово</string>
     <string name="user_dict_add_button">Сохранить слово</string>
     <string name="user_dict_empty_state">Пользовательские слова еще не сохранены.</string>
+    <string name="user_dict_edit_title">Редактировать слово</string>
     
     <string name="auto_correct_keyboard_proximity_title">Ранжирование по Близости Клавиатуры</string>
     <string name="auto_correct_keyboard_proximity_description">Фильтровать маловероятные опечатки на основе расстояния клавиш (QWERTY/AZERTY/QWERTZ)</string>

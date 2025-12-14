@@ -137,6 +137,7 @@
     <string name="user_dict_add_hint">Aggiungi una parola</string>
     <string name="user_dict_add_button">Salva parola</string>
     <string name="user_dict_empty_state">Nessuna parola utente salvata ancora.</string>
+    <string name="user_dict_edit_title">Modifica parola</string>
     
     <string name="auto_correct_keyboard_proximity_title">Classifica per prossimità tasti</string>
     <string name="auto_correct_keyboard_proximity_description">Filtra errori di battitura improbabili in base alla distanza dei tasti (QWERTY/AZERTY/QWERTZ)</string>
