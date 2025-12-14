@@ -20,6 +20,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 
 /**
  * Settings screen for trackpad gesture suggestions.
@@ -37,8 +38,15 @@ fun TrackpadGestureSettingsScreen(
         mutableStateOf(SettingsManager.getTrackpadSwipeThreshold(context))
     }
     var showTutorialDialog by remember { mutableStateOf(false) }
+    var shizukuStatus by remember { mutableStateOf(ShizukuStatus.NotConnected) }
 
     BackHandler { onBack() }
+    LaunchedEffect(Unit) {
+        while (true) {
+            shizukuStatus = resolveShizukuStatus()
+            delay(2000)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -117,6 +125,32 @@ fun TrackpadGestureSettingsScreen(
                         }
                     )
                 }
+            }
+
+            // Shizuku status indicator
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                val (statusIcon, statusTint, statusText) = when (shizukuStatus) {
+                    ShizukuStatus.Connected -> Triple(Icons.Filled.CheckCircle, MaterialTheme.colorScheme.primary, stringResource(R.string.trackpad_gestures_shizuku_connected))
+                    ShizukuStatus.NotAuthorized -> Triple(Icons.Filled.Warning, MaterialTheme.colorScheme.tertiary, stringResource(R.string.trackpad_gestures_shizuku_not_authorized))
+                    ShizukuStatus.NotConnected -> Triple(Icons.Filled.Error, MaterialTheme.colorScheme.error, stringResource(R.string.trackpad_gestures_shizuku_not_connected))
+                }
+                Icon(
+                    imageVector = statusIcon,
+                    contentDescription = null,
+                    tint = statusTint,
+                    modifier = Modifier.size(16.dp)
+                )
+                Text(
+                    text = statusText,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = statusTint
+                )
             }
 
             // Swipe sensitivity slider

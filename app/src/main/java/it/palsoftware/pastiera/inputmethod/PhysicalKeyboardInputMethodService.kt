@@ -48,6 +48,8 @@ import java.util.Locale
 import android.view.inputmethod.InputMethodManager
 import android.view.inputmethod.InputMethodSubtype
 import it.palsoftware.pastiera.clipboard.ClipboardHistoryManager
+import android.content.pm.PackageManager
+import rikka.shizuku.Shizuku
 
 /**
  * Input method service specialized for physical keyboards.
@@ -57,6 +59,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
 
     companion object {
         private const val TAG = "PastieraInputMethod"
+        private const val TRACKPAD_DEBUG_TAG = "TrackpadDebug"
     }
 
     // SharedPreferences for settings
@@ -866,10 +869,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         registerAdditionalSubtypes()
         
         // Trackpad gestures detector (instantiated early to avoid late-init issues in listener)
+        Log.d(TRACKPAD_DEBUG_TAG, "onCreate: Building initial trackpad gesture detector...")
         trackpadGestureDetector = buildTrackpadGestureDetector()
+        Log.d(TRACKPAD_DEBUG_TAG, "onCreate: Initial detector built")
 
         // Register listener for SharedPreferences changes
         prefsListener = SharedPreferences.OnSharedPreferenceChangeListener { sharedPrefs, key ->
+            Log.d(TRACKPAD_DEBUG_TAG, "SharedPrefs changed: key=$key")
             if (key == "sym_mappings_custom") {
                 Log.d(TAG, "SYM mappings page 1 changed, reloading...")
                 // Reload SYM mappings for page 1
@@ -923,22 +929,39 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 Log.d(TAG, "Custom input styles changed, re-registering subtypes...")
                 registerAdditionalSubtypes()
             } else if (key == "trackpad_gestures_enabled") {
+                val newValue = SettingsManager.getTrackpadGesturesEnabled(this)
+                Log.d(TRACKPAD_DEBUG_TAG, "SharedPrefs listener: trackpad_gestures_enabled changed to $newValue")
                 Log.d(TAG, "Trackpad gestures setting changed, restarting detection...")
                 if (::trackpadGestureDetector.isInitialized) {
+                    Log.d(TRACKPAD_DEBUG_TAG, "Detector initialized, stopping old detector...")
                     trackpadGestureDetector.stop()
+                    Log.d(TRACKPAD_DEBUG_TAG, "Building new detector...")
                     trackpadGestureDetector = buildTrackpadGestureDetector()
+                    Log.d(TRACKPAD_DEBUG_TAG, "Starting new detector...")
                     trackpadGestureDetector.start()
+                    Log.d(TRACKPAD_DEBUG_TAG, "Detector restart complete for gestures_enabled change")
+                } else {
+                    Log.d(TRACKPAD_DEBUG_TAG, "Detector NOT initialized yet, skipping restart")
                 }
             } else if (key == "trackpad_swipe_threshold") {
+                val newValue = SettingsManager.getTrackpadSwipeThreshold(this)
+                Log.d(TRACKPAD_DEBUG_TAG, "SharedPrefs listener: trackpad_swipe_threshold changed to $newValue")
                 Log.d(TAG, "Trackpad swipe threshold changed, restarting detection...")
                 if (::trackpadGestureDetector.isInitialized) {
+                    Log.d(TRACKPAD_DEBUG_TAG, "Detector initialized, stopping old detector...")
                     trackpadGestureDetector.stop()
+                    Log.d(TRACKPAD_DEBUG_TAG, "Building new detector...")
                     trackpadGestureDetector = buildTrackpadGestureDetector()
+                    Log.d(TRACKPAD_DEBUG_TAG, "Starting new detector...")
                     trackpadGestureDetector.start()
+                    Log.d(TRACKPAD_DEBUG_TAG, "Detector restart complete for swipe_threshold change")
+                } else {
+                    Log.d(TRACKPAD_DEBUG_TAG, "Detector NOT initialized yet, skipping restart")
                 }
             }
         }
         prefs.registerOnSharedPreferenceChangeListener(prefsListener)
+        Log.d(TRACKPAD_DEBUG_TAG, "onCreate: SharedPreferences listener registered")
         
         // Register broadcast receiver for speech recognition
         speechResultReceiver = object : BroadcastReceiver() {
@@ -1067,15 +1090,20 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // Update additional subtypes on startup
         updateAdditionalSubtypes()
         // Start trackpad gesture detection
+        Log.d(TRACKPAD_DEBUG_TAG, "onCreate: Calling initial trackpadGestureDetector.start()...")
         trackpadGestureDetector.start()
+        Log.d(TRACKPAD_DEBUG_TAG, "onCreate: Initial start() call completed")
     }
 
     private fun buildTrackpadGestureDetector(): TrackpadGestureDetector {
+        val gesturesEnabled = SettingsManager.getTrackpadGesturesEnabled(this)
+        val swipeThreshold = SettingsManager.getTrackpadSwipeThreshold(this).toInt()
+        Log.d(TRACKPAD_DEBUG_TAG, "buildTrackpadGestureDetector() - gesturesEnabled=$gesturesEnabled, swipeThreshold=$swipeThreshold")
         return TrackpadGestureDetector(
             isEnabled = { SettingsManager.getTrackpadGesturesEnabled(this) },
             onSwipeUp = { third -> acceptSuggestionAtIndex(third) },
             scope = trackpadScope,
-            swipeUpThreshold = SettingsManager.getTrackpadSwipeThreshold(this).toInt()
+            swipeUpThreshold = swipeThreshold
         )
     }
     
@@ -1388,6 +1416,26 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 onUpdateStatusBar = { updateStatusBarText() },
                 inputContextState = state
             )
+        }
+
+        // Check if trackpad gestures should be started
+        if (::trackpadGestureDetector.isInitialized) {
+            val gesturesEnabled = SettingsManager.getTrackpadGesturesEnabled(this)
+            if (gesturesEnabled && !trackpadGestureDetector.isRunning()) {
+                val shizukuRunning = try { Shizuku.pingBinder() } catch (e: Exception) { false }
+                val shizukuAuthorized = try { 
+                    Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED 
+                } catch (e: Exception) { false }
+                
+                if (shizukuRunning && shizukuAuthorized) {
+                    Log.d(TRACKPAD_DEBUG_TAG, "onStartInputView: Gestures enabled and Shizuku ready, starting detector...")
+                    trackpadGestureDetector.start()
+                } else {
+                    Log.d(TRACKPAD_DEBUG_TAG, "onStartInputView: Gestures enabled but Shizuku not ready (running=$shizukuRunning, authorized=$shizukuAuthorized)")
+                }
+            } else if (gesturesEnabled && trackpadGestureDetector.isRunning()) {
+                Log.d(TRACKPAD_DEBUG_TAG, "onStartInputView: Gestures enabled and detector already running, skipping")
+            }
         }
     }
     

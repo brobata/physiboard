@@ -319,6 +319,7 @@ class SuggestionEngine(
         useEditTypeRanking: Boolean
     ): List<SuggestionResult> {
         val normalizedWord = normalize(currentWord)
+        val normalizedWordBare = normalizedWord.replace("'", "")
         val inputLen = normalizedWord.length
         // Require at least 1 character to start suggesting.
         if (inputLen < 1) return emptyList()
@@ -342,7 +343,18 @@ class SuggestionEngine(
                 val norm = normalizeCached(it.word)
                 norm.startsWith(normalizedWord) && it.word.length > currentWord.length
             }
-
+        val elisionPrefixEntries = if (inputLen == 1) {
+            repository.lookupByPrefixMerged("${normalizedWord}'", maxSize = 80)
+        } else emptyList()
+        val leadingChar = currentWord.firstOrNull()
+        val shortElisionEntries = if (inputLen == 1 && leadingChar != null) {
+            elisionPrefixEntries.filter { entry ->
+                val word = entry.word
+                word.length in 2..3 &&
+                    word.getOrNull(0)?.equals(leadingChar, ignoreCase = true) == true &&
+                    word.getOrNull(1) == '\''
+            }
+        } else emptyList()
         val seen = HashSet<String>(limit * 3)
         val top = ArrayList<SuggestionResult>(limit)
         val comparator = Comparator<SuggestionResult> { a, b ->
@@ -353,7 +365,13 @@ class SuggestionEngine(
             a.candidate.length.compareTo(b.candidate.length)
         }
 
-        fun consider(term: String, distance: Int, frequency: Int, isForcedPrefix: Boolean = false) {
+        fun consider(
+            term: String,
+            distance: Int,
+            frequency: Int,
+            isForcedPrefix: Boolean = false,
+            overrideCandidates: List<DictionaryEntry>? = null
+        ) {
             // For very short inputs, avoid suggesting single-char tokens unless exact
             if (inputLen <= 2 && term.length == 1 && term != normalizedWord) return
             if (inputLen <= 2 && distance > 1) return
@@ -368,12 +386,10 @@ class SuggestionEngine(
             }
 
             val isSingleCharInput = inputLen == 1
-            val candidateList: List<DictionaryEntry> = if (isSingleCharInput) {
-                repository.topByNormalized(term, limit = 5)
-            } else if (distance == 0) {
-                repository.topByNormalized(term, limit = 3)
-            } else {
-                listOfNotNull(repository.bestEntryForNormalized(term))
+            val candidateList: List<DictionaryEntry> = overrideCandidates ?: when {
+                isSingleCharInput -> repository.topByNormalized(term, limit = 5)
+                distance == 0 -> repository.topByNormalized(term, limit = 3)
+                else -> listOfNotNull(repository.bestEntryForNormalized(term))
             }
             if (candidateList.isEmpty()) return
 
@@ -383,12 +399,14 @@ class SuggestionEngine(
                 val effectiveFreq = repository.effectiveFrequency(entry)
                 val hasAccent = entry.word.any { it in accentChars }
                 val hasDigit = entry.word.any { it.isDigit() }
+                val hasSymbol = entry.word.any { !it.isLetterOrDigit() && it != '\'' }
                 val isSameBaseLetter = entry.word.equals(currentWord, ignoreCase = true)
                 val isShortElision = candidateLen in 2..3 &&
                         entry.word.length >= 2 &&
                         entry.word[0].equals(currentWord.firstOrNull() ?: ' ', ignoreCase = true) &&
                         entry.word.getOrNull(1) == '\''
                 val isPrefix = normCandidate.startsWith(normalizedWord)
+                val bareCandidate = normCandidate.replace("'", "")
                 val distanceScore = 1.0 / (1 + distance)
                 val isCompletion = isPrefix && entry.word.length > currentWord.length
                 val prefixBonus = when {
@@ -402,12 +420,17 @@ class SuggestionEngine(
                     isPrefix -> 0.8
                     else -> 0.0
                 }
-                val frequencyScore = (effectiveFreq / 1_200.0)
+                val frequencyScore = (effectiveFreq / 1_600.0)
                 val sourceBoost = if (entry.source == SuggestionSource.USER) 5.0 else 1.0
                 val accentBonus = if (isSingleCharInput && candidateLen == 1 && hasAccent) 0.4 else 0.0
                 val accentSameLengthBonus = if (!isSingleCharInput && candidateLen == currentWord.length && hasAccent) 0.4 else 0.0
                 val baseLetterMalus = if (isSingleCharInput && candidateLen == 1 && !hasAccent && isSameBaseLetter) -2.0 else 0.0
-                val elisionBonus = if (isSingleCharInput && isShortElision) 0.5 else 0.0
+                val elisionBonus = when {
+                    // Strongly boost single-letter inputs that can expand to "<letter>'"
+                    isSingleCharInput && isShortElision && candidateLen == 2 -> 1.00
+                    isSingleCharInput && isShortElision -> 0.55
+                    else -> 0.0
+                }
                 val lengthPenalty = if (isSingleCharInput && candidateLen > 2) -0.2 * (candidateLen - 2) else 0.0
                 // Small preference for lengths close to the current word; penalize large gaps.
                 val lenDiff = kotlin.math.abs(candidateLen - currentWord.length)
@@ -417,8 +440,19 @@ class SuggestionEngine(
                     lenDiff == 2 -> 0.05
                     else -> -0.15 * kotlin.math.min(lenDiff, 4)
                 }
-                // Strong malus for numeric candidates, especially on short inputs.
-                val numericMalus = if (hasDigit && inputLen <= 2) -3.0 else if (hasDigit) -1.5 else 0.0
+                // Strong malus for numeric/symbolic candidates, especially when already correcting a typo.
+                val containsSpecialChars = hasDigit || hasSymbol
+                val numericMalus = when {
+                    containsSpecialChars && distance > 0 && inputLen <= 2 -> -4.0
+                    containsSpecialChars && distance > 0 -> -2.2
+                    hasDigit && inputLen <= 2 -> -3.0
+                    hasDigit -> -1.5
+                    hasSymbol && inputLen <= 2 -> -1.2
+                    hasSymbol -> -0.6
+                    else -> 0.0
+                }
+                val completionLengthPenalty = if (isCompletion && currentWord.length >= 4 && (candidateLen - currentWord.length) >= 3) -0.35 else 0.0
+                val sameRootBonus = if (distance == 1 && bareCandidate == normalizedWordBare) 0.25 else 0.0
 
                 // Apply edit type ranking when enabled
                 var editTypeBonus = 0.0
@@ -459,7 +493,9 @@ class SuggestionEngine(
                         elisionBonus +
                         lengthPenalty +
                         lengthSimilarityBonus +
-                        numericMalus
+                        numericMalus +
+                        completionLengthPenalty +
+                        sameRootBonus
                     ) * sourceBoost
                 val key = entry.word.lowercase(locale)
                 if (!seen.add(key)) return@forEach
@@ -495,6 +531,17 @@ class SuggestionEngine(
         for (entry in completions) {
             val norm = normalizeCached(entry.word)
             consider(norm, 0, entry.frequency, isForcedPrefix = true)
+        }
+
+        // Ensure short elisions like "l'" are considered even if absent from the dictionary
+        for (entry in shortElisionEntries) {
+            val norm = normalizeCached(entry.word)
+            consider(
+                term = norm,
+                distance = 0,
+                frequency = entry.frequency,
+                isForcedPrefix = true
+            )
         }
 
         for (item in allSymResults) {

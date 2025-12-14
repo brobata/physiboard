@@ -79,6 +79,8 @@ import java.util.Date
 import java.util.Locale
 import rikka.shizuku.Shizuku
 import androidx.compose.runtime.LaunchedEffect
+import android.content.pm.PackageManager
+import androidx.compose.material.icons.filled.Warning
 
 /**
  * Advanced settings screen.
@@ -108,7 +110,7 @@ fun AdvancedSettingsScreen(
     var clipboardRetentionTime by remember {
         mutableStateOf(SettingsManager.getClipboardRetentionTime(context).toString())
     }
-    var shizukuConnected by remember { mutableStateOf(false) }
+    var shizukuStatus by remember { mutableStateOf(ShizukuStatus.NotConnected) }
     var navigationDirection by remember { mutableStateOf(AdvancedNavigationDirection.Push) }
     val navigationStack = remember {
         mutableStateListOf<AdvancedDestination>(AdvancedDestination.Main)
@@ -141,14 +143,10 @@ fun AdvancedSettingsScreen(
         }
     }
 
-    // Check Shizuku connection status periodically
+    // Check Shizuku connection and authorization status periodically
     LaunchedEffect(Unit) {
         while (true) {
-            shizukuConnected = try {
-                Shizuku.pingBinder()
-            } catch (e: Exception) {
-                false
-            }
+            shizukuStatus = resolveShizukuStatus()
             delay(2000) // Check every 2 seconds
         }
     }
@@ -462,24 +460,31 @@ fun AdvancedSettingsScreen(
                                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
                                     Icon(
-                                        imageVector = if (shizukuConnected) Icons.Filled.CheckCircle else Icons.Filled.Error,
+                                        imageVector = when (shizukuStatus) {
+                                            ShizukuStatus.Connected -> Icons.Filled.CheckCircle
+                                            ShizukuStatus.NotAuthorized -> Icons.Filled.Warning
+                                            ShizukuStatus.NotConnected -> Icons.Filled.Error
+                                        },
                                         contentDescription = null,
-                                        tint = if (shizukuConnected)
-                                            MaterialTheme.colorScheme.primary
-                                        else
-                                            MaterialTheme.colorScheme.error,
+                                        tint = when (shizukuStatus) {
+                                            ShizukuStatus.Connected -> MaterialTheme.colorScheme.primary
+                                            ShizukuStatus.NotAuthorized -> MaterialTheme.colorScheme.tertiary
+                                            ShizukuStatus.NotConnected -> MaterialTheme.colorScheme.error
+                                        },
                                         modifier = Modifier.size(14.dp)
                                     )
                                     Text(
-                                        text = if (shizukuConnected)
-                                            stringResource(R.string.trackpad_gestures_shizuku_connected)
-                                        else
-                                            stringResource(R.string.trackpad_gestures_shizuku_not_connected),
+                                        text = when (shizukuStatus) {
+                                            ShizukuStatus.Connected -> stringResource(R.string.trackpad_gestures_shizuku_connected)
+                                            ShizukuStatus.NotAuthorized -> stringResource(R.string.trackpad_gestures_shizuku_not_authorized)
+                                            ShizukuStatus.NotConnected -> stringResource(R.string.trackpad_gestures_shizuku_not_connected)
+                                        },
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = if (shizukuConnected)
-                                            MaterialTheme.colorScheme.primary
-                                        else
-                                            MaterialTheme.colorScheme.error
+                                        color = when (shizukuStatus) {
+                                            ShizukuStatus.Connected -> MaterialTheme.colorScheme.primary
+                                            ShizukuStatus.NotAuthorized -> MaterialTheme.colorScheme.tertiary
+                                            ShizukuStatus.NotConnected -> MaterialTheme.colorScheme.error
+                                        }
                                     )
                                 }
                             }

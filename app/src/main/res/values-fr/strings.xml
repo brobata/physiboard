@@ -31,6 +31,10 @@
     <string name="double_space_to_period_title">Double Espace pour Point</string>
     <string name="double_space_to_period_description">Double appui sur espace pour insérer un point suivi d\'un espace et mettre en majuscule la lettre suivante.</string>
     
+    <!-- Clear Alt on Space Section -->
+    <string name="clear_alt_on_space_title">Effacer Alt sur Espace</string>
+    <string name="clear_alt_on_space_description">Désactive automatiquement Alt ou Alt-Lock lors de l\'appui sur Espace.</string>
+    
     <!-- Swipe to Delete Section -->
     <string name="swipe_to_delete_title">Activer Balayage pour Supprimer</string>
     
@@ -404,6 +408,10 @@
     <string name="update_dialog_open_github">Ouvrir GitHub</string>
     <string name="update_dialog_later">Plus tard</string>
     <string name="update_dialog_download_apk">Télécharger l\'APK</string>
+    
+    <!-- Custom Input Styles -->
+    <string name="custom_input_styles_title">Langues et dispositions</string>
+    <string name="custom_input_styles_description">Ajouter des langues supplémentaires et des dispositions de clavier qui ne sont pas liées à la locale système</string>
     <string name="custom_input_styles_language_label">Langue</string>
     <string name="custom_input_styles_locale_display">%1$s (%2$s)</string>
     <string name="custom_input_styles_system_locale_hint">Langue du système - ne peut pas être modifiée</string>
@@ -448,6 +456,7 @@
     <string name="trackpad_gestures_shizuku_url">https://github.com/RikkaApps/Shizuku/releases/</string>
     <string name="trackpad_gestures_shizuku_connected">Shizuku Connecté</string>
     <string name="trackpad_gestures_shizuku_not_connected">Shizuku Non Connecté</string>
+    <string name="trackpad_gestures_shizuku_not_authorized">App Non Autorisée dans Shizuku</string>
     <string name="trackpad_swipe_threshold_title">Sensibilité du Glissement Trackpad</string>
     <string name="trackpad_swipe_threshold_description">Ajustez la distance à glisser vers le haut pour accepter une suggestion.</string>
 

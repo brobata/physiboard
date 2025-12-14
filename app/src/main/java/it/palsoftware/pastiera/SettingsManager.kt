@@ -66,7 +66,7 @@ object SettingsManager {
     private const val DEFAULT_DOUBLE_SPACE_TO_PERIOD = true
     private const val DEFAULT_SWIPE_TO_DELETE = false
     private const val DEFAULT_AUTO_SHOW_KEYBOARD = true
-    private const val DEFAULT_CLEAR_ALT_ON_SPACE = false
+    private const val DEFAULT_CLEAR_ALT_ON_SPACE = true
     private const val DEFAULT_ALT_CTRL_SPEECH_SHORTCUT = true
     private const val DEFAULT_AUTO_CORRECT_ENABLED = true
     private const val DEFAULT_SUGGESTIONS_ENABLED = true
@@ -86,8 +86,8 @@ object SettingsManager {
     private const val KEY_USE_KEYBOARD_PROXIMITY = "use_keyboard_proximity"
     private const val KEY_USE_EDIT_TYPE_RANKING = "use_edit_type_ranking"
 
-    private const val DEFAULT_USE_KEYBOARD_PROXIMITY = true
-    private const val DEFAULT_USE_EDIT_TYPE_RANKING = true
+    private const val DEFAULT_USE_KEYBOARD_PROXIMITY = false
+    private const val DEFAULT_USE_EDIT_TYPE_RANKING = false
     private const val DEFAULT_CLIPBOARD_HISTORY_ENABLED = true
     private const val DEFAULT_CLIPBOARD_RETENTION_TIME = 120L // 2 hours in minutes
     private const val DEFAULT_TRACKPAD_GESTURES_ENABLED = false
@@ -1027,7 +1027,7 @@ object SettingsManager {
     
     // Power Shortcuts settings
     private const val KEY_POWER_SHORTCUTS_ENABLED = "power_shortcuts_enabled"
-    private const val DEFAULT_POWER_SHORTCUTS_ENABLED = false
+    private const val DEFAULT_POWER_SHORTCUTS_ENABLED = true
     
     /**
      * Restituisce se i Power Shortcuts sono abilitati.
@@ -1554,7 +1554,7 @@ object SettingsManager {
     fun setTrackpadGesturesEnabled(context: Context, enabled: Boolean) {
         getPreferences(context).edit()
             .putBoolean(KEY_TRACKPAD_GESTURES_ENABLED, enabled)
-            .apply()
+            .commit()  // Use commit() instead of apply() to ensure synchronous write
     }
 
     /**
@@ -1573,7 +1573,7 @@ object SettingsManager {
         val clamped = threshold.coerceIn(MIN_TRACKPAD_SWIPE_THRESHOLD, MAX_TRACKPAD_SWIPE_THRESHOLD)
         getPreferences(context).edit()
             .putFloat(KEY_TRACKPAD_SWIPE_THRESHOLD, clamped)
-            .apply()
+            .commit()  // Use commit() instead of apply() to ensure synchronous write
     }
 
     fun getMinTrackpadSwipeThreshold(): Float = MIN_TRACKPAD_SWIPE_THRESHOLD

@@ -51,7 +51,7 @@ class DictionaryRepository(
     private val tag = "DictionaryRepo"
     private val debugLogging: Boolean = debugLogging
     private val maxRawFrequency = 255.0
-    private val scaledFrequencyMax = 2000.0
+    private val scaledFrequencyMax = 1600.0
 
     suspend fun loadIfNeeded() {
         if (isReady) return
@@ -200,7 +200,7 @@ class DictionaryRepository(
     fun effectiveFrequency(entry: DictionaryEntry): Int {
         val raw = entry.frequency.coerceAtLeast(0).coerceAtMost(maxRawFrequency.toInt())
         val normalized = raw / maxRawFrequency
-        val scaled = (normalized.pow(0.8) * scaledFrequencyMax).toInt()
+        val scaled = (normalized.pow(0.75) * scaledFrequencyMax).toInt()
         return scaled.coerceAtLeast(1)
     }
 

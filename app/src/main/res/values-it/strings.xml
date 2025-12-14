@@ -32,6 +32,10 @@
     <string name="double_space_to_period_title">Doppio Spazio per Punto</string>
     <string name="double_space_to_period_description">Doppio tap su spazio per inserire un punto seguito da spazio e capitalizzare la lettera successiva.</string>
     
+    <!-- Clear Alt on Space Section -->
+    <string name="clear_alt_on_space_title">Cancella Alt su Spazio</string>
+    <string name="clear_alt_on_space_description">Disattiva automaticamente Alt o Alt-Lock quando si preme Spazio.</string>
+    
     <!-- Swipe to Delete Section -->
     <string name="swipe_to_delete_title">Abilita Swipe per Cancellare</string>
     
@@ -438,6 +442,10 @@
     <string name="update_dialog_open_github">Apri GitHub</string>
     <string name="update_dialog_later">Più tardi</string>
     <string name="update_dialog_download_apk">Scarica APK</string>
+    
+    <!-- Custom Input Styles -->
+    <string name="custom_input_styles_title">Lingue e mappe</string>
+    <string name="custom_input_styles_description">Aggiungi lingue aggiuntive e layout tastiera che non sono legati alla locale di sistema</string>
     <string name="custom_input_styles_language_label">Lingua</string>
     <string name="custom_input_styles_locale_display">%1$s (%2$s)</string>
     <string name="custom_input_styles_system_locale_hint">Locale di sistema - non può essere modificato</string>
@@ -482,6 +490,7 @@
     <string name="trackpad_gestures_shizuku_url">https://github.com/RikkaApps/Shizuku/releases/</string>
     <string name="trackpad_gestures_shizuku_connected">Shizuku Connesso</string>
     <string name="trackpad_gestures_shizuku_not_connected">Shizuku Non Connesso</string>
+    <string name="trackpad_gestures_shizuku_not_authorized">App Non Autorizzata in Shizuku</string>
     <string name="trackpad_swipe_threshold_title">Sensibilità swipe trackpad</string>
     <string name="trackpad_swipe_threshold_description">Regola quanto devi trascinare verso l\'alto per accettare un suggerimento.</string>
 

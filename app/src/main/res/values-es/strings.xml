@@ -31,6 +31,10 @@
     <string name="double_space_to_period_title">Doble Espacio a Punto</string>
     <string name="double_space_to_period_description">Doble toque en espacio para insertar un punto seguido de un espacio y poner en mayúscula la siguiente letra.</string>
     
+    <!-- Clear Alt on Space Section -->
+    <string name="clear_alt_on_space_title">Limpiar Alt en Espacio</string>
+    <string name="clear_alt_on_space_description">Desactiva automáticamente Alt o Alt-Lock al presionar Espacio.</string>
+    
     <!-- Swipe to Delete Section -->
     <string name="swipe_to_delete_title">Activar Deslizar para Eliminar</string>
     
@@ -400,6 +404,10 @@
     <string name="update_dialog_open_github">Abrir GitHub</string>
     <string name="update_dialog_later">Más tarde</string>
     <string name="update_dialog_download_apk">Descargar APK</string>
+    
+    <!-- Custom Input Styles -->
+    <string name="custom_input_styles_title">Idiomas y mapas</string>
+    <string name="custom_input_styles_description">Agregar idiomas adicionales y diseños de teclado que no están vinculados a la configuración regional del sistema</string>
     <string name="custom_input_styles_language_label">Idioma</string>
     <string name="custom_input_styles_locale_display">%1$s (%2$s)</string>
     <string name="custom_input_styles_system_locale_hint">Idioma del sistema: no se puede cambiar</string>
@@ -444,6 +452,7 @@
     <string name="trackpad_gestures_shizuku_url">https://github.com/RikkaApps/Shizuku/releases/</string>
     <string name="trackpad_gestures_shizuku_connected">Shizuku Conectado</string>
     <string name="trackpad_gestures_shizuku_not_connected">Shizuku No Conectado</string>
+    <string name="trackpad_gestures_shizuku_not_authorized">App No Autorizada en Shizuku</string>
     <string name="trackpad_swipe_threshold_title">Sensibilidad del Deslizamiento del Trackpad</string>
     <string name="trackpad_swipe_threshold_description">Ajusta qué tan lejos necesitas deslizar hacia arriba para aceptar una sugerencia.</string>
 
