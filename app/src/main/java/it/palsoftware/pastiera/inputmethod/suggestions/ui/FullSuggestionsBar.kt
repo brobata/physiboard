@@ -21,6 +21,7 @@ import it.palsoftware.pastiera.inputmethod.VariationButtonHandler
 import it.palsoftware.pastiera.inputmethod.SubtypeCycler
 import android.view.inputmethod.InputMethodManager
 import android.inputmethodservice.InputMethodService
+import it.palsoftware.pastiera.core.suggestions.DictionaryRepository
 
 /**
  * Renders the full-width suggestion bar with up to 3 items. Always occupies
@@ -151,6 +152,24 @@ class FullSuggestionsBar(private val context: Context) {
         }
     }
 
+    /**
+     * Checks if a dictionary file exists for the current IME subtype.
+     * Returns true if a dictionary is found (serialized format).
+     */
+    private fun hasDictionaryForCurrentSubtype(): Boolean {
+        return try {
+            val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+            val currentSubtype = imm?.currentInputMethodSubtype
+            val locale = currentSubtype?.locale ?: return false
+            
+            // Extract language code from locale (e.g., "it_IT" -> "it", "en_US" -> "en")
+            val langCode = locale.split("_")[0]
+            DictionaryRepository.hasDictionaryForLocale(context, langCode)
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     fun update(
         suggestions: List<String>,
         shouldShow: Boolean,
@@ -163,7 +182,9 @@ class FullSuggestionsBar(private val context: Context) {
         val bar = container ?: return
         val frame = frameContainer ?: return
         
-        if (!shouldShow) {
+        // Hide bar if shouldShow is false or if no dictionary exists for current subtype
+        val hasDictionary = hasDictionaryForCurrentSubtype()
+        if (!shouldShow || !hasDictionary) {
             suggestionButtons.clear()
             frame.visibility = View.GONE
             bar.visibility = View.GONE

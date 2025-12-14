@@ -1379,7 +1379,7 @@ object SettingsManager {
             SymPagesConfig(
                 emojiEnabled = jsonObject.optBoolean("emojiEnabled", true),
                 symbolsEnabled = jsonObject.optBoolean("symbolsEnabled", true),
-                clipboardEnabled = jsonObject.optBoolean("clipboardEnabled", true),
+                clipboardEnabled = jsonObject.optBoolean("clipboardEnabled", false),
                 emojiFirst = jsonObject.optBoolean("emojiFirst", true)
             )
         } catch (e: Exception) {

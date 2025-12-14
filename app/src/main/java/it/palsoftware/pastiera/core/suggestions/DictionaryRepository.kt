@@ -36,6 +36,55 @@ class DictionaryRepository(
     companion object {
         // Avoid concurrent heavy loads across repositories to reduce memory spikes.
         private val loadMutex = Mutex()
+        
+        /**
+         * Checks if a dictionary file exists for the given locale.
+         * Returns true if a dictionary is found (serialized format) in assets or custom folder.
+         * This is a lightweight check that doesn't require loading the dictionary.
+         */
+        fun hasDictionaryForLocale(context: Context, locale: Locale): Boolean {
+            return hasDictionaryForLocale(context, locale.language)
+        }
+        
+        /**
+         * Checks if a dictionary file exists for the given language code.
+         * Returns true if a dictionary is found (serialized format) in assets or custom folder.
+         */
+        fun hasDictionaryForLocale(context: Context, languageCode: String): Boolean {
+            return try {
+                val langCode = languageCode.lowercase()
+                val assets = context.assets
+                
+                // Check serialized dictionaries from assets
+                try {
+                    val serializedFiles = assets.list("common/dictionaries_serialized")
+                    serializedFiles?.forEach { fileName ->
+                        if (fileName == "${langCode}_base.dict") {
+                            return true
+                        }
+                    }
+                } catch (e: Exception) {
+                    // If serialized directory doesn't exist, continue
+                }
+
+                // Check custom/imported serialized dictionaries in app storage
+                try {
+                    val localDir = File(context.filesDir, "dictionaries_serialized/custom")
+                    val localFiles = localDir.listFiles { file ->
+                        file.isFile && file.name == "${langCode}_base.dict"
+                    }
+                    if (!localFiles.isNullOrEmpty()) {
+                        return true
+                    }
+                } catch (e: Exception) {
+                    // Ignore errors
+                }
+                
+                false
+            } catch (e: Exception) {
+                false
+            }
+        }
     }
 
     private val prefixCache: MutableMap<String, MutableList<DictionaryEntry>> = mutableMapOf()
