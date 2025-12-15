@@ -158,7 +158,8 @@ class StatusBarController(
         val altLatchActive: Boolean,
         val altPhysicallyPressed: Boolean,
         val altOneShot: Boolean,
-        val symPage: Int, // 0=disattivato, 1=pagina1 emoji, 2=pagina2 caratteri, 3=clipboard
+        val symPage: Int, // 0=disattivato, 1=pagina1 emoji, 2=pagina2 caratteri
+        val clipboardOverlay: Boolean = false, // mostra la clipboard come view dedicata
         val clipboardCount: Int = 0, // numero di elementi in clipboard
         val variations: List<String> = emptyList(),
         val suggestions: List<String> = emptyList(),
@@ -1036,7 +1037,7 @@ class StatusBarController(
         variationBarView?.onVariationSelectedListener = onVariationSelectedListener
         variationBarView?.onCursorMovedListener = onCursorMovedListener
         variationBarView?.updateInputConnection(inputConnection)
-        variationBarView?.setSymModeActive(snapshot.symPage > 0)
+        variationBarView?.setSymModeActive(snapshot.symPage > 0 || snapshot.clipboardOverlay)
         variationBarView?.updateLanguageButtonText()
         
         val layout = ensureLayoutCreated(emojiMapText) ?: return
@@ -1063,11 +1064,13 @@ class StatusBarController(
         val variationsWrapperView = if (!forceMinimalUi) variationsWrapper else null
         val experimentalEnabled = SettingsManager.isExperimentalSuggestionsEnabled(context)
         val suggestionsEnabledSetting = SettingsManager.getSuggestionsEnabled(context)
-        // Show full suggestions bar when conditions are met (including in minimal UI)
-        val showFullBar = experimentalEnabled &&
+        // Show full suggestions bar when conditions are met (including minimal UI mode)
+        val showFullBar =
+            experimentalEnabled &&
             suggestionsEnabledSetting &&
             !snapshot.shouldDisableSuggestions &&
-            snapshot.symPage == 0
+            snapshot.symPage == 0 &&
+            !snapshot.clipboardOverlay
         fullSuggestionsBar?.update(
             snapshot.suggestions,
             showFullBar,
@@ -1078,6 +1081,52 @@ class StatusBarController(
             onAddUserWord
         )
         
+        if (snapshot.clipboardOverlay) {
+            // Show clipboard as dedicated overlay (not part of SYM pages)
+            updateClipboardView(inputConnection)
+            variationsBar?.resetVariationsState()
+
+            // Pin background and hide variations while showing clipboard grid
+            if (layout.background !is ColorDrawable) {
+                layout.background = ColorDrawable(DEFAULT_BACKGROUND)
+            }
+            (layout.background as? ColorDrawable)?.alpha = 255
+            variationsWrapperView?.apply {
+                visibility = View.INVISIBLE
+                isEnabled = false
+                isClickable = false
+            }
+            variationsBar?.hideImmediate()
+
+            val measured = ensureEmojiKeyboardMeasuredHeight(emojiKeyboardView, layout, forceReMeasure = true)
+            val animationHeight = if (measured > 0) measured else defaultSymHeightPx
+            emojiKeyboardView.setBackgroundColor(DEFAULT_BACKGROUND)
+            emojiKeyboardView.visibility = View.VISIBLE
+            // Use weight so the clipboard grid scrolls and leaves room for LED strip
+            emojiKeyboardView.layoutParams = (emojiKeyboardView.layoutParams as? LinearLayout.LayoutParams
+                ?: LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    0,
+                    1f
+                )).apply {
+                width = ViewGroup.LayoutParams.MATCH_PARENT
+                height = 0
+                weight = 1f
+            }
+            if (!symShown && !wasSymActive) {
+                emojiKeyboardView.alpha = 1f
+                emojiKeyboardView.translationY = animationHeight.toFloat()
+                animateEmojiKeyboardIn(emojiKeyboardView, layout)
+                symShown = true
+                wasSymActive = true
+            } else {
+                emojiKeyboardView.alpha = 1f
+                emojiKeyboardView.translationY = 0f
+                wasSymActive = true
+            }
+            return
+        }
+
         if (snapshot.symPage > 0) {
             // Handle page 3 (clipboard) vs pages 1-2 (emoji/symbols)
             if (snapshot.symPage == 3) {

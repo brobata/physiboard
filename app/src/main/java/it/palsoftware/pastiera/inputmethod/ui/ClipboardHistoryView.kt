@@ -44,7 +44,7 @@ class ClipboardHistoryView(
         setBackgroundColor(Color.TRANSPARENT)
         
         // Fixed height for the entire view - anchored to bottom above LEDs
-        val fixedHeight = dpToPx(320f)
+        val fixedHeight = dpToPx(177f)
         setPadding(0, 0, 0, 0)
         entryHeightPx = dpToPx(64f)
 
@@ -179,6 +179,15 @@ class ClipboardHistoryView(
     fun refresh() {
         clipboardHistoryManager.prepareClipboardHistory()
         val entries = loadEntries()
+        
+        // Save current scroll position before updating the list
+        val layoutManager = recyclerView.layoutManager as? GridLayoutManager
+        val firstVisiblePosition = layoutManager?.findFirstVisibleItemPosition() ?: RecyclerView.NO_POSITION
+        val firstVisibleView = layoutManager?.findViewByPosition(firstVisiblePosition)
+        val offset = firstVisibleView?.let { 
+            it.top - recyclerView.paddingTop 
+        } ?: 0
+        
         adapter.submitList(entries) {
             // Recalculate item decorations so spacing is correct after insertions
             recyclerView.invalidateItemDecorations()
@@ -186,6 +195,11 @@ class ClipboardHistoryView(
                 recyclerView.post {
                     recyclerView.scrollToPosition(0)
                     scrollToTopPending = false
+                }
+            } else if (firstVisiblePosition != RecyclerView.NO_POSITION && firstVisiblePosition < entries.size) {
+                // Restore scroll position after list update to prevent unwanted scrolling
+                recyclerView.post {
+                    layoutManager?.scrollToPositionWithOffset(firstVisiblePosition, offset)
                 }
             }
         }

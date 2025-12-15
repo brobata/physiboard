@@ -52,6 +52,7 @@ sealed class SettingsDestination {
     object AutoCorrection : SettingsDestination()
     object Customization : SettingsDestination()
     object Advanced : SettingsDestination()
+    object About : SettingsDestination()
 }
 
 /**
@@ -142,6 +143,7 @@ fun SettingsScreen(
                     onAutoCorrectionClick = { navigateTo(SettingsDestination.AutoCorrection) },
                     onCustomizationClick = { navigateTo(SettingsDestination.Customization) },
                     onAdvancedClick = { navigateTo(SettingsDestination.Advanced) },
+                    onAboutClick = { navigateTo(SettingsDestination.About) },
                     onBackClick = { navigateBack() }
                 )
             }
@@ -175,6 +177,12 @@ fun SettingsScreen(
                     onBack = { navigateBack() }
                 )
             }
+            is SettingsDestination.About -> {
+                AboutScreen(
+                    modifier = modifier,
+                    onBack = { navigateBack() }
+                )
+            }
         }
     }
 }
@@ -195,6 +203,7 @@ private fun SettingsMainScreen(
     onAutoCorrectionClick: () -> Unit,
     onCustomizationClick: () -> Unit,
     onAdvancedClick: () -> Unit,
+    onAboutClick: () -> Unit,
     onBackClick: () -> Unit
 ) {
     Scaffold(
@@ -418,6 +427,7 @@ private fun SettingsMainScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(64.dp)
+                        .clickable(onClick = onAboutClick)
                 ) {
                     Row(
                         modifier = Modifier
@@ -437,46 +447,6 @@ private fun SettingsMainScreen(
                                 text = stringResource(R.string.about_title),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Medium,
-                                maxLines = 1
-                            )
-                        }
-                    }
-                }
-                
-                // GitHub Link
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(64.dp)
-                        .clickable {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/palsoftware/pastiera/"))
-                            context.startActivity(intent)
-                        }
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Code,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = stringResource(R.string.about_github),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Medium,
-                                maxLines = 1
-                            )
-                            Text(
-                                text = "https://github.com/palsoftware/pastiera/",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1
                             )
                         }

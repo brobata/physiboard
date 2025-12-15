@@ -222,6 +222,7 @@
     <string name="about_github">GitHub</string>
     <string name="about_build_info">Pastiera IME - Palsoftware 2025</string>
     <string name="about_title">About</string>
+    <string name="about_credits_error">Unable to load credits information.</string>
     
     <!-- Launcher Shortcuts Section -->
     <string name="launcher_shortcuts_title">Shortcuts</string>
