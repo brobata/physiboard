@@ -176,23 +176,11 @@ class AutoReplaceController(
         
         // Check if word exists in dictionary
         val isKnownWord = repository.isKnownWord(lookupWord)
-        val currentWordFrequency = if (isKnownWord) repository.getExactWordFrequency(lookupWord) else 0
-        
-        // Get top suggestion frequency (need to look it up)
-        val topSuggestionFrequency = topRaw?.let { suggestion ->
-            repository.getExactWordFrequency(suggestion.candidate)
-        } ?: 0
-        
-        // Allow auto-replace if:
-        // 1. Word is not known, OR
-        // 2. Word is known BUT top suggestion has higher frequency AND same exact length
-        val canReplaceKnownWord = isKnownWord 
-            && top != null
-            && topSuggestionFrequency > currentWordFrequency
-            && topRaw!!.candidate.length == lookupWord.length
-        
-        val shouldReplace = top != null 
-            && (!isKnownWord || canReplaceKnownWord) // Allow replacement if unknown OR if known but better version exists
+
+        // Only auto-replace if word is NOT known (i.e., it's a typo/unknown word)
+        // Don't replace valid words with other valid words, even if they have higher frequency
+        val shouldReplace = top != null
+            && !isKnownWord // Only replace unknown words
             && !isRejected // Don't auto-correct if user has rejected this word
             && top.distance <= settings.maxAutoReplaceDistance
             && lookupWord.length >= minWordLength // Minimum word length check on root

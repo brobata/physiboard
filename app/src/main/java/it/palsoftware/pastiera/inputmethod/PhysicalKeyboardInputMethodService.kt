@@ -2480,6 +2480,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 it.palsoftware.pastiera.core.AutoSpaceTracker.markAutoSpace()
             }
 
+            // CRITICAL FIX: Reset tracker after accepting suggestion to prevent duplicate letters
+            // The cursor debounce can cause tracker to be out of sync when user types quickly after accepting
+            suggestionController.onContextReset()
             NotificationHelper.triggerHapticFeedback(this)
             Log.d(TAG, "Suggestion '$suggestion' inserted successfully")
         }

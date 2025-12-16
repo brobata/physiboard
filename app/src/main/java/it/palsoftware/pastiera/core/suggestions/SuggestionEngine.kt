@@ -296,9 +296,6 @@ class SuggestionEngine(
         useKeyboardProximity: Boolean = true,
         useEditTypeRanking: Boolean = true
     ): List<SuggestionResult> {
-        if (debugLogging) {
-            Log.d(tag, "suggest() input='$currentWord' len=${currentWord.length}")
-        }
         if (currentWord.isBlank()) return emptyList()
         if (!repository.isReady) return emptyList()
 
@@ -345,26 +342,45 @@ class SuggestionEngine(
         val inputLen = normalizedWord.length
         // Require at least 1 character to start suggesting.
         if (inputLen < 1) return emptyList()
+        // Force prefix completions: take frequent words that start with the input (distance 0)
+        // Filter out very rare words to avoid suggesting obscure completions
+        // Never suggest the exact word the user has already typed
+        val minFrequencyForPrefixSuggestion = if (inputLen <= 2) {
+            300 // Very high threshold for short inputs
+        } else if (inputLen == 3) {
+            250 // High threshold for 3-char inputs
+        } else if (inputLen == 4) {
+            200 // High threshold for 4-char inputs
+        } else {
+            150 // Medium threshold for longer inputs
+        }
+        val completions = repository.lookupByPrefixMerged(normalizedWord, maxSize = 200)
+            .filter {
+                val norm = normalizeCached(it.word)
+                val meetsFrequency = it.source == SuggestionSource.USER || repository.effectiveFrequency(it) >= minFrequencyForPrefixSuggestion
+                // Only show words that are longer (actual completions) and meet frequency threshold
+                // Exception: USER dictionary words are always included regardless of frequency
+                norm.startsWith(normalizedWord) && it.word.length > currentWord.length && meetsFrequency
+            }
+
         // SymSpell lookup on normalized input (skip for single-char to avoid noise)
+        // Reduce SymSpell suggestions to prioritize prefix matches
         val symResultsPrimary = if (inputLen == 1) {
             emptyList()
+        } else if (inputLen <= 3) {
+            // For short inputs, heavily prioritize prefix matches over edit distance
+            repository.symSpellLookup(normalizedWord, maxSuggestions = limit * 2)
         } else {
-            repository.symSpellLookup(normalizedWord, maxSuggestions = limit * 8)
+            repository.symSpellLookup(normalizedWord, maxSuggestions = limit * 4)
         }
         val symResultsAccent = if (includeAccentMatching && inputLen > 1) {
             val normalizedAccentless = stripAccents(normalizedWord)
             if (normalizedAccentless != normalizedWord) {
-                repository.symSpellLookup(normalizedAccentless, maxSuggestions = limit * 4)
+                repository.symSpellLookup(normalizedAccentless, maxSuggestions = limit * 2)
             } else emptyList()
         } else emptyList()
 
         val allSymResults = (symResultsPrimary + symResultsAccent)
-        // Force prefix completions: take frequent words that start with the input (distance 0)
-        val completions = repository.lookupByPrefixMerged(normalizedWord, maxSize = 120)
-            .filter {
-                val norm = normalizeCached(it.word)
-                norm.startsWith(normalizedWord) && it.word.length > currentWord.length
-            }
         val elisionPrefixEntries = if (inputLen == 1) {
             repository.lookupByPrefixMerged("${normalizedWord}'", maxSize = 80)
         } else emptyList()
@@ -379,7 +395,24 @@ class SuggestionEngine(
         } else emptyList()
         val seen = HashSet<String>(limit * 3)
         val top = ArrayList<SuggestionResult>(limit)
+
+        // Comparator with three-tier priority: USER words > prefix completions > edit-distance
         val comparator = Comparator<SuggestionResult> { a, b ->
+            val aIsUser = a.source == SuggestionSource.USER
+            val bIsUser = b.source == SuggestionSource.USER
+
+            // User dictionary words ALWAYS rank highest
+            if (aIsUser && !bIsUser) return@Comparator -1
+            if (!aIsUser && bIsUser) return@Comparator 1
+
+            val aIsPrefix = a.candidate.lowercase().startsWith(normalizedWord) && a.candidate.length > currentWord.length
+            val bIsPrefix = b.candidate.lowercase().startsWith(normalizedWord) && b.candidate.length > currentWord.length
+
+            // Prefix completions rank higher than edit-distance suggestions
+            if (aIsPrefix && !bIsPrefix) return@Comparator -1
+            if (!aIsPrefix && bIsPrefix) return@Comparator 1
+
+            // Same tier - use normal ranking (distance, score, length)
             val d = a.distance.compareTo(b.distance)
             if (d != 0) return@Comparator d
             val scoreCmp = b.score.compareTo(a.score)
@@ -397,6 +430,22 @@ class SuggestionEngine(
             // For very short inputs, avoid suggesting single-char tokens unless exact
             if (inputLen <= 2 && term.length == 1 && term != normalizedWord) return
             if (inputLen <= 2 && distance > 1) return
+
+            // Filter out rare words for prefix suggestions (completions)
+            // Exception: Don't filter when overrideCandidates is provided (e.g., user dictionary words)
+            val isPrefix = term.startsWith(normalizedWord) && term.length > normalizedWord.length
+            val minFrequency = if (inputLen <= 2) {
+                150 // Threshold for short inputs
+            } else if (inputLen == 3) {
+                100 // Threshold for 3-char inputs
+            } else if (inputLen == 4) {
+                80 // Threshold for 4-char inputs
+            } else {
+                60 // Threshold for longer inputs
+            }
+            if (isPrefix && frequency < minFrequency && overrideCandidates == null) {
+                return // Skip rare prefix completions
+            }
 
             // Apply keyboard proximity filtering when enabled
             if (useKeyboardProximity && distance > 0) {
@@ -418,7 +467,32 @@ class SuggestionEngine(
             candidateList.forEach { entry ->
                 val candidateLen = entry.word.length
                 val normCandidate = normalizeCached(entry.word)
+
+                // Never suggest the exact same word (case-insensitive)
+                if (normCandidate == normalizedWord) {
+                    return@forEach
+                }
+
                 val effectiveFreq = repository.effectiveFrequency(entry)
+
+                // Filter prefix completions by their ACTUAL frequency, not SymSpell boosted frequency
+                // Exception: Never filter user dictionary words
+                val isActualPrefix = normCandidate.startsWith(normalizedWord) && entry.word.length > currentWord.length
+                if (isActualPrefix && entry.source != SuggestionSource.USER) {
+                    val minFreqForCandidate = if (inputLen <= 2) {
+                        150
+                    } else if (inputLen == 3) {
+                        100
+                    } else if (inputLen == 4) {
+                        80
+                    } else {
+                        60
+                    }
+                    if (entry.frequency < minFreqForCandidate) {
+                        return@forEach
+                    }
+                }
+
                 val hasAccent = entry.word.any { it in accentChars }
                 val hasDigit = entry.word.any { it.isDigit() }
                 val hasSymbol = entry.word.any { !it.isLetterOrDigit() && it != '\'' }
@@ -428,18 +502,28 @@ class SuggestionEngine(
                         entry.word[0].equals(currentWord.firstOrNull() ?: ' ', ignoreCase = true) &&
                         entry.word.getOrNull(1) == '\''
                 val isPrefix = normCandidate.startsWith(normalizedWord)
+
+                // Filter out capitalized words for prefix completions when input is lowercase
+                // (likely proper nouns like "Hardy" when typing "hard")
+                // Exception: Never filter user dictionary words
+                val inputIsLowercase = currentWord.firstOrNull()?.isLowerCase() == true
+                val candidateIsCapitalized = entry.word.firstOrNull()?.isUpperCase() == true
+                if (isPrefix && inputIsLowercase && candidateIsCapitalized && entry.source != SuggestionSource.USER) {
+                    return@forEach // Skip capitalized prefix completions when user typed lowercase
+                }
+
                 val bareCandidate = normCandidate.replace("'", "")
                 val distanceScore = 1.0 / (1 + distance)
                 val isCompletion = isPrefix && entry.word.length > currentWord.length
                 val prefixBonus = when {
                     // Avoid boosting completions when input is a single character
                     inputLen == 1 && isForcedPrefix -> 0.0
-                    inputLen <= 2 && isForcedPrefix -> 0.5
-                    inputLen <= 2 && isCompletion -> 0.6
-                    inputLen <= 2 && isPrefix -> 0.4
-                    isForcedPrefix -> 1.5
-                    isCompletion -> 1.2
-                    isPrefix -> 0.8
+                    inputLen <= 2 && isForcedPrefix -> 2.0
+                    inputLen <= 2 && isCompletion -> 1.8
+                    inputLen <= 2 && isPrefix -> 1.5
+                    isForcedPrefix -> 5.0  // Strongly boost prefix matches
+                    isCompletion -> 4.0    // Strongly boost completions
+                    isPrefix -> 3.0        // Boost any prefix match
                     else -> 0.0
                 }
                 val frequencyScore = (effectiveFreq / 1_600.0)
@@ -552,7 +636,7 @@ class SuggestionEngine(
         // Consider completions first to surface them even if SymSpell returns other close words
         for (entry in completions) {
             val norm = normalizeCached(entry.word)
-            consider(norm, 0, entry.frequency, isForcedPrefix = true)
+            consider(norm, 0, entry.frequency, isForcedPrefix = true, overrideCandidates = listOf(entry))
         }
 
         // Ensure short elisions like "l'" are considered even if absent from the dictionary

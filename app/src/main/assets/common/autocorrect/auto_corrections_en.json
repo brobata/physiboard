@@ -30,7 +30,6 @@
   "hes": "he's",
   "shes": "she's",
   "its": "it's",
-  "were": "we're",
   "theyre": "they're",
   "thats": "that's",
   "whats": "what's",
@@ -51,5 +50,6 @@
   "thatd": "that'd",
   "id": "I'd",
   "ive": "I've",
-  "im": "I'm"
+  "im": "I'm",
+  "ill": "I'll"
 }

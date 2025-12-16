@@ -196,6 +196,17 @@ class SuggestionController(
             )
         }
         ensureDictionaryLoaded()
+
+        // CRITICAL FIX: Sync tracker with actual text before processing boundary
+        // The cursor debounce can cause tracker to be out of sync with the actual text field
+        if (inputConnection != null && dictionaryRepository.isReady) {
+            val word = extractWordAtCursor(inputConnection)
+            if (!word.isNullOrBlank()) {
+                tracker.setWord(word)
+                Log.d("PastieraIME", "SYNC: Synced tracker to actual word='$word' before boundary")
+            }
+        }
+
         val result = autoReplaceController.handleBoundary(keyCode, event, tracker, inputConnection)
         if (result.replaced) {
             NotificationHelper.triggerHapticFeedback(appContext)
