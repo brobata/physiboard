@@ -405,8 +405,21 @@ class SuggestionEngine(
             if (aIsUser && !bIsUser) return@Comparator -1
             if (!aIsUser && bIsUser) return@Comparator 1
 
-            val aIsPrefix = a.candidate.lowercase().startsWith(normalizedWord) && a.candidate.length > currentWord.length
-            val bIsPrefix = b.candidate.lowercase().startsWith(normalizedWord) && b.candidate.length > currentWord.length
+            // Use normalized versions to check prefix matches (allows accented variants)
+            val aNormCandidate = normalizeCached(a.candidate)
+            val bNormCandidate = normalizeCached(b.candidate)
+            // For single-char input: prefix includes accented variants (same normalized form, different original)
+            // For longer inputs: prefix means actual completions (longer words)
+            val aIsPrefix = if (inputLen == 1) {
+                aNormCandidate == normalizedWord && a.candidate != currentWord
+            } else {
+                aNormCandidate.startsWith(normalizedWord) && a.candidate.length > currentWord.length
+            }
+            val bIsPrefix = if (inputLen == 1) {
+                bNormCandidate == normalizedWord && b.candidate != currentWord
+            } else {
+                bNormCandidate.startsWith(normalizedWord) && b.candidate.length > currentWord.length
+            }
 
             // Prefix completions rank higher than edit-distance suggestions
             if (aIsPrefix && !bIsPrefix) return@Comparator -1
@@ -468,8 +481,10 @@ class SuggestionEngine(
                 val candidateLen = entry.word.length
                 val normCandidate = normalizeCached(entry.word)
 
-                // Never suggest the exact same word (case-insensitive)
-                if (normCandidate == normalizedWord) {
+                // Never suggest the exact same word (exact match, case-sensitive)
+                // This allows suggesting accented variants (e.g., "perche" → "perché")
+                // and capitalization variants (e.g., "mario" → "Mario")
+                if (entry.word == currentWord) {
                     return@forEach
                 }
 
@@ -528,7 +543,7 @@ class SuggestionEngine(
                 }
                 val frequencyScore = (effectiveFreq / 1_600.0)
                 val sourceBoost = if (entry.source == SuggestionSource.USER) 5.0 else 1.0
-                val accentBonus = if (isSingleCharInput && candidateLen == 1 && hasAccent) 0.4 else 0.0
+                val accentBonus = if (isSingleCharInput && candidateLen == 1 && hasAccent) 0.8 else 0.0
                 val accentSameLengthBonus = if (!isSingleCharInput && candidateLen == currentWord.length && hasAccent) 0.4 else 0.0
                 val baseLetterMalus = if (isSingleCharInput && candidateLen == 1 && !hasAccent && isSameBaseLetter) -2.0 else 0.0
                 val elisionBonus = when {
