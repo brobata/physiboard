@@ -4,12 +4,33 @@ import android.view.KeyEvent
 import android.view.inputmethod.InputConnection
 import it.palsoftware.pastiera.core.AutoSpaceTracker
 import android.util.Log
+import java.io.File
+import org.json.JSONObject
 
 class AutoReplaceController(
     private val repository: DictionaryRepository,
     private val suggestionEngine: SuggestionEngine,
     private val settingsProvider: () -> SuggestionSettings
 ) {
+    // #region agent log
+    private fun debugLog(hypothesisId: String, location: String, message: String, data: Map<String, Any?> = emptyMap()) {
+        try {
+            val logFile = File("/Users/andrea/Desktop/DEV/Pastiera/pastiera/.cursor/debug.log")
+            val logEntry = JSONObject().apply {
+                put("sessionId", "debug-session")
+                put("runId", "run1")
+                put("hypothesisId", hypothesisId)
+                put("location", location)
+                put("message", message)
+                put("timestamp", System.currentTimeMillis())
+                put("data", JSONObject(data))
+            }
+            logFile.appendText(logEntry.toString() + "\n")
+        } catch (e: Exception) {
+            // Ignore log errors
+        }
+    }
+    // #endregion
 
     data class ReplaceResult(val replaced: Boolean, val committed: Boolean)
     
@@ -26,15 +47,38 @@ class AutoReplaceController(
 
     private data class ApostropheSplit(val prefix: String, val root: String)
 
+    private fun normalizeApostrophes(input: String): String {
+        return input
+            .replace("’", "'")
+            .replace("‘", "'")
+            .replace("ʼ", "'")
+    }
+
+    private fun recomposeApostropheCandidate(
+        split: ApostropheSplit,
+        candidate: String
+    ): String? {
+        val prefix = split.prefix
+        val normalizedCandidate = normalizeApostrophes(candidate)
+        val hasApostrophe = normalizedCandidate.contains('\'')
+        val matchesPrefix = normalizedCandidate.length >= prefix.length &&
+            normalizedCandidate.substring(0, prefix.length).equals(prefix, ignoreCase = true)
+
+        val rootPart = when {
+            matchesPrefix -> candidate.substring(prefix.length)
+            hasApostrophe -> return null // don't mix different apostrophe prefixes
+            else -> candidate
+        }
+        val recasedRoot = CasingHelper.applyCasing(rootPart, split.root, forceLeadingCapital = false)
+        return prefix + recasedRoot
+    }
+
     /**
      * Split a word with a single apostrophe into prefix (with apostrophe) and root.
      * Language-agnostic: only checks structure/length, not locale.
      */
     private fun splitApostropheWord(word: String): ApostropheSplit? {
-        val normalized = word
-            .replace("’", "'")
-            .replace("‘", "'")
-            .replace("ʼ", "'")
+        val normalized = normalizeApostrophes(word)
         val apostropheCount = normalized.count { it == '\'' }
         if (apostropheCount != 1) return null
         val idx = normalized.indexOf('\'')
@@ -86,6 +130,17 @@ class AutoReplaceController(
         }
 
         val word = tracker.currentWord
+        // #region agent log
+        val textBeforeReal = inputConnection?.getTextBeforeCursor(16, 0)?.toString().orEmpty()
+        debugLog("C", "AutoReplaceController.handleBoundary:beforeReplace", "handleBoundary called", mapOf(
+            "trackerWord" to word,
+            "trackerWordLength" to word.length,
+            "textBeforeReal" to textBeforeReal,
+            "textBeforeRealLength" to textBeforeReal.length,
+            "keyCode" to keyCode,
+            "boundaryChar" to (boundaryChar?.toString() ?: "null")
+        ))
+        // #endregion
         if (word.isBlank()) {
             tracker.onBoundaryReached(boundaryChar, inputConnection)
             return ReplaceResult(false, unicodeChar != 0)
@@ -104,8 +159,8 @@ class AutoReplaceController(
         val topRaw = suggestions.firstOrNull()
         val top = topRaw?.let {
             if (apostropheSplit != null) {
-                val recasedRoot = CasingHelper.applyCasing(it.candidate, apostropheSplit.root, forceLeadingCapital = false)
-                it.copy(candidate = apostropheSplit.prefix + recasedRoot)
+                val recomposed = recomposeApostropheCandidate(apostropheSplit, it.candidate) ?: return@let null
+                it.copy(candidate = recomposed)
             } else {
                 it
             }
@@ -145,8 +200,27 @@ class AutoReplaceController(
 
         if (shouldReplace) {
             val replacement = applyCasing(top!!.candidate, word)
+            // #region agent log
+            val textBeforeDelete = inputConnection.getTextBeforeCursor(16, 0)?.toString().orEmpty()
+            debugLog("C", "AutoReplaceController.handleBoundary:beforeDelete", "about to deleteSurroundingText", mapOf(
+                "trackerWord" to word,
+                "trackerWordLength" to word.length,
+                "deleteCount" to word.length,
+                "textBeforeDelete" to textBeforeDelete,
+                "textBeforeDeleteLength" to textBeforeDelete.length,
+                "replacement" to replacement
+            ))
+            // #endregion
             inputConnection.beginBatchEdit()
             inputConnection.deleteSurroundingText(word.length, 0)
+            // #region agent log
+            val textAfterDelete = inputConnection.getTextBeforeCursor(16, 0)?.toString().orEmpty()
+            debugLog("C", "AutoReplaceController.handleBoundary:afterDelete", "deleteSurroundingText completed", mapOf(
+                "textAfterDelete" to textAfterDelete,
+                "textAfterDeleteLength" to textAfterDelete.length,
+                "deletedCount" to word.length
+            ))
+            // #endregion
             inputConnection.commitText(replacement, 1)
             repository.markUsed(replacement)
             

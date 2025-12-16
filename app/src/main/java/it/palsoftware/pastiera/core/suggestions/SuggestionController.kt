@@ -15,6 +15,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import it.palsoftware.pastiera.inputmethod.NotificationHelper
+import java.io.File
+import org.json.JSONObject
 
 class SuggestionController(
     context: Context,
@@ -111,11 +113,39 @@ class SuggestionController(
     private var cursorRunnable: Runnable? = null
     private val cursorDebounceMs = 120L
     private var pendingAddUserWord: String? = null
+    
+    // #region agent log
+    private fun debugLog(hypothesisId: String, location: String, message: String, data: Map<String, Any?> = emptyMap()) {
+        try {
+            val logFile = File("/Users/andrea/Desktop/DEV/Pastiera/pastiera/.cursor/debug.log")
+            val logEntry = JSONObject().apply {
+                put("sessionId", "debug-session")
+                put("runId", "run1")
+                put("hypothesisId", hypothesisId)
+                put("location", location)
+                put("message", message)
+                put("timestamp", System.currentTimeMillis())
+                put("data", JSONObject(data))
+            }
+            logFile.appendText(logEntry.toString() + "\n")
+        } catch (e: Exception) {
+            // Ignore log errors
+        }
+    }
+    // #endregion
 
     var suggestionsListener: ((List<SuggestionResult>) -> Unit)? = onSuggestionsUpdated
 
     fun onCharacterCommitted(text: CharSequence, inputConnection: InputConnection?) {
         if (!isEnabled()) return
+        // #region agent log
+        val trackerWordBefore = tracker.currentWord
+        debugLog("A", "SuggestionController.onCharacterCommitted:entry", "onCharacterCommitted called", mapOf(
+            "text" to text.toString(),
+            "trackerWordBefore" to trackerWordBefore,
+            "trackerWordLengthBefore" to trackerWordBefore.length
+        ))
+        // #endregion
         if (debugLogging) {
             val caller = Throwable().stackTrace.getOrNull(1)?.let { "${it.className}#${it.methodName}:${it.lineNumber}" }
             Log.d("PastieraIME", "SuggestionController.onCharacterCommitted('$text') caller=$caller")
@@ -125,8 +155,8 @@ class SuggestionController(
         // Normalize curly/variant apostrophes to straight for tracking and suggestions.
         val normalizedText = text
             .toString()
-            .replace("’", "'")
-            .replace("‘", "'")
+            .replace("'", "'")
+            .replace("'", "'")
             .replace("ʼ", "'")
         
         // Clear last replacement if user types new characters
@@ -139,6 +169,14 @@ class SuggestionController(
         }
         
         tracker.onCharacterCommitted(normalizedText)
+        // #region agent log
+        val trackerWordAfter = tracker.currentWord
+        debugLog("A", "SuggestionController.onCharacterCommitted:exit", "tracker updated after onCharacterCommitted", mapOf(
+            "trackerWordAfter" to trackerWordAfter,
+            "trackerWordLengthAfter" to trackerWordAfter.length,
+            "normalizedText" to normalizedText
+        ))
+        // #endregion
     }
 
     fun refreshFromInputConnection(inputConnection: InputConnection?) {
@@ -170,6 +208,13 @@ class SuggestionController(
 
     fun onCursorMoved(inputConnection: InputConnection?) {
         if (!isEnabled()) return
+        // #region agent log
+        val trackerWordBefore = tracker.currentWord
+        debugLog("A", "SuggestionController.onCursorMoved:entry", "onCursorMoved called", mapOf(
+            "trackerWordBefore" to trackerWordBefore,
+            "trackerWordLengthBefore" to trackerWordBefore.length
+        ))
+        // #endregion
         ensureDictionaryLoaded()
         cursorRunnable?.let { cursorHandler.removeCallbacks(it) }
         if (inputConnection == null) {
@@ -178,14 +223,37 @@ class SuggestionController(
             return
         }
         cursorRunnable = Runnable {
+            // #region agent log
+            val trackerWordBeforeExtract = tracker.currentWord
+            debugLog("B", "SuggestionController.onCursorMoved:runnable", "extractWordAtCursor about to be called", mapOf(
+                "trackerWordBeforeExtract" to trackerWordBeforeExtract,
+                "trackerWordLengthBeforeExtract" to trackerWordBeforeExtract.length
+            ))
+            // #endregion
             if (!dictionaryRepository.isReady) {
                 tracker.reset()
                 suggestionsListener?.invoke(emptyList())
                 return@Runnable
             }
             val word = extractWordAtCursor(inputConnection)
+            // #region agent log
+            debugLog("B", "SuggestionController.onCursorMoved:afterExtract", "extractWordAtCursor returned", mapOf(
+                "extractedWord" to (word ?: "null"),
+                "extractedWordLength" to (word?.length ?: 0),
+                "trackerWordBeforeSet" to trackerWordBeforeExtract,
+                "trackerWordLengthBeforeSet" to trackerWordBeforeExtract.length
+            ))
+            // #endregion
             if (!word.isNullOrBlank()) {
                 tracker.setWord(word)
+                // #region agent log
+                val trackerWordAfter = tracker.currentWord
+                debugLog("B", "SuggestionController.onCursorMoved:afterSet", "tracker.setWord called", mapOf(
+                    "trackerWordAfter" to trackerWordAfter,
+                    "trackerWordLengthAfter" to trackerWordAfter.length,
+                    "extractedWord" to word
+                ))
+                // #endregion
             } else {
                 tracker.reset()
                 suggestionsListener?.invoke(emptyList())
@@ -274,6 +342,14 @@ class SuggestionController(
         return try {
             val before = inputConnection.getTextBeforeCursor(12, 0)?.toString() ?: ""
             val after = inputConnection.getTextAfterCursor(12, 0)?.toString() ?: ""
+            // #region agent log
+            debugLog("B", "SuggestionController.extractWordAtCursor:before", "getTextBeforeCursor/getTextAfterCursor called", mapOf(
+                "before" to before,
+                "beforeLength" to before.length,
+                "after" to after,
+                "afterLength" to after.length
+            ))
+            // #endregion
             val boundary = " \t\n\r" + it.palsoftware.pastiera.core.Punctuation.BOUNDARY
             var start = before.length
             while (start > 0 && !boundary.contains(before[start - 1])) {
@@ -284,6 +360,14 @@ class SuggestionController(
                 end++
             }
             val word = before.substring(start) + after.substring(0, end)
+            // #region agent log
+            debugLog("B", "SuggestionController.extractWordAtCursor:after", "word extracted", mapOf(
+                "extractedWord" to (if (word.isBlank()) "null" else word),
+                "extractedWordLength" to word.length,
+                "beforeSubstring" to before.substring(start),
+                "afterSubstring" to after.substring(0, end)
+            ))
+            // #endregion
             if (word.isBlank()) null else word
         } catch (_: Exception) {
             null

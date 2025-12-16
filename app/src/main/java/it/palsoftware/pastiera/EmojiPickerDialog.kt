@@ -200,9 +200,3 @@ private data class EmojiPickerState(
     val categories: List<EmojiRepository.EmojiCategory> = emptyList(),
     val error: String? = null
 )
-
-
-
-
-
-

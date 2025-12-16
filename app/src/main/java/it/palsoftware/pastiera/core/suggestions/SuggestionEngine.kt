@@ -241,15 +241,38 @@ class SuggestionEngine(
 
     private data class ApostropheSplit(val prefix: String, val root: String)
 
+    private fun normalizeApostrophes(input: String): String {
+        return input
+            .replace("’", "'")
+            .replace("‘", "'")
+            .replace("ʼ", "'")
+    }
+
+    private fun recomposeApostropheCandidate(
+        split: ApostropheSplit,
+        candidate: String
+    ): String? {
+        val prefix = split.prefix
+        val normalizedCandidate = normalizeApostrophes(candidate)
+        val hasApostrophe = normalizedCandidate.contains('\'')
+        val matchesPrefix = normalizedCandidate.length >= prefix.length &&
+            normalizedCandidate.substring(0, prefix.length).equals(prefix, ignoreCase = true)
+
+        val rootPart = when {
+            matchesPrefix -> candidate.substring(prefix.length)
+            hasApostrophe -> return null // don't mix different apostrophe prefixes
+            else -> candidate
+        }
+        val recasedRoot = CasingHelper.applyCasing(rootPart, split.root, forceLeadingCapital = false)
+        return prefix + recasedRoot
+    }
+
     /**
      * Split a word with a single apostrophe into prefix (with apostrophe) and root.
      * Language-agnostic: only checks structure/length, not locale lists.
      */
     private fun splitApostropheWord(word: String): ApostropheSplit? {
-        val normalized = word
-            .replace("’", "'")
-            .replace("‘", "'")
-            .replace("ʼ", "'")
+        val normalized = normalizeApostrophes(word)
         val apostropheCount = normalized.count { it == '\'' }
         if (apostropheCount != 1) return null
         val idx = normalized.indexOf('\'')
@@ -292,9 +315,8 @@ class SuggestionEngine(
             val filtered = rootResults
                 .filter { it.distance <= 1 } // stay conservative on apostrophated forms
                 .take(limit * 2)
-            val recomposed = filtered.map { res ->
-                val recasedRoot = CasingHelper.applyCasing(res.candidate, apostropheSplit.root, forceLeadingCapital = false)
-                val candidate = apostropheSplit.prefix + recasedRoot
+            val recomposed = filtered.mapNotNull { res ->
+                val candidate = recomposeApostropheCandidate(apostropheSplit, res.candidate) ?: return@mapNotNull null
                 res.copy(candidate = candidate)
             }.take(limit)
             if (recomposed.isNotEmpty()) {
