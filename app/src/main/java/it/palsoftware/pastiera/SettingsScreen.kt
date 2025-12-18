@@ -26,6 +26,9 @@ import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.TouchApp
+import androidx.compose.material.icons.filled.Spellcheck
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Engineering
 import androidx.activity.compose.BackHandler
 import androidx.activity.ComponentActivity
 import androidx.compose.animation.*
@@ -53,6 +56,7 @@ sealed class SettingsDestination {
     object Customization : SettingsDestination()
     object Advanced : SettingsDestination()
     object About : SettingsDestination()
+    object CustomInputStyles : SettingsDestination()
 }
 
 /**
@@ -144,7 +148,8 @@ fun SettingsScreen(
                     onCustomizationClick = { navigateTo(SettingsDestination.Customization) },
                     onAdvancedClick = { navigateTo(SettingsDestination.Advanced) },
                     onAboutClick = { navigateTo(SettingsDestination.About) },
-                    onBackClick = { navigateBack() }
+                    onBackClick = { navigateBack() },
+                    onCustomInputStylesClick = { navigateTo(SettingsDestination.CustomInputStyles) }
                 )
             }
             is SettingsDestination.KeyboardTiming -> {
@@ -183,6 +188,12 @@ fun SettingsScreen(
                     onBack = { navigateBack() }
                 )
             }
+            is SettingsDestination.CustomInputStyles -> {
+                CustomInputStylesScreen(
+                    modifier = modifier,
+                    onBack = { navigateBack() }
+                )
+            }
         }
     }
 }
@@ -204,7 +215,8 @@ private fun SettingsMainScreen(
     onCustomizationClick: () -> Unit,
     onAdvancedClick: () -> Unit,
     onAboutClick: () -> Unit,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onCustomInputStylesClick: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -314,6 +326,42 @@ private fun SettingsMainScreen(
                     }
                 }
             
+                // Languages and Maps (Custom Input Styles)
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(64.dp)
+                        .clickable(onClick = onCustomInputStylesClick)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Language,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.custom_input_styles_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            
                 // Auto-correction
                 Surface(
                     modifier = Modifier
@@ -329,7 +377,7 @@ private fun SettingsMainScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.Language,
+                            imageVector = Icons.Filled.Spellcheck,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(24.dp)
@@ -365,7 +413,7 @@ private fun SettingsMainScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.Keyboard,
+                            imageVector = Icons.Filled.Tune,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(24.dp)
@@ -401,7 +449,7 @@ private fun SettingsMainScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.TouchApp,
+                            imageVector = Icons.Filled.Engineering,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(24.dp)
