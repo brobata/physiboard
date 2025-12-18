@@ -205,6 +205,7 @@ dependencies {
     implementation("androidx.emoji2:emoji2-views-helper:1.4.0")
     // Kotlinx Serialization for dictionary optimization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-cbor:1.6.3")
     // Shizuku for ADB shell access
     implementation("dev.rikka.shizuku:api:13.1.5")
     implementation("dev.rikka.shizuku:provider:13.1.5")

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Precompute SymSpell deletes and write an extended .dict file.
+Precompute SymSpell deletes and write an extended .dict file (CBOR format).
 
-Input: an existing serialized dictionary JSON (the current .dict) or a base JSON (w/f list).
-Output: JSON with fields: normalizedIndex, prefixCache, symDeletes, symMeta.
+Input: an existing serialized dictionary (CBOR or JSON) or a base JSON (w/f list).
+Output: CBOR with fields: normalizedIndex, prefixCache, symDeletes, symMeta.
 
 Usage examples:
     python scripts/build_symspell_dict.py --input app/src/main/assets/common/dictionaries_serialized/it_base.dict \
@@ -12,14 +12,23 @@ Usage examples:
 
     python scripts/build_symspell_dict.py --input app/src/main/assets/common/dictionaries/it_base.json \
         --output app/src/main/assets/common/dictionaries_serialized/it_base.dict
+
+Requirements:
+    pip install cbor2
 """
 
 import argparse
 import json
 import os
-import re
+import sys
 import unicodedata
 from collections import defaultdict
+
+try:
+    import cbor2
+except ImportError:
+    print("ERROR: cbor2 not installed. Run: pip install cbor2")
+    sys.exit(1)
 
 
 def normalize(word: str, locale: str = "it") -> str:
@@ -50,8 +59,19 @@ def generate_deletes(term: str, max_distance: int):
 
 
 def load_input(path: str):
-    with open(path, "r", encoding="utf-8") as f:
-        data = json.load(f)
+    """Load dictionary from JSON or CBOR format (auto-detect)."""
+    with open(path, "rb") as f:
+        first_byte = f.read(1)
+        f.seek(0)
+        
+        if first_byte in (b'{', b'['):
+            # JSON format
+            text = f.read().decode('utf-8')
+            data = json.loads(text)
+        else:
+            # CBOR format
+            data = cbor2.load(f)
+    
     if isinstance(data, list):
         # base JSON format [{w,f}]
         normalized_index = {}
@@ -77,7 +97,7 @@ def load_input(path: str):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", required=True, help="Path to base json or existing .dict")
-    parser.add_argument("--output", required=True, help="Path to write the extended .dict")
+    parser.add_argument("--output", required=True, help="Path to write the extended .dict (CBOR)")
     parser.add_argument("--max_edit_distance", type=int, default=2)
     parser.add_argument("--prefix_length", type=int, default=4)
     args = parser.parse_args()
@@ -106,9 +126,14 @@ def main():
     }
 
     os.makedirs(os.path.dirname(args.output), exist_ok=True)
-    with open(args.output, "w", encoding="utf-8") as f:
-        json.dump(out, f, ensure_ascii=False)
-    print(f"Written {args.output} with {len(sym_deletes)} delete buckets")
+    
+    # Write CBOR format
+    with open(args.output, "wb") as f:
+        cbor2.dump(out, f)
+    
+    # Get file size for logging
+    size_mb = os.path.getsize(args.output) / (1024 * 1024)
+    print(f"Written {args.output} ({size_mb:.2f} MB CBOR) with {len(sym_deletes)} delete buckets")
 
 
 if __name__ == "__main__":

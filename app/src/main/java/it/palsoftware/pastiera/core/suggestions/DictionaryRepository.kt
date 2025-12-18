@@ -11,6 +11,8 @@ import java.text.Normalizer
 import java.util.Locale
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
+import kotlinx.serialization.cbor.Cbor
+import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -381,9 +383,24 @@ class DictionaryRepository(
 
     @OptIn(ExperimentalSerializationApi::class)
     private fun decodeSerializedDictionary(input: InputStream) {
-        val json = Json { ignoreUnknownKeys = true }
-        val index = json.decodeFromStream<DictionaryIndex>(input)
-        Log.i(tag, "Deserialized dictionary: normalizedIndex=${index.normalizedIndex.size}, prefixCache=${index.prefixCache.size}")
+        val bytes = input.readBytes()
+        val sizeKb = bytes.size / 1024
+        
+        // Auto-detect format: JSON starts with '{' (0x7B), CBOR with other bytes
+        val isJson = bytes.isNotEmpty() && bytes[0] == '{'.code.toByte()
+        Log.i(tag, "Dictionary format detected: ${if (isJson) "JSON (legacy)" else "CBOR"} - size: ${sizeKb} KB")
+        
+        val startTime = System.currentTimeMillis()
+        val index = if (isJson) {
+            // Legacy JSON format
+            val json = Json { ignoreUnknownKeys = true }
+            json.decodeFromString<DictionaryIndex>(bytes.decodeToString())
+        } else {
+            // CBOR format (faster)
+            Cbor.decodeFromByteArray<DictionaryIndex>(bytes)
+        }
+        val parseTime = System.currentTimeMillis() - startTime
+        Log.i(tag, "Deserialized dictionary in ${parseTime}ms: normalizedIndex=${index.normalizedIndex.size}, prefixCache=${index.prefixCache.size}")
 
         normalizedIndex.clear()
         prefixCache.clear()

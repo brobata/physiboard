@@ -217,6 +217,21 @@ class SuggestionController(
         return result
     }
 
+    /**
+     * Reads the word at cursor immediately without debounce.
+     * Use this when entering a text field to show suggestions right away.
+     * If dictionary is not ready yet, does nothing - normal typing/cursor flow will handle it.
+     */
+    fun readInitialContext(inputConnection: InputConnection?) {
+        if (!isEnabled()) return
+        if (inputConnection == null || !dictionaryRepository.isReady) return
+        
+        val word = extractWordAtCursor(inputConnection)
+        if (!word.isNullOrBlank()) {
+            tracker.setWord(word)
+        }
+    }
+
     fun onCursorMoved(inputConnection: InputConnection?) {
         if (!isEnabled()) return
         // #region agent log

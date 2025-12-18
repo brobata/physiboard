@@ -1388,6 +1388,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         updateInputContextState(info)
         initializeInputContext(restarting)
         suggestionController.onContextReset()
+        
+        // Read word at cursor immediately when entering a populated text field
+        if (!inputContextState.shouldDisableSuggestions) {
+            suggestionController.readInitialContext(currentInputConnection)
+        }
 
         val isEditable = inputContextState.isEditable
         val state = inputContextState
