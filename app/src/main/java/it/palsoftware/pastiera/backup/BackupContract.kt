@@ -219,6 +219,8 @@ object PreferenceSchemas {
             "additional_ime_subtypes" to PreferenceValueType.STRING_SET,
             "clipboard_history_enabled" to PreferenceValueType.BOOLEAN,
             "clipboard_retention_time" to PreferenceValueType.LONG,
+            "trackpad_gestures_enabled" to PreferenceValueType.BOOLEAN,
+            "trackpad_swipe_threshold" to PreferenceValueType.FLOAT,
             "use_keyboard_proximity" to PreferenceValueType.BOOLEAN,
             "use_edit_type_ranking" to PreferenceValueType.BOOLEAN,
             "custom_input_styles" to PreferenceValueType.STRING
