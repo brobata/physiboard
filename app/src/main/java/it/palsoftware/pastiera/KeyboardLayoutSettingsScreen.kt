@@ -3,6 +3,7 @@ package it.palsoftware.pastiera
 import android.content.Context
 import android.app.Activity
 import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -206,6 +207,37 @@ fun KeyboardLayoutSettingsScreen(
                     .padding(paddingValues)
                     .verticalScroll(rememberScrollState())
             ) {
+                
+                // Online Layout Editor link
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            try {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://pastierakeyedit.vercel.app/"))
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                // Handle error silently or show snackbar
+                            }
+                        }
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Link,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Text(
+                        text = stringResource(R.string.keyboard_layout_editor_title),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
                 
                 // No Conversion (QWERTY - default, passes keycodes as-is)
                 Surface(

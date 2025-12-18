@@ -14,29 +14,29 @@
     <string name="settings_back_content_description">Retour</string>
     
     <!-- Long Press Section -->
-    <string name="long_press_title">Appui Long</string>
+    <string name="long_press_title">Appui long</string>
     <string name="long_press_duration">Durée de l\'appui long : %1$dms</string>
     <string name="long_press_description">Temps d\'attente avant qu\'un appui long soit reconnu. Une valeur plus basse rend l\'appui long plus réactif, tandis qu\'une valeur plus élevée nécessite un appui plus long.</string>
     <string name="setting_applied_immediately">Paramètre appliqué immédiatement</string>
     
     <!-- Auto Capitalize Section -->
-    <string name="auto_capitalize_title">Auto-Majuscule Première Lettre</string>
-    <string name="auto_capitalize_description">Met automatiquement en majuscule la première lettre lors du début de saisie dans un champ de texte vide.</string>
+    <string name="auto_capitalize_title">Majuscule auto</string>
+    <string name="auto_capitalize_description">Met une majuscule au début.</string>
 
     <!-- Auto Capitalize After Period Section -->
-    <string name="auto_capitalize_after_period_title">Auto-Majuscule Après Point</string>
-    <string name="auto_capitalize_after_period_description">Met automatiquement en majuscule la lettre suivante après avoir tapé un point suivi d\'un espace (fin de phrase).</string>
+    <string name="auto_capitalize_after_period_title">Majuscule après point</string>
+    <string name="auto_capitalize_after_period_description">Majuscule après \". \".</string>
 
     <!-- Double Space to Period Section -->
-    <string name="double_space_to_period_title">Double Espace pour Point</string>
-    <string name="double_space_to_period_description">Double appui sur espace pour insérer un point suivi d\'un espace et mettre en majuscule la lettre suivante.</string>
+    <string name="double_space_to_period_title">Double espace → point</string>
+    <string name="double_space_to_period_description">Double espace → \". \" + majuscule.</string>
     
     <!-- Clear Alt on Space Section -->
-    <string name="clear_alt_on_space_title">Effacer Alt sur Espace</string>
-    <string name="clear_alt_on_space_description">Désactive automatiquement Alt ou Alt-Lock lors de l\'appui sur Espace.</string>
+    <string name="clear_alt_on_space_title">Espace annule Alt</string>
+    <string name="clear_alt_on_space_description">Espace désactive Alt/Alt-Lock.</string>
     
     <!-- Swipe to Delete Section -->
-    <string name="swipe_to_delete_title">Activer Balayage pour Supprimer</string>
+    <string name="swipe_to_delete_title">Balayer pour supprimer</string>
     
     <!-- Auto Show Keyboard Section -->
     <string name="auto_show_keyboard_title">Afficher Automatiquement le Clavier</string>
@@ -55,7 +55,7 @@
     <string name="installation_step1">1. Cliquez sur le bouton ci-dessous pour ouvrir les paramètres</string>
     <string name="installation_step2">2. Activez \'Clavier Physique Pastiera\'</string>
     <string name="installation_step3">3. Revenez ici et testez le clavier</string>
-    <string name="open_keyboard_settings">Ouvrir les Paramètres du Clavier</string>
+    <string name="open_keyboard_settings">Paramètres clavier</string>
     
     <!-- Main Activity - Enable/Select IME -->
     <string name="enable_pastiera">Activer Pastiera</string>
@@ -77,9 +77,9 @@
     
     <!-- Long Press Mappings Section -->
     <string name="long_press_mappings_title">Mappages d\'Appui Long</string>
-    <string name="long_press_mappings_line1">Q?0, W?1, E?2, R?3, T?(, Y?), U?-, I?_, O?\', P?:</string>
-    <string name="long_press_mappings_line2">A?@, S?4, D?5, F?6, G?*, H?#, J?+, K?\", L?\'</string>
-    <string name="long_press_mappings_line3">Z?!, X?7, C?8, V?9, B?., N?\', M??</string>
+    <string name="long_press_mappings_line1">Q→0, W→1, E→2, R→3, T→(, Y→), U→-, I→_, O→\', P→:</string>
+    <string name="long_press_mappings_line2">A→@, S→4, D→5, F→6, G→*, H→#, J→+, K→\", L→\'</string>
+    <string name="long_press_mappings_line3">Z→!, X→7, C→8, V→9, B→., N→\', M→?</string>
     
     <!-- Buttons -->
     <string name="settings_button">Paramètres</string>
@@ -89,22 +89,22 @@
     <string name="sym_customization_title">Personnaliser le Clavier SYM</string>
     <string name="sym_customization_button">Personnaliser le Clavier SYM</string>
     <string name="sym_customization_description">Personnalisez les mappages d\'emoji pour le clavier SYM. Appuyez sur une touche pour changer son emoji.</string>
-    <string name="reset_to_default">Réinitialiser par Défaut</string>
-    <string name="select_emoji">Sélectionner un Emoji</string>
+    <string name="reset_to_default">Réinitialiser</string>
+    <string name="select_emoji">Choisir un emoji</string>
     <string name="close">Fermer</string>
     
     <!-- Auto-Correction Section -->
-    <string name="auto_correct_title">Auto Substitutions</string>
+    <string name="auto_correct_title">Substitutions</string>
     <string name="auto_correct_languages_title">Substitutions</string>
     <string name="auto_correct_settings_title">Substitutions d\'Auto-Correction</string>
-    <string name="auto_correct_settings_description">Sélectionnez les substitutions à utiliser pour l\'auto-correction. La langue du système est affichée en haut.</string>
+    <string name="auto_correct_settings_description">Choisissez les substitutions (langue système en haut).</string>
     <string name="auto_correct_system_language">Langue du système</string>
     <string name="auto_correct_ricette_pastiera_description">Personnalisations valides pour toutes les substitutions</string>
     <string name="auto_correct_other_languages">Autres Substitutions</string>
     <string name="auto_correct_custom_languages">Substitutions Personnalisées</string>
     <string name="auto_correct_at_least_one_language_required">Au moins une substitution est nécessaire pour le fonctionnement</string>
     <string name="auto_correct_edit">Modifier</string>
-    <string name="auto_correct_edit_description">Appuyez sur une correction pour la modifier, ou utilisez le bouton + pour en ajouter une nouvelle.</string>
+    <string name="auto_correct_edit_description">Touchez pour modifier. + pour ajouter.</string>
     <string name="auto_correct_add_correction">Ajouter une Correction</string>
     <string name="auto_correct_edit_correction">Modifier la Correction</string>
     <string name="auto_correct_original">Original</string>
@@ -124,7 +124,7 @@
     <string name="auto_correct_auto_replace_title">Remplacer automatiquement sur espace/entrée</string>
     <string name="auto_correct_max_distance_title">Distance maximale de correction</string>
     <string name="auto_correct_max_distance_off">Désactivé</string>
-    <string name="auto_correct_max_distance_description">Nombre maximum de différences de caractères autorisées pour l\'auto-correction. 0 = désactivé, 1-3 = tolérance croissante.</string>
+    <string name="auto_correct_max_distance_description">Tolérance : 0 = off, 1–3 = +.</string>
     <string name="auto_correct_manage_user_dict_title">Gérer le dictionnaire utilisateur</string>
     
     <!-- User dictionary management -->
@@ -135,9 +135,9 @@
     <string name="user_dict_edit_title">Modifier le mot</string>
     
     <string name="auto_correct_keyboard_proximity_title">Classement par Proximité Clavier</string>
-    <string name="auto_correct_keyboard_proximity_description">Filtrer les fautes de frappe improbables basées sur la distance des touches (QWERTY/AZERTY/QWERTZ)</string>
+    <string name="auto_correct_keyboard_proximity_description">Filtre par distance des touches (QWERTY/AZERTY/QWERTZ)</string>
     <string name="auto_correct_edit_type_ranking_title">Classement par Type d\'Édition</string>
-    <string name="auto_correct_edit_type_ranking_description">Classer les suggestions par type d\'édition (insertion > substitution > suppression)</string>
+    <string name="auto_correct_edit_type_ranking_description">Classement : insert > subst > suppr</string>
     <string name="clear">Effacer</string>
     <string name="experimental_suggestions_title">Suggestions expérimentales</string>
     <string name="experimental_suggestions_subtitle">Activer le nouveau moteur de dictionnaire/suggestions (bêta)</string>
@@ -304,26 +304,26 @@
     
     <!-- Keyboard Layout Settings -->
     <string name="keyboard_layout_title">Disposition du clavier</string>
-    <string name="layout_save_content_description">Enregistrer le layout</string>
-    <string name="layout_import_content_description">Importer le layout</string>
-    <string name="layout_imported_successfully">Layout importé avec succès</string>
-    <string name="layout_import_failed">Échec de l\'importation du layout</string>
-    <string name="layout_invalid_file">Fichier layout invalide</string>
-    <string name="layout_import_error">Erreur lors de l\'importation du layout : %1$s</string>
+    <string name="layout_save_content_description">Enregistrer la disposition</string>
+    <string name="layout_import_content_description">Importer une disposition</string>
+    <string name="layout_imported_successfully">Disposition importée</string>
+    <string name="layout_import_failed">Import impossible</string>
+    <string name="layout_invalid_file">Fichier de disposition invalide</string>
+    <string name="layout_import_error">Erreur d\'import : %1$s</string>
     <string name="layout_save_canceled">Enregistrement annulé</string>
-    <string name="layout_saved_successfully">Layout enregistré avec succès</string>
-    <string name="layout_save_error">Erreur lors de l\'enregistrement du layout : %1$s</string>
-    <string name="layout_imported_name">Layout Importé</string>
+    <string name="layout_saved_successfully">Disposition enregistrée</string>
+    <string name="layout_save_error">Erreur d\'enregistrement : %1$s</string>
+    <string name="layout_imported_name">Disposition importée</string>
     <string name="layout_imported_description">Importé depuis un fichier</string>
     <string name="layout_delete_content_description">Supprimer le layout</string>
-    <string name="layout_delete_confirmation_title">Supprimer le Layout</string>
+    <string name="layout_delete_confirmation_title">Supprimer la disposition</string>
     <string name="layout_delete_confirmation_message">Êtes-vous sûr de vouloir supprimer le layout \"%1$s\" ? Cette action ne peut pas être annulée.</string>
-    <string name="layout_delete_success">Layout supprimé avec succès</string>
-    <string name="layout_delete_failed">Échec de la suppression du layout</string>
+    <string name="layout_delete_success">Disposition supprimée</string>
+    <string name="layout_delete_failed">Suppression impossible</string>
     <string name="layout_view_mapping">Voir le mappage</string>
     <string name="layout_delete">Supprimer</string>
     <string name="layout_enable_for_cycling">Activer pour le cycle</string>
-    <string name="layout_select_as_active">Sélectionner comme layout actif</string>
+    <string name="layout_select_as_active">Définir comme active</string>
     
     <!-- Main Activity Event Display -->
     <string name="modifier_alt">ALT</string>
@@ -337,18 +337,18 @@
     <string name="nav_mode_action_cut">Couper</string>
     <string name="nav_mode_action_undo">Annuler</string>
     <string name="nav_mode_action_select_all">ToutSel</string>
-    <string name="nav_mode_action_expand_selection_left">&amp;#8592;Sel</string>
-    <string name="nav_mode_action_expand_selection_right">&amp;#8594;Sel</string>
-    <string name="nav_mode_keycode_up">&amp;#8593;</string>
-    <string name="nav_mode_keycode_down">&amp;#8595;</string>
-    <string name="nav_mode_keycode_left">&amp;#8592;</string>
-    <string name="nav_mode_keycode_right">&amp;#8594;</string>
-    <string name="nav_mode_keycode_center">&amp;#9675;</string>
+    <string name="nav_mode_action_expand_selection_left">←Sel</string>
+    <string name="nav_mode_action_expand_selection_right">→Sel</string>
+    <string name="nav_mode_keycode_up">↑</string>
+    <string name="nav_mode_keycode_down">↓</string>
+    <string name="nav_mode_keycode_left">←</string>
+    <string name="nav_mode_keycode_right">→</string>
+    <string name="nav_mode_keycode_center">○</string>
     <string name="nav_mode_keycode_page_up">PgPréc</string>
     <string name="nav_mode_keycode_page_down">PgSuiv</string>
     <string name="nav_mode_keycode_escape">Échap</string>
     <string name="nav_mode_keycode_tab">Tab</string>
-    <string name="nav_mode_keycode_forward_delete">Del&amp;#8594;</string>
+    <string name="nav_mode_keycode_forward_delete">Del→</string>
     <string name="nav_mode_key_unknown">?</string>
     
     <!-- Tutorial -->
@@ -474,5 +474,106 @@
     <string name="trackpad_tutorial_complete">Compris</string>
     <string name="trackpad_tutorial_next">Suivant</string>
     <string name="trackpad_tutorial_previous">Précédent</string>
+
+    <!-- Missing translations (EN reference) -->
+    <string name="about_credits_error">Impossible de charger les crédits.</string>
+    <string name="cancel">Annuler</string>
+    <string name="delete">Supprimer</string>
+    <string name="save">Enregistrer</string>
+    <string name="launcher_shortcut_assignment_header">Raccourci</string>
+
+    <string name="keyboard_timing_long_press_value">%1$dms</string>
+
+    <!-- Keyboard Layout -->
+    <string name="keyboard_layout_description">Choisissez la disposition. Les mappings ALT/SYM/Ctrl suivent la position des touches.</string>
+    <string name="keyboard_layout_editor_title">Éditeur de disposition</string>
+    <string name="keyboard_layout_no_conversion">Standard</string>
+    <string name="keyboard_layout_no_conversion_description">QWERTY standard (sans conversion)</string>
+    <string name="keyboard_layout_conversions_title">Conversions</string>
+    <string name="keyboard_layout_conversions_description">Convertir les lettres selon la disposition</string>
+    <string name="keyboard_layout_viewer_title">Carte du clavier</string>
+    <string name="keyboard_layout_viewer_subtitle">Disposition : %1$s</string>
+    <string name="keyboard_layout_viewer_unavailable">Impossible de charger cette disposition.</string>
+    <string name="keyboard_layout_viewer_empty">Aucun mapping trouvé.</string>
+    <string name="keyboard_layout_multitap_badge">multitap</string>
+    <string name="keyboard_layout_viewer_multitap_on">multitap</string>
+    <string name="keyboard_layout_viewer_multitap_off">simple</string>
+    <string name="keyboard_layout_viewer_open">Voir les mappings</string>
+    <string name="keyboard_layout_settings_button">Paramètres de disposition</string>
+
+    <!-- Languages -->
+    <string name="languages_title">Langues</string>
+    <string name="languages_description">Ajoutez des langues au sélecteur Android. Seules celles sans langue système sont affichées.</string>
+    <string name="languages_no_available">Toutes les langues sont déjà ajoutées (ou système).</string>
+
+    <!-- Updates -->
+    <string name="settings_update_section_title">Mises à jour</string>
+    <string name="settings_update_section_description">Voir la dernière release sur GitHub.</string>
+    <string name="settings_update_button">Vérifier</string>
+    <string name="settings_update_checking">Vérification…</string>
+    <string name="settings_update_up_to_date">À jour.</string>
+    <string name="settings_update_check_failed">GitHub inaccessible.</string>
+
+    <!-- Update notifications -->
+    <string name="notification_update_channel_name">Mises à jour Pastiera</string>
+    <string name="notification_update_channel_description">Notifications de nouvelles versions</string>
+    <string name="notification_update_available_title">Pastiera - Mise à jour dispo</string>
+    <string name="notification_update_available_text">Nouvelle version disponible (%1$s)</string>
+
+    <!-- Speech recognition errors -->
+    <string name="speech_recognition_error_no_match">Aucun texte reconnu. Réessayez.</string>
+    <string name="speech_recognition_error_timeout">Aucune voix détectée.</string>
+    <string name="speech_recognition_error_permission">Permission micro refusée.</string>
+    <string name="speech_recognition_error_network">Erreur réseau.</string>
+    <string name="speech_recognition_error_generic">Erreur de reconnaissance.</string>
+    <string name="speech_recognition_error_not_available">Reconnaissance indisponible.</string>
+
+    <!-- Power shortcuts -->
+    <string name="power_shortcuts_title">Raccourcis Power</string>
+    <string name="power_shortcuts_description">SYM puis une touche (hors champ de texte)</string>
+    <string name="power_shortcuts_press_key">Appuyez sur la touche</string>
+
+    <!-- Custom Input Styles -->
+    <string name="custom_input_styles_add">Ajouter</string>
+    <string name="custom_input_styles_delete">Supprimer</string>
+    <string name="custom_input_styles_delete_confirm_title">Supprimer le style</string>
+    <string name="custom_input_styles_delete_confirm_message">Supprimer ce style de saisie ?</string>
+    <string name="custom_input_styles_empty">Aucun style. Appuyez sur +.</string>
+    <string name="custom_input_styles_duplicate_error">Déjà existant</string>
+    <string name="custom_input_styles_format">%1$s - %2$s</string>
+    <string name="custom_input_styles_add_custom_locale">Ajouter une locale…</string>
+    <string name="custom_input_styles_custom_locale_title">Code de locale</string>
+    <string name="custom_input_styles_custom_locale_label">Locale</string>
+    <string name="custom_input_styles_custom_locale_hint">Ex. en_US, it_IT, fr_FR</string>
+    <string name="custom_input_styles_custom_locale_empty_error">Code requis</string>
+    <string name="custom_input_styles_custom_locale_invalid_error">Format invalide (xx_XX ou xx)</string>
+    <string name="custom_input_styles_no_dictionary_warning">Pas de dictionnaire : suggestions désactivées.</string>
+    <string name="custom_input_styles_open_ime_picker">Ouvrir le sélecteur</string>
+    <string name="custom_input_styles_open_ime_picker_description">Ouvrir le sélecteur Android pour activer la langue</string>
+
+    <!-- Emoji -->
+    <string name="emoji_category_emoticons">Émoticônes</string>
+
+    <!-- Input method names -->
+    <string name="input_method_name_pt">Português</string>
+    <string name="input_method_name_ru">Русский</string>
+
+    <!-- Nav mode -->
+    <string name="nav_mode_warning_icon">⚠</string>
+
+    <!-- Variation customization -->
+    <string name="variation_instructions_title">Instructions</string>
+    <string name="variation_instructions_description">Touchez une case pour choisir un caractère. Jusqu\'à 7 variations par lettre.</string>
+    <string name="static_variation_input_label">Valeur</string>
+    <string name="static_variation_input_hint">Laissez vide puis enregistrez pour supprimer.</string>
+
+    <!-- SYM reset confirm -->
+    <string name="sym_reset_confirm_title">Réinitialiser</string>
+    <string name="sym_reset_confirm_message">Réinitialiser tous les mappings SYM ? Action irréversible.</string>
+    <string name="sym_reset_confirm_button">Réinitialiser</string>
+
+    <!-- Misc -->
+    <string name="trackpad_debug_service_description">Affiche les événements du trackpad (overlay debug)</string>
+    <string name="user_dict_frequency_label">Utilisations : %1$d</string>
 </resources>
 
