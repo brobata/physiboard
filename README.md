@@ -1,76 +1,71 @@
+
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/C0C31OHWF2)
 # Pastiera
 
-Input method per tastiere fisiche (es. Unihertz Titan 2) pensato per rendere la digitazione piu veloce, con tante scorciatoie e personalizzazioni su file JSON.
+Input method for physical keyboards android devices (e.g. Unihertz Titan 2), designed to make typing faster through shortcuts, gestures, and customization.
 
-## Panoramica veloce
-- Barra di stato compatta con LED per Shift/SYM/Ctrl/Alt, barra varianti/suggerimenti e gesture swipe-pad per muovere il cursore.
-- Layout multipli (QWERTY/AZERTY/QWERTZ, Greek, Cyrillic, Arabic, translit, ecc.) configurabili; import/export JSON dall'app. Frontend per la personalizzazione delle mappe diposibile su https://pastierakeyedit.vercel.app/
-- Due pagine SYM lanciabili da touch o tasti fisici (emoji + simboli) riordinabili/disattivabili, con editor integrato e tanti caratteri Unicode nuovi.
-- Backup/restore completo (impostazioni, layout, variazioni, dizionari), UI tradotta in piu lingue e controllo aggiornamenti GitHub.
+## Quick overview
+- Compact status bar with LED indicators for Shift/SYM/Ctrl/Alt, variants/suggestions bar, and swipe-pad gestures to move the cursor.
+- Multiple layouts (QWERTY/AZERTY/QWERTZ, Greek, Cyrillic, Arabic, translit, etc.) fully configurable; JSON import/export directly from the app. A web frontend for editing layouts is available at https://pastierakeyedit.vercel.app/
+- SYM pages usable via touch or physical keys (emoji + symbols), reorderable/disableable, with an integrated layout editor.
+- Clipboard support with multiple entries and pinnable items.
+- Support for dictionary based suggestions/Autocorrections + swipe gestures to accept a suggestion (requires Shizuku)
+- Full backup/restore (settings, layouts, variations, dictionaries), UI translated into multiple languages, and built-in GitHub update checks.
 
-## Digitazione e modificatori
-- Pressione lunga: Alt+key di default o maiuscole; tempo configurabile.
-- Shift/Ctrl/Alt in modalita one-shot o latch (doppio tap), doppio Shift per Caps Lock; opzione per cancellare Alt allo spazio.
-- Multi-tap per tasti con varianti definite dal layout.
-- Scorciatoie standard: Ctrl+C/X/V, Ctrl+A, Ctrl+Backspace, Ctrl+E/D/S/F o I/J/K/L per frecce, Ctrl+W/R per selezione, Ctrl+T per Tab, Ctrl+Y/H per Page Up/Down, Ctrl+Q per Esc (Tutte personalizzabili nella schermata Customize Nav)
+## Typing and modifiers
+- Long press on a key can input Alt+key or Shift+Key (uppercase) timing configurable.
+- Shift/Ctrl/Alt in one-shot or lock mode (double tap), option to clear Alt on space.
+- Multi-tap support for keys with layout-defined variants (e.g. Cyrillic)
+- Standard shortcuts: Ctrl+C/X/V, Ctrl+A, Ctrl+Backspace, Ctrl+E/D/S/F or I/J/K/L for arrows, Ctrl+W/R for selection, Ctrl+T for Tab, Ctrl+Y/H for Page Up/Down, Ctrl+Q for Esc (all customizable in the Customize Nav screen).
 
-## Navigazione e gesture
-- Nav Mode: doppio Ctrl fuori dai campi di testo per usare ESDF/IJKL/T come frecce/Tab; rimappabile per ogni tasto alfabetico dal menu "Nav Mode".
-- Barra varianti come swipe pad: trascina per muovere il cursore con soglia regolabile; hint automatico se non ci sono varianti.
-- Helper di selezione testo (Ctrl+W/R) e annulla per gli auto-replace.
-- Launcher shortcuts: nel launcher premi una lettera per aprire/assegnare un'app.
-- Power shortcuts: premi SYM (timeout 5s) e poi una lettera per usare le stesse scorciatoie ovunque, anche fuori dal launcher.
-- Gear sulla barra della tastiera per aprire le impostazioni senza lasciare il campo di testo.
+## QOL features
+- **Nav Mode**: double tap Ctrl outside text fields to use ESDF or IJKL as arrows, and many more useful mappings (everything is customizable in Customize Nav Mode settings)
+- **Variations bar as swipe pad**: drag to move the cursor, with adjustable threshold.
+- **Launcher shortcuts**: in the launcher, press a letter to open/assign an app.
+- **Power shortcuts**: press SYM (5s timeout) then a letter to use the same shortcuts anywhere, even outside the launcher.
+- Change language with a tap on language code in the status bar, longpress to enter pastiera settings
 
-## Layout tastiera
-- Layout inclusi: qwerty, azerty, qwertz, greek, arabic, russian/armenian phonetic, translit, piu mappe Alt dedicate al Titan 2.
-- Conversione layout: selezione del layout dalla lista abilitata (configurabile).
-- Supporto multi-tap e mapping per caratteri complessi nei layout.
-- Import/export da file JSON direttamente dall'app, anteprima grafica e gestione lista (abilita/disabilita, elimina).
-- Le mappe sono salvate in `files/keyboard_layouts` e modificabili anche a mano.
+## Keyboard layouts
+- Included layouts: qwerty, azerty, qwertz, greek, arabic, russian/armenian phonetic translit, plus dedicated Alt maps for Titan 2.
+- Layout switching: select from the enabled layouts list (configurable).
+- Multi-tap support and mapping for complex characters.
+- JSON import/export directly from the app, with visual preview and list management (enable/disable, delete).
+- Layout maps are stored in `files/keyboard_layouts` and can also be edited manually. A web frontend for editing layouts is available at https://pastierakeyedit.vercel.app/
 
-## Simboli, emoji e variazioni
-- Due pagine SYM (emoji + simboli) touch: puoi riordinarle/attivarle, chiusura automatica dopo input, keycaps personalizzabili.
-- Editor SYM in-app con griglia emoji, picker Unicode e seconda pagina piena di nuovi caratteri.
-- Barra variazioni sopra la tastiera: mostra accenti/varianti della lettera appena digitata o set statici (utility/email) quando serve.
-- Editor variazioni dedicato per sostituire/aggiungere varianti via JSON o picker Unicode; barra statica opzionale.
-- Modalita emoji/simboli accessibile anche toccando direttamente la barra.
+## Symbols, emoji, and variations
+- Two touch-based SYM pages (emoji + symbols): reorderable/enableable, auto-close after input, customizable keycaps.
+- In-app SYM editor with emoji grid and Unicode picker.
+- Variations bar above the keyboard: shows accents/variants of the last typed letter or static sets (utility/email) when needed.
+- Dedicated variations editor to replace/add variants via JSON or Unicode picker; optional static bar.
 
-## Suggerimenti e autocorrezione
-- Auto-replace opzionale su spazio/enter; auto-cap smart dopo ., !, ?.
-- Dizionario utente con frequenza/priorita e ricerca; voci personali sempre in cima.
-- Editor autocorrezioni per lingua, ricerca rapida, e set globale "Ricette Pastiera" valido per tutte le lingue.
-- Modalita debug/esperimenti disattivabile; funzioni smart spente automaticamente in password/email dove non servono.
+## Suggestions and autocorrection
 
-## Comfort e input extra
-- Doppio spazio -> punto+spazio+maiuscola; swipe a sinistra sulla tastiera per cancellare parola (Titan 2).
-- Tasto SYM per doppia pagina emoji/simboli; auto close SYM configurabile.
-- Scorciatoia Alt+Ctrl (opzionale) per avviare il microfono Google Voice Typing; microfono sempre disponibile sulla barra varianti.
-- Stato compatto della barra per occupare poco spazio verticale. Con tastiera on screen off dal selettore ime occupa ancora meno spazio grazie alla modalità Pastierina.
-- UI tradotta (it/en/de/es/fr/pl/ru/hy) e tutorial iniziale.
+- Experimental support for dictionary based autocorrection/suggestions
+- User dictionary with search and edit abilities.
+- Per-language auto substituion editor, quick search, and a global “Pastiera Recipes” set shared across all languages.
+- Change language/keymap with a tap on the language code button or ctrl+space
 
-## Backup, update e dati
-- Backup/restore da UI in formato ZIP: include preferenze, layout personalizzati, variazioni, sym/ctrl map, dizionari utente.
-- Ripristino unisce le variazioni salvate con quelle di default per non perdere chiavi nuove.
-- Controllo aggiornamenti GitHub integrato all'apertura delle impostazioni (con possibilita di ignorare una release).
-- File personalizzabili in `files/`: `variations.json`, `ctrl_key_mappings.json`, `sym_key_mappings*.json`, `keyboard_layouts/*.json`, dizionari utente.
 
-## Installazione
-1. Compila l'APK o installa una build esistente.
-2. Impostazioni Android -> Sistema -> Lingue e immissione -> Tastiera virtuale -> Gestisci tastiere.
-3. Abilita "Pastiera Physical Keyboard" e selezionala dal selettore input quando digiti.
 
-## Configurazione rapida
-- Tempi pressione: Impostazioni -> Keyboard timing (long press, multi-tap).
-- Testo: auto-maiuscole (inizio frase e post-punteggiatura), doppio spazio, cancella Alt su spazio, swipe-to-delete, mostra tastiera, scorciatoia voce Alt+Ctrl.
-- Autocorrezione: toggle suggerimenti/accenti/auto-replace, lingue attive, dizionario utente, Ricette Pastiera, debug.
-- Personalizzazione: layout tastiera (scelta, import/export, ciclo), SYM/emoji (mapping, ordine pagine, chiusura automatica), variazioni, Nav Mode mapping, launcher/power shortcuts, sensibilita swipe cursore.
-- Avanzate: backup/restore, test IME, info build.
+## Comfort and extra input
+- Double space → period + space + uppercase; 
+- Swipe left on the keyboard to delete a word (Titan 2).
+- Optional Alt+Ctrl shortcut to start Google Voice Typing; microphone always available on the variants bar.
+- Compact status bar to minimize vertical space. With on-screen keyboard disabled from the IME selector, it uses even less space (aka Pastierina mode)
+- Translated UI (it/en/de/es/fr/pl/ru/hy) and onboarding tutorial.
 
-## Requisiti
-- Android 10 (API 29) o superiore.
-- Dispositivo con tastiera fisica (profilato su Unihertz Titan 2, adattabile via JSON).
+## Backup, updates, and data
+- UI-based backup/restore in ZIP format: includes preferences, custom layouts, variations, SYM/Ctrl maps, and user dictionaries.
+- Restore merges saved variations with defaults to avoid losing newly added keys.
+- Built-in GitHub update check when opening settings (with option to ignore a release).
+- Customizable files in `files/`: `variations.json`, `ctrl_key_mappings.json`, `sym_key_mappings*.json`, `keyboard_layouts/*.json`, user dictionaries.
+- Android autobackup function 
 
-## Build
-Progetto Android in Kotlin/Jetpack Compose. Apri in Android Studio e builda normalmente.
+## Installation
+1. Build the APK or install an existing build.
+2. Android Settings → System → Languages & input → Virtual keyboard → Manage keyboards.
+3. Enable “Pastiera” and select it from the input selector when typing.
+
+## Requirements
+- Android 10 (API 29) or higher.
+- Device with a physical keyboard (profiled on Unihertz Titan 2, adaptable via JSON).
