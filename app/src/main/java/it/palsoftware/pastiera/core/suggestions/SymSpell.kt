@@ -82,7 +82,7 @@ class SymSpell(
         }
 
         while (queue.isNotEmpty()) {
-            val candidate = queue.removeFirst()
+            val candidate = queue.removeAt(0)
             val distance = inputPrefix.length - candidate.length
             if (distance > maxEditDistance) continue
 

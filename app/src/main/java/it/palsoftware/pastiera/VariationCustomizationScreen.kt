@@ -619,7 +619,7 @@ private fun updateVariationEntries(
     }
     
     while (updatedEntries.isNotEmpty() && updatedEntries.last().isEmpty()) {
-        updatedEntries.removeLast()
+        updatedEntries.removeAt(updatedEntries.lastIndex)
     }
     
     return updatedEntries.take(7)
