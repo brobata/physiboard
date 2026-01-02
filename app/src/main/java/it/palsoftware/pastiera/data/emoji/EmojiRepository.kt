@@ -37,6 +37,27 @@ object EmojiRepository {
     }
 
     /**
+     * Looks up variants for an emoji from the cached categories.
+     * Returns empty list if not found or cache not loaded.
+     */
+    fun getVariantsForEmoji(emoji: String): List<String> {
+        val categories = cachedCategories ?: return emptyList()
+        for (category in categories) {
+            for (entry in category.emojis) {
+                if (entry.base == emoji) {
+                    return entry.variants
+                }
+                // Also check if the emoji is a variant
+                if (entry.variants.contains(emoji)) {
+                    // Return other variants plus the base
+                    return (listOf(entry.base) + entry.variants).filter { it != emoji }
+                }
+            }
+        }
+        return emptyList()
+    }
+
+    /**
      * Utility for future keyboard pagination/chunking without re-parsing assets.
      */
     fun asPaged(

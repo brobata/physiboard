@@ -29,6 +29,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -46,7 +47,7 @@ class EmojiPickerView(
     private val tabScrollView: HorizontalScrollView
     private val tabRow: LinearLayout
 
-    private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private var coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var loadingJob: Job? = null
 
     private val fixedHeight = dpToPx(177f)
@@ -473,14 +474,19 @@ class EmojiPickerView(
             container,
             WRAP_CONTENT,
             WRAP_CONTENT,
-            true
+            false // Don't take focus to avoid closing emoji picker
         ).apply {
-            setBackgroundDrawable(ColorDrawable(Color.parseColor("#DDFFFFFF")))
+            setBackgroundDrawable(ColorDrawable(Color.parseColor("#EEFFFFFF")))
             isOutsideTouchable = true
-            elevation = 8f
+            isFocusable = false
+            elevation = 12f
         }
 
-        popup.showAsDropDown(anchor, 0, -anchor.height / 2)
+        // Position popup above the anchor
+        val location = IntArray(2)
+        anchor.getLocationInWindow(location)
+        val xOffset = -container.width / 2 + anchor.width / 2
+        popup.showAsDropDown(anchor, xOffset, -anchor.height * 2)
     }
 
     private fun dpToPx(dp: Float): Int {
@@ -489,6 +495,14 @@ class EmojiPickerView(
             dp,
             context.resources.displayMetrics
         ).toInt()
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        // Recreate coroutine scope if it was cancelled
+        if (!coroutineScope.isActive) {
+            coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+        }
     }
 
     override fun onDetachedFromWindow() {

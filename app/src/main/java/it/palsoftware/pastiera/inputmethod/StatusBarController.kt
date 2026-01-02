@@ -189,7 +189,6 @@ class StatusBarController(
     private var clipboardHistoryView: ClipboardHistoryView? = null
     private var lastClipboardCountRendered: Int = -1
     private var emojiPickerView: EmojiPickerView? = null
-    private var lastEmojiPickerRendered: Int = 0
     private var emojiKeyButtons: MutableList<View> = mutableListOf()
     private var lastSymPageRendered: Int = 0
     private var lastSymMappingsRendered: Map<Int, String>? = null
@@ -474,10 +473,9 @@ class StatusBarController(
         }
         view.setInputConnection(inputConnection)
 
-        // Refresh only when needed (page changed), otherwise keep the view stable.
-        if (lastEmojiPickerRendered != 4) {
+        // Always refresh when switching to emoji picker to reload recents and reset scroll
+        if (lastSymPageRendered != 4) {
             view.refresh()
-            lastEmojiPickerRendered = 4
         }
         lastSymPageRendered = 4
     }

@@ -77,6 +77,7 @@ object RecentEmojiManager {
     /**
      * Creates an EmojiCategory for the recent emojis.
      * Returns null if there are no recent emojis.
+     * Looks up variants from the emoji repository cache.
      */
     fun getRecentEmojiCategory(context: Context): EmojiRepository.EmojiCategory? {
         val recentEmojis = getRecentEmojis(context)
@@ -84,9 +85,10 @@ object RecentEmojiManager {
             return null
         }
 
-        // Convert list of strings to EmojiEntry list (no variants for recent emojis)
+        // Convert list of strings to EmojiEntry list with variants from repository
         val emojiEntries = recentEmojis.map { emoji ->
-            EmojiRepository.EmojiEntry(base = emoji, variants = emptyList())
+            val variants = EmojiRepository.getVariantsForEmoji(emoji)
+            EmojiRepository.EmojiEntry(base = emoji, variants = variants)
         }
 
         return EmojiRepository.EmojiCategory(
