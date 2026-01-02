@@ -24,3 +24,4 @@ Unihertz Titan 2 Discord, Unihertz Titan 2 FB page and all the people for the ou
 
 
 
+

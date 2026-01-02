@@ -1380,6 +1380,7 @@ object SettingsManager {
                 emojiEnabled = jsonObject.optBoolean("emojiEnabled", true),
                 symbolsEnabled = jsonObject.optBoolean("symbolsEnabled", true),
                 clipboardEnabled = jsonObject.optBoolean("clipboardEnabled", false),
+                emojiPickerEnabled = jsonObject.optBoolean("emojiPickerEnabled", true),
                 emojiFirst = jsonObject.optBoolean("emojiFirst", true)
             )
         } catch (e: Exception) {
@@ -1397,6 +1398,7 @@ object SettingsManager {
                 put("emojiEnabled", config.emojiEnabled)
                 put("symbolsEnabled", config.symbolsEnabled)
                 put("clipboardEnabled", config.clipboardEnabled)
+                put("emojiPickerEnabled", config.emojiPickerEnabled)
                 put("emojiFirst", config.emojiFirst)
             }
 

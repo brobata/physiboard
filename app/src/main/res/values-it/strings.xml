@@ -304,6 +304,7 @@
     <string name="emoji_category_objects">Oggetti</string>
     <string name="emoji_category_symbols">Simboli</string>
     <string name="emoji_category_flags">Bandiere</string>
+    <string name="emoji_category_recents">Recenti</string>
     <string name="emoji_category_emoticons">Emoticon</string>
     <string name="emoji_picker_error">Impossibile caricare le emoji</string>
     

@@ -173,6 +173,7 @@
     <string name="emoji_category_objects">Objekte</string>
     <string name="emoji_category_symbols">Symbole</string>
     <string name="emoji_category_flags">Flaggen</string>
+    <string name="emoji_category_recents">Zuletzt verwendet</string>
     <string name="emoji_category_smileys_and_emotion">Smileys und Emotionen</string>
     <string name="emoji_category_people_and_body">Menschen und Körper</string>
     <string name="emoji_category_animals_and_nature">Tiere und Natur</string>

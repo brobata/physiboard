@@ -30,6 +30,7 @@ import android.view.KeyEvent
 import android.view.InputDevice
 import kotlin.math.abs
 import it.palsoftware.pastiera.inputmethod.ui.ClipboardHistoryView
+import it.palsoftware.pastiera.inputmethod.ui.EmojiPickerView
 import it.palsoftware.pastiera.inputmethod.ui.LedStatusView
 import it.palsoftware.pastiera.inputmethod.ui.VariationBarView
 import it.palsoftware.pastiera.inputmethod.suggestions.ui.FullSuggestionsBar
@@ -187,6 +188,8 @@ class StatusBarController(
     private var emojiKeyboardBottomPaddingPx: Int = 0
     private var clipboardHistoryView: ClipboardHistoryView? = null
     private var lastClipboardCountRendered: Int = -1
+    private var emojiPickerView: EmojiPickerView? = null
+    private var lastEmojiPickerRendered: Int = 0
     private var emojiKeyButtons: MutableList<View> = mutableListOf()
     private var lastSymPageRendered: Int = 0
     private var lastSymMappingsRendered: Map<Int, String>? = null
@@ -452,6 +455,31 @@ class StatusBarController(
             lastClipboardCountRendered = count
         }
         lastSymPageRendered = 3
+    }
+
+    /**
+     * Updates the emoji picker view inline in the keyboard container.
+     */
+    private fun updateEmojiPickerView(inputConnection: android.view.inputmethod.InputConnection? = null) {
+        val container = emojiKeyboardContainer ?: return
+        // Emoji picker page should be edge-to-edge; remove the SYM container side padding.
+        container.setPadding(0, 0, 0, emojiKeyboardBottomPaddingPx)
+
+        // Reuse the same view to avoid flicker caused by removeAllViews()/recreate on each status update.
+        val view = emojiPickerView ?: EmojiPickerView(context).also { emojiPickerView = it }
+        if (view.parent !== container) {
+            container.removeAllViews()
+            emojiKeyButtons.clear()
+            container.addView(view)
+        }
+        view.setInputConnection(inputConnection)
+
+        // Refresh only when needed (page changed), otherwise keep the view stable.
+        if (lastEmojiPickerRendered != 4) {
+            view.refresh()
+            lastEmojiPickerRendered = 4
+        }
+        lastSymPageRendered = 4
     }
 
     /**
@@ -1128,10 +1156,13 @@ class StatusBarController(
         }
 
         if (snapshot.symPage > 0) {
-            // Handle page 3 (clipboard) vs pages 1-2 (emoji/symbols)
+            // Handle page 3 (clipboard), page 4 (emoji picker) vs pages 1-2 (emoji/symbols)
             if (snapshot.symPage == 3) {
                 // Show clipboard history inline (similar to emoji grid)
                 updateClipboardView(inputConnection)
+            } else if (snapshot.symPage == 4) {
+                // Show emoji picker view
+                updateEmojiPickerView(inputConnection)
             } else if (symMappings != null) {
                 updateEmojiKeyboard(symMappings, snapshot.symPage, inputConnection)
             }

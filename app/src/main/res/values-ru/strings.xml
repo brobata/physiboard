@@ -131,6 +131,7 @@
     <string name="emoji_category_objects">Объекты</string>
     <string name="emoji_category_symbols">Символы</string>
     <string name="emoji_category_flags">Флаги</string>
+    <string name="emoji_category_recents">Недавние</string>
     <string name="emoji_category_smileys_and_emotion">Смайлы и эмоции</string>
     <string name="emoji_category_people_and_body">Люди и тело</string>
     <string name="emoji_category_animals_and_nature">Животные и природа</string>

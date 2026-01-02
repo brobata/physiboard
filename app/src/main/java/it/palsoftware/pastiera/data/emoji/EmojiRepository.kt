@@ -17,6 +17,7 @@ import java.io.InputStreamReader
 object EmojiRepository {
     private const val EMOJI_ASSET_DIR = "common/emoji"
     private const val MIN_API_FILE = "minApi.txt"
+    const val RECENTS_CATEGORY_ID = "RECENTS"
 
     data class EmojiEntry(val base: String, val variants: List<String>)
     data class EmojiCategory(
@@ -145,6 +146,25 @@ object EmojiRepository {
             "SYMBOLS" -> it.palsoftware.pastiera.R.string.emoji_category_symbols
             "FLAGS" -> it.palsoftware.pastiera.R.string.emoji_category_flags
             else -> null
+        }
+    }
+
+    /**
+     * Maps category ID to an emoji icon for tab display.
+     */
+    fun getCategoryIcon(categoryId: String): String {
+        return when (categoryId) {
+            RECENTS_CATEGORY_ID -> "🕐"
+            "SMILEYS_AND_EMOTION" -> "😀"
+            "PEOPLE_AND_BODY" -> "👋"
+            "ANIMALS_AND_NATURE" -> "🐻"
+            "FOOD_AND_DRINK" -> "🍔"
+            "TRAVEL_AND_PLACES" -> "✈️"
+            "ACTIVITIES" -> "⚽"
+            "OBJECTS" -> "💡"
+            "SYMBOLS" -> "🔣"
+            "FLAGS" -> "🏁"
+            else -> "📁"
         }
     }
 }

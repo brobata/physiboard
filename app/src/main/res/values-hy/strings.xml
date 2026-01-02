@@ -130,6 +130,7 @@
     <string name="emoji_category_objects">Առարկաներ</string>
     <string name="emoji_category_symbols">Սիմվոլներ</string>
     <string name="emoji_category_flags">Դրոշներ</string>
+    <string name="emoji_category_recents">Վերջին</string>
     <string name="emoji_category_smileys_and_emotion">Զվարթիկներ և էմոցիաներ</string>
     <string name="emoji_category_people_and_body">Մարդիկ և մարմին</string>
     <string name="emoji_category_animals_and_nature">Կենդանիներ և բնություն</string>
