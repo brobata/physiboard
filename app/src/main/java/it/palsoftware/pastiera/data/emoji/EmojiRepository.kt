@@ -171,21 +171,21 @@ object EmojiRepository {
     }
 
     /**
-     * Maps category ID to an emoji icon for tab display.
+     * Maps category ID to a Material icon drawable resource ID for tab display.
      */
-    fun getCategoryIcon(categoryId: String): String {
+    fun getCategoryIconRes(categoryId: String): Int {
         return when (categoryId) {
-            RECENTS_CATEGORY_ID -> "🕐"
-            "SMILEYS_AND_EMOTION" -> "😀"
-            "PEOPLE_AND_BODY" -> "👋"
-            "ANIMALS_AND_NATURE" -> "🐻"
-            "FOOD_AND_DRINK" -> "🍔"
-            "TRAVEL_AND_PLACES" -> "✈️"
-            "ACTIVITIES" -> "⚽"
-            "OBJECTS" -> "💡"
-            "SYMBOLS" -> "🔣"
-            "FLAGS" -> "🏁"
-            else -> "📁"
+            RECENTS_CATEGORY_ID -> it.palsoftware.pastiera.R.drawable.ic_schedule_24
+            "SMILEYS_AND_EMOTION" -> it.palsoftware.pastiera.R.drawable.ic_sentiment_satisfied_24
+            "PEOPLE_AND_BODY" -> it.palsoftware.pastiera.R.drawable.ic_emoji_people_24
+            "ANIMALS_AND_NATURE" -> it.palsoftware.pastiera.R.drawable.ic_pets_24
+            "FOOD_AND_DRINK" -> it.palsoftware.pastiera.R.drawable.ic_restaurant_24
+            "TRAVEL_AND_PLACES" -> it.palsoftware.pastiera.R.drawable.ic_flight_24
+            "ACTIVITIES" -> it.palsoftware.pastiera.R.drawable.ic_sports_soccer_24
+            "OBJECTS" -> it.palsoftware.pastiera.R.drawable.ic_lightbulb_24
+            "SYMBOLS" -> it.palsoftware.pastiera.R.drawable.ic_emoji_symbols_24
+            "FLAGS" -> it.palsoftware.pastiera.R.drawable.ic_flag_24
+            else -> it.palsoftware.pastiera.R.drawable.ic_schedule_24
         }
     }
 }

@@ -12,10 +12,12 @@ import android.view.ViewGroup
 import android.view.inputmethod.InputConnection
 import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.PopupWindow
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import android.content.res.Configuration
@@ -170,21 +172,23 @@ class EmojiPickerView(
             visibility = View.GONE
         }
 
-        // Tabs at bottom (above LEDs)
-        tabScrollView = HorizontalScrollView(context).apply {
-            isHorizontalScrollBarEnabled = false
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply {
-                setPadding(smallPadding, smallPadding / 2, smallPadding, smallPadding / 2)
-            }
-        }
+        // Tabs at bottom (above LEDs) - full width, no scroll
+        val tabHeight = dpToPx(32f) // Height cap
         tabRow = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                tabHeight
+            )
+            setPadding(smallPadding / 2, 0, smallPadding / 2, 0)
+        }
+        // Keep tabScrollView reference for compatibility but use it as a simple wrapper
+        tabScrollView = HorizontalScrollView(context).apply {
+            isHorizontalScrollBarEnabled = false
+            isFillViewport = true
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                tabHeight
             )
         }
         tabScrollView.addView(tabRow)
@@ -273,29 +277,27 @@ class EmojiPickerView(
 
     private fun updateTabs(categories: List<EmojiRepository.EmojiCategory>) {
         tabRow.removeAllViews()
-        categories.forEachIndexed { index, category ->
-            val icon = EmojiRepository.getCategoryIcon(category.id)
+        val tabHeight = dpToPx(32f)
+        categories.forEach { category ->
+            val iconRes = EmojiRepository.getCategoryIconRes(category.id)
             val label = category.displayNameRes?.let { context.getString(it) } ?: category.id
             val isSelected = category.id == selectedCategoryId
-            val btn = TextView(context).apply {
-                text = icon
+            val btn = ImageView(context).apply {
+                setImageResource(iconRes)
                 contentDescription = label
-                textSize = 20f
-                gravity = Gravity.CENTER
+                scaleType = ImageView.ScaleType.CENTER_INSIDE
+                setColorFilter(Color.WHITE)
                 background = createTabBackground(isSelected)
-                alpha = if (isSelected) 1.0f else 0.6f
-                val pad = dpToPx(10f)
-                setPadding(pad, pad / 2, pad, pad / 2)
+                // Icon always visible (alpha 1), background changes
+                val pad = dpToPx(4f) // Minimal padding
+                setPadding(pad, pad, pad, pad)
                 isClickable = true
                 isFocusable = true
                 layoutParams = LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                ).apply {
-                    if (index > 0) {
-                        marginStart = dpToPx(2f)
-                    }
-                }
+                    0, // Use weight
+                    tabHeight,
+                    1f // Equal weight for all tabs
+                )
                 setOnClickListener {
                     val headerPos = headerPositions[category.id] ?: return@setOnClickListener
                     selectedCategoryId = category.id
@@ -315,20 +317,11 @@ class EmojiPickerView(
 
     private fun updateTabsSelection() {
         for (i in 0 until tabRow.childCount) {
-            val view = tabRow.getChildAt(i) as? TextView ?: continue
+            val view = tabRow.getChildAt(i) as? ImageView ?: continue
             val header = sectionItems.asSequence().filterIsInstance<SectionItem.Header>().elementAtOrNull(i)
             val isSelected = header?.categoryId == selectedCategoryId
-            view.alpha = if (isSelected) 1.0f else 0.6f
+            // Icon always visible, only background changes
             view.background = createTabBackground(isSelected)
-        }
-        val selectedIndex = (0 until tabRow.childCount).firstOrNull { idx ->
-            val header = sectionItems.asSequence().filterIsInstance<SectionItem.Header>().elementAtOrNull(idx)
-            header?.categoryId == selectedCategoryId
-        } ?: return
-        tabScrollView.post {
-            val view = tabRow.getChildAt(selectedIndex)
-            val scrollX = view.left - tabScrollView.width / 2 + view.width / 2
-            tabScrollView.smoothScrollTo(scrollX.coerceAtLeast(0), 0)
         }
     }
 
@@ -431,7 +424,8 @@ class EmojiPickerView(
     private fun createTabBackground(isSelected: Boolean): GradientDrawable {
         return GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            val color = if (isSelected) Color.argb(80, 255, 255, 255) else Color.argb(40, 255, 255, 255)
+            // Selected: visible background, not selected: transparent
+            val color = if (isSelected) Color.argb(100, 255, 255, 255) else Color.argb(0, 255, 255, 255)
             setColor(color)
             cornerRadius = dpToPx(6f).toFloat()
         }
