@@ -60,6 +60,13 @@ class CandidatesBarController(
             inputStatusBar.onClipboardRequested = value
             candidatesStatusBar.onClipboardRequested = value
         }
+    
+    var onEmojiPickerRequested: (() -> Unit)? = null
+        set(value) {
+            field = value
+            inputStatusBar.onEmojiPickerRequested = value
+            candidatesStatusBar.onEmojiPickerRequested = value
+        }
 
     fun getInputView(emojiMapText: String = ""): LinearLayout {
         return inputStatusBar.getOrCreateLayout(emojiMapText)

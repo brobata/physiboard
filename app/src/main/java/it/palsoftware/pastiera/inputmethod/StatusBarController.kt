@@ -94,6 +94,8 @@ class StatusBarController(
             variationBarView?.onClipboardRequested = value
         }
     
+    var onEmojiPickerRequested: (() -> Unit)? = null
+    
     // Callback for speech recognition state changes (active/inactive)
     var onSpeechRecognitionStateChanged: ((Boolean) -> Unit)? = null
         set(value) {
@@ -566,9 +568,9 @@ class StatusBarController(
                 }
             }
             
-            // Per la terza riga, aggiungi placeholder trasparente a sinistra
+            // Per la terza riga, aggiungi placeholder con emoji picker button a sinistra
             if (rowIndex == 2) {
-                val leftPlaceholder = createPlaceholderButton(keyHeight)
+                val leftPlaceholder = createPlaceholderWithEmojiPickerButton(keyHeight)
                 rowLayout.addView(leftPlaceholder, LinearLayout.LayoutParams(fixedKeyWidth, keyHeight).apply {
                     marginEnd = keySpacing
                 })
@@ -664,6 +666,52 @@ class StatusBarController(
     }
     
     /**
+     * Crea un placeholder con icona emoji per aprire l'emoji picker (symPage 4).
+     */
+    private fun createPlaceholderWithEmojiPickerButton(height: Int): View {
+        val placeholder = FrameLayout(context).apply {
+            setPadding(0, 0, 0, 0)
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                height
+            )
+        }
+        
+        placeholder.background = null
+        
+        val iconSize = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            28f,
+            context.resources.displayMetrics
+        ).toInt()
+        
+        val button = ImageView(context).apply {
+            background = null
+            setImageResource(R.drawable.ic_sentiment_satisfied_24)
+            setColorFilter(Color.WHITE)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            adjustViewBounds = true
+            maxWidth = iconSize
+            maxHeight = iconSize
+            layoutParams = FrameLayout.LayoutParams(
+                iconSize,
+                iconSize
+            ).apply {
+                gravity = Gravity.CENTER
+            }
+            isClickable = true
+            isFocusable = true
+        }
+        
+        button.setOnClickListener {
+            onEmojiPickerRequested?.invoke()
+        }
+        
+        placeholder.addView(button)
+        return placeholder
+    }
+    
+    /**
      * Crea un placeholder con icona matita per aprire la schermata di personalizzazione SYM.
      */
     private fun createPlaceholderWithPencilButton(height: Int): View {
@@ -681,7 +729,7 @@ class StatusBarController(
         // Dimensione icona più grande
         val iconSize = TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP,
-            20f, // Aumentata ulteriormente per maggiore visibilità
+            28f, // Aumentata per maggiore visibilità
             context.resources.displayMetrics
         ).toInt()
         

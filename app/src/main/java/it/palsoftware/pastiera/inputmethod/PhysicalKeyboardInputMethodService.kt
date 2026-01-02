@@ -773,6 +773,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             symLayoutController.openClipboardPage()
             updateStatusBarText()
         }
+        // Register listener for emoji picker page
+        candidatesBarController.onEmojiPickerRequested = {
+            ensureInputViewCreated()
+            // Toggle emoji picker as SYM page 4
+            symLayoutController.openEmojiPickerPage()
+            updateStatusBarText()
+        }
         val postClipboardBadgeUpdate: () -> Unit = {
             val count = clipboardHistoryManager.getHistorySize()
             uiHandler.post {

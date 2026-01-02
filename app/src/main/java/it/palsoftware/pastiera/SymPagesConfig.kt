@@ -7,6 +7,6 @@ data class SymPagesConfig(
     val emojiEnabled: Boolean = true,
     val symbolsEnabled: Boolean = true,
     val clipboardEnabled: Boolean = false,
-    val emojiPickerEnabled: Boolean = true,
+    val emojiPickerEnabled: Boolean = false,
     val emojiFirst: Boolean = true
 )

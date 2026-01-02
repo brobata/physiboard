@@ -86,6 +86,20 @@ class SymLayoutController(
         return true
     }
 
+    fun openEmojiPickerPage(): Boolean {
+        val emojiPickerPageValue = SymPage.EMOJI_PICKER.toPrefValue()
+        
+        // Toggle behavior: open if closed, close if already open
+        // Always allow direct access to emoji picker page
+        if (symPage == emojiPickerPageValue) {
+            closeSymPage()
+            return false
+        }
+        symPage = emojiPickerPageValue
+        persistSymPage()
+        return true
+    }
+
     fun reset() {
         symPage = 0
         persistSymPage()
