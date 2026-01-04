@@ -314,16 +314,18 @@ class StatusBarController(
             statusBarLayout?.let { layout ->
                 baseBottomPadding = layout.paddingBottom
                 ViewCompat.setOnApplyWindowInsetsListener(layout) { view, insets ->
-                    // Preserve space for the system IME switcher / nav bar while keeping zero extra gap otherwise
-                    val navInsets = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
-                    val imeInsets = insets.getInsets(WindowInsetsCompat.Type.ime())
+                    // Use getInsetsIgnoringVisibility to get stable insets for navigation and gesture areas
+                    // We should NOT include IME insets as that would add padding when the keyboard itself is shown
+                    val navAndGestures = insets.getInsetsIgnoringVisibility(
+                        WindowInsetsCompat.Type.navigationBars() or WindowInsetsCompat.Type.systemGestures()
+                    )
                     val cutout = insets.getInsets(WindowInsetsCompat.Type.displayCutout())
-                    val bottomInset = maxOf(navInsets.bottom, imeInsets.bottom, cutout.bottom)
+                    val bottomInset = max(navAndGestures.bottom, cutout.bottom)
                     val appliedBottomPadding = baseBottomPadding + bottomInset
                     view.updatePadding(bottom = appliedBottomPadding)
                     logImeOverlayInsetsIfEnabled(
-                        navBottom = navInsets.bottom,
-                        imeBottom = imeInsets.bottom,
+                        navBottom = navAndGestures.bottom,
+                        imeBottom = 0,
                         cutoutBottom = cutout.bottom,
                         bottomInset = bottomInset,
                         appliedBottomPadding = appliedBottomPadding
