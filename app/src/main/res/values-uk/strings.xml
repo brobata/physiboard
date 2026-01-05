@@ -1,0 +1,509 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Pastiera</string>
+    <string name="input_method_name">Pastiera</string>
+    <string name="input_method_name_en">English</string>
+    <string name="input_method_name_it">Italiano</string>
+    <string name="input_method_name_fr">Français</string>
+    <string name="input_method_name_de">Deutsch</string>
+    <string name="input_method_name_pl">Polski</string>
+    <string name="input_method_name_es">Español</string>
+    <string name="input_method_name_pt">Português</string>
+    <string name="input_method_name_ru">Русский</string>
+    <string name="input_method_name_uk">Українська</string>
+    
+    <string name="settings_title">Налаштування</string>
+    <string name="back">Назад</string>
+    <string name="settings_back_content_description">Назад</string>
+    
+    <string name="long_press_title">Тривале натискання</string>
+    <string name="keyboard_timing_long_press_value">%1$dмс</string>
+    <string name="long_press_duration">Тривалість натискання: %1$dмс</string>
+    <string name="long_press_description">Час очікування перед розпізнаванням тривалого натискання. Менші значення роблять його швидшим.</string>
+    <string name="setting_applied_immediately">Налаштування застосовується миттєво</string>
+    
+    <string name="auto_capitalize_title">Автовеликі на початку</string>
+    <string name="auto_capitalize_description">Автоматично робить першу літеру великою при введенні в порожнє поле.</string>
+
+    <string name="auto_capitalize_after_period_title">Автовеликі після крапки</string>
+    <string name="auto_capitalize_after_period_description">Автоматично робить наступну літеру великою після крапки з пробілом (кінець речення).</string>
+
+    <string name="double_space_to_period_title">Подвійний пробіл → крапка</string>
+    <string name="double_space_to_period_description">Подвійне натискання пробілу вставляє крапку з пробілом. Наступна літера буде великою.</string>
+
+    <string name="clear_alt_on_space_title">Скасувати Alt на пробіл</string>
+    <string name="clear_alt_on_space_description">Автоматично вимикає Alt при натисканні пробілу.</string>
+    
+    <string name="swipe_to_delete_title">Свайп для видалення</string>
+    
+    <string name="swipe_incremental_threshold_title">Чутливість свайпу</string>
+    <string name="swipe_incremental_threshold_description">Відстань для переміщення курсора на одну позицію. Менші числа прискорюють курсор.</string>
+    
+    <string name="auto_show_keyboard_title">Автопоказ клавіатури</string>
+    
+    <string name="alt_ctrl_speech_shortcut_title">Розпізнавання мовлення Alt+Ctrl</string>
+    <string name="alt_ctrl_speech_shortcut_description">Увімкнути розпізнавання мовлення на Alt+Ctrl</string>
+
+    <string name="static_variation_bar_mode_title">Статична панель варіацій</string>
+    <string name="static_variation_bar_mode_description">Завжди показувати фіксований набір утиліт замість контекстних варіацій.</string>
+    <string name="swipe_to_move_cursor">Свайп для переміщення курсора</string>
+    
+    <string name="info_title">Інформація</string>
+    <string name="info_description">Налаштування автоматично зберігаються та застосовуються миттєво.</string>
+    
+    <string name="keyboard_title">Клавіатура Pastiera</string>
+    <string name="keyboard_subtitle">Фізична клавіатура з підтримкою тривалого натискання</string>
+    <string name="settings_content_description">Налаштування</string>
+    
+    <string name="installation_title">Встановлення</string>
+    <string name="installation_step1">1. Натисніть кнопку нижче, щоб відкрити налаштування</string>
+    <string name="installation_step2">2. Увімкніть \'Pastiera Physical Keyboard\'</string>
+    <string name="installation_step3">3. Поверніться сюди та перевірте клавіатуру</string>
+    <string name="open_keyboard_settings">Відкрити налаштування клавіатури</string>
+    
+    <string name="enable_pastiera">Увімкнути Pastiera</string>
+    <string name="pastiera_not_enabled">Pastiera не увімкнено</string>
+    <string name="choose_input_method">Оберіть метод введення</string>
+    <string name="pastiera_not_selected">Pastiera не обрано</string>
+    
+    <string name="test_keyboard_title">Тест клавіатури</string>
+    <string name="test_keyboard_description">Підключіть фізичну клавіатуру та протестуйте нижче:</string>
+    <string name="test_keyboard_normal">• Звичайне натискання: вставляє символ</string>
+    <string name="test_keyboard_long_press">• Тривале натискання (500мс): вставляє Alt символ</string>
+    <string name="test_field_label">Поле для тесту</string>
+    <string name="test_field_placeholder">Друкуйте тут на фізичній клавіатурі…</string>
+    
+    <string name="last_keyboard_event_title">Остання подія клавіатури</string>
+    <string name="no_event_yet">Поки немає подій</string>
+    
+    <string name="long_press_mappings_title">Карта тривалих натискань</string>
+    <string name="long_press_mappings_line1">Q→0, W→1, E→2, R→3, T→(, Y→), U→-, I→_, O→\', P→:</string>
+    <string name="long_press_mappings_line2">A→@, S→4, D→5, F→6, G→*, H→#, J→+, K→\", L→\'</string>
+    <string name="long_press_mappings_line3">Z→!, X→7, C→8, V→9, B→., N→\', M→?</string>
+    
+    <string name="settings_button">Налаштування</string>
+    <string name="change_keyboard_button">Змінити клавіатуру</string>
+    <string name="save">Зберегти</string>
+    
+    <string name="sym_customization_title">Налаштувати SYM клавіатуру</string>
+    <string name="sym_customization_button">Налаштувати SYM клавіатуру</string>
+    <string name="sym_customization_description">Налаштувати карту емодзі для SYM клавіатури. Натисніть на будь-яку клавішу, щоб змінити її емодзі.</string>
+    <string name="reset_to_default">Скинути до стандартних</string>
+    <string name="select_emoji">Обрати емодзі</string>
+    <string name="close">Закрити</string>
+    
+    <string name="auto_correct_title">Автозаміни</string>
+    <string name="auto_correct_languages_title">Заміни</string>
+    <string name="auto_correct_settings_title">Налаштування автокорекції</string>
+    <string name="auto_correct_settings_description">Оберіть які заміни використовуються для автокорекції. Системна мова зверху.</string>
+    <string name="auto_correct_system_language">Системна мова</string>
+    <string name="auto_correct_ricette_pastiera_description">Налаштування для всіх замін</string>
+    <string name="auto_correct_other_languages">Інші заміни</string>
+    <string name="auto_correct_custom_languages">Власні заміни</string>
+    <string name="auto_correct_at_least_one_language_required">Для роботи потрібна хоча б одна заміна</string>
+    <string name="auto_correct_edit">Редагувати</string>
+    <string name="auto_correct_edit_description">Натисніть на корекцію для редагування або використайте кнопку + для додавання нової.</string>
+    <string name="auto_correct_add_correction">Додати корекцію</string>
+    <string name="auto_correct_edit_correction">Редагувати корекцію</string>
+    <string name="auto_correct_original">Оригінал</string>
+    <string name="auto_correct_corrected">Виправлення</string>
+    <string name="auto_correct_delete">Видалити</string>
+    <string name="auto_correct_save">Зберегти</string>
+    <string name="auto_correct_cancel">Скасувати</string>
+    <string name="auto_correct_no_corrections">Корекції недоступні. Натисніть + щоб додати.</string>
+    <string name="auto_correct_add_language">Додати нову заміну</string>
+    <string name="auto_correct_language_code">Код заміни</string>
+    <string name="auto_correct_language_name">Назва заміни</string>
+    <string name="auto_correct_language_code_hint">Введіть код та назву для вашої власної заміни (наприклад \"uk\" / \"Українська\", \"mydict\" / \"Мій словник\")</string>
+    <string name="auto_correct_language_code_required">Назва заміни обов\'язкова</string>
+    <string name="auto_correct_language_already_exists">Ця заміна вже існує</string>
+    <string name="auto_correct_suggestions_toggle_title">Пропозиції під час введення</string>
+    <string name="auto_correct_accent_matching_title">Відповідність слів з акцентами</string>
+    <string name="auto_correct_auto_replace_title">Автозаміна на пробіл/Enter</string>
+    <string name="auto_correct_max_distance_title">Максимальна відстань корекції</string>
+    <string name="auto_correct_max_distance_off">Вимкнено</string>
+    <string name="auto_correct_max_distance_description">Максимальна кількість відмінностей символів для автокорекції. 0 = вимкнено, 1-3 = збільшення толерантності.</string>
+    <string name="auto_correct_manage_user_dict_title">Керування словником користувача</string>
+    <string name="auto_correct_keyboard_proximity_title">Ранжування за близькістю клавіш</string>
+    <string name="auto_correct_keyboard_proximity_description">Фільтрувати малоймовірні друкарські помилки на основі відстані клавіш (QWERTY/AZERTY/QWERTZ)</string>
+    <string name="auto_correct_edit_type_ranking_title">Ранжування за типом редагування</string>
+    <string name="auto_correct_edit_type_ranking_description">Сортувати пропозиції за типом редагування (вставка > заміна > видалення)</string>
+    <string name="clear">Очистити</string>
+    <string name="experimental_suggestions_title">Експериментальні пропозиції</string>
+    <string name="experimental_suggestions_subtitle">Увімкнути новий рушій словника/пропозицій (бета)</string>
+
+    <string name="user_dict_title">Словник користувача</string>
+    <string name="user_dict_add_hint">Додати слово</string>
+    <string name="user_dict_add_button">Зберегти слово</string>
+    <string name="user_dict_empty_state">Власних слів ще немає.</string>
+    <string name="user_dict_edit_title">Редагувати слово</string>
+    <string name="user_dict_frequency_label">Використань: %1$d</string>
+    
+    <string name="sym_customize_title">Налаштувати SYM клавіатуру</string>
+    <string name="sym_auto_close_title">Автозакриття розкладки SYM</string>
+    <string name="sym_auto_close_description">Автоматично закривати SYM розкладку після вставки символу, натискання Alt або Enter. Не закривається на Ctrl або Shift.</string>
+    <string name="sym_enable_emoji_page_title">Увімкнути сторінку емодзі</string>
+    <string name="sym_enable_emoji_page_description">Показувати емодзі в розкладці SYM.</string>
+    <string name="sym_enable_symbols_page_title">Увімкнути сторінку символів</string>
+    <string name="sym_enable_symbols_page_description">Показувати символи в розкладці SYM.</string>
+    <string name="sym_enable_clipboard_page_title">Увімкнути сторінку буфера обміну</string>
+    <string name="sym_enable_clipboard_page_description">Показувати історію буфера обміну при перемиканні.</string>
+    <string name="sym_swap_pages_title">Змінити порядок сторінок SYM</string>
+    <string name="sym_swap_pages_description">Оберіть яка сторінка SYM з\'являється першою при перемиканні.</string>
+    <string name="sym_order_emoji_first">Спочатку емодзі</string>
+    <string name="sym_order_symbols_first">Спочатку символи</string>
+    <string name="sym_instructions_title">Інструкція</string>
+    <string name="sym_instructions_text">Натисніть на будь-яку клавішу знизу щоб змінити її емодзі. Зміни зберігаються автоматично.</string>
+    <string name="sym_reset_to_default">Скинути до стандартних</string>
+    <string name="sym_reset_confirm_title">Скинути до стандартних</string>
+    <string name="sym_reset_confirm_message">Ви впевнені, що хочете скинути всі SYM розкладки до стандартних? Дію не можна скасувати.</string>
+    <string name="sym_reset_confirm_button">Скинути</string>
+    <string name="cancel">Скасувати</string>
+    
+    <string name="emoji_picker_title">Обрати емодзі</string>
+    <string name="emoji_picker_title_for_letter">Обрати емодзі для літери %1$s</string>
+    <string name="emoji_picker_close">Закрити</string>
+    <string name="emoji_category_smileys">Смайли і люди</string>
+    <string name="emoji_category_animals">Тварини і природа</string>
+    <string name="emoji_category_food">Їжа і напої</string>
+    <string name="emoji_category_travel">Подорожі і місця</string>
+    
+    <string name="modifier_shift">SHIFT</string>
+    <string name="modifier_ctrl">CTRL</string>
+    
+    <string name="long_press_modifier_title">Модифікатор тривалого натискання</string>
+    <string name="long_press_modifier_description">Оберіть чи тривале натискання емулює Alt+клавішу чи Shift+клавішу</string>
+    <string name="long_press_modifier_alt">Alt</string>
+    <string name="long_press_modifier_shift">Shift</string>
+    
+    <string name="keyboard_layout_title">Розкладка клавіатури</string>
+    <string name="keyboard_layout_description">Оберіть вашу розкладку. ALT, SYM та Ctrl розкладки залежать від фізичного розташування клавіші.</string>
+    <string name="keyboard_layout_editor_title">Редактор розкладки</string>
+    <string name="keyboard_layout_no_conversion">Стандартна</string>
+    <string name="keyboard_layout_no_conversion_description">Стандартна QWERTY розкладка (без конверсії)</string>
+    <string name="keyboard_layout_conversions_title">Конверсії розкладки</string>
+    <string name="keyboard_layout_conversions_description">Конвертує літери в обрану розкладку</string>
+    <string name="keyboard_layout_viewer_title">Карта клавіатури</string>
+    <string name="keyboard_layout_viewer_subtitle">Розкладка: %1$s</string>
+    <string name="keyboard_layout_viewer_unavailable">Не вдалося завантажити цю розкладку.</string>
+    <string name="keyboard_layout_viewer_empty">Немає призначених клавіш для цієї розкладки.</string>
+    <string name="keyboard_layout_multitap_badge">мультитап</string>
+    <string name="keyboard_layout_viewer_multitap_on">мультитап</string>
+    <string name="keyboard_layout_viewer_multitap_off">одиночне</string>
+    <string name="keyboard_layout_viewer_open">Переглянути розкладку</string>
+    <string name="keyboard_layout_settings_button">Налаштування розкладки</string>
+    
+    <string name="about_github">GitHub</string>
+    <string name="about_build_info">Pastiera IME - Palsoftware 2025</string>
+    <string name="about_title">Про програму</string>
+    <string name="about_credits_error">Не вдалося завантажити інформацію.</string>
+    
+    <string name="launcher_shortcuts_title">Гарячі клавіші</string>
+    <string name="launcher_shortcuts_experimental">Експериментальні</string>
+    <string name="launcher_shortcuts_description">Увімкнути гарячі клавіші</string>
+    <string name="launcher_shortcuts_configure">Налаштувати гарячі клавіші</string>
+    <string name="launcher_shortcuts_configure_description">Призначити клавіші для відкриття додатків</string>
+    
+    <string name="launcher_shortcuts_screen_title">Гарячі клавіші</string>
+    <string name="launcher_shortcuts_not_assigned">Не призначено</string>
+    <string name="launcher_shortcuts_remove">Видалити</string>
+    <string name="launcher_shortcuts_app_name_unavailable">Додаток (назва недоступна)</string>
+    <string name="launcher_shortcuts_shortcut_type">Гаряча клавіша: %1$s</string>
+    <string name="launcher_shortcuts_shortcut_unknown">невідома</string>
+    <string name="launcher_shortcuts_action_type">Дія: %1$s</string>
+    
+    <string name="launcher_shortcut_assignment_title">Призначити додаток на клавішу</string>
+    <string name="launcher_shortcut_assignment_key">Клавіша %1$s</string>
+    <string name="launcher_shortcut_assignment_header">Гаряча клавіша</string>
+    <string name="launcher_shortcut_assignment_search_placeholder">Пошук додатків…</string>
+    <string name="launcher_shortcut_assignment_search_description">Пошук</string>
+    <string name="launcher_shortcut_assignment_close">Закрити</string>
+    <string name="launcher_shortcut_assignment_no_apps">Додатки не знайдено</string>
+    <string name="launcher_shortcut_assignment_no_results">Немає результатів для \"%1$s\"</string>
+    <string name="launcher_shortcut_assignment_key_name">Клавіша %1$d</string>
+    
+    <string name="power_shortcuts_title">Швидкі команди</string>
+    <string name="power_shortcuts_description">Натисніть SYM, потім клавішу щоб запустити додаток, коли не обрано текстове поле</string>
+    <string name="power_shortcuts_press_key">Натисніть гарячу клавішу для запуску</string>
+    
+    <string name="notification_nav_mode_channel_name">Режим навігації Pastiera</string>
+    <string name="notification_nav_mode_channel_description">Сповіщення для режиму навігації</string>
+    <string name="notification_nav_mode_activated_title">Режим навігації увімкнено</string>
+    <string name="notification_nav_mode_activated_text">Режим навігації увімкнено</string>
+    
+    <string name="notification_update_channel_name">Оновлення Pastiera</string>
+    <string name="notification_update_channel_description">Сповіщення про нові версії Pastiera</string>
+    <string name="notification_update_available_title">Pastiera - Доступне оновлення</string>
+    <string name="notification_update_available_text">Доступна нова версія Pastiera (%1$s)</string>
+    
+    <string name="speech_recognition_prompt">Говоріть…</string>
+    <string name="speech_recognition_error_no_match">Текст не розпізнано. Спробуйте ще.</string>
+    <string name="speech_recognition_error_timeout">Мовлення не виявлено.</string>
+    <string name="speech_recognition_error_permission">Дозвіл на мікрофон відхилено.</string>
+    <string name="speech_recognition_error_network">Помилка мережі.</string>
+    <string name="speech_recognition_error_generic">Помилка розпізнавання мовлення.</string>
+    <string name="speech_recognition_error_not_available">Розпізнавання мовлення недоступне.</string>
+    
+    <string name="auto_correct_search_placeholder">Знайти корекції…</string>
+    <string name="auto_correct_search_description">Пошук</string>
+    <string name="auto_correct_clear_search">Очистити пошук</string>
+    <string name="auto_correct_no_corrections_found">Корекції не знайдено</string>
+    
+    <string name="nav_mode_title">Режим навігації</string>
+    <string name="nav_mode_enable_title">Увімкнути режим навігації</string>
+    <string name="nav_mode_enable_description">Подвійне натискання Ctrl активує режим навігації</string>
+    <string name="nav_mode_key_mappings">Карта клавіш</string>
+    <string name="nav_mode_revert_to_default">Скинути до стандартних</string>
+    <string name="nav_mode_note">Увага: Зміна клавіш режиму навігації також змінює Ctrl+клавішу в текстових полях.</string>
+    <string name="nav_mode_warning_icon">⚠</string>
+    <string name="nav_mode_configure_key">Налаштувати %1$s</string>
+    <string name="nav_mode_type">Тип</string>
+    <string name="nav_mode_keycode">Код клавіші</string>
+    <string name="nav_mode_action">Дія</string>
+    <string name="nav_mode_none">Нічого</string>
+    <string name="nav_mode_use_default">Стандартно: %1$s</string>
+    <string name="nav_mode_save">Зберегти</string>
+    <string name="nav_mode_cancel">Скасувати</string>
+    <string name="nav_mode_default">стандартно</string>
+    
+    <string name="unicode_picker_title_for_letter">Обрати символ для %1$s</string>
+    <string name="unicode_picker_title">Обрати символ Unicode</string>
+    <string name="unicode_picker_close">Закрити</string>
+    <string name="unicode_category_punctuation">Пунктуація</string>
+    <string name="unicode_category_math">Математичні символи</string>
+    <string name="unicode_category_currency">Валюти</string>
+    <string name="unicode_category_technical">Технічні символи</string>
+    <string name="unicode_category_arrows">Стрілки</string>
+    <string name="unicode_category_misc">Інше</string>
+    <string name="unicode_category_variations">Варіації</string>
+    <string name="emoji_category_smileys_and_emotion">Смайли та емоції</string>
+    <string name="emoji_category_people_and_body">Люди та тіло</string>
+    <string name="emoji_category_animals_and_nature">Тварини та природа</string>
+    <string name="emoji_category_food_and_drink">Їжа та напої</string>
+    <string name="emoji_category_travel_and_places">Подорожі та місця</string>
+    <string name="emoji_category_activities">Активності</string>
+    <string name="emoji_category_objects">Об\'єкти</string>
+    <string name="emoji_category_symbols">Символи</string>
+    <string name="emoji_category_flags">Прапори</string>
+    <string name="emoji_category_recents">Нещодавні</string>
+    <string name="emoji_category_emoticons">Емотикони</string>
+    <string name="emoji_picker_error">Не вдалося завантажити емодзі</string>
+    
+    <string name="variation_customize_title">Налаштувати варіації</string>
+    <string name="variation_instructions_title">Інструкція</string>
+    <string name="variation_instructions_description">Натисніть на будь-яке поле варіації щоб обрати символ. Кожна літера може мати до 7 варіацій.</string>
+    <string name="variation_picker_title">Обрати варіацію для %1$s</string>
+    <string name="variation_picker_clear">Очистити (Порожньо)</string>
+    <string name="variation_reset_to_default">Скинути до стандартних</string>
+    <string name="variation_reset_confirm_title">Скинути до стандартних</string>
+    <string name="variation_reset_confirm_message">Ви впевнені, що хочете скинути всі варіації до стандартних? Цю дію не можна скасувати.</string>
+    <string name="variation_reset_confirm_button">Скинути</string>
+    <string name="static_variation_input_label">Значення</string>
+    <string name="static_variation_input_hint">Залиште порожнім та збережіть для видалення слота.</string>
+    
+    <string name="sym_tab_emoji">Емодзі</string>
+    <string name="sym_tab_characters">Символи</string>
+    
+    <string name="app_picker_title">Обрати додаток</string>
+    <string name="app_picker_cancel">Скасувати</string>
+    <string name="app_picker_search_placeholder">Шукати додатки…</string>
+    
+    <string name="settings_support_ko_fi">Підтримати на Ko-fi</string>
+    <string name="settings_nav_mode_configure">Налаштувати розкладку режиму навігації</string>
+    <string name="settings_update_section_title">Оновлення</string>
+    <string name="settings_update_section_description">Перевірити новий реліз на GitHub.</string>
+    <string name="settings_update_button">Перевірити оновлення</string>
+    <string name="settings_update_checking">Перевіряю оновлення…</string>
+    <string name="settings_update_up_to_date">Додаток останньої версії.</string>
+    <string name="settings_update_check_failed">GitHub недоступний.</string>
+    <string name="update_dialog_title">Доступне нове оновлення</string>
+    <string name="update_dialog_message">Версія %1$s доступна на GitHub.</string>
+    <string name="update_dialog_open_github">Відкрити GitHub</string>
+    <string name="update_dialog_later">Пізніше</string>
+    <string name="update_dialog_download_apk">Завантажити APK</string>
+    
+    <string name="auto_correct_ricette_pastiera_name">Ricette Pastiera</string>
+    
+    <string name="settings_category_keyboard_timing">Клавіатура і тайминг</string>
+    <string name="settings_category_text_input">Розумні функції</string>
+    <string name="settings_category_auto_correction">Автокорекція</string>
+    <string name="settings_category_customization">Персоналізація</string>
+    <string name="settings_category_advanced">Додатково</string>
+    
+    <string name="languages_title">Мови</string>
+    <string name="languages_description">Додати мови до селектора методів введення Android. Показуються лише мови зі словниками, які не є системними.</string>
+    <string name="languages_no_available">Усі доступні мови вже додані або є системними.</string>
+    
+    <string name="layout_save_content_description">Зберегти розкладку</string>
+    <string name="layout_import_content_description">Імпортувати розкладку</string>
+    <string name="layout_imported_successfully">Розкладку успішно імпортовано</string>
+    <string name="layout_import_failed">Не вдалося імпортувати розкладку</string>
+    <string name="layout_invalid_file">Неправильний файл розкладки</string>
+    <string name="layout_import_error">Помилка імпортування розкладки: %1$s</string>
+    <string name="layout_save_canceled">Збереження скасовано</string>
+    <string name="layout_saved_successfully">Розкладку успішно збережено</string>
+    <string name="layout_save_error">Помилка збереження розкладки: %1$s</string>
+    <string name="layout_imported_name">Імпортована розкладка</string>
+    <string name="layout_imported_description">Імпортовано з файлу</string>
+    <string name="layout_delete_content_description">Видалити розкладку</string>
+    <string name="layout_delete_confirmation_title">Видалити розкладку</string>
+    <string name="layout_delete_confirmation_message">Ви впевнені, що хочете видалити розкладку \"%1$s\"? Цю дію не можна скасувати.</string>
+    <string name="layout_delete_success">Розкладку успішно видалено</string>
+    <string name="layout_delete_failed">Не вдалося видалити розкладку</string>
+    <string name="layout_view_mapping">Переглянути розкладку</string>
+    <string name="layout_delete">Видалити</string>
+    <string name="layout_enable_for_cycling">Увімкнути для перемикання</string>
+    <string name="layout_select_as_active">Обрати як активну розкладку</string>
+    <string name="delete">Видалити</string>
+    
+    <string name="modifier_alt">ALT</string>
+    <string name="event_unicode_label">Юнікод: </string>
+    <string name="event_output_label">Вивід: </string>
+    <string name="event_not_available">Н/Д</string>
+    
+    <string name="nav_mode_action_copy">Копіювати</string>
+    <string name="nav_mode_action_paste">Вставити</string>
+    <string name="nav_mode_action_cut">Вирізати</string>
+    <string name="nav_mode_action_undo">Скасувати</string>
+    <string name="nav_mode_action_select_all">Вибр.все</string>
+    <string name="nav_mode_action_expand_selection_left">←Виб</string>
+    <string name="nav_mode_action_expand_selection_right">→Виб</string>
+    <string name="nav_mode_keycode_up">↑</string>
+    <string name="nav_mode_keycode_down">↓</string>
+    <string name="nav_mode_keycode_left">←</string>
+    <string name="nav_mode_keycode_right">→</string>
+    <string name="nav_mode_keycode_center">○</string>
+    <string name="nav_mode_keycode_page_up">PgUp</string>
+    <string name="nav_mode_keycode_page_down">PgDn</string>
+    <string name="nav_mode_keycode_escape">Esc</string>
+    <string name="nav_mode_keycode_tab">Tab</string>
+    <string name="nav_mode_keycode_forward_delete">Del→</string>
+    <string name="nav_mode_key_unknown">?</string>
+    
+    <string name="tutorial_skip">Пропустити</string>
+    <string name="tutorial_previous">Назад</string>
+    <string name="tutorial_next">Далі</string>
+    <string name="tutorial_finish">Завершити</string>
+    <string name="tutorial_page_welcome_title">Ласкаво просимо до Pastiera</string>
+    <string name="tutorial_page_welcome_description">Pastiera — це просунутий метод введення для PKB Android пристроїв з підтримкою режиму навігації, гарячих клавіш, власних розкладок та іншого.</string>
+    <string name="tutorial_page_enable_title">Увімкнути Pastiera</string>
+    <string name="tutorial_page_enable_description">Для початку потрібно увімкнути Pastiera як метод введення в налаштуваннях Android. Натисніть кнопку нижче щоб відкрити налаштування.</string>
+    <string name="tutorial_page_select_title">Обрати Pastiera</string>
+    <string name="tutorial_page_select_description">Щоб використовувати Pastiera, оберіть її серед методів введення. Виберіть повний IME UI з перемикачем \"Екранна клавіатура\" або мінімальний \"Pastierina\" UI з вимкненим перемикачем.</string>
+    <string name="tutorial_page_led_title">Індикатори</string>
+    <string name="tutorial_page_led_description">Щоб отримати максимум від Pastiera, встановіть клавішу Fn як Ctrl у системних налаштуваннях. Панель IME показує чотири індикатори: вони стають синіми, коли модифікатор активний одноразово, і помаранчевими, коли заблоковано. Індикатор SYM синій на сторінці емодзі і помаранчевий на сторінці символів.</string>
+    <string name="tutorial_page_nav_mode_title">Режим навігації</string>
+    <string name="tutorial_page_nav_mode_description">Режим навігації дозволяє керувати інтерфейсом пристрою за допомогою літерних скорочень, таких як IJKL або ESDF.\nЩоб активувати:\n• Натисніть Ctrl двічі швидко\n• Літерні клавіші стають елементами керування навігацією\n• Натисніть Ctrl знову, щоб вийти\nКожне скорочення можна переналаштувати в Додаткових налаштуваннях.</string>
+    <string name="tutorial_page_customization_title">Персоналізація</string>
+    <string name="tutorial_page_customization_description">Pastiera пропонує багато опцій налаштування:\n• Власні розкладки клавіатури\n• Гарячі клавіші та швидкі команди\n• IME панель може діяти як свайп-бар для переміщення курсора\n• Власні призначення для режиму навігації\nДослідіть налаштування, щоб знайти ідеальну конфігурацію!</string>
+    <string name="tutorial_page_ready_title">Готово до роботи</string>
+    <string name="tutorial_page_ready_description">Ви готові використовувати Pastiera! Пам\'ятайте, що завжди можете повернутися до налаштувань для подальшої персоналізації.</string>
+    <string name="tutorial_enable_button">Увімкнути Pastiera</string>
+    <string name="tutorial_enabled_message">Pastiera увімкнено!</string>
+    <string name="tutorial_select_button">Обрати Pastiera</string>
+    <string name="tutorial_enable_first_message">Спочатку увімкніть Pastiera на попередній сторінці</string>
+    <string name="tutorial_selected_message">Pastiera обрано!</string>
+    <string name="tutorial_show">Показати туторіал</string>
+    <string name="tutorial_review_description">Переглянути вступний туторіал</string>
+
+    <string name="backup_now">Створити резервну копію</string>
+    <string name="backup_now_description">Експортувати всі налаштування в ZIP файл</string>
+    <string name="restore_from_file">Відновити з файлу</string>
+    <string name="restore_from_file_description">Імпортувати резервну копію з ZIP</string>
+    <string name="backup_completed">Резервну копію створено</string>
+    <string name="restore_completed">Відновлення завершено</string>
+    <string name="backup_failed">Резервна копія не вдалася: %1$s</string>
+    <string name="restore_failed">Відновлення не вдалося: %1$s</string>
+    
+    <string name="dip_unit">DIP</string>
+    
+    <string name="custom_input_styles_title">Мови та розкладки</string>
+    <string name="custom_input_styles_description">Додати додаткові мови та розкладки клавіатури, які не прив\'язані до системної локалі</string>
+    <string name="custom_input_styles_add">Додати стиль введення</string>
+    <string name="custom_input_styles_empty">Власних стилів введення ще немає. Натисніть + щоб додати.</string>
+    <string name="custom_input_styles_delete">Видалити</string>
+    <string name="custom_input_styles_delete_confirm_title">Видалити стиль введення</string>
+    <string name="custom_input_styles_delete_confirm_message">Ви впевнені, що хочете видалити цей стиль введення?</string>
+    <string name="custom_input_styles_add_dialog_title">Додати стиль введення</string>
+    <string name="custom_input_styles_edit_dialog_title">Редагувати стиль введення</string>
+    <string name="custom_input_styles_edit_system_locale_title">Редагувати розкладку системної мови</string>
+    <string name="custom_input_styles_select_locale">Обрати мову</string>
+    <string name="custom_input_styles_select_layout">Обрати розкладку клавіатури</string>
+    <string name="custom_input_styles_save">Зберегти</string>
+    <string name="custom_input_styles_cancel">Скасувати</string>
+    <string name="custom_input_styles_duplicate_error">Ця комбінація мови та розкладки вже існує</string>
+    <string name="custom_input_styles_open_ime_picker">Відкрити вибір IME</string>
+    <string name="custom_input_styles_open_ime_picker_description">Відкрити системний вибір методу введення для увімкнення нової мови</string>
+    <string name="custom_input_styles_format">%1$s - %2$s</string>
+    <string name="custom_input_styles_add_custom_locale">Додати власну локаль…</string>
+    <string name="custom_input_styles_custom_locale_title">Введіть код локалі</string>
+    <string name="custom_input_styles_custom_locale_label">Код локалі</string>
+    <string name="custom_input_styles_custom_locale_hint">Введіть код локалі (напр., en_US, uk_UA, fr_FR)</string>
+    <string name="custom_input_styles_custom_locale_empty_error">Код локалі не може бути порожнім</string>
+    <string name="custom_input_styles_custom_locale_invalid_error">Неправильний формат коду локалі. Використовуйте формат: xx_XX або xx</string>
+    <string name="custom_input_styles_no_dictionary_warning">Немає словника для цієї локалі. Пропозиції та автокорекція будуть вимкнені.</string>
+    <string name="custom_input_styles_layout_mapping_updated">Зіставлення розкладки оновлено: %1$s - %2$s</string>
+    <string name="custom_input_styles_input_style_updated">Стиль введення оновлено: %1$s - %2$s</string>
+    <string name="custom_input_styles_input_style_added">Стиль введення додано: %1$s - %2$s</string>
+    <string name="custom_input_styles_input_style_deleted">Стиль введення видалено</string>
+    <string name="custom_input_styles_language_label">Мова</string>
+    <string name="custom_input_styles_locale_display">%1$s (%2$s)</string>
+    <string name="custom_input_styles_system_locale_hint">Системна локаль — змінити не можна</string>
+    <string name="custom_input_styles_system_badge">Система</string>
+    <string name="custom_input_styles_default_layout">qwerty</string>
+    <string name="custom_input_styles_change_layout_hint">Натисніть, щоб змінити розкладку</string>
+    <string name="custom_input_styles_custom_locale_placeholder">en_US, uk_UA, fr_FR тощо</string>
+    <string name="custom_input_styles_installed_dictionaries">Встановлені словники</string>
+
+    <string name="installed_dictionaries_title">Встановлені словники</string>
+    <string name="installed_dictionaries_empty">Серіалізованих словників не знайдено.</string>
+    <string name="installed_dictionaries_language_code">Мова: %1$s</string>
+    <string name="installed_dictionaries_filename">Файл: %1$s</string>
+    <string name="installed_dictionaries_import">Імпортувати словник</string>
+    <string name="installed_dictionaries_import_success">Імпортовано %1$s</string>
+    <string name="installed_dictionaries_import_invalid_name">Неправильна назва файлу. Очікується *_base.dict</string>
+    <string name="installed_dictionaries_import_invalid_format">Неправильний формат словника</string>
+    <string name="installed_dictionaries_import_failed">Не вдалося імпортувати</string>
+    <string name="installed_dictionaries_imported_badge">Імпортовано</string>
+
+    <string name="clipboard_history_title">Історія буфера обміну</string>
+    <string name="clipboard_clear_all">Очистити все</string>
+    <string name="clipboard_empty_state">Немає історії буфера обміну</string>
+    <string name="clipboard_pin">Закріпити</string>
+    <string name="clipboard_unpin">Відкріпити</string>
+    <string name="clipboard_delete">Видалити</string>
+    <string name="clipboard_retention_apply">Застосувати</string>
+    <string name="clipboard_retention_time_title">Час зберігання буфера обміну</string>
+    <string name="clipboard_retention_time_description">0 = ніколи не видаляти</string>
+    <string name="clipboard_retention_time_minutes">%1$d хвилин</string>
+
+    <string name="trackpad_gestures_title">Жести тачпада для пропозицій</string>
+    <string name="trackpad_gestures_description">Проведіть вгору по тачпаду, щоб прийняти пропозиції</string>
+    <string name="trackpad_gestures_enabled_title">Увімкнути жести тачпада</string>
+    <string name="trackpad_gestures_enabled_description">Проведіть вгору по тачпаду, щоб прийняти пропозиції слів</string>
+    <string name="trackpad_gestures_show_tutorial">Показати посібник</string>
+    <string name="trackpad_gestures_tutorial_description">Дізнайтеся, як використовувати жести тачпада</string>
+    <string name="trackpad_gestures_install_shizuku">Встановити Shizuku</string>
+    <string name="trackpad_gestures_install_shizuku_description">Потрібно для виявлення жестів тачпада</string>
+    <string name="trackpad_gestures_shizuku_url">https://github.com/RikkaApps/Shizuku/releases/</string>
+    <string name="trackpad_gestures_shizuku_connected">Shizuku підключено</string>
+    <string name="trackpad_gestures_shizuku_not_connected">Shizuku не підключено</string>
+    <string name="trackpad_gestures_shizuku_not_authorized">Додаток не авторизовано в Shizuku</string>
+    <string name="trackpad_swipe_threshold_title">Чутливість свайпу тачпада</string>
+    <string name="trackpad_swipe_threshold_description">Налаштуйте, як далеко потрібно провести вгору, щоб прийняти пропозицію.</string>
+
+    <string name="trackpad_tutorial_title">Жести тачпада для пропозицій</string>
+    <string name="trackpad_tutorial_welcome_title">Жести тачпада для пропозицій</string>
+    <string name="trackpad_tutorial_welcome_description">Проведіть вгору по тачпаду, щоб швидко прийняти пропозиції слів без натискання!</string>
+    <string name="trackpad_tutorial_how_it_works_title">Як це працює</string>
+    <string name="trackpad_tutorial_how_it_works_description">Тачпад розділено на три секції:\n\n• Ліва третина → Прийняти ліву пропозицію\n• Центральна третина → Прийняти центральну пропозицію\n• Права третина → Прийняти праву пропозицію\n\nПросто проведіть вгору у відповідній області, щоб вставити цю пропозицію.</string>
+    <string name="trackpad_tutorial_shizuku_required_title">Потрібен Shizuku</string>
+    <string name="trackpad_tutorial_shizuku_required_description">Ця функція потребує Shizuku для доступу до подій тачпада.\n\n1. Встановіть Shizuku з релізів GitHub\n2. Увімкніть опції розробника в налаштуваннях Android\n3. Підключіть пристрій до ПК з встановленим ADB\n4. Запустіть команду, яку Shizuku показує в своєму додатку\n5. Надайте дозвіл Pastiera в Shizuku\n\nФункція працюватиме автоматично, як тільки Shizuku запущено.</string>
+    <string name="trackpad_tutorial_tips_title">Поради</string>
+    <string name="trackpad_tutorial_tips_description">• Переконайтеся, що ваш свайп переважно вертикальний\n• Жест працює краще зі швидкими, цілеспрямованими свайпами\n• Якщо інші пальці на клавіатурі, жести можуть не виявлятися (апаратне відхилення долоні)\n• Функцію можна увімкнути/вимкнути в Додаткових налаштуваннях</string>
+    <string name="trackpad_tutorial_complete">Зрозуміло</string>
+    <string name="trackpad_tutorial_next">Далі</string>
+    <string name="trackpad_tutorial_previous">Назад</string>
+
+    <string name="trackpad_debug_service_description">Показує події тачпада в маленькому оверлеї для відладки</string>
+</resources>

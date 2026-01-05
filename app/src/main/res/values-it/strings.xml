@@ -7,6 +7,7 @@
     <string name="input_method_name_de">Deutsch</string>
     <string name="input_method_name_pl">Polski</string>
     <string name="input_method_name_es">Español</string>
+    <string name="input_method_name_uk">Українська</string>
     
     <!-- Settings Screen -->
     <string name="settings_title">Impostazioni</string>
