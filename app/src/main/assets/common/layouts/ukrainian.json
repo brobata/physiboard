@@ -1,6 +1,6 @@
 {
-  "name": "ukrainian",
-  "description": "Double-tapped Ukrainian keyboard layout",
+  "name": "Ukrainian",
+  "description": "Multi-tap Ukrainian keyboard layout",
   "mappings": {
     "KEYCODE_Q": {
       "lowercase": "й",
