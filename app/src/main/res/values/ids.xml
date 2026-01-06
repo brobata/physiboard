@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <item name="led_previous_color" type="id"/>
+    
+    <!-- Status bar button tags -->
+    <item name="tag_badge_view" type="id"/>
+    <item name="tag_flash_overlay" type="id"/>
+    <item name="tag_animator" type="id"/>
+    <item name="tag_previous_count" type="id"/>
+    <item name="tag_microphone_state" type="id"/>
 </resources>
 
 

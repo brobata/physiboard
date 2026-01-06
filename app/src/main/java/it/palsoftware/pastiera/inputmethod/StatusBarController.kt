@@ -34,6 +34,7 @@ import it.palsoftware.pastiera.inputmethod.ui.EmojiPickerView
 import it.palsoftware.pastiera.inputmethod.ui.LedStatusView
 import it.palsoftware.pastiera.inputmethod.ui.VariationBarView
 import it.palsoftware.pastiera.inputmethod.suggestions.ui.FullSuggestionsBar
+import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonRegistry
 import android.content.res.AssetManager
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -95,6 +96,10 @@ class StatusBarController(
         }
     
     var onEmojiPickerRequested: (() -> Unit)? = null
+        set(value) {
+            field = value
+            variationBarView?.onEmojiPickerRequested = value
+        }
     
     // Callback for speech recognition state changes (active/inactive)
     var onSpeechRecognitionStateChanged: ((Boolean) -> Unit)? = null
@@ -204,7 +209,8 @@ class StatusBarController(
     private val defaultSymHeightPx: Int
         get() = dpToPx(600f) // fallback when nothing measured yet
     private val ledStatusView = LedStatusView(context)
-    private val variationBarView: VariationBarView? = if (mode == Mode.FULL) VariationBarView(context, assets, imeServiceClass) else null
+    private val buttonRegistry = StatusBarButtonRegistry()
+    private val variationBarView: VariationBarView? = if (mode == Mode.FULL) VariationBarView(context, assets, imeServiceClass, buttonRegistry) else null
     private var variationsWrapper: View? = null
     private var forceMinimalUi: Boolean = false
     private var fullSuggestionsBar: FullSuggestionsBar? = null

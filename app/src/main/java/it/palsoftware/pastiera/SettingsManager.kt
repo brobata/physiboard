@@ -52,6 +52,23 @@ object SettingsManager {
     private const val KEY_CLIPBOARD_RETENTION_TIME = "clipboard_retention_time" // How long to keep clipboard entries (in minutes)
     private const val KEY_TRACKPAD_GESTURES_ENABLED = "trackpad_gestures_enabled" // Whether trackpad gesture suggestions are enabled
     private const val KEY_TRACKPAD_SWIPE_THRESHOLD = "trackpad_swipe_threshold" // Threshold for swipe detection on trackpad
+    
+    // Status bar button slot configuration keys
+    private const val KEY_STATUS_BAR_SLOT_LEFT = "status_bar_slot_left"
+    private const val KEY_STATUS_BAR_SLOT_RIGHT_1 = "status_bar_slot_right_1"
+    private const val KEY_STATUS_BAR_SLOT_RIGHT_2 = "status_bar_slot_right_2"
+    
+    // Public constants for button IDs
+    const val STATUS_BAR_BUTTON_NONE = "none"
+    const val STATUS_BAR_BUTTON_CLIPBOARD = "clipboard"
+    const val STATUS_BAR_BUTTON_MICROPHONE = "microphone"
+    const val STATUS_BAR_BUTTON_EMOJI = "emoji"
+    const val STATUS_BAR_BUTTON_LANGUAGE = "language"
+    
+    // Default slot assignments
+    private const val DEFAULT_SLOT_LEFT = STATUS_BAR_BUTTON_CLIPBOARD
+    private const val DEFAULT_SLOT_RIGHT_1 = STATUS_BAR_BUTTON_MICROPHONE
+    private const val DEFAULT_SLOT_RIGHT_2 = STATUS_BAR_BUTTON_LANGUAGE
 
     private const val VARIATIONS_FILE_NAME = "variations.json"
     
@@ -1716,5 +1733,73 @@ object SettingsManager {
         getPreferences(context).edit()
             .putString(KEY_CUSTOM_INPUT_STYLES, stylesString)
             .apply()
+    }
+    
+    // ========================
+    // Status Bar Button Slots
+    // ========================
+    
+    /**
+     * Gets the button assigned to the left slot.
+     */
+    fun getStatusBarSlotLeft(context: Context): String {
+        return getPreferences(context).getString(KEY_STATUS_BAR_SLOT_LEFT, DEFAULT_SLOT_LEFT) 
+            ?: DEFAULT_SLOT_LEFT
+    }
+    
+    /**
+     * Sets the button for the left slot.
+     */
+    fun setStatusBarSlotLeft(context: Context, buttonId: String) {
+        getPreferences(context).edit()
+            .putString(KEY_STATUS_BAR_SLOT_LEFT, buttonId)
+            .apply()
+    }
+    
+    /**
+     * Gets the button assigned to the first right slot.
+     */
+    fun getStatusBarSlotRight1(context: Context): String {
+        return getPreferences(context).getString(KEY_STATUS_BAR_SLOT_RIGHT_1, DEFAULT_SLOT_RIGHT_1)
+            ?: DEFAULT_SLOT_RIGHT_1
+    }
+    
+    /**
+     * Sets the button for the first right slot.
+     */
+    fun setStatusBarSlotRight1(context: Context, buttonId: String) {
+        getPreferences(context).edit()
+            .putString(KEY_STATUS_BAR_SLOT_RIGHT_1, buttonId)
+            .apply()
+    }
+    
+    /**
+     * Gets the button assigned to the second right slot.
+     */
+    fun getStatusBarSlotRight2(context: Context): String {
+        return getPreferences(context).getString(KEY_STATUS_BAR_SLOT_RIGHT_2, DEFAULT_SLOT_RIGHT_2)
+            ?: DEFAULT_SLOT_RIGHT_2
+    }
+    
+    /**
+     * Sets the button for the second right slot.
+     */
+    fun setStatusBarSlotRight2(context: Context, buttonId: String) {
+        getPreferences(context).edit()
+            .putString(KEY_STATUS_BAR_SLOT_RIGHT_2, buttonId)
+            .apply()
+    }
+    
+    /**
+     * Returns all available button options for dropdown selection.
+     */
+    fun getAvailableStatusBarButtons(): List<String> {
+        return listOf(
+            STATUS_BAR_BUTTON_NONE,
+            STATUS_BAR_BUTTON_CLIPBOARD,
+            STATUS_BAR_BUTTON_EMOJI,
+            STATUS_BAR_BUTTON_MICROPHONE,
+            STATUS_BAR_BUTTON_LANGUAGE
+        )
     }
 }

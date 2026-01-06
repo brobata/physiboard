@@ -509,4 +509,22 @@
     <string name="trackpad_tutorial_complete">Capito</string>
     <string name="trackpad_tutorial_next">Successivo</string>
     <string name="trackpad_tutorial_previous">Precedente</string>
+
+    <!-- Status Bar Buttons Configuration -->
+    <string name="status_bar_buttons_title">Pulsanti Barra di Stato</string>
+    <string name="status_bar_buttons_description">Personalizza i pulsanti nella barra di stato. Ogni slot può avere un pulsante diverso.</string>
+    <string name="status_bar_slot_left">Slot Sinistro</string>
+    <string name="status_bar_slot_right_1">Slot Destro 1</string>
+    <string name="status_bar_slot_right_2">Slot Destro 2</string>
+    <string name="status_bar_button_none">Nessuno</string>
+    <string name="status_bar_button_none_description">Slot vuoto</string>
+    <string name="status_bar_button_clipboard">Appunti</string>
+    <string name="status_bar_button_clipboard_description">Accesso rapido alla cronologia degli appunti</string>
+    <string name="status_bar_button_microphone">Microfono</string>
+    <string name="status_bar_button_microphone_description">Input vocale tramite riconoscimento vocale</string>
+    <string name="status_bar_button_emoji">Emoji</string>
+    <string name="status_bar_button_emoji_description">Apri il selettore di emoji</string>
+    <string name="status_bar_button_language">Lingua</string>
+    <string name="status_bar_button_language_description">Cambia la lingua della tastiera</string>
+    <string name="status_bar_buttons_reset">Ripristina predefiniti</string>
 </resources>
