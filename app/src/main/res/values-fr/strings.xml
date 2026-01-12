@@ -576,5 +576,23 @@
     <!-- Misc -->
     <string name="trackpad_debug_service_description">Affiche les événements du trackpad (overlay debug)</string>
     <string name="user_dict_frequency_label">Utilisations : %1$d</string>
+    
+    <!-- Status Bar Buttons Configuration -->
+    <string name="status_bar_buttons_title">Boutons Barre</string>
+    <string name="status_bar_buttons_description">Personnaliser boutons</string>
+    <string name="status_bar_slot_left">Emplacement G.</string>
+    <string name="status_bar_slot_right_1">Emplacement D. 1</string>
+    <string name="status_bar_slot_right_2">Emplacement D. 2</string>
+    <string name="status_bar_button_none">Aucun</string>
+    <string name="status_bar_button_none_description">Vide</string>
+    <string name="status_bar_button_clipboard">Presse-papiers</string>
+    <string name="status_bar_button_clipboard_description">Historique</string>
+    <string name="status_bar_button_microphone">Micro</string>
+    <string name="status_bar_button_microphone_description">Voix</string>
+    <string name="status_bar_button_emoji">Emoji</string>
+    <string name="status_bar_button_emoji_description">Sélecteur</string>
+    <string name="status_bar_button_language">Langue</string>
+    <string name="status_bar_button_language_description">Changer</string>
+    <string name="status_bar_buttons_reset">Réinitialiser</string>
 </resources>
 

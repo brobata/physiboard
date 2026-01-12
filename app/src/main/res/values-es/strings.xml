@@ -471,4 +471,22 @@
     <string name="trackpad_tutorial_complete">Entendido</string>
     <string name="trackpad_tutorial_next">Siguiente</string>
     <string name="trackpad_tutorial_previous">Anterior</string>
+    
+    <!-- Status Bar Buttons Configuration -->
+    <string name="status_bar_buttons_title">Botones de Barra</string>
+    <string name="status_bar_buttons_description">Personalizar botones</string>
+    <string name="status_bar_slot_left">Ranura Izq.</string>
+    <string name="status_bar_slot_right_1">Ranura Der. 1</string>
+    <string name="status_bar_slot_right_2">Ranura Der. 2</string>
+    <string name="status_bar_button_none">Ninguno</string>
+    <string name="status_bar_button_none_description">Vacío</string>
+    <string name="status_bar_button_clipboard">Portapapeles</string>
+    <string name="status_bar_button_clipboard_description">Historial</string>
+    <string name="status_bar_button_microphone">Micrófono</string>
+    <string name="status_bar_button_microphone_description">Voz</string>
+    <string name="status_bar_button_emoji">Emoji</string>
+    <string name="status_bar_button_emoji_description">Selector</string>
+    <string name="status_bar_button_language">Idioma</string>
+    <string name="status_bar_button_language_description">Cambiar</string>
+    <string name="status_bar_buttons_reset">Restablecer</string>
 </resources>

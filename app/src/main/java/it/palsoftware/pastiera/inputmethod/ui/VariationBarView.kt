@@ -401,24 +401,48 @@ class VariationBarView(
         // Get enabled buttons from registry to calculate space dynamically
         val registry = buttonRegistry ?: return
         val enabledButtons = registry.getEnabledButtons(context)
-        val totalButtonCount = enabledButtons.size
+        val leftButtonCount = enabledButtons.count { it.position == StatusBarButtonPosition.LEFT }
+        val rightButtonCount = enabledButtons.count { it.position == StatusBarButtonPosition.RIGHT }
+        val totalButtonCount = leftButtonCount + rightButtonCount
+        val hasLeftButtons = leftButtonCount > 0
+        val hasRightButtons = rightButtonCount > 0
         
         // Calculate fixed button size based on actual number of buttons
         // Formula: total elements = buttons + 7 variations (max)
         val totalElements = totalButtonCount + 7
-        val fixedButtonSize = max(1, (availableWidth - spacingBetweenButtons * totalElements) / totalElements)
-        val fixedButtonsTotalWidth = fixedButtonSize * totalButtonCount
-        // Each button needs one spacing (either marginStart or marginEnd)
-        val fixedButtonsSpacing = spacingBetweenButtons * totalButtonCount
+        val rawFixedButtonSize = max(1, (availableWidth - spacingBetweenButtons * totalElements) / totalElements)
+        val maxButtonHeight = (
+            TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP,
+                55f,
+                context.resources.displayMetrics
+            ).toInt() -
+                2 * TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP,
+                8f,
+                context.resources.displayMetrics
+            ).toInt()
+        ).coerceAtLeast(1)
+        val fixedButtonWidth = rawFixedButtonSize
+        val fixedButtonHeight = min(rawFixedButtonSize, maxButtonHeight)
+        val fixedButtonsTotalWidth = fixedButtonWidth * totalButtonCount
+        // Space only between buttons within each group (no trailing margin).
+        val fixedButtonsSpacing = spacingBetweenButtons * (
+            (leftButtonCount - 1).coerceAtLeast(0) + (rightButtonCount - 1).coerceAtLeast(0)
+        )
 
         val variationCount = limitedVariations.size
-        val variationsAvailableWidth = availableWidth - fixedButtonsTotalWidth - fixedButtonsSpacing
+        val variationToLeftGap = if (hasLeftButtons && variationCount > 0) spacingBetweenButtons else 0
+        val variationToRightGap = if (hasRightButtons && variationCount > 0) spacingBetweenButtons else 0
+        val variationsAvailableWidth = availableWidth -
+            fixedButtonsTotalWidth -
+            fixedButtonsSpacing
 
         val baseButtonWidth = if (variationCount > 0) {
             max(1, (variationsAvailableWidth - spacingBetweenButtons * (variationCount - 1)) / variationCount)
         } else {
             // If no variations, fall back to fixed button size to avoid division by zero
-            fixedButtonSize
+            fixedButtonWidth
         }
         val buttonWidth: Int
         val maxButtonWidth: Int
@@ -441,7 +465,10 @@ class VariationBarView(
             0,
             ViewGroup.LayoutParams.WRAP_CONTENT,
             1f
-        )
+        ).apply {
+            marginStart = variationToLeftGap
+            marginEnd = variationToRightGap
+        }
         val insertionIndex = leftButtonsContainer?.let { leftContainer ->
             if (containerView.indexOfChild(leftContainer) == -1) {
                 containerView.addView(leftContainer, 0)
@@ -469,7 +496,8 @@ class VariationBarView(
         // The factory handles all button-specific logic (callbacks, state, etc.)
         fun createAndAddButton(
             buttonId: StatusBarButtonId,
-            container: LinearLayout
+            container: LinearLayout,
+            isLastInGroup: Boolean
         ) {
             // Check if button already exists (for reuse)
             val existingButton = buttonViews[buttonId]
@@ -488,7 +516,7 @@ class VariationBarView(
                 }
             } else {
                 // Create new button using the factory
-                val result = registry.createButton(context, buttonId, fixedButtonSize, statusBarCallbacks)
+                val result = registry.createButton(context, buttonId, fixedButtonHeight, statusBarCallbacks)
                     ?: return
                 button = result.view
                 badge = result.badgeView
@@ -524,7 +552,7 @@ class VariationBarView(
                 }
                 (frame.parent as? ViewGroup)?.removeView(frame)
                 frame.removeAllViews()
-                frame.addView(button, FrameLayout.LayoutParams(fixedButtonSize, fixedButtonSize))
+                frame.addView(button, FrameLayout.LayoutParams(fixedButtonWidth, fixedButtonHeight))
                 
                 badge?.let { badgeView ->
                     (badgeView.parent as? ViewGroup)?.removeView(badgeView)
@@ -553,8 +581,8 @@ class VariationBarView(
             }
             
             // Set layout params with consistent margins (same as variation buttons)
-            val params = LinearLayout.LayoutParams(fixedButtonSize, fixedButtonSize).apply {
-                marginEnd = spacingBetweenButtons
+            val params = LinearLayout.LayoutParams(fixedButtonWidth, fixedButtonHeight).apply {
+                marginEnd = if (isLastInGroup) 0 else spacingBetweenButtons
             }
             viewToAdd.layoutParams = params
             container.addView(viewToAdd)
@@ -573,14 +601,25 @@ class VariationBarView(
         // Build left side buttons
         leftButtonsContainer?.removeAllViews()
         val leftButtons = enabledButtons.filter { it.position == StatusBarButtonPosition.LEFT }
-        for (config in leftButtons) {
-            leftButtonsContainer?.let { createAndAddButton(config.id, it) }
+        leftButtons.forEachIndexed { index, config ->
+            val isLast = index == leftButtons.lastIndex
+            leftButtonsContainer?.let { createAndAddButton(config.id, it, isLast) }
         }
 
         val addCandidate = snapshot.addWordCandidate
-        for (variation in limitedVariations) {
+        for ((index, variation) in limitedVariations.withIndex()) {
             val isAddCandidate = addCandidate != null && variation.equals(addCandidate, ignoreCase = true)
-            val button = createVariationButton(variation, inputConnection, buttonWidth, maxButtonWidth, isStaticContent, isAddCandidate)
+            val isLast = index == limitedVariations.lastIndex
+            val button = createVariationButton(
+                variation,
+                inputConnection,
+                buttonWidth,
+                maxButtonWidth,
+                isStaticContent,
+                isAddCandidate,
+                isLast,
+                spacingBetweenButtons
+            )
             variationButtons.add(button)
             variationsRow.addView(button)
         }
@@ -590,8 +629,9 @@ class VariationBarView(
         buttonsContainerView.removeAllViews()
         val rightButtons = enabledButtons.filter { it.position == StatusBarButtonPosition.RIGHT }
             .sortedBy { it.order }
-        for (config in rightButtons) {
-            createAndAddButton(config.id, buttonsContainerView)
+        rightButtons.forEachIndexed { index, config ->
+            val isLast = index == rightButtons.lastIndex
+            createAndAddButton(config.id, buttonsContainerView, isLast)
         }
 
         if (variationsChanged) {
@@ -1002,7 +1042,9 @@ class VariationBarView(
         buttonWidth: Int,
         maxButtonWidth: Int,
         isStatic: Boolean,
-        isAddCandidate: Boolean
+        isAddCandidate: Boolean,
+        isLast: Boolean,
+        spacingBetweenButtons: Int
     ): TextView {
         val dp2 = TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP,
@@ -1012,11 +1054,6 @@ class VariationBarView(
         val dp4 = TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP,
             4f,
-            context.resources.displayMetrics
-        ).toInt()
-        val dp3 = TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP,
-            3f,
             context.resources.displayMetrics
         ).toInt()
 
@@ -1068,7 +1105,7 @@ class VariationBarView(
             }
             background = stateListDrawable
             layoutParams = LinearLayout.LayoutParams(calculatedWidth, buttonHeight).apply {
-                marginEnd = dp3
+                marginEnd = if (isLast) 0 else spacingBetweenButtons
             }
             isClickable = true
             isFocusable = true

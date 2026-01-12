@@ -259,7 +259,7 @@ fun CustomizationSettingsScreen(
                                 )
                             }
                         }
-                        
+                    
                         // Status Bar Buttons Settings
                         Surface(
                             modifier = Modifier

@@ -322,5 +322,23 @@
     <string name="installed_dictionaries_import_invalid_format">Բառարանի ձևաչափը սխալ է</string>
     <string name="installed_dictionaries_import_failed">Ներմուծումը ձախողվեց</string>
     <string name="installed_dictionaries_imported_badge">Ներմուծված</string>
+    
+    <!-- Status Bar Buttons Configuration -->
+    <string name="status_bar_buttons_title">Պանելի Կոճակներ</string>
+    <string name="status_bar_buttons_description">Կարգավորել կոճակներ</string>
+    <string name="status_bar_slot_left">Ձախ Բաժին</string>
+    <string name="status_bar_slot_right_1">Աջ Բաժին 1</string>
+    <string name="status_bar_slot_right_2">Աջ Բաժին 2</string>
+    <string name="status_bar_button_none">Ոչինչ</string>
+    <string name="status_bar_button_none_description">Դատարկ</string>
+    <string name="status_bar_button_clipboard">Պահեստարան</string>
+    <string name="status_bar_button_clipboard_description">Պատմություն</string>
+    <string name="status_bar_button_microphone">Միկրոֆոն</string>
+    <string name="status_bar_button_microphone_description">Ձայն</string>
+    <string name="status_bar_button_emoji">Էմոջի</string>
+    <string name="status_bar_button_emoji_description">Ընտրիչ</string>
+    <string name="status_bar_button_language">Լեզու</string>
+    <string name="status_bar_button_language_description">Փոխել</string>
+    <string name="status_bar_buttons_reset">Վերակայել</string>
 </resources>
 

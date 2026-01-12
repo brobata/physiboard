@@ -471,4 +471,22 @@
     <string name="trackpad_tutorial_complete">Rozumiem</string>
     <string name="trackpad_tutorial_next">Dalej</string>
     <string name="trackpad_tutorial_previous">Wstecz</string>
+    
+    <!-- Status Bar Buttons Configuration -->
+    <string name="status_bar_buttons_title">Przyciski Paska</string>
+    <string name="status_bar_buttons_description">Personalizuj przyciski</string>
+    <string name="status_bar_slot_left">Slot Lewy</string>
+    <string name="status_bar_slot_right_1">Slot Prawy 1</string>
+    <string name="status_bar_slot_right_2">Slot Prawy 2</string>
+    <string name="status_bar_button_none">Brak</string>
+    <string name="status_bar_button_none_description">Pusty</string>
+    <string name="status_bar_button_clipboard">Schowek</string>
+    <string name="status_bar_button_clipboard_description">Historia</string>
+    <string name="status_bar_button_microphone">Mikrofon</string>
+    <string name="status_bar_button_microphone_description">Głos</string>
+    <string name="status_bar_button_emoji">Emoji</string>
+    <string name="status_bar_button_emoji_description">Wybór</string>
+    <string name="status_bar_button_language">Język</string>
+    <string name="status_bar_button_language_description">Zmień</string>
+    <string name="status_bar_buttons_reset">Resetuj</string>
 </resources>
