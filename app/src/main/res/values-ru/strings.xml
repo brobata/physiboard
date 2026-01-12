@@ -370,6 +370,10 @@
     <string name="status_bar_button_emoji_description">Выбор</string>
     <string name="status_bar_button_language">Язык</string>
     <string name="status_bar_button_language_description">Изменить</string>
+    <string name="status_bar_button_settings">Настройки</string>
+    <string name="status_bar_button_settings_description">Открыть настройки</string>
+    <string name="status_bar_button_symbols">Символы</string>
+    <string name="status_bar_button_symbols_description">Клавиатура символов</string>
     <string name="status_bar_buttons_reset">Сброс</string>
 </resources>
 

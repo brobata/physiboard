@@ -67,6 +67,13 @@ class CandidatesBarController(
             inputStatusBar.onEmojiPickerRequested = value
             candidatesStatusBar.onEmojiPickerRequested = value
         }
+    
+    var onSymbolsPageRequested: (() -> Unit)? = null
+        set(value) {
+            field = value
+            inputStatusBar.onSymbolsPageRequested = value
+            candidatesStatusBar.onSymbolsPageRequested = value
+        }
 
     fun getInputView(emojiMapText: String = ""): LinearLayout {
         return inputStatusBar.getOrCreateLayout(emojiMapText)

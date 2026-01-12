@@ -7,6 +7,8 @@ import it.palsoftware.pastiera.inputmethod.statusbar.button.ClipboardButtonFacto
 import it.palsoftware.pastiera.inputmethod.statusbar.button.EmojiButtonFactory
 import it.palsoftware.pastiera.inputmethod.statusbar.button.LanguageButtonFactory
 import it.palsoftware.pastiera.inputmethod.statusbar.button.MicrophoneButtonFactory
+import it.palsoftware.pastiera.inputmethod.statusbar.button.SettingsButtonFactory
+import it.palsoftware.pastiera.inputmethod.statusbar.button.SymbolsButtonFactory
 import it.palsoftware.pastiera.inputmethod.statusbar.button.StatusBarButtonFactory
 
 /**
@@ -36,6 +38,8 @@ class StatusBarButtonRegistry {
     private val microphoneFactory = MicrophoneButtonFactory()
     private val languageFactory = LanguageButtonFactory()
     private val emojiFactory = EmojiButtonFactory()
+    private val settingsFactory = SettingsButtonFactory()
+    private val symbolsFactory = SymbolsButtonFactory()
     
     init {
         // Register built-in button factories
@@ -43,6 +47,8 @@ class StatusBarButtonRegistry {
         factories[StatusBarButtonId.Microphone] = microphoneFactory
         factories[StatusBarButtonId.Language] = languageFactory
         factories[StatusBarButtonId.Emoji] = emojiFactory
+        factories[StatusBarButtonId.Settings] = settingsFactory
+        factories[StatusBarButtonId.Symbols] = symbolsFactory
     }
     
     /**
@@ -64,7 +70,7 @@ class StatusBarButtonRegistry {
      * @return true if the factory was removed, false if it wasn't registered or is built-in
      */
     fun unregister(id: StatusBarButtonId): Boolean {
-        if (id in listOf(StatusBarButtonId.Clipboard, StatusBarButtonId.Microphone, StatusBarButtonId.Language, StatusBarButtonId.Emoji)) {
+        if (id in listOf(StatusBarButtonId.Clipboard, StatusBarButtonId.Microphone, StatusBarButtonId.Language, StatusBarButtonId.Emoji, StatusBarButtonId.Settings, StatusBarButtonId.Symbols)) {
             return false // Cannot unregister built-in buttons
         }
         return factories.remove(id) != null
@@ -181,6 +187,8 @@ class StatusBarButtonRegistry {
             SettingsManager.STATUS_BAR_BUTTON_MICROPHONE -> StatusBarButtonId.Microphone
             SettingsManager.STATUS_BAR_BUTTON_EMOJI -> StatusBarButtonId.Emoji
             SettingsManager.STATUS_BAR_BUTTON_LANGUAGE -> StatusBarButtonId.Language
+            SettingsManager.STATUS_BAR_BUTTON_SETTINGS -> StatusBarButtonId.Settings
+            SettingsManager.STATUS_BAR_BUTTON_SYMBOLS -> StatusBarButtonId.Symbols
             SettingsManager.STATUS_BAR_BUTTON_NONE -> null
             else -> null
         }

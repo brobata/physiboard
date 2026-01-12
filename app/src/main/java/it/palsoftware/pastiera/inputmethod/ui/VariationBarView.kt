@@ -72,6 +72,7 @@ class VariationBarView(
     var onLanguageSwitchRequested: (() -> Unit)? = null
     var onClipboardRequested: (() -> Unit)? = null
     var onEmojiPickerRequested: (() -> Unit)? = null
+    var onSymbolsPageRequested: (() -> Unit)? = null
     
     /**
      * Sets the microphone button active state (red pulsing background) during speech recognition.
@@ -489,6 +490,7 @@ class VariationBarView(
             onEmojiPickerRequested = onEmojiPickerRequested,
             onLanguageSwitchRequested = onLanguageSwitchRequested,
             onOpenSettings = { openSettings() },
+            onSymbolsPageRequested = onSymbolsPageRequested,
             onHapticFeedback = { NotificationHelper.triggerHapticFeedback(context) }
         )
         

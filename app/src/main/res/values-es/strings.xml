@@ -488,5 +488,9 @@
     <string name="status_bar_button_emoji_description">Selector</string>
     <string name="status_bar_button_language">Idioma</string>
     <string name="status_bar_button_language_description">Cambiar</string>
+    <string name="status_bar_button_settings">Ajustes</string>
+    <string name="status_bar_button_settings_description">Abrir ajustes</string>
+    <string name="status_bar_button_symbols">Símbolos</string>
+    <string name="status_bar_button_symbols_description">Teclado de símbolos</string>
     <string name="status_bar_buttons_reset">Restablecer</string>
 </resources>

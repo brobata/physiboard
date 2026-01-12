@@ -11,6 +11,8 @@ sealed class StatusBarButtonId(val key: String) {
     object Microphone : StatusBarButtonId("microphone")
     object Language : StatusBarButtonId("language")
     object Emoji : StatusBarButtonId("emoji")
+    object Settings : StatusBarButtonId("settings")
+    object Symbols : StatusBarButtonId("symbols")
     data class Custom(val customKey: String) : StatusBarButtonId(customKey)
 
     override fun equals(other: Any?): Boolean {
@@ -75,6 +77,9 @@ data class StatusBarCallbacks(
     
     /** Called when language button is long-pressed (opens settings) */
     val onOpenSettings: (() -> Unit)? = null,
+    
+    /** Called when symbols button is clicked */
+    val onSymbolsPageRequested: (() -> Unit)? = null,
     
     /** Called to trigger haptic feedback */
     val onHapticFeedback: (() -> Unit)? = null

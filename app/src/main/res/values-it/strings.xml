@@ -526,5 +526,9 @@
     <string name="status_bar_button_emoji_description">Selettore</string>
     <string name="status_bar_button_language">Lingua</string>
     <string name="status_bar_button_language_description">Cambia</string>
+    <string name="status_bar_button_settings">Impostazioni</string>
+    <string name="status_bar_button_settings_description">Apri impostazioni</string>
+    <string name="status_bar_button_symbols">Simboli</string>
+    <string name="status_bar_button_symbols_description">Tastiera simboli</string>
     <string name="status_bar_buttons_reset">Reset</string>
 </resources>

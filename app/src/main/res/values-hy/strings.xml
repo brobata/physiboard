@@ -339,6 +339,10 @@
     <string name="status_bar_button_emoji_description">Ընտրիչ</string>
     <string name="status_bar_button_language">Լեզու</string>
     <string name="status_bar_button_language_description">Փոխել</string>
+    <string name="status_bar_button_settings">Կարգավորումներ</string>
+    <string name="status_bar_button_settings_description">Բացել կարգավորումները</string>
+    <string name="status_bar_button_symbols">Սիմվոլներ</string>
+    <string name="status_bar_button_symbols_description">Սիմվոլների ստեղնաշար</string>
     <string name="status_bar_buttons_reset">Վերակայել</string>
 </resources>
 

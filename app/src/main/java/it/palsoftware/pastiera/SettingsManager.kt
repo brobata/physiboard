@@ -64,6 +64,8 @@ object SettingsManager {
     const val STATUS_BAR_BUTTON_MICROPHONE = "microphone"
     const val STATUS_BAR_BUTTON_EMOJI = "emoji"
     const val STATUS_BAR_BUTTON_LANGUAGE = "language"
+    const val STATUS_BAR_BUTTON_SETTINGS = "settings"
+    const val STATUS_BAR_BUTTON_SYMBOLS = "symbols"
     
     // Default slot assignments
     private const val DEFAULT_SLOT_LEFT = STATUS_BAR_BUTTON_CLIPBOARD
@@ -1799,7 +1801,9 @@ object SettingsManager {
             STATUS_BAR_BUTTON_CLIPBOARD,
             STATUS_BAR_BUTTON_EMOJI,
             STATUS_BAR_BUTTON_MICROPHONE,
-            STATUS_BAR_BUTTON_LANGUAGE
+            STATUS_BAR_BUTTON_LANGUAGE,
+            STATUS_BAR_BUTTON_SETTINGS,
+            STATUS_BAR_BUTTON_SYMBOLS
         )
     }
 }

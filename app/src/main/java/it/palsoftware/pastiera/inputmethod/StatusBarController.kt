@@ -101,6 +101,12 @@ class StatusBarController(
             variationBarView?.onEmojiPickerRequested = value
         }
     
+    var onSymbolsPageRequested: (() -> Unit)? = null
+        set(value) {
+            field = value
+            variationBarView?.onSymbolsPageRequested = value
+        }
+    
     // Callback for speech recognition state changes (active/inactive)
     var onSpeechRecognitionStateChanged: ((Boolean) -> Unit)? = null
         set(value) {

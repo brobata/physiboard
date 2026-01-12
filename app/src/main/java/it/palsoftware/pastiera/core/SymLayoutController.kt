@@ -100,6 +100,20 @@ class SymLayoutController(
         return true
     }
 
+    fun openSymbolsPage(): Boolean {
+        val symbolsPageValue = SymPage.SYMBOLS.toPrefValue()
+        
+        // Toggle behavior: open if closed, close if already open
+        // Always allow direct access to symbols page, even if disabled in cycling settings
+        if (symPage == symbolsPageValue) {
+            closeSymPage()
+            return false
+        }
+        symPage = symbolsPageValue
+        persistSymPage()
+        return true
+    }
+
     fun reset() {
         symPage = 0
         persistSymPage()
@@ -240,8 +254,8 @@ class SymLayoutController(
     private fun alignSymPageToConfig(config: SymPagesConfig = SettingsManager.getSymPagesConfig(context)) {
         val allowedValues = buildActivePages(config).map { it.toPrefValue() }
         if (allowedValues.isEmpty()) {
-            if (symPage != 0 && symPage != 3 && symPage != 4) {
-                // Allow clipboard page (3) and emoji picker page (4) even if all cycling pages are disabled
+            if (symPage != 0 && symPage != 2 && symPage != 3 && symPage != 4) {
+                // Allow symbols page (2), clipboard page (3) and emoji picker page (4) even if all cycling pages are disabled
                 symPage = 0
                 persistSymPage()
             }
@@ -252,8 +266,8 @@ class SymLayoutController(
             return
         }
 
-        // Allow clipboard page (3) and emoji picker page (4) to remain active even if disabled in cycling settings
-        if (symPage == 3 || symPage == 4) {
+        // Allow symbols page (2), clipboard page (3) and emoji picker page (4) to remain active even if disabled in cycling settings
+        if (symPage == 2 || symPage == 3 || symPage == 4) {
             return
         }
 

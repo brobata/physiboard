@@ -578,5 +578,9 @@
     <string name="status_bar_button_emoji_description">Emoji picker</string>
     <string name="status_bar_button_language">Language</string>
     <string name="status_bar_button_language_description">Switch language</string>
+    <string name="status_bar_button_settings">Settings</string>
+    <string name="status_bar_button_settings_description">Open settings</string>
+    <string name="status_bar_button_symbols">Symbols</string>
+    <string name="status_bar_button_symbols_description">Symbols keyboard</string>
     <string name="status_bar_buttons_reset">Reset</string>
 </resources>

@@ -593,6 +593,10 @@
     <string name="status_bar_button_emoji_description">Sélecteur</string>
     <string name="status_bar_button_language">Langue</string>
     <string name="status_bar_button_language_description">Changer</string>
+    <string name="status_bar_button_settings">Paramètres</string>
+    <string name="status_bar_button_settings_description">Ouvrir les paramètres</string>
+    <string name="status_bar_button_symbols">Symboles</string>
+    <string name="status_bar_button_symbols_description">Clavier de symboles</string>
     <string name="status_bar_buttons_reset">Réinitialiser</string>
 </resources>
 
