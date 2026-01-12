@@ -8,6 +8,7 @@ import android.graphics.drawable.ColorDrawable
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
+import android.view.View.MeasureSpec
 import android.view.ViewGroup
 import android.view.inputmethod.InputConnection
 import android.widget.FrameLayout
@@ -17,8 +18,9 @@ import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.PopupWindow
-import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import android.content.res.Configuration
 import it.palsoftware.pastiera.R
@@ -56,16 +58,26 @@ class EmojiPickerView(
     private val emojiSize = dpToPx(48f)
     private val spacing = dpToPx(4f)
     private val smallPadding = dpToPx(8f)
+    private val recentsApplyTopThreshold = 4
 
     // Data for sections
     private var sectionItems: List<SectionItem> = emptyList()
+    private var itemCategoryIds: List<String> = emptyList()
     private var headerPositions: Map<String, Int> = emptyMap()
     private var selectedCategoryId: String? = null
     private var isTabClickScroll = false
+    private var pendingRecentsRefresh = false
+    private var pendingRecentsRefreshRequiresTop = false
+    private var pendingRecentsRefreshRequiresNotRecents = false
+    private var scrollState = RecyclerView.SCROLL_STATE_IDLE
 
     // Adapter
     private val sectionAdapter: SectionAdapter
     private val columns: Int
+    private var regularCategories: List<EmojiRepository.EmojiCategory> = emptyList()
+    private val selectedTabBackground = createTabBackground(true)
+    private val unselectedTabBackground = createTabBackground(false)
+    private var tabCategoryIds: List<String> = emptyList()
 
     init {
         setBackgroundColor(Color.TRANSPARENT)
@@ -110,7 +122,8 @@ class EmojiPickerView(
                         outRect.set(0, spacing, 0, spacing)
                     }
                     VIEW_TYPE_EMOJI -> {
-                        val column = (pos - sectionAdapter.firstEmojiPositionBefore(pos)) % columns
+                        val layoutParams = view.layoutParams as? GridLayoutManager.LayoutParams
+                        val column = layoutParams?.spanIndex ?: 0
                         outRect.left = if (column == 0) 0 else spacing / 2
                         outRect.right = if (column == columns - 1) 0 else spacing / 2
                         outRect.top = spacing / 2
@@ -120,17 +133,13 @@ class EmojiPickerView(
             }
         })
 
-        // Scroll listener to sync tabs and refresh recents at top
+        // Scroll listener to sync tabs and apply pending recents updates
         recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+                scrollState = newState
                 if (newState == RecyclerView.SCROLL_STATE_IDLE) {
                     isTabClickScroll = false
-                    // Refresh recents when user stops scrolling at the top
-                    val lm = recyclerView.layoutManager as? GridLayoutManager ?: return
-                    val firstVisible = lm.findFirstVisibleItemPosition()
-                    if (firstVisible <= 5) { // Near top = recents area
-                        refreshRecentsFromStorage()
-                    }
+                    maybeApplyPendingRecentsRefresh()
                 }
             }
 
@@ -139,13 +148,9 @@ class EmojiPickerView(
                 val lm = recyclerView.layoutManager as? GridLayoutManager ?: return
                 val firstVisible = lm.findFirstVisibleItemPosition()
                 if (firstVisible == RecyclerView.NO_POSITION) return
-                val header = sectionItems.getOrNull(firstVisible) as? SectionItem.Header
-                    ?: run {
-                        val headerPos = (firstVisible downTo 0).firstOrNull { sectionItems[it] is SectionItem.Header }
-                        if (headerPos != null) sectionItems[headerPos] as? SectionItem.Header else null
-                    } ?: return
-                if (header.categoryId != selectedCategoryId) {
-                    selectedCategoryId = header.categoryId
+                val categoryId = itemCategoryIds.getOrNull(firstVisible) ?: return
+                if (categoryId != selectedCategoryId) {
+                    selectedCategoryId = categoryId
                     updateTabsSelection()
                 }
             }
@@ -215,6 +220,17 @@ class EmojiPickerView(
     fun refresh() {
         loadCategories()
     }
+    
+    /**
+     * Scrolls to the top of the emoji picker.
+     * Recents updates are applied only when safe for UX.
+     */
+    fun scrollToTop() {
+        recyclerView.post {
+            recyclerView.scrollToPosition(0)
+            // Don't force a refresh here to avoid UI jumps while scrolling.
+        }
+    }
 
     private fun loadCategories() {
         // Cancel any previous loading job to avoid race conditions
@@ -228,6 +244,7 @@ class EmojiPickerView(
             try {
                 val recentCategory = withContext(Dispatchers.IO) { RecentEmojiManager.getRecentEmojiCategory(context) }
                 val regularCategories = withContext(Dispatchers.IO) { EmojiRepository.getEmojiCategories(context) }
+                this@EmojiPickerView.regularCategories = regularCategories
 
                 val allCategories = mutableListOf<EmojiRepository.EmojiCategory>()
                 if (recentCategory != null) allCategories.add(recentCategory)
@@ -259,24 +276,28 @@ class EmojiPickerView(
 
     private fun buildSections(categories: List<EmojiRepository.EmojiCategory>) {
         val items = mutableListOf<SectionItem>()
-        val headers = mutableMapOf<String, Int>()
+        val categoryIds = ArrayList<String>()
 
         categories.forEach { category ->
-            headers[category.id] = items.size
             val title = category.displayNameRes?.let { context.getString(it) } ?: category.id
             items.add(SectionItem.Header(category.id, title))
+            categoryIds.add(category.id)
             category.emojis.forEach { emojiEntry ->
                 items.add(SectionItem.Emoji(category.id, emojiEntry))
+                categoryIds.add(category.id)
             }
         }
 
-        sectionItems = items
-        headerPositions = headers
+        rebuildIndexCaches(items, categoryIds)
         sectionAdapter.submitList(items)
     }
 
     private fun updateTabs(categories: List<EmojiRepository.EmojiCategory>) {
         tabRow.removeAllViews()
+        tabCategoryIds = categories.map { it.id }
+        if (selectedCategoryId !in tabCategoryIds) {
+            selectedCategoryId = tabCategoryIds.firstOrNull()
+        }
         val tabHeight = dpToPx(32f)
         categories.forEach { category ->
             val iconRes = EmojiRepository.getCategoryIconRes(category.id)
@@ -287,7 +308,7 @@ class EmojiPickerView(
                 contentDescription = label
                 scaleType = ImageView.ScaleType.CENTER_INSIDE
                 setColorFilter(Color.WHITE)
-                background = createTabBackground(isSelected)
+                background = if (isSelected) selectedTabBackground else unselectedTabBackground
                 // Icon always visible (alpha 1), background changes
                 val pad = dpToPx(4f) // Minimal padding
                 setPadding(pad, pad, pad, pad)
@@ -306,7 +327,7 @@ class EmojiPickerView(
                     (recyclerView.layoutManager as? GridLayoutManager)?.scrollToPositionWithOffset(headerPos, 0)
                     // Refresh recents when clicking on recents tab
                     if (category.id == EmojiRepository.RECENTS_CATEGORY_ID) {
-                        refreshRecentsFromStorage()
+                        requestRecentsRefresh(requireTop = true, requireNotRecents = false)
                     }
                 }
             }
@@ -318,25 +339,37 @@ class EmojiPickerView(
     private fun updateTabsSelection() {
         for (i in 0 until tabRow.childCount) {
             val view = tabRow.getChildAt(i) as? ImageView ?: continue
-            val header = sectionItems.asSequence().filterIsInstance<SectionItem.Header>().elementAtOrNull(i)
-            val isSelected = header?.categoryId == selectedCategoryId
+            val categoryId = tabCategoryIds.getOrNull(i)
+            val isSelected = categoryId == selectedCategoryId
             // Icon always visible, only background changes
-            view.background = createTabBackground(isSelected)
+            view.background = if (isSelected) selectedTabBackground else unselectedTabBackground
         }
     }
 
     private fun onEmojiSelected(emoji: String, categoryId: String) {
         currentInputConnection?.commitText(emoji, 1)
-        // Just save to storage - recents will be refreshed when user scrolls to top
-        RecentEmojiManager.addRecentEmoji(context, emoji)
+        // Save to storage and refresh recents when safe for UX.
+        val requiresNotRecents = categoryId == EmojiRepository.RECENTS_CATEGORY_ID
+        coroutineScope.launch(Dispatchers.IO) {
+            val changed = RecentEmojiManager.addRecentEmoji(
+                context,
+                emoji,
+                moveToTopWhenExists = true
+            )
+            if (changed) {
+                withContext(Dispatchers.Main) {
+                    requestRecentsRefresh(requireTop = !requiresNotRecents, requireNotRecents = requiresNotRecents)
+                }
+            }
+        }
     }
 
     /**
      * Simple refresh of recents from storage.
-     * Called when user scrolls to top of the list.
+     * Applies updates only when safe for UX.
      * Compares stored vs displayed recents and updates only if different.
      */
-    private fun refreshRecentsFromStorage() {
+    private fun refreshRecentsFromStorage(allowInsertOrRemove: Boolean) {
         coroutineScope.launch {
             val recentCategory = withContext(Dispatchers.IO) {
                 RecentEmojiManager.getRecentEmojiCategory(context)
@@ -346,13 +379,45 @@ class EmojiPickerView(
 
             // Case 1: Recents in storage but not displayed -> full reload
             if (recentsHeaderIndex == null && recentCategory != null) {
-                loadCategories()
+                if (!allowInsertOrRemove) {
+                    markRecentsRefreshPending(requireTop = true, requireNotRecents = false)
+                    return@launch
+                }
+                val anchor = captureScrollAnchor()
+                val newRecentsItems = buildRecentsItems(recentCategory)
+                val newItems = newRecentsItems + sectionItems
+                rebuildIndexCaches(newItems)
+                sectionAdapter.submitList(newItems) {
+                    anchor?.let { restoreScrollAnchor(it, newRecentsItems.size) }
+                }
+                updateTabs(buildAllCategories(recentCategory))
                 return@launch
             }
 
             // Case 2: No recents in storage but displayed -> full reload
             if (recentsHeaderIndex != null && recentCategory == null) {
-                loadCategories()
+                if (!allowInsertOrRemove) {
+                    markRecentsRefreshPending(requireTop = true, requireNotRecents = false)
+                    return@launch
+                }
+                val anchor = captureScrollAnchor()
+                val nextHeaderIndex = sectionItems.withIndex()
+                    .drop(recentsHeaderIndex + 1)
+                    .firstOrNull { (_, item) -> item is SectionItem.Header }?.index
+                    ?: sectionItems.size
+                val removedCount = nextHeaderIndex - recentsHeaderIndex
+                val newItems = sectionItems.toMutableList()
+                repeat(removedCount) {
+                    newItems.removeAt(recentsHeaderIndex)
+                }
+                rebuildIndexCaches(newItems)
+                if (selectedCategoryId == EmojiRepository.RECENTS_CATEGORY_ID) {
+                    selectedCategoryId = itemCategoryIds.firstOrNull()
+                }
+                sectionAdapter.submitList(newItems) {
+                    anchor?.let { restoreScrollAnchor(it, -removedCount) }
+                }
+                updateTabs(buildAllCategories(null))
                 return@launch
             }
 
@@ -372,13 +437,7 @@ class EmojiPickerView(
 
                 // Only update if different
                 if (displayedRecents != storedRecents) {
-                    val recentsTitle = recentCategory.displayNameRes?.let { context.getString(it) }
-                        ?: EmojiRepository.RECENTS_CATEGORY_ID
-                    val newRecentsItems = mutableListOf<SectionItem>()
-                    newRecentsItems.add(SectionItem.Header(EmojiRepository.RECENTS_CATEGORY_ID, recentsTitle))
-                    recentCategory.emojis.forEach { entry ->
-                        newRecentsItems.add(SectionItem.Emoji(EmojiRepository.RECENTS_CATEGORY_ID, entry))
-                    }
+                    val newRecentsItems = buildRecentsItems(recentCategory)
 
                     val newItems = sectionItems.toMutableList()
                     for (i in recentsHeaderIndex until nextHeaderIndex) {
@@ -386,16 +445,11 @@ class EmojiPickerView(
                     }
                     newItems.addAll(recentsHeaderIndex, newRecentsItems)
 
-                    val newHeaders = mutableMapOf<String, Int>()
-                    newItems.forEachIndexed { index, item ->
-                        if (item is SectionItem.Header) {
-                            newHeaders[item.categoryId] = index
-                        }
+                    rebuildIndexCaches(newItems)
+                    val anchor = if (isAtAbsoluteTop()) null else captureScrollAnchor()
+                    sectionAdapter.submitList(newItems) {
+                        anchor?.let { restoreScrollAnchor(it, 0) }
                     }
-
-                    sectionItems = newItems
-                    headerPositions = newHeaders
-                    sectionAdapter.submitList(newItems)
                 }
             }
         }
@@ -464,6 +518,11 @@ class EmojiPickerView(
             container.addView(textView)
         }
 
+        container.measure(
+            MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED),
+            MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
+        )
+
         popup = PopupWindow(
             container,
             WRAP_CONTENT,
@@ -479,8 +538,18 @@ class EmojiPickerView(
         // Position popup above the anchor
         val location = IntArray(2)
         anchor.getLocationInWindow(location)
-        val xOffset = -container.width / 2 + anchor.width / 2
-        popup.showAsDropDown(anchor, xOffset, -anchor.height * 2)
+        val windowWidth = context.resources.displayMetrics.widthPixels
+        val popupWidth = container.measuredWidth
+        val popupHeight = container.measuredHeight
+        val anchorX = location[0]
+        val anchorY = location[1]
+        val desiredX = anchorX + (anchor.width - popupWidth) / 2
+        val clampedX = desiredX.coerceIn(0, windowWidth - popupWidth)
+        val xOffset = clampedX - anchorX
+        val desiredYOffset = -(popupHeight + anchor.height)
+        val minYOffset = -(anchorY + anchor.height)
+        val yOffset = maxOf(desiredYOffset, minYOffset)
+        popup.showAsDropDown(anchor, xOffset, yOffset)
     }
 
     private fun dpToPx(dp: Float): Int {
@@ -504,9 +573,8 @@ class EmojiPickerView(
         coroutineScope.cancel()
     }
 
-    private inner class SectionAdapter(private val columns: Int) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
-        private var items: List<SectionItem> = emptyList()
-
+    private inner class SectionAdapter(private val columns: Int) :
+        ListAdapter<SectionItem, RecyclerView.ViewHolder>(SectionItemDiffCallback()) {
         val spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
             override fun getSpanSize(position: Int): Int {
                 return when (getItemViewType(position)) {
@@ -517,7 +585,7 @@ class EmojiPickerView(
         }
 
         override fun getItemViewType(position: Int): Int {
-            return when (items[position]) {
+            return when (getItem(position)) {
                 is SectionItem.Header -> VIEW_TYPE_HEADER
                 is SectionItem.Emoji -> VIEW_TYPE_EMOJI
             }
@@ -548,10 +616,8 @@ class EmojiPickerView(
             }
         }
 
-        override fun getItemCount(): Int = items.size
-
         override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
-            when (val item = items[position]) {
+            when (val item = getItem(position)) {
                 is SectionItem.Header -> {
                     // Nothing to bind - it's just a spacer
                 }
@@ -571,18 +637,6 @@ class EmojiPickerView(
                 }
             }
         }
-
-        fun submitList(newItems: List<SectionItem>) {
-            items = newItems
-            notifyDataSetChanged()
-        }
-
-        fun firstEmojiPositionBefore(position: Int): Int {
-            for (i in position downTo 0) {
-                if (items[i] is SectionItem.Header) return i + 1
-            }
-            return 0
-        }
     }
 
     private class HeaderViewHolder(view: View) : RecyclerView.ViewHolder(view)
@@ -593,9 +647,127 @@ class EmojiPickerView(
         data class Emoji(val categoryId: String, val entry: EmojiRepository.EmojiEntry) : SectionItem()
     }
 
+    private class SectionItemDiffCallback : DiffUtil.ItemCallback<SectionItem>() {
+        override fun areItemsTheSame(oldItem: SectionItem, newItem: SectionItem): Boolean {
+            return when {
+                oldItem is SectionItem.Header && newItem is SectionItem.Header ->
+                    oldItem.categoryId == newItem.categoryId
+                oldItem is SectionItem.Emoji && newItem is SectionItem.Emoji ->
+                    oldItem.categoryId == newItem.categoryId && oldItem.entry.base == newItem.entry.base
+                else -> false
+            }
+        }
+
+        override fun areContentsTheSame(oldItem: SectionItem, newItem: SectionItem): Boolean {
+            return oldItem == newItem
+        }
+    }
+
+    private data class ScrollAnchor(val position: Int, val offset: Int)
+
+    private fun rebuildIndexCaches(items: List<SectionItem>, categoryIds: List<String>? = null) {
+        val headers = mutableMapOf<String, Int>()
+        val ids = categoryIds?.toMutableList() ?: ArrayList(items.size)
+        if (categoryIds == null) {
+            items.forEach { item ->
+                ids.add(item.categoryId())
+            }
+        }
+        items.forEachIndexed { index, item ->
+            if (item is SectionItem.Header) {
+                headers[item.categoryId] = index
+            }
+        }
+        sectionItems = items
+        headerPositions = headers
+        itemCategoryIds = ids
+    }
+
+    private fun buildRecentsItems(recentCategory: EmojiRepository.EmojiCategory): List<SectionItem> {
+        val recentsTitle = recentCategory.displayNameRes?.let { context.getString(it) }
+            ?: EmojiRepository.RECENTS_CATEGORY_ID
+        val items = ArrayList<SectionItem>(recentCategory.emojis.size + 1)
+        items.add(SectionItem.Header(EmojiRepository.RECENTS_CATEGORY_ID, recentsTitle))
+        recentCategory.emojis.forEach { entry ->
+            items.add(SectionItem.Emoji(EmojiRepository.RECENTS_CATEGORY_ID, entry))
+        }
+        return items
+    }
+
+    private fun buildAllCategories(recentCategory: EmojiRepository.EmojiCategory?): List<EmojiRepository.EmojiCategory> {
+        return if (recentCategory == null) {
+            regularCategories
+        } else {
+            listOf(recentCategory) + regularCategories
+        }
+    }
+
+    private fun captureScrollAnchor(): ScrollAnchor? {
+        val lm = recyclerView.layoutManager as? GridLayoutManager ?: return null
+        val firstVisible = lm.findFirstVisibleItemPosition()
+        if (firstVisible == RecyclerView.NO_POSITION) return null
+        val topView = recyclerView.getChildAt(0)
+        val offset = topView?.top ?: 0
+        return ScrollAnchor(firstVisible, offset)
+    }
+
+    private fun restoreScrollAnchor(anchor: ScrollAnchor, positionDelta: Int) {
+        val lm = recyclerView.layoutManager as? GridLayoutManager ?: return
+        val targetPosition = (anchor.position + positionDelta).coerceAtLeast(0)
+        if (targetPosition >= sectionAdapter.itemCount) return
+        lm.scrollToPositionWithOffset(targetPosition, anchor.offset)
+    }
+
+    private fun requestRecentsRefresh(requireTop: Boolean, requireNotRecents: Boolean) {
+        markRecentsRefreshPending(requireTop, requireNotRecents)
+        maybeApplyPendingRecentsRefresh()
+    }
+
+    private fun markRecentsRefreshPending(requireTop: Boolean, requireNotRecents: Boolean) {
+        pendingRecentsRefresh = true
+        pendingRecentsRefreshRequiresTop = pendingRecentsRefreshRequiresTop || requireTop
+        pendingRecentsRefreshRequiresNotRecents = pendingRecentsRefreshRequiresNotRecents || requireNotRecents
+    }
+
+    private fun maybeApplyPendingRecentsRefresh() {
+        if (!pendingRecentsRefresh) return
+        if (scrollState != RecyclerView.SCROLL_STATE_IDLE) return
+        val requiresNotRecents = pendingRecentsRefreshRequiresNotRecents
+        val requiresTop = pendingRecentsRefreshRequiresTop && !requiresNotRecents
+        if (requiresTop && !isNearTop()) return
+        if (requiresNotRecents &&
+            selectedCategoryId == EmojiRepository.RECENTS_CATEGORY_ID) {
+            return
+        }
+        pendingRecentsRefresh = false
+        pendingRecentsRefreshRequiresTop = false
+        pendingRecentsRefreshRequiresNotRecents = false
+        refreshRecentsFromStorage(allowInsertOrRemove = isNearTop())
+    }
+
+    private fun isNearTop(): Boolean {
+        val lm = recyclerView.layoutManager as? GridLayoutManager ?: return false
+        val firstVisible = lm.findFirstVisibleItemPosition()
+        return firstVisible != RecyclerView.NO_POSITION && firstVisible <= recentsApplyTopThreshold
+    }
+
+    private fun isAtAbsoluteTop(): Boolean {
+        val lm = recyclerView.layoutManager as? GridLayoutManager ?: return false
+        val firstVisible = lm.findFirstVisibleItemPosition()
+        if (firstVisible != 0) return false
+        val firstView = lm.findViewByPosition(0) ?: return false
+        return firstView.top >= recyclerView.paddingTop
+    }
+
+    private fun SectionItem.categoryId(): String {
+        return when (this) {
+            is SectionItem.Header -> categoryId
+            is SectionItem.Emoji -> categoryId
+        }
+    }
+
     companion object {
         private const val VIEW_TYPE_HEADER = 0
         private const val VIEW_TYPE_EMOJI = 1
     }
 }
-

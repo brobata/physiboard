@@ -16,19 +16,24 @@ object RecentEmojiManager {
     private const val MAX_RECENT_EMOJIS = 40
 
     /**
-     * Adds an emoji to the recent list if it's not already present.
-     * If the emoji is already in the list, it maintains its current position.
+     * Adds an emoji to the recent list.
+     * If the emoji is already in the list, it can be moved to the top.
      * If not present, it's added at the top (most recent first).
-     * @return true if the emoji was added (new), false if it was already present
+     * @return true if the list changed, false otherwise
      */
-    fun addRecentEmoji(context: Context, emoji: String): Boolean {
+    fun addRecentEmoji(context: Context, emoji: String, moveToTopWhenExists: Boolean = true): Boolean {
         if (emoji.isBlank()) return false
 
         val currentList = getRecentEmojis(context, MAX_RECENT_EMOJIS)
 
-        // If emoji is already present, don't do anything (maintain position)
-        if (currentList.contains(emoji)) {
-            return false
+        val existingIndex = currentList.indexOf(emoji)
+        if (existingIndex >= 0) {
+            if (!moveToTopWhenExists || existingIndex == 0) {
+                return false
+            }
+            val updatedList = listOf(emoji) + currentList.filterIndexed { index, _ -> index != existingIndex }
+            saveRecentEmojis(context, updatedList)
+            return true
         }
 
         // Add new emoji at the top
@@ -113,4 +118,3 @@ object RecentEmojiManager {
     }
 
 }
-

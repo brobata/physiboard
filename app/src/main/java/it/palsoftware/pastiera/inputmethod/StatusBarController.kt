@@ -480,16 +480,20 @@ class StatusBarController(
 
         // Reuse the same view to avoid flicker caused by removeAllViews()/recreate on each status update.
         val view = emojiPickerView ?: EmojiPickerView(context).also { emojiPickerView = it }
-        if (view.parent !== container) {
+        val wasJustAdded = view.parent !== container
+        if (wasJustAdded) {
             container.removeAllViews()
             emojiKeyButtons.clear()
             container.addView(view)
         }
         view.setInputConnection(inputConnection)
 
-        // Always refresh when switching to emoji picker to reload recents and reset scroll
+        // Only scroll to top when view is just added (first open or switching pages)
+        // Don't scroll if view is already in container (user is browsing)
         if (lastSymPageRendered != 4) {
-            view.refresh()
+            view.refresh() // First time or switching from another page
+        } else if (wasJustAdded) {
+            view.scrollToTop() // View was just added (happens when reopening after being removed)
         }
         lastSymPageRendered = 4
     }
@@ -1275,6 +1279,7 @@ class StatusBarController(
             }
             symShown = false
             wasSymActive = false
+            lastSymPageRendered = 0 // Reset when closing SYM page
         } else {
             emojiKeyboardView.visibility = View.GONE
             variationsWrapperView?.apply {
@@ -1288,6 +1293,7 @@ class StatusBarController(
             variationsBar?.showVariations(snapshotForVariations, inputConnection)
             symShown = false
             wasSymActive = false
+            lastSymPageRendered = 0 // Reset when closing SYM page
         }
     }
 
