@@ -5,6 +5,7 @@ import android.view.inputmethod.InputConnection
 import it.palsoftware.pastiera.core.AutoSpaceTracker
 import android.util.Log
 import java.io.File
+import java.text.Normalizer
 import org.json.JSONObject
 
 class AutoReplaceController(
@@ -95,6 +96,34 @@ class AutoReplaceController(
         return if (isPrefixOk && isRootOk) ApostropheSplit(prefix, root) else null
     }
 
+    private fun stripAccents(input: String): String {
+        return Normalizer.normalize(input, Normalizer.Form.NFD)
+            .replace("\\p{Mn}".toRegex(), "")
+    }
+
+    private fun isAccentOnlyVariant(input: String, candidate: String): Boolean {
+        if (input.equals(candidate, ignoreCase = true)) return false
+        val normalizedInput = stripAccents(input.lowercase())
+        val normalizedCandidate = stripAccents(candidate.lowercase())
+        return normalizedInput == normalizedCandidate
+    }
+
+    private fun hasTrailingHardBoundary(textBeforeCursor: String): Boolean {
+        var i = textBeforeCursor.length - 1
+        while (i >= 0) {
+            val normalized = it.palsoftware.pastiera.core.Punctuation.normalizeApostrophe(textBeforeCursor[i])
+            if (normalized.isWhitespace() || normalized in it.palsoftware.pastiera.core.Punctuation.BOUNDARY) {
+                i--
+                continue
+            }
+            if (normalized.isLetterOrDigit() || normalized == '\'') {
+                return false
+            }
+            return true
+        }
+        return false
+    }
+
     fun handleBoundary(
         keyCode: Int,
         event: KeyEvent?,
@@ -115,16 +144,9 @@ class AutoReplaceController(
             return ReplaceResult(false, unicodeChar != 0)
         }
 
-        // If cursor is after non-letter/digit and not standard punctuation (e.g., emoji),
-        // skip auto-replace to avoid dropping trailing symbols.
-        val textBefore = inputConnection.getTextBeforeCursor(16, 0)?.toString().orEmpty()
-        val lastCharBeforeCursor = textBefore.lastOrNull()
-        val allowedPunctuation = it.palsoftware.pastiera.core.Punctuation.BOUNDARY + "-"
-        if (lastCharBeforeCursor != null &&
-            !lastCharBeforeCursor.isLetterOrDigit() &&
-            lastCharBeforeCursor !in allowedPunctuation &&
-            !lastCharBeforeCursor.isWhitespace()
-        ) {
+        // If there's a non-word symbol between the last word and cursor (e.g., emoji), skip.
+        val textBefore = inputConnection.getTextBeforeCursor(32, 0)?.toString().orEmpty()
+        if (hasTrailingHardBoundary(textBefore)) {
             tracker.onBoundaryReached(boundaryChar, inputConnection)
             return ReplaceResult(false, unicodeChar != 0)
         }
@@ -167,7 +189,8 @@ class AutoReplaceController(
         }
         
         // Safety checks for auto-replace
-        val minWordLength = 3 // Don't auto-correct words shorter than 3 characters
+        val isAccentVariant = top != null && isAccentOnlyVariant(word, top.candidate)
+        val minWordLength = if (isAccentVariant) 2 else 3 // Allow short accent-only fixes (e.g., "ja" -> "já")
         val maxLengthRatio = 1.25 // Don't auto-correct if replacement is >25% longer
         
         // Check if word has been rejected by user
@@ -176,11 +199,12 @@ class AutoReplaceController(
         
         // Check if word exists in dictionary
         val isKnownWord = repository.isKnownWord(lookupWord)
+        val isExactKnownWord = repository.getExactWordFrequency(lookupWord) > 0
 
         // Only auto-replace if word is NOT known (i.e., it's a typo/unknown word)
         // Don't replace valid words with other valid words, even if they have higher frequency
         val shouldReplace = top != null
-            && !isKnownWord // Only replace unknown words
+            && (!isKnownWord || (isAccentVariant && !isExactKnownWord)) // Allow accent-only fix when exact word isn't known
             && !isRejected // Don't auto-correct if user has rejected this word
             && top.distance <= settings.maxAutoReplaceDistance
             && lookupWord.length >= minWordLength // Minimum word length check on root

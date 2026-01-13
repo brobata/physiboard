@@ -15,5 +15,15 @@ object Punctuation {
         '’', '‘', 'ʼ' -> '\''
         else -> c
     }
-}
 
+    fun isWordBoundary(ch: Char, prev: Char? = null, next: Char? = null): Boolean {
+        val normalized = normalizeApostrophe(ch)
+        if (normalized.isWhitespace()) return true
+        if (normalized in BOUNDARY) return true
+        if (normalized == '\'') {
+            val prevIsWord = prev?.let { normalizeApostrophe(it) }?.isLetterOrDigit() == true
+            return !prevIsWord
+        }
+        return !normalized.isLetterOrDigit()
+    }
+}

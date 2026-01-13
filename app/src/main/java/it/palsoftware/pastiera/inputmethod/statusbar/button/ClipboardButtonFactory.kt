@@ -82,7 +82,7 @@ class ClipboardButtonFactory : StatusBarButtonFactory {
         return ImageView(context).apply {
             setImageResource(R.drawable.ic_content_paste_24)
             setColorFilter(Color.WHITE)
-            background = StatusBarButtonStyles.createButtonDrawable()
+            background = StatusBarButtonStyles.createButtonDrawable(size)
             scaleType = ImageView.ScaleType.CENTER
             isClickable = true
             isFocusable = true

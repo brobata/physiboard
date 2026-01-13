@@ -15,7 +15,7 @@ import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonStyles
  */
 class HamburgerButtonFactory : StatusBarButtonFactory {
     override fun create(context: Context, size: Int, callbacks: StatusBarCallbacks): ButtonCreationResult {
-        val button = createButton(context)
+        val button = createButton(context, size)
 
         button.setOnClickListener {
             callbacks.onHapticFeedback?.invoke()
@@ -29,11 +29,11 @@ class HamburgerButtonFactory : StatusBarButtonFactory {
         // No state to update for hamburger button
     }
 
-    private fun createButton(context: Context): ImageView {
+    private fun createButton(context: Context, size: Int): ImageView {
         return ImageView(context).apply {
             setImageResource(R.drawable.ic_menu_24)
             setColorFilter(Color.WHITE)
-            background = StatusBarButtonStyles.createButtonDrawable()
+            background = StatusBarButtonStyles.createButtonDrawable(size)
             scaleType = ImageView.ScaleType.CENTER
             isClickable = true
             isFocusable = true

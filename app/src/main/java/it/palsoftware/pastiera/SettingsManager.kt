@@ -69,9 +69,9 @@ object SettingsManager {
     const val STATUS_BAR_BUTTON_SYMBOLS = "symbols"
     
     // Default slot assignments
-    private const val DEFAULT_SLOT_LEFT = STATUS_BAR_BUTTON_CLIPBOARD
-    private const val DEFAULT_SLOT_RIGHT_1 = STATUS_BAR_BUTTON_MICROPHONE
-    private const val DEFAULT_SLOT_RIGHT_2 = STATUS_BAR_BUTTON_LANGUAGE
+    private const val DEFAULT_SLOT_LEFT = STATUS_BAR_BUTTON_HAMBURGER
+    private const val DEFAULT_SLOT_RIGHT_1 = STATUS_BAR_BUTTON_EMOJI
+    private const val DEFAULT_SLOT_RIGHT_2 = STATUS_BAR_BUTTON_MICROPHONE
 
     private const val VARIATIONS_FILE_NAME = "variations.json"
     
@@ -1746,8 +1746,36 @@ object SettingsManager {
      * Gets the button assigned to the left slot.
      */
     fun getStatusBarSlotLeft(context: Context): String {
-        return getPreferences(context).getString(KEY_STATUS_BAR_SLOT_LEFT, DEFAULT_SLOT_LEFT) 
+        return getPreferences(context).getString(KEY_STATUS_BAR_SLOT_LEFT, DEFAULT_SLOT_LEFT)
             ?: DEFAULT_SLOT_LEFT
+    }
+
+    data class StatusBarSlotDefaults(
+        val left: String,
+        val right1: String,
+        val right2: String
+    )
+
+    /**
+     * Returns the default slot assignment for the status bar.
+     */
+    fun getDefaultStatusBarSlots(): StatusBarSlotDefaults {
+        return StatusBarSlotDefaults(
+            left = DEFAULT_SLOT_LEFT,
+            right1 = DEFAULT_SLOT_RIGHT_1,
+            right2 = DEFAULT_SLOT_RIGHT_2
+        )
+    }
+
+    /**
+     * Resets status bar slots to the defaults and returns the applied values.
+     */
+    fun resetStatusBarSlotsToDefault(context: Context): StatusBarSlotDefaults {
+        val defaults = getDefaultStatusBarSlots()
+        setStatusBarSlotLeft(context, defaults.left)
+        setStatusBarSlotRight1(context, defaults.right1)
+        setStatusBarSlotRight2(context, defaults.right2)
+        return defaults
     }
     
     /**

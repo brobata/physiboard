@@ -36,7 +36,7 @@ class SymbolsButtonFactory : StatusBarButtonFactory {
         return ImageView(context).apply {
             setImageResource(R.drawable.ic_emoji_symbols_24)
             setColorFilter(Color.WHITE)
-            background = StatusBarButtonStyles.createButtonDrawable()
+            background = StatusBarButtonStyles.createButtonDrawable(size)
             scaleType = ImageView.ScaleType.CENTER
             isClickable = true
             isFocusable = true

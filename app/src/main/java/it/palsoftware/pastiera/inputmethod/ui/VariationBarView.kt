@@ -434,6 +434,7 @@ class VariationBarView(
             buttonWidth = baseButtonWidth
             maxButtonWidth = baseButtonWidth * 3 // Cap at 3x when we have 7 variations
         }
+        val variationButtonHeight = min(buttonWidth, maxButtonHeight)
 
         val variationsRow = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -517,6 +518,7 @@ class VariationBarView(
                 variation,
                 inputConnection,
                 buttonWidth,
+                variationButtonHeight,
                 maxButtonWidth,
                 isStaticContent,
                 isAddCandidate,
@@ -904,6 +906,7 @@ class VariationBarView(
         variation: String,
         inputConnection: android.view.inputmethod.InputConnection?,
         buttonWidth: Int,
+        buttonHeight: Int,
         maxButtonWidth: Int,
         isStatic: Boolean,
         isAddCandidate: Boolean,
@@ -937,10 +940,7 @@ class VariationBarView(
         // Use max of minimum width (buttonWidth) and required width, but cap at maxButtonWidth
         val calculatedWidth = max(buttonWidth, min(requiredWidth, maxButtonWidth))
         
-        // Keep height fixed (square based on minimum width)
-        val buttonHeight = buttonWidth
-
-        val stateListDrawable = VariationButtonStyles.createButtonDrawable()
+        val stateListDrawable = VariationButtonStyles.createButtonDrawable(buttonHeight)
 
         return TextView(context).apply {
             text = variation
@@ -986,7 +986,7 @@ class VariationBarView(
         }
     }
 
-    private fun createPlaceholderButton(buttonWidth: Int): View {
+    private fun createPlaceholderButton(buttonWidth: Int, buttonHeight: Int): View {
         val dp3 = TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP,
             3f,
@@ -994,11 +994,11 @@ class VariationBarView(
         ).toInt()
         val drawable = GradientDrawable().apply {
             setColor(Color.TRANSPARENT)
-            cornerRadius = 0f
+            cornerRadius = VariationButtonStyles.cornerRadiusForSize(buttonHeight)
         }
         return View(context).apply {
             background = drawable
-            layoutParams = LinearLayout.LayoutParams(buttonWidth, buttonWidth).apply {
+            layoutParams = LinearLayout.LayoutParams(buttonWidth, buttonHeight).apply {
                 marginEnd = dp3
             }
             isClickable = false

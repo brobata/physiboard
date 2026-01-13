@@ -58,7 +58,7 @@ class EmojiPickerView(
     private val emojiSize = dpToPx(48f)
     private val spacing = dpToPx(4f)
     private val smallPadding = dpToPx(8f)
-    private val recentsApplyTopThreshold = 4
+    private val recentsApplyTopThreshold = 0
 
     // Data for sections
     private var sectionItems: List<SectionItem> = emptyList()
@@ -320,14 +320,19 @@ class EmojiPickerView(
                     1f // Equal weight for all tabs
                 )
                 setOnClickListener {
-                    val headerPos = headerPositions[category.id] ?: return@setOnClickListener
                     selectedCategoryId = category.id
                     updateTabsSelection()
                     isTabClickScroll = true
-                    (recyclerView.layoutManager as? GridLayoutManager)?.scrollToPositionWithOffset(headerPos, 0)
-                    // Refresh recents when clicking on recents tab
+                    
+                    // Recents is always at position 0 when present
                     if (category.id == EmojiRepository.RECENTS_CATEGORY_ID) {
-                        requestRecentsRefresh(requireTop = true, requireNotRecents = false)
+                        (recyclerView.layoutManager as? GridLayoutManager)?.scrollToPositionWithOffset(0, 0)
+                        recyclerView.post {
+                            requestRecentsRefresh(requireTop = true, requireNotRecents = false)
+                        }
+                    } else {
+                        val headerPos = headerPositions[category.id] ?: return@setOnClickListener
+                        (recyclerView.layoutManager as? GridLayoutManager)?.scrollToPositionWithOffset(headerPos, 0)
                     }
                 }
             }

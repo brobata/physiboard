@@ -376,14 +376,27 @@ class SuggestionController(
                 "afterLength" to after.length
             ))
             // #endregion
-            val boundary = " \t\n\r" + it.palsoftware.pastiera.core.Punctuation.BOUNDARY
             var start = before.length
-            while (start > 0 && !boundary.contains(before[start - 1])) {
-                start--
+            while (start > 0) {
+                val ch = before[start - 1]
+                val prev = before.getOrNull(start - 2)
+                val next = before.getOrNull(start)
+                if (!it.palsoftware.pastiera.core.Punctuation.isWordBoundary(ch, prev, next)) {
+                    start--
+                    continue
+                }
+                break
             }
             var end = 0
-            while (end < after.length && !boundary.contains(after[end])) {
-                end++
+            while (end < after.length) {
+                val ch = after[end]
+                val prev = if (end == 0) before.lastOrNull() else after[end - 1]
+                val next = after.getOrNull(end + 1)
+                if (!it.palsoftware.pastiera.core.Punctuation.isWordBoundary(ch, prev, next)) {
+                    end++
+                    continue
+                }
+                break
             }
             val word = before.substring(start) + after.substring(0, end)
             // #region agent log

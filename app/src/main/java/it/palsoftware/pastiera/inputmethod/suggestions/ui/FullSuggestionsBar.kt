@@ -33,7 +33,7 @@ class FullSuggestionsBar(private val context: Context) {
 
     companion object {
         private val PRESSED_BLUE = Color.rgb(100, 150, 255) // Align with variation bar press state
-        private val DEFAULT_SUGGESTION_COLOR = Color.rgb(17, 17, 17)
+        private val DEFAULT_SUGGESTION_COLOR = Color.argb(100, 17, 17, 17)
         private const val FLASH_DURATION_MS = 160L
     }
 
@@ -253,17 +253,20 @@ class FullSuggestionsBar(private val context: Context) {
 
         val padV = dpToPx(3f) // tighter vertical padding to further reduce height
         val padH = dpToPx(12f)
-        val weightLayoutParams = LinearLayout.LayoutParams(
-            0,
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            1f
-        ).apply {
-            marginEnd = dpToPx(3f)
-        }
 
         val slotOrder = listOf(slots[0], slots[1], slots[2]) // left, center, right
-        for (suggestion in slotOrder) {
+        for ((index, suggestion) in slotOrder.withIndex()) {
             val slotIndex = suggestionButtons.size
+            val weightLayoutParams = LinearLayout.LayoutParams(
+                0,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                1f
+            ).apply {
+                // Apply margin only if not the last suggestion box
+                if (index < slotOrder.size - 1) {
+                    marginEnd = dpToPx(3f)
+                }
+            }
             val button = TextView(context).apply {
                 text = (suggestion ?: "")
                 gravity = Gravity.CENTER

@@ -141,10 +141,9 @@ class HamburgerMenuView(
             onHapticFeedback = callbacks.onHapticFeedback
         )
 
-        val closeButton = createCloseButton(menuCallbacks.onHapticFeedback, onClose)
-        rowView.addView(closeButton)
-
         val buttonHeight = resolveButtonHeight(rowView)
+        val closeButton = createCloseButton(menuCallbacks.onHapticFeedback, onClose, buttonHeight)
+        rowView.addView(closeButton)
         val fallbackWidth = buttonHeight
         val hostedButtons = mutableListOf<StatusBarButtonHost.HostedButton>()
         menuButtonIds.forEach { id ->
@@ -209,11 +208,15 @@ class HamburgerMenuView(
         buttonHost.refreshLanguageText()
     }
 
-    private fun createCloseButton(onHapticFeedback: (() -> Unit)?, onClose: () -> Unit): ImageView {
+    private fun createCloseButton(
+        onHapticFeedback: (() -> Unit)?,
+        onClose: () -> Unit,
+        heightPx: Int
+    ): ImageView {
         return ImageView(context).apply {
             setImageResource(R.drawable.ic_close_24)
             setColorFilter(Color.WHITE)
-            background = StatusBarButtonStyles.createButtonDrawable()
+            background = StatusBarButtonStyles.createButtonDrawable(heightPx)
             scaleType = ImageView.ScaleType.CENTER
             isClickable = true
             isFocusable = true

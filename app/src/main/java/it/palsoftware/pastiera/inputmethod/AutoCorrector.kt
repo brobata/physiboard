@@ -316,14 +316,28 @@ object AutoCorrector {
         val text = textBeforeCursor.toString()
         var endIndex = text.length
 
+        fun isWordBoundaryAt(index: Int): Boolean {
+            val ch = text[index]
+            val prev = if (index > 0) text[index - 1] else null
+            val next = if (index + 1 < text.length) text[index + 1] else null
+            return it.palsoftware.pastiera.core.Punctuation.isWordBoundary(ch, prev, next)
+        }
+
         // Ignore spaces and punctuation at the end
-        val boundarySet = it.palsoftware.pastiera.core.Punctuation.BOUNDARY
-        while (endIndex > 0 && (text[endIndex - 1].isWhitespace() ||
-                                text[endIndex - 1] in boundarySet)) {
+        while (endIndex > 0 && isWordBoundaryAt(endIndex - 1)) {
             endIndex--
         }
 
         if (endIndex == 0) {
+            return null
+        }
+
+        val trailing = text.substring(endIndex)
+        val hasHardBoundary = trailing.any { ch ->
+            val normalized = it.palsoftware.pastiera.core.Punctuation.normalizeApostrophe(ch)
+            !normalized.isWhitespace() && normalized !in it.palsoftware.pastiera.core.Punctuation.BOUNDARY
+        }
+        if (hasHardBoundary) {
             return null
         }
 
@@ -368,8 +382,7 @@ object AutoCorrector {
             while (startIndex > 0 && wordsFound < maxWords) {
                 // Go back until finding space or punctuation
                 var tempIndex = startIndex - 1
-                while (tempIndex > 0 && !text[tempIndex - 1].isWhitespace() &&
-                       text[tempIndex - 1] !in boundarySet) {
+                while (tempIndex > 0 && !isWordBoundaryAt(tempIndex - 1)) {
                     tempIndex--
                 }
 
@@ -377,8 +390,7 @@ object AutoCorrector {
                     wordsFound++
                     if (wordsFound < maxWords) {
                         // Go back past space to find next word
-                        while (tempIndex > 0 && (text[tempIndex - 1].isWhitespace() ||
-                                                 text[tempIndex - 1] in boundarySet)) {
+                        while (tempIndex > 0 && isWordBoundaryAt(tempIndex - 1)) {
                             tempIndex--
                         }
                         startIndex = tempIndex
@@ -415,8 +427,7 @@ object AutoCorrector {
 
         // If we didn't find patterns with spaces, search for a single word
         var startIndex = endIndex
-        while (startIndex > 0 && !text[startIndex - 1].isWhitespace() &&
-               text[startIndex - 1] !in boundarySet) {
+        while (startIndex > 0 && !isWordBoundaryAt(startIndex - 1)) {
             startIndex--
         }
 
@@ -519,4 +530,3 @@ object AutoCorrector {
     }
 
 }
-

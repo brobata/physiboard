@@ -9,6 +9,7 @@ import it.palsoftware.pastiera.inputmethod.AutoCapitalizeHelper
 import it.palsoftware.pastiera.inputmethod.NotificationHelper
 import it.palsoftware.pastiera.inputmethod.VariationButtonHandler
 import it.palsoftware.pastiera.core.AutoSpaceTracker
+import it.palsoftware.pastiera.core.Punctuation
 
 /**
  * Handles clicks on suggestion buttons (full word replacements).
@@ -57,24 +58,17 @@ object SuggestionButtonHandler {
     ): Boolean {
         val before = inputConnection.getTextBeforeCursor(64, 0)?.toString().orEmpty()
         val after = inputConnection.getTextAfterCursor(64, 0)?.toString().orEmpty()
-        val boundaryChars = " \t\n\r" + it.palsoftware.pastiera.core.Punctuation.BOUNDARY
-
-        fun isApostropheWithinWord(prev: Char?, next: Char?): Boolean {
-            if (prev?.isLetterOrDigit() != true) return false
-            return next == null || next.isLetterOrDigit()
+        fun isBoundaryChar(ch: Char, prev: Char?, next: Char?): Boolean {
+            return Punctuation.isWordBoundary(ch, prev, next)
         }
 
         // Find start of word in 'before'
         var start = before.length
         while (start > 0) {
             val ch = before[start - 1]
-            if (!boundaryChars.contains(ch)) {
-                start--
-                continue
-            }
             val prev = before.getOrNull(start - 2)
             val next = before.getOrNull(start)
-            if (ch == '\'' && isApostropheWithinWord(prev, next)) {
+            if (!isBoundaryChar(ch, prev, next)) {
                 start--
                 continue
             }
@@ -84,13 +78,9 @@ object SuggestionButtonHandler {
         var end = 0
         while (end < after.length) {
             val ch = after[end]
-            if (!boundaryChars.contains(ch)) {
-                end++
-                continue
-            }
             val prev = if (end == 0) before.lastOrNull() else after[end - 1]
             val next = after.getOrNull(end + 1)
-            if (ch == '\'' && isApostropheWithinWord(prev, next)) {
+            if (!isBoundaryChar(ch, prev, next)) {
                 end++
                 continue
             }
@@ -106,8 +96,10 @@ object SuggestionButtonHandler {
         val deleteAfter = wordAfterCursor.length
         val replacement = CasingHelper.applyCasing(suggestion, currentWord, forceLeadingCapital)
         val nextChar = after.getOrNull(end)
+        val nextPrev = if (end == 0) before.lastOrNull() else after.getOrNull(end - 1)
+        val nextNext = after.getOrNull(end + 1)
         val shouldAppendSpace = !replacement.endsWith("'") &&
-            (nextChar == null || (!nextChar.isWhitespace() && !boundaryChars.contains(nextChar)))
+            (nextChar == null || !isBoundaryChar(nextChar, nextPrev, nextNext))
 
         val deleted = inputConnection.deleteSurroundingText(deleteBefore, deleteAfter)
         if (deleted) {

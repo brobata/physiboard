@@ -37,7 +37,7 @@ class MicrophoneButtonFactory : StatusBarButtonFactory {
         }
         
         // Initialize state holder
-        val stateHolder = MicrophoneStateHolder()
+        val stateHolder = MicrophoneStateHolder(baseHeightPx = size)
         button.setTag(R.id.tag_microphone_state, stateHolder)
         
         return ButtonCreationResult(view = button)
@@ -100,7 +100,7 @@ class MicrophoneButtonFactory : StatusBarButtonFactory {
         return ImageView(context).apply {
             setImageResource(R.drawable.ic_baseline_mic_24)
             setColorFilter(Color.WHITE)
-            background = StatusBarButtonStyles.createButtonDrawable()
+            background = StatusBarButtonStyles.createButtonDrawable(size)
             scaleType = ImageView.ScaleType.CENTER
             isClickable = true
             isFocusable = true
@@ -114,16 +114,17 @@ class MicrophoneButtonFactory : StatusBarButtonFactory {
         stateHolder.pulseAnimator = null
         
         // Create base drawable with initial red color (medium intensity)
+        val radius = StatusBarButtonStyles.cornerRadiusForSize(resolveHeightPx(button, stateHolder))
         val redDrawable = GradientDrawable().apply {
             setColor(StatusBarButtonStyles.RECOGNITION_RED)
-            cornerRadius = StatusBarButtonStyles.BUTTON_CORNER_RADIUS_PX
+            cornerRadius = radius
         }
         stateHolder.currentDrawable = redDrawable
         
         // Pressed state stays blue
         val pressedDrawable = GradientDrawable().apply {
             setColor(StatusBarButtonStyles.PRESSED_BLUE)
-            cornerRadius = StatusBarButtonStyles.BUTTON_CORNER_RADIUS_PX
+            cornerRadius = radius
         }
         
         // Create state list with red as normal state
@@ -147,7 +148,7 @@ class MicrophoneButtonFactory : StatusBarButtonFactory {
         stateHolder.currentDrawable = null
         
         // Restore normal state
-        button.background = StatusBarButtonStyles.createButtonDrawable()
+        button.background = StatusBarButtonStyles.createButtonDrawable(resolveHeightPx(button, stateHolder))
     }
     
     private fun updateAudioLevel(button: ImageView, stateHolder: MicrophoneStateHolder, rmsdB: Float) {
@@ -176,9 +177,15 @@ class MicrophoneButtonFactory : StatusBarButtonFactory {
      * Internal state holder for microphone button.
      * Stored in the view's tag to maintain state across updates.
      */
-    private class MicrophoneStateHolder {
+    private class MicrophoneStateHolder(
+        val baseHeightPx: Int
+    ) {
         var isActive: Boolean = false
         var currentDrawable: GradientDrawable? = null
         var pulseAnimator: ValueAnimator? = null
+    }
+
+    private fun resolveHeightPx(button: View, stateHolder: MicrophoneStateHolder): Int {
+        return if (button.height > 0) button.height else stateHolder.baseHeightPx
     }
 }

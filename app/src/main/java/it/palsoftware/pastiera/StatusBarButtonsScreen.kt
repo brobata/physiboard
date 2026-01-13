@@ -81,13 +81,10 @@ fun StatusBarButtonsScreen(
                 // Reset to defaults button
                 IconButton(
                     onClick = {
-                        // Reset to defaults: Clipboard, Microphone, Language
-                        leftSlot = SettingsManager.STATUS_BAR_BUTTON_CLIPBOARD
-                        rightSlot1 = SettingsManager.STATUS_BAR_BUTTON_MICROPHONE
-                        rightSlot2 = SettingsManager.STATUS_BAR_BUTTON_LANGUAGE
-                        SettingsManager.setStatusBarSlotLeft(context, SettingsManager.STATUS_BAR_BUTTON_CLIPBOARD)
-                        SettingsManager.setStatusBarSlotRight1(context, SettingsManager.STATUS_BAR_BUTTON_MICROPHONE)
-                        SettingsManager.setStatusBarSlotRight2(context, SettingsManager.STATUS_BAR_BUTTON_LANGUAGE)
+                        val defaults = SettingsManager.resetStatusBarSlotsToDefault(context)
+                        leftSlot = defaults.left
+                        rightSlot1 = defaults.right1
+                        rightSlot2 = defaults.right2
                     }
                 ) {
                     Icon(

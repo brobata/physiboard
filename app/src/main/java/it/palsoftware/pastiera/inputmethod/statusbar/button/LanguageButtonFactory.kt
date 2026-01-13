@@ -102,7 +102,7 @@ class LanguageButtonFactory : StatusBarButtonFactory {
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
             textAlignment = View.TEXT_ALIGNMENT_CENTER
-            background = StatusBarButtonStyles.createButtonDrawable()
+            background = StatusBarButtonStyles.createButtonDrawable(size)
             isClickable = true
             isFocusable = true
             includeFontPadding = false

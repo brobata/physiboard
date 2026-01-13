@@ -19,7 +19,7 @@ class LedStatusView(
     private val context: Context
 ) {
     companion object {
-        private val LED_COLOR_GRAY_OFF = Color.argb(26, 255, 255, 255)
+        private val LED_COLOR_GRAY_OFF = Color.argb(100, 17, 17, 17)
         private val LED_COLOR_RED_LOCKED = Color.rgb(247, 99, 0)
         private val LED_COLOR_BLUE_ACTIVE = Color.rgb(100, 150, 255)
     }
