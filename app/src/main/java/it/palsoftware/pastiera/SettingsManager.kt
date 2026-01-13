@@ -64,6 +64,7 @@ object SettingsManager {
     const val STATUS_BAR_BUTTON_MICROPHONE = "microphone"
     const val STATUS_BAR_BUTTON_EMOJI = "emoji"
     const val STATUS_BAR_BUTTON_LANGUAGE = "language"
+    const val STATUS_BAR_BUTTON_HAMBURGER = "hamburger"
     const val STATUS_BAR_BUTTON_SETTINGS = "settings"
     const val STATUS_BAR_BUTTON_SYMBOLS = "symbols"
     
@@ -1802,6 +1803,7 @@ object SettingsManager {
             STATUS_BAR_BUTTON_EMOJI,
             STATUS_BAR_BUTTON_MICROPHONE,
             STATUS_BAR_BUTTON_LANGUAGE,
+            STATUS_BAR_BUTTON_HAMBURGER,
             STATUS_BAR_BUTTON_SETTINGS,
             STATUS_BAR_BUTTON_SYMBOLS
         )

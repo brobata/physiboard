@@ -11,6 +11,7 @@ sealed class StatusBarButtonId(val key: String) {
     object Microphone : StatusBarButtonId("microphone")
     object Language : StatusBarButtonId("language")
     object Emoji : StatusBarButtonId("emoji")
+    object Hamburger : StatusBarButtonId("hamburger")
     object Settings : StatusBarButtonId("settings")
     object Symbols : StatusBarButtonId("symbols")
     data class Custom(val customKey: String) : StatusBarButtonId(customKey)
@@ -74,6 +75,9 @@ data class StatusBarCallbacks(
     
     /** Called when language button is clicked */
     val onLanguageSwitchRequested: (() -> Unit)? = null,
+
+    /** Called when hamburger menu button is clicked */
+    val onHamburgerMenuRequested: (() -> Unit)? = null,
     
     /** Called when language button is long-pressed (opens settings) */
     val onOpenSettings: (() -> Unit)? = null,

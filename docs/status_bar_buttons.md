@@ -11,6 +11,7 @@ The status bar button system consists of:
 - **`StatusBarButtonRegistry`**: Central registry managing all button factories
 - **`StatusBarCallbacks`**: Container for all button interaction callbacks
 - **`ButtonState`**: Sealed class for button-specific state updates
+- **`StatusBarButtonHost`**: Shared wrapper that applies badge/flash overlays and routes state updates consistently
 - **`StatusBarButtonsScreen`**: Compose UI for button customization
 
 ## Step-by-Step Guide
@@ -295,14 +296,14 @@ sealed class ButtonState {
 }
 ```
 
-Then update the button in `VariationBarView.kt` using the registry:
+Then update the button using the shared host so all containers stay consistent (status bar + hamburger menu).
+Add a method in `StatusBarButtonHost` for your state and call it from the controller that owns the UI.
 
 ```kotlin
-buttonRegistry?.updateButton(
-    StatusBarButtonId.YourNewButton, 
-    buttonView, 
-    ButtonState.YourButtonState("value")
-)
+// Example extension inside StatusBarButtonHost
+fun updateYourButtonState(value: String) {
+    updateButton(StatusBarButtonId.YourNewButton, ButtonState.YourButtonState(value))
+}
 ```
 
 ## Examples
@@ -344,4 +345,5 @@ See `LanguageButtonFactory.kt` for a button that displays text instead of an ico
 - Buttons use consistent margins for spacing
 - The variation row automatically adjusts its width based on enabled buttons
 - Button factories should not set layout params - `VariationBarView` handles this
+- Use `StatusBarButtonHost` to wrap badge/flash overlays and keep state updates aligned across containers
 - Use `StatusBarCallbacks` to access IME functionality rather than direct dependencies

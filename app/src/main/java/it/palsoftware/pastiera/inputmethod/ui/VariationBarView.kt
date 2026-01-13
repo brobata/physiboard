@@ -25,7 +25,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.FrameLayout
-import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import it.palsoftware.pastiera.R
@@ -44,11 +43,11 @@ import kotlin.math.min
 import android.content.res.AssetManager
 import it.palsoftware.pastiera.inputmethod.SubtypeCycler
 import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonRegistry
+import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonHost
 import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarAnimator
 import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonId
 import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonPosition
 import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarCallbacks
-import it.palsoftware.pastiera.inputmethod.statusbar.ButtonState
 
 /**
  * Handles the variations row (suggestions + microphone/language) rendered above the LED strip.
@@ -73,14 +72,14 @@ class VariationBarView(
     var onClipboardRequested: (() -> Unit)? = null
     var onEmojiPickerRequested: (() -> Unit)? = null
     var onSymbolsPageRequested: (() -> Unit)? = null
+    var onHamburgerMenuRequested: (() -> Unit)? = null
     
     /**
      * Sets the microphone button active state (red pulsing background) during speech recognition.
      */
     fun setMicrophoneButtonActive(isActive: Boolean) {
         isMicrophoneActive = isActive
-        val micButton = buttonViews[StatusBarButtonId.Microphone] ?: return
-        buttonRegistry?.getMicrophoneFactory()?.setActive(micButton, isActive)
+        buttonHost?.setMicrophoneActive(isActive)
     }
     
     /**
@@ -90,8 +89,7 @@ class VariationBarView(
      */
     fun updateMicrophoneAudioLevel(rmsdB: Float) {
         if (!isMicrophoneActive) return
-        val micButton = buttonViews[StatusBarButtonId.Microphone] ?: return
-        buttonRegistry?.getMicrophoneFactory()?.updateAudioLevel(micButton, rmsdB)
+        buttonHost?.updateMicrophoneAudioLevel(rmsdB)
     }
 
 
@@ -105,9 +103,6 @@ class VariationBarView(
     private var shouldShowSwipeHint: Boolean = false
     private var currentVariationsRow: LinearLayout? = null
     private var variationButtons: MutableList<TextView> = mutableListOf()
-    private var microphoneButtonView: ImageView? = null
-    private var settingsButtonView: ImageView? = null
-    private var languageButtonView: TextView? = null
     private var isMicrophoneActive: Boolean = false
     private var lastDisplayedVariations: List<String> = emptyList()
     private var isSymModeActive = false
@@ -127,16 +122,11 @@ class VariationBarView(
     private var longPressHandler: Handler? = null
     private var longPressRunnable: Runnable? = null
     private var longPressExecuted: Boolean = false
-    private var clipboardButtonView: ImageView? = null
-    private var clipboardContainer: FrameLayout? = null
-    private var clipboardBadgeView: TextView? = null
-    private var clipboardFlashOverlay: View? = null
-    private var clipboardFlashAnimator: ValueAnimator? = null
     private var lastClipboardCount: Int? = null
     
     // New modular components
     private val statusBarAnimator = StatusBarAnimator()
-    private val buttonViews = mutableMapOf<StatusBarButtonId, View>()
+    private val buttonHost = buttonRegistry?.let { StatusBarButtonHost(context, it) }
 
     fun ensureView(): FrameLayout {
         if (wrapper != null) {
@@ -239,10 +229,7 @@ class VariationBarView(
      * Updates only the clipboard badge count without rebuilding the row.
      */
     fun updateClipboardCount(count: Int) {
-        val clipboardButton = buttonViews[StatusBarButtonId.Clipboard]
-        if (clipboardButton != null) {
-            buttonRegistry?.updateButton(StatusBarButtonId.Clipboard, clipboardButton, ButtonState.ClipboardState(count))
-        }
+        buttonHost?.updateClipboardCount(count)
         lastClipboardCount = count
     }
 
@@ -262,10 +249,7 @@ class VariationBarView(
         }
         currentVariationsRow = null
         variationButtons.clear()
-        removeMicrophoneImmediate()
-        removeSettingsImmediate()
-        removeLanguageButtonImmediate()
-        removeClipboardButtonImmediate()
+        buttonHost?.detachAll()
         hideSwipeIndicator(immediate = true)
         hideSwipeHintImmediate()
         shouldShowSwipeHint = false
@@ -282,10 +266,7 @@ class VariationBarView(
         val row = currentVariationsRow
         val overlayView = overlay
 
-        removeMicrophoneImmediate()
-        removeSettingsImmediate()
-        removeLanguageButtonImmediate()
-        removeClipboardButtonImmediate()
+        buttonHost?.detachAll()
         hideSwipeIndicator(immediate = true)
         hideSwipeHintImmediate()
         shouldShowSwipeHint = false
@@ -489,6 +470,7 @@ class VariationBarView(
             onSpeechRecognitionRequested = onSpeechRecognitionRequested ?: { startSpeechRecognition(inputConnection) },
             onEmojiPickerRequested = onEmojiPickerRequested,
             onLanguageSwitchRequested = onLanguageSwitchRequested,
+            onHamburgerMenuRequested = onHamburgerMenuRequested,
             onOpenSettings = { openSettings() },
             onSymbolsPageRequested = onSymbolsPageRequested,
             onHapticFeedback = { NotificationHelper.triggerHapticFeedback(context) }
@@ -501,102 +483,22 @@ class VariationBarView(
             container: LinearLayout,
             isLastInGroup: Boolean
         ) {
-            // Check if button already exists (for reuse)
-            val existingButton = buttonViews[buttonId]
-            val button: View
-            val badge: View?
-            val flashOverlay: View?
-            
-            if (existingButton != null) {
-                button = existingButton
-                badge = button.getTag(R.id.tag_badge_view) as? View
-                flashOverlay = button.getTag(R.id.tag_flash_overlay) as? View
-                
-                // Refresh language text if it's a language button
-                if (buttonId == StatusBarButtonId.Language) {
-                    registry.getLanguageFactory().refreshLanguageText(context, button)
-                }
-            } else {
-                // Create new button using the factory
-                val result = registry.createButton(context, buttonId, fixedButtonHeight, statusBarCallbacks)
-                    ?: return
-                button = result.view
-                badge = result.badgeView
-                flashOverlay = result.flashOverlayView
-                buttonViews[buttonId] = button
-            }
-            
-            // Store references for specific button types that need direct updates
-            when (buttonId) {
-                StatusBarButtonId.Clipboard -> {
-                    clipboardButtonView = button as? ImageView
-                    clipboardBadgeView = badge as? TextView
-                    clipboardFlashOverlay = flashOverlay
-                }
-                StatusBarButtonId.Microphone -> {
-                    microphoneButtonView = button as? ImageView
-                }
-                StatusBarButtonId.Language -> {
-                    languageButtonView = button as? TextView
-                }
-                else -> { /* No special references needed */ }
-            }
-            
-            // Remove from any existing parent
-            (button.parent as? ViewGroup)?.removeView(button)
-            
-            // If button has badge/overlay, wrap in a FrameLayout
-            val viewToAdd: View = if (badge != null || flashOverlay != null) {
-                val frame = if (buttonId == StatusBarButtonId.Clipboard) {
-                    clipboardContainer ?: FrameLayout(context).also { clipboardContainer = it }
-                } else {
-                    FrameLayout(context)
-                }
-                (frame.parent as? ViewGroup)?.removeView(frame)
-                frame.removeAllViews()
-                frame.addView(button, FrameLayout.LayoutParams(fixedButtonWidth, fixedButtonHeight))
-                
-                badge?.let { badgeView ->
-                    (badgeView.parent as? ViewGroup)?.removeView(badgeView)
-                    frame.addView(
-                        badgeView,
-                        FrameLayout.LayoutParams(
-                            FrameLayout.LayoutParams.WRAP_CONTENT,
-                            FrameLayout.LayoutParams.WRAP_CONTENT,
-                            Gravity.END or Gravity.TOP
-                        ).apply {
-                            val m = dpToPx(2f)
-                            val offset = dpToPx(2f)
-                            setMargins(m, m + offset, m, m)
-                        }
-                    )
-                }
-                
-                flashOverlay?.let { overlay ->
-                    (overlay.parent as? ViewGroup)?.removeView(overlay)
-                    frame.addView(overlay)
-                }
-                
-                frame
-            } else {
-                button
-            }
-            
-            // Set layout params with consistent margins (same as variation buttons)
+            val host = buttonHost ?: return
+            val hosted = host.getOrCreateButton(
+                buttonId,
+                fixedButtonHeight,
+                statusBarCallbacks,
+                fixedButtonWidth,
+                fixedButtonHeight
+            ) ?: return
             val params = LinearLayout.LayoutParams(fixedButtonWidth, fixedButtonHeight).apply {
                 marginEnd = if (isLastInGroup) 0 else spacingBetweenButtons
             }
-            viewToAdd.layoutParams = params
-            container.addView(viewToAdd)
-            button.alpha = 1f
-            button.visibility = View.VISIBLE
-            
-            // Update initial state for buttons that need it
-            when (buttonId) {
-                StatusBarButtonId.Clipboard -> {
-                    registry.updateButton(buttonId, button, ButtonState.ClipboardState(snapshot.clipboardCount))
-                }
-                else -> { /* No initial state needed */ }
+            hosted.container.layoutParams = params
+            container.addView(hosted.container)
+
+            if (buttonId == StatusBarButtonId.Clipboard) {
+                host.updateClipboardCount(snapshot.clipboardCount)
             }
         }
         
@@ -641,9 +543,7 @@ class VariationBarView(
         } else {
             variationsRow.alpha = 1f
             variationsRow.visibility = View.VISIBLE
-            buttonViews[StatusBarButtonId.Language]?.let { langBtn ->
-                registry.getLanguageFactory().refreshLanguageText(context, langBtn)
-            }
+            buttonHost?.refreshLanguageText()
         }
     }
 
@@ -1001,43 +901,6 @@ class VariationBarView(
         // Don't reset longPressExecuted here, it needs to persist until ACTION_UP
     }
 
-    private fun removeMicrophoneImmediate() {
-        microphoneButtonView?.let { microphone ->
-            (microphone.parent as? ViewGroup)?.removeView(microphone)
-            microphone.visibility = View.GONE
-            microphone.alpha = 1f
-        }
-    }
-
-    private fun removeLanguageButtonImmediate() {
-        languageButtonView?.let { language ->
-            (language.parent as? ViewGroup)?.removeView(language)
-            language.visibility = View.GONE
-            language.alpha = 1f
-        }
-    }
-    
-    private fun removeClipboardButtonImmediate() {
-        clipboardContainer?.let { container ->
-            (container.parent as? ViewGroup)?.removeView(container)
-        }
-        clipboardButtonView?.apply {
-            visibility = View.GONE
-            alpha = 1f
-        }
-        clipboardFlashAnimator?.cancel()
-        clipboardFlashAnimator = null
-        clipboardFlashOverlay = null
-    }
-
-    private fun removeSettingsImmediate() {
-        settingsButtonView?.let { settings ->
-            (settings.parent as? ViewGroup)?.removeView(settings)
-            settings.visibility = View.GONE
-            settings.alpha = 1f
-        }
-    }
-
     private fun createVariationButton(
         variation: String,
         inputConnection: android.view.inputmethod.InputConnection?,
@@ -1260,8 +1123,7 @@ class VariationBarView(
      * Updates the language button text with the current language code.
      */
     fun updateLanguageButtonText() {
-        val langButton = buttonViews[StatusBarButtonId.Language] ?: return
-        buttonRegistry?.getLanguageFactory()?.refreshLanguageText(context, langButton)
+        buttonHost?.refreshLanguageText()
     }
 
     private fun dpToPx(dp: Float): Int {

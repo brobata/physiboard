@@ -31,14 +31,18 @@ import android.view.InputDevice
 import kotlin.math.abs
 import it.palsoftware.pastiera.inputmethod.ui.ClipboardHistoryView
 import it.palsoftware.pastiera.inputmethod.ui.EmojiPickerView
+import it.palsoftware.pastiera.inputmethod.ui.HamburgerMenuView
 import it.palsoftware.pastiera.inputmethod.ui.LedStatusView
 import it.palsoftware.pastiera.inputmethod.ui.VariationBarView
 import it.palsoftware.pastiera.inputmethod.suggestions.ui.FullSuggestionsBar
 import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonRegistry
+import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarCallbacks
+import it.palsoftware.pastiera.inputmethod.NotificationHelper
 import android.content.res.AssetManager
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
+import it.palsoftware.pastiera.SettingsActivity
 
 /**
  * Manages the status bar shown by the IME, handling view creation
@@ -106,6 +110,12 @@ class StatusBarController(
             field = value
             variationBarView?.onSymbolsPageRequested = value
         }
+
+    var onHamburgerMenuRequested: (() -> Unit)? = null
+        set(value) {
+            field = value
+            variationBarView?.onHamburgerMenuRequested = value
+        }
     
     // Callback for speech recognition state changes (active/inactive)
     var onSpeechRecognitionStateChanged: ((Boolean) -> Unit)? = null
@@ -123,6 +133,7 @@ class StatusBarController(
      */
     fun setMicrophoneButtonActive(isActive: Boolean) {
         variationBarView?.setMicrophoneButtonActive(isActive)
+        hamburgerMenuView?.setMicrophoneActive(isActive)
     }
     
     /**
@@ -131,6 +142,7 @@ class StatusBarController(
      */
     fun updateMicrophoneAudioLevel(rmsdB: Float) {
         variationBarView?.updateMicrophoneAudioLevel(rmsdB)
+        hamburgerMenuView?.updateMicrophoneAudioLevel(rmsdB)
     }
     
     /**
@@ -146,6 +158,7 @@ class StatusBarController(
      */
     fun updateClipboardCount(count: Int) {
         variationBarView?.updateClipboardCount(count)
+        hamburgerMenuView?.updateClipboardCount(count)
     }
 
     /**
@@ -218,9 +231,15 @@ class StatusBarController(
     private val buttonRegistry = StatusBarButtonRegistry()
     private val variationBarView: VariationBarView? = if (mode == Mode.FULL) VariationBarView(context, assets, imeServiceClass, buttonRegistry) else null
     private var variationsWrapper: View? = null
+    private var hamburgerMenuView: HamburgerMenuView? = null
     private var forceMinimalUi: Boolean = false
     private var fullSuggestionsBar: FullSuggestionsBar? = null
     private var baseBottomPadding: Int = 0
+    private var lastHamburgerInputConnection: android.view.inputmethod.InputConnection? = null
+    
+    init {
+        onHamburgerMenuRequested = { toggleHamburgerMenu() }
+    }
 
     fun setForceMinimalUi(force: Boolean) {
         if (mode != Mode.FULL) {
@@ -232,6 +251,7 @@ class StatusBarController(
         forceMinimalUi = force
         if (force) {
             variationBarView?.hideImmediate()
+            hideHamburgerMenu()
         }
     }
 
@@ -322,6 +342,7 @@ class StatusBarController(
             }
 
             variationsWrapper = variationBarView?.ensureView()
+            attachHamburgerMenu(variationsWrapper)
             val ledStrip = ledStatusView.ensureView()
 
             statusBarLayout?.apply {
@@ -342,6 +363,53 @@ class StatusBarController(
             emojiMapTextView?.text = emojiMapText
         }
         return statusBarLayout!!
+    }
+
+    private fun attachHamburgerMenu(wrapper: View?) {
+        val frame = wrapper as? FrameLayout ?: return
+        val menu = hamburgerMenuView ?: HamburgerMenuView(context, buttonRegistry).also { hamburgerMenuView = it }
+        menu.attachTo(frame)
+    }
+
+    private fun showHamburgerMenu() {
+        if (hamburgerMenuView == null) {
+            attachHamburgerMenu(variationsWrapper)
+        }
+        val menu = hamburgerMenuView ?: return
+        val callbacks = StatusBarCallbacks(
+            onClipboardRequested = onClipboardRequested,
+            onSpeechRecognitionRequested = onSpeechRecognitionRequested,
+            onEmojiPickerRequested = onEmojiPickerRequested,
+            onLanguageSwitchRequested = onLanguageSwitchRequested,
+            onHamburgerMenuRequested = null,
+            onOpenSettings = { openSettings() },
+            onSymbolsPageRequested = onSymbolsPageRequested,
+            onHapticFeedback = { NotificationHelper.triggerHapticFeedback(context) }
+        )
+        menu.show(callbacks) { hideHamburgerMenu() }
+    }
+
+    private fun hideHamburgerMenu() {
+        hamburgerMenuView?.hide()
+    }
+
+    private fun toggleHamburgerMenu() {
+        if (hamburgerMenuView?.isVisible() == true) {
+            hideHamburgerMenu()
+        } else {
+            showHamburgerMenu()
+        }
+    }
+
+    private fun openSettings() {
+        try {
+            val intent = Intent(context, SettingsActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error opening Settings", e)
+        }
     }
 
     private fun launchTrackpadDebug() {
@@ -1129,6 +1197,14 @@ class StatusBarController(
         variationBarView?.updateInputConnection(inputConnection)
         variationBarView?.setSymModeActive(snapshot.symPage > 0 || snapshot.clipboardOverlay)
         variationBarView?.updateLanguageButtonText()
+        hamburgerMenuView?.refreshLanguageText()
+        if (inputConnection !== lastHamburgerInputConnection) {
+            hideHamburgerMenu()
+            lastHamburgerInputConnection = inputConnection
+        }
+        if (snapshot.symPage > 0 || snapshot.clipboardOverlay || forceMinimalUi) {
+            hideHamburgerMenu()
+        }
         
         val layout = ensureLayoutCreated(emojiMapText) ?: return
         val modifiersContainerView = modifiersContainer ?: return
