@@ -2,8 +2,6 @@ package it.palsoftware.pastiera.inputmethod.ui
 
 import android.content.Context
 import android.graphics.Color
-import android.graphics.drawable.GradientDrawable
-import android.graphics.drawable.StateListDrawable
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -14,6 +12,7 @@ import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonHost
 import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonId
 import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonRegistry
 import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarCallbacks
+import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonStyles
 
 /**
  * Overlay menu that replaces the status bar row with 7 fixed buttons.
@@ -22,11 +21,6 @@ class HamburgerMenuView(
     private val context: Context,
     private val buttonRegistry: StatusBarButtonRegistry
 ) {
-
-    companion object {
-        private val PRESSED_BLUE = Color.rgb(100, 150, 255)
-        private val NORMAL_COLOR = Color.rgb(17, 17, 17)
-    }
 
     private val menuButtonIds = listOf(
         StatusBarButtonId.Symbols,
@@ -216,22 +210,10 @@ class HamburgerMenuView(
     }
 
     private fun createCloseButton(onHapticFeedback: (() -> Unit)?, onClose: () -> Unit): ImageView {
-        val normalDrawable = GradientDrawable().apply {
-            setColor(NORMAL_COLOR)
-            cornerRadius = 0f
-        }
-        val pressedDrawable = GradientDrawable().apply {
-            setColor(PRESSED_BLUE)
-            cornerRadius = 0f
-        }
-        val stateList = StateListDrawable().apply {
-            addState(intArrayOf(android.R.attr.state_pressed), pressedDrawable)
-            addState(intArrayOf(), normalDrawable)
-        }
         return ImageView(context).apply {
             setImageResource(R.drawable.ic_close_24)
             setColorFilter(Color.WHITE)
-            background = stateList
+            background = StatusBarButtonStyles.createButtonDrawable()
             scaleType = ImageView.ScaleType.CENTER
             isClickable = true
             isFocusable = true

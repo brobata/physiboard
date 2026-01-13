@@ -11,6 +11,7 @@ import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.inputmethod.statusbar.ButtonCreationResult
 import it.palsoftware.pastiera.inputmethod.statusbar.ButtonState
 import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarCallbacks
+import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonStyles
 
 /**
  * Factory for creating the microphone button with audio level feedback.
@@ -21,10 +22,6 @@ import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarCallbacks
 class MicrophoneButtonFactory : StatusBarButtonFactory {
     
     companion object {
-        private val PRESSED_BLUE = Color.rgb(100, 150, 255)
-        private val NORMAL_COLOR = Color.rgb(17, 17, 17)
-        private val RECOGNITION_RED = Color.rgb(255, 80, 80)
-        
         // Audio level mapping constants
         private const val MIN_RMS_DB = -10f
         private const val MAX_RMS_DB = 0f
@@ -100,22 +97,10 @@ class MicrophoneButtonFactory : StatusBarButtonFactory {
     }
     
     private fun createButton(context: Context, size: Int): ImageView {
-        val normalDrawable = GradientDrawable().apply {
-            setColor(NORMAL_COLOR)
-            cornerRadius = 0f
-        }
-        val pressedDrawable = GradientDrawable().apply {
-            setColor(PRESSED_BLUE)
-            cornerRadius = 0f
-        }
-        val stateList = StateListDrawable().apply {
-            addState(intArrayOf(android.R.attr.state_pressed), pressedDrawable)
-            addState(intArrayOf(), normalDrawable)
-        }
         return ImageView(context).apply {
             setImageResource(R.drawable.ic_baseline_mic_24)
             setColorFilter(Color.WHITE)
-            background = stateList
+            background = StatusBarButtonStyles.createButtonDrawable()
             scaleType = ImageView.ScaleType.CENTER
             isClickable = true
             isFocusable = true
@@ -130,15 +115,15 @@ class MicrophoneButtonFactory : StatusBarButtonFactory {
         
         // Create base drawable with initial red color (medium intensity)
         val redDrawable = GradientDrawable().apply {
-            setColor(RECOGNITION_RED)
-            cornerRadius = 0f
+            setColor(StatusBarButtonStyles.RECOGNITION_RED)
+            cornerRadius = StatusBarButtonStyles.BUTTON_CORNER_RADIUS_PX
         }
         stateHolder.currentDrawable = redDrawable
         
         // Pressed state stays blue
         val pressedDrawable = GradientDrawable().apply {
-            setColor(PRESSED_BLUE)
-            cornerRadius = 0f
+            setColor(StatusBarButtonStyles.PRESSED_BLUE)
+            cornerRadius = StatusBarButtonStyles.BUTTON_CORNER_RADIUS_PX
         }
         
         // Create state list with red as normal state
@@ -162,19 +147,7 @@ class MicrophoneButtonFactory : StatusBarButtonFactory {
         stateHolder.currentDrawable = null
         
         // Restore normal state
-        val normalDrawable = GradientDrawable().apply {
-            setColor(NORMAL_COLOR)
-            cornerRadius = 0f
-        }
-        val pressedDrawable = GradientDrawable().apply {
-            setColor(PRESSED_BLUE)
-            cornerRadius = 0f
-        }
-        val stateList = StateListDrawable().apply {
-            addState(intArrayOf(android.R.attr.state_pressed), pressedDrawable)
-            addState(intArrayOf(), normalDrawable)
-        }
-        button.background = stateList
+        button.background = StatusBarButtonStyles.createButtonDrawable()
     }
     
     private fun updateAudioLevel(button: ImageView, stateHolder: MicrophoneStateHolder, rmsdB: Float) {

@@ -18,6 +18,7 @@ Key goals:
 - `StatusBarController` owns a `HamburgerMenuView`, attaches it to the `VariationBarView` wrapper, and toggles visibility.
 - `HamburgerMenuView` builds the overlay row with a Close button and a fixed list of button IDs created via `StatusBarButtonRegistry`.
 - `StatusBarButtonHost` wraps button results (badge/flash overlays) and keeps state updates consistent across containers.
+- `StatusBarButtonStyles` centralizes status bar button colors and corner radius.
 - The overlay lives inside the variation bar wrapper, so the LED strip (which is a separate view below) is not covered.
 
 ## Entry Points and Key Files
@@ -27,6 +28,7 @@ Key goals:
 - Wiring + callbacks: `app/src/main/java/it/palsoftware/pastiera/inputmethod/StatusBarController.kt`
 - Button registry/IDs: `app/src/main/java/it/palsoftware/pastiera/inputmethod/statusbar/StatusBarButtonRegistry.kt`
 - Shared button host: `app/src/main/java/it/palsoftware/pastiera/inputmethod/statusbar/StatusBarButtonHost.kt`
+- Button styles: `app/src/main/java/it/palsoftware/pastiera/inputmethod/statusbar/StatusBarButtonStyles.kt`
 - Settings list: `app/src/main/java/it/palsoftware/pastiera/SettingsManager.kt`
 - Settings UI: `app/src/main/java/it/palsoftware/pastiera/StatusBarButtonsScreen.kt`
 - Icons: `app/src/main/res/drawable/ic_menu_24.xml`, `app/src/main/res/drawable/ic_close_24.xml`

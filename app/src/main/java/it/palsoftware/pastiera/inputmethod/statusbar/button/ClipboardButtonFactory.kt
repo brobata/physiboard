@@ -5,8 +5,6 @@ import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Color
-import android.graphics.drawable.GradientDrawable
-import android.graphics.drawable.StateListDrawable
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
@@ -18,6 +16,7 @@ import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.inputmethod.statusbar.ButtonCreationResult
 import it.palsoftware.pastiera.inputmethod.statusbar.ButtonState
 import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarCallbacks
+import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonStyles
 
 /**
  * Factory for creating the clipboard button with badge and flash animation.
@@ -25,8 +24,6 @@ import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarCallbacks
 class ClipboardButtonFactory : StatusBarButtonFactory {
     
     companion object {
-        private val PRESSED_BLUE = Color.rgb(100, 150, 255)
-        private val NORMAL_COLOR = Color.rgb(17, 17, 17)
         private const val FLASH_DURATION_MS = 350L
         
         // Tag keys for storing auxiliary views
@@ -82,22 +79,10 @@ class ClipboardButtonFactory : StatusBarButtonFactory {
     }
     
     private fun createButton(context: Context, size: Int): ImageView {
-        val normalDrawable = GradientDrawable().apply {
-            setColor(NORMAL_COLOR)
-            cornerRadius = 0f
-        }
-        val pressedDrawable = GradientDrawable().apply {
-            setColor(PRESSED_BLUE)
-            cornerRadius = 0f
-        }
-        val stateList = StateListDrawable().apply {
-            addState(intArrayOf(android.R.attr.state_pressed), pressedDrawable)
-            addState(intArrayOf(), normalDrawable)
-        }
         return ImageView(context).apply {
             setImageResource(R.drawable.ic_content_paste_24)
             setColorFilter(Color.WHITE)
-            background = stateList
+            background = StatusBarButtonStyles.createButtonDrawable()
             scaleType = ImageView.ScaleType.CENTER
             isClickable = true
             isFocusable = true

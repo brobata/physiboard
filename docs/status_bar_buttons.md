@@ -12,6 +12,7 @@ The status bar button system consists of:
 - **`StatusBarCallbacks`**: Container for all button interaction callbacks
 - **`ButtonState`**: Sealed class for button-specific state updates
 - **`StatusBarButtonHost`**: Shared wrapper that applies badge/flash overlays and routes state updates consistently
+- **`StatusBarButtonStyles`**: Centralized colors + corner radius for status bar buttons
 - **`StatusBarButtonsScreen`**: Compose UI for button customization
 
 ## Step-by-Step Guide
@@ -41,25 +42,19 @@ package it.palsoftware.pastiera.inputmethod.statusbar.button
 
 import android.content.Context
 import android.graphics.Color
-import android.graphics.drawable.GradientDrawable
-import android.graphics.drawable.StateListDrawable
 import android.view.View
 import android.widget.ImageView
 import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.inputmethod.statusbar.ButtonCreationResult
 import it.palsoftware.pastiera.inputmethod.statusbar.ButtonState
 import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarCallbacks
+import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonStyles
 
 /**
  * Factory for creating your custom button.
  */
 class YourButtonFactory : StatusBarButtonFactory {
-    
-    companion object {
-        private val PRESSED_BLUE = Color.rgb(100, 150, 255)
-        private val NORMAL_COLOR = Color.rgb(17, 17, 17)
-    }
-    
+
     override fun create(context: Context, size: Int, callbacks: StatusBarCallbacks): ButtonCreationResult {
         val button = createButton(context, size)
         
@@ -82,22 +77,10 @@ class YourButtonFactory : StatusBarButtonFactory {
     }
     
     private fun createButton(context: Context, size: Int): ImageView {
-        val normalDrawable = GradientDrawable().apply {
-            setColor(NORMAL_COLOR)
-            cornerRadius = 0f
-        }
-        val pressedDrawable = GradientDrawable().apply {
-            setColor(PRESSED_BLUE)
-            cornerRadius = 0f
-        }
-        val stateList = StateListDrawable().apply {
-            addState(intArrayOf(android.R.attr.state_pressed), pressedDrawable)
-            addState(intArrayOf(), normalDrawable)
-        }
         return ImageView(context).apply {
             setImageResource(R.drawable.ic_your_icon_24)  // Your icon resource
             setColorFilter(Color.WHITE)
-            background = stateList
+            background = StatusBarButtonStyles.createButtonDrawable()
             scaleType = ImageView.ScaleType.CENTER
             isClickable = true
             isFocusable = true
@@ -346,4 +329,5 @@ See `LanguageButtonFactory.kt` for a button that displays text instead of an ico
 - The variation row automatically adjusts its width based on enabled buttons
 - Button factories should not set layout params - `VariationBarView` handles this
 - Use `StatusBarButtonHost` to wrap badge/flash overlays and keep state updates aligned across containers
+- Variation buttons (suggestions) use `VariationButtonStyles` inside `VariationBarView`
 - Use `StatusBarCallbacks` to access IME functionality rather than direct dependencies

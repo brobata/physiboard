@@ -61,7 +61,6 @@ class VariationBarView(
     companion object {
         private const val TAG = "VariationBarView"
         private const val SWIPE_HINT_SHOW_DELAY_MS = 1000L
-        private val PRESSED_BLUE = Color.rgb(100, 150, 255) // Same as LED active blue
     }
 
     var onVariationSelectedListener: VariationButtonHandler.OnVariationSelectedListener? = null
@@ -941,18 +940,7 @@ class VariationBarView(
         // Keep height fixed (square based on minimum width)
         val buttonHeight = buttonWidth
 
-        val drawable = GradientDrawable().apply {
-            setColor(Color.rgb(17, 17, 17))
-            cornerRadius = 0f
-        }
-        val pressedDrawable = GradientDrawable().apply {
-            setColor(PRESSED_BLUE)
-            cornerRadius = 0f
-        }
-        val stateListDrawable = android.graphics.drawable.StateListDrawable().apply {
-            addState(intArrayOf(android.R.attr.state_pressed), pressedDrawable)
-            addState(intArrayOf(), drawable)
-        }
+        val stateListDrawable = VariationButtonStyles.createButtonDrawable()
 
         return TextView(context).apply {
             text = variation

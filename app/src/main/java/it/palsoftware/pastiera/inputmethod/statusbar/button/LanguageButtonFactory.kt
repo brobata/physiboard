@@ -3,8 +3,6 @@ package it.palsoftware.pastiera.inputmethod.statusbar.button
 import android.content.Context
 import android.graphics.Color
 import android.graphics.DashPathEffect
-import android.graphics.drawable.GradientDrawable
-import android.graphics.drawable.StateListDrawable
 import android.os.Handler
 import android.os.Looper
 import android.text.SpannableString
@@ -21,6 +19,7 @@ import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.inputmethod.statusbar.ButtonCreationResult
 import it.palsoftware.pastiera.inputmethod.statusbar.ButtonState
 import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarCallbacks
+import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonStyles
 import kotlin.math.max
 
 /**
@@ -30,8 +29,6 @@ class LanguageButtonFactory : StatusBarButtonFactory {
     
     companion object {
         private const val TAG = "LanguageButtonFactory"
-        private val PRESSED_BLUE = Color.rgb(100, 150, 255)
-        private val NORMAL_COLOR = Color.rgb(17, 17, 17)
         private const val DEBOUNCE_MS = 500L
         private const val RE_ENABLE_DELAY_MS = 300L
     }
@@ -100,25 +97,12 @@ class LanguageButtonFactory : StatusBarButtonFactory {
     }
     
     private fun createButton(context: Context, size: Int): TextView {
-        val normalDrawable = GradientDrawable().apply {
-            setColor(NORMAL_COLOR)
-            cornerRadius = 0f
-        }
-        val pressedDrawable = GradientDrawable().apply {
-            setColor(PRESSED_BLUE)
-            cornerRadius = 0f
-        }
-        val stateList = StateListDrawable().apply {
-            addState(intArrayOf(android.R.attr.state_pressed), pressedDrawable)
-            addState(intArrayOf(), normalDrawable)
-        }
-
         return TextView(context).apply {
             textSize = 14f
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
             textAlignment = View.TEXT_ALIGNMENT_CENTER
-            background = stateList
+            background = StatusBarButtonStyles.createButtonDrawable()
             isClickable = true
             isFocusable = true
             includeFontPadding = false
