@@ -122,12 +122,31 @@ class AutoCorrectionManager(
         val isEnterBoundary = boundaryChar == '\n'
         val isPunctuationBoundary = boundaryChar in punctuationChars
 
+        if (inputConnection != null && isPunctuationBoundary && AutoSpaceTracker.isPending()) {
+            val bracketSet = "()[]{}"
+            if (boundaryChar in it.palsoftware.pastiera.core.Punctuation.AUTO_SPACE) {
+                val applied = AutoSpaceTracker.replaceAutoSpaceWithPunctuation(
+                    inputConnection,
+                    boundaryChar.toString()
+                )
+                if (applied) {
+                    return true
+                }
+            } else if (boundaryChar in bracketSet) {
+                AutoSpaceTracker.clear()
+                return false
+            }
+        }
+
         inputConnection.finishComposingText()
 
         val textBeforeCursor = inputConnection.getTextBeforeCursor(100, 0)
         val correction = AutoCorrector.processText(textBeforeCursor, context = context) ?: return false
 
         val (wordToReplace, correctedWord) = correction
+        if (correctedWord == wordToReplace) {
+            return false
+        }
         val boundaryAtEnd = textBeforeCursor?.lastOrNull() == boundaryChar
         var deleteCount = wordToReplace.length
         if (commitBoundary && boundaryAtEnd) {

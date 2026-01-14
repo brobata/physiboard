@@ -28,6 +28,10 @@ object AutoSpaceTracker {
         return had
     }
 
+    fun isPending(): Boolean {
+        return autoSpacePending
+    }
+
     fun clear() {
         autoSpacePending = false
         Log.d(TAG, "clear pending=false")

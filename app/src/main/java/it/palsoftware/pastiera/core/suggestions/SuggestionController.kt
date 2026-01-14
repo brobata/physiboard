@@ -200,7 +200,7 @@ class SuggestionController(
         // CRITICAL FIX: Sync tracker with actual text before processing boundary
         // The cursor debounce can cause tracker to be out of sync with the actual text field
         if (inputConnection != null && dictionaryRepository.isReady) {
-            val word = extractWordAtCursor(inputConnection)
+            val word = extractWordAtCursor(inputConnection, includeAfterCursor = false)
             if (!word.isNullOrBlank()) {
                 tracker.setWord(word)
                 Log.d("PastieraIME", "SYNC: Synced tracker to actual word='$word' before boundary")
@@ -363,17 +363,25 @@ class SuggestionController(
         }
     }
 
-    private fun extractWordAtCursor(inputConnection: InputConnection?): String? {
+    private fun extractWordAtCursor(
+        inputConnection: InputConnection?,
+        includeAfterCursor: Boolean = true
+    ): String? {
         if (inputConnection == null) return null
         return try {
             val before = inputConnection.getTextBeforeCursor(12, 0)?.toString() ?: ""
-            val after = inputConnection.getTextAfterCursor(12, 0)?.toString() ?: ""
+            val after = if (includeAfterCursor) {
+                inputConnection.getTextAfterCursor(12, 0)?.toString() ?: ""
+            } else {
+                ""
+            }
             // #region agent log
             debugLog("B", "SuggestionController.extractWordAtCursor:before", "getTextBeforeCursor/getTextAfterCursor called", mapOf(
                 "before" to before,
                 "beforeLength" to before.length,
                 "after" to after,
-                "afterLength" to after.length
+                "afterLength" to after.length,
+                "includeAfterCursor" to includeAfterCursor
             ))
             // #endregion
             var start = before.length
@@ -388,15 +396,17 @@ class SuggestionController(
                 break
             }
             var end = 0
-            while (end < after.length) {
-                val ch = after[end]
-                val prev = if (end == 0) before.lastOrNull() else after[end - 1]
-                val next = after.getOrNull(end + 1)
-                if (!it.palsoftware.pastiera.core.Punctuation.isWordBoundary(ch, prev, next)) {
-                    end++
-                    continue
+            if (includeAfterCursor) {
+                while (end < after.length) {
+                    val ch = after[end]
+                    val prev = if (end == 0) before.lastOrNull() else after[end - 1]
+                    val next = after.getOrNull(end + 1)
+                    if (!it.palsoftware.pastiera.core.Punctuation.isWordBoundary(ch, prev, next)) {
+                        end++
+                        continue
+                    }
+                    break
                 }
-                break
             }
             val word = before.substring(start) + after.substring(0, end)
             // #region agent log
