@@ -75,6 +75,13 @@ class CandidatesBarController(
             candidatesStatusBar.onSymbolsPageRequested = value
         }
 
+    var onMinimalUiToggleRequested: (() -> Unit)? = null
+        set(value) {
+            field = value
+            inputStatusBar.onMinimalUiToggleRequested = value
+            candidatesStatusBar.onMinimalUiToggleRequested = value
+        }
+
     fun getInputView(emojiMapText: String = ""): LinearLayout {
         return inputStatusBar.getOrCreateLayout(emojiMapText)
     }
@@ -85,6 +92,11 @@ class CandidatesBarController(
 
     fun setForceMinimalUi(force: Boolean) {
         inputStatusBar.setForceMinimalUi(force)
+        candidatesStatusBar.setForceMinimalUi(force)
+    }
+
+    fun handleBackPressed(): Boolean {
+        return inputStatusBar.handleBackPressed() || candidatesStatusBar.handleBackPressed()
     }
 
     fun isMinimalUiActive(): Boolean = inputStatusBar.isMinimalUiActive()

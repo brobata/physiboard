@@ -38,12 +38,26 @@ fun CustomizationSettingsScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val prefs = remember { SettingsManager.getPreferences(context) }
+    var pastierinaModeEnabled by remember {
+        mutableStateOf(SettingsManager.getPastierinaModeActive(context))
+    }
     var navigationDirection by remember { mutableStateOf(CustomizationNavigationDirection.Push) }
     val navigationStack = remember {
         mutableStateListOf<CustomizationDestination>(CustomizationDestination.Main)
     }
     val currentDestination by remember {
         derivedStateOf { navigationStack.last() }
+    }
+
+    DisposableEffect(prefs) {
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == "pastierina_mode_active") {
+                pastierinaModeEnabled = SettingsManager.getPastierinaModeActive(context)
+            }
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }
     
     fun navigateTo(destination: CustomizationDestination) {
@@ -298,6 +312,54 @@ fun CustomizationSettingsScreen(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        // Pastierina Mode toggle
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(72.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Keyboard,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = stringResource(R.string.pastierina_mode_title),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.pastierina_mode_description),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1
+                                    )
+                                }
+                                Switch(
+                                    checked = pastierinaModeEnabled,
+                                    onCheckedChange = { checked ->
+                                        pastierinaModeEnabled = checked
+                                        val override = if (checked) {
+                                            SettingsManager.PastierinaModeOverride.FORCE_MINIMAL
+                                        } else {
+                                            SettingsManager.PastierinaModeOverride.FORCE_FULL
+                                        }
+                                        SettingsManager.setPastierinaModeOverride(context, override)
+                                    }
                                 )
                             }
                         }

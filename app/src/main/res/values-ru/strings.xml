@@ -264,6 +264,11 @@
     <string name="nav_mode_action_select_all">Выд.Все</string>
     <string name="nav_mode_action_expand_selection_left">←Выб</string>
     <string name="nav_mode_action_expand_selection_right">→Выб</string>
+
+    <string name="pastierina_mode_title">Режим Pastierina</string>
+    <string name="pastierina_mode_description">Переключить минимальный интерфейс</string>
+
+    <!-- Backup & Restore -->
     <string name="backup_now">Сделать резервную копию сейчас</string>
     <string name="backup_now_description">Экспортировать все настройки в ZIP файл</string>
     <string name="restore_from_file">Восстановить из файла</string>

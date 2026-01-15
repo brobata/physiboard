@@ -375,7 +375,10 @@
     <string name="tutorial_selected_message">Pastiera jest wybrana!</string>
     <string name="tutorial_show">Pokaż Samouczek</string>
     <string name="tutorial_review_description">Przejrzyj wprowadzający samouczek</string>
-    
+
+    <string name="pastierina_mode_title">Tryb Pastierina</string>
+    <string name="pastierina_mode_description">Przełącz minimalny interfejs</string>
+
     <!-- Backup & Restore -->
     <string name="backup_now">Utwórz kopię zapasową teraz</string>
     <string name="backup_now_description">Eksportuj wszystkie ustawienia i niestandardowe układy do pliku ZIP</string>

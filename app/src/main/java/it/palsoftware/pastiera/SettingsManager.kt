@@ -52,6 +52,8 @@ object SettingsManager {
     private const val KEY_CLIPBOARD_RETENTION_TIME = "clipboard_retention_time" // How long to keep clipboard entries (in minutes)
     private const val KEY_TRACKPAD_GESTURES_ENABLED = "trackpad_gestures_enabled" // Whether trackpad gesture suggestions are enabled
     private const val KEY_TRACKPAD_SWIPE_THRESHOLD = "trackpad_swipe_threshold" // Threshold for swipe detection on trackpad
+    private const val KEY_PASTIERINA_MODE_OVERRIDE = "pastierina_mode_override" // follow_system | force_minimal | force_full
+    private const val KEY_PASTIERINA_MODE_ACTIVE = "pastierina_mode_active" // Current effective state
 
     // Status bar button slot configuration keys
     private const val KEY_STATUS_BAR_SLOT_LEFT = "status_bar_slot_left"
@@ -99,7 +101,7 @@ object SettingsManager {
     private const val DEFAULT_SYM_AUTO_CLOSE = true
     private val DEFAULT_SYM_PAGES_CONFIG = SymPagesConfig()
     private const val DEFAULT_STATIC_VARIATION_BAR_MODE = false
-    private const val DEFAULT_EXPERIMENTAL_SUGGESTIONS_ENABLED = false
+    private const val DEFAULT_EXPERIMENTAL_SUGGESTIONS_ENABLED = true
     private const val DEFAULT_SUGGESTION_DEBUG_LOGGING = true
     private const val KEY_EXPERIMENTAL_SUGGESTIONS_ENABLED = "experimental_suggestions_enabled"
     private const val KEY_SUGGESTION_DEBUG_LOGGING = "suggestion_debug_logging"
@@ -115,11 +117,42 @@ object SettingsManager {
     private const val MIN_TRACKPAD_SWIPE_THRESHOLD = 120f
     private const val MAX_TRACKPAD_SWIPE_THRESHOLD = 600f
 
+    enum class PastierinaModeOverride(val storageValue: String) {
+        FOLLOW_SYSTEM("follow_system"),
+        FORCE_MINIMAL("force_minimal"),
+        FORCE_FULL("force_full")
+    }
+
     /**
      * Returns the SharedPreferences instance for Pastiera.
      */
     fun getPreferences(context: Context): SharedPreferences {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    }
+
+    fun getPastierinaModeOverride(context: Context): PastierinaModeOverride {
+        val value = getPreferences(context).getString(
+            KEY_PASTIERINA_MODE_OVERRIDE,
+            PastierinaModeOverride.FOLLOW_SYSTEM.storageValue
+        )
+        return PastierinaModeOverride.values().firstOrNull { it.storageValue == value }
+            ?: PastierinaModeOverride.FOLLOW_SYSTEM
+    }
+
+    fun setPastierinaModeOverride(context: Context, override: PastierinaModeOverride) {
+        getPreferences(context).edit()
+            .putString(KEY_PASTIERINA_MODE_OVERRIDE, override.storageValue)
+            .apply()
+    }
+
+    fun getPastierinaModeActive(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_PASTIERINA_MODE_ACTIVE, false)
+    }
+
+    fun setPastierinaModeActive(context: Context, isActive: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_PASTIERINA_MODE_ACTIVE, isActive)
+            .apply()
     }
 
     /**

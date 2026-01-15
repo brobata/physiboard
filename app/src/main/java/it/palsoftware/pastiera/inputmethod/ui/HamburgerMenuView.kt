@@ -15,12 +15,17 @@ import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarCallbacks
 import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonStyles
 
 /**
- * Overlay menu that replaces the status bar row with 7 fixed buttons.
+ * Overlay menu that replaces the status bar row with fixed buttons.
  */
 class HamburgerMenuView(
     private val context: Context,
     private val buttonRegistry: StatusBarButtonRegistry
 ) {
+
+    companion object {
+        private const val MAX_VERTICAL_PADDING_DP = 8f
+        private const val MIN_BUTTON_HEIGHT_DP = 28f
+    }
 
     private val menuButtonIds = listOf(
         StatusBarButtonId.Symbols,
@@ -28,6 +33,7 @@ class HamburgerMenuView(
         StatusBarButtonId.Microphone,
         StatusBarButtonId.Clipboard,
         StatusBarButtonId.Language,
+        StatusBarButtonId.MinimalUi,
         StatusBarButtonId.Settings
     )
 
@@ -38,6 +44,7 @@ class HamburgerMenuView(
     private var lastClipboardCount: Int? = null
     private var lastMicrophoneActive: Boolean? = null
     private var lastMicrophoneRms: Float? = null
+    private var lastMinimalUiActive: Boolean? = null
 
     fun attachTo(parent: FrameLayout) {
         val view = ensureView()
@@ -51,7 +58,6 @@ class HamburgerMenuView(
         val view = ensureView()
         view.visibility = View.VISIBLE
         view.bringToFront()
-        view.setOnClickListener { onClose() }
         view.post {
             buildButtons(callbacks, onClose)
         }
@@ -78,6 +84,11 @@ class HamburgerMenuView(
         buttonHost.updateMicrophoneAudioLevel(rmsdB)
     }
 
+    fun setMinimalUiActive(isActive: Boolean) {
+        lastMinimalUiActive = isActive
+        buttonHost.setMinimalUiActive(isActive)
+    }
+
     fun refreshLanguageText() {
         buttonHost.refreshLanguageText()
     }
@@ -86,7 +97,7 @@ class HamburgerMenuView(
         if (root != null) {
             return root!!
         }
-        val verticalPadding = dpToPx(8f)
+        val verticalPadding = dpToPx(MAX_VERTICAL_PADDING_DP)
         val rowView = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             layoutParams = FrameLayout.LayoutParams(
@@ -132,6 +143,9 @@ class HamburgerMenuView(
                 callbacks.onLanguageSwitchRequested?.invoke()
             },
             onHamburgerMenuRequested = null,
+            onMinimalUiToggleRequested = {
+                callbacks.onMinimalUiToggleRequested?.invoke()
+            },
             onOpenSettings = {
                 callbacks.onOpenSettings?.invoke()
             },
@@ -141,6 +155,7 @@ class HamburgerMenuView(
             onHapticFeedback = callbacks.onHapticFeedback
         )
 
+        applyDynamicPadding(rowView)
         val buttonHeight = resolveButtonHeight(rowView)
         val closeButton = createCloseButton(menuCallbacks.onHapticFeedback, onClose, buttonHeight)
         rowView.addView(closeButton)
@@ -175,6 +190,7 @@ class HamburgerMenuView(
         if (totalButtons != expectedButtons) {
             return
         }
+        applyDynamicPadding(rowView)
         val spacing = dpToPx(3f)
         val availableWidth = rowView.width - rowView.paddingLeft - rowView.paddingRight
         if (availableWidth <= 0) {
@@ -201,10 +217,25 @@ class HamburgerMenuView(
         return if (height > 0) height else dpToPx(39f)
     }
 
+    private fun applyDynamicPadding(rowView: LinearLayout) {
+        val rowHeight = rowView.height
+        val maxPadding = dpToPx(MAX_VERTICAL_PADDING_DP)
+        if (rowHeight <= 0) {
+            return
+        }
+        val minButtonHeight = dpToPx(MIN_BUTTON_HEIGHT_DP)
+        val desiredPadding = ((rowHeight - minButtonHeight) / 2f).toInt().coerceAtLeast(0)
+        val padding = minOf(maxPadding, desiredPadding)
+        if (rowView.paddingTop != padding || rowView.paddingBottom != padding) {
+            rowView.setPadding(rowView.paddingLeft, padding, rowView.paddingRight, padding)
+        }
+    }
+
     private fun applyStoredStates() {
         lastClipboardCount?.let { buttonHost.updateClipboardCount(it) }
         lastMicrophoneActive?.let { buttonHost.setMicrophoneActive(it) }
         lastMicrophoneRms?.let { buttonHost.updateMicrophoneAudioLevel(it) }
+        lastMinimalUiActive?.let { buttonHost.setMinimalUiActive(it) }
         buttonHost.refreshLanguageText()
     }
 

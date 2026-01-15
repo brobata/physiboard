@@ -84,6 +84,10 @@ class StatusBarButtonHost(
         registry.getLanguageFactory().refreshLanguageText(context, hosted.button)
     }
 
+    fun setMinimalUiActive(isActive: Boolean) {
+        updateButton(StatusBarButtonId.MinimalUi, ButtonState.MinimalUiState(isActive))
+    }
+
     fun detachAll() {
         hostedButtons.keys.forEach { detachButton(it) }
     }

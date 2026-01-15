@@ -787,6 +787,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             symLayoutController.openSymbolsPage()
             updateStatusBarText()
         }
+        candidatesBarController.onMinimalUiToggleRequested = {
+            keyboardVisibilityController.toggleUserMinimalUi()
+        }
         val postClipboardBadgeUpdate: () -> Unit = {
             val count = clipboardHistoryManager.getHistorySize()
             uiHandler.post {
@@ -850,6 +853,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
         symLayoutController = SymLayoutController(this, prefs, altSymManager)
         keyboardVisibilityController = KeyboardVisibilityController(
+            context = this,
             candidatesBarController = candidatesBarController,
             symLayoutController = symLayoutController,
             isInputViewActive = { isInputViewActive },
@@ -875,6 +879,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         it.palsoftware.pastiera.SettingsManager.initializeNavModeMappingsFile(this)
         ctrlKeyMap.putAll(KeyMappingLoader.loadCtrlKeyMappings(assets, this))
         variationStateController = VariationStateController(VariationRepository.loadVariations(assets, this))
+        keyboardVisibilityController.syncMinimalUiOverrideFromSettings()
         
         // Load auto-correction rules
         AutoCorrector.loadCorrections(assets, this)
@@ -972,6 +977,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 } else {
                     Log.d(TRACKPAD_DEBUG_TAG, "Detector NOT initialized yet, skipping restart")
                 }
+            } else if (key == "pastierina_mode_override") {
+                keyboardVisibilityController.syncMinimalUiOverrideFromSettings()
             }
         }
         prefs.registerOnSharedPreferenceChangeListener(prefsListener)
@@ -1982,7 +1989,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
 
         // If any SYM page or clipboard overlay is open, close on BACK and consume
         if (keyCode == KeyEvent.KEYCODE_BACK) {
-            var consumed = false
+            if (candidatesBarController.handleBackPressed()) {
+                return true
+            }
             if (symLayoutController.isSymActive()) {
                 if (symLayoutController.closeSymPage()) {
                     updateStatusBarText()

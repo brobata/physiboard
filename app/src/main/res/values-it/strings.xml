@@ -414,6 +414,9 @@
     <string name="tutorial_selected_message">Pastiera è selezionata!</string>
     <string name="tutorial_show">Mostra Tutorial</string>
     <string name="tutorial_review_description">Rivedi il tutorial introduttivo</string>
+
+    <string name="pastierina_mode_title">Modalità Pastierina</string>
+    <string name="pastierina_mode_description">Attiva/disattiva UI minimale</string>
     
     <!-- Backup & Restore -->
     <string name="backup_now">Backup ora</string>

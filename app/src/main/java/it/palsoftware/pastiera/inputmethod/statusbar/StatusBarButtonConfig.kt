@@ -12,6 +12,7 @@ sealed class StatusBarButtonId(val key: String) {
     object Language : StatusBarButtonId("language")
     object Emoji : StatusBarButtonId("emoji")
     object Hamburger : StatusBarButtonId("hamburger")
+    object MinimalUi : StatusBarButtonId("minimal_ui")
     object Settings : StatusBarButtonId("settings")
     object Symbols : StatusBarButtonId("symbols")
     data class Custom(val customKey: String) : StatusBarButtonId(customKey)
@@ -78,6 +79,9 @@ data class StatusBarCallbacks(
 
     /** Called when hamburger menu button is clicked */
     val onHamburgerMenuRequested: (() -> Unit)? = null,
+
+    /** Called when minimal UI (pastierina) mode is requested */
+    val onMinimalUiToggleRequested: (() -> Unit)? = null,
     
     /** Called when language button is long-pressed (opens settings) */
     val onOpenSettings: (() -> Unit)? = null,
@@ -111,6 +115,11 @@ sealed class ButtonState {
      * State for language button - current language code.
      */
     data class LanguageState(val languageCode: String) : ButtonState()
+
+    /**
+     * State for minimal UI button - active/inactive.
+     */
+    data class MinimalUiState(val isActive: Boolean) : ButtonState()
 }
 
 /**

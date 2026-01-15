@@ -1,8 +1,10 @@
 package it.palsoftware.pastiera.inputmethod
 
+import android.content.Context
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputConnection
+import it.palsoftware.pastiera.SettingsManager
 import it.palsoftware.pastiera.core.SymLayoutController
 
 /**
@@ -10,6 +12,7 @@ import it.palsoftware.pastiera.core.SymLayoutController
  * and the candidate-only view exposed when the system hides the soft keyboard.
  */
 class KeyboardVisibilityController(
+    private val context: Context,
     private val candidatesBarController: CandidatesBarController,
     private val symLayoutController: SymLayoutController,
     private val isInputViewActive: () -> Boolean,
@@ -22,8 +25,18 @@ class KeyboardVisibilityController(
     private val refreshStatusBar: () -> Unit
 ) {
 
-    private var forceCandidatesUi: Boolean = false
+    private enum class MinimalUiOverride {
+        FOLLOW_SYSTEM,
+        FORCE_MINIMAL,
+        FORCE_FULL
+    }
 
+    private var systemRequestsMinimalUi: Boolean = false
+    private var minimalUiOverride: MinimalUiOverride = MinimalUiOverride.FOLLOW_SYSTEM
+
+    init {
+        minimalUiOverride = resolveOverrideFromSettings()
+    }
     fun onCreateInputView(): View {
         val layout = candidatesBarController.getInputView(symLayoutController.emojiMapTextForLayout())
         detachFromParent(layout)
@@ -39,8 +52,12 @@ class KeyboardVisibilityController(
     }
 
     fun onEvaluateInputViewShown(shouldShowInputView: Boolean): Boolean {
-        forceCandidatesUi = !shouldShowInputView
-        candidatesBarController.setForceMinimalUi(forceCandidatesUi)
+        systemRequestsMinimalUi = !shouldShowInputView
+        if (systemRequestsMinimalUi && minimalUiOverride != MinimalUiOverride.FORCE_MINIMAL) {
+            minimalUiOverride = MinimalUiOverride.FORCE_MINIMAL
+            persistOverride(minimalUiOverride)
+        }
+        applyMinimalUiState()
         setCandidatesViewShown(false)
         return true
     }
@@ -69,9 +86,59 @@ class KeyboardVisibilityController(
         }
     }
 
+    fun toggleUserMinimalUi() {
+        minimalUiOverride = when (minimalUiOverride) {
+            MinimalUiOverride.FORCE_MINIMAL,
+            MinimalUiOverride.FORCE_FULL -> MinimalUiOverride.FOLLOW_SYSTEM
+            MinimalUiOverride.FOLLOW_SYSTEM -> {
+                if (isMinimalUiActive()) {
+                    MinimalUiOverride.FORCE_FULL
+                } else {
+                    MinimalUiOverride.FORCE_MINIMAL
+                }
+            }
+        }
+        persistOverride(minimalUiOverride)
+        applyMinimalUiState()
+    }
+
+    private fun applyMinimalUiState() {
+        candidatesBarController.setForceMinimalUi(isMinimalUiActive())
+        SettingsManager.setPastierinaModeActive(context, isMinimalUiActive())
+        refreshStatusBar()
+    }
+
+    fun syncMinimalUiOverrideFromSettings() {
+        minimalUiOverride = resolveOverrideFromSettings()
+        applyMinimalUiState()
+    }
+
+    private fun isMinimalUiActive(): Boolean {
+        return when (minimalUiOverride) {
+            MinimalUiOverride.FORCE_MINIMAL -> true
+            MinimalUiOverride.FORCE_FULL -> false
+            MinimalUiOverride.FOLLOW_SYSTEM -> systemRequestsMinimalUi
+        }
+    }
+
+    private fun resolveOverrideFromSettings(): MinimalUiOverride {
+        return when (SettingsManager.getPastierinaModeOverride(context)) {
+            SettingsManager.PastierinaModeOverride.FORCE_MINIMAL -> MinimalUiOverride.FORCE_MINIMAL
+            SettingsManager.PastierinaModeOverride.FORCE_FULL -> MinimalUiOverride.FORCE_FULL
+            SettingsManager.PastierinaModeOverride.FOLLOW_SYSTEM -> MinimalUiOverride.FOLLOW_SYSTEM
+        }
+    }
+
+    private fun persistOverride(override: MinimalUiOverride) {
+        val mapped = when (override) {
+            MinimalUiOverride.FORCE_MINIMAL -> SettingsManager.PastierinaModeOverride.FORCE_MINIMAL
+            MinimalUiOverride.FORCE_FULL -> SettingsManager.PastierinaModeOverride.FORCE_FULL
+            MinimalUiOverride.FOLLOW_SYSTEM -> SettingsManager.PastierinaModeOverride.FOLLOW_SYSTEM
+        }
+        SettingsManager.setPastierinaModeOverride(context, mapped)
+    }
+
     private fun detachFromParent(view: View) {
         (view.parent as? ViewGroup)?.removeView(view)
     }
 }
-
-

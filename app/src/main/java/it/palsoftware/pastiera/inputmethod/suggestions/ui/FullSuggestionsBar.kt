@@ -12,13 +12,18 @@ import android.view.View
 import android.view.ViewGroup
 import android.graphics.drawable.StateListDrawable
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.SettingsActivity
 import it.palsoftware.pastiera.inputmethod.suggestions.SuggestionButtonHandler
 import it.palsoftware.pastiera.inputmethod.VariationButtonHandler
 import it.palsoftware.pastiera.inputmethod.SubtypeCycler
+import it.palsoftware.pastiera.inputmethod.ui.HamburgerMenuView
+import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonRegistry
+import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarCallbacks
 import android.view.inputmethod.InputMethodManager
 import android.inputmethodservice.InputMethodService
 import it.palsoftware.pastiera.core.suggestions.DictionaryRepository
@@ -27,9 +32,13 @@ import it.palsoftware.pastiera.core.suggestions.DictionaryRepository
  * Renders the full-width suggestion bar with up to 3 items. Always occupies
  * a row (with placeholders) so the UI stays stable. Hidden when minimal UI
  * is forced or smart features are disabled by the caller.
- * Includes a language button on the right that cycles through IME subtypes.
+ * Includes a hamburger menu button on the right that opens the hamburger menu.
  */
-class FullSuggestionsBar(private val context: Context) {
+class FullSuggestionsBar(
+    private val context: Context,
+    private val buttonRegistry: StatusBarButtonRegistry? = null,
+    private val callbacksProvider: (() -> StatusBarCallbacks)? = null
+) {
 
     companion object {
         private val PRESSED_BLUE = Color.rgb(100, 150, 255) // Align with variation bar press state
@@ -39,11 +48,13 @@ class FullSuggestionsBar(private val context: Context) {
 
     private var container: LinearLayout? = null
     private var frameContainer: FrameLayout? = null
-    private var languageButton: TextView? = null
+    private var hamburgerButton: ImageView? = null
+    private var hamburgerMenuView: HamburgerMenuView? = null
+    private var lastMinimalUiActive: Boolean? = null
     private var lastSlots: List<String?> = emptyList()
     private var assets: AssetManager? = null
     private var imeServiceClass: Class<*>? = null
-    private var showLanguageButton: Boolean = false // Control visibility of language button
+    private var showHamburgerButton: Boolean = false // Control visibility of hamburger button
     private val suggestionButtons: MutableList<TextView> = mutableListOf()
     private val targetHeightPx: Int by lazy {
         // Compact row sized around three suggestion pills
@@ -82,41 +93,41 @@ class FullSuggestionsBar(private val context: Context) {
                 minimumHeight = targetHeightPx
             }
             
-            // Create language button positioned absolutely on the right
-            languageButton = TextView(context).apply {
-                text = getCurrentLanguageCode()
-                gravity = Gravity.CENTER
-                textSize = 12f
-                includeFontPadding = false
-                minHeight = 0
-                maxLines = 1
-                setTextColor(Color.WHITE)
-                setTypeface(null, android.graphics.Typeface.BOLD)
-                setPadding(dpToPx(8f), dpToPx(2f), dpToPx(8f), dpToPx(2f))
-                background = GradientDrawable().apply {
-                    setColor(Color.rgb(50, 50, 50))
-                    cornerRadius = dpToPx(4f).toFloat()
-                }
+            // Create hamburger menu button positioned absolutely on the right
+            hamburgerButton = ImageView(context).apply {
+                setImageResource(R.drawable.ic_menu_24)
+                setColorFilter(Color.WHITE)
+                scaleType = ImageView.ScaleType.CENTER
+                background = null
+                val buttonSize = dpToPx(32f)
                 layoutParams = FrameLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
+                    buttonSize,
+                    buttonSize
                 ).apply {
                     gravity = Gravity.END or Gravity.CENTER_VERTICAL
-                    marginEnd = dpToPx(4f)
+                    marginEnd = 0
                 }
+                setPadding(0, 0, 0, 0)
                 isClickable = true
                 isFocusable = true
                 setOnClickListener {
-                    cycleToNextSubtype()
-                }
-                setOnLongClickListener {
-                    openSettings()
-                    true
+                    toggleHamburgerMenu()
                 }
             }
             
             frameContainer?.addView(container)
-            frameContainer?.addView(languageButton)
+            hamburgerButton?.let { frameContainer?.addView(it) }
+            
+            // Create hamburger menu view if buttonRegistry and callbacks are available
+            frameContainer?.let { frame ->
+                if (buttonRegistry != null && callbacksProvider != null) {
+                    if (hamburgerMenuView == null) {
+                        hamburgerMenuView = HamburgerMenuView(context, buttonRegistry)
+                    }
+                    hamburgerMenuView?.attachTo(frame)
+                    lastMinimalUiActive?.let { hamburgerMenuView?.setMinimalUiActive(it) }
+                }
+            }
             // Ensure the outer layout (when attached to parent LinearLayout) keeps the target height
             frameContainer?.layoutParams = (frameContainer?.layoutParams as? LinearLayout.LayoutParams)
                 ?: LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, targetHeightPx)
@@ -124,32 +135,59 @@ class FullSuggestionsBar(private val context: Context) {
         return frameContainer!!
     }
     
-    private fun getCurrentLanguageCode(): String {
-        return try {
-            val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
-            val currentSubtype = imm?.currentInputMethodSubtype
-            val locale = currentSubtype?.locale ?: "en_US"
-            // Extract country code from locale (e.g., "it_IT" -> "IT", "en_US" -> "US")
-            val parts = locale.split("_")
-            if (parts.size >= 2) {
-                parts[1].uppercase()
-            } else {
-                // Fallback: use first two letters of language code
-                parts[0].uppercase().take(2)
+    private fun toggleHamburgerMenu() {
+        val menu = hamburgerMenuView ?: return
+        val callbacks = callbacksProvider?.invoke() ?: return
+
+        if (menu.isVisible()) {
+            menu.hide()
+        } else {
+            callbacks.onHapticFeedback?.invoke()
+            menu.show(callbacks) {
+                menu.hide()
             }
-        } catch (e: Exception) {
-            "EN"
         }
     }
     
-    private fun cycleToNextSubtype() {
-        val assets = this.assets
-        val imeServiceClass = this.imeServiceClass
-        if (assets != null && imeServiceClass != null) {
-            SubtypeCycler.cycleToNextSubtype(context, imeServiceClass, assets, showToast = true)
-            // Update button text after cycling
-            languageButton?.text = getCurrentLanguageCode()
-        }
+    /**
+     * Sets the microphone button active state.
+     */
+    fun setMicrophoneButtonActive(isActive: Boolean) {
+        hamburgerMenuView?.setMicrophoneActive(isActive)
+    }
+    
+    /**
+     * Updates the microphone button visual feedback based on audio level.
+     */
+    fun updateMicrophoneAudioLevel(rmsdB: Float) {
+        hamburgerMenuView?.updateMicrophoneAudioLevel(rmsdB)
+    }
+    
+    /**
+     * Updates the clipboard badge count.
+     */
+    fun updateClipboardCount(count: Int) {
+        hamburgerMenuView?.updateClipboardCount(count)
+    }
+    
+    /**
+     * Refreshes the language button text.
+     */
+    fun refreshLanguageText() {
+        hamburgerMenuView?.refreshLanguageText()
+    }
+
+    fun setMinimalUiActive(isActive: Boolean) {
+        lastMinimalUiActive = isActive
+        showHamburgerButton = isActive
+        hamburgerButton?.visibility = if (isActive) View.VISIBLE else View.GONE
+        hamburgerMenuView?.setMinimalUiActive(isActive)
+    }
+
+    fun isHamburgerMenuVisible(): Boolean = hamburgerMenuView?.isVisible() == true
+
+    fun hideHamburgerMenu() {
+        hamburgerMenuView?.hide()
     }
 
     /**
@@ -189,16 +227,14 @@ class FullSuggestionsBar(private val context: Context) {
             frame.visibility = View.GONE
             bar.visibility = View.GONE
             bar.removeAllViews()
-            languageButton?.visibility = View.GONE
+            hamburgerButton?.visibility = View.GONE
             lastSlots = emptyList()
             return
         }
 
         frame.visibility = View.VISIBLE
-        // Show or hide language button based on showLanguageButton flag
-        languageButton?.visibility = if (showLanguageButton) View.VISIBLE else View.GONE
-        // Update language button text in case subtype changed externally
-        languageButton?.text = getCurrentLanguageCode()
+        // Show or hide hamburger button based on showHamburgerButton flag
+        hamburgerButton?.visibility = if (showHamburgerButton) View.VISIBLE else View.GONE
 
         val slots = buildSlots(suggestions)
         if (slots == lastSlots && bar.childCount > 0) {

@@ -376,7 +376,10 @@
     <string name="tutorial_selected_message">Pastiera ist ausgewählt!</string>
     <string name="tutorial_show">Tutorial anzeigen</string>
     <string name="tutorial_review_description">Einführungstutorial überprüfen</string>
-    
+
+    <string name="pastierina_mode_title">Pastierina-Modus</string>
+    <string name="pastierina_mode_description">Minimale UI umschalten</string>
+
     <!-- Backup & Restore -->
     <string name="backup_now">Jetzt sichern</string>
     <string name="backup_now_description">Alle Einstellungen und benutzerdefinierten Layouts in eine ZIP-Datei exportieren</string>

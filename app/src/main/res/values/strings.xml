@@ -453,6 +453,9 @@
     <string name="tutorial_show">Show Tutorial</string>
     <string name="tutorial_review_description">Review the introductory tutorial</string>
 
+    <string name="pastierina_mode_title">Pastierina Mode</string>
+    <string name="pastierina_mode_description">Toggle minimal ui</string>
+
     <!-- Backup & Restore -->
     <string name="backup_now">Backup now</string>
     <string name="backup_now_description">Export all settings and custom layouts to a ZIP</string>

@@ -8,8 +8,8 @@
     <item name="tag_animator" type="id"/>
     <item name="tag_previous_count" type="id"/>
     <item name="tag_microphone_state" type="id"/>
+    <item name="tag_minimal_ui_state" type="id"/>
 </resources>
-
 
 
 

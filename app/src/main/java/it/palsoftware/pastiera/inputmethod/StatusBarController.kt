@@ -116,6 +116,12 @@ class StatusBarController(
             field = value
             variationBarView?.onHamburgerMenuRequested = value
         }
+
+    var onMinimalUiToggleRequested: (() -> Unit)? = null
+        set(value) {
+            field = value
+            variationBarView?.onMinimalUiToggleRequested = value
+        }
     
     // Callback for speech recognition state changes (active/inactive)
     var onSpeechRecognitionStateChanged: ((Boolean) -> Unit)? = null
@@ -134,6 +140,7 @@ class StatusBarController(
     fun setMicrophoneButtonActive(isActive: Boolean) {
         variationBarView?.setMicrophoneButtonActive(isActive)
         hamburgerMenuView?.setMicrophoneActive(isActive)
+        fullSuggestionsBar?.setMicrophoneButtonActive(isActive)
     }
     
     /**
@@ -143,6 +150,7 @@ class StatusBarController(
     fun updateMicrophoneAudioLevel(rmsdB: Float) {
         variationBarView?.updateMicrophoneAudioLevel(rmsdB)
         hamburgerMenuView?.updateMicrophoneAudioLevel(rmsdB)
+        fullSuggestionsBar?.updateMicrophoneAudioLevel(rmsdB)
     }
     
     /**
@@ -159,6 +167,7 @@ class StatusBarController(
     fun updateClipboardCount(count: Int) {
         variationBarView?.updateClipboardCount(count)
         hamburgerMenuView?.updateClipboardCount(count)
+        fullSuggestionsBar?.updateClipboardCount(count)
     }
 
     /**
@@ -242,13 +251,11 @@ class StatusBarController(
     }
 
     fun setForceMinimalUi(force: Boolean) {
-        if (mode != Mode.FULL) {
-            return
-        }
         if (forceMinimalUi == force) {
             return
         }
         forceMinimalUi = force
+        updateMinimalUiState()
         if (force) {
             variationBarView?.hideImmediate()
             hideHamburgerMenu()
@@ -347,7 +354,23 @@ class StatusBarController(
 
             statusBarLayout?.apply {
                 // Full-width suggestions bar above the rest
-                fullSuggestionsBar = FullSuggestionsBar(context)
+                fullSuggestionsBar = FullSuggestionsBar(
+                    context,
+                    buttonRegistry,
+                    callbacksProvider = {
+                    StatusBarCallbacks(
+                        onClipboardRequested = onClipboardRequested,
+                        onSpeechRecognitionRequested = onSpeechRecognitionRequested,
+                        onEmojiPickerRequested = onEmojiPickerRequested,
+                        onLanguageSwitchRequested = onLanguageSwitchRequested,
+                        onHamburgerMenuRequested = onHamburgerMenuRequested,
+                        onMinimalUiToggleRequested = { handleMinimalUiToggleFromMenu() },
+                        onOpenSettings = { openSettings() },
+                        onSymbolsPageRequested = onSymbolsPageRequested,
+                        onHapticFeedback = { NotificationHelper.triggerHapticFeedback(context) }
+                    )
+                }
+                )
                 // Set subtype cycling parameters if available
                 if (assets != null && imeServiceClass != null) {
                     fullSuggestionsBar?.setSubtypeCyclingParams(assets, imeServiceClass)
@@ -382,6 +405,7 @@ class StatusBarController(
             onEmojiPickerRequested = onEmojiPickerRequested,
             onLanguageSwitchRequested = onLanguageSwitchRequested,
             onHamburgerMenuRequested = null,
+            onMinimalUiToggleRequested = { handleMinimalUiToggleFromMenu() },
             onOpenSettings = { openSettings() },
             onSymbolsPageRequested = onSymbolsPageRequested,
             onHapticFeedback = { NotificationHelper.triggerHapticFeedback(context) }
@@ -399,6 +423,31 @@ class StatusBarController(
         } else {
             showHamburgerMenu()
         }
+    }
+
+    private fun updateMinimalUiState() {
+        hamburgerMenuView?.setMinimalUiActive(forceMinimalUi)
+        fullSuggestionsBar?.setMinimalUiActive(forceMinimalUi)
+    }
+
+    private fun handleMinimalUiToggleFromMenu() {
+        onMinimalUiToggleRequested?.invoke()
+        if (!forceMinimalUi) {
+            hideHamburgerMenu()
+            fullSuggestionsBar?.hideHamburgerMenu()
+        }
+    }
+
+    fun handleBackPressed(): Boolean {
+        if (fullSuggestionsBar?.isHamburgerMenuVisible() == true) {
+            fullSuggestionsBar?.hideHamburgerMenu()
+            return true
+        }
+        if (hamburgerMenuView?.isVisible() == true) {
+            hideHamburgerMenu()
+            return true
+        }
+        return false
     }
 
     private fun openSettings() {
@@ -1197,7 +1246,10 @@ class StatusBarController(
         variationBarView?.updateInputConnection(inputConnection)
         variationBarView?.setSymModeActive(snapshot.symPage > 0 || snapshot.clipboardOverlay)
         variationBarView?.updateLanguageButtonText()
+        updateClipboardCount(snapshot.clipboardCount)
         hamburgerMenuView?.refreshLanguageText()
+        fullSuggestionsBar?.refreshLanguageText()
+        updateMinimalUiState()
         if (inputConnection !== lastHamburgerInputConnection) {
             hideHamburgerMenu()
             lastHamburgerInputConnection = inputConnection

@@ -59,12 +59,12 @@ class ClipboardButtonFactory : StatusBarButtonFactory {
         
         val badge = view.getTag(R.id.tag_badge_view) as? TextView ?: return
         val flashOverlay = view.getTag(R.id.tag_flash_overlay) as? View
-        val previousCount = view.getTag(R.id.tag_previous_count) as? Int ?: 0
+        val previousCount = view.getTag(R.id.tag_previous_count) as? Int
         
         updateBadge(badge, state.itemCount)
         
         // Flash when count increases
-        if (state.itemCount > 0 && state.itemCount != previousCount && flashOverlay != null) {
+        if (previousCount != null && state.itemCount > 0 && state.itemCount != previousCount && flashOverlay != null) {
             flashButton(view, flashOverlay)
         }
         

@@ -224,6 +224,8 @@ object PreferenceSchemas {
             "clipboard_retention_time" to PreferenceValueType.LONG,
             "trackpad_gestures_enabled" to PreferenceValueType.BOOLEAN,
             "trackpad_swipe_threshold" to PreferenceValueType.FLOAT,
+            "pastierina_mode_override" to PreferenceValueType.STRING,
+            "pastierina_mode_active" to PreferenceValueType.BOOLEAN,
             "use_keyboard_proximity" to PreferenceValueType.BOOLEAN,
             "use_edit_type_ranking" to PreferenceValueType.BOOLEAN,
             "custom_input_styles" to PreferenceValueType.STRING

@@ -31,7 +31,7 @@ Key goals:
 - Button styles: `app/src/main/java/it/palsoftware/pastiera/inputmethod/statusbar/StatusBarButtonStyles.kt`
 - Settings list: `app/src/main/java/it/palsoftware/pastiera/SettingsManager.kt`
 - Settings UI: `app/src/main/java/it/palsoftware/pastiera/StatusBarButtonsScreen.kt`
-- Icons: `app/src/main/res/drawable/ic_menu_24.xml`, `app/src/main/res/drawable/ic_close_24.xml`
+- Icons: `app/src/main/res/drawable/ic_menu_24.xml`, `app/src/main/res/drawable/ic_close_24.xml`, `app/src/main/res/drawable/ic_minimal_ui_24.xml`
 
 ## How to Change the Available Buttons
 
@@ -45,7 +45,8 @@ private val menuButtonIds = listOf(
     StatusBarButtonId.Microphone,
     StatusBarButtonId.Clipboard,
     StatusBarButtonId.Language,
-    StatusBarButtonId.Settings
+    StatusBarButtonId.Settings,
+    StatusBarButtonId.MinimalUi
 )
 ```
 
@@ -124,6 +125,7 @@ The overlay root view is clickable and closes the menu on any click outside the 
 - The overlay is automatically hidden when SYM/clipboard overlays are active or when minimal UI is forced.
 - The overlay rebuilds its row on show to pick up any updated button factories or callbacks.
 - Overlay buttons do not auto-close the menu; actions like SYM/clipboard/emoji will hide it indirectly by switching the status bar state.
+- The minimal UI (pastierina) button toggles the same forced-minimal state used by the system "hide on-screen keyboard" mode.
 
 ## Quick Checklist After Changes
 
