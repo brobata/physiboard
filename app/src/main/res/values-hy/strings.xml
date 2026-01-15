@@ -322,6 +322,25 @@
     <string name="installed_dictionaries_import_invalid_format">Բառարանի ձևաչափը սխալ է</string>
     <string name="installed_dictionaries_import_failed">Ներմուծումը ձախողվեց</string>
     <string name="installed_dictionaries_imported_badge">Ներմուծված</string>
+    <string name="installed_dictionaries_installed_badge">Տեղադրված</string>
+    <string name="installed_dictionaries_available_online">Հասանելի է առցանց</string>
+    <string name="installed_dictionaries_size">Չափը: %1$s</string>
+    <string name="installed_dictionaries_refresh">Թարմացնել</string>
+    <string name="installed_dictionaries_download">Ներբեռնել</string>
+    <string name="installed_dictionaries_download_success">Ներբեռնվեց %1$s</string>
+    <string name="installed_dictionaries_download_network_error">Ցանցի սխալ</string>
+    <string name="installed_dictionaries_download_invalid_format">Բառարանի ձևաչափը սխալ է</string>
+    <string name="installed_dictionaries_download_hash_mismatch">Ներբեռնման ստուգումը ձախողվեց</string>
+    <string name="installed_dictionaries_download_failed">Ներբեռնումը ձախողվեց</string>
+    <string name="installed_dictionaries_download_progress">%1$s / %2$s</string>
+    <string name="installed_dictionaries_manifest_error">Հնարավոր չէ բեռնել բառարանների ցուցակը</string>
+    <string name="installed_dictionaries_uninstall">Հեռացնել</string>
+    <string name="installed_dictionaries_uninstall_confirm_title">Հեռացնել բառարան</string>
+    <string name="installed_dictionaries_uninstall_confirm_message">Իսկապե՞ս ցանկանում եք հեռացնել %1$s: Այս գործողությունը չի կարող հետարկվել:</string>
+    <string name="installed_dictionaries_uninstall_success">Հեռացվեց %1$s</string>
+    <string name="installed_dictionaries_uninstall_not_found">Բառարանի ֆայլը չի գտնվել</string>
+    <string name="installed_dictionaries_uninstall_cannot_delete_asset">Չի կարելի հեռացնել ներկառուցված բառարանները</string>
+    <string name="installed_dictionaries_uninstall_failed">Հեռացումը ձախողվեց</string>
     
     <!-- Status Bar Buttons Configuration -->
     <string name="status_bar_buttons_title">Պանելի Կոճակներ</string>

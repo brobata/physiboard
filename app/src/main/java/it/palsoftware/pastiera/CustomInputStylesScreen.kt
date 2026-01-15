@@ -39,7 +39,7 @@ import it.palsoftware.pastiera.data.layout.LayoutMappingRepository
 import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils
 import it.palsoftware.pastiera.SettingsManager
 import it.palsoftware.pastiera.R
-import it.palsoftware.pastiera.InstalledDictionariesActivity
+import it.palsoftware.pastiera.dictionaries.InstalledDictionariesActivity
 import java.util.Locale
 import android.content.res.AssetManager
 
@@ -921,20 +921,14 @@ private fun getLocalesWithDictionary(context: Context): List<String> {
 }
 
 /**
- * Maps a language code (e.g., "en", "it") to common locale variants.
+ * Maps a language code (e.g., "en", "it") to locale code.
+ * Returns only the base language code without country variants for simplicity.
+ * Existing saved locales with country codes (e.g., "it_IT", "it_CH") will still work
+ * thanks to getLocaleDisplayName() which handles both formats.
  */
 private fun getLocaleVariantsForLanguage(langCode: String): List<String> {
-    return when (langCode.lowercase()) {
-        "en" -> listOf("en_US", "en_GB", "en_CA", "en_AU")
-        "it" -> listOf("it_IT", "it_CH")
-        "fr" -> listOf("fr_FR", "fr_CA", "fr_CH", "fr_BE")
-        "de" -> listOf("de_DE", "de_AT", "de_CH")
-        "es" -> listOf("es_ES", "es_MX", "es_AR", "es_CO")
-        "pt" -> listOf("pt_PT", "pt_BR")
-        "pl" -> listOf("pl_PL")
-        "ru" -> listOf("ru_RU")
-        else -> listOf("${langCode}_${langCode.uppercase()}") // Generic fallback
-    }
+    // Return only the base language code
+    return listOf(langCode.lowercase())
 }
 
 /**

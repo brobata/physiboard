@@ -441,6 +441,25 @@
     <string name="installed_dictionaries_import_invalid_format">Formato de diccionario no válido</string>
     <string name="installed_dictionaries_import_failed">Importación fallida</string>
     <string name="installed_dictionaries_imported_badge">Importado</string>
+    <string name="installed_dictionaries_installed_badge">Instalado</string>
+    <string name="installed_dictionaries_available_online">Disponible en línea</string>
+    <string name="installed_dictionaries_size">Tamaño: %1$s</string>
+    <string name="installed_dictionaries_refresh">Actualizar</string>
+    <string name="installed_dictionaries_download">Descargar</string>
+    <string name="installed_dictionaries_download_success">%1$s descargado</string>
+    <string name="installed_dictionaries_download_network_error">Error de red</string>
+    <string name="installed_dictionaries_download_invalid_format">Formato de diccionario no válido</string>
+    <string name="installed_dictionaries_download_hash_mismatch">Verificación de descarga fallida</string>
+    <string name="installed_dictionaries_download_failed">Descarga fallida</string>
+    <string name="installed_dictionaries_download_progress">%1$s / %2$s</string>
+    <string name="installed_dictionaries_manifest_error">No se pudo cargar la lista de diccionarios</string>
+    <string name="installed_dictionaries_uninstall">Desinstalar</string>
+    <string name="installed_dictionaries_uninstall_confirm_title">Desinstalar diccionario</string>
+    <string name="installed_dictionaries_uninstall_confirm_message">¿Está seguro de que desea desinstalar %1$s? Esta acción no se puede deshacer.</string>
+    <string name="installed_dictionaries_uninstall_success">Desinstalado %1$s</string>
+    <string name="installed_dictionaries_uninstall_not_found">Archivo de diccionario no encontrado</string>
+    <string name="installed_dictionaries_uninstall_cannot_delete_asset">No se pueden desinstalar diccionarios integrados</string>
+    <string name="installed_dictionaries_uninstall_failed">Error al desinstalar diccionario</string>
 
     <!-- Trackpad Gesture Settings -->
     <string name="trackpad_gestures_title">Sugerencias de Gestos del Trackpad</string>

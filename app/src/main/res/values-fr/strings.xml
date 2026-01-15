@@ -445,6 +445,25 @@
     <string name="installed_dictionaries_import_invalid_format">Format de dictionnaire invalide</string>
     <string name="installed_dictionaries_import_failed">Échec de l\'import</string>
     <string name="installed_dictionaries_imported_badge">Importé</string>
+    <string name="installed_dictionaries_installed_badge">Installé</string>
+    <string name="installed_dictionaries_available_online">Disponible en ligne</string>
+    <string name="installed_dictionaries_size">Taille : %1$s</string>
+    <string name="installed_dictionaries_refresh">Actualiser</string>
+    <string name="installed_dictionaries_download">Télécharger</string>
+    <string name="installed_dictionaries_download_success">%1$s téléchargé</string>
+    <string name="installed_dictionaries_download_network_error">Erreur réseau</string>
+    <string name="installed_dictionaries_download_invalid_format">Format de dictionnaire invalide</string>
+    <string name="installed_dictionaries_download_hash_mismatch">Vérification du téléchargement échouée</string>
+    <string name="installed_dictionaries_download_failed">Téléchargement échoué</string>
+    <string name="installed_dictionaries_download_progress">%1$s / %2$s</string>
+    <string name="installed_dictionaries_manifest_error">Impossible de charger la liste des dictionnaires</string>
+    <string name="installed_dictionaries_uninstall">Désinstaller</string>
+    <string name="installed_dictionaries_uninstall_confirm_title">Désinstaller le dictionnaire</string>
+    <string name="installed_dictionaries_uninstall_confirm_message">Êtes-vous sûr de vouloir désinstaller %1$s ? Cette action ne peut pas être annulée.</string>
+    <string name="installed_dictionaries_uninstall_success">%1$s désinstallé</string>
+    <string name="installed_dictionaries_uninstall_not_found">Fichier de dictionnaire introuvable</string>
+    <string name="installed_dictionaries_uninstall_cannot_delete_asset">Impossible de désinstaller les dictionnaires intégrés</string>
+    <string name="installed_dictionaries_uninstall_failed">Échec de la désinstallation</string>
 
     <!-- Trackpad Gesture Settings -->
     <string name="trackpad_gestures_title">Suggestions de Gestes Trackpad</string>

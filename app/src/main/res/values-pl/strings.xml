@@ -441,6 +441,25 @@
     <string name="installed_dictionaries_import_invalid_format">Nieprawidłowy format słownika</string>
     <string name="installed_dictionaries_import_failed">Import nie powiódł się</string>
     <string name="installed_dictionaries_imported_badge">Zaimportowano</string>
+    <string name="installed_dictionaries_installed_badge">Zainstalowano</string>
+    <string name="installed_dictionaries_available_online">Dostępne online</string>
+    <string name="installed_dictionaries_size">Rozmiar: %1$s</string>
+    <string name="installed_dictionaries_refresh">Odśwież</string>
+    <string name="installed_dictionaries_download">Pobierz</string>
+    <string name="installed_dictionaries_download_success">Pobrano %1$s</string>
+    <string name="installed_dictionaries_download_network_error">Błąd sieci</string>
+    <string name="installed_dictionaries_download_invalid_format">Nieprawidłowy format słownika</string>
+    <string name="installed_dictionaries_download_hash_mismatch">Weryfikacja pobierania nie powiodła się</string>
+    <string name="installed_dictionaries_download_failed">Pobieranie nie powiodło się</string>
+    <string name="installed_dictionaries_download_progress">%1$s / %2$s</string>
+    <string name="installed_dictionaries_manifest_error">Nie można załadować listy słowników</string>
+    <string name="installed_dictionaries_uninstall">Odinstaluj</string>
+    <string name="installed_dictionaries_uninstall_confirm_title">Odinstaluj słownik</string>
+    <string name="installed_dictionaries_uninstall_confirm_message">Czy na pewno chcesz odinstalować %1$s? Tej operacji nie można cofnąć.</string>
+    <string name="installed_dictionaries_uninstall_success">Odinstalowano %1$s</string>
+    <string name="installed_dictionaries_uninstall_not_found">Plik słownika nie został znaleziony</string>
+    <string name="installed_dictionaries_uninstall_cannot_delete_asset">Nie można odinstalować wbudowanych słowników</string>
+    <string name="installed_dictionaries_uninstall_failed">Odinstalowanie nie powiodło się</string>
 
     <!-- Trackpad Gesture Settings -->
     <string name="trackpad_gestures_title">Sugestie Gestów Trackpada</string>

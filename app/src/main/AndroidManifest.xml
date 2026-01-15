@@ -80,7 +80,7 @@
             android:theme="@style/Theme.Pastiera" />
         
         <activity
-            android:name=".InstalledDictionariesActivity"
+            android:name=".dictionaries.InstalledDictionariesActivity"
             android:exported="false"
             android:label="@string/installed_dictionaries_title"
             android:theme="@style/Theme.Pastiera" />

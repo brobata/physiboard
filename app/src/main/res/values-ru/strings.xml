@@ -323,6 +323,25 @@
     <string name="installed_dictionaries_import_invalid_format">Неверный формат словаря</string>
     <string name="installed_dictionaries_import_failed">Не удалось импортировать</string>
     <string name="installed_dictionaries_imported_badge">Импортировано</string>
+    <string name="installed_dictionaries_installed_badge">Установлено</string>
+    <string name="installed_dictionaries_available_online">Доступно онлайн</string>
+    <string name="installed_dictionaries_size">Размер: %1$s</string>
+    <string name="installed_dictionaries_refresh">Обновить</string>
+    <string name="installed_dictionaries_download">Скачать</string>
+    <string name="installed_dictionaries_download_success">Скачано %1$s</string>
+    <string name="installed_dictionaries_download_network_error">Ошибка сети</string>
+    <string name="installed_dictionaries_download_invalid_format">Неверный формат словаря</string>
+    <string name="installed_dictionaries_download_hash_mismatch">Проверка загрузки не удалась</string>
+    <string name="installed_dictionaries_download_failed">Загрузка не удалась</string>
+    <string name="installed_dictionaries_download_progress">%1$s / %2$s</string>
+    <string name="installed_dictionaries_manifest_error">Не удалось загрузить список словарей</string>
+    <string name="installed_dictionaries_uninstall">Удалить</string>
+    <string name="installed_dictionaries_uninstall_confirm_title">Удалить словарь</string>
+    <string name="installed_dictionaries_uninstall_confirm_message">Вы уверены, что хотите удалить %1$s? Это действие нельзя отменить.</string>
+    <string name="installed_dictionaries_uninstall_success">Удалено %1$s</string>
+    <string name="installed_dictionaries_uninstall_not_found">Файл словаря не найден</string>
+    <string name="installed_dictionaries_uninstall_cannot_delete_asset">Нельзя удалить встроенные словари</string>
+    <string name="installed_dictionaries_uninstall_failed">Не удалось удалить словарь</string>
 
     <!-- Trackpad Gesture Settings -->
     <string name="trackpad_gestures_title">Предложения жестов тачпада</string>

@@ -516,6 +516,25 @@
     <string name="installed_dictionaries_import_invalid_format">Invalid dictionary format</string>
     <string name="installed_dictionaries_import_failed">Import failed</string>
     <string name="installed_dictionaries_imported_badge">Imported</string>
+    <string name="installed_dictionaries_installed_badge">Installed</string>
+    <string name="installed_dictionaries_available_online">Available online</string>
+    <string name="installed_dictionaries_size">Size: %1$s</string>
+    <string name="installed_dictionaries_refresh">Refresh</string>
+    <string name="installed_dictionaries_download">Download</string>
+    <string name="installed_dictionaries_download_success">Downloaded %1$s</string>
+    <string name="installed_dictionaries_download_network_error">Network error</string>
+    <string name="installed_dictionaries_download_invalid_format">Invalid dictionary format</string>
+    <string name="installed_dictionaries_download_hash_mismatch">Download verification failed</string>
+    <string name="installed_dictionaries_download_failed">Download failed</string>
+    <string name="installed_dictionaries_download_progress">%1$s / %2$s</string>
+    <string name="installed_dictionaries_manifest_error">Failed to load dictionary list</string>
+    <string name="installed_dictionaries_uninstall">Uninstall</string>
+    <string name="installed_dictionaries_uninstall_confirm_title">Uninstall dictionary</string>
+    <string name="installed_dictionaries_uninstall_confirm_message">Are you sure you want to uninstall %1$s? This action cannot be undone.</string>
+    <string name="installed_dictionaries_uninstall_success">Uninstalled %1$s</string>
+    <string name="installed_dictionaries_uninstall_not_found">Dictionary file not found</string>
+    <string name="installed_dictionaries_uninstall_cannot_delete_asset">Cannot uninstall built-in dictionaries</string>
+    <string name="installed_dictionaries_uninstall_failed">Failed to uninstall dictionary</string>
 
     <!-- Clipboard page UI -->
     <string name="clipboard_history_title">Clipboard History</string>

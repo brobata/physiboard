@@ -479,6 +479,25 @@
     <string name="installed_dictionaries_import_invalid_format">Formato dizionario non valido</string>
     <string name="installed_dictionaries_import_failed">Import fallito</string>
     <string name="installed_dictionaries_imported_badge">Importato</string>
+    <string name="installed_dictionaries_installed_badge">Installato</string>
+    <string name="installed_dictionaries_available_online">Disponibile online</string>
+    <string name="installed_dictionaries_size">Dimensione: %1$s</string>
+    <string name="installed_dictionaries_refresh">Aggiorna</string>
+    <string name="installed_dictionaries_download">Scarica</string>
+    <string name="installed_dictionaries_download_success">Scaricato %1$s</string>
+    <string name="installed_dictionaries_download_network_error">Errore di rete</string>
+    <string name="installed_dictionaries_download_invalid_format">Formato dizionario non valido</string>
+    <string name="installed_dictionaries_download_hash_mismatch">Verifica download fallita</string>
+    <string name="installed_dictionaries_download_failed">Download fallito</string>
+    <string name="installed_dictionaries_download_progress">%1$s / %2$s</string>
+    <string name="installed_dictionaries_manifest_error">Impossibile caricare la lista dei dizionari</string>
+    <string name="installed_dictionaries_uninstall">Disinstalla</string>
+    <string name="installed_dictionaries_uninstall_confirm_title">Disinstalla dizionario</string>
+    <string name="installed_dictionaries_uninstall_confirm_message">Sei sicuro di voler disinstallare %1$s? Questa azione non può essere annullata.</string>
+    <string name="installed_dictionaries_uninstall_success">Disinstallato %1$s</string>
+    <string name="installed_dictionaries_uninstall_not_found">File dizionario non trovato</string>
+    <string name="installed_dictionaries_uninstall_cannot_delete_asset">Impossibile disinstallare dizionari integrati</string>
+    <string name="installed_dictionaries_uninstall_failed">Disinstallazione fallita</string>
 
     <!-- Trackpad gestures -->
     <string name="trackpad_gestures_title">Suggerimenti Gesture Trackpad</string>

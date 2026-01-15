@@ -442,6 +442,25 @@
     <string name="installed_dictionaries_import_invalid_format">Ungültiges Wörterbuchformat</string>
     <string name="installed_dictionaries_import_failed">Import fehlgeschlagen</string>
     <string name="installed_dictionaries_imported_badge">Importiert</string>
+    <string name="installed_dictionaries_installed_badge">Installiert</string>
+    <string name="installed_dictionaries_available_online">Online verfügbar</string>
+    <string name="installed_dictionaries_size">Größe: %1$s</string>
+    <string name="installed_dictionaries_refresh">Aktualisieren</string>
+    <string name="installed_dictionaries_download">Herunterladen</string>
+    <string name="installed_dictionaries_download_success">%1$s heruntergeladen</string>
+    <string name="installed_dictionaries_download_network_error">Netzwerkfehler</string>
+    <string name="installed_dictionaries_download_invalid_format">Ungültiges Wörterbuchformat</string>
+    <string name="installed_dictionaries_download_hash_mismatch">Download-Verifizierung fehlgeschlagen</string>
+    <string name="installed_dictionaries_download_failed">Download fehlgeschlagen</string>
+    <string name="installed_dictionaries_download_progress">%1$s / %2$s</string>
+    <string name="installed_dictionaries_manifest_error">Wörterbuchliste konnte nicht geladen werden</string>
+    <string name="installed_dictionaries_uninstall">Deinstallieren</string>
+    <string name="installed_dictionaries_uninstall_confirm_title">Wörterbuch deinstallieren</string>
+    <string name="installed_dictionaries_uninstall_confirm_message">Möchten Sie %1$s wirklich deinstallieren? Diese Aktion kann nicht rückgängig gemacht werden.</string>
+    <string name="installed_dictionaries_uninstall_success">%1$s deinstalliert</string>
+    <string name="installed_dictionaries_uninstall_not_found">Wörterbuchdatei nicht gefunden</string>
+    <string name="installed_dictionaries_uninstall_cannot_delete_asset">Integrierte Wörterbücher können nicht deinstalliert werden</string>
+    <string name="installed_dictionaries_uninstall_failed">Deinstallation fehlgeschlagen</string>
 
     <!-- Trackpad Gesture Settings -->
     <string name="trackpad_gestures_title">Trackpad-Gesten-Vorschläge</string>
