@@ -1,109 +1,168 @@
-<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Pastiera</string>
     <string name="input_method_name">Pastiera</string>
+    <string name="input_method_name_en">English</string>
+    <string name="input_method_name_it">Italiano</string>
+    <string name="input_method_name_fr">Français</string>
+    <string name="input_method_name_de">Deutsch</string>
+    <string name="input_method_name_pl">Polski</string>
+    <string name="input_method_name_es">Español</string>
+    <string name="input_method_name_pt">Português</string>
+    <string name="input_method_name_ru">Русский</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">Настройки</string>
     <string name="back">Назад</string>
     <string name="settings_back_content_description">Назад</string>
+    
+<!-- Long Press Section -->
     <string name="long_press_title">Долгое нажатие</string>
+    <string name="keyboard_timing_long_press_value">%1$dms</string>
     <string name="long_press_duration">Продолжительность долгого нажатия: %1$dms</string>
     <string name="long_press_description">Время ожидания перед тем, как долгое нажатие будет распознано. Меньшие значения делают долгое нажатие отзывчивее.</string>
     <string name="setting_applied_immediately">Настройка применяется моментально</string>
+    
+    <!-- Auto Capitalize Section -->
     <string name="auto_capitalize_title">Автоозаглавливание первой буквы</string>
     <string name="auto_capitalize_description">Автоматически озаглавливает первую букву в начале печати в пустом поле</string>
+
+    <!-- Auto Capitalize After Period Section -->
     <string name="auto_capitalize_after_period_title">Автозаглавные после точки</string>
     <string name="auto_capitalize_after_period_description">Автоматически озаглавливает следующую букву после точки, за которой следует пробел (конец предложения).</string>
+
+    <!-- Double Space to Period Section -->
     <string name="double_space_to_period_title">Двойной пробел ставит точку</string>
     <string name="double_space_to_period_description">Двойное нажатие пробела вставляет точку, за которой следует пробел. Озаглавливает следующую букву.</string>
+
+    <!-- Clear Alt on Space Section -->
     <string name="clear_alt_on_space_title">Отменить Alt на Пробел</string>
     <string name="clear_alt_on_space_description">Автоматически отключает Alt при нажатии на Пробел</string>
-    <string name="swipe_to_delete_title">Включить Удаление Свайпом</string>
-    <string name="swipe_incremental_threshold_title">Чувствительность Полоски Свайпа</string>
-    <string name="swipe_incremental_threshold_description">Дистанция, необходимая чтобы сдвинуть курсор на одну позицию. Меньшие числа ускоряют курсор.</string>
+    
+    <!-- Swipe to Delete Section -->
+    <string name="swipe_to_delete_title">Включить удаление свайпом</string>
+    
+    <!-- Swipe Incremental Threshold Section -->
+    <string name="swipe_incremental_threshold_title">Чувствительность полоски свайпа</string>
+    <string name="swipe_incremental_threshold_description">Расстояние, необходимая чтобы сдвинуть курсор на одну позицию. Уменьшение значения заставляет курсор двигаться быстрее.</string>
+    
+    <!-- Auto Show Keyboard Section -->
+    <string name="auto_show_keyboard_title">Автопоказ клавиатуры</string>
+    
+    <!-- Alt+Ctrl Speech Recognition Shortcut Section -->
+    <string name="alt_ctrl_speech_shortcut_title">Распознавание речи на Alt+CTRL</string>
+    <string name="alt_ctrl_speech_shortcut_description">Включает распознавание речи на Alt+CTRL</string>
+
+    <!-- Static Variation Bar Mode -->
+    <string name="static_variation_bar_mode_title">Статическая панель вариантов</string>
+    <string name="static_variation_bar_mode_description">Всегда отображать фиксированный набор служебных клавиш в строке вариантов вместо контекстно-зависимых вариантов.</string>
     <string name="swipe_to_move_cursor">Свайп для перемещения курсора</string>
-    <string name="auto_show_keyboard_title">Авто Показывать Клавиатуру</string>
-    <string name="alt_ctrl_speech_shortcut_title">Распознавание Речи на Alt+Ctrl</string>
-    <string name="alt_ctrl_speech_shortcut_description">Включает распознование речи на Alt+Ctrl</string>
+    
+    <!-- Info Section -->
     <string name="info_title">Информация</string>
     <string name="info_description">Настройки моментально автоматически сохраняются и применяются.</string>
+    
+    <!-- Main Activity -->
+    <string name="keyboard_title">Клавиатура Pastiera</string>
     <string name="keyboard_subtitle">Физическая клавиатура с поддержкой долгого нажатия</string>
     <string name="settings_content_description">Настройки</string>
+    
+    <!-- Installation Section -->
     <string name="installation_title">Установка</string>
     <string name="installation_step1">1. Нажмите на кнопку ниже, чтобы открыть настройки</string>
-    <string name="installation_step2">2. Включите \'Pastiera Physical Keyboard\'</string>
+    <string name="installation_step2">2. Включите \'Физическая клавиатура Pastiera\'</string>
     <string name="installation_step3">3. Вернитесь сюда и проверьте клавиатуру</string>
     <string name="open_keyboard_settings">Открыть Настройки Клавиатуры</string>
+    
+    <!-- Main Activity - Enable/Select IME -->
     <string name="enable_pastiera">Включить Pastiera</string>
     <string name="pastiera_not_enabled">Pastiera не включена</string>
     <string name="choose_input_method">Выберите метод ввода</string>
     <string name="pastiera_not_selected">Pastiera не выбрана</string>
+    
+    <!-- Test Section -->
     <string name="test_keyboard_title">Тест клавиатуры</string>
     <string name="test_keyboard_description">Подключите физическую клавиатуру и протестируйте ниже:</string>
     <string name="test_keyboard_normal">• Нормальное нажатие: вставляет символ</string>
     <string name="test_keyboard_long_press">• Долгое нажатие (500мс): вставляет альтернативный символ</string>
     <string name="test_field_label">Поле для теста</string>
-    <string name="test_field_placeholder">Печатайте тут на физической клавиатуре...</string>
+    <string name="test_field_placeholder">Печатайте тут с физической клавиатуры...</string>
+    
+    <!-- Last Event Section -->
     <string name="last_keyboard_event_title">Последнее событие</string>
     <string name="no_event_yet">Пока нет событий</string>
+    
+    <!-- Long Press Mappings Section -->
     <string name="long_press_mappings_title">Карта долгих нажатий:</string>
+    <string name="long_press_mappings_line1">Q→0, W→1, E→2, R→3, T→(, Y→), U→-, I→_, O→\', P→:</string>
+    <string name="long_press_mappings_line2">A→@, S→4, D→5, F→6, G→*, H→#, J→+, K→\", L→\'</string>
+    <string name="long_press_mappings_line3">Z→!, X→7, C→8, V→9, B→., N→\', M→?</string>
+    
+    <!-- Buttons -->
     <string name="settings_button">Настройки</string>
     <string name="change_keyboard_button">Сменить клавиатуру</string>
-    <string name="sym_customization_title">Изменить SYM клавиатуру</string>
-    <string name="sym_customization_button">Изменить SYM клавиатуру</string>
-    <string name="sym_customization_description">Персонализовать карту эмодзи для SYM клавиатуры. Нажмите на любую клавишу, чтобы изменить ее эмодзи.</string>
+    <string name="save">Сохранить</string>
+    
+    <!-- SYM Customization -->
+    <string name="sym_customization_title">Настроить клавиатуру SYM</string>
+    <string name="sym_customization_button">Настроить клавиатуру SYM</string>
+    <string name="sym_customization_description">Персонализовать карту эмодзи для клавиатуры SYM. Нажмите на любую клавишу, чтобы изменить её эмодзи.</string>
     <string name="reset_to_default">Сбросить по умолчанию</string>
     <string name="select_emoji">Выбрать Эмодзи</string>
     <string name="close">Закрыть</string>
-    <string name="auto_correct_title">Авто замены</string>
+    
+    <!-- Auto-Correction Section -->
+    <string name="auto_correct_title">Автозамены</string>
     <string name="auto_correct_languages_title">Замены</string>
-    <string name="auto_correct_settings_title">Замены Авто-коррекции</string>
-    <string name="auto_correct_settings_description">Выбирите какие замены используются для авто-коррекции. Системный язык сверху.</string>
+    <string name="auto_correct_settings_title">Замены автоисправления</string>
+    <string name="auto_correct_settings_description">Выберите, какие замены используются для автоисправления. Системный язык сверху.</string>
     <string name="auto_correct_system_language">Язык системы</string>
-    <string name="auto_correct_ricette_pastiera_description">Кастомизация для всех замен</string>
+    <string name="auto_correct_ricette_pastiera_description">Настройки действительны для всех замен</string>
     <string name="auto_correct_other_languages">Другие замены</string>
-    <string name="auto_correct_custom_languages">Кастомные замены</string>
-    <string name="auto_correct_at_least_one_language_required">Для работы необходима хотябы одна замена</string>
+    <string name="auto_correct_custom_languages">Настроенные замены</string>
+    <string name="auto_correct_at_least_one_language_required">Для работы необходима хотя бы одна замена</string>
     <string name="auto_correct_edit">Правка</string>
-    <string name="auto_correct_edit_description">Нажмите на коррекцию чтобы править, или используйте копнку + чтобы добавить новую.</string>
-    <string name="auto_correct_add_correction">Добавить Коррекцию</string>
-    <string name="auto_correct_edit_correction">Изменить Коррекцию</string>
+    <string name="auto_correct_edit_description">Нажмите на исправление, чтобы править, или используйте кнопку +, чтобы добавить новое.</string>
+    <string name="auto_correct_add_correction">Добавить исправление</string>
+    <string name="auto_correct_edit_correction">Редактировать исправление</string>
     <string name="auto_correct_original">Оригинал</string>
-    <string name="auto_correct_corrected">Правка</string>
+    <string name="auto_correct_corrected">Исправление</string>
     <string name="auto_correct_delete">Удалить</string>
     <string name="auto_correct_save">Сохранить</string>
     <string name="auto_correct_cancel">Отмена</string>
-    <string name="auto_correct_no_corrections">Правки недоступны. Нажмите + чтобы добавить.</string>
-    <string name="auto_correct_add_language">Добавить новую Замену</string>
-    <string name="auto_correct_language_code">Код Замены</string>
-    <string name="auto_correct_language_name">Имя Замены</string>
-    <string name="auto_correct_language_code_hint">Введите код и имя для вашей кастомной замены (например \"fr\" / Французский, \"mydict\" / \"Мой словарь\")</string>
-    <string name="auto_correct_language_code_required">Имя замены необходимо</string>
+    <string name="auto_correct_no_corrections">Нет доступных исправлений. Нажмите +, чтобы добавить.</string>
+    <string name="auto_correct_add_language">Добавить новую замену</string>
+    <string name="auto_correct_language_code">Код замены</string>
+    <string name="auto_correct_language_name">Имя замены</string>
+    <string name="auto_correct_language_code_hint">Введите код и имя для вашей пользовательской замены (например, \"fr\" / Французский, \"mydict\" / \"Мой словарь\")</string>
+    <string name="auto_correct_language_code_required">Требуется имя замены</string>
     <string name="auto_correct_language_already_exists">Замена уже существует</string>
     <string name="auto_correct_suggestions_toggle_title">Предложения во время ввода</string>
     <string name="auto_correct_accent_matching_title">Соответствие слов с акцентами</string>
-    <string name="auto_correct_auto_replace_title">Автоматическая замена на пробел/ввод</string>
-    <string name="auto_correct_max_distance_title">Максимальное расстояние коррекции</string>
+    <string name="auto_correct_auto_replace_title">Автозамена на пробел/ввод</string>
+    <string name="auto_correct_max_distance_title">Максимальное расстояние исправления</string>
     <string name="auto_correct_max_distance_off">Выключено</string>
-    <string name="auto_correct_max_distance_description">Максимальное количество различий символов, разрешенных для авто-коррекции. 0 = выключено, 1-3 = увеличивающаяся толерантность.</string>
-    <string name="auto_correct_manage_user_dict_title">Управление словарем пользователя</string>
-    
+    <string name="auto_correct_max_distance_description">Максимальное количество различий символов, разрешённых для автоисправления. 0 = выключено, 1-3 = повышение терпимости.</string>
+    <string name="auto_correct_manage_user_dict_title">Управление словарём пользователя</string>
+    <string name="auto_correct_keyboard_proximity_title">Ранжирование по Близости Клавиатуры</string>
+    <string name="auto_correct_keyboard_proximity_description">Фильтровать маловероятные опечатки на основе расстояния клавиш (QWERTY/AZERTY/QWERTZ)</string>
+    <string name="auto_correct_edit_type_ranking_title">Ранжирование по Типу Редактирования</string>
+    <string name="auto_correct_edit_type_ranking_description">Сортировать предложения по типу редактирования (вставка &gt; замена &gt; удаление)</string>
+    <string name="clear">Очистить</string>
+    <string name="experimental_suggestions_title">Экспериментальные подсказки ввода</string>
+    <string name="experimental_suggestions_subtitle">Включить новый движок словаря/подсказок ввода (бета)</string>
+
     <!-- User dictionary management -->
     <string name="user_dict_title">Словарь пользователя</string>
     <string name="user_dict_add_hint">Добавить слово</string>
     <string name="user_dict_add_button">Сохранить слово</string>
-    <string name="user_dict_empty_state">Пользовательские слова еще не сохранены.</string>
-    <string name="user_dict_edit_title">Редактировать слово</string>
-    <string name="user_dict_frequency_label">Использований: %1$d</string>
+    <string name="user_dict_empty_state">Пользовательские слова ещё не сохранены.</string>
+    <string name="user_dict_edit_title">Править слово</string>
+    <string name="user_dict_frequency_label">Использование: %1$d</string>
     
-    <string name="auto_correct_keyboard_proximity_title">Ранжирование по Близости Клавиатуры</string>
-    <string name="auto_correct_keyboard_proximity_description">Фильтровать маловероятные опечатки на основе расстояния клавиш (QWERTY/AZERTY/QWERTZ)</string>
-    <string name="auto_correct_edit_type_ranking_title">Ранжирование по Типу Редактирования</string>
-    <string name="auto_correct_edit_type_ranking_description">Сортировать предложения по типу редактирования (вставка > замена > удаление)</string>
-    <string name="clear">Очистить</string>
-    <string name="experimental_suggestions_title">Экспериментальные предложения</string>
-    <string name="experimental_suggestions_subtitle">Включить новый движок словаря/предложений (бета)</string>
+    <!-- SYM Customization Screen -->
     <string name="sym_customize_title">Изменить клавиатуру SYM</string>
-    <string name="sym_auto_close_title">Авто-закрытие раскладки SYM</string>
-    <string name="sym_auto_close_description">Автоматически закрывать SYM раскладку после вставки символа, нажатия Alt, или нажатия Enter. Не закрывается на Ctrl или Shift.</string>
+    <string name="sym_auto_close_title">Автозакрытие раскладки SYM</string>
+    <string name="sym_auto_close_description">Автоматически закрывать раскладку SYM после вставки символа, нажатия Alt или нажатия Enter. Не закрывается на CTRL или Shift.</string>
     <string name="sym_enable_emoji_page_title">Включить страницу Эмодзи</string>
     <string name="sym_enable_emoji_page_description">Показывать эмодзи в раскладке SYM.</string>
     <string name="sym_enable_symbols_page_title">Включить страницу Символов</string>
@@ -111,99 +170,129 @@
     <string name="sym_enable_clipboard_page_title">Включить страницу Буфера обмена</string>
     <string name="sym_enable_clipboard_page_description">Показывать историю буфера обмена при переключении.</string>
     <string name="sym_swap_pages_title">Сменить порядок страниц в SYM</string>
-    <string name="sym_swap_pages_description">Выберите какая страница SYM появляется первой при переключении.</string>
+    <string name="sym_swap_pages_description">Выберите, какая страница SYM появляется первой при переключении.</string>
     <string name="sym_order_emoji_first">Сначала эмодзи</string>
     <string name="sym_order_symbols_first">Сначала символы</string>
     <string name="sym_instructions_title">Инструкция</string>
-    <string name="sym_instructions_text">Тажмите на любую клавишу снизу чтобы изменить ее эмодзи. Изменения сохраняются автоматически.</string>
+    <string name="sym_instructions_text">Нажмите на любую клавишу снизу, чтобы изменить её эмодзи. Изменения сохраняются автоматически.</string>
     <string name="sym_reset_to_default">Сбросить по умолчанию</string>
     <string name="sym_reset_confirm_title">Сбросить по умолчанию</string>
-    <string name="sym_reset_confirm_message">Уверены ли вы, что хотите сбросить все SYM раскладки по умолчанию? Действие необратимо.</string>
+    <string name="sym_reset_confirm_message">Вы действительно хотите сбросить все раскладки SYM по умолчанию? Это действие необратимо.</string>
     <string name="sym_reset_confirm_button">Сброс</string>
     <string name="cancel">Отмена</string>
+    
+    <!-- Emoji Picker Dialog -->
     <string name="emoji_picker_title">Выбрать Эмодзи</string>
     <string name="emoji_picker_title_for_letter">Выбрать эмодзи для буквы %1$s</string>
     <string name="emoji_picker_close">Закрыть</string>
-    <string name="emoji_category_smileys">Смайлы &amp; Люди</string>
-    <string name="emoji_category_animals">Животные &amp; Природа</string>
-    <string name="emoji_category_food">Еда &amp; Напитки</string>
-    <string name="emoji_category_travel">Путешествия &amp; Места</string>
-    <string name="emoji_category_activities">Активити</string>
-    <string name="emoji_category_objects">Объекты</string>
-    <string name="emoji_category_symbols">Символы</string>
-    <string name="emoji_category_flags">Флаги</string>
-    <string name="emoji_category_recents">Недавние</string>
-    <string name="emoji_category_smileys_and_emotion">Смайлы и эмоции</string>
-    <string name="emoji_category_people_and_body">Люди и тело</string>
-    <string name="emoji_category_animals_and_nature">Животные и природа</string>
-    <string name="emoji_category_food_and_drink">Еда и напитки</string>
-    <string name="emoji_category_travel_and_places">Путешествия и места</string>
-    <string name="emoji_picker_error">Не удалось загрузить эмодзи</string>
+    <string name="emoji_category_smileys">Смайлы и люди</string>
+    <string name="emoji_category_animals">Животные и природа</string>
+    <string name="emoji_category_food">Еда и напитки</string>
+    <string name="emoji_category_travel">Путешествия и места</string>
+    
+    <!-- Modifiers -->
+    <string name="modifier_shift">SHIFT</string>
+    <string name="modifier_ctrl">CTRL</string>
+    
+    <!-- Long Press Modifier Section -->
     <string name="long_press_modifier_title">Модификатор долгого нажатия</string>
     <string name="long_press_modifier_description">Выберите, что делает долгое нажатие: Alt+клавиша, Shift+клавиша, вариации символов или Sym-сопоставления</string>
     <string name="long_press_modifier_alt">Alt</string>
     <string name="long_press_modifier_shift">Shift</string>
     <string name="long_press_modifier_variations">Вариации</string>
     <string name="long_press_modifier_sym">Sym</string>
+    
+    <!-- Keyboard Layout Section -->
     <string name="keyboard_layout_title">Раскладка клавиатуры</string>
-    <string name="keyboard_layout_description">Выберите вашу раскладку. ALT, SYM и Ctrl раксладки зависят от физического расположения клавишы.</string>
+    <string name="keyboard_layout_description">Выберите вашу раскладку. Раскладки ALT, SYM и CTRL зависят от физического расположения клавиши.</string>
+    <string name="keyboard_layout_editor_title">Редактор раскладки клавиатуры</string>
     <string name="keyboard_layout_no_conversion">Стандартная</string>
     <string name="keyboard_layout_no_conversion_description">Стандартная QWERTY (без конверсии)</string>
-    <string name="keyboard_layout_conversions_title">Конверсии Раскладки</string>
+    <string name="keyboard_layout_conversions_title">Конверсии раскладки</string>
     <string name="keyboard_layout_conversions_description">Конвертирует буквы в новую раскладку</string>
     <string name="keyboard_layout_viewer_title">Клавиатурная карта</string>
     <string name="keyboard_layout_viewer_subtitle">Раскладка: %1$s</string>
-    <string name="keyboard_layout_viewer_unavailable">Не получилось загрузить эту раксладку.</string>
+    <string name="keyboard_layout_viewer_unavailable">Не получилось загрузить эту раскладку.</string>
     <string name="keyboard_layout_viewer_empty">Не назначены клавиши для этой раскладки.</string>
+    <string name="keyboard_layout_multitap_badge">мультинажатие</string>
     <string name="keyboard_layout_viewer_multitap_on">мультинажатие</string>
-    <string name="keyboard_layout_viewer_multitap_off">одичное</string>
+    <string name="keyboard_layout_viewer_multitap_off">одиночное</string>
     <string name="keyboard_layout_viewer_open">Смотреть раскладку</string>
     <string name="keyboard_layout_settings_button">Настройки раскладки</string>
+    
+    <!-- About Section -->
+    <string name="about_github">GitHub</string>
+    <string name="about_build_info">Pastiera IME - Palsoftware 2025</string>
     <string name="about_title">О программе</string>
-    <string name="about_credits_error">Не удалось загрузить информацию о кредитах.</string>
-    <string name="launcher_shortcuts_title">Горячие клавиши</string>
+    <string name="about_credits_error">Невозможно загрузить информацию о благодарностях.</string>
+    
+    <!-- Launcher Shortcuts Section -->
+    <string name="launcher_shortcuts_title">Сочетания клавиш</string>
     <string name="launcher_shortcuts_experimental">Экспериментальные</string>
-    <string name="launcher_shortcuts_description">Включить горячие клавиши</string>
-    <string name="launcher_shortcuts_configure">Настроить горячие клавиши</string>
+    <string name="launcher_shortcuts_description">Включить сочетания клавиш</string>
+    <string name="launcher_shortcuts_configure">Настроить сочетания клавиш</string>
     <string name="launcher_shortcuts_configure_description">Назначить клавиши для открытия приложений</string>
-    <string name="launcher_shortcuts_screen_title">Горячие клавиши</string>
+    
+    <!-- Launcher Shortcuts Screen -->
+    <string name="launcher_shortcuts_screen_title">Сочетания клавиш</string>
     <string name="launcher_shortcuts_not_assigned">Не назначено</string>
     <string name="launcher_shortcuts_remove">Удалить</string>
     <string name="launcher_shortcuts_app_name_unavailable">Приложение (имя недоступно)</string>
-    <string name="launcher_shortcuts_shortcut_type">Горячая клавиша: %1$s</string>
+    <string name="launcher_shortcuts_shortcut_type">Сочетание клавиш: %1$s</string>
     <string name="launcher_shortcuts_shortcut_unknown">неизвестное</string>
     <string name="launcher_shortcuts_action_type">Действие: %1$s</string>
+    
+    <!-- Launcher Shortcut Assignment Activity -->
     <string name="launcher_shortcut_assignment_title">Назначить приложение на клавишу</string>
     <string name="launcher_shortcut_assignment_key">Клавиша %1$s</string>
-    <string name="launcher_shortcut_assignment_header">Горячая клавиша</string>
+    <string name="launcher_shortcut_assignment_header">Сочетание клавиш</string>
     <string name="launcher_shortcut_assignment_search_placeholder">Поиск приложений...</string>
     <string name="launcher_shortcut_assignment_search_description">Поиск</string>
     <string name="launcher_shortcut_assignment_close">Закрыть</string>
     <string name="launcher_shortcut_assignment_no_apps">Приложения не найдены</string>
-    <string name="launcher_shortcut_assignment_no_results">Нет результата для \"%$1s\"</string>
-    <string name="launcher_shortcut_assignment_key_name">Клавиша %$1s</string>
+    <string name="launcher_shortcut_assignment_no_results">Нет результатов для \"%1$s\"</string>
+    <string name="launcher_shortcut_assignment_key_name">Клавиша %1$d</string>
+    
+    <!-- Power Shortcuts Section -->
     <string name="power_shortcuts_title">Клавиша питания</string>
-    <string name="power_shortcuts_description">Нажмите SYM, затем клавишу тчобы запустить приложения, когда не выбрано текстовое поле</string>
-    <string name="power_shortcuts_press_key">Нажмите горячую клавишу для запуска</string>
+    <string name="power_shortcuts_description">Нажмите SYM, а затем клавишу, чтобы вызвать сочетание клавиш, когда не выбрано текстовое поле</string>
+    <string name="power_shortcuts_press_key">Нажмите клавишу команды для запуска</string>
+    
+    <!-- Notification Helper -->
     <string name="notification_nav_mode_channel_name">Режим навигации</string>
     <string name="notification_nav_mode_channel_description">Уведомления для режима навигации</string>
-    <string name="notification_nav_mode_activated_title">Режим Навигации включен</string>
-    <string name="notification_nav_mode_activated_text">Режим Навигации включен</string>
+    <string name="notification_nav_mode_activated_title">Режим Навигации включён</string>
+    <string name="notification_nav_mode_activated_text">Режим Навигации включён</string>
+    
+    <!-- Update Notifications -->
     <string name="notification_update_channel_name">Обновления Pastiera</string>
     <string name="notification_update_channel_description">Уведомления о новых версиях Pastiera</string>
     <string name="notification_update_available_title">Pastiera - Доступно обновление</string>
     <string name="notification_update_available_text">Доступна новая версия Pastiera (%1$s)</string>
+    
+    <!-- Speech Recognition -->
     <string name="speech_recognition_prompt">Говорите...</string>
-    <string name="auto_correct_search_placeholder">Найти коррекции...</string>
+    <string name="speech_recognition_error_no_match">Текст не распознан. Попробуйте ещё раз.</string>
+    <string name="speech_recognition_error_timeout">Голосовой ввод не обнаружен.</string>
+    <string name="speech_recognition_error_permission">Запрос разрешения на использование микрофона отклонён.</string>
+    <string name="speech_recognition_error_network">Ошибка сети.</string>
+    <string name="speech_recognition_error_generic">Ошибка распознавания речи.</string>
+    <string name="speech_recognition_error_not_available">Распознавание речи недоступно.</string>
+    
+    <!-- Auto Correct Edit Screen -->
+    <string name="auto_correct_search_placeholder">Найти исправления...</string>
     <string name="auto_correct_search_description">Поиск</string>
     <string name="auto_correct_clear_search">Очистить поиск</string>
-    <string name="auto_correct_no_corrections_found">Коррекции не найдены</string>
+    <string name="auto_correct_no_corrections_found">Исправления не найдены</string>
+    
+    <!-- Nav Mode Settings -->
     <string name="nav_mode_title">Режим навигации</string>
     <string name="nav_mode_enable_title">Включить режим навигации</string>
     <string name="nav_mode_enable_description">Двойное нажатие на Ctrl активирует режим навигации</string>
     <string name="nav_mode_key_mappings">Клавиатурная карта</string>
     <string name="nav_mode_revert_to_default">Сбросить по умолчанию</string>
-    <string name="nav_mode_note">Внимание: Изменение клавиш в режиме навигации так же меняет Ctrl+клавишу в текстовых полях.</string>
+    <string name="nav_mode_note">Внимание: Изменение клавиш в режиме навигации так же меняет CTRL+клавишу в текстовых полях.</string>
+    <string name="nav_mode_warning_icon">⚠</string>
     <string name="nav_mode_configure_key">Настроить %1$s</string>
     <string name="nav_mode_type">Тип</string>
     <string name="nav_mode_keycode">Код</string>
@@ -213,8 +302,10 @@
     <string name="nav_mode_save">Сохранить</string>
     <string name="nav_mode_cancel">Отмена</string>
     <string name="nav_mode_default">по умолчанию</string>
+    
+    <!-- Unicode Character Picker -->
     <string name="unicode_picker_title_for_letter">Выбрать символ для %1$s</string>
-    <string name="unicode_picker_title">Выбрать символ из Unicode</string>
+    <string name="unicode_picker_title">Выбрать символ из Юникода</string>
     <string name="unicode_picker_close">Закрыть</string>
     <string name="unicode_category_punctuation">Пунктуация</string>
     <string name="unicode_category_math">Математические символы</string>
@@ -223,35 +314,52 @@
     <string name="unicode_category_arrows">Стрелки</string>
     <string name="unicode_category_misc">Другое</string>
     <string name="unicode_category_variations">Вариации</string>
+    <string name="emoji_category_smileys_and_emotion">Смайлы и эмоции</string>
+    <string name="emoji_category_people_and_body">Люди и тело</string>
+    <string name="emoji_category_animals_and_nature">Животные и природа</string>
+    <string name="emoji_category_food_and_drink">Еда и напитки</string>
+    <string name="emoji_category_travel_and_places">Путешествия и места</string>
+    <string name="emoji_category_activities">Активности</string>
+    <string name="emoji_category_objects">Объекты</string>
+    <string name="emoji_category_symbols">Символы</string>
+    <string name="emoji_category_flags">Флаги</string>
+    <string name="emoji_category_recents">Недавние</string>
+    <string name="emoji_category_emoticons">Эмотиконы</string>
+    <string name="emoji_picker_error">Не удалось загрузить эмодзи</string>
     
     <!-- Variation Customization -->
-    <string name="variation_customize_title">Настроить вариации</string>
+    <string name="variation_customize_title">Настройка вариаций</string>
     <string name="variation_instructions_title">Инструкция</string>
-    <string name="variation_instructions_description">Нажмите на поле вариации, чтобы выбрать символ. Каждая буква может иметь до 7 символов вариаций.</string>
-    <string name="variation_picker_title">Выбрать вариацию для %1$s</string>
-    <string name="custom_variation_input">Свой символ</string>
-    <string name="add">Добавить</string>
-    <string name="variation_picker_clear">Очистить (Пусто)</string>
+    <string name="variation_instructions_description">Нажмите на любую вариацию, чтобы выбрать символ. Каждая буква может иметь до 7 вариаций символов.</string>
+    <string name="variation_picker_title">Выберите вариацию для %1$s</string>
+    <string name="variation_picker_clear">Очистить (пусто)</string>
     <string name="variation_reset_to_default">Сбросить по умолчанию</string>
     <string name="variation_reset_confirm_title">Сбросить по умолчанию</string>
-    <string name="variation_reset_confirm_message">Вы уверены, что хотите сбросить все вариации к значениям по умолчанию? Это действие нельзя отменить.</string>
+    <string name="variation_reset_confirm_message">Вы действительно хотите сбросить все вариации к значению по умолчанию? Это действие необратимо.</string>
     <string name="variation_reset_confirm_button">Сбросить</string>
     <string name="static_variation_input_label">Значение</string>
     <string name="static_variation_input_hint">Оставьте пустым и сохраните, чтобы удалить слот.</string>
+    
+    <!-- SYM Customization Screen -->
+    <string name="sym_tab_emoji">Эмодзи</string>
+    <string name="sym_tab_characters">Символы</string>
+    
+    <!-- App Picker Dialog -->
+    <string name="custom_variation_input">Свой символ</string>
+    <string name="add">Добавить</string>
     <string name="static_variation_base_layer_title">Предзаполнить верхний ряд</string>
     <string name="static_variation_base_layer_description">Включает предустановленные символы для верхнего базового ряда. Слои Shift и Alt остаются доступны независимо.</string>
     <string name="static_variation_layer_sticky_title">Залипающий слой</string>
     <string name="static_variation_layer_sticky_description">Если слой Shift/Alt зафиксирован двойным нажатием, он остается активным после выбора символа из этого слоя.</string>
-    
-    <string name="sym_tab_emoji">Эмодзи</string>
-    <string name="sym_tab_characters">Символы</string>
-    
     <string name="titan2_layout_title">Выравнивание раскладки Titan 2</string>
     <string name="titan2_layout_description">Выровнять экранную клавиатуру с физическими клавишами Titan 2</string>
-    
+
+    <!-- App Picker Dialog -->
     <string name="app_picker_title">Выбрать приложение</string>
     <string name="app_picker_cancel">Отмена</string>
     <string name="app_picker_search_placeholder">Искать приложения...</string>
+    
+    <!-- Settings Screen -->
     <string name="settings_support_ko_fi">Поддержать на Ko-fi</string>
     <string name="settings_nav_mode_configure">Настроить раскладку режима навигации</string>
     <string name="settings_update_section_title">Обновления</string>
@@ -260,11 +368,28 @@
     <string name="settings_update_checking">Проверяю обновления...</string>
     <string name="settings_update_up_to_date">Приложение последней версии.</string>
     <string name="settings_update_check_failed">GitHub недоступен.</string>
-    <string name="settings_category_keyboard_timing">Клавиатура &amp; Тайминг</string>
+    <string name="update_dialog_title">Доступно новое обновление</string>
+    <string name="update_dialog_message">Версия %1$s доступна на GitHub.</string>
+    <string name="update_dialog_open_github">Открыть GitHub</string>
+    <string name="update_dialog_later">Позже</string>
+    <string name="update_dialog_download_apk">Скачать APK</string>
+    
+    <!-- Auto Correct Settings -->
+    <string name="auto_correct_ricette_pastiera_name">Рецепты Pastiera</string>
+    
+    <!-- Settings Categories -->
+    <string name="settings_category_keyboard_timing">Клавиатура и тайминг</string>
     <string name="settings_category_text_input">Умные возможности</string>
-    <string name="settings_category_auto_correction">Авто-коррекция</string>
+    <string name="settings_category_auto_correction">Автоисправление</string>
     <string name="settings_category_customization">Персонализация</string>
     <string name="settings_category_advanced">Продвинутые</string>
+    
+    <!-- Languages (Input Method Subtypes) -->
+    <string name="languages_title">Языки</string>
+    <string name="languages_description">Добавьте языки в меню Android для выбора методов ввода. Показаны только языки со словарями, которые не являются языками системы.</string>
+    <string name="languages_no_available">Все доступные языки уже добавлены или являются языками системы.</string>
+    
+    <!-- Keyboard Layout Settings -->
     <string name="layout_save_content_description">Сохранить раскладку</string>
     <string name="layout_import_content_description">Импортировать раскладку</string>
     <string name="layout_imported_successfully">Раскладка успешно импортирована</string>
@@ -285,53 +410,86 @@
     <string name="layout_delete">Удалить</string>
     <string name="layout_enable_for_cycling">Добавить в активные</string>
     <string name="layout_select_as_active">Выбрать активную раскладку</string>
+    <string name="delete">Удалить</string>
+    
+    <!-- Main Activity Event Display -->
+    <string name="modifier_alt">ALT</string>
     <string name="event_unicode_label">Юникод:</string>
     <string name="event_output_label">Вывод:</string>
     <string name="event_not_available">Н/Д</string>
+    
+    <!-- Nav Mode Key Labels -->
     <string name="nav_mode_action_copy">Копировать</string>
     <string name="nav_mode_action_paste">Вставить</string>
     <string name="nav_mode_action_cut">Вырезать</string>
     <string name="nav_mode_action_undo">Отмена</string>
-    <string name="nav_mode_action_select_all">Выд.Все</string>
+    <string name="nav_mode_action_select_all">Выд.Всё</string>
     <string name="nav_mode_action_expand_selection_left">←Выб</string>
     <string name="nav_mode_action_expand_selection_right">→Выб</string>
     <string name="nav_mode_action_toggle_pastierina">Pastierina</string>
+    <string name="nav_mode_keycode_up">↑</string>
+    <string name="nav_mode_keycode_down">↓</string>
+    <string name="nav_mode_keycode_left">←</string>
+    <string name="nav_mode_keycode_right">→</string>
+    <string name="nav_mode_keycode_center">○</string>
+    <string name="nav_mode_keycode_page_up">PgUp</string>
+    <string name="nav_mode_keycode_page_down">PgDn</string>
+    <string name="nav_mode_keycode_escape">Esc</string>
+    <string name="nav_mode_keycode_tab">Tab</string>
+    <string name="nav_mode_keycode_forward_delete">Del→</string>
+    <string name="nav_mode_key_unknown">?</string>
+    
+    <!-- Tutorial -->
+    <string name="tutorial_skip">Пропустить</string>
+    <string name="tutorial_previous">Предыдущий</string>
+    <string name="tutorial_next">Далее</string>
+    <string name="tutorial_finish">Закончить</string>
+    <string name="tutorial_page_welcome_title">Добро пожаловать в Pastiera</string>
+    <string name="tutorial_page_welcome_description">Pastiera - это расширенный метод ввода для Android-устройств с портативными клавиатурами (PKB) с поддержкой режима навигации, сочетаниями клавиш, пользовательскими раскладками клавиатуры и многим другим.</string>
+    <string name="tutorial_page_enable_title">Включить Pastiera</string>
+    <string name="tutorial_page_enable_description">Для начала вам нужно включить Pastiera как метод ввода в настройках Android. Нажмите кнопку ниже, чтобы открыть настройки.</string>
+    <string name="tutorial_page_select_title">Выбрать Pastiera</string>
+    <string name="tutorial_page_select_description">Чтобы использовать Pastiera, выберите его среди методов ввода. Выберите между полнофункциональным интерфейсом с включённым переключателем &quot;Использовать экранную клавиатуру&quot; или минималистичным интерфейсом &quot;Pastierina&quot; с выключенным переключателем.</string>
+    <string name="tutorial_page_led_title">Светодиодный индикатор</string>
+    <string name="tutorial_page_led_description">Чтобы максимально эффективно использовать Pastiera, настройте клавишу FN на использование CTRL в системных настройках Android. На панели метода ввода отображаются четыре светодиода: они загораются синим цветом, когда модификатор активен, и оранжевым, когда он заблокирован. Светодиод раскладки SYM горит синим на странице эмодзи и оранжевым на странице символов.</string>
+    <string name="tutorial_page_nav_mode_title">Режим навигации</string>
+    <string name="tutorial_page_nav_mode_description">Режим навигации позволяет перемещаться по пользовательскому интерфейсу устройства с помощью буквенных сочетаний клавиш, таких как IJKL или ESDF.\nДля активации:\n• Быстро нажмите CTRL дважды\n• Буквенные клавиши становятся элементами управления навигацией\n• Нажмите CTRL ещё раз для выхода\nКаждое сочетание клавиш можно переназначить в расширенных настройках.</string>
+    <string name="tutorial_page_customization_title">Настройка</string>
+    <string name="tutorial_page_customization_description">Pastiera предлагает множество вариантов настройки:\n• Настраиваемые раскладки клавиатуры\n• Сочетания клавиш запуска и сочетания клавиш с кнопкой питания\n• Панель методов ввода может использоваться как панель свайпов для перемещения курсора\n• Пользовательские сопоставления для режима навигации\nИзучите настройки, чтобы найти идеальную конфигурацию для себя!</string>
+    <string name="tutorial_page_ready_title">Готовы начать</string>
+    <string name="tutorial_page_ready_description">Теперь вы готовы использовать Pastiera! Помните, что вы всегда можете вернуться к настройкам, чтобы дополнительно адаптировать клавиатуру под свои нужды.</string>
+    <string name="tutorial_enable_button">Включить Pastiera</string>
+    <string name="tutorial_enabled_message">Pastiera включена!</string>
+    <string name="tutorial_select_button">Выбрать Pastiera</string>
+    <string name="tutorial_enable_first_message">Сначала включите Pastiera на предыдущей странице</string>
+    <string name="tutorial_selected_message">Pastiera выбрана!</string>
+    <string name="tutorial_show">Показать руководство</string>
+    <string name="tutorial_review_description">Просмотрите вводное руководство</string>
 
     <string name="pastierina_mode_title">Режим Pastierina</string>
     <string name="pastierina_mode_description">Переключить минимальный интерфейс</string>
 
     <!-- Backup & Restore -->
     <string name="backup_now">Сделать резервную копию сейчас</string>
-    <string name="backup_now_description">Экспортировать все настройки в ZIP файл</string>
+    <string name="backup_now_description">Экспортировать все настройки в ZIP-файл</string>
     <string name="restore_from_file">Восстановить из файла</string>
     <string name="restore_from_file_description">Импортировать резервную копию из ZIP</string>
     <string name="backup_completed">Резервная копия сделана</string>
     <string name="restore_completed">Восстановление завершено</string>
-    <string name="backup_failed">Резервная копия не удалась: %1$s</string>
+    <string name="backup_failed">Резервное копирование не удалось: %1$s</string>
     <string name="restore_failed">Восстановление не удалось: %1$s</string>
-    <!-- Clipboard page UI -->
-    <string name="clipboard_history_title">История буфера обмена</string>
-    <string name="clipboard_clear_all">Очистить все</string>
-    <string name="clipboard_empty_state">Нет истории буфера обмена</string>
-    <string name="clipboard_pin">Закрепить</string>
-    <string name="clipboard_unpin">Открепить</string>
-    <string name="clipboard_delete">Удалить</string>
-    <string name="clipboard_retention_apply">Применить</string>
-    <string name="clipboard_retention_time_title">Время хранения буфера обмена</string>
-    <string name="clipboard_retention_time_description">0 = не удалять</string>
-    <string name="clipboard_retention_time_minutes">%1$d минут</string>
-    <string name="update_dialog_title">Доступно новое обновление</string>
-    <string name="update_dialog_message">Версия %1$s доступна на GitHub.</string>
-    <string name="update_dialog_open_github">Открыть GitHub</string>
-    <string name="update_dialog_later">Позже</string>
-    <string name="update_dialog_download_apk">Скачать APK</string>
+    
+    <!-- Units -->
+    <string name="dip_unit">DIP</string>
     
     <!-- Custom Input Styles -->
     <string name="custom_input_styles_title">Языки и раскладки</string>
     <string name="custom_input_styles_description">Добавить дополнительные языки и раскладки клавиатуры, которые не привязаны к системной локали</string>
-    <string name="custom_input_styles_language_label">Язык</string>
-    <string name="custom_input_styles_locale_display">%1$s (%2$s)</string>
-    <string name="custom_input_styles_system_locale_hint">Системный язык — изменить нельзя</string>
+    <string name="custom_input_styles_add">Добавить стиль ввода</string>
+    <string name="custom_input_styles_empty">Пользовательские стили ввода пока не добавлены. Нажмите кнопку +, чтобы добавить.</string>
+    <string name="custom_input_styles_delete">Удалить</string>
+    <string name="custom_input_styles_delete_confirm_title">Удалить стиль ввода</string>
+    <string name="custom_input_styles_delete_confirm_message">Вы действительно хотите удалить этот стиль ввода?</string>
     <string name="custom_input_styles_add_dialog_title">Добавить стиль ввода</string>
     <string name="custom_input_styles_edit_dialog_title">Изменить стиль ввода</string>
     <string name="custom_input_styles_edit_system_locale_title">Изменить раскладку системного языка</string>
@@ -339,17 +497,31 @@
     <string name="custom_input_styles_select_layout">Выбрать раскладку клавиатуры</string>
     <string name="custom_input_styles_save">Сохранить</string>
     <string name="custom_input_styles_cancel">Отмена</string>
+    <string name="custom_input_styles_duplicate_error">Эта комбинация языка и раскладки уже существует</string>
+    <string name="custom_input_styles_open_ime_picker">Открыть средство выбора метода ввода</string>
+    <string name="custom_input_styles_open_ime_picker_description">Откройте системное средство выбора метода ввода, чтобы включить новый язык</string>
+    <string name="custom_input_styles_format">%1$s - %2$s</string>
+    <string name="custom_input_styles_add_custom_locale">Добавить пользовательскую локаль…</string>
+    <string name="custom_input_styles_custom_locale_title">Введите код пользовательской локали</string>
+    <string name="custom_input_styles_custom_locale_label">Код локали</string>
+    <string name="custom_input_styles_custom_locale_hint">Введите код локали (например, en_US, it_IT, fr_FR)</string>
+    <string name="custom_input_styles_custom_locale_empty_error">Код локали не может быть пустым</string>
+    <string name="custom_input_styles_custom_locale_invalid_error">Неверный формат кода локали. Используйте формат: xx_XX или xx</string>
+    <string name="custom_input_styles_no_dictionary_warning">Для этого языка нет доступных словарей. Подсказки ввода и автоисправление будут отключены.</string>
+    <string name="custom_input_styles_layout_mapping_updated">Сопоставление раскладки обновлено: %1$s - %2$s</string>
+    <string name="custom_input_styles_input_style_updated">Стиль ввода обновлён: %1$s - %2$s</string>
+    <string name="custom_input_styles_input_style_added">Стиль ввода добавлен: %1$s - %2$s</string>
+    <string name="custom_input_styles_input_style_deleted">Стиль ввода удалён</string>
+    <string name="custom_input_styles_language_label">Язык</string>
+    <string name="custom_input_styles_locale_display">%1$s (%2$s)</string>
+    <string name="custom_input_styles_system_locale_hint">Системный язык — изменить нельзя</string>
     <string name="custom_input_styles_system_badge">Система</string>
     <string name="custom_input_styles_default_layout">qwerty</string>
     <string name="custom_input_styles_change_layout_hint">Нажмите, чтобы изменить раскладку</string>
     <string name="custom_input_styles_custom_locale_placeholder">en_US, it_IT, fr_FR и т.д.</string>
-    <string name="custom_input_styles_layout_mapping_updated">Сопоставление раскладки обновлено: %1$s - %2$s</string>
-    <string name="custom_input_styles_input_style_updated">Стиль ввода обновлен: %1$s - %2$s</string>
-    <string name="custom_input_styles_input_style_added">Стиль ввода добавлен: %1$s - %2$s</string>
-    <string name="custom_input_styles_input_style_deleted">Стиль ввода удален</string>
     <string name="custom_input_styles_installed_dictionaries">Установленные словари</string>
 
-    <!-- Установленные словари -->
+    <!-- Installed dictionaries screen -->
     <string name="installed_dictionaries_title">Установленные словари</string>
     <string name="installed_dictionaries_empty">Сериализованные словари не найдены.</string>
     <string name="installed_dictionaries_language_code">Язык: %1$s</string>
@@ -380,6 +552,18 @@
     <string name="installed_dictionaries_uninstall_cannot_delete_asset">Нельзя удалить встроенные словари</string>
     <string name="installed_dictionaries_uninstall_failed">Не удалось удалить словарь</string>
 
+    <!-- Clipboard page UI -->
+    <string name="clipboard_history_title">История буфера обмена</string>
+    <string name="clipboard_clear_all">Очистить все</string>
+    <string name="clipboard_empty_state">Нет истории буфера обмена</string>
+    <string name="clipboard_pin">Закрепить</string>
+    <string name="clipboard_unpin">Открепить</string>
+    <string name="clipboard_delete">Удалить</string>
+    <string name="clipboard_retention_apply">Применить</string>
+    <string name="clipboard_retention_time_title">Время хранения буфера обмена</string>
+    <string name="clipboard_retention_time_description">0 = не удалять</string>
+    <string name="clipboard_retention_time_minutes">%1$d минут</string>
+
     <!-- Trackpad Gesture Settings -->
     <string name="trackpad_gestures_title">Предложения жестов тачпада</string>
     <string name="trackpad_gestures_description">Проведите вверх по тачпаду, чтобы принять предложения</string>
@@ -390,8 +574,8 @@
     <string name="trackpad_gestures_install_shizuku">Установить Shizuku</string>
     <string name="trackpad_gestures_install_shizuku_description">Требуется для обнаружения жестов тачпада</string>
     <string name="trackpad_gestures_shizuku_url">https://github.com/RikkaApps/Shizuku/releases/</string>
-    <string name="trackpad_gestures_shizuku_connected">Shizuku подключен</string>
-    <string name="trackpad_gestures_shizuku_not_connected">Shizuku не подключен</string>
+    <string name="trackpad_gestures_shizuku_connected">Shizuku подключён</string>
+    <string name="trackpad_gestures_shizuku_not_connected">Shizuku не подключён</string>
     <string name="trackpad_gestures_shizuku_not_authorized">Приложение не авторизовано в Shizuku</string>
     <string name="trackpad_swipe_threshold_title">Чувствительность свайпа тачпада</string>
     <string name="trackpad_swipe_threshold_description">Настройте, как далеко нужно провести вверх, чтобы принять предложение.</string>
@@ -401,9 +585,9 @@
     <string name="trackpad_tutorial_welcome_title">Предложения жестов тачпада</string>
     <string name="trackpad_tutorial_welcome_description">Проведите вверх по тачпаду, чтобы быстро принять предложения слов без нажатия!</string>
     <string name="trackpad_tutorial_how_it_works_title">Как это работает</string>
-    <string name="trackpad_tutorial_how_it_works_description">Тачпад разделен на три секции:\n\n• Левая треть → Принять левое предложение\n• Центральная треть → Принять центральное предложение\n• Правая треть → Принять правое предложение\n\nПросто проведите вверх в соответствующей области, чтобы вставить это предложение.</string>
+    <string name="trackpad_tutorial_how_it_works_description">Тачпад разделён на три секции:\n\n• Левая треть → Принять левое предложение\n• Центральная треть → Принять центральное предложение\n• Правая треть → Принять правое предложение\n\nПросто проведите вверх в соответствующей области, чтобы вставить это предложение.</string>
     <string name="trackpad_tutorial_shizuku_required_title">Требуется Shizuku</string>
-    <string name="trackpad_tutorial_shizuku_required_description">Эта функция требует Shizuku для доступа к событиям тачпада.\n\n1. Установите Shizuku из релизов GitHub\n2. Включите опции разработчика в настройках Android\n3. Подключите устройство к ПК с установленным ADB\n4. Запустите команду, которую Shizuku показывает в своем приложении\n5. Предоставьте разрешение Pastiera в Shizuku\n\nФункция будет работать автоматически, как только Shizuku запущен.</string>
+    <string name="trackpad_tutorial_shizuku_required_description">Эта функция требует Shizuku для доступа к событиям тачпада.\n\n1. Установите Shizuku из релизов GitHub\n2. Включите опции разработчика в настройках Android\n3. Подключите устройство к ПК с установленным ADB\n4. Запустите команду, которую Shizuku показывает в своём приложении\n5. Предоставьте разрешение Pastiera в Shizuku\n\nФункция будет работать автоматически, как только Shizuku запущен.</string>
     <string name="trackpad_tutorial_tips_title">Советы</string>
     <string name="trackpad_tutorial_tips_description">• Убедитесь, что ваш свайп в основном вертикальный\n• Жест работает лучше с быстрыми, целенаправленными свайпами\n• Если другие пальцы на клавиатуре, жесты могут не обнаруживаться (аппаратное отклонение ладони)\n• Функция может быть включена/выключена в Расширенных настройках</string>
     <string name="trackpad_tutorial_complete">Понятно</string>
@@ -411,14 +595,14 @@
     <string name="trackpad_tutorial_previous">Назад</string>
 
     <!-- Trackpad Debug Accessibility Service -->
-    <string name="trackpad_debug_service_description">Отображает события тачпада в небольшом overlay для отладки</string>
-    
+    <string name="trackpad_debug_service_description">Отображает события тачпада в небольшом всплывающем окне для целей отладки</string>
+
     <!-- Status Bar Buttons Configuration -->
     <string name="status_bar_buttons_title">Кнопки Панели</string>
     <string name="status_bar_buttons_description">Настроить кнопки</string>
-    <string name="status_bar_slot_left">Слот Левый</string>
-    <string name="status_bar_slot_right_1">Слот Правый 1</string>
-    <string name="status_bar_slot_right_2">Слот Правый 2</string>
+    <string name="status_bar_slot_left">Левый слот</string>
+    <string name="status_bar_slot_right_1">Правый слот 1</string>
+    <string name="status_bar_slot_right_2">Правый слот 2</string>
     <string name="status_bar_button_none">Нет</string>
     <string name="status_bar_button_none_description">Пусто</string>
     <string name="status_bar_button_clipboard">Буфер</string>
@@ -429,6 +613,8 @@
     <string name="status_bar_button_emoji_description">Выбор</string>
     <string name="status_bar_button_language">Язык</string>
     <string name="status_bar_button_language_description">Изменить</string>
+    <string name="status_bar_button_hamburger">Меню</string>
+    <string name="status_bar_button_hamburger_description">Быстрые действия</string>
     <string name="status_bar_button_settings">Настройки</string>
     <string name="status_bar_button_settings_description">Открыть настройки</string>
     <string name="status_bar_button_symbols">Символы</string>
@@ -456,4 +642,3 @@
     <string name="online_layouts_uninstall_success">Удалено %1$s</string>
     <string name="online_layouts_uninstall_failed">Не удалось удалить раскладку</string>
 </resources>
-
