@@ -150,9 +150,10 @@ object SubtypeCycler {
                     appInfo
                 )
                 
-                // Get layout for this locale from JSON mapping
+                // Get layout requested by subtype or fall back to default locale mapping
                 val locale = subtype.locale ?: "en_US"
-                val layoutName = AdditionalSubtypeUtils.getLayoutForLocale(assets, locale, context)
+                val layoutName = AdditionalSubtypeUtils.getKeyboardLayoutFromSubtype(subtype)
+                    ?: AdditionalSubtypeUtils.getLayoutForLocale(assets, locale, context)
                 
                 // Get layout display name from metadata
                 val layoutMetadata = try {
