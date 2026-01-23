@@ -34,3 +34,9 @@
 8. **Directory layout**
    - The dictionary-related Kotlin files now live under `it.palsoftware.pastiera.dictionaries` for cleaner separation.
 
+## Online layout download flow
+- The app queries `https://palsoftware.github.io/pastiera-dict/layouts-manifest.json` via `LayoutRepositoryManager.fetchManifest()` and parses it into `LayoutManifest`/`LayoutItem`.
+- `KeyboardLayoutSettingsScreen` exposes the new cloud repository path via the `+` action, which now shows a popup giving the choice between importing from a local JSON (current behavior) and opening the cloud layout manager (`OnlineLayoutsActivity`).
+- `OnlineLayoutsActivity` fetches the manifest on launch, lists manifest entries with badges for already installed layouts, and allows refresh/download/uninstall actions with the same SHA-256 + JSON validation pipeline built into `LayoutRepositoryManager.downloadLayout()`.
+- Downloads stream into a cache file, validate hash and format via `LayoutFileStore`, and finally move files into `files/keyboard_layouts/<name>.json`; `LayoutMappingRepository.getAvailableLayouts()` automatically sees new files.
+- Snackbars summarize success/failure states (`network`, `format`, `hash`, `copy`), and layout deletions ask for confirmation before removing the JSON file.

@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -30,6 +31,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import it.palsoftware.pastiera.data.layout.LayoutFileStore
 import it.palsoftware.pastiera.data.layout.LayoutMappingRepository
+import it.palsoftware.pastiera.layout.OnlineLayoutsActivity
 import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils
 import it.palsoftware.pastiera.R
 import kotlinx.coroutines.launch
@@ -38,6 +40,8 @@ import android.content.res.AssetManager
 import org.json.JSONObject
 import java.io.InputStream
 import java.nio.charset.StandardCharsets
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 
 /**
  * Settings screen for keyboard layout selection for a specific locale.
@@ -62,6 +66,19 @@ fun KeyboardLayoutSettingsScreen(
     
     // Refresh trigger for custom layouts
     var refreshTrigger by remember { mutableStateOf(0) }
+    var showAddMenu by remember { mutableStateOf(false) }
+
+    // Refresh list when returning from cloud screen (or any other screen)
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                refreshTrigger++
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     
     // Get all keyboard layouts (assets + custom, excluding qwerty as it's the default)
     val allLayouts = remember(refreshTrigger) {
@@ -121,6 +138,14 @@ fun KeyboardLayoutSettingsScreen(
         }
     }
 
+    fun launchLocalImport() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "application/json"
+        }
+        importLauncher.launch(intent)
+    }
+
     if (previewLayout != null) {
         KeyboardLayoutViewerScreen(
             layoutName = previewLayout!!,
@@ -161,20 +186,34 @@ fun KeyboardLayoutSettingsScreen(
                             .padding(start = 8.dp)
                             .weight(1f)
                     )
-                    // Import layout (JSON) button
-                    IconButton(
-                        onClick = {
-                            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                                addCategory(Intent.CATEGORY_OPENABLE)
-                                type = "application/json"
-                            }
-                            importLauncher.launch(intent)
+                    // Import layout (JSON) button with local/cloud options
+                    Box {
+                        IconButton(onClick = { showAddMenu = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = stringResource(R.string.layout_import_content_description)
+                            )
                         }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = stringResource(R.string.layout_import_content_description)
-                        )
+                        DropdownMenu(
+                            expanded = showAddMenu,
+                            onDismissRequest = { showAddMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.layout_import_from_file)) },
+                                onClick = {
+                                    showAddMenu = false
+                                    launchLocalImport()
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.layout_download_from_cloud)) },
+                                onClick = {
+                                    showAddMenu = false
+                                    val intent = Intent(context, OnlineLayoutsActivity::class.java)
+                                    context.startActivity(intent)
+                                }
+                            )
+                        }
                     }
                     // Save button
                     IconButton(
@@ -312,13 +351,13 @@ fun KeyboardLayoutSettingsScreen(
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 4.dp)
+                            .padding(vertical = 2.dp)
                     ) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             // Header row with layout info
                             Row(
@@ -365,59 +404,32 @@ fun KeyboardLayoutSettingsScreen(
                                         maxLines = 2
                                     )
                                 }
+                                if (canDelete) {
+                                    IconButton(
+                                        onClick = { layoutToDelete = layout }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Delete,
+                                            contentDescription = stringResource(R.string.layout_delete_content_description),
+                                            tint = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                }
+                                IconButton(
+                                    onClick = { previewLayout = layout }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Visibility,
+                                        contentDescription = stringResource(R.string.keyboard_layout_viewer_open),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                                 RadioButton(
                                     selected = selectedLayout == layout,
                                     onClick = {
                                         selectedLayout = layout
                                     }
                                 )
-                            }
-                            
-                            // Actions row
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                // View mapping button
-                                OutlinedButton(
-                                    onClick = { previewLayout = layout },
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Visibility,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = stringResource(R.string.layout_view_mapping),
-                                        style = MaterialTheme.typography.labelMedium
-                                    )
-                                }
-                                
-                                // Delete button (only for custom layouts)
-                                if (canDelete) {
-                                    OutlinedButton(
-                                        onClick = { layoutToDelete = layout },
-                                        modifier = Modifier.weight(1f),
-                                        colors = ButtonDefaults.outlinedButtonColors(
-                                            contentColor = MaterialTheme.colorScheme.error
-                                        )
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Filled.Delete,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text(
-                                            text = stringResource(R.string.layout_delete),
-                                            style = MaterialTheme.typography.labelMedium
-                                        )
-                                    }
-                                }
-                                
                             }
                         }
                     }

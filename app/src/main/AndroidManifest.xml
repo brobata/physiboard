@@ -85,6 +85,12 @@
             android:label="@string/installed_dictionaries_title"
             android:theme="@style/Theme.Pastiera" />
 
+        <activity
+            android:name=".layout.OnlineLayoutsActivity"
+            android:exported="false"
+            android:label="@string/online_layouts_title"
+            android:theme="@style/Theme.Pastiera" />
+
         <!-- Activity for trackpad debug -->
         <activity
             android:name=".TrackpadDebugActivity"

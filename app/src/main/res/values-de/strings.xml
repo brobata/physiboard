@@ -516,4 +516,25 @@
     <string name="status_bar_button_symbols">Symbole</string>
     <string name="status_bar_button_symbols_description">Symboltastatur</string>
     <string name="status_bar_buttons_reset">Zurücksetzen</string>
+    <string name="layout_import_from_file">Import from file</string>
+    <string name="layout_download_from_cloud">Download from cloud repository</string>
+    <string name="online_layouts_title">Cloud layouts</string>
+    <string name="online_layouts_refresh">Refresh</string>
+    <string name="online_layouts_empty">No cloud layouts found.</string>
+    <string name="online_layouts_manifest_error">Failed to load layout list</string>
+    <string name="online_layouts_installed_badge">Installed</string>
+    <string name="online_layouts_size">Size: %1$s</string>
+    <string name="online_layouts_download">Download</string>
+    <string name="online_layouts_downloading">Downloading...</string>
+    <string name="online_layouts_download_progress">%1$s / %2$s</string>
+    <string name="online_layouts_download_success">Downloaded %1$s</string>
+    <string name="online_layouts_download_network_error">Network error</string>
+    <string name="online_layouts_download_invalid_format">Invalid layout format</string>
+    <string name="online_layouts_download_hash_mismatch">Download verification failed</string>
+    <string name="online_layouts_download_failed">Download failed</string>
+    <string name="online_layouts_uninstall">Delete</string>
+    <string name="online_layouts_uninstall_confirm_title">Delete layout</string>
+    <string name="online_layouts_uninstall_confirm_message">Are you sure you want to delete %1$s? This action cannot be undone.</string>
+    <string name="online_layouts_uninstall_success">Deleted %1$s</string>
+    <string name="online_layouts_uninstall_failed">Failed to delete layout</string>
 </resources>
