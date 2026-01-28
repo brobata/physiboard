@@ -2194,7 +2194,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 },
                 isLongPressSuppressed = { code ->
                     multiTapController.isLongPressSuppressed(code)
-                }
+                },
+                toggleMinimalUi = { keyboardVisibilityController.toggleUserMinimalUi() }
             )
         )
 

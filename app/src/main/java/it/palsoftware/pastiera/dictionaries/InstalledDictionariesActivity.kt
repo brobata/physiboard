@@ -77,9 +77,6 @@ import it.palsoftware.pastiera.core.suggestions.DictionaryIndex
 class InstalledDictionariesActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (savedInstanceState == null) {
-            overridePendingTransition(R.anim.slide_in_from_right, 0)
-        }
         enableEdgeToEdge()
         setContent {
             PastieraTheme {
@@ -89,11 +86,6 @@ class InstalledDictionariesActivity : ComponentActivity() {
                 )
             }
         }
-    }
-
-    override fun finish() {
-        super.finish()
-        overridePendingTransition(0, R.anim.slide_out_to_right)
     }
 }
 
@@ -332,8 +324,8 @@ fun InstalledDictionariesScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 items(unifiedDictionaries, key = { it.fileName }) { dictionary ->
                     UnifiedDictionaryItem(
@@ -390,32 +382,28 @@ private fun UnifiedDictionaryItem(
     onDownload: (DictionaryItem?) -> Unit,
     onUninstall: (UnifiedDictionaryItem) -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth()
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        tonalElevation = 2.dp,
+        shape = MaterialTheme.shapes.medium
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Filled.Book,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = dictionary.displayName,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1
                     )
                     Text(
                         text = stringResource(
@@ -423,7 +411,8 @@ private fun UnifiedDictionaryItem(
                             dictionary.languageCode.uppercase(Locale.getDefault())
                         ),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
                     )
                     if (dictionary.onlineItem != null) {
                         Text(
@@ -431,12 +420,13 @@ private fun UnifiedDictionaryItem(
                                 R.string.installed_dictionaries_size,
                                 DictionaryRepositoryManager.formatFileSize(dictionary.onlineItem.bytes)
                             ),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
                         )
                     }
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         if (dictionary.isInstalled) {
@@ -462,10 +452,13 @@ private fun UnifiedDictionaryItem(
                         }
                     }
                 }
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+
+                if (dictionary.isDownloading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp
+                    )
+                } else {
                     // Uninstall button (only for imported/downloaded dictionaries, not assets)
                     if (dictionary.isInstalled && dictionary.source != DictionarySource.Asset) {
                         IconButton(
@@ -480,46 +473,20 @@ private fun UnifiedDictionaryItem(
                     }
                     // Download button (only for online dictionaries not yet installed)
                     if (dictionary.onlineItem != null && !dictionary.isInstalled) {
-                        if (dictionary.isDownloading) {
-                            Box(
-                                modifier = Modifier.size(40.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(24.dp),
-                                    strokeWidth = 2.dp
-                                )
-                            }
-                        } else {
-                            IconButton(onClick = { onDownload(dictionary.onlineItem) }) {
-                                Icon(
-                                    imageVector = Icons.Filled.Download,
-                                    contentDescription = stringResource(R.string.installed_dictionaries_download)
-                                )
-                            }
+                        IconButton(onClick = { onDownload(dictionary.onlineItem) }) {
+                            Icon(
+                                imageVector = Icons.Filled.Download,
+                                contentDescription = stringResource(R.string.installed_dictionaries_download)
+                            )
                         }
                     }
                 }
             }
+
             if (dictionary.isDownloading && dictionary.downloadProgress != null) {
                 val (downloaded, total) = dictionary.downloadProgress
                 val progress = if (total > 0) downloaded.toFloat() / total.toFloat() else 0f
-                LinearProgressIndicator(
-                    progress = progress,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp)
-                )
-                Text(
-                    text = stringResource(
-                        R.string.installed_dictionaries_download_progress,
-                        DictionaryRepositoryManager.formatFileSize(downloaded),
-                        DictionaryRepositoryManager.formatFileSize(total)
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
+                LinearProgressIndicator(progress = { progress })
             }
         }
     }

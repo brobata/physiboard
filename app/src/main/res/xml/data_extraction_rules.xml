@@ -3,6 +3,7 @@
     <cloud-backup>
         <!-- Include SharedPreferences for cloud backup -->
         <include domain="sharedpref" path="."/>
+        <exclude domain="sharedpref" path="recent_emojis_prefs.xml"/>
         
         <!-- Include custom keyboard layouts directory -->
         <include domain="file" path="keyboard_layouts/"/>

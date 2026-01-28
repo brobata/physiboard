@@ -38,6 +38,9 @@
     <!-- Swipe to Delete Section -->
     <string name="swipe_to_delete_title">Włącz Przesunięcie do Usunięcia</string>
     
+    <!-- Swipe Incremental Threshold Section -->
+    <string name="swipe_incremental_threshold_title">Czułość Paska Przesuwania</string>
+    
     <!-- Auto Show Keyboard Section -->
     <string name="auto_show_keyboard_title">Automatycznie Pokaż Klawiaturę</string>
     
@@ -133,6 +136,7 @@
     <string name="user_dict_add_button">Zapisz słowo</string>
     <string name="user_dict_empty_state">Nie zapisano jeszcze żadnych słów użytkownika.</string>
     <string name="user_dict_edit_title">Edytuj słowo</string>
+    <string name="user_dict_frequency_label">Użycia: %1$d</string>
     
     <string name="auto_correct_keyboard_proximity_title">Ranking Proximity Klawiatury</string>
     <string name="auto_correct_keyboard_proximity_description">Filtruj nieprawdopodobne literówki na podstawie odległości klawiszy (QWERTY/AZERTY/QWERTZ)</string>
@@ -159,6 +163,9 @@
     <string name="sym_instructions_title">Instrukcje</string>
     <string name="sym_instructions_text">Naciśnij dowolny klawisz poniżej, aby zmienić jego emoji. Zmiany są automatycznie zapisywane.</string>
     <string name="sym_reset_to_default">Przywróć Domyślne</string>
+    <string name="sym_reset_confirm_title">Przywróć Domyślne</string>
+    <string name="sym_reset_confirm_message">Czy na pewno chcesz przywrócić wszystkie mapowania SYM do wartości domyślnych? Tej operacji nie można cofnąć.</string>
+    <string name="sym_reset_confirm_button">Przywróć</string>
     
     <!-- Emoji Picker Dialog -->
     <string name="emoji_picker_title">Wybierz Emoji</string>
@@ -194,6 +201,7 @@
     <string name="about_github">GitHub</string>
     <string name="about_build_info">Pastiera IME - Palsoftware 2025</string>
     <string name="about_title">O Aplikacji</string>
+    <string name="about_credits_error">Nie można załadować informacji o autorach.</string>
     
     <!-- Launcher Shortcuts Section -->
     <string name="launcher_shortcuts_title">Skróty Launchera</string>
@@ -214,6 +222,7 @@
     <!-- Launcher Shortcut Assignment Activity -->
     <string name="launcher_shortcut_assignment_title">Przypisz aplikację do klawisza</string>
     <string name="launcher_shortcut_assignment_key">Klawisz %1$s</string>
+    <string name="launcher_shortcut_assignment_header">Skrót</string>
     <string name="launcher_shortcut_assignment_search_placeholder">Szukaj aplikacji…</string>
     <string name="launcher_shortcut_assignment_search_description">Szukaj</string>
     <string name="launcher_shortcut_assignment_close">Zamknij</string>
@@ -267,12 +276,16 @@
     
     <!-- Variation Customization -->
     <string name="variation_customize_title">Dostosuj warianty</string>
+    <string name="variation_instructions_title">Instrukcje</string>
+    <string name="variation_instructions_description">Naciśnij pole wariantu, aby wybrać znak. Każda litera może mieć do 7 znaków wariantów.</string>
     <string name="variation_picker_title">Wybierz wariant dla %1$s</string>
     <string name="variation_picker_clear">Wyczyść (Puste)</string>
     <string name="variation_reset_to_default">Przywróć domyślne</string>
     <string name="variation_reset_confirm_title">Przywróć domyślne</string>
     <string name="variation_reset_confirm_message">Czy na pewno chcesz przywrócić wszystkie warianty do wartości domyślnych? Tej czynności nie można cofnąć.</string>
     <string name="variation_reset_confirm_button">Przywróć</string>
+    <string name="static_variation_input_label">Wartość</string>
+    <string name="static_variation_input_hint">Pozostaw puste i zapisz, aby usunąć slot.</string>
     
     <!-- Static Variation Bar Mode -->
     <string name="static_variation_bar_mode_title">Statyczny pasek wariantów</string>
@@ -337,6 +350,7 @@
     <string name="nav_mode_action_select_all">ZaznWsz</string>
     <string name="nav_mode_action_expand_selection_left">←Zazn</string>
     <string name="nav_mode_action_expand_selection_right">→Zazn</string>
+    <string name="nav_mode_action_toggle_pastierina">Pastierina</string>
     <string name="nav_mode_keycode_up">↑</string>
     <string name="nav_mode_keycode_down">↓</string>
     <string name="nav_mode_keycode_left">←</string>
@@ -493,6 +507,9 @@
     <string name="trackpad_tutorial_complete">Rozumiem</string>
     <string name="trackpad_tutorial_next">Dalej</string>
     <string name="trackpad_tutorial_previous">Wstecz</string>
+
+    <!-- Trackpad Debug Accessibility Service -->
+    <string name="trackpad_debug_service_description">Wyświetla zdarzenia trackpada w małym overlay do celów debugowania</string>
     
     <!-- Status Bar Buttons Configuration -->
     <string name="status_bar_buttons_title">Przyciski Paska</string>
@@ -515,25 +532,25 @@
     <string name="status_bar_button_symbols">Symbole</string>
     <string name="status_bar_button_symbols_description">Klawiatura symboli</string>
     <string name="status_bar_buttons_reset">Resetuj</string>
-    <string name="layout_import_from_file">Import from file</string>
-    <string name="layout_download_from_cloud">Download from cloud repository</string>
-    <string name="online_layouts_title">Cloud layouts</string>
-    <string name="online_layouts_refresh">Refresh</string>
-    <string name="online_layouts_empty">No cloud layouts found.</string>
-    <string name="online_layouts_manifest_error">Failed to load layout list</string>
-    <string name="online_layouts_installed_badge">Installed</string>
-    <string name="online_layouts_size">Size: %1$s</string>
-    <string name="online_layouts_download">Download</string>
-    <string name="online_layouts_downloading">Downloading...</string>
+    <string name="layout_import_from_file">Importuj z pliku</string>
+    <string name="layout_download_from_cloud">Pobierz z repozytorium</string>
+    <string name="online_layouts_title">Layouty w chmurze</string>
+    <string name="online_layouts_refresh">Odśwież</string>
+    <string name="online_layouts_empty">Nie znaleziono layoutów w chmurze.</string>
+    <string name="online_layouts_manifest_error">Nie można załadować listy layoutów</string>
+    <string name="online_layouts_installed_badge">Zainstalowano</string>
+    <string name="online_layouts_size">Rozmiar: %1$s</string>
+    <string name="online_layouts_download">Pobierz</string>
+    <string name="online_layouts_downloading">Pobieranie…</string>
     <string name="online_layouts_download_progress">%1$s / %2$s</string>
-    <string name="online_layouts_download_success">Downloaded %1$s</string>
-    <string name="online_layouts_download_network_error">Network error</string>
-    <string name="online_layouts_download_invalid_format">Invalid layout format</string>
-    <string name="online_layouts_download_hash_mismatch">Download verification failed</string>
-    <string name="online_layouts_download_failed">Download failed</string>
-    <string name="online_layouts_uninstall">Delete</string>
-    <string name="online_layouts_uninstall_confirm_title">Delete layout</string>
-    <string name="online_layouts_uninstall_confirm_message">Are you sure you want to delete %1$s? This action cannot be undone.</string>
-    <string name="online_layouts_uninstall_success">Deleted %1$s</string>
-    <string name="online_layouts_uninstall_failed">Failed to delete layout</string>
+    <string name="online_layouts_download_success">Pobrano %1$s</string>
+    <string name="online_layouts_download_network_error">Błąd sieci</string>
+    <string name="online_layouts_download_invalid_format">Nieprawidłowy format layoutu</string>
+    <string name="online_layouts_download_hash_mismatch">Weryfikacja pobierania nie powiodła się</string>
+    <string name="online_layouts_download_failed">Pobieranie nie powiodło się</string>
+    <string name="online_layouts_uninstall">Usuń</string>
+    <string name="online_layouts_uninstall_confirm_title">Usuń layout</string>
+    <string name="online_layouts_uninstall_confirm_message">Czy na pewno chcesz usunąć %1$s? Tej operacji nie można cofnąć.</string>
+    <string name="online_layouts_uninstall_success">Usunięto %1$s</string>
+    <string name="online_layouts_uninstall_failed">Nie udało się usunąć layoutu</string>
 </resources>

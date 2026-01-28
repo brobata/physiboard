@@ -36,7 +36,8 @@
       "keycode": "DPAD_CENTER"
     },
     "KEYCODE_P": {
-      "type": "none"
+      "type": "action",
+      "action": "toggle_minimal_ui"
     },
     "KEYCODE_A": {
       "type": "action",

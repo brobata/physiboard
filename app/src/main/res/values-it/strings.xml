@@ -138,6 +138,7 @@
     <string name="user_dict_add_button">Salva parola</string>
     <string name="user_dict_empty_state">Nessuna parola utente salvata ancora.</string>
     <string name="user_dict_edit_title">Modifica parola</string>
+    <string name="user_dict_frequency_label">Utilizzi: %1$d</string>
     
     <string name="auto_correct_keyboard_proximity_title">Classifica per prossimità tasti</string>
     <string name="auto_correct_keyboard_proximity_description">Filtra errori di battitura improbabili in base alla distanza dei tasti (QWERTY/AZERTY/QWERTZ)</string>
@@ -203,6 +204,7 @@
     <string name="about_github">GitHub</string>
     <string name="about_build_info">Pastiera IME - Palsoftware 2025</string>
     <string name="about_title">Informazioni</string>
+    <string name="about_credits_error">Impossibile caricare le informazioni sui crediti.</string>
     
     <!-- Launcher Shortcuts Section -->
     <string name="launcher_shortcuts_title">Scorciatoie</string>
@@ -223,7 +225,7 @@
     <!-- Launcher Shortcut Assignment Activity -->
     <string name="launcher_shortcut_assignment_title">Assegna app al tasto</string>
     <string name="launcher_shortcut_assignment_key">Tasto %1$s</string>
-    <string name="launcher_shortcut_assignment_header">Shortcut</string>
+    <string name="launcher_shortcut_assignment_header">Scorciatoia</string>
     <string name="launcher_shortcut_assignment_search_placeholder">Cerca app...</string>
     <string name="launcher_shortcut_assignment_search_description">Cerca</string>
     <string name="launcher_shortcut_assignment_close">Chiudi</string>
@@ -310,12 +312,16 @@
     
     <!-- Variation Customization -->
     <string name="variation_customize_title">Personalizza Variazioni</string>
+    <string name="variation_instructions_title">Istruzioni</string>
+    <string name="variation_instructions_description">Tocca una casella di variazione per selezionare un carattere. Ogni lettera può avere fino a 7 caratteri di variazione.</string>
     <string name="variation_picker_title">Seleziona variazione per %1$s</string>
     <string name="variation_picker_clear">Svuota (Vuoto)</string>
     <string name="variation_reset_to_default">Ripristina Predefinito</string>
     <string name="variation_reset_confirm_title">Ripristina Predefinito</string>
     <string name="variation_reset_confirm_message">Sei sicuro di voler ripristinare tutte le variazioni ai valori predefiniti? Questa azione non può essere annullata.</string>
     <string name="variation_reset_confirm_button">Ripristina</string>
+    <string name="static_variation_input_label">Valore</string>
+    <string name="static_variation_input_hint">Lascia vuoto e salva per rimuovere lo slot.</string>
     
     <!-- SYM Customization Screen -->
     <string name="sym_tab_emoji">Emoji</string>
@@ -397,6 +403,7 @@
     <string name="nav_mode_action_select_all">SelTutto</string>
     <string name="nav_mode_action_expand_selection_left">←Sel</string>
     <string name="nav_mode_action_expand_selection_right">→Sel</string>
+    <string name="nav_mode_action_toggle_pastierina">Pastierina</string>
     <string name="nav_mode_keycode_up">↑</string>
     <string name="nav_mode_keycode_down">↓</string>
     <string name="nav_mode_keycode_left">←</string>
@@ -552,6 +559,9 @@
     <string name="trackpad_tutorial_complete">Capito</string>
     <string name="trackpad_tutorial_next">Successivo</string>
     <string name="trackpad_tutorial_previous">Precedente</string>
+
+    <!-- Trackpad Debug Accessibility Service -->
+    <string name="trackpad_debug_service_description">Mostra gli eventi del trackpad in un overlay piccolo per scopi di debug</string>
 
     <!-- Status Bar Buttons Configuration -->
     <string name="status_bar_buttons_title">Pulsanti Barra</string>

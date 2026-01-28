@@ -351,7 +351,8 @@ private fun LayoutRowCompact(
                 val totalBytes = progress?.second ?: -1L
                 if (totalBytes > 0) {
                     val downloaded = progress?.first ?: 0L
-                    LinearProgressIndicator(progress = downloaded.toFloat() / totalBytes.toFloat())
+                    val progressFraction = downloaded.toFloat() / totalBytes.toFloat()
+                    LinearProgressIndicator(progress = { progressFraction })
                 } else {
                     LinearProgressIndicator()
                 }

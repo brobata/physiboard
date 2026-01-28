@@ -91,6 +91,8 @@
     <string name="user_dict_add_hint">Ավելացնել բառ</string>
     <string name="user_dict_add_button">Պահպանել բառ</string>
     <string name="user_dict_empty_state">Օգտագործողի բառեր դեռ չեն պահպանվել:</string>
+    <string name="user_dict_edit_title">Խմբագրել բառ</string>
+    <string name="user_dict_frequency_label">Օգտագործումներ: %1$d</string>
     
     <string name="auto_correct_keyboard_proximity_title">Դասակարգում ստեղնաշարի մոտիկությամբ</string>
     <string name="auto_correct_keyboard_proximity_description">Ֆիլտրել անհավանական տառասխալները՝ հիմնված ստեղների հեռավորության վրա (QWERTY/AZERTY/QWERTZ)</string>
@@ -154,6 +156,7 @@
     <string name="keyboard_layout_viewer_open">Դիտել դասավորությունը</string>
     <string name="keyboard_layout_settings_button">Դասավորության կարգավորումներ</string>
     <string name="about_title">Ծրագրի մասին</string>
+    <string name="about_credits_error">Հնարավոր չէ բեռնել վարկերի տեղեկատվությունը:</string>
     <string name="launcher_shortcuts_title">Դյուրանցումներ</string>
     <string name="launcher_shortcuts_experimental">Փորձարարական</string>
     <string name="launcher_shortcuts_description">Միացնել դյուրանցումները</string>
@@ -168,6 +171,7 @@
     <string name="launcher_shortcuts_action_type">Գործողություն՝ %1$s</string>
     <string name="launcher_shortcut_assignment_title">Նշանակել ծրագիր ստեղնի վրա</string>
     <string name="launcher_shortcut_assignment_key">Ստեղն՝ %1$s</string>
+    <string name="launcher_shortcut_assignment_header">Դյուրանցում</string>
     <string name="launcher_shortcut_assignment_search_placeholder">Ծրագրերի որոնում...</string>
     <string name="launcher_shortcut_assignment_search_description">Փնտրել</string>
     <string name="launcher_shortcut_assignment_close">Փակել</string>
@@ -215,6 +219,20 @@
     <string name="unicode_category_arrows">Սլաքներ</string>
     <string name="unicode_category_misc">Այլ</string>
     <string name="unicode_category_variations">Տարբերակներ</string>
+    
+    <!-- Variation Customization -->
+    <string name="variation_customize_title">Փոփոխել տարբերակները</string>
+    <string name="variation_instructions_title">Հրահանգներ</string>
+    <string name="variation_instructions_description">Հպեք տարբերակի վանդակին՝ սիմվոլ ընտրելու համար։ Յուրաքանչյուր տառ կարող է ունենալ մինչև 7 տարբերակի սիմվոլներ:</string>
+    <string name="variation_picker_title">Ընտրել տարբերակ %1$s-ի համար</string>
+    <string name="variation_picker_clear">Մաքրել (Դատարկ)</string>
+    <string name="variation_reset_to_default">Վերականգնել լռելյայնը</string>
+    <string name="variation_reset_confirm_title">Վերականգնել լռելյայնը</string>
+    <string name="variation_reset_confirm_message">Վստա՞հ եք, որ ուզում եք վերականգնել բոլոր տարբերակները լռելյայն վիճակին։ Գործողությունը անդառնալի է:</string>
+    <string name="variation_reset_confirm_button">Վերականգնել</string>
+    <string name="static_variation_input_label">Արժեք</string>
+    <string name="static_variation_input_hint">Թողեք դատարկ և պահպանեք՝ բաժինը հեռացնելու համար:</string>
+    
     <string name="sym_tab_emoji">Էմոջի</string>
     <string name="sym_tab_characters">Նշաններ</string>
     <string name="app_picker_title">Ընտրել ծրագիր</string>
@@ -263,6 +281,7 @@
     <string name="nav_mode_action_select_all">Ընտր. բոլորը</string>
     <string name="nav_mode_action_expand_selection_left">←Ընտր</string>
     <string name="nav_mode_action_expand_selection_right">→Ընտր</string>
+    <string name="nav_mode_action_toggle_pastierina">Pastierina</string>
 
     <string name="pastierina_mode_title">Pastierina ռեժիմ</string>
     <string name="pastierina_mode_description">Փոխարկել նվազագույն UI</string>
@@ -346,6 +365,9 @@
     <string name="installed_dictionaries_uninstall_not_found">Բառարանի ֆայլը չի գտնվել</string>
     <string name="installed_dictionaries_uninstall_cannot_delete_asset">Չի կարելի հեռացնել ներկառուցված բառարանները</string>
     <string name="installed_dictionaries_uninstall_failed">Հեռացումը ձախողվեց</string>
+
+    <!-- Trackpad Debug Accessibility Service -->
+    <string name="trackpad_debug_service_description">Ցուցադրում է trackpad-ի իրադարձությունները փոքր overlay-ում debug-ի համար</string>
     
     <!-- Status Bar Buttons Configuration -->
     <string name="status_bar_buttons_title">Պանելի Կոճակներ</string>
@@ -368,26 +390,26 @@
     <string name="status_bar_button_symbols">Սիմվոլներ</string>
     <string name="status_bar_button_symbols_description">Սիմվոլների ստեղնաշար</string>
     <string name="status_bar_buttons_reset">Վերակայել</string>
-    <string name="layout_import_from_file">Import from file</string>
-    <string name="layout_download_from_cloud">Download from cloud repository</string>
-    <string name="online_layouts_title">Cloud layouts</string>
-    <string name="online_layouts_refresh">Refresh</string>
-    <string name="online_layouts_empty">No cloud layouts found.</string>
-    <string name="online_layouts_manifest_error">Failed to load layout list</string>
-    <string name="online_layouts_installed_badge">Installed</string>
-    <string name="online_layouts_size">Size: %1$s</string>
-    <string name="online_layouts_download">Download</string>
-    <string name="online_layouts_downloading">Downloading...</string>
+    <string name="layout_import_from_file">Ներմուծել ֆայլից</string>
+    <string name="layout_download_from_cloud">Ներբեռնել պահոցից</string>
+    <string name="online_layouts_title">Ամպային դասավորություններ</string>
+    <string name="online_layouts_refresh">Թարմացնել</string>
+    <string name="online_layouts_empty">Ամպային դասավորություններ չեն գտնվել:</string>
+    <string name="online_layouts_manifest_error">Հնարավոր չէ բեռնել դասավորությունների ցուցակը</string>
+    <string name="online_layouts_installed_badge">Տեղադրված</string>
+    <string name="online_layouts_size">Չափը: %1$s</string>
+    <string name="online_layouts_download">Ներբեռնել</string>
+    <string name="online_layouts_downloading">Ներբեռնում…</string>
     <string name="online_layouts_download_progress">%1$s / %2$s</string>
-    <string name="online_layouts_download_success">Downloaded %1$s</string>
-    <string name="online_layouts_download_network_error">Network error</string>
-    <string name="online_layouts_download_invalid_format">Invalid layout format</string>
-    <string name="online_layouts_download_hash_mismatch">Download verification failed</string>
-    <string name="online_layouts_download_failed">Download failed</string>
-    <string name="online_layouts_uninstall">Delete</string>
-    <string name="online_layouts_uninstall_confirm_title">Delete layout</string>
-    <string name="online_layouts_uninstall_confirm_message">Are you sure you want to delete %1$s? This action cannot be undone.</string>
-    <string name="online_layouts_uninstall_success">Deleted %1$s</string>
-    <string name="online_layouts_uninstall_failed">Failed to delete layout</string>
+    <string name="online_layouts_download_success">Ներբեռնվեց %1$s</string>
+    <string name="online_layouts_download_network_error">Ցանցի սխալ</string>
+    <string name="online_layouts_download_invalid_format">Դասավորության սխալ ձևաչափ</string>
+    <string name="online_layouts_download_hash_mismatch">Ներբեռնման ստուգումը ձախողվեց</string>
+    <string name="online_layouts_download_failed">Ներբեռնումը ձախողվեց</string>
+    <string name="online_layouts_uninstall">Հեռացնել</string>
+    <string name="online_layouts_uninstall_confirm_title">Հեռացնել դասավորությունը</string>
+    <string name="online_layouts_uninstall_confirm_message">Իսկապե՞ս ցանկանում եք հեռացնել %1$s: Այս գործողությունը չի կարող հետարկվել:</string>
+    <string name="online_layouts_uninstall_success">Հեռացվեց %1$s</string>
+    <string name="online_layouts_uninstall_failed">Չհաջողվեց հեռացնել դասավորությունը</string>
 </resources>
 

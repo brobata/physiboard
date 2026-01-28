@@ -66,6 +66,9 @@ data class FileRestoreSummary(
 
 object PreferencesBackupHelper {
     private const val TAG = "PreferencesBackup"
+    private val excludedPrefNames = setOf(
+        "recent_emojis_prefs"
+    )
 
     fun dumpSharedPreferences(context: Context, destinationDir: File): List<String> {
         val sharedPrefsDir = File(context.dataDir, "shared_prefs")
@@ -76,6 +79,9 @@ object PreferencesBackupHelper {
         val components = mutableListOf<String>()
         sharedPrefsDir.listFiles { file -> file.extension == "xml" }?.forEach { file ->
             val prefName = file.name.removeSuffix(".xml")
+            if (excludedPrefNames.contains(prefName)) {
+                return@forEach
+            }
             val prefs = context.getSharedPreferences(prefName, Context.MODE_PRIVATE)
             val prefsJson = buildPreferencesJson(prefName, prefs)
             val outFile = File(destinationDir, "$prefName.json")
@@ -178,8 +184,15 @@ object PreferencesBackupHelper {
 
 object FileBackupHelper {
     private const val TAG = "FileBackupHelper"
-    private val knownJsonFiles = setOf("ctrl_key_mappings.json")
-    private val knownJsonDirectories = setOf("keyboard_layouts")
+    private val allowedFiles = setOf(
+        "ctrl_key_mappings.json",
+        "variations.json",
+        "user_defaults.json",
+        "locale_layout_mapping.json"
+    )
+    private val allowedDirectories = setOf(
+        "keyboard_layouts"
+    )
 
     fun snapshotInternalFiles(context: Context, destinationDir: File): List<String> {
         val base = context.filesDir
@@ -192,6 +205,9 @@ object FileBackupHelper {
             .filter { it.isFile }
             .forEach { file ->
                 val relative = file.toRelativeString(base).replace("\\", "/")
+                if (!shouldBackupPath(relative)) {
+                    return@forEach
+                }
                 val target = File(destinationDir, relative)
                 target.parentFile?.mkdirs()
                 file.copyTo(target, overwrite = true)
@@ -218,9 +234,9 @@ object FileBackupHelper {
                 .filter { it.isFile }
                 .forEach { source ->
                     val relative = source.toRelativeString(extractedFilesDir).replace("\\", "/")
-                    val isKnown = isKnownPath(relative)
-                    if (!isKnown) {
-                        Log.w(TAG, "Unknown file in backup, copying as-is: $relative")
+                    if (!shouldBackupPath(relative)) {
+                        skipped.add(relative)
+                        return@forEach
                     }
 
                     if (source.extension.equals("json", ignoreCase = true) && !isJsonValid(source)) {
@@ -262,12 +278,12 @@ object FileBackupHelper {
         return FileRestoreSummary(restoredFiles = restored, skippedFiles = skipped)
     }
 
-    private fun isKnownPath(relative: String): Boolean {
+    private fun shouldBackupPath(relative: String): Boolean {
         val normalized = relative.removePrefix("./")
-        if (knownJsonFiles.contains(normalized)) {
+        if (allowedFiles.contains(normalized)) {
             return true
         }
-        return knownJsonDirectories.any { dir ->
+        return allowedDirectories.any { dir ->
             normalized == dir || normalized.startsWith("$dir/")
         }
     }

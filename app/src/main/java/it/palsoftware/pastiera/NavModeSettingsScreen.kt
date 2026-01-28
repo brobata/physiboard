@@ -562,7 +562,8 @@ private fun KeyMappingDialog(
                     } else if (selectedType == "action") {
                         val actions = listOf(
                             "copy", "paste", "cut", "undo",
-                            "select_all", "expand_selection_left", "expand_selection_right"
+                            "select_all", "expand_selection_left", "expand_selection_right",
+                            "toggle_minimal_ui"
                         )
                         LazyVerticalGrid(
                             columns = GridCells.Fixed(2),
@@ -574,7 +575,7 @@ private fun KeyMappingDialog(
                                 FilterChip(
                                     selected = selectedValue == action,
                                     onClick = { selectedValue = action },
-                                    label = { Text(action) },
+                                    label = { Text(getActionLabel(action)) },
                                     modifier = Modifier.fillMaxWidth()
                                 )
                             }
@@ -663,6 +664,21 @@ private fun getMappingLabel(mapping: KeyMappingLoader.CtrlMapping): String? {
 }
 
 @Composable
+private fun getActionLabel(action: String): String {
+    return when (action) {
+        "copy" -> stringResource(R.string.nav_mode_action_copy)
+        "paste" -> stringResource(R.string.nav_mode_action_paste)
+        "cut" -> stringResource(R.string.nav_mode_action_cut)
+        "undo" -> stringResource(R.string.nav_mode_action_undo)
+        "select_all" -> stringResource(R.string.nav_mode_action_select_all)
+        "expand_selection_left" -> stringResource(R.string.nav_mode_action_expand_selection_left)
+        "expand_selection_right" -> stringResource(R.string.nav_mode_action_expand_selection_right)
+        "toggle_minimal_ui" -> stringResource(R.string.nav_mode_action_toggle_pastierina)
+        else -> action
+    }
+}
+
+@Composable
 private fun getMappingLabelShort(mapping: KeyMappingLoader.CtrlMapping): String? {
     return when (mapping.type) {
         "keycode" -> when (mapping.value) {
@@ -686,6 +702,7 @@ private fun getMappingLabelShort(mapping: KeyMappingLoader.CtrlMapping): String?
             "select_all" -> stringResource(R.string.nav_mode_action_select_all)
             "expand_selection_left" -> stringResource(R.string.nav_mode_action_expand_selection_left)
             "expand_selection_right" -> stringResource(R.string.nav_mode_action_expand_selection_right)
+            "toggle_minimal_ui" -> stringResource(R.string.nav_mode_action_toggle_pastierina)
             else -> mapping.value
         }
         "none" -> null // Don't show label for "none"

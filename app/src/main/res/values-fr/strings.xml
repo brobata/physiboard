@@ -133,6 +133,7 @@
     <string name="user_dict_add_button">Enregistrer le mot</string>
     <string name="user_dict_empty_state">Aucun mot utilisateur enregistré pour le moment.</string>
     <string name="user_dict_edit_title">Modifier le mot</string>
+    <string name="user_dict_frequency_label">Utilisations : %1$d</string>
     
     <string name="auto_correct_keyboard_proximity_title">Classement par Proximité Clavier</string>
     <string name="auto_correct_keyboard_proximity_description">Filtre par distance des touches (QWERTY/AZERTY/QWERTZ)</string>
@@ -269,12 +270,16 @@
     
     <!-- Variation Customization -->
     <string name="variation_customize_title">Personnaliser les variations</string>
+    <string name="variation_instructions_title">Instructions</string>
+    <string name="variation_instructions_description">Touchez une case pour choisir un caractère. Jusqu\'à 7 variations par lettre.</string>
     <string name="variation_picker_title">Sélectionner une variation pour %1$s</string>
     <string name="variation_picker_clear">Effacer (Vide)</string>
     <string name="variation_reset_to_default">Rétablir par défaut</string>
     <string name="variation_reset_confirm_title">Rétablir par défaut</string>
     <string name="variation_reset_confirm_message">Êtes-vous sûr de vouloir rétablir toutes les variations aux valeurs par défaut? Cette action ne peut pas être annulée.</string>
     <string name="variation_reset_confirm_button">Rétablir</string>
+    <string name="static_variation_input_label">Valeur</string>
+    <string name="static_variation_input_hint">Laissez vide puis enregistrez pour supprimer.</string>
     
     <!-- Static Variation Bar Mode -->
     <string name="static_variation_bar_mode_title">Barre de variations statique</string>
@@ -340,6 +345,7 @@
     <string name="nav_mode_action_select_all">ToutSel</string>
     <string name="nav_mode_action_expand_selection_left">←Sel</string>
     <string name="nav_mode_action_expand_selection_right">→Sel</string>
+    <string name="nav_mode_action_toggle_pastierina">Pastierina</string>
     <string name="nav_mode_keycode_up">↑</string>
     <string name="nav_mode_keycode_down">↓</string>
     <string name="nav_mode_keycode_left">←</string>
@@ -584,12 +590,6 @@
     <!-- Nav mode -->
     <string name="nav_mode_warning_icon">⚠</string>
 
-    <!-- Variation customization -->
-    <string name="variation_instructions_title">Instructions</string>
-    <string name="variation_instructions_description">Touchez une case pour choisir un caractère. Jusqu\'à 7 variations par lettre.</string>
-    <string name="static_variation_input_label">Valeur</string>
-    <string name="static_variation_input_hint">Laissez vide puis enregistrez pour supprimer.</string>
-
     <!-- SYM reset confirm -->
     <string name="sym_reset_confirm_title">Réinitialiser</string>
     <string name="sym_reset_confirm_message">Réinitialiser tous les mappings SYM ? Action irréversible.</string>
@@ -597,7 +597,6 @@
 
     <!-- Misc -->
     <string name="trackpad_debug_service_description">Affiche les événements du trackpad (overlay debug)</string>
-    <string name="user_dict_frequency_label">Utilisations : %1$d</string>
     
     <!-- Status Bar Buttons Configuration -->
     <string name="status_bar_buttons_title">Boutons Barre</string>
@@ -620,26 +619,26 @@
     <string name="status_bar_button_symbols">Symboles</string>
     <string name="status_bar_button_symbols_description">Clavier de symboles</string>
     <string name="status_bar_buttons_reset">Réinitialiser</string>
-    <string name="layout_import_from_file">Import from file</string>
-    <string name="layout_download_from_cloud">Download from cloud repository</string>
-    <string name="online_layouts_title">Cloud layouts</string>
-    <string name="online_layouts_refresh">Refresh</string>
-    <string name="online_layouts_empty">No cloud layouts found.</string>
-    <string name="online_layouts_manifest_error">Failed to load layout list</string>
-    <string name="online_layouts_installed_badge">Installed</string>
-    <string name="online_layouts_size">Size: %1$s</string>
-    <string name="online_layouts_download">Download</string>
-    <string name="online_layouts_downloading">Downloading...</string>
+    <string name="layout_import_from_file">Importer depuis fichier</string>
+    <string name="layout_download_from_cloud">Télécharger depuis dépôt</string>
+    <string name="online_layouts_title">Dispositions cloud</string>
+    <string name="online_layouts_refresh">Actualiser</string>
+    <string name="online_layouts_empty">Aucune disposition cloud trouvée.</string>
+    <string name="online_layouts_manifest_error">Impossible de charger la liste</string>
+    <string name="online_layouts_installed_badge">Installé</string>
+    <string name="online_layouts_size">Taille : %1$s</string>
+    <string name="online_layouts_download">Télécharger</string>
+    <string name="online_layouts_downloading">Téléchargement…</string>
     <string name="online_layouts_download_progress">%1$s / %2$s</string>
-    <string name="online_layouts_download_success">Downloaded %1$s</string>
-    <string name="online_layouts_download_network_error">Network error</string>
-    <string name="online_layouts_download_invalid_format">Invalid layout format</string>
-    <string name="online_layouts_download_hash_mismatch">Download verification failed</string>
-    <string name="online_layouts_download_failed">Download failed</string>
-    <string name="online_layouts_uninstall">Delete</string>
-    <string name="online_layouts_uninstall_confirm_title">Delete layout</string>
-    <string name="online_layouts_uninstall_confirm_message">Are you sure you want to delete %1$s? This action cannot be undone.</string>
-    <string name="online_layouts_uninstall_success">Deleted %1$s</string>
-    <string name="online_layouts_uninstall_failed">Failed to delete layout</string>
+    <string name="online_layouts_download_success">%1$s téléchargé</string>
+    <string name="online_layouts_download_network_error">Erreur réseau</string>
+    <string name="online_layouts_download_invalid_format">Format invalide</string>
+    <string name="online_layouts_download_hash_mismatch">Vérification échouée</string>
+    <string name="online_layouts_download_failed">Téléchargement échoué</string>
+    <string name="online_layouts_uninstall">Supprimer</string>
+    <string name="online_layouts_uninstall_confirm_title">Supprimer la disposition</string>
+    <string name="online_layouts_uninstall_confirm_message">Supprimer %1$s ? Action irréversible.</string>
+    <string name="online_layouts_uninstall_success">%1$s supprimé</string>
+    <string name="online_layouts_uninstall_failed">Suppression impossible</string>
 </resources>
 

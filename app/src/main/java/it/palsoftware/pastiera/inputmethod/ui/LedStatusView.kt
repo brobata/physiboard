@@ -52,6 +52,8 @@ class LedStatusView(
     private var ctrlLed: View? = null
     private var altLed: View? = null
 
+    var onLongPressListener: (() -> Unit)? = null
+
     fun ensureView(): LinearLayout {
         container?.let { return it }
 
@@ -63,6 +65,10 @@ class LedStatusView(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             )
+            setOnLongClickListener {
+                onLongPressListener?.invoke()
+                true
+            }
         }
 
         shiftLed = createLedView(LED_COLOR_GRAY_OFF)

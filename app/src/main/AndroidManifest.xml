@@ -83,7 +83,7 @@
             android:name=".dictionaries.InstalledDictionariesActivity"
             android:exported="false"
             android:label="@string/installed_dictionaries_title"
-            android:theme="@style/Theme.Pastiera" />
+            android:theme="@style/Theme.Pastiera.InstalledDictionariesAnimation" />
 
         <activity
             android:name=".layout.OnlineLayoutsActivity"

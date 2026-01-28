@@ -250,7 +250,8 @@ class InputEventRouter(
         val startSpeechRecognition: () -> Unit,
         val getMapping: (Int) -> LayoutMapping?,
         val handleMultiTapCommit: (Int, LayoutMapping, Boolean, InputConnection?, Boolean) -> Boolean,
-        val isLongPressSuppressed: (Int) -> Boolean
+        val isLongPressSuppressed: (Int) -> Boolean,
+        val toggleMinimalUi: () -> Unit
     )
 
     fun routeEditableFieldKeyDown(
@@ -429,7 +430,8 @@ class InputEventRouter(
                         callbacks.clearCtrlOneShot()
                     },
                     updateStatusBar = callbacks.updateStatusBar,
-                    callSuper = callbacks.callSuper
+                    callSuper = callbacks.callSuper,
+                    toggleMinimalUi = callbacks.toggleMinimalUi
                 )
             ) {
                 return EditableFieldRoutingResult.Consume
@@ -935,7 +937,8 @@ class InputEventRouter(
         ctrlOneShot: Boolean,
         clearCtrlOneShot: () -> Unit,
         updateStatusBar: () -> Unit,
-        callSuper: () -> Boolean
+        callSuper: () -> Boolean,
+        toggleMinimalUi: () -> Unit
     ): Boolean {
         val ic = inputConnection ?: return false
 
@@ -969,6 +972,17 @@ class InputEventRouter(
                                 outputKeyCodeName = "expand_selection_right"
                             )
                             TextSelectionHelper.expandSelectionRight(ic)
+                            return true
+                        }
+                        "toggle_minimal_ui" -> {
+                            KeyboardEventTracker.notifyKeyEvent(
+                                keyCode,
+                                event,
+                                "KEY_DOWN",
+                                outputKeyCode = null,
+                                outputKeyCodeName = "toggle_minimal_ui"
+                            )
+                            toggleMinimalUi()
                             return true
                         }
                         else -> {

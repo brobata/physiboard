@@ -351,6 +351,7 @@ class StatusBarController(
             variationsWrapper = variationBarView?.ensureView()
             attachHamburgerMenu(variationsWrapper)
             val ledStrip = ledStatusView.ensureView()
+            ledStatusView.onLongPressListener = { handleMinimalUiToggleFromMenu() }
 
             statusBarLayout?.apply {
                 // Full-width suggestions bar above the rest

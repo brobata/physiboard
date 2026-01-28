@@ -7,6 +7,13 @@
         <item name="android:navigationBarColor">@color/splash_background_light</item>
     </style>
 
+    <style name="Theme.Pastiera.InstalledDictionariesAnimation" parent="Theme.Pastiera">
+        <item name="android:activityOpenEnterAnimation">@anim/slide_in_from_right</item>
+        <item name="android:activityOpenExitAnimation">@null</item>
+        <item name="android:activityCloseEnterAnimation">@null</item>
+        <item name="android:activityCloseExitAnimation">@anim/slide_out_to_right</item>
+    </style>
+
     <!-- Overlay dialog theme for launcher shortcut assignment -->
     <style name="Theme.Pastiera.OverlayDialog" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowIsTranslucent">true</item>

@@ -435,6 +435,7 @@
     <string name="nav_mode_action_select_all">SelAll</string>
     <string name="nav_mode_action_expand_selection_left">←Sel</string>
     <string name="nav_mode_action_expand_selection_right">→Sel</string>
+    <string name="nav_mode_action_toggle_pastierina">Pastierina</string>
     <string name="nav_mode_keycode_up">↑</string>
     <string name="nav_mode_keycode_down">↓</string>
     <string name="nav_mode_keycode_left">←</string>
