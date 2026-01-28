@@ -416,6 +416,7 @@ class StatusBarController(
 
     private fun hideHamburgerMenu() {
         hamburgerMenuView?.hide()
+        fullSuggestionsBar?.hideHamburgerMenu()
     }
 
     private fun toggleHamburgerMenu() {
@@ -435,16 +436,11 @@ class StatusBarController(
         onMinimalUiToggleRequested?.invoke()
         if (!forceMinimalUi) {
             hideHamburgerMenu()
-            fullSuggestionsBar?.hideHamburgerMenu()
         }
     }
 
     fun handleBackPressed(): Boolean {
-        if (fullSuggestionsBar?.isHamburgerMenuVisible() == true) {
-            fullSuggestionsBar?.hideHamburgerMenu()
-            return true
-        }
-        if (hamburgerMenuView?.isVisible() == true) {
+        if (fullSuggestionsBar?.isHamburgerMenuVisible() == true || hamburgerMenuView?.isVisible() == true) {
             hideHamburgerMenu()
             return true
         }
