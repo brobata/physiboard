@@ -294,6 +294,10 @@
     <!-- Static Variation Bar Mode -->
     <string name="static_variation_bar_mode_title">Barra de variaciones estática</string>
     <string name="static_variation_bar_mode_description">Mostrar siempre un conjunto fijo de teclas de utilidad en la fila de variaciones en lugar de variaciones contextuales.</string>
+    <string name="static_variation_base_layer_title">Prellenar fila superior</string>
+    <string name="static_variation_base_layer_description">Activa símbolos predefinidos para la fila base superior. Las capas Shift y Alt siguen disponibles de forma independiente.</string>
+    <string name="static_variation_layer_sticky_title">Capa persistente</string>
+    <string name="static_variation_layer_sticky_description">Si la capa Shift/Alt se fija con doble toque, permanece activa después de seleccionar un símbolo de esa capa.</string>
     
     <!-- SYM Customization Screen -->
     <string name="sym_tab_emoji">Emoji</string>

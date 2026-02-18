@@ -135,11 +135,6 @@ class VariationBarView(
             return wrapper!!
         }
 
-        val basePadding = TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP,
-            64f,
-            context.resources.displayMetrics
-        ).toInt()
         val leftPadding = 0 // clipboard flush to the left edge
         val rightPadding = 0 // remove trailing gap so language button sits flush to the right
         val variationsVerticalPadding = TypedValue.applyDimension(
@@ -331,17 +326,32 @@ class VariationBarView(
                     emailVariations
                 } else if (snapshot.shiftPhysicallyPressed || snapshot.shiftLayerLatched) {
                     if (staticVariationsShift.isEmpty()) {
-                        staticVariationsShift = VariationRepository.loadStaticVariationsShift(context.assets, context)
+                        val loaded = VariationRepository.loadStaticVariationsShift(context.assets, context)
+                        staticVariationsShift = if (loaded.isNotEmpty()) {
+                            loaded
+                        } else {
+                            SettingsManager.getDefaultStaticVariationShiftPreset()
+                        }
                     }
                     staticVariationsShift
                 } else if (snapshot.altPhysicallyPressed || snapshot.altLayerLatched) {
                     if (staticVariationsAlt.isEmpty()) {
-                        staticVariationsAlt = VariationRepository.loadStaticVariationsAlt(context.assets, context)
+                        val loaded = VariationRepository.loadStaticVariationsAlt(context.assets, context)
+                        staticVariationsAlt = if (loaded.isNotEmpty()) {
+                            loaded
+                        } else {
+                            SettingsManager.getDefaultStaticVariationAltPreset()
+                        }
                     }
                     staticVariationsAlt
                 } else {
                     if (staticVariations.isEmpty()) {
-                        staticVariations = VariationRepository.loadStaticVariations(context.assets, context)
+                        val loaded = VariationRepository.loadStaticVariations(context.assets, context)
+                        staticVariations = if (loaded.isNotEmpty()) {
+                            loaded
+                        } else {
+                            SettingsManager.getStaticVariationBasePreset(context)
+                        }
                     }
                     staticVariations
                 }
@@ -480,7 +490,7 @@ class VariationBarView(
         // Each button factory will extract only the callbacks it needs.
         val statusBarCallbacks = StatusBarCallbacks(
             onClipboardRequested = onClipboardRequested,
-            onSpeechRecognitionRequested = onSpeechRecognitionRequested ?: { startSpeechRecognition(inputConnection) },
+            onSpeechRecognitionRequested = onSpeechRecognitionRequested ?: { startSpeechRecognition() },
             onEmojiPickerRequested = onEmojiPickerRequested,
             onLanguageSwitchRequested = onLanguageSwitchRequested,
             onHamburgerMenuRequested = onHamburgerMenuRequested,
@@ -882,7 +892,7 @@ class VariationBarView(
         indicator.translationY = 0f
     }
 
-    private fun startSpeechRecognition(inputConnection: android.view.inputmethod.InputConnection?) {
+    private fun startSpeechRecognition() {
         try {
             val intent = Intent(context, SpeechRecognitionActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or
@@ -927,11 +937,6 @@ class VariationBarView(
         isLast: Boolean,
         spacingBetweenButtons: Int
     ): TextView {
-        val dp2 = TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP,
-            2f,
-            context.resources.displayMetrics
-        ).toInt()
         val dp4 = TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP,
             4f,

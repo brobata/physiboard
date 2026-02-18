@@ -238,6 +238,10 @@
     <string name="variation_reset_confirm_button">Վերականգնել</string>
     <string name="static_variation_input_label">Արժեք</string>
     <string name="static_variation_input_hint">Թողեք դատարկ և պահպանեք՝ բաժինը հեռացնելու համար:</string>
+    <string name="static_variation_base_layer_title">Վերևի տողը նախալցնել</string>
+    <string name="static_variation_base_layer_description">Ակտիվացնում է նախադրված նշանները վերևի հիմնական տողի համար։ Shift և Alt շերտերը մնում են առանձին հասանելի։</string>
+    <string name="static_variation_layer_sticky_title">Ֆիքսվող շերտ</string>
+    <string name="static_variation_layer_sticky_description">Եթե Shift/Alt շերտը ֆիքսված է կրկնահպումով, այն մնում է ակտիվ այդ շերտից նշան ընտրելուց հետո։</string>
     
     <string name="sym_tab_emoji">Էմոջի</string>
     <string name="sym_tab_characters">Նշաններ</string>

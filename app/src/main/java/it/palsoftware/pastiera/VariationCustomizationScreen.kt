@@ -26,7 +26,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.consumePositionChange
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.Dp
@@ -59,7 +58,19 @@ fun VariationCustomizationScreen(
     
     // Load static variations to preserve them when saving
     var staticVariations by remember {
-        mutableStateOf(VariationRepository.loadStaticVariations(context.assets, context).take(7))
+        val loaded = VariationRepository.loadStaticVariations(context.assets, context).take(7)
+        val initial = if (loaded.isNotEmpty()) loaded else SettingsManager.getStaticVariationBasePreset(context)
+        mutableStateOf(initial)
+    }
+    var staticVariationsShift by remember {
+        val loaded = VariationRepository.loadStaticVariationsShift(context.assets, context).take(7)
+        val initial = if (loaded.isNotEmpty()) loaded else SettingsManager.getDefaultStaticVariationShiftPreset()
+        mutableStateOf(initial)
+    }
+    var staticVariationsAlt by remember {
+        val loaded = VariationRepository.loadStaticVariationsAlt(context.assets, context).take(7)
+        val initial = if (loaded.isNotEmpty()) loaded else SettingsManager.getDefaultStaticVariationAltPreset()
+        mutableStateOf(initial)
     }
     
     // Generate alphabet list with uppercase followed by lowercase for each letter (A, a, B, b, ...)
@@ -76,6 +87,7 @@ fun VariationCustomizationScreen(
     var showStaticInputDialog by remember { mutableStateOf(false) }
     var staticInputIndex by remember { mutableStateOf<Int?>(null) }
     var staticInputValue by remember { mutableStateOf("") }
+    var staticInputLayer by remember { mutableStateOf(StaticLayer.Default) }
     
     // State for reset confirmation dialog
     var showResetConfirmDialog by remember { mutableStateOf(false) }
@@ -83,6 +95,9 @@ fun VariationCustomizationScreen(
     // State for static variation bar mode
     var staticVariationBarMode by remember {
         mutableStateOf(SettingsManager.isStaticVariationBarModeEnabled(context))
+    }
+    var staticVariationBaseLayerEnabled by remember {
+        mutableStateOf(SettingsManager.isStaticVariationBarBaseLayerEnabled(context))
     }
 
     // State for sticky layer behavior after modifier hold.
@@ -189,6 +204,57 @@ fun VariationCustomizationScreen(
                 }
             }
 
+            // Base static row toggle
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(64.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.TextFields,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.static_variation_base_layer_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1
+                        )
+                        Text(
+                            text = stringResource(R.string.static_variation_base_layer_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2
+                        )
+                    }
+                    Switch(
+                        checked = staticVariationBaseLayerEnabled,
+                        onCheckedChange = { enabled ->
+                            staticVariationBaseLayerEnabled = enabled
+                            SettingsManager.setStaticVariationBarBaseLayerEnabled(context, enabled)
+                            staticVariations = SettingsManager.getStaticVariationBasePreset(context)
+                            SettingsManager.saveVariations(
+                                context = context,
+                                variations = variations,
+                                staticVariations = staticVariations,
+                                staticVariationsShift = staticVariationsShift,
+                                staticVariationsAlt = staticVariationsAlt
+                            )
+                        }
+                    )
+                }
+            }
+
             // Sticky layer toggle
             Surface(
                 modifier = Modifier
@@ -239,6 +305,7 @@ fun VariationCustomizationScreen(
                 labelWidth = 64.dp,
                 labelColor = Color.Transparent,
                 onBoxClick = { index ->
+                    staticInputLayer = StaticLayer.Default
                     staticInputIndex = index
                     staticInputValue = staticVariations.getOrNull(index) ?: ""
                     showStaticInputDialog = true
@@ -247,7 +314,63 @@ fun VariationCustomizationScreen(
                     val reordered = reorderEntries(staticVariations, fromIndex, toIndex)
                     if (reordered != staticVariations) {
                         staticVariations = reordered
-                        SettingsManager.saveVariations(context, variations, reordered)
+                        SettingsManager.saveVariations(
+                            context = context,
+                            variations = variations,
+                            staticVariations = reordered,
+                            staticVariationsShift = staticVariationsShift,
+                            staticVariationsAlt = staticVariationsAlt
+                        )
+                    }
+                }
+            )
+
+            VariationRow(
+                letter = stringResource(R.string.long_press_modifier_shift),
+                variations = staticVariationsShift,
+                labelWidth = 64.dp,
+                onBoxClick = { index ->
+                    staticInputLayer = StaticLayer.Shift
+                    staticInputIndex = index
+                    staticInputValue = staticVariationsShift.getOrNull(index) ?: ""
+                    showStaticInputDialog = true
+                },
+                onReorder = { fromIndex, toIndex ->
+                    val reordered = reorderEntries(staticVariationsShift, fromIndex, toIndex)
+                    if (reordered != staticVariationsShift) {
+                        staticVariationsShift = reordered
+                        SettingsManager.saveVariations(
+                            context = context,
+                            variations = variations,
+                            staticVariations = staticVariations,
+                            staticVariationsShift = reordered,
+                            staticVariationsAlt = staticVariationsAlt
+                        )
+                    }
+                }
+            )
+
+            VariationRow(
+                letter = stringResource(R.string.long_press_modifier_alt),
+                variations = staticVariationsAlt,
+                labelWidth = 64.dp,
+                onBoxClick = { index ->
+                    staticInputLayer = StaticLayer.Alt
+                    staticInputIndex = index
+                    staticInputValue = staticVariationsAlt.getOrNull(index) ?: ""
+                    showStaticInputDialog = true
+                },
+                onReorder = { fromIndex, toIndex ->
+                    val reordered = reorderEntries(staticVariationsAlt, fromIndex, toIndex)
+                    if (reordered != staticVariationsAlt) {
+                        staticVariationsAlt = reordered
+                        SettingsManager.saveVariations(
+                            context = context,
+                            variations = variations,
+                            staticVariations = staticVariations,
+                            staticVariationsShift = staticVariationsShift,
+                            staticVariationsAlt = reordered
+                        )
                     }
                 }
             )
@@ -277,7 +400,13 @@ fun VariationCustomizationScreen(
                             if (reordered != current) {
                                 updatedMap[letterStr] = reordered
                                 variations = updatedMap
-                                SettingsManager.saveVariations(context, updatedMap, staticVariations)
+                                SettingsManager.saveVariations(
+                                    context = context,
+                                    variations = updatedMap,
+                                    staticVariations = staticVariations,
+                                    staticVariationsShift = staticVariationsShift,
+                                    staticVariationsAlt = staticVariationsAlt
+                                )
                             }
                         }
                     )
@@ -313,7 +442,13 @@ fun VariationCustomizationScreen(
                 variations = updatedVariations
                 
                 // Save directly to variations.json file
-                SettingsManager.saveVariations(context, variations, staticVariations)
+                SettingsManager.saveVariations(
+                    context = context,
+                    variations = variations,
+                    staticVariations = staticVariations,
+                    staticVariationsShift = staticVariationsShift,
+                    staticVariationsAlt = staticVariationsAlt
+                )
             },
             onDismiss = {
                 showPickerDialog = false
@@ -334,6 +469,7 @@ fun VariationCustomizationScreen(
                 showStaticInputDialog = false
                 staticInputIndex = null
                 staticInputValue = ""
+                staticInputLayer = StaticLayer.Default
             },
             title = {
                 Text(stringResource(R.string.static_variation_bar_mode_title))
@@ -362,17 +498,32 @@ fun VariationCustomizationScreen(
                         val index = staticInputIndex
                         if (index != null) {
                             val trimmedStatic = updateVariationEntries(
-                                currentEntries = staticVariations,
+                                currentEntries = when (staticInputLayer) {
+                                    StaticLayer.Default -> staticVariations
+                                    StaticLayer.Shift -> staticVariationsShift
+                                    StaticLayer.Alt -> staticVariationsAlt
+                                },
                                 index = index,
                                 newValue = staticInputValue
                             )
-                            staticVariations = trimmedStatic
-                            SettingsManager.saveVariations(context, variations, trimmedStatic)
+                            when (staticInputLayer) {
+                                StaticLayer.Default -> staticVariations = trimmedStatic
+                                StaticLayer.Shift -> staticVariationsShift = trimmedStatic
+                                StaticLayer.Alt -> staticVariationsAlt = trimmedStatic
+                            }
+                            SettingsManager.saveVariations(
+                                context = context,
+                                variations = variations,
+                                staticVariations = staticVariations,
+                                staticVariationsShift = staticVariationsShift,
+                                staticVariationsAlt = staticVariationsAlt
+                            )
                         }
                         
                         showStaticInputDialog = false
                         staticInputIndex = null
                         staticInputValue = ""
+                        staticInputLayer = StaticLayer.Default
                     }
                 ) {
                     Text(stringResource(R.string.save))
@@ -384,6 +535,7 @@ fun VariationCustomizationScreen(
                         showStaticInputDialog = false
                         staticInputIndex = null
                         staticInputValue = ""
+                        staticInputLayer = StaticLayer.Default
                     }
                 ) {
                     Text(stringResource(R.string.cancel))
@@ -408,7 +560,27 @@ fun VariationCustomizationScreen(
                         SettingsManager.resetVariationsToDefault(context)
                         val repoVariations = VariationRepository.loadVariations(context.assets, context)
                         variations = repoVariations.mapKeys { it.key.toString() }
-                        staticVariations = VariationRepository.loadStaticVariations(context.assets, context).take(7)
+                        staticVariationBaseLayerEnabled = SettingsManager.isStaticVariationBarBaseLayerEnabled(context)
+                        staticVariations = SettingsManager.getStaticVariationBasePreset(context)
+                        val loadedShift = VariationRepository.loadStaticVariationsShift(context.assets, context).take(7)
+                        staticVariationsShift = if (loadedShift.isNotEmpty()) {
+                            loadedShift
+                        } else {
+                            SettingsManager.getDefaultStaticVariationShiftPreset()
+                        }
+                        val loadedAlt = VariationRepository.loadStaticVariationsAlt(context.assets, context).take(7)
+                        staticVariationsAlt = if (loadedAlt.isNotEmpty()) {
+                            loadedAlt
+                        } else {
+                            SettingsManager.getDefaultStaticVariationAltPreset()
+                        }
+                        SettingsManager.saveVariations(
+                            context = context,
+                            variations = variations,
+                            staticVariations = staticVariations,
+                            staticVariationsShift = staticVariationsShift,
+                            staticVariationsAlt = staticVariationsAlt
+                        )
                         showResetConfirmDialog = false
                     },
                     colors = ButtonDefaults.textButtonColors(
@@ -565,7 +737,7 @@ private fun VariationBox(
                         onDragEnd = { onDragEnd?.invoke() },
                         onDragCancel = { onDragEnd?.invoke() },
                         onDrag = { change, dragAmount ->
-                            change.consumePositionChange()
+                            change.consume()
                             onDrag(dragAmount.x)
                         }
                     )
@@ -660,6 +832,12 @@ private fun updateVariationEntries(
     }
     
     return updatedEntries.take(7)
+}
+
+private enum class StaticLayer {
+    Default,
+    Shift,
+    Alt
 }
 
 /**

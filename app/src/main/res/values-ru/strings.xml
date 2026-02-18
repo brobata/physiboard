@@ -238,6 +238,10 @@
     <string name="variation_reset_confirm_button">Сбросить</string>
     <string name="static_variation_input_label">Значение</string>
     <string name="static_variation_input_hint">Оставьте пустым и сохраните, чтобы удалить слот.</string>
+    <string name="static_variation_base_layer_title">Предзаполнить верхний ряд</string>
+    <string name="static_variation_base_layer_description">Включает предустановленные символы для верхнего базового ряда. Слои Shift и Alt остаются доступны независимо.</string>
+    <string name="static_variation_layer_sticky_title">Залипающий слой</string>
+    <string name="static_variation_layer_sticky_description">Если слой Shift/Alt зафиксирован двойным нажатием, он остается активным после выбора символа из этого слоя.</string>
     
     <string name="sym_tab_emoji">Эмодзи</string>
     <string name="sym_tab_characters">Символы</string>

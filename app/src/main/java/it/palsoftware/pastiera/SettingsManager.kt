@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
 import android.view.KeyEvent
-import it.palsoftware.pastiera.R
 import org.json.JSONObject
 import java.io.InputStream
 import java.io.File
@@ -46,6 +45,7 @@ object SettingsManager {
     private const val KEY_TUTORIAL_COMPLETED = "tutorial_completed" // Whether the first-run tutorial has been completed
     private const val KEY_SWIPE_INCREMENTAL_THRESHOLD = "swipe_incremental_threshold" // Distance in DIP for cursor movement
     private const val KEY_STATIC_VARIATION_BAR_MODE = "static_variation_bar_mode" // Use static variation bar instead of dynamic cursor-based variations
+    private const val KEY_STATIC_VARIATION_BAR_BASE_LAYER_ENABLED = "static_variation_bar_base_layer_enabled" // Toggle top-row preset
     private const val KEY_STATIC_VARIATION_BAR_MODIFIER_HOLD_RESTORATION = "static_variation_bar_modifier_hold_restoration"
     private const val KEY_VARIATIONS_UPDATED = "variations_updated" // Trigger for reloading variations in input method service
     private const val KEY_ADDITIONAL_IME_SUBTYPES = "additional_ime_subtypes" // Comma-separated list of language codes for additional IME subtypes
@@ -102,6 +102,7 @@ object SettingsManager {
     private const val DEFAULT_SYM_AUTO_CLOSE = true
     private val DEFAULT_SYM_PAGES_CONFIG = SymPagesConfig()
     private const val DEFAULT_STATIC_VARIATION_BAR_MODE = false
+    private const val DEFAULT_STATIC_VARIATION_BAR_BASE_LAYER_ENABLED = false
     private const val DEFAULT_EXPERIMENTAL_SUGGESTIONS_ENABLED = true
     private const val DEFAULT_SUGGESTION_DEBUG_LOGGING = true
     private const val KEY_EXPERIMENTAL_SUGGESTIONS_ENABLED = "experimental_suggestions_enabled"
@@ -119,6 +120,10 @@ object SettingsManager {
     private const val DEFAULT_TRACKPAD_SWIPE_THRESHOLD = 300f
     private const val MIN_TRACKPAD_SWIPE_THRESHOLD = 120f
     private const val MAX_TRACKPAD_SWIPE_THRESHOLD = 600f
+    private val STATIC_VARIATION_BASE_PRESET_DEFAULT = listOf("@", "\"", ":", "!", "?", ",", ".")
+    private val STATIC_VARIATION_BASE_PRESET_ALTERNATIVE = listOf("[", "]", "$", "%", "^", "&", "\\")
+    private val STATIC_VARIATION_SHIFT_PRESET_DEFAULT = listOf("{", "}", "€", "=", "~", ";", "¿")
+    private val STATIC_VARIATION_ALT_PRESET_DEFAULT = listOf("<", ">", "¥", "|", "`", "´", "°")
 
     enum class PastierinaModeOverride(val storageValue: String) {
         FOLLOW_SYSTEM("follow_system"),
@@ -361,6 +366,41 @@ object SettingsManager {
             .putBoolean(KEY_STATIC_VARIATION_BAR_MODE, enabled)
             .apply()
     }
+
+    /**
+     * Returns whether the base (top) static variation row is enabled.
+     * Shift/Alt static layers remain available independently.
+     */
+    fun isStaticVariationBarBaseLayerEnabled(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_STATIC_VARIATION_BAR_BASE_LAYER_ENABLED,
+            DEFAULT_STATIC_VARIATION_BAR_BASE_LAYER_ENABLED
+        )
+    }
+
+    /**
+     * Sets whether the base (top) static variation row is enabled.
+     */
+    fun setStaticVariationBarBaseLayerEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_STATIC_VARIATION_BAR_BASE_LAYER_ENABLED, enabled)
+            .apply()
+    }
+
+    /**
+     * Returns the top-row preset for the static variation bar based on toggle state.
+     */
+    fun getStaticVariationBasePreset(context: Context): List<String> {
+        return if (isStaticVariationBarBaseLayerEnabled(context)) {
+            STATIC_VARIATION_BASE_PRESET_ALTERNATIVE
+        } else {
+            STATIC_VARIATION_BASE_PRESET_DEFAULT
+        }
+    }
+
+    fun getDefaultStaticVariationShiftPreset(): List<String> = STATIC_VARIATION_SHIFT_PRESET_DEFAULT
+
+    fun getDefaultStaticVariationAltPreset(): List<String> = STATIC_VARIATION_ALT_PRESET_DEFAULT
 
     /**
      * Returns true if the static variation layer should remain latched after modifier hold.
@@ -1845,7 +1885,15 @@ object SettingsManager {
 
         // Load default from predefined_subtypes resource
         return try {
-            val array = context.resources.getStringArray(R.array.predefined_subtypes)
+            val arrayResId = context.resources.getIdentifier(
+                "predefined_subtypes",
+                "array",
+                context.packageName
+            )
+            if (arrayResId == 0) {
+                return ""
+            }
+            val array = context.resources.getStringArray(arrayResId)
             array.joinToString(";")
         } catch (e: Exception) {
             Log.e(TAG, "Error loading predefined subtypes", e)

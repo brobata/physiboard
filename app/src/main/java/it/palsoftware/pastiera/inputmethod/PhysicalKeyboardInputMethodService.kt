@@ -198,6 +198,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private var otherKeyInteractedDuringHold: Boolean = false
     private var shiftLayerLatched: Boolean = false
     private var altLayerLatched: Boolean = false
+    private var lastShiftTapUpTime: Long = 0L
+    private var lastAltTapUpTime: Long = 0L
 
     private val multiTapHandler = Handler(Looper.getMainLooper())
     private val multiTapController = MultiTapController(
@@ -770,7 +772,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // Register listener for variation selection (both controllers)
         val variationListener = object : VariationButtonHandler.OnVariationSelectedListener {
             override fun onVariationSelected(variation: String) {
-                if (shiftLayerLatched || altLayerLatched) {
+                val keepLayerLatchedAfterVariation =
+                    SettingsManager.isStaticVariationBarLayerStickyEnabled(this@PhysicalKeyboardInputMethodService)
+                val hasLatchedLayer = shiftLayerLatched || altLayerLatched
+                if (hasLatchedLayer && !keepLayerLatchedAfterVariation) {
                     shiftLayerLatched = false
                     altLayerLatched = false
                     modifierStateBeforeHold?.let { modifierStateController.restoreLogicalState(it) }
@@ -1295,6 +1300,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private fun resetModifierStates(preserveNavMode: Boolean = false) {
         shiftLayerLatched = false
         altLayerLatched = false
+        lastShiftTapUpTime = 0L
+        lastAltTapUpTime = 0L
         modifierStateBeforeHold = null
 
         modifierStateController.resetModifiers(
@@ -2078,6 +2085,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             // Pressing a latched key again cancels the visual latch and restores logical state.
             if ((keyCode == KeyEvent.KEYCODE_SHIFT_LEFT || keyCode == KeyEvent.KEYCODE_SHIFT_RIGHT) && shiftLayerLatched) {
                 shiftLayerLatched = false
+                lastShiftTapUpTime = 0L
                 modifierStateBeforeHold?.let { modifierStateController.restoreLogicalState(it) }
                 modifierStateBeforeHold = null
                 updateStatusBarText()
@@ -2085,6 +2093,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             }
             if ((keyCode == KeyEvent.KEYCODE_ALT_LEFT || keyCode == KeyEvent.KEYCODE_ALT_RIGHT) && altLayerLatched) {
                 altLayerLatched = false
+                lastAltTapUpTime = 0L
                 modifierStateBeforeHold?.let { modifierStateController.restoreLogicalState(it) }
                 modifierStateBeforeHold = null
                 updateStatusBarText()
@@ -2097,6 +2106,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             modifierDownTimes[keyCode] = event.eventTime
         } else if (!isModifierKey && event?.repeatCount == 0) {
             otherKeyInteractedDuringHold = true
+            lastShiftTapUpTime = 0L
+            lastAltTapUpTime = 0L
         }
 
         multiTapController.resetForNewKey(keyCode)
@@ -2348,7 +2359,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
 
                 if (isIntentionalHold) {
                     modifierStateBeforeHold?.let { modifierStateController.restoreLogicalState(it) }
-                    shiftLayerLatched = stickyEnabled && !variationInteractedDuringHold
+                    // Sticky layer activation is handled via double-tap, not hold.
+                    shiftLayerLatched = false
+                    lastShiftTapUpTime = 0L
                     variationInteractedDuringHold = false
                     otherKeyInteractedDuringHold = false
                     modifierStateBeforeHold = null
@@ -2360,7 +2373,22 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                     if (result.shouldUpdateStatusBar) {
                         updateStatusBarText()
                     }
+                    val isQuickTap = holdDuration < 300L && !variationInteractedDuringHold && !otherKeyInteractedDuringHold
+                    if (stickyEnabled && isQuickTap) {
+                        val now = event?.eventTime ?: System.currentTimeMillis()
+                        if (lastShiftTapUpTime > 0L && now - lastShiftTapUpTime <= DOUBLE_TAP_THRESHOLD) {
+                            shiftLayerLatched = true
+                            lastShiftTapUpTime = 0L
+                            updateStatusBarText()
+                        } else {
+                            lastShiftTapUpTime = now
+                        }
+                    } else {
+                        lastShiftTapUpTime = 0L
+                    }
                 }
+                variationInteractedDuringHold = false
+                otherKeyInteractedDuringHold = false
                 modifierDownTimes.remove(keyCode)
             }
             return super.onKeyUp(keyCode, event)
@@ -2404,7 +2432,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
 
                 if (isIntentionalHold) {
                     modifierStateBeforeHold?.let { modifierStateController.restoreLogicalState(it) }
-                    altLayerLatched = stickyEnabled && !variationInteractedDuringHold
+                    // Sticky layer activation is handled via double-tap, not hold.
+                    altLayerLatched = false
+                    lastAltTapUpTime = 0L
                     variationInteractedDuringHold = false
                     otherKeyInteractedDuringHold = false
                     modifierStateBeforeHold = null
@@ -2416,7 +2446,22 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                     if (result.shouldUpdateStatusBar) {
                         updateStatusBarText()
                     }
+                    val isQuickTap = holdDuration < 300L && !variationInteractedDuringHold && !otherKeyInteractedDuringHold
+                    if (stickyEnabled && isQuickTap) {
+                        val now = event?.eventTime ?: System.currentTimeMillis()
+                        if (lastAltTapUpTime > 0L && now - lastAltTapUpTime <= DOUBLE_TAP_THRESHOLD) {
+                            altLayerLatched = true
+                            lastAltTapUpTime = 0L
+                            updateStatusBarText()
+                        } else {
+                            lastAltTapUpTime = now
+                        }
+                    } else {
+                        lastAltTapUpTime = 0L
+                    }
                 }
+                variationInteractedDuringHold = false
+                otherKeyInteractedDuringHold = false
                 modifierDownTimes.remove(keyCode)
             }
             return super.onKeyUp(keyCode, event)

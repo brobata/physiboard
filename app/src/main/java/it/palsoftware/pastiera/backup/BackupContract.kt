@@ -207,6 +207,7 @@ object PreferenceSchemas {
             "tutorial_completed" to PreferenceValueType.BOOLEAN,
             "swipe_incremental_threshold" to PreferenceValueType.FLOAT,
             "static_variation_bar_mode" to PreferenceValueType.BOOLEAN,
+            "static_variation_bar_base_layer_enabled" to PreferenceValueType.BOOLEAN,
             "static_variation_bar_modifier_hold_restoration" to PreferenceValueType.BOOLEAN,
             "variations_updated" to PreferenceValueType.LONG,
             "status_bar_slot_left" to PreferenceValueType.STRING,

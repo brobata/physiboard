@@ -288,6 +288,10 @@
     <!-- Static Variation Bar Mode -->
     <string name="static_variation_bar_mode_title">Barre de variations statique</string>
     <string name="static_variation_bar_mode_description">Toujours afficher un ensemble fixe de touches utilitaires dans la barre de variations au lieu des variations contextuelles.</string>
+    <string name="static_variation_base_layer_title">Pre-remplir la ligne du haut</string>
+    <string name="static_variation_base_layer_description">Active des symboles predefinis pour la ligne de base superieure. Les couches Shift et Alt restent disponibles independamment.</string>
+    <string name="static_variation_layer_sticky_title">Couche persistante</string>
+    <string name="static_variation_layer_sticky_description">Si la couche Shift/Alt est verrouillee par double appui, elle reste active apres selection de symbole sur cette couche.</string>
     
     <!-- SYM Customization Screen -->
     <string name="sym_tab_emoji">Emoji</string>

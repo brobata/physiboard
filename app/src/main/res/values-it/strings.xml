@@ -263,6 +263,10 @@
     <!-- Static Variation Bar Mode -->
     <string name="static_variation_bar_mode_title">Barra variazioni statica</string>
     <string name="static_variation_bar_mode_description">Mostra sempre una serie fissa di tasti di utilità nella barra variazioni invece delle variazioni contestuali.</string>
+    <string name="static_variation_base_layer_title">Precompila riga superiore</string>
+    <string name="static_variation_base_layer_description">Abilita simboli predefiniti per la riga statica di base. I layer Shift e Alt restano disponibili in modo indipendente.</string>
+    <string name="static_variation_layer_sticky_title">Layer persistente</string>
+    <string name="static_variation_layer_sticky_description">Se il layer Shift/Alt e bloccato con doppio tocco, resta attivo dopo la selezione di un simbolo di quel layer.</string>
     
     <!-- Auto Correct Edit Screen -->
     <string name="auto_correct_search_placeholder">Cerca correzioni...</string>

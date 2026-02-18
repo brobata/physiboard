@@ -55,8 +55,10 @@
     <!-- Static Variation Bar Mode -->
     <string name="static_variation_bar_mode_title">Static Variation Bar</string>
     <string name="static_variation_bar_mode_description">Always show a fixed set of utility keys in the variation row instead of context-based variations.</string>
+    <string name="static_variation_base_layer_title">Alternative Top Row Preset</string>
+    <string name="static_variation_base_layer_description">Switch the top static row between default symbols and an alternative bracket/special-character set. Shift and Alt layers stay independent.</string>
     <string name="static_variation_layer_sticky_title">Sticky Layer</string>
-    <string name="static_variation_layer_sticky_description">Keep Shift/Alt variation layer active after releasing the modifier key.</string>
+    <string name="static_variation_layer_sticky_description">When Shift/Alt layer is latched by double tap, keep it active after selecting a symbol from that layer.</string>
     <string name="swipe_to_move_cursor">Swipe to move cursor</string>
     
     <!-- Info Section -->

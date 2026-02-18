@@ -294,6 +294,10 @@
     <!-- Static Variation Bar Mode -->
     <string name="static_variation_bar_mode_title">Statyczny pasek wariantów</string>
     <string name="static_variation_bar_mode_description">Zawsze wyświetlaj stały zestaw klawiszy narzędziowych w rzędzie wariantów zamiast wariantów kontekstowych.</string>
+    <string name="static_variation_base_layer_title">Wstepnie wypelnij gorny rzad</string>
+    <string name="static_variation_base_layer_description">Wlacza domyslne symbole dla gornego rzedu bazowego. Warstwy Shift i Alt pozostaja dostepne niezaleznie.</string>
+    <string name="static_variation_layer_sticky_title">Warstwa zatrzaskiwana</string>
+    <string name="static_variation_layer_sticky_description">Gdy warstwa Shift/Alt jest zablokowana podwojnym nacisnieciem, pozostaje aktywna po wybraniu symbolu z tej warstwy.</string>
     
     <!-- SYM Customization Screen -->
     <string name="sym_tab_emoji">Emoji</string>
