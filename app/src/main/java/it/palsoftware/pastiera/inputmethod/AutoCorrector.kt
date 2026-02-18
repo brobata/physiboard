@@ -367,24 +367,6 @@ object AutoCorrector {
             return it.palsoftware.pastiera.core.Punctuation.isWordBoundary(ch, prev, next)
         }
 
-        // Ignore spaces and punctuation at the end
-        while (endIndex > 0 && isWordBoundaryAt(endIndex - 1)) {
-            endIndex--
-        }
-
-        if (endIndex == 0) {
-            return null
-        }
-
-        val trailing = text.substring(endIndex)
-        val hasHardBoundary = trailing.any { ch ->
-            val normalized = it.palsoftware.pastiera.core.Punctuation.normalizeApostrophe(ch)
-            !normalized.isWhitespace() && normalized !in it.palsoftware.pastiera.core.Punctuation.BOUNDARY
-        }
-        if (hasHardBoundary) {
-            return null
-        }
-
         // Get enabled languages if we have context
         val enabledLanguages = if (context != null) {
             it.palsoftware.pastiera.SettingsManager.getAutoCorrectEnabledLanguages(context)
@@ -415,9 +397,13 @@ object AutoCorrector {
         }
 
         // Highest priority: exact trigger matches that include symbols.
-        // This keeps substitutions like ":e1" / "@@@" working even though tokenization
-        // based on word boundaries would otherwise split on punctuation.
-        val exactSymbolMatch = findExactSymbolTrigger(text, endIndex, languagesToSearch)
+        // Use a cursor endpoint trimmed only for trailing whitespace so pure-symbol
+        // triggers like "@@@" are still visible (full boundary trim would remove them).
+        var exactSymbolEndIndex = text.length
+        while (exactSymbolEndIndex > 0 && text[exactSymbolEndIndex - 1].isWhitespace()) {
+            exactSymbolEndIndex--
+        }
+        val exactSymbolMatch = findExactSymbolTrigger(text, exactSymbolEndIndex, languagesToSearch)
         if (exactSymbolMatch != null) {
             val (trigger, replacement) = exactSymbolMatch
             val triggerLower = trigger.lowercase()
@@ -426,6 +412,24 @@ object AutoCorrector {
                 return Pair(trigger, replacement)
             }
             Log.d(TAG, "Exact symbol trigger '$trigger' is rejected, skipping")
+        }
+
+        // Ignore spaces and punctuation at the end
+        while (endIndex > 0 && isWordBoundaryAt(endIndex - 1)) {
+            endIndex--
+        }
+
+        if (endIndex == 0) {
+            return null
+        }
+
+        val trailing = text.substring(endIndex)
+        val hasHardBoundary = trailing.any { ch ->
+            val normalized = it.palsoftware.pastiera.core.Punctuation.normalizeApostrophe(ch)
+            !normalized.isWhitespace() && normalized !in it.palsoftware.pastiera.core.Punctuation.BOUNDARY
+        }
+        if (hasHardBoundary) {
+            return null
         }
 
         // First, try to search for patterns that include spaces (e.g. "cos e")
