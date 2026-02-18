@@ -212,25 +212,15 @@ class SymLayoutController(
     }
 
     private fun buildActivePages(config: SymPagesConfig = SettingsManager.getSymPagesConfig(context)): List<SymPage> {
-        val pages = mutableListOf<SymPage>()
-        if (config.emojiEnabled) {
-            pages.add(SymPage.EMOJI)
+        return config.enabledOrderedPages().mapNotNull { pageId ->
+            when (pageId) {
+                SymPagesConfig.PAGE_EMOJI -> SymPage.EMOJI
+                SymPagesConfig.PAGE_SYMBOLS -> SymPage.SYMBOLS
+                SymPagesConfig.PAGE_CLIPBOARD -> SymPage.CLIPBOARD
+                SymPagesConfig.PAGE_EMOJI_PICKER -> SymPage.EMOJI_PICKER
+                else -> null
+            }
         }
-        if (config.symbolsEnabled) {
-            pages.add(SymPage.SYMBOLS)
-        }
-        if (!config.emojiFirst) {
-            pages.reverse()
-        }
-        // Emoji picker before clipboard
-        if (config.emojiPickerEnabled) {
-            pages.add(SymPage.EMOJI_PICKER)
-        }
-        // Clipboard is always last
-        if (config.clipboardEnabled) {
-            pages.add(SymPage.CLIPBOARD)
-        }
-        return pages
     }
 
     private fun currentPageType(): SymPage? {
@@ -282,4 +272,3 @@ class SymLayoutController(
     }
 
 }
-

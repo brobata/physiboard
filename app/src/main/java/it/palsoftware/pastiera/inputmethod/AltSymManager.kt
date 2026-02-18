@@ -114,7 +114,9 @@ class AltSymManager(
     fun hasAltMapping(keyCode: Int): Boolean = altKeyMap.containsKey(keyCode)
 
     fun hasSymLongPressMapping(keyCode: Int, shiftPressed: Boolean): Boolean {
-        val useEmojiFirst = context?.let { SettingsManager.getSymPagesConfig(it).emojiFirst } ?: true
+        val useEmojiFirst = context?.let {
+            SettingsManager.getSymPagesConfig(it).prefersEmojiLongPressLayer()
+        } ?: true
         return if (useEmojiFirst) {
             if (shiftPressed && symKeyMapUppercase.containsKey(keyCode)) {
                 true
@@ -377,7 +379,7 @@ class AltSymManager(
 
                     "sym" -> {
                         val useEmojiFirst = context?.let { ctx ->
-                            SettingsManager.getSymPagesConfig(ctx).emojiFirst
+                            SettingsManager.getSymPagesConfig(ctx).prefersEmojiLongPressLayer()
                         } ?: true
                         val wasShifted = keyPressWasShifted[keyCode] ?: false
                         val symChar = if (useEmojiFirst) {

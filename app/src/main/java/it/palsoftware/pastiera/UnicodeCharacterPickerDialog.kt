@@ -26,6 +26,8 @@ fun UnicodeCharacterPickerDialog(
     onCharacterSelected: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
+    var customInput by remember { mutableStateOf("") }
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = androidx.compose.ui.window.DialogProperties(
@@ -68,13 +70,56 @@ fun UnicodeCharacterPickerDialog(
                 }
                 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                // Custom input field: allow adding arbitrary Unicode text.
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = customInput,
+                        onValueChange = { newValue ->
+                            customInput = newValue
+                        },
+                        label = { Text(stringResource(R.string.custom_variation_input)) },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Button(
+                        onClick = {
+                            if (customInput.isNotEmpty()) {
+                                onCharacterSelected(customInput)
+                                onDismiss()
+                            }
+                        },
+                        enabled = customInput.isNotEmpty()
+                    ) {
+                        Text(stringResource(R.string.add))
+                    }
+                }
+
+                // Reset selected key back to default mapping.
+                OutlinedButton(
+                    onClick = {
+                        onCharacterSelected("")
+                        onDismiss()
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(stringResource(R.string.sym_reset_to_default))
+                }
                 
                 // Common Unicode character categories
                 val characterCategories = remember {
                     mapOf(
                         "punteggiatura" to listOf(
-                            "“", "”", "‘", "’", "\"", // Virgolette doppie e singole standard aperte e chiuse
-                            "¿", "¡", "…", "—", "–", "«", "»", "‹", "›", "„",
+                            "„", "“", "”", "‘", "’", "\"", // Quotes incl. German low-open double quote
+                            "¿", "¡", "…", "—", "–", "«", "»", "‹", "›",
                             "‚",  "'", "'", "•", "‥", "‰", "′", "″",
                             "‴", "‵", "‶", "‷", "‸", "※", "§", "¶", "†", "‡",
                             ";", ":", "!", "?", ".", ",", "‽", "⁇", "⁈", "⁉",
@@ -248,7 +293,8 @@ fun UnicodeCharacterPickerDialog(
                 Spacer(modifier = Modifier.height(4.dp))
                 
                 // Character grid with RecyclerView for optimal performance
-                val selectedCharacters = characterCategories[selectedCategory] ?: emptyList()
+                val selectedCharacters = (characterCategories[selectedCategory] ?: emptyList())
+                    .filter { it.isNotEmpty() }
                 
                 key(selectedCategory) {
                     Box(
@@ -305,9 +351,6 @@ fun UnicodeCharacterPickerDialog(
         }
     }
 }
-
-
-
 
 
 

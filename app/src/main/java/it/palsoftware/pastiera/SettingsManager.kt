@@ -1526,12 +1526,43 @@ object SettingsManager {
 
         return try {
             val jsonObject = JSONObject(jsonString)
+            val emojiEnabled = jsonObject.optBoolean("emojiEnabled", true)
+            val symbolsEnabled = jsonObject.optBoolean("symbolsEnabled", true)
+            val clipboardEnabled = jsonObject.optBoolean("clipboardEnabled", false)
+            val emojiPickerEnabled = jsonObject.optBoolean("emojiPickerEnabled", false)
+            val legacyEmojiFirst = jsonObject.optBoolean("emojiFirst", true)
+
+            val parsedOrder = if (jsonObject.has("symPageOrder")) {
+                val orderArray = jsonObject.optJSONArray("symPageOrder")
+                val collected = mutableListOf<String>()
+                if (orderArray != null) {
+                    for (i in 0 until orderArray.length()) {
+                        val pageId = orderArray.optString(i, "").trim()
+                        if (pageId.isNotEmpty()) {
+                            collected.add(pageId)
+                        }
+                    }
+                }
+                collected
+            } else {
+                // Legacy migration from emojiFirst behavior.
+                val cyclePages = mutableListOf(
+                    SymPagesConfig.PAGE_EMOJI,
+                    SymPagesConfig.PAGE_SYMBOLS,
+                    SymPagesConfig.PAGE_CLIPBOARD
+                )
+                if (!legacyEmojiFirst) {
+                    cyclePages.reverse()
+                }
+                cyclePages + SymPagesConfig.PAGE_EMOJI_PICKER
+            }
+
             SymPagesConfig(
-                emojiEnabled = jsonObject.optBoolean("emojiEnabled", true),
-                symbolsEnabled = jsonObject.optBoolean("symbolsEnabled", true),
-                clipboardEnabled = jsonObject.optBoolean("clipboardEnabled", false),
-                emojiPickerEnabled = jsonObject.optBoolean("emojiPickerEnabled", true),
-                emojiFirst = jsonObject.optBoolean("emojiFirst", true)
+                emojiEnabled = emojiEnabled,
+                symbolsEnabled = symbolsEnabled,
+                clipboardEnabled = clipboardEnabled,
+                emojiPickerEnabled = emojiPickerEnabled,
+                symPageOrder = parsedOrder
             )
         } catch (e: Exception) {
             Log.e(TAG, "Error loading SYM pages config", e)
@@ -1549,7 +1580,11 @@ object SettingsManager {
                 put("symbolsEnabled", config.symbolsEnabled)
                 put("clipboardEnabled", config.clipboardEnabled)
                 put("emojiPickerEnabled", config.emojiPickerEnabled)
-                put("emojiFirst", config.emojiFirst)
+                // Keep legacy field for backward compatibility with older builds.
+                put("emojiFirst", config.prefersEmojiLongPressLayer())
+                val orderArray = org.json.JSONArray()
+                config.normalizedOrder().forEach { orderArray.put(it) }
+                put("symPageOrder", orderArray)
             }
 
             getPreferences(context).edit()

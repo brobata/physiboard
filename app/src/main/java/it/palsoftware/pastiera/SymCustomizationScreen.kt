@@ -49,10 +49,22 @@ fun SymCustomizationScreen(
         symPagesConfig = config
         SettingsManager.setSymPagesConfig(context, config)
     }
-    val symOrderLabel = if (symPagesConfig.emojiFirst) {
-        stringResource(R.string.sym_order_emoji_first)
-    } else {
-        stringResource(R.string.sym_order_symbols_first)
+    val normalizedSymPageOrder = symPagesConfig.normalizedOrder()
+    fun movePageOrderItem(fromIndex: Int, toIndex: Int) {
+        val mutable = normalizedSymPageOrder.toMutableList()
+        if (fromIndex !in mutable.indices || toIndex !in mutable.indices || fromIndex == toIndex) {
+            return
+        }
+        val moved = mutable.removeAt(fromIndex)
+        mutable.add(toIndex, moved)
+        persistSymPagesConfig(symPagesConfig.copy(symPageOrder = mutable))
+    }
+    fun symPageTitle(pageId: String): String = when (pageId) {
+        SymPagesConfig.PAGE_EMOJI -> context.getString(R.string.sym_enable_emoji_page_title)
+        SymPagesConfig.PAGE_SYMBOLS -> context.getString(R.string.sym_enable_symbols_page_title)
+        SymPagesConfig.PAGE_CLIPBOARD -> context.getString(R.string.sym_enable_clipboard_page_title)
+        SymPagesConfig.PAGE_EMOJI_PICKER -> context.getString(R.string.sym_enable_emoji_picker_page_title)
+        else -> pageId
     }
     
     // Selected tab (0 = Emoji, 1 = Characters)
@@ -449,15 +461,16 @@ fun SymCustomizationScreen(
             }
         }
 
-        // Swap order control
+        // Emoji picker page toggle
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
+                .height(64.dp)
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                    .padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -469,25 +482,108 @@ fun SymCustomizationScreen(
                 )
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = stringResource(R.string.sym_swap_pages_title),
+                        text = stringResource(R.string.sym_enable_emoji_picker_page_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1
                     )
                     Text(
-                        text = stringResource(R.string.sym_swap_pages_description),
+                        text = stringResource(R.string.sym_enable_emoji_picker_page_description),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2
                     )
                 }
-                Button(
-                    onClick = {
-                        persistSymPagesConfig(symPagesConfig.copy(emojiFirst = !symPagesConfig.emojiFirst))
-                    },
-                    enabled = symPagesConfig.emojiEnabled && symPagesConfig.symbolsEnabled
+                Switch(
+                    checked = symPagesConfig.emojiPickerEnabled,
+                    onCheckedChange = { enabled ->
+                        persistSymPagesConfig(symPagesConfig.copy(emojiPickerEnabled = enabled))
+                    }
+                )
+            }
+        }
+
+        // Page order control
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(symOrderLabel)
+                    Icon(
+                        imageVector = Icons.Filled.Keyboard,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.sym_swap_pages_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1
+                        )
+                        Text(
+                            text = stringResource(R.string.sym_swap_pages_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2
+                        )
+                    }
+                }
+
+                normalizedSymPageOrder.forEachIndexed { index, pageId ->
+                    val enabled = symPagesConfig.isPageEnabled(pageId)
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        tonalElevation = 1.dp,
+                        shape = MaterialTheme.shapes.small
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "${index + 1}.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = symPageTitle(pageId),
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = if (enabled) "On" else "Off",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            TextButton(
+                                onClick = { movePageOrderItem(index, index - 1) },
+                                enabled = index > 0
+                            ) {
+                                Text("↑")
+                            }
+                            TextButton(
+                                onClick = { movePageOrderItem(index, index + 1) },
+                                enabled = index < normalizedSymPageOrder.lastIndex
+                            ) {
+                                Text("↓")
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -518,8 +614,18 @@ fun SymCustomizationScreen(
             UnicodeCharacterPickerDialog(
                 selectedLetter = selectedLetter,
                 onCharacterSelected = { character ->
+                    val keyCode = selectedKeyCode!!
+                    val resolvedCharacter = if (character.isEmpty()) {
+                        defaultMappingsPage2[keyCode]
+                    } else {
+                        character
+                    }
                     symMappingsPage2 = symMappingsPage2.toMutableMap().apply {
-                        put(selectedKeyCode!!, character)
+                        if (resolvedCharacter != null) {
+                            put(keyCode, resolvedCharacter)
+                        } else {
+                            remove(keyCode)
+                        }
                     }
                     SettingsManager.saveSymMappingsPage2(context, symMappingsPage2)
                     showCharacterPicker = false
