@@ -194,9 +194,11 @@
     
     <!-- Long Press Modifier Section -->
     <string name="long_press_modifier_title">Modifikator für langen Druck</string>
-    <string name="long_press_modifier_description">Wählen Sie, ob langer Druck Alt+Taste oder Shift+Taste simuliert</string>
+    <string name="long_press_modifier_description">Wählen Sie, was langer Druck macht: Alt+Taste, Shift+Taste, Zeichenvariationen oder Sym-Belegungen</string>
     <string name="long_press_modifier_alt">Alt</string>
     <string name="long_press_modifier_shift">Shift</string>
+    <string name="long_press_modifier_variations">Variationen</string>
+    <string name="long_press_modifier_sym">Sym</string>
     
     <!-- About Section -->
     <string name="about_github">GitHub</string>
@@ -280,6 +282,8 @@
     <string name="variation_instructions_title">Anweisungen</string>
     <string name="variation_instructions_description">Tippen Sie auf ein Variationsfeld, um ein Zeichen auszuwählen. Jeder Buchstabe kann bis zu 7 Variationszeichen haben.</string>
     <string name="variation_picker_title">Variation für %1$s auswählen</string>
+    <string name="custom_variation_input">Eigenes Zeichen</string>
+    <string name="add">Hinzufügen</string>
     <string name="variation_picker_clear">Leeren (Leer)</string>
     <string name="variation_reset_to_default">Auf Standard zurücksetzen</string>
     <string name="variation_reset_confirm_title">Auf Standard zurücksetzen</string>
@@ -291,6 +295,8 @@
     <!-- Static Variation Bar Mode -->
     <string name="static_variation_bar_mode_title">Statische Variationsleiste</string>
     <string name="static_variation_bar_mode_description">Immer einen festen Satz von Hilfstasten in der Variationszeile anzeigen anstelle von kontextbasierten Variationen.</string>
+    <string name="static_variation_layer_sticky_title">Einrastendes Layer</string>
+    <string name="static_variation_layer_sticky_description">Shift/Alt-Variationslayer bleibt nach Loslassen der Modifikatortaste aktiv.</string>
     
     <!-- SYM Customization Screen -->
     <string name="sym_tab_emoji">Emoji</string>

@@ -84,6 +84,11 @@ fun VariationCustomizationScreen(
     var staticVariationBarMode by remember {
         mutableStateOf(SettingsManager.isStaticVariationBarModeEnabled(context))
     }
+
+    // State for sticky layer behavior after modifier hold.
+    var staticVariationLayerSticky by remember {
+        mutableStateOf(SettingsManager.isStaticVariationBarLayerStickyEnabled(context))
+    }
     
     Scaffold(
         topBar = {
@@ -183,6 +188,49 @@ fun VariationCustomizationScreen(
                     )
                 }
             }
+
+            // Sticky layer toggle
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(64.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.TextFields,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.static_variation_layer_sticky_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1
+                        )
+                        Text(
+                            text = stringResource(R.string.static_variation_layer_sticky_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2
+                        )
+                    }
+                    Switch(
+                        checked = staticVariationLayerSticky,
+                        onCheckedChange = { enabled ->
+                            staticVariationLayerSticky = enabled
+                            SettingsManager.setStaticVariationBarLayerStickyEnabled(context, enabled)
+                        }
+                    )
+                }
+            }
             
             // Static variations row
             VariationRow(
@@ -192,7 +240,7 @@ fun VariationCustomizationScreen(
                 labelColor = Color.Transparent,
                 onBoxClick = { index ->
                     staticInputIndex = index
-                    staticInputValue = limitInputToSingleCodePoint(staticVariations.getOrNull(index) ?: "")
+                    staticInputValue = staticVariations.getOrNull(index) ?: ""
                     showStaticInputDialog = true
                 },
                 onReorder = { fromIndex, toIndex ->
@@ -295,7 +343,7 @@ fun VariationCustomizationScreen(
                     OutlinedTextField(
                         value = staticInputValue,
                         onValueChange = { newValue ->
-                            staticInputValue = limitInputToSingleCodePoint(newValue)
+                            staticInputValue = newValue
                         },
                         singleLine = true,
                         modifier = Modifier.focusRequester(focusRequester),
@@ -561,17 +609,6 @@ private fun VariationBox(
                 )
             }
         }
-    }
-}
-
-// Static inputs accept at most one code point (emoji included); trim safely instead of char-by-char.
-private fun limitInputToSingleCodePoint(value: String): String {
-    if (value.isEmpty()) return ""
-    return try {
-        val endIndex = value.offsetByCodePoints(0, 1)
-        value.substring(0, endIndex)
-    } catch (_: Exception) {
-        value
     }
 }
 

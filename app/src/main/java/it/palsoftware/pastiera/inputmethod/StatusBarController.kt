@@ -208,6 +208,9 @@ class StatusBarController(
         val shouldDisableDoubleSpaceToPeriod: Boolean = false,
         val shouldDisableVariations: Boolean = false,
         val isEmailField: Boolean = false,
+        // UI latch flags for static variation bar layers.
+        val shiftLayerLatched: Boolean = false,
+        val altLayerLatched: Boolean = false,
         // Legacy flag for backward compatibility
         val shouldDisableSmartFeatures: Boolean = false
     ) {
@@ -245,9 +248,35 @@ class StatusBarController(
     private var fullSuggestionsBar: FullSuggestionsBar? = null
     private var baseBottomPadding: Int = 0
     private var lastHamburgerInputConnection: android.view.inputmethod.InputConnection? = null
+    private var lastInsetsLogSignature: String? = null
     
     init {
         onHamburgerMenuRequested = { toggleHamburgerMenu() }
+    }
+
+    private fun logImeOverlayInsetsIfEnabled(
+        navBottom: Int,
+        imeBottom: Int,
+        cutoutBottom: Int,
+        bottomInset: Int,
+        appliedBottomPadding: Int
+    ) {
+        if (!SettingsManager.isImeOverlayDebugLoggingEnabled(context)) {
+            return
+        }
+
+        val signature = "$navBottom|$imeBottom|$cutoutBottom|$bottomInset|$appliedBottomPadding"
+        if (signature == lastInsetsLogSignature) {
+            return
+        }
+        lastInsetsLogSignature = signature
+
+        Log.d(
+            TAG,
+            "IME overlay insets: nav=$navBottom ime=$imeBottom cutout=$cutoutBottom " +
+                "bottomInset=$bottomInset baseBottomPadding=$baseBottomPadding " +
+                "appliedBottomPadding=$appliedBottomPadding"
+        )
     }
 
     fun setForceMinimalUi(force: Boolean) {
@@ -284,7 +313,15 @@ class StatusBarController(
                     val imeInsets = insets.getInsets(WindowInsetsCompat.Type.ime())
                     val cutout = insets.getInsets(WindowInsetsCompat.Type.displayCutout())
                     val bottomInset = maxOf(navInsets.bottom, imeInsets.bottom, cutout.bottom)
-                    view.updatePadding(bottom = baseBottomPadding + bottomInset)
+                    val appliedBottomPadding = baseBottomPadding + bottomInset
+                    view.updatePadding(bottom = appliedBottomPadding)
+                    logImeOverlayInsetsIfEnabled(
+                        navBottom = navInsets.bottom,
+                        imeBottom = imeInsets.bottom,
+                        cutoutBottom = cutout.bottom,
+                        bottomInset = bottomInset,
+                        appliedBottomPadding = appliedBottomPadding
+                    )
                     insets
                 }
             }

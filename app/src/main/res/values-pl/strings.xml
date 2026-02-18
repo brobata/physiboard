@@ -193,9 +193,11 @@
     
     <!-- Long Press Modifier Section -->
     <string name="long_press_modifier_title">Modyfikator Długiego Naciśnięcia</string>
-    <string name="long_press_modifier_description">Wybierz, czy długie naciśnięcie symuluje Alt+klawisz czy Shift+klawisz</string>
+    <string name="long_press_modifier_description">Wybierz, co robi długie naciśnięcie: Alt+klawisz, Shift+klawisz, warianty znaków lub mapowania Sym</string>
     <string name="long_press_modifier_alt">Alt</string>
     <string name="long_press_modifier_shift">Shift</string>
+    <string name="long_press_modifier_variations">Warianty</string>
+    <string name="long_press_modifier_sym">Sym</string>
     
     <!-- About Section -->
     <string name="about_github">GitHub</string>
@@ -279,6 +281,8 @@
     <string name="variation_instructions_title">Instrukcje</string>
     <string name="variation_instructions_description">Naciśnij pole wariantu, aby wybrać znak. Każda litera może mieć do 7 znaków wariantów.</string>
     <string name="variation_picker_title">Wybierz wariant dla %1$s</string>
+    <string name="custom_variation_input">Własny znak</string>
+    <string name="add">Dodaj</string>
     <string name="variation_picker_clear">Wyczyść (Puste)</string>
     <string name="variation_reset_to_default">Przywróć domyślne</string>
     <string name="variation_reset_confirm_title">Przywróć domyślne</string>

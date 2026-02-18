@@ -11,6 +11,7 @@ import android.view.inputmethod.InputConnection
 import it.palsoftware.pastiera.SettingsManager
 import it.palsoftware.pastiera.data.layout.LayoutMappingRepository
 import it.palsoftware.pastiera.data.mappings.KeyMappingLoader
+import it.palsoftware.pastiera.data.variation.VariationRepository
 import it.palsoftware.pastiera.core.AutoSpaceTracker
 import java.util.concurrent.ConcurrentHashMap
 
@@ -36,11 +37,14 @@ class AltSymManager(
     private val altKeyMap = mutableMapOf<Int, String>()
     private val symKeyMap = mutableMapOf<Int, String>()
     private val symKeyMap2 = mutableMapOf<Int, String>()
+    private val symKeyMapUppercase = mutableMapOf<Int, String>()
+    private val symKeyMap2Uppercase = mutableMapOf<Int, String>()
 
     private val pressedKeys = ConcurrentHashMap<Int, Long>()
     private val longPressRunnables = ConcurrentHashMap<Int, Runnable>()
     private val longPressActivated = ConcurrentHashMap<Int, Boolean>()
     private val insertedNormalChars = ConcurrentHashMap<Int, String>()
+    private val keyPressWasShifted = ConcurrentHashMap<Int, Boolean>()
 
     private var longPressThreshold: Long = 500L
 
@@ -48,6 +52,8 @@ class AltSymManager(
         altKeyMap.putAll(KeyMappingLoader.loadAltKeyMappings(assets, context))
         symKeyMap.putAll(KeyMappingLoader.loadSymKeyMappings(assets))
         symKeyMap2.putAll(KeyMappingLoader.loadSymKeyMappingsPage2(assets))
+        symKeyMapUppercase.putAll(KeyMappingLoader.loadSymKeyMappingsUppercase(assets))
+        symKeyMap2Uppercase.putAll(KeyMappingLoader.loadSymKeyMappingsPage2Uppercase(assets))
         reloadLongPressThreshold()
     }
 
@@ -70,11 +76,14 @@ class AltSymManager(
             if (customMappings.isNotEmpty()) {
                 symKeyMap.clear()
                 symKeyMap.putAll(customMappings)
+                symKeyMapUppercase.clear()
                 Log.d(TAG, "Loaded custom SYM mappings: ${customMappings.size} entries")
             } else {
                 // Use default mappings from JSON
                 symKeyMap.clear()
                 symKeyMap.putAll(KeyMappingLoader.loadSymKeyMappings(assets))
+                symKeyMapUppercase.clear()
+                symKeyMapUppercase.putAll(KeyMappingLoader.loadSymKeyMappingsUppercase(assets))
                 Log.d(TAG, "Loaded default SYM mappings")
             }
         }
@@ -89,17 +98,37 @@ class AltSymManager(
             if (customMappings.isNotEmpty()) {
                 symKeyMap2.clear()
                 symKeyMap2.putAll(customMappings)
+                symKeyMap2Uppercase.clear()
                 Log.d(TAG, "Loaded custom SYM page 2 mappings: ${customMappings.size} entries")
             } else {
                 // Use default mappings from JSON
                 symKeyMap2.clear()
                 symKeyMap2.putAll(KeyMappingLoader.loadSymKeyMappingsPage2(assets))
+                symKeyMap2Uppercase.clear()
+                symKeyMap2Uppercase.putAll(KeyMappingLoader.loadSymKeyMappingsPage2Uppercase(assets))
                 Log.d(TAG, "Loaded default SYM page 2 mappings")
             }
         }
     }
 
     fun hasAltMapping(keyCode: Int): Boolean = altKeyMap.containsKey(keyCode)
+
+    fun hasSymLongPressMapping(keyCode: Int, shiftPressed: Boolean): Boolean {
+        val useEmojiFirst = context?.let { SettingsManager.getSymPagesConfig(it).emojiFirst } ?: true
+        return if (useEmojiFirst) {
+            if (shiftPressed && symKeyMapUppercase.containsKey(keyCode)) {
+                true
+            } else {
+                symKeyMap.containsKey(keyCode)
+            }
+        } else {
+            if (shiftPressed && symKeyMap2Uppercase.containsKey(keyCode)) {
+                true
+            } else {
+                symKeyMap2.containsKey(keyCode)
+            }
+        }
+    }
 
     fun hasPendingPress(keyCode: Int): Boolean = pressedKeys.containsKey(keyCode)
 
@@ -117,6 +146,7 @@ class AltSymManager(
         pressedKeys.clear()
         longPressActivated.clear()
         insertedNormalChars.clear()
+        keyPressWasShifted.clear()
     }
 
     fun buildEmojiMapText(): String {
@@ -196,20 +226,31 @@ class AltSymManager(
         if (normalChar.isNotEmpty()) {
             inputConnection.commitText(normalChar, 1)
             insertedNormalChars[keyCode] = normalChar
+            keyPressWasShifted[keyCode] = shiftOneShot || event?.isShiftPressed == true
         }
 
         // Check if this key should support long press
-        val useShift = context?.let { 
-            SettingsManager.isLongPressShift(it) 
-        } ?: false
-        
-        // Only schedule long press if:
-        // - Using Alt and key has Alt mapping, OR
-        // - Using Shift and key is mapped in layout (works for any character, not just letters)
-        val shouldScheduleLongPress = if (useShift) {
-            LayoutMappingRepository.isMapped(keyCode) && normalChar.isNotEmpty()
-        } else {
-            altKeyMap.containsKey(keyCode)
+        val longPressMode = context?.let {
+            SettingsManager.getLongPressModifier(it)
+        } ?: "alt"
+
+        val shouldScheduleLongPress = when (longPressMode) {
+            "variations" -> {
+                if (normalChar.isEmpty()) {
+                    false
+                } else {
+                    val variations = context?.let { ctx ->
+                        VariationRepository.loadVariations(ctx.assets, ctx)
+                    } ?: emptyMap()
+                    variations[normalChar.firstOrNull()]?.isNotEmpty() == true
+                }
+            }
+            "sym" -> hasSymLongPressMapping(
+                keyCode = keyCode,
+                shiftPressed = keyPressWasShifted[keyCode] == true
+            )
+            "shift" -> LayoutMappingRepository.isMapped(keyCode) && normalChar.isNotEmpty()
+            else -> altKeyMap.containsKey(keyCode)
         }
         
         if (shouldScheduleLongPress) {
@@ -251,6 +292,7 @@ class AltSymManager(
         val pressStartTime = pressedKeys.remove(keyCode)
         val wasLongPressActivated = longPressActivated.remove(keyCode) ?: false
         val insertedChar = insertedNormalChars.remove(keyCode)
+        keyPressWasShifted.remove(keyCode)
         
         // Non cancellare il long press se shift è ancora premuto
         // Questo permette al long press di completarsi anche se il tasto viene rilasciato mentre shift è premuto
@@ -263,7 +305,7 @@ class AltSymManager(
             onNormalCharCommitted?.invoke(insertedChar)
         }
 
-        return pressStartTime != null && altKeyMap.containsKey(keyCode) && !symKeyActive
+        return pressStartTime != null && !symKeyActive
     }
 
     fun cancelPendingLongPress(keyCode: Int) {
@@ -283,6 +325,7 @@ class AltSymManager(
         pressedKeys[keyCode] = System.currentTimeMillis()
         longPressActivated[keyCode] = false
         insertedNormalChars[keyCode] = insertedChar
+        keyPressWasShifted[keyCode] = insertedChar.firstOrNull()?.isUpperCase() == true
         scheduleLongPress(keyCode, inputConnection)
     }
 
@@ -291,83 +334,164 @@ class AltSymManager(
         inputConnection: InputConnection
     ) {
         reloadLongPressThreshold()
-        
-        // Check if we should use Shift or Alt
-        val useShift = context?.let { 
-            SettingsManager.isLongPressShift(it) 
-        } ?: false
+
+        val longPressMode = context?.let {
+            SettingsManager.getLongPressModifier(it)
+        } ?: "alt"
 
         val runnable = Runnable {
             if (pressedKeys.containsKey(keyCode)) {
                 val insertedChar = insertedNormalChars[keyCode]
-                
-                if (useShift) {
-                    // Long press with Shift: get uppercase from layout (always use JSON for mapped keys)
-                    if (LayoutMappingRepository.isMapped(keyCode)) {
-                        // Always use JSON to get uppercase character (works correctly for complex layouts like Arabic)
-                        val upperChar = LayoutMappingRepository.getUppercase(keyCode)
-                        if (upperChar != null) {
-                            longPressActivated[keyCode] = true
-                            val upperCharString = upperChar
-                            
-                            // Delete the previously inserted character and insert uppercase from JSON
-                            inputConnection.deleteSurroundingText(1, 0)
-                            inputConnection.commitText(upperCharString, 1)
-                            
-                            insertedNormalChars.remove(keyCode)
-                            longPressRunnables.remove(keyCode)
-                            Log.d(TAG, "Long press Shift per keyCode $keyCode -> $upperCharString")
-                            // Notify that a character was inserted
-                            upperChar.firstOrNull()?.let { onAltCharInserted?.invoke(it) }
-                        }
-                    } else if (insertedChar != null && insertedChar.isNotEmpty() && insertedChar[0].isLetter()) {
-                        // Fallback for unmapped keys only: use Kotlin uppercase (not ideal but necessary)
-                        longPressActivated[keyCode] = true
-                        val upperChar = insertedChar.uppercase()
-                        
-                        // Delete the previously inserted character and insert uppercase
-                        inputConnection.deleteSurroundingText(1, 0)
-                        inputConnection.commitText(upperChar, 1)
-                        
-                        insertedNormalChars.remove(keyCode)
-                        longPressRunnables.remove(keyCode)
-                        Log.d(TAG, "Long press Shift per keyCode $keyCode -> $upperChar (fallback)")
-                        // Notify that a character was inserted
-                        if (upperChar.isNotEmpty()) {
-                            onAltCharInserted?.invoke(upperChar[0])
+
+                when (longPressMode) {
+                    "variations" -> {
+                        if (!insertedChar.isNullOrEmpty()) {
+                            val wasShifted = keyPressWasShifted[keyCode] ?: false
+                            val baseChar = insertedChar[0]
+                            val lookupChar = if (wasShifted && baseChar.isLowerCase()) {
+                                baseChar.uppercaseChar()
+                            } else if (!wasShifted && baseChar.isUpperCase()) {
+                                baseChar.lowercaseChar()
+                            } else {
+                                baseChar
+                            }
+
+                            val variations = context?.let { ctx ->
+                                VariationRepository.loadVariations(ctx.assets, ctx)[lookupChar]
+                            }
+                            if (!variations.isNullOrEmpty()) {
+                                val firstVariation = variations.first()
+                                longPressActivated[keyCode] = true
+
+                                inputConnection.deleteSurroundingText(1, 0)
+                                inputConnection.commitText(firstVariation, 1)
+
+                                insertedNormalChars.remove(keyCode)
+                                keyPressWasShifted.remove(keyCode)
+                                longPressRunnables.remove(keyCode)
+                                Log.d(TAG, "Long press Variations per keyCode $keyCode -> $firstVariation")
+                                firstVariation.firstOrNull()?.let { onAltCharInserted?.invoke(it) }
+                            }
                         }
                     }
-                } else {
-                    // Long press with Alt: use existing Alt mapping
-                    val altChar = altKeyMap[keyCode]
-                    
-                    if (altChar != null) {
-                        longPressActivated[keyCode] = true
-                        
-                        if (insertedChar != null && insertedChar.isNotEmpty()) {
-                            inputConnection.deleteSurroundingText(1, 0)
-                        }
 
-                        val punctuationSet = it.palsoftware.pastiera.core.Punctuation.AUTO_SPACE
-                        if (altChar.isNotEmpty() && altChar[0] in punctuationSet) {
-                            val applied = AutoSpaceTracker.replaceAutoSpaceWithPunctuation(inputConnection, altChar)
-                            if (applied) {
-                                Log.d(TAG, "Long press Alt mapping applied with auto-space replacement for '$altChar'")
-                                onAltCharInserted?.invoke(altChar[0])
-                                insertedNormalChars.remove(keyCode)
-                                longPressRunnables.remove(keyCode)
-                                return@Runnable
+                    "sym" -> {
+                        val useEmojiFirst = context?.let { ctx ->
+                            SettingsManager.getSymPagesConfig(ctx).emojiFirst
+                        } ?: true
+                        val wasShifted = keyPressWasShifted[keyCode] ?: false
+                        val symChar = if (useEmojiFirst) {
+                            if (wasShifted && symKeyMapUppercase.containsKey(keyCode)) {
+                                symKeyMapUppercase[keyCode]
+                            } else {
+                                symKeyMap[keyCode]
+                            }
+                        } else {
+                            if (wasShifted && symKeyMap2Uppercase.containsKey(keyCode)) {
+                                symKeyMap2Uppercase[keyCode]
+                            } else {
+                                symKeyMap2[keyCode]
                             }
                         }
 
-                        AutoSpaceTracker.clear()
-                        inputConnection.commitText(altChar, 1)
-                        insertedNormalChars.remove(keyCode)
-                        longPressRunnables.remove(keyCode)
-                        Log.d(TAG, "Long press Alt per keyCode $keyCode -> $altChar")
-                        // Notify that an Alt character was inserted
-                        if (altChar.isNotEmpty()) {
-                            onAltCharInserted?.invoke(altChar[0])
+                        if (!symChar.isNullOrEmpty()) {
+                            longPressActivated[keyCode] = true
+
+                            if (!insertedChar.isNullOrEmpty()) {
+                                inputConnection.deleteSurroundingText(1, 0)
+                            }
+
+                            val punctuationSet = it.palsoftware.pastiera.core.Punctuation.AUTO_SPACE
+                            if (symChar[0] in punctuationSet) {
+                                val applied = AutoSpaceTracker.replaceAutoSpaceWithPunctuation(inputConnection, symChar)
+                                if (applied) {
+                                    Log.d(TAG, "Long press Sym mapping applied with auto-space replacement for '$symChar'")
+                                    onAltCharInserted?.invoke(symChar[0])
+                                    insertedNormalChars.remove(keyCode)
+                                    keyPressWasShifted.remove(keyCode)
+                                    longPressRunnables.remove(keyCode)
+                                    return@Runnable
+                                }
+                            }
+
+                            AutoSpaceTracker.clear()
+                            inputConnection.commitText(symChar, 1)
+                            insertedNormalChars.remove(keyCode)
+                            keyPressWasShifted.remove(keyCode)
+                            longPressRunnables.remove(keyCode)
+                            Log.d(TAG, "Long press Sym per keyCode $keyCode -> $symChar")
+                            onAltCharInserted?.invoke(symChar[0])
+                        }
+                    }
+
+                    "shift" -> {
+                        // Long press with Shift: get uppercase from layout (always use JSON for mapped keys)
+                        if (LayoutMappingRepository.isMapped(keyCode)) {
+                            val upperChar = LayoutMappingRepository.getUppercase(keyCode)
+                            if (upperChar != null) {
+                                longPressActivated[keyCode] = true
+                                val upperCharString = upperChar
+
+                                inputConnection.deleteSurroundingText(1, 0)
+                                inputConnection.commitText(upperCharString, 1)
+
+                                insertedNormalChars.remove(keyCode)
+                                keyPressWasShifted.remove(keyCode)
+                                longPressRunnables.remove(keyCode)
+                                Log.d(TAG, "Long press Shift per keyCode $keyCode -> $upperCharString")
+                                upperChar.firstOrNull()?.let { onAltCharInserted?.invoke(it) }
+                            }
+                        } else if (insertedChar != null && insertedChar.isNotEmpty() && insertedChar[0].isLetter()) {
+                            // Fallback for unmapped keys only: use Kotlin uppercase.
+                            longPressActivated[keyCode] = true
+                            val upperChar = insertedChar.uppercase()
+
+                            inputConnection.deleteSurroundingText(1, 0)
+                            inputConnection.commitText(upperChar, 1)
+
+                            insertedNormalChars.remove(keyCode)
+                            keyPressWasShifted.remove(keyCode)
+                            longPressRunnables.remove(keyCode)
+                            Log.d(TAG, "Long press Shift per keyCode $keyCode -> $upperChar (fallback)")
+                            if (upperChar.isNotEmpty()) {
+                                onAltCharInserted?.invoke(upperChar[0])
+                            }
+                        }
+                    }
+
+                    else -> {
+                        // Long press with Alt: use existing Alt mapping (default).
+                        val altChar = altKeyMap[keyCode]
+
+                        if (altChar != null) {
+                            longPressActivated[keyCode] = true
+
+                            if (insertedChar != null && insertedChar.isNotEmpty()) {
+                                inputConnection.deleteSurroundingText(1, 0)
+                            }
+
+                            val punctuationSet = it.palsoftware.pastiera.core.Punctuation.AUTO_SPACE
+                            if (altChar.isNotEmpty() && altChar[0] in punctuationSet) {
+                                val applied = AutoSpaceTracker.replaceAutoSpaceWithPunctuation(inputConnection, altChar)
+                                if (applied) {
+                                    Log.d(TAG, "Long press Alt mapping applied with auto-space replacement for '$altChar'")
+                                    onAltCharInserted?.invoke(altChar[0])
+                                    insertedNormalChars.remove(keyCode)
+                                    keyPressWasShifted.remove(keyCode)
+                                    longPressRunnables.remove(keyCode)
+                                    return@Runnable
+                                }
+                            }
+
+                            AutoSpaceTracker.clear()
+                            inputConnection.commitText(altChar, 1)
+                            insertedNormalChars.remove(keyCode)
+                            keyPressWasShifted.remove(keyCode)
+                            longPressRunnables.remove(keyCode)
+                            Log.d(TAG, "Long press Alt per keyCode $keyCode -> $altChar")
+                            if (altChar.isNotEmpty()) {
+                                onAltCharInserted?.invoke(altChar[0])
+                            }
                         }
                     }
                 }

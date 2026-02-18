@@ -35,7 +35,7 @@ object SettingsManager {
     private const val KEY_AUTO_REPLACE_ON_SPACE_ENTER = "auto_replace_on_space_enter"
     private const val KEY_MAX_AUTO_REPLACE_DISTANCE = "max_auto_replace_distance"
     private const val KEY_AUTO_CAPITALIZE_AFTER_PERIOD = "auto_capitalize_after_period"
-    private const val KEY_LONG_PRESS_MODIFIER = "long_press_modifier" // "alt" or "shift"
+    private const val KEY_LONG_PRESS_MODIFIER = "long_press_modifier" // "alt", "shift", "variations", or "sym"
     private const val KEY_KEYBOARD_LAYOUT = "keyboard_layout" // "qwerty", "azerty", etc.
     private const val KEY_KEYBOARD_LAYOUT_LIST = "keyboard_layout_list" // JSON array of layout ids for cycling
     private const val KEY_RESTORE_SYM_PAGE = "restore_sym_page" // SYM page to restore when returning from settings
@@ -46,6 +46,7 @@ object SettingsManager {
     private const val KEY_TUTORIAL_COMPLETED = "tutorial_completed" // Whether the first-run tutorial has been completed
     private const val KEY_SWIPE_INCREMENTAL_THRESHOLD = "swipe_incremental_threshold" // Distance in DIP for cursor movement
     private const val KEY_STATIC_VARIATION_BAR_MODE = "static_variation_bar_mode" // Use static variation bar instead of dynamic cursor-based variations
+    private const val KEY_STATIC_VARIATION_BAR_MODIFIER_HOLD_RESTORATION = "static_variation_bar_modifier_hold_restoration"
     private const val KEY_VARIATIONS_UPDATED = "variations_updated" // Trigger for reloading variations in input method service
     private const val KEY_ADDITIONAL_IME_SUBTYPES = "additional_ime_subtypes" // Comma-separated list of language codes for additional IME subtypes
     private const val KEY_CLIPBOARD_HISTORY_ENABLED = "clipboard_history_enabled" // Whether clipboard history is enabled
@@ -105,11 +106,13 @@ object SettingsManager {
     private const val DEFAULT_SUGGESTION_DEBUG_LOGGING = true
     private const val KEY_EXPERIMENTAL_SUGGESTIONS_ENABLED = "experimental_suggestions_enabled"
     private const val KEY_SUGGESTION_DEBUG_LOGGING = "suggestion_debug_logging"
+    private const val KEY_IME_OVERLAY_DEBUG_LOGGING = "ime_overlay_debug_logging"
     private const val KEY_USE_KEYBOARD_PROXIMITY = "use_keyboard_proximity"
     private const val KEY_USE_EDIT_TYPE_RANKING = "use_edit_type_ranking"
 
     private const val DEFAULT_USE_KEYBOARD_PROXIMITY = false
     private const val DEFAULT_USE_EDIT_TYPE_RANKING = false
+    private const val DEFAULT_IME_OVERLAY_DEBUG_LOGGING = false
     private const val DEFAULT_CLIPBOARD_HISTORY_ENABLED = true
     private const val DEFAULT_CLIPBOARD_RETENTION_TIME = 120L // 2 hours in minutes
     private const val DEFAULT_TRACKPAD_GESTURES_ENABLED = false
@@ -356,6 +359,22 @@ object SettingsManager {
     fun setStaticVariationBarModeEnabled(context: Context, enabled: Boolean) {
         getPreferences(context).edit()
             .putBoolean(KEY_STATIC_VARIATION_BAR_MODE, enabled)
+            .apply()
+    }
+
+    /**
+     * Returns true if the static variation layer should remain latched after modifier hold.
+     */
+    fun isStaticVariationBarLayerStickyEnabled(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_STATIC_VARIATION_BAR_MODIFIER_HOLD_RESTORATION, true)
+    }
+
+    /**
+     * Sets whether static variation layers should stay latched after modifier hold.
+     */
+    fun setStaticVariationBarLayerStickyEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_STATIC_VARIATION_BAR_MODIFIER_HOLD_RESTORATION, enabled)
             .apply()
     }
 
@@ -653,6 +672,19 @@ object SettingsManager {
     }
 
     /**
+     * Optional debug logging for IME overlay / inset calculations.
+     */
+    fun isImeOverlayDebugLoggingEnabled(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_IME_OVERLAY_DEBUG_LOGGING, DEFAULT_IME_OVERLAY_DEBUG_LOGGING)
+    }
+
+    fun setImeOverlayDebugLoggingEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_IME_OVERLAY_DEBUG_LOGGING, enabled)
+            .apply()
+    }
+
+    /**
      * Returns whether auto-replace on space/enter is enabled.
      */
     fun getAutoReplaceOnSpaceEnter(context: Context): Boolean {
@@ -887,17 +919,27 @@ object SettingsManager {
     }
     
     /**
-     * Returns the long-press modifier type ("alt" or "shift").
+     * Returns the long-press modifier type ("alt", "shift", "variations", or "sym").
      */
     fun getLongPressModifier(context: Context): String {
-        return getPreferences(context).getString(KEY_LONG_PRESS_MODIFIER, DEFAULT_LONG_PRESS_MODIFIER) ?: DEFAULT_LONG_PRESS_MODIFIER
+        val stored = getPreferences(context).getString(KEY_LONG_PRESS_MODIFIER, DEFAULT_LONG_PRESS_MODIFIER)
+            ?: DEFAULT_LONG_PRESS_MODIFIER
+        return when (stored) {
+            "alt", "shift", "variations", "sym" -> stored
+            else -> DEFAULT_LONG_PRESS_MODIFIER
+        }
     }
     
     /**
-     * Sets the long-press modifier type ("alt" or "shift").
+     * Sets the long-press modifier type ("alt", "shift", "variations", or "sym").
      */
     fun setLongPressModifier(context: Context, modifier: String) {
-        val validModifier = if (modifier == "shift") "shift" else "alt"
+        val validModifier = when (modifier) {
+            "shift" -> "shift"
+            "variations" -> "variations"
+            "sym" -> "sym"
+            else -> "alt"
+        }
         getPreferences(context).edit()
             .putString(KEY_LONG_PRESS_MODIFIER, validModifier)
             .apply()
@@ -905,9 +947,24 @@ object SettingsManager {
     
     /**
      * Returns true if long press uses Shift, false if it uses Alt.
+     * @deprecated Use getLongPressModifier() for more granular control
      */
     fun isLongPressShift(context: Context): Boolean {
         return getLongPressModifier(context) == "shift"
+    }
+
+    /**
+     * Returns true if long press uses Variations mode.
+     */
+    fun isLongPressVariations(context: Context): Boolean {
+        return getLongPressModifier(context) == "variations"
+    }
+
+    /**
+     * Returns true if long press uses Sym mode.
+     */
+    fun isLongPressSym(context: Context): Boolean {
+        return getLongPressModifier(context) == "sym"
     }
     
     /**
@@ -1663,7 +1720,13 @@ object SettingsManager {
     /**
      * Saves variations to variations.json file in filesDir.
      */
-    fun saveVariations(context: Context, variations: Map<String, List<String>>, staticVariations: List<String>? = null) {
+    fun saveVariations(
+        context: Context,
+        variations: Map<String, List<String>>,
+        staticVariations: List<String>? = null,
+        staticVariationsShift: List<String>? = null,
+        staticVariationsAlt: List<String>? = null
+    ) {
         try {
             val variationsObject = JSONObject()
             for ((letter, chars) in variations) {
@@ -1676,16 +1739,44 @@ object SettingsManager {
             
             val jsonObject = JSONObject()
             jsonObject.put("variations", variationsObject)
-            
-            // Preserve staticVariations
+
+            val currentJson = loadCurrentJson(context)
+
+            // Preserve/update staticVariations
             if (staticVariations != null) {
                 val staticArray = org.json.JSONArray()
                 staticVariations.forEach { staticArray.put(it) }
                 jsonObject.put("staticVariations", staticArray)
             } else {
-                loadCurrentJson(context)?.let { currentJson ->
-                    if (currentJson.has("staticVariations")) {
-                        jsonObject.put("staticVariations", currentJson.getJSONArray("staticVariations"))
+                currentJson?.let {
+                    if (it.has("staticVariations")) {
+                        jsonObject.put("staticVariations", it.getJSONArray("staticVariations"))
+                    }
+                }
+            }
+
+            // Preserve/update staticVariationsShift
+            if (staticVariationsShift != null) {
+                val staticArray = org.json.JSONArray()
+                staticVariationsShift.forEach { staticArray.put(it) }
+                jsonObject.put("staticVariationsShift", staticArray)
+            } else {
+                currentJson?.let {
+                    if (it.has("staticVariationsShift")) {
+                        jsonObject.put("staticVariationsShift", it.getJSONArray("staticVariationsShift"))
+                    }
+                }
+            }
+
+            // Preserve/update staticVariationsAlt
+            if (staticVariationsAlt != null) {
+                val staticArray = org.json.JSONArray()
+                staticVariationsAlt.forEach { staticArray.put(it) }
+                jsonObject.put("staticVariationsAlt", staticArray)
+            } else {
+                currentJson?.let {
+                    if (it.has("staticVariationsAlt")) {
+                        jsonObject.put("staticVariationsAlt", it.getJSONArray("staticVariationsAlt"))
                     }
                 }
             }

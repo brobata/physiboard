@@ -140,7 +140,11 @@
     <string name="emoji_category_travel_and_places">Ճամփորդություն և վայրեր</string>
     <string name="emoji_picker_error">Հնարավոր չէ բեռնել էմոջին</string>
     <string name="long_press_modifier_title">Երկար սեղմման մոդիֆիկատոր</string>
-    <string name="long_press_modifier_description">Ընտրեք՝ երկար սեղմումը կէմուլացնի Alt+կամ Shift+կոճակը։</string>
+    <string name="long_press_modifier_description">Ընտրեք, թե ինչ է անում երկար սեղմումը՝ Alt+ստեղն, Shift+ստեղն, նշանների տարբերակներ կամ Sym քարտեզումներ։</string>
+    <string name="long_press_modifier_alt">Alt</string>
+    <string name="long_press_modifier_shift">Shift</string>
+    <string name="long_press_modifier_variations">Տարբերակներ</string>
+    <string name="long_press_modifier_sym">Sym</string>
     <string name="keyboard_layout_title">Ստեղնաշարի դասավորություն</string>
     <string name="keyboard_layout_description">Ընտրեք ձեր դասավորությունը։ ALT, SYM և Ctrl դասավորությունները կախված են ֆիզիկական ստեղների տեղաբաշխումից։</string>
     <string name="keyboard_layout_no_conversion">Ստանդարտ</string>
@@ -225,6 +229,8 @@
     <string name="variation_instructions_title">Հրահանգներ</string>
     <string name="variation_instructions_description">Հպեք տարբերակի վանդակին՝ սիմվոլ ընտրելու համար։ Յուրաքանչյուր տառ կարող է ունենալ մինչև 7 տարբերակի սիմվոլներ:</string>
     <string name="variation_picker_title">Ընտրել տարբերակ %1$s-ի համար</string>
+    <string name="custom_variation_input">Անհատական նշան</string>
+    <string name="add">Ավելացնել</string>
     <string name="variation_picker_clear">Մաքրել (Դատարկ)</string>
     <string name="variation_reset_to_default">Վերականգնել լռելյայնը</string>
     <string name="variation_reset_confirm_title">Վերականգնել լռելյայնը</string>

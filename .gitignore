@@ -26,3 +26,7 @@ keystore.properties
 
 # Build scripts (local)
 assembla_release.sh
+
+# Local build metadata
+app/build.properties
+.kotlin/

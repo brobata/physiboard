@@ -185,9 +185,11 @@
     
     <!-- Long Press Modifier Section -->
     <string name="long_press_modifier_title">Modificatore Long Press</string>
-    <string name="long_press_modifier_description">Scegli se il long press simula Alt+tasto o Shift+tasto</string>
+    <string name="long_press_modifier_description">Scegli cosa fa il long press: Alt+tasto, Shift+tasto, variazioni di carattere o mappature Sym</string>
     <string name="long_press_modifier_alt">Alt</string>
     <string name="long_press_modifier_shift">Shift</string>
+    <string name="long_press_modifier_variations">Variazioni</string>
+    <string name="long_press_modifier_sym">Sym</string>
     
     <!-- Keyboard Layout Section -->
     <string name="keyboard_layout_title">Layout Tastiera</string>
@@ -315,6 +317,8 @@
     <string name="variation_instructions_title">Istruzioni</string>
     <string name="variation_instructions_description">Tocca una casella di variazione per selezionare un carattere. Ogni lettera può avere fino a 7 caratteri di variazione.</string>
     <string name="variation_picker_title">Seleziona variazione per %1$s</string>
+    <string name="custom_variation_input">Carattere personalizzato</string>
+    <string name="add">Aggiungi</string>
     <string name="variation_picker_clear">Svuota (Vuoto)</string>
     <string name="variation_reset_to_default">Ripristina Predefinito</string>
     <string name="variation_reset_confirm_title">Ripristina Predefinito</string>

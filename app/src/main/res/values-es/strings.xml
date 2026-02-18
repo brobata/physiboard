@@ -193,9 +193,11 @@
     
     <!-- Long Press Modifier Section -->
     <string name="long_press_modifier_title">Modificador de Pulsación Larga</string>
-    <string name="long_press_modifier_description">Elija si la pulsación larga simula Alt+tecla o Shift+tecla</string>
+    <string name="long_press_modifier_description">Elija qué hace la pulsación larga: Alt+tecla, Shift+tecla, variaciones de caracteres o asignaciones Sym</string>
     <string name="long_press_modifier_alt">Alt</string>
     <string name="long_press_modifier_shift">Shift</string>
+    <string name="long_press_modifier_variations">Variaciones</string>
+    <string name="long_press_modifier_sym">Sym</string>
     
     <!-- About Section -->
     <string name="about_github">GitHub</string>
@@ -279,6 +281,8 @@
     <string name="variation_instructions_title">Instrucciones</string>
     <string name="variation_instructions_description">Toque una casilla de variación para seleccionar un carácter. Cada letra puede tener hasta 7 caracteres de variación.</string>
     <string name="variation_picker_title">Seleccionar variación para %1$s</string>
+    <string name="custom_variation_input">Carácter personalizado</string>
+    <string name="add">Agregar</string>
     <string name="variation_picker_clear">Limpiar (Vacío)</string>
     <string name="variation_reset_to_default">Restaurar predeterminado</string>
     <string name="variation_reset_confirm_title">Restaurar predeterminado</string>

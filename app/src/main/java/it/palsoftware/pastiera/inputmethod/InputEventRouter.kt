@@ -451,11 +451,25 @@ class InputEventRouter(
 
         // Compute long-press eligibility up front so multi-tap can still schedule it.
         val longPressSuppressed = callbacks.isLongPressSuppressed(keyCode)
-        val useShiftForLongPress = SettingsManager.isLongPressShift(context)
-        val hasLongPressSupport = if (useShiftForLongPress) {
-            !longPressSuppressed && event != null && event.unicodeChar != 0 && event.unicodeChar.toChar().isLetter()
+        val longPressMode = SettingsManager.getLongPressModifier(context)
+        val charForLongPress = if (LayoutMappingRepository.isMapped(keyCode)) {
+            LayoutMappingRepository.getCharacterWithModifiers(
+                keyCode,
+                event?.isShiftPressed == true,
+                params.capsLockEnabled,
+                shiftOneShotActive
+            )
         } else {
-            !longPressSuppressed && controllers.altSymManager.hasAltMapping(keyCode)
+            callbacks.getCharacterFromLayout(keyCode, event, event?.isShiftPressed == true)
+        }
+        val hasLongPressSupport = when (longPressMode) {
+            "shift" -> !longPressSuppressed && event != null && event.unicodeChar != 0 && event.unicodeChar.toChar().isLetter()
+            "variations" -> !longPressSuppressed && charForLongPress != null && controllers.variationStateController.hasVariationsFor(charForLongPress)
+            "sym" -> !longPressSuppressed && controllers.altSymManager.hasSymLongPressMapping(
+                keyCode = keyCode,
+                shiftPressed = event?.isShiftPressed == true || shiftOneShotActive
+            )
+            else -> !longPressSuppressed && controllers.altSymManager.hasAltMapping(keyCode)
         }
 
         // Ignore system-generated repeats on multi-tap keys so holding the key
@@ -505,7 +519,7 @@ class InputEventRouter(
                     layoutChar
                 )
                 // Track immediately only when using Shift long press (result still a letter).
-                val shouldTrackImmediately = useShiftForLongPress
+                val shouldTrackImmediately = longPressMode == "shift"
                 if (shouldTrackImmediately && trackedChar.isNotEmpty() && trackedChar[0].isLetter()) {
                     suggestionController?.onCharacterCommitted(trackedChar, ic)
                 }
