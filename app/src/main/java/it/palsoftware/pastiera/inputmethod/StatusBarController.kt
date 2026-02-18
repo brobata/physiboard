@@ -24,10 +24,12 @@ import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.MainActivity
 import it.palsoftware.pastiera.SymCustomizationActivity
 import it.palsoftware.pastiera.SettingsManager
+import it.palsoftware.pastiera.data.layout.LayoutFileStore
 import kotlin.math.max
 import android.view.MotionEvent
 import android.view.KeyEvent
 import android.view.InputDevice
+import android.view.inputmethod.InputMethodManager
 import kotlin.math.abs
 import it.palsoftware.pastiera.inputmethod.ui.ClipboardHistoryView
 import it.palsoftware.pastiera.inputmethod.ui.EmojiPickerView
@@ -37,6 +39,7 @@ import it.palsoftware.pastiera.inputmethod.ui.VariationBarView
 import it.palsoftware.pastiera.inputmethod.suggestions.ui.FullSuggestionsBar
 import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonRegistry
 import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarCallbacks
+import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils
 import it.palsoftware.pastiera.inputmethod.NotificationHelper
 import android.content.res.AssetManager
 import androidx.core.view.ViewCompat
@@ -304,6 +307,8 @@ class StatusBarController(
                     ViewGroup.LayoutParams.WRAP_CONTENT
                 )
                 setBackgroundColor(DEFAULT_BACKGROUND)
+                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+                accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
             }
             statusBarLayout?.let { layout ->
                 baseBottomPadding = layout.paddingBottom
@@ -1303,6 +1308,7 @@ class StatusBarController(
             return
         }
         layout.visibility = View.VISIBLE
+        updateAccessibilityStateDescription(layout)
         
         if (layout.background !is ColorDrawable) {
             layout.background = ColorDrawable(DEFAULT_BACKGROUND)
@@ -1456,6 +1462,49 @@ class StatusBarController(
             symShown = false
             wasSymActive = false
             lastSymPageRendered = 0 // Reset when closing SYM page
+        }
+    }
+
+    private fun updateAccessibilityStateDescription(view: View) {
+        ViewCompat.setStateDescription(view, buildLayoutAccessibilityStateDescription())
+    }
+
+    private fun buildLayoutAccessibilityStateDescription(): String {
+        return try {
+            val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+            val subtype = imm?.currentInputMethodSubtype
+            val languageLabel = if (subtype != null) {
+                val appInfo = context.packageManager.getApplicationInfo(context.packageName, 0)
+                subtype.getDisplayName(context, context.packageName, appInfo)?.toString()
+                    ?.takeIf { it.isNotBlank() }
+                    ?: subtype.locale
+                    ?: "Unknown"
+            } else {
+                "Unknown"
+            }
+
+            val layoutName = subtype
+                ?.let { AdditionalSubtypeUtils.getKeyboardLayoutFromSubtype(it) }
+                ?.takeIf { it.isNotBlank() }
+                ?: "qwerty"
+            val layoutLabel = LayoutFileStore.getLayoutMetadataFromAssets(context.assets, layoutName)?.name
+                ?.takeIf { it.isNotBlank() }
+                ?: LayoutFileStore.getLayoutMetadata(context, layoutName)?.name
+                ?.takeIf { it.isNotBlank() }
+                ?: layoutName
+
+            context.getString(
+                R.string.status_bar_button_language_state_description,
+                languageLabel,
+                layoutLabel
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to update accessibility state description", e)
+            context.getString(
+                R.string.status_bar_button_language_state_description,
+                "Unknown",
+                "qwerty"
+            )
         }
     }
 

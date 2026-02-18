@@ -14,8 +14,12 @@ import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
 import android.view.inputmethod.InputMethodManager
+import android.view.inputmethod.InputMethodSubtype
 import android.widget.TextView
+import androidx.core.view.ViewCompat
 import it.palsoftware.pastiera.R
+import it.palsoftware.pastiera.data.layout.LayoutFileStore
+import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils
 import it.palsoftware.pastiera.inputmethod.statusbar.ButtonCreationResult
 import it.palsoftware.pastiera.inputmethod.statusbar.ButtonState
 import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarCallbacks
@@ -105,6 +109,8 @@ class LanguageButtonFactory : StatusBarButtonFactory {
             background = StatusBarButtonStyles.createButtonDrawable(size)
             isClickable = true
             isFocusable = true
+            contentDescription = context.getString(R.string.status_bar_button_language_description)
+            accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
             includeFontPadding = false
             setPadding(0, 0, 0, 0)
             // layoutParams will be set by VariationBarView for consistency
@@ -123,9 +129,11 @@ class LanguageButtonFactory : StatusBarButtonFactory {
                 "??"
             }
             applyLanguageText(button, languageCode)
+            updateAccessibilityStateDescription(context, button, currentSubtype)
         } catch (e: Exception) {
             Log.e(TAG, "Error updating language button text", e)
             applyLanguageText(button, "??")
+            updateAccessibilityStateDescription(context, button, null)
         }
     }
     
@@ -163,6 +171,55 @@ class LanguageButtonFactory : StatusBarButtonFactory {
             )
         }
         button.text = dottedText
+    }
+
+    private fun updateAccessibilityStateDescription(
+        context: Context,
+        button: TextView,
+        subtype: InputMethodSubtype?
+    ) {
+        val languageLabel = getLanguageLabel(context, subtype)
+        val layoutLabel = getLayoutLabel(context, subtype)
+        ViewCompat.setStateDescription(
+            button,
+            context.getString(
+                R.string.status_bar_button_language_state_description,
+                languageLabel,
+                layoutLabel
+            )
+        )
+    }
+
+    private fun getLanguageLabel(context: Context, subtype: InputMethodSubtype?): String {
+        if (subtype == null) return "Unknown"
+        return try {
+            val appInfo = context.packageManager.getApplicationInfo(context.packageName, 0)
+            subtype.getDisplayName(context, context.packageName, appInfo)?.toString()
+                ?.takeIf { it.isNotBlank() }
+                ?: subtype.locale
+                ?: "Unknown"
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to resolve subtype display name for accessibility", e)
+            subtype.locale ?: "Unknown"
+        }
+    }
+
+    private fun getLayoutLabel(context: Context, subtype: InputMethodSubtype?): String {
+        val layoutName = subtype
+            ?.let { AdditionalSubtypeUtils.getKeyboardLayoutFromSubtype(it) }
+            ?.takeIf { it.isNotBlank() }
+            ?: "qwerty"
+
+        return try {
+            LayoutFileStore.getLayoutMetadataFromAssets(context.assets, layoutName)?.name
+                ?.takeIf { it.isNotBlank() }
+                ?: LayoutFileStore.getLayoutMetadata(context, layoutName)?.name
+                ?.takeIf { it.isNotBlank() }
+                ?: layoutName
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to resolve layout name for accessibility", e)
+            layoutName
+        }
     }
     
     private fun dpToPx(context: Context, dp: Float): Int {

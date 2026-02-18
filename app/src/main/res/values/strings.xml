@@ -633,6 +633,7 @@
     <string name="status_bar_button_emoji_description">Emoji picker</string>
     <string name="status_bar_button_language">Language</string>
     <string name="status_bar_button_language_description">Switch language</string>
+    <string name="status_bar_button_language_state_description">Language %1$s, layout %2$s</string>
     <string name="status_bar_button_hamburger">Menu</string>
     <string name="status_bar_button_hamburger_description">Quick actions</string>
     <string name="status_bar_button_settings">Settings</string>
