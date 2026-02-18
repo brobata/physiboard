@@ -235,6 +235,7 @@ class StatusBarController(
     private var lastSymMappingsRendered: Map<Int, String>? = null
     private var lastInputConnectionUsed: android.view.inputmethod.InputConnection? = null
     private var wasSymActive: Boolean = false
+    private var isTitan2Layout: Boolean = false
 
     // Trackpad debug
     private var trackpadDebugLaunched = false
@@ -728,17 +729,62 @@ class StatusBarController(
         for ((rowIndex, row) in keyboardRows.withIndex()) {
             val rowLayout = LinearLayout(context).apply {
                 orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_HORIZONTAL // Centra le righe più corte
+                gravity = if (isTitan2Layout) Gravity.START else Gravity.CENTER_HORIZONTAL
                 layoutParams = LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT
                 ).apply {
-                    // Aggiungi margine solo tra le righe, non dopo l'ultima
                     if (rowIndex < keyboardRows.size - 1) {
                         bottomMargin = keySpacing
                     }
                 }
             }
+            
+            if (isTitan2Layout) {
+                // Ortholinear layout for Titan 2
+                when (rowIndex) {
+                    0 -> { // Row 1: Q W E R T Y U I O P (10 keys)
+                        for ((index, keyCode) in row.withIndex()) {
+                            addKeyToRow(rowLayout, keyCode, symMappings, fixedKeyWidth, keyHeight, keySpacing, page, inputConnection, index == row.size - 1)
+                        }
+                    }
+                    1 -> { // Row 2: A S D F G H J K L (9 keys) -> Add placeholder at the end to make it 10
+                        for ((index, keyCode) in row.withIndex()) {
+                            addKeyToRow(rowLayout, keyCode, symMappings, fixedKeyWidth, keyHeight, keySpacing, page, inputConnection, false)
+                        }
+                        rowLayout.addView(View(context), LinearLayout.LayoutParams(fixedKeyWidth, keyHeight))
+                    }
+                    2 -> { // Row 3: Z X C V [Close] [Globe] B N M [Gap]
+                        // Z X C V (4 keys)
+                        for (i in 0..3) {
+                            addKeyToRow(rowLayout, row[i], symMappings, fixedKeyWidth, keyHeight, keySpacing, page, inputConnection, false)
+                        }
+                        
+                        // Close Button (left part of spacebar area)
+                        val hideKeyboardButton = createHideKeyboardButton(keyHeight, fixedKeyWidth)
+                        rowLayout.addView(hideKeyboardButton)
+                        rowLayout.addView(View(context), LinearLayout.LayoutParams(keySpacing, keyHeight))
+                        
+                        // Globe Button (right part of spacebar area)
+                        val selectionButton = createKeyboardSelectionButton(keyHeight, fixedKeyWidth)
+                        rowLayout.addView(selectionButton)
+                        rowLayout.addView(View(context), LinearLayout.LayoutParams(keySpacing, keyHeight))
+                        
+                        // B N M (3 keys)
+                        for (i in 4..6) {
+                            addKeyToRow(rowLayout, row[i], symMappings, fixedKeyWidth, keyHeight, keySpacing, page, inputConnection, false)
+                        }
+
+                        // Right Gap (placeholder for the physical cutout/space at the end of row 3)
+                        rowLayout.addView(View(context), LinearLayout.LayoutParams(fixedKeyWidth, keyHeight))
+                    }
+                }
+                container.addView(rowLayout)
+                continue
+            }
+            
+            // Default non-Titan 2 layout logic...
+            // (The rest of the loop for non-Titan 2 remains the same)
             
             // Per la terza riga, aggiungi placeholder con emoji picker button a sinistra
             if (rowIndex == 2) {
@@ -776,7 +822,7 @@ class StatusBarController(
                                 android.view.MotionEvent.ACTION_UP -> {
                                     originalBackground.setColor(normalColor)
                                     view.postInvalidate()
-                                    // Esegui commitText direttamente qui (più veloce)
+                                    // Esegui commitText direttamente hier (più veloce)
                                     inputConnection.commitText(content, 1)
                                     true
                                 }
@@ -1033,6 +1079,115 @@ class StatusBarController(
         
         return keyLayout
     }
+
+    private fun createHideKeyboardButton(height: Int, width: Int): View {
+        val button = FrameLayout(context).apply {
+            layoutParams = LinearLayout.LayoutParams(width, height)
+            isClickable = true
+            isFocusable = true
+        }
+        val icon = ImageView(context).apply {
+            setImageResource(R.drawable.ic_close_24)
+            setColorFilter(Color.WHITE)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        }
+        button.addView(icon)
+        button.setOnClickListener {
+            val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+            imm?.hideSoftInputFromWindow(button.windowToken, 0)
+        }
+        return button
+    }
+
+    private fun createKeyboardSelectionButton(height: Int, width: Int): View {
+        val button = FrameLayout(context).apply {
+            layoutParams = LinearLayout.LayoutParams(width, height)
+            isClickable = true
+            isFocusable = true
+        }
+        val icon = ImageView(context).apply {
+            setImageResource(R.drawable.ic_globe_24)
+            setColorFilter(Color.WHITE)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        }
+        button.addView(icon)
+        button.setOnClickListener {
+            val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+            imm?.showInputMethodPicker()
+        }
+        return button
+    }
+
+    private fun addKeyToRow(
+        rowLayout: LinearLayout,
+        keyCode: Int,
+        symMappings: Map<Int, String>,
+        width: Int,
+        height: Int,
+        spacing: Int,
+        page: Int,
+        inputConnection: android.view.inputmethod.InputConnection?,
+        isLast: Boolean
+    ) {
+        val keyLabels = mapOf(
+            android.view.KeyEvent.KEYCODE_Q to "Q", android.view.KeyEvent.KEYCODE_W to "W", android.view.KeyEvent.KEYCODE_E to "E",
+            android.view.KeyEvent.KEYCODE_R to "R", android.view.KeyEvent.KEYCODE_T to "T", android.view.KeyEvent.KEYCODE_Y to "Y",
+            android.view.KeyEvent.KEYCODE_U to "U", android.view.KeyEvent.KEYCODE_I to "I", android.view.KeyEvent.KEYCODE_O to "O",
+            android.view.KeyEvent.KEYCODE_P to "P", android.view.KeyEvent.KEYCODE_A to "A", android.view.KeyEvent.KEYCODE_S to "S",
+            android.view.KeyEvent.KEYCODE_D to "D", android.view.KeyEvent.KEYCODE_F to "F", android.view.KeyEvent.KEYCODE_G to "G",
+            android.view.KeyEvent.KEYCODE_H to "H", android.view.KeyEvent.KEYCODE_J to "J", android.view.KeyEvent.KEYCODE_K to "K",
+            android.view.KeyEvent.KEYCODE_L to "L", android.view.KeyEvent.KEYCODE_Z to "Z", android.view.KeyEvent.KEYCODE_X to "X",
+            android.view.KeyEvent.KEYCODE_C to "C", android.view.KeyEvent.KEYCODE_V to "V", android.view.KeyEvent.KEYCODE_B to "B",
+            android.view.KeyEvent.KEYCODE_N to "N", android.view.KeyEvent.KEYCODE_M to "M"
+        )
+        val label = keyLabels[keyCode] ?: ""
+        val content = symMappings[keyCode] ?: ""
+        val keyButton = createEmojiKeyButton(label, content, height, page)
+        
+        if (content.isNotEmpty() && inputConnection != null) {
+            keyButton.isClickable = true
+            keyButton.isFocusable = true
+            val originalBackground = keyButton.background as? GradientDrawable
+            if (originalBackground != null) {
+                val normalColor = Color.argb(40, 255, 255, 255)
+                val pressedColor = Color.argb(80, 255, 255, 255)
+                keyButton.setOnTouchListener { view, motionEvent ->
+                    when (motionEvent.action) {
+                        android.view.MotionEvent.ACTION_DOWN -> {
+                            originalBackground.setColor(pressedColor)
+                            view.postInvalidate()
+                            true
+                        }
+                        android.view.MotionEvent.ACTION_UP -> {
+                            originalBackground.setColor(normalColor)
+                            view.postInvalidate()
+                            inputConnection.commitText(content, 1)
+                            true
+                        }
+                        android.view.MotionEvent.ACTION_CANCEL -> {
+                            originalBackground.setColor(normalColor)
+                            view.postInvalidate()
+                            true
+                        }
+                        else -> false
+                    }
+                }
+            }
+        }
+        
+        rowLayout.addView(keyButton, LinearLayout.LayoutParams(width, height))
+        if (!isLast) {
+            rowLayout.addView(View(context), LinearLayout.LayoutParams(spacing, height))
+        }
+    }
     
     /**
      * Crea una griglia emoji personalizzabile (per la schermata di personalizzazione).
@@ -1046,6 +1201,7 @@ class StatusBarController(
         onKeyClick: (Int, String) -> Unit,
         page: Int = 1 // Default a pagina 1 (emoji)
     ): View {
+        isTitan2Layout = SettingsManager.isTitan2LayoutEnabled(context)
         val container = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             val bottomPadding = TypedValue.applyDimension(
@@ -1113,11 +1269,14 @@ class StatusBarController(
                         val rowLayout = container.getChildAt(i) as? LinearLayout
                         rowLayout?.let { row ->
                             for (j in 0 until row.childCount) {
-                                val keyButton = row.getChildAt(j)
-                                val layoutParams = keyButton.layoutParams as? LinearLayout.LayoutParams
+                                val child = row.getChildAt(j)
+                                val layoutParams = child.layoutParams as? LinearLayout.LayoutParams
                                 layoutParams?.let {
-                                    it.width = fixedKeyWidth
-                                    keyButton.layoutParams = it
+                                    if (it.width != keySpacing) {
+                                        // Update width for keys and placeholders, but NOT for spacing views
+                                        it.width = fixedKeyWidth
+                                        child.layoutParams = it
+                                    }
                                 }
                             }
                         }
@@ -1144,7 +1303,7 @@ class StatusBarController(
         for ((rowIndex, row) in keyboardRows.withIndex()) {
             val rowLayout = LinearLayout(context).apply {
                 orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_HORIZONTAL // Centra le righe più corte
+                gravity = if (isTitan2Layout) Gravity.START else Gravity.CENTER_HORIZONTAL
                 layoutParams = LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT
@@ -1153,6 +1312,47 @@ class StatusBarController(
                         bottomMargin = keySpacing
                     }
                 }
+            }
+            
+            if (isTitan2Layout) {
+                // Ortholinear layout for Titan 2 (Customization Preview)
+                when (rowIndex) {
+                    0 -> { // Row 1: Q W E R T Y U I O P (10 keys)
+                        for ((index, keyCode) in row.withIndex()) {
+                            addKeyToPreviewRow(rowLayout, keyCode, symMappings, fixedKeyWidth, keyHeight, keySpacing, page, onKeyClick, index == row.size - 1)
+                        }
+                    }
+                    1 -> { // Row 2: A S D F G H J K L (9 keys) -> Add placeholder at the end to make it 10
+                        for ((index, keyCode) in row.withIndex()) {
+                            addKeyToPreviewRow(rowLayout, keyCode, symMappings, fixedKeyWidth, keyHeight, keySpacing, page, onKeyClick, false)
+                        }
+                        rowLayout.addView(View(context), LinearLayout.LayoutParams(fixedKeyWidth, keyHeight))
+                    }
+                    2 -> { // Row 3: Z X C V [Close Placeholder] [Globe Placeholder] B N M [Gap]
+                        // Z X C V (4 keys)
+                        for (i in 0..3) {
+                            addKeyToPreviewRow(rowLayout, row[i], symMappings, fixedKeyWidth, keyHeight, keySpacing, page, onKeyClick, false)
+                        }
+                        
+                        // Close Button Placeholder (no icon in customization preview)
+                        rowLayout.addView(View(context), LinearLayout.LayoutParams(fixedKeyWidth, keyHeight))
+                        rowLayout.addView(View(context), LinearLayout.LayoutParams(keySpacing, keyHeight))
+                        
+                        // Globe Button Placeholder (no icon in customization preview)
+                        rowLayout.addView(View(context), LinearLayout.LayoutParams(fixedKeyWidth, keyHeight))
+                        rowLayout.addView(View(context), LinearLayout.LayoutParams(keySpacing, keyHeight))
+                        
+                        // B N M (3 keys)
+                        for (i in 4..6) {
+                            addKeyToPreviewRow(rowLayout, row[i], symMappings, fixedKeyWidth, keyHeight, keySpacing, page, onKeyClick, false)
+                        }
+
+                        // Right Gap (placeholder for the physical cutout/space at the end of row 3)
+                        rowLayout.addView(View(context), LinearLayout.LayoutParams(fixedKeyWidth, keyHeight))
+                    }
+                }
+                container.addView(rowLayout)
+                continue
             }
             
             // Per la terza riga, aggiungi placeholder trasparente a sinistra
@@ -1196,6 +1396,40 @@ class StatusBarController(
         }
         
         return container
+    }
+
+    private fun addKeyToPreviewRow(
+        rowLayout: LinearLayout,
+        keyCode: Int,
+        symMappings: Map<Int, String>,
+        width: Int,
+        height: Int,
+        spacing: Int,
+        page: Int,
+        onKeyClick: (Int, String) -> Unit,
+        isLast: Boolean
+    ) {
+        val keyLabels = mapOf(
+            android.view.KeyEvent.KEYCODE_Q to "Q", android.view.KeyEvent.KEYCODE_W to "W", android.view.KeyEvent.KEYCODE_E to "E",
+            android.view.KeyEvent.KEYCODE_R to "R", android.view.KeyEvent.KEYCODE_T to "T", android.view.KeyEvent.KEYCODE_Y to "Y",
+            android.view.KeyEvent.KEYCODE_U to "U", android.view.KeyEvent.KEYCODE_I to "I", android.view.KeyEvent.KEYCODE_O to "O",
+            android.view.KeyEvent.KEYCODE_P to "P", android.view.KeyEvent.KEYCODE_A to "A", android.view.KeyEvent.KEYCODE_S to "S",
+            android.view.KeyEvent.KEYCODE_D to "D", android.view.KeyEvent.KEYCODE_F to "F", android.view.KeyEvent.KEYCODE_G to "G",
+            android.view.KeyEvent.KEYCODE_H to "H", android.view.KeyEvent.KEYCODE_J to "J", android.view.KeyEvent.KEYCODE_K to "K",
+            android.view.KeyEvent.KEYCODE_L to "L", android.view.KeyEvent.KEYCODE_Z to "Z", android.view.KeyEvent.KEYCODE_X to "X",
+            android.view.KeyEvent.KEYCODE_C to "C", android.view.KeyEvent.KEYCODE_V to "V", android.view.KeyEvent.KEYCODE_B to "B",
+            android.view.KeyEvent.KEYCODE_N to "N", android.view.KeyEvent.KEYCODE_M to "M"
+        )
+        val label = keyLabels[keyCode] ?: ""
+        val emoji = symMappings[keyCode] ?: ""
+        val keyButton = createEmojiKeyButton(label, emoji, height, page)
+        keyButton.setOnClickListener {
+            onKeyClick(keyCode, emoji)
+        }
+        rowLayout.addView(keyButton, LinearLayout.LayoutParams(width, height))
+        if (!isLast) {
+            rowLayout.addView(View(context), LinearLayout.LayoutParams(spacing, height))
+        }
     }
     
     /**
@@ -1280,6 +1514,7 @@ class StatusBarController(
     
 
     fun update(snapshot: StatusSnapshot, emojiMapText: String = "", inputConnection: android.view.inputmethod.InputConnection? = null, symMappings: Map<Int, String>? = null) {
+        isTitan2Layout = SettingsManager.isTitan2LayoutEnabled(context)
         variationBarView?.onVariationSelectedListener = onVariationSelectedListener
         variationBarView?.onCursorMovedListener = onCursorMovedListener
         variationBarView?.updateInputConnection(inputConnection)

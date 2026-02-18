@@ -125,6 +125,7 @@ class VariationBarView(
     private var longPressRunnable: Runnable? = null
     private var longPressExecuted: Boolean = false
     private var lastClipboardCount: Int? = null
+    private var isTitan2Layout: Boolean = false
     
     // New modular components
     private val statusBarAnimator = StatusBarAnimator()
@@ -289,6 +290,7 @@ class VariationBarView(
     }
 
     fun showVariations(snapshot: StatusBarController.StatusSnapshot, inputConnection: android.view.inputmethod.InputConnection?) {
+        isTitan2Layout = SettingsManager.isTitan2LayoutEnabled(context)
         val containerView = container ?: return
         val wrapperView = wrapper ?: return
         val overlayView = overlay ?: return

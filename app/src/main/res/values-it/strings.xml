@@ -335,6 +335,9 @@
     <string name="sym_tab_emoji">Emoji</string>
     <string name="sym_tab_characters">Caratteri</string>
     
+    <string name="titan2_layout_title">Allineamento layout Titan 2</string>
+    <string name="titan2_layout_description">Allinea la tastiera a schermo con i tasti fisici del Titan 2</string>
+    
     <!-- App Picker Dialog -->
     <string name="app_picker_title">Seleziona un\'app</string>
     <string name="app_picker_cancel">Annulla</string>

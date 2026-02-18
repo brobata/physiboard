@@ -489,6 +489,9 @@
     <string name="pastierina_mode_title">Pastierina Mode</string>
     <string name="pastierina_mode_description">Toggle minimal ui</string>
 
+    <string name="titan2_layout_title">Titan 2 Layout Alignment</string>
+    <string name="titan2_layout_description">Align on-screen keyboard with Titan 2 physical keys</string>
+
     <!-- Backup & Restore -->
     <string name="backup_now">Backup now</string>
     <string name="backup_now_description">Export all settings and custom layouts to a ZIP</string>

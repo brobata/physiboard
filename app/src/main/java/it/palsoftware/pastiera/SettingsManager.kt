@@ -55,7 +55,8 @@ object SettingsManager {
     private const val KEY_TRACKPAD_SWIPE_THRESHOLD = "trackpad_swipe_threshold" // Threshold for swipe detection on trackpad
     private const val KEY_PASTIERINA_MODE_OVERRIDE = "pastierina_mode_override" // follow_system | force_minimal | force_full
     private const val KEY_PASTIERINA_MODE_ACTIVE = "pastierina_mode_active" // Current effective state
-
+    private const val KEY_TITAN2_LAYOUT_ENABLED = "titan2_layout_enabled" // Align OSK with Titan 2 physical layout
+    
     // Status bar button slot configuration keys
     private const val KEY_STATUS_BAR_SLOT_LEFT = "status_bar_slot_left"
     private const val KEY_STATUS_BAR_SLOT_RIGHT_1 = "status_bar_slot_right_1"
@@ -160,6 +161,16 @@ object SettingsManager {
     fun setPastierinaModeActive(context: Context, isActive: Boolean) {
         getPreferences(context).edit()
             .putBoolean(KEY_PASTIERINA_MODE_ACTIVE, isActive)
+            .apply()
+    }
+
+    fun isTitan2LayoutEnabled(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_TITAN2_LAYOUT_ENABLED, false)
+    }
+
+    fun setTitan2LayoutEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_TITAN2_LAYOUT_ENABLED, enabled)
             .apply()
     }
 

@@ -304,6 +304,9 @@
     <string name="sym_tab_emoji">Emoji</string>
     <string name="sym_tab_characters">Zeichen</string>
     
+    <string name="titan2_layout_title">Titan 2 Layout-Ausrichtung</string>
+    <string name="titan2_layout_description">On-Screen-Tastatur an physische Titan 2 Tasten anpassen</string>
+    
     <!-- App Picker Dialog -->
     <string name="app_picker_title">App auswählen</string>
     <string name="app_picker_cancel">Abbrechen</string>

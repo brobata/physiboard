@@ -231,7 +231,8 @@ object PreferenceSchemas {
             "pastierina_mode_active" to PreferenceValueType.BOOLEAN,
             "use_keyboard_proximity" to PreferenceValueType.BOOLEAN,
             "use_edit_type_ranking" to PreferenceValueType.BOOLEAN,
-            "custom_input_styles" to PreferenceValueType.STRING
+            "custom_input_styles" to PreferenceValueType.STRING,
+            "titan2_layout_enabled" to PreferenceValueType.BOOLEAN
         ),
         dynamicKeys = listOf(
             PreferenceFileSchema.DynamicKey(

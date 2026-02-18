@@ -47,6 +47,10 @@ fun SymCustomizationScreen(
     var symAutoClose by remember { 
         mutableStateOf(SettingsManager.getSymAutoClose(context))
     }
+
+    var titan2LayoutEnabled by remember {
+        mutableStateOf(SettingsManager.isTitan2LayoutEnabled(context))
+    }
     
     // Load SYM pages configuration (enabled pages + order)
     var symPagesConfig by remember {
@@ -283,6 +287,49 @@ fun SymCustomizationScreen(
                 )
             }
         }
+
+        // Titan 2 Layout Alignment toggle
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(64.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Keyboard,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.titan2_layout_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1
+                    )
+                    Text(
+                        text = stringResource(R.string.titan2_layout_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2
+                    )
+                }
+                Switch(
+                    checked = titan2LayoutEnabled,
+                    onCheckedChange = { enabled ->
+                        titan2LayoutEnabled = enabled
+                        SettingsManager.setTitan2LayoutEnabled(context, enabled)
+                    }
+                )
+            }
+        }
         
         HorizontalDivider()
         
@@ -307,7 +354,7 @@ fun SymCustomizationScreen(
         when (selectedTab) {
             0 -> {
                 // Emoji tab
-                key(symMappingsPage1) {
+                key(symMappingsPage1, titan2LayoutEnabled) {
                     AndroidView(
                         factory = { ctx ->
                             statusBarController.createCustomizableEmojiKeyboard(symMappingsPage1, { keyCode, emoji ->
@@ -315,19 +362,25 @@ fun SymCustomizationScreen(
                                 showEmojiPicker = true
                             }, page = 1)
                         },
+                        update = { _ ->
+                            // The key(titan2LayoutEnabled) will trigger a full recomposition/re-factory
+                        },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
             1 -> {
                 // Characters tab
-                key(symMappingsPage2) {
+                key(symMappingsPage2, titan2LayoutEnabled) {
                     AndroidView(
                         factory = { ctx ->
                             statusBarController.createCustomizableEmojiKeyboard(symMappingsPage2, { keyCode, character ->
                                 selectedKeyCode = keyCode
                                 showCharacterPicker = true
                             }, page = 2)
+                        },
+                        update = { _ ->
+                            // The key(titan2LayoutEnabled) will trigger a full recomposition/re-factory
                         },
                         modifier = Modifier.fillMaxWidth()
                     )

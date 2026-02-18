@@ -6,6 +6,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -58,6 +59,10 @@ fun TextInputSettingsScreen(
     
     var altCtrlSpeechShortcut by remember {
         mutableStateOf(SettingsManager.getAltCtrlSpeechShortcutEnabled(context))
+    }
+
+    var titan2LayoutEnabled by remember {
+        mutableStateOf(SettingsManager.isTitan2LayoutEnabled(context))
     }
     
     // Handle system back button

@@ -245,6 +245,10 @@
     
     <string name="sym_tab_emoji">Эмодзи</string>
     <string name="sym_tab_characters">Символы</string>
+    
+    <string name="titan2_layout_title">Выравнивание раскладки Titan 2</string>
+    <string name="titan2_layout_description">Выровнять экранную клавиатуру с физическими клавишами Titan 2</string>
+    
     <string name="app_picker_title">Выбрать приложение</string>
     <string name="app_picker_cancel">Отмена</string>
     <string name="app_picker_search_placeholder">Искать приложения...</string>
