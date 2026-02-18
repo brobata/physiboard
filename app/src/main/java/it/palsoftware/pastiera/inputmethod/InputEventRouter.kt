@@ -426,6 +426,7 @@ class InputEventRouter(
                     ctrlKeyMap = params.ctrlKeyMap,
                     ctrlLatchFromNavMode = params.ctrlLatchFromNavMode,
                     ctrlOneShot = params.ctrlOneShot,
+                    ctrlPhysicallyPressed = params.ctrlPressed,
                     clearCtrlOneShot = {
                         callbacks.clearCtrlOneShot()
                     },
@@ -935,12 +936,30 @@ class InputEventRouter(
         ctrlKeyMap: Map<Int, KeyMappingLoader.CtrlMapping>,
         ctrlLatchFromNavMode: Boolean,
         ctrlOneShot: Boolean,
+        ctrlPhysicallyPressed: Boolean,
         clearCtrlOneShot: () -> Unit,
         updateStatusBar: () -> Unit,
         callSuper: () -> Boolean,
         toggleMinimalUi: () -> Unit
     ): Boolean {
         val ic = inputConnection ?: return false
+        val isPhysicalCtrlCombo = event?.isCtrlPressed == true || ctrlPhysicallyPressed
+        fun passThroughCtrlCombo(): Boolean {
+            if (event != null) {
+                ic.sendKeyEvent(event)
+            } else {
+                val meta = KeyEvent.META_CTRL_ON or KeyEvent.META_CTRL_LEFT_ON or KeyEvent.META_CTRL_RIGHT_ON
+                val down = KeyEvent(0L, 0L, KeyEvent.ACTION_DOWN, keyCode, 0, meta)
+                ic.sendKeyEvent(down)
+            }
+            return true
+        }
+
+        // When Ctrl is physically held, prefer native app shortcuts (rich-text editors, IDEs, etc.).
+        // This must take precedence over one-shot, because a physical press sets one-shot internally.
+        if (isPhysicalCtrlCombo && !ctrlLatchFromNavMode) {
+            return passThroughCtrlCombo()
+        }
 
         if (ctrlOneShot && !ctrlLatchFromNavMode) {
             clearCtrlOneShot()
@@ -1005,7 +1024,8 @@ class InputEventRouter(
                                 ic.performContextMenuAction(actionId)
                                 return true
                             }
-                            return true
+                            // Unknown action: let the target app handle the original Ctrl combo.
+                            return callSuper()
                         }
                     }
                 }
@@ -1050,7 +1070,8 @@ class InputEventRouter(
 
                         return true
                     }
-                    return true
+                    // Unknown keycode mapping: fallback to app-native Ctrl handling.
+                    return callSuper()
                 }
             }
         } else {
@@ -1093,7 +1114,8 @@ class InputEventRouter(
                 return callSuper()
             }
 
-            return true
+            // No explicit Pastiera mapping: preserve app-native Ctrl shortcuts (e.g. Ctrl+B/Ctrl+I).
+            return callSuper()
         }
 
         return false

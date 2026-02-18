@@ -130,6 +130,22 @@ class AutoReplaceController(
         tracker: CurrentWordTracker,
         inputConnection: InputConnection?
     ): ReplaceResult {
+        fun ensureTrailingSpace(connection: InputConnection): Boolean {
+            val before = connection.getTextBeforeCursor(2, 0)?.toString().orEmpty()
+            if (before.endsWith(" ")) {
+                return true
+            }
+            connection.commitText(" ", 1)
+            val afterCommit = connection.getTextBeforeCursor(2, 0)?.toString().orEmpty()
+            if (afterCommit.endsWith(" ")) {
+                return true
+            }
+            connection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_SPACE))
+            connection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_SPACE))
+            val afterKey = connection.getTextBeforeCursor(2, 0)?.toString().orEmpty()
+            return afterKey.endsWith(" ")
+        }
+
         val unicodeChar = event?.unicodeChar ?: 0
         val boundaryChar = when {
             unicodeChar != 0 -> unicodeChar.toChar()
@@ -233,6 +249,8 @@ class AutoReplaceController(
                 "deletedCount" to word.length
             ))
             // #endregion
+            val shouldAppendBoundary = boundaryChar != null &&
+                !(boundaryChar == ' ' && replacement.endsWith("'"))
             inputConnection.commitText(replacement, 1)
             repository.markUsed(replacement)
             
@@ -244,17 +262,23 @@ class AutoReplaceController(
             
             tracker.reset()
             inputConnection.endBatchEdit()
-            if (boundaryChar != null) {
-                // Skip auto-space if replacement ends with apostrophe (elision, e.g., "dell'")
-                val shouldAppendBoundary = !(boundaryChar == ' ' && replacement.endsWith("'"))
-                if (shouldAppendBoundary) {
-                    inputConnection.commitText(boundaryChar.toString(), 1)
-                    if (boundaryChar == ' ') {
-                        AutoSpaceTracker.markAutoSpace()
+            var boundaryCommitted = false
+            if (shouldAppendBoundary) {
+                when (boundaryChar) {
+                    ' ' -> {
+                        boundaryCommitted = ensureTrailingSpace(inputConnection)
+                    }
+                    else -> {
+                        inputConnection.commitText(boundaryChar.toString(), 1)
+                        boundaryCommitted = true
                     }
                 }
-                Log.d("AutoReplaceController", "Committed boundary '$boundaryChar', markAutoSpace=${shouldAppendBoundary && boundaryChar == ' '}")
             }
+            if (boundaryCommitted && boundaryChar == ' ') {
+                AutoSpaceTracker.markAutoSpace()
+            }
+            val committedSuffix = if (boundaryCommitted && shouldAppendBoundary) boundaryChar.toString() else ""
+            Log.d("AutoReplaceController", "Committed text '${replacement + committedSuffix}', markAutoSpace=${boundaryCommitted && boundaryChar == ' '}")
             return ReplaceResult(true, true)
         }
 

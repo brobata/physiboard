@@ -61,15 +61,21 @@ class TextInputController(
 
         val textBeforeCursor = inputConnection.getTextBeforeCursor(100, 0) ?: return false
         
-        // Simplified: check that we have exactly one space at the end
-        // (not two or more, and not zero)
         if (textBeforeCursor.isEmpty() || !textBeforeCursor.endsWith(" ")) {
             lastSpacePressTime = currentTime
             return false
         }
-        
-        // Check that the character before the space is not a space (avoid triple+ spaces)
-        if (textBeforeCursor.length >= 2 && textBeforeCursor[textBeforeCursor.length - 2] == ' ') {
+
+        val endsWithSingleSpace = textBeforeCursor.length < 2 ||
+            textBeforeCursor[textBeforeCursor.length - 2] != ' '
+
+        val endsWithDoubleSpaceAfterAutoSpace =
+            AutoSpaceTracker.isPending() &&
+                textBeforeCursor.length >= 2 &&
+                textBeforeCursor.endsWith("  ") &&
+                (textBeforeCursor.length < 3 || textBeforeCursor[textBeforeCursor.length - 3] != ' ')
+
+        if (!endsWithSingleSpace && !endsWithDoubleSpaceAfterAutoSpace) {
             lastSpacePressTime = currentTime
             return false
         }
@@ -85,8 +91,10 @@ class TextInputController(
             return false
         }
 
-        inputConnection.deleteSurroundingText(1, 0)
+        val spacesToReplace = if (endsWithDoubleSpaceAfterAutoSpace) 2 else 1
+        inputConnection.deleteSurroundingText(spacesToReplace, 0)
         inputConnection.commitText(". ", 1)
+        AutoSpaceTracker.clear()
         AutoCapitalizeHelper.enableAfterPunctuation(
             context = context,
             inputConnection = inputConnection,

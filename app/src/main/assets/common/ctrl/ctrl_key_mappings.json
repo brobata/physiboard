@@ -28,8 +28,7 @@
       "type": "none"
     },
     "KEYCODE_I": {
-      "type": "keycode",
-      "keycode": "DPAD_UP"
+      "type": "none"
     },
     "KEYCODE_O": {
       "type": "keycode",

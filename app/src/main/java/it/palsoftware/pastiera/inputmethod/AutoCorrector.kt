@@ -36,6 +36,50 @@ object AutoCorrector {
     // Track custom languages loaded from external files
     private val customLanguages = mutableSetOf<String>()
 
+    private fun hasSymbolChar(text: String): Boolean {
+        return text.any { !it.isLetterOrDigit() }
+    }
+
+    private fun isBoundaryBeforeIndex(text: String, index: Int): Boolean {
+        if (index <= 0) return true
+        val ch = text[index - 1]
+        val prev = if (index - 2 >= 0) text[index - 2] else null
+        val next = text.getOrNull(index)
+        return it.palsoftware.pastiera.core.Punctuation.isWordBoundary(ch, prev, next)
+    }
+
+    /**
+     * Matches custom/exact triggers that may contain symbols (e.g. ":e1", "@@@")
+     * at the end of the text segment before trailing boundaries.
+     */
+    private fun findExactSymbolTrigger(
+        text: String,
+        endIndex: Int,
+        languagesToSearch: Set<String>
+    ): Pair<String, String>? {
+        if (endIndex <= 0) return null
+        val textUpToCursor = text.substring(0, endIndex)
+        var bestMatch: Pair<String, String>? = null
+
+        for (lang in languagesToSearch) {
+            val langCorrections = corrections[lang] ?: continue
+            for ((trigger, replacement) in langCorrections) {
+                if (trigger.isBlank() || !hasSymbolChar(trigger)) continue
+                if (!textUpToCursor.endsWith(trigger, ignoreCase = true)) continue
+
+                val start = textUpToCursor.length - trigger.length
+                if (!isBoundaryBeforeIndex(textUpToCursor, start)) continue
+
+                val currentBestLength = bestMatch?.first?.length ?: -1
+                if (trigger.length > currentBestLength) {
+                    bestMatch = Pair(trigger, replacement)
+                }
+            }
+        }
+
+        return bestMatch
+    }
+
     /**
      * Loads auto-correction rules from JSON files per language.
      * Files must be in common/autocorrect folder with name: auto_corrections_{locale}.json
@@ -368,6 +412,20 @@ object AutoCorrector {
         // If no languages available after filtering, exit
         if (languagesToSearch.isEmpty()) {
             return null
+        }
+
+        // Highest priority: exact trigger matches that include symbols.
+        // This keeps substitutions like ":e1" / "@@@" working even though tokenization
+        // based on word boundaries would otherwise split on punctuation.
+        val exactSymbolMatch = findExactSymbolTrigger(text, endIndex, languagesToSearch)
+        if (exactSymbolMatch != null) {
+            val (trigger, replacement) = exactSymbolMatch
+            val triggerLower = trigger.lowercase()
+            if (!rejectedWords.contains(triggerLower)) {
+                Log.d(TAG, "Found exact symbol trigger: '$trigger' → '$replacement'")
+                return Pair(trigger, replacement)
+            }
+            Log.d(TAG, "Exact symbol trigger '$trigger' is rejected, skipping")
         }
 
         // First, try to search for patterns that include spaces (e.g. "cos e")
