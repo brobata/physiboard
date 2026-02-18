@@ -633,11 +633,15 @@ object AdditionalSubtypeUtils {
                             
                             // Enable all subtypes (original + additional)
                             if (enabledHashCodes.isNotEmpty()) {
-                                imm.setExplicitlyEnabledInputMethodSubtypes(
-                                    updatedInfo.id,
-                                    enabledHashCodes.toIntArray()
-                                )
-                                Log.d(TAG, "Explicitly enabled ${enabledHashCodes.size} subtypes (${subtypes.size} additional)")
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                                    imm.setExplicitlyEnabledInputMethodSubtypes(
+                                        updatedInfo.id,
+                                        enabledHashCodes.toIntArray()
+                                    )
+                                    Log.d(TAG, "Explicitly enabled ${enabledHashCodes.size} subtypes (${subtypes.size} additional)")
+                                } else {
+                                    Log.d(TAG, "Skipping explicit subtype enable: requires Android 14+")
+                                }
                             }
                         }
                     } catch (e: Exception) {
@@ -664,11 +668,15 @@ object AdditionalSubtypeUtils {
                             
                             if (systemSubtypes.isNotEmpty()) {
                                 val systemHashCodes = systemSubtypes.map { it.hashCode() }.toIntArray()
-                                imm.setExplicitlyEnabledInputMethodSubtypes(
-                                    updatedInfo.id,
-                                    systemHashCodes
-                                )
-                                Log.d(TAG, "Cleaned up enabled subtypes, kept ${systemHashCodes.size} system subtypes")
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                                    imm.setExplicitlyEnabledInputMethodSubtypes(
+                                        updatedInfo.id,
+                                        systemHashCodes
+                                    )
+                                    Log.d(TAG, "Cleaned up enabled subtypes, kept ${systemHashCodes.size} system subtypes")
+                                } else {
+                                    Log.d(TAG, "Skipping enabled subtype cleanup: requires Android 14+")
+                                }
                             }
                         }
                     } catch (e: Exception) {
@@ -681,4 +689,3 @@ object AdditionalSubtypeUtils {
         }
     }
 }
-

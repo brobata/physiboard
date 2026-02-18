@@ -1671,14 +1671,18 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                             val validEnabledHashCodes = validSubtypes.map { it.hashCode() }.toIntArray()
                             
                             // Always update enabled subtypes, even if empty (to disable removed ones)
-                            imm.setExplicitlyEnabledInputMethodSubtypes(
-                                updatedInfo.id,
-                                validEnabledHashCodes
-                            )
-                            val removedBase = allSubtypes.count { !AdditionalSubtypeUtils.isAdditionalSubtype(it) } - 
-                                             validSubtypes.count { !AdditionalSubtypeUtils.isAdditionalSubtype(it) }
-                            val removedAdditional = subtypes.size - validSubtypes.count { AdditionalSubtypeUtils.isAdditionalSubtype(it) }
-                            Log.d(TAG, "Updated enabled subtypes: ${validEnabledHashCodes.size} valid (removed ${removedBase} base, ${removedAdditional} additional)")
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                                imm.setExplicitlyEnabledInputMethodSubtypes(
+                                    updatedInfo.id,
+                                    validEnabledHashCodes
+                                )
+                                val removedBase = allSubtypes.count { !AdditionalSubtypeUtils.isAdditionalSubtype(it) } -
+                                        validSubtypes.count { !AdditionalSubtypeUtils.isAdditionalSubtype(it) }
+                                val removedAdditional = subtypes.size - validSubtypes.count { AdditionalSubtypeUtils.isAdditionalSubtype(it) }
+                                Log.d(TAG, "Updated enabled subtypes: ${validEnabledHashCodes.size} valid (removed ${removedBase} base, ${removedAdditional} additional)")
+                            } else {
+                                Log.d(TAG, "Skipping explicit subtype enable: requires Android 14+")
+                            }
                         }
                     } catch (e: Exception) {
                         Log.w(TAG, "Could not explicitly enable subtypes", e)
@@ -1716,11 +1720,15 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                                 val validEnabledHashCodes = validSubtypes.map { it.hashCode() }.toIntArray()
                                 
                                 // Always update to disable removed subtypes
-                                imm.setExplicitlyEnabledInputMethodSubtypes(
-                                    updatedInfo.id,
-                                    validEnabledHashCodes
-                                )
-                                Log.d(TAG, "Filtered base subtypes: kept ${validEnabledHashCodes.size}, removed ${allSubtypes.size - validSubtypes.size}")
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                                    imm.setExplicitlyEnabledInputMethodSubtypes(
+                                        updatedInfo.id,
+                                        validEnabledHashCodes
+                                    )
+                                    Log.d(TAG, "Filtered base subtypes: kept ${validEnabledHashCodes.size}, removed ${allSubtypes.size - validSubtypes.size}")
+                                } else {
+                                    Log.d(TAG, "Skipping base subtype filter update: requires Android 14+")
+                                }
                             }
                         } catch (e: Exception) {
                             Log.w(TAG, "Could not filter enabled subtypes", e)
