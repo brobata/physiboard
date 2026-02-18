@@ -3,6 +3,7 @@ package it.palsoftware.pastiera
 import android.content.Context
 import android.view.KeyEvent
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -13,13 +14,19 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.zIndex
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
@@ -65,6 +72,23 @@ fun SymCustomizationScreen(
         SymPagesConfig.PAGE_CLIPBOARD -> context.getString(R.string.sym_enable_clipboard_page_title)
         SymPagesConfig.PAGE_EMOJI_PICKER -> context.getString(R.string.sym_enable_emoji_picker_page_title)
         else -> pageId
+    }
+    var draggingPageId by remember { mutableStateOf<String?>(null) }
+    var dragStartIndex by remember { mutableStateOf<Int?>(null) }
+    var dropTargetIndex by remember { mutableStateOf<Int?>(null) }
+    var dragOffsetY by remember { mutableStateOf(0f) }
+    val rowStepPx = with(LocalDensity.current) { 56.dp.toPx() }
+
+    fun endPageOrderDrag() {
+        val start = dragStartIndex
+        val target = dropTargetIndex
+        if (start != null && target != null && start != target) {
+            movePageOrderItem(start, target)
+        }
+        draggingPageId = null
+        dragStartIndex = null
+        dropTargetIndex = null
+        dragOffsetY = 0f
     }
     
     // Selected tab (0 = Emoji, 1 = Characters)
@@ -543,18 +567,57 @@ fun SymCustomizationScreen(
 
                 normalizedSymPageOrder.forEachIndexed { index, pageId ->
                     val enabled = symPagesConfig.isPageEnabled(pageId)
+                    val isDragging = draggingPageId == pageId
+                    val isDropTarget = dropTargetIndex == index && !isDragging && draggingPageId != null
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
-                        tonalElevation = 1.dp,
+                        tonalElevation = if (isDragging) 6.dp else 1.dp,
+                        color = if (isDropTarget) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface,
                         shape = MaterialTheme.shapes.small
                     ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                                .pointerInput(pageId, normalizedSymPageOrder) {
+                                    detectDragGesturesAfterLongPress(
+                                        onDragStart = {
+                                            draggingPageId = pageId
+                                            dragStartIndex = index
+                                            dropTargetIndex = index
+                                            dragOffsetY = 0f
+                                        },
+                                        onDragCancel = {
+                                            endPageOrderDrag()
+                                        },
+                                        onDragEnd = {
+                                            endPageOrderDrag()
+                                        },
+                                        onDrag = { change, dragAmount ->
+                                            change.consume()
+                                            val start = dragStartIndex ?: return@detectDragGesturesAfterLongPress
+                                            dragOffsetY += dragAmount.y
+                                            val deltaSlots = (dragOffsetY / rowStepPx).toInt()
+                                            val target = (start + deltaSlots).coerceIn(0, normalizedSymPageOrder.lastIndex)
+                                            dropTargetIndex = target
+                                        }
+                                    )
+                                }
+                                .graphicsLayer {
+                                    translationY = if (isDragging) dragOffsetY else 0f
+                                    scaleX = if (isDragging) 1.02f else 1f
+                                    scaleY = if (isDragging) 1.02f else 1f
+                                }
+                                .shadow(if (isDragging) 8.dp else 0.dp, MaterialTheme.shapes.small)
+                                .zIndex(if (isDragging) 1f else 0f),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
+                            Icon(
+                                imageVector = Icons.Filled.DragHandle,
+                                contentDescription = null,
+                                tint = if (isDragging) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                             Text(
                                 text = "${index + 1}.",
                                 style = MaterialTheme.typography.bodyMedium,

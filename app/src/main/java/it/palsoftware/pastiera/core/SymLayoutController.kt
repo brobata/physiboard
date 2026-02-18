@@ -152,6 +152,36 @@ class SymLayoutController(
         }
     }
 
+    /**
+     * Resolves the character for a physical SYM+key chord without opening
+     * the visual SYM layout. If a text SYM page is already active, use it.
+     * Otherwise use the first enabled text page in configured order.
+     */
+    fun resolveChordSymbol(keyCode: Int, shiftPressed: Boolean): String? {
+        val pageToUse = when (currentPageType()) {
+            SymPage.EMOJI, SymPage.SYMBOLS -> currentPageType()
+            else -> preferredChordPage()
+        } ?: return null
+
+        return when (pageToUse) {
+            SymPage.EMOJI -> {
+                if (shiftPressed) {
+                    altSymManager.getSymMappingsUppercase()[keyCode] ?: altSymManager.getSymMappings()[keyCode]
+                } else {
+                    altSymManager.getSymMappings()[keyCode]
+                }
+            }
+            SymPage.SYMBOLS -> {
+                if (shiftPressed) {
+                    altSymManager.getSymMappings2Uppercase()[keyCode] ?: altSymManager.getSymMappings2()[keyCode]
+                } else {
+                    altSymManager.getSymMappings2()[keyCode]
+                }
+            }
+            else -> null
+        }
+    }
+
     fun handleKeyWhenActive(
         keyCode: Int,
         event: KeyEvent?,
@@ -221,6 +251,10 @@ class SymLayoutController(
                 else -> null
             }
         }
+    }
+
+    private fun preferredChordPage(config: SymPagesConfig = SettingsManager.getSymPagesConfig(context)): SymPage? {
+        return buildActivePages(config).firstOrNull { it == SymPage.EMOJI || it == SymPage.SYMBOLS }
     }
 
     private fun currentPageType(): SymPage? {

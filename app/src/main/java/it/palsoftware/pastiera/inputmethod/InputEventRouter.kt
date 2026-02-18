@@ -340,9 +340,9 @@ class InputEventRouter(
                 controllers.modifierStateController.clearAltState(resetPressedState = true)
                 callbacks.updateStatusBar()
             }
-            
-            controllers.symLayoutController.toggleSymPage()
-            callbacks.updateStatusBar()
+
+            // Do not toggle SYM here: the service now toggles on KEY_UP
+            // so SYM+key chords can be used without opening the SYM layout.
             return EditableFieldRoutingResult.Consume
         }
 

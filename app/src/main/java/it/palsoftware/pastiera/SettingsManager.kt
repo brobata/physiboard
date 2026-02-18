@@ -1614,7 +1614,7 @@ object SettingsManager {
             .putBoolean(KEY_SYM_AUTO_CLOSE, enabled)
             .apply()
     }
-    
+
     /**
      * Returns the set of dismissed release tag names.
      * @param context The context

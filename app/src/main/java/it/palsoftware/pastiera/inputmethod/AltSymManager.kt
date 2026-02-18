@@ -66,6 +66,10 @@ class AltSymManager(
     fun getSymMappings(): Map<Int, String> = symKeyMap
     
     fun getSymMappings2(): Map<Int, String> = symKeyMap2
+
+    fun getSymMappingsUppercase(): Map<Int, String> = symKeyMapUppercase
+
+    fun getSymMappings2Uppercase(): Map<Int, String> = symKeyMap2Uppercase
     
     /**
      * Ricarica le mappature SYM, controllando prima le personalizzazioni.

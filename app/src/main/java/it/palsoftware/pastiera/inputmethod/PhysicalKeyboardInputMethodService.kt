@@ -200,6 +200,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private var altLayerLatched: Boolean = false
     private var lastShiftTapUpTime: Long = 0L
     private var lastAltTapUpTime: Long = 0L
+    private var symTogglePendingOnKeyUp: Boolean = false
+    private var symChordUsedSinceKeyDown: Boolean = false
 
     private val multiTapHandler = Handler(Looper.getMainLooper())
     private val multiTapController = MultiTapController(
@@ -257,6 +259,16 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
 
     private fun refreshStatusBar() {
         updateStatusBarText()
+    }
+
+    private fun isPureModifierKey(keyCode: Int): Boolean {
+        return keyCode == KeyEvent.KEYCODE_SHIFT_LEFT ||
+            keyCode == KeyEvent.KEYCODE_SHIFT_RIGHT ||
+            keyCode == KeyEvent.KEYCODE_CTRL_LEFT ||
+            keyCode == KeyEvent.KEYCODE_CTRL_RIGHT ||
+            keyCode == KeyEvent.KEYCODE_ALT_LEFT ||
+            keyCode == KeyEvent.KEYCODE_ALT_RIGHT ||
+            keyCode == KEYCODE_SYM
     }
     
     /**
@@ -2059,6 +2071,30 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             isInputViewActive = true
         }
 
+        if (hasEditableField && keyCode == KEYCODE_SYM && event?.repeatCount == 0) {
+            symTogglePendingOnKeyUp = true
+            symChordUsedSinceKeyDown = false
+        }
+
+        if (
+            hasEditableField &&
+            symTogglePendingOnKeyUp &&
+            keyCode != KEYCODE_SYM &&
+            event?.repeatCount == 0 &&
+            !isPureModifierKey(keyCode)
+        ) {
+            symChordUsedSinceKeyDown = true
+            val symChar = symLayoutController.resolveChordSymbol(
+                keyCode = keyCode,
+                shiftPressed = event.isShiftPressed || shiftOneShot || capsLockEnabled
+            )
+            if (!symChar.isNullOrEmpty()) {
+                currentInputConnection?.commitText(symChar, 1)
+                updateStatusBarText()
+                return true
+            }
+        }
+
         // If any SYM page or clipboard overlay is open, close on BACK and consume
         if (keyCode == KeyEvent.KEYCODE_BACK) {
             if (candidatesBarController.handleBackPressed()) {
@@ -2321,6 +2357,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         
         // If NO editable field is active, handle ONLY nav mode Ctrl release
         if (!hasEditableField) {
+            if (keyCode == KEYCODE_SYM) {
+                symTogglePendingOnKeyUp = false
+                symChordUsedSinceKeyDown = false
+            }
             return inputEventRouter.handleKeyUpWithNoEditableField(
                 keyCode = keyCode,
                 event = event,
@@ -2467,9 +2507,14 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             return super.onKeyUp(keyCode, event)
         }
         
-        // Handle SYM key release (nothing to do; it is a toggle)
+        // Toggle SYM layout on key release only when SYM was tapped alone.
         if (keyCode == KEYCODE_SYM) {
-            // Consumiamo l'evento
+            if (symTogglePendingOnKeyUp && !symChordUsedSinceKeyDown) {
+                symLayoutController.toggleSymPage()
+                updateStatusBarText()
+            }
+            symTogglePendingOnKeyUp = false
+            symChordUsedSinceKeyDown = false
             return true
         }
         

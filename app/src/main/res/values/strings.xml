@@ -176,7 +176,7 @@
     <string name="sym_enable_emoji_picker_page_title">Enable Emoji Picker Page</string>
     <string name="sym_enable_emoji_picker_page_description">Show the full emoji picker when cycling.</string>
     <string name="sym_swap_pages_title">Arrange SYM pages order</string>
-    <string name="sym_swap_pages_description">Set the exact cycle order for all SYM pages using the arrows.</string>
+    <string name="sym_swap_pages_description">Set the exact cycle order for all SYM pages by dragging each row.</string>
     <string name="sym_order_emoji_first">Emoji first</string>
     <string name="sym_order_symbols_first">Symbols first</string>
     <string name="sym_order_clipboard_first">Clipboard first</string>
