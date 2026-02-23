@@ -12,15 +12,12 @@ import it.palsoftware.pastiera.core.NavModeController
 import it.palsoftware.pastiera.data.mappings.KeyMappingLoader
 import android.os.Handler
 import android.os.Looper
-import it.palsoftware.pastiera.inputmethod.AltSymManager
 import it.palsoftware.pastiera.core.SymLayoutController
 import it.palsoftware.pastiera.core.SymLayoutController.SymKeyResult
 import it.palsoftware.pastiera.core.TextInputController
 import it.palsoftware.pastiera.core.AutoCorrectionManager
 import it.palsoftware.pastiera.core.ModifierStateController
 import it.palsoftware.pastiera.core.AutoSpaceTracker
-import it.palsoftware.pastiera.inputmethod.KeyboardEventTracker
-import it.palsoftware.pastiera.inputmethod.TextSelectionHelper
 import android.view.inputmethod.ExtractedText
 import android.view.inputmethod.ExtractedTextRequest
 import it.palsoftware.pastiera.data.layout.LayoutMapping
@@ -87,7 +84,7 @@ class InputEventRouter(
     }
 
     data class NoEditableFieldCallbacks(
-        val isAlphabeticKey: (Int) -> Boolean,
+        val isShortcutKey: (Int) -> Boolean,
         val isLauncherPackage: (String?) -> Boolean,
         val handleLauncherShortcut: (Int) -> Boolean,
         val handlePowerShortcut: (Int) -> Boolean,
@@ -135,7 +132,7 @@ class InputEventRouter(
 
         // Gestisci Power Shortcuts (SYM premuto + tasto alfabetico)
         if (!ctrlLatchActive && powerShortcutsEnabled) {
-            if (callbacks.isAlphabeticKey(keyCode)) {
+            if (callbacks.isShortcutKey(keyCode)) {
                 if (callbacks.handlePowerShortcut(keyCode)) {
                     return true
                 }
@@ -145,7 +142,7 @@ class InputEventRouter(
         // Launcher Shortcuts (logica esistente - mantieni per compatibilità)
         if (!ctrlLatchActive && SettingsManager.getLauncherShortcutsEnabled(context)) {
             val packageName = editorInfo?.packageName ?: currentPackageName
-            if (callbacks.isLauncherPackage(packageName) && callbacks.isAlphabeticKey(keyCode)) {
+            if (callbacks.isLauncherPackage(packageName) && callbacks.isShortcutKey(keyCode)) {
                 if (callbacks.handleLauncherShortcut(keyCode)) {
                     return true
                 }
