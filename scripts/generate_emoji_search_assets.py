@@ -91,11 +91,12 @@ def write_tsv(out_path: Path, rows: list[tuple[str, str, list[str]]]) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
+    default_locales = ["en", "de", "es", "fr", "hy", "it", "pl", "ru", "uk"]
     parser.add_argument(
         "--locales",
         nargs="+",
-        default=["en", "de"],
-        help="CLDR locales to generate (default: en de)",
+        default=default_locales,
+        help=f"CLDR locales to generate (default: {' '.join(default_locales)})",
     )
     args = parser.parse_args()
 
