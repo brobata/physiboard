@@ -120,5 +120,145 @@ class ModifierStateControllerTest {
         assertFalse(controller.ctrlLatchActive)
         assertTrue(navModeCancelled)
     }
-}
 
+    @Test
+    fun testAltOneShotAndLatchTransitions() {
+        val controller = ModifierStateController(doubleTapThreshold)
+
+        // First tap: OFF -> one-shot
+        controller.handleAltKeyDown(KeyEvent.KEYCODE_ALT_LEFT)
+        assertTrue(controller.altOneShot)
+        assertFalse(controller.altLatchActive)
+        assertTrue(controller.altPressed)
+        assertTrue(controller.altPhysicallyPressed)
+
+        controller.handleAltKeyUp(KeyEvent.KEYCODE_ALT_LEFT)
+        assertTrue(controller.altOneShot)
+        assertFalse(controller.altLatchActive)
+        assertFalse(controller.altPressed)
+        assertFalse(controller.altPhysicallyPressed)
+
+        // Second consecutive tap quickly: one-shot -> latch
+        controller.handleAltKeyDown(KeyEvent.KEYCODE_ALT_LEFT)
+        assertFalse(controller.altOneShot)
+        assertTrue(controller.altLatchActive)
+        controller.handleAltKeyUp(KeyEvent.KEYCODE_ALT_LEFT)
+        assertTrue(controller.altLatchActive)
+
+        // Tap while latched: latch -> off (Issue #135 expectation)
+        controller.handleAltKeyDown(KeyEvent.KEYCODE_ALT_LEFT)
+        assertFalse(controller.altLatchActive)
+        assertFalse(controller.altOneShot)
+        controller.handleAltKeyUp(KeyEvent.KEYCODE_ALT_LEFT)
+        assertFalse(controller.altLatchActive)
+        assertFalse(controller.altOneShot)
+    }
+
+    @Test
+    fun testCtrlOneShotAndLatchTransitions() {
+        val controller = ModifierStateController(doubleTapThreshold)
+
+        // First tap: OFF -> one-shot
+        controller.handleCtrlKeyDown(KeyEvent.KEYCODE_CTRL_LEFT, isInputViewActive = true)
+        assertTrue(controller.ctrlOneShot)
+        assertFalse(controller.ctrlLatchActive)
+        assertTrue(controller.ctrlPressed)
+        assertTrue(controller.ctrlPhysicallyPressed)
+
+        controller.handleCtrlKeyUp(KeyEvent.KEYCODE_CTRL_LEFT)
+        assertTrue(controller.ctrlOneShot)
+        assertFalse(controller.ctrlLatchActive)
+        assertFalse(controller.ctrlPressed)
+        assertFalse(controller.ctrlPhysicallyPressed)
+
+        // Second consecutive tap quickly: one-shot -> latch
+        controller.handleCtrlKeyDown(KeyEvent.KEYCODE_CTRL_LEFT, isInputViewActive = true)
+        assertFalse(controller.ctrlOneShot)
+        assertTrue(controller.ctrlLatchActive)
+        controller.handleCtrlKeyUp(KeyEvent.KEYCODE_CTRL_LEFT)
+        assertTrue(controller.ctrlLatchActive)
+
+        // Tap while latched: latch -> off
+        controller.handleCtrlKeyDown(KeyEvent.KEYCODE_CTRL_LEFT, isInputViewActive = true)
+        assertFalse(controller.ctrlLatchActive)
+        assertFalse(controller.ctrlOneShot)
+        controller.handleCtrlKeyUp(KeyEvent.KEYCODE_CTRL_LEFT)
+        assertFalse(controller.ctrlLatchActive)
+        assertFalse(controller.ctrlOneShot)
+    }
+
+    @Test
+    fun testCtrlNavLatchTapOutsideInputViewDeactivatesAndConsumes() {
+        val controller = ModifierStateController(doubleTapThreshold)
+        controller.ctrlLatchActive = true
+        controller.ctrlLatchFromNavMode = true
+
+        var callbackCalled = false
+        val result = controller.handleCtrlKeyDown(
+            KeyEvent.KEYCODE_CTRL_LEFT,
+            isInputViewActive = false
+        ) {
+            callbackCalled = true
+        }
+
+        assertTrue(result.shouldConsume)
+        assertFalse(controller.ctrlLatchActive)
+        assertFalse(controller.ctrlLatchFromNavMode)
+        assertTrue(callbackCalled)
+    }
+
+    @Test
+    fun testCtrlNavLatchTapInsideInputViewFallbackClearsState() {
+        val controller = ModifierStateController(doubleTapThreshold)
+        controller.ctrlLatchActive = true
+        controller.ctrlLatchFromNavMode = true
+
+        var callbackCalled = false
+        val result = controller.handleCtrlKeyDown(
+            KeyEvent.KEYCODE_CTRL_LEFT,
+            isInputViewActive = true
+        ) {
+            callbackCalled = true
+        }
+
+        assertFalse(result.shouldConsume)
+        assertTrue(result.shouldUpdateStatusBar)
+        assertFalse(controller.ctrlLatchActive)
+        assertFalse(controller.ctrlLatchFromNavMode)
+        assertTrue(callbackCalled)
+    }
+
+    @Test
+    fun testClearCtrlStateResetsStuckShortcutFlags() {
+        val controller = ModifierStateController(doubleTapThreshold)
+        controller.ctrlPressed = true
+        controller.ctrlPhysicallyPressed = true
+        controller.ctrlOneShot = true
+        controller.ctrlLatchActive = true
+        controller.ctrlLatchFromNavMode = true
+
+        controller.clearCtrlState(resetPressedState = true)
+
+        assertFalse(controller.ctrlPressed)
+        assertFalse(controller.ctrlPhysicallyPressed)
+        assertFalse(controller.ctrlOneShot)
+        assertFalse(controller.ctrlLatchActive)
+        assertFalse(controller.ctrlLatchFromNavMode)
+    }
+
+    @Test
+    fun testClearAltStateResetsStuckShortcutFlags() {
+        val controller = ModifierStateController(doubleTapThreshold)
+        controller.altPressed = true
+        controller.altPhysicallyPressed = true
+        controller.altOneShot = true
+        controller.altLatchActive = true
+
+        controller.clearAltState(resetPressedState = true)
+
+        assertFalse(controller.altPressed)
+        assertFalse(controller.altPhysicallyPressed)
+        assertFalse(controller.altOneShot)
+        assertFalse(controller.altLatchActive)
+    }
+}

@@ -2138,7 +2138,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             if ((keyCode == KeyEvent.KEYCODE_ALT_LEFT || keyCode == KeyEvent.KEYCODE_ALT_RIGHT) && altLayerLatched) {
                 altLayerLatched = false
                 lastAltTapUpTime = 0L
-                modifierStateBeforeHold?.let { modifierStateController.restoreLogicalState(it) }
+                // Tapping ALT while the visual Alt layer is latched should fully disable Alt.
+                // Restoring the pre-hold snapshot here can resurrect stale one-shot/latch state.
+                modifierStateController.clearAltState(resetPressedState = true)
                 modifierStateBeforeHold = null
                 updateStatusBarText()
                 return true
@@ -2448,6 +2450,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 val downTime = modifierDownTimes[keyCode] ?: 0L
                 val holdDuration = if (downTime > 0) event?.eventTime?.minus(downTime) ?: 0L else 0L
                 val isLongHold = holdDuration > 300L
+                val shortcutUsedDuringHold = otherKeyInteractedDuringHold
                 val isIntentionalHold = variationInteractedDuringHold || (isLongHold && !otherKeyInteractedDuringHold)
 
                 if (isIntentionalHold) {
@@ -2463,6 +2466,12 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                     if (result.shouldUpdateStatusBar) {
                         updateStatusBarText()
                     }
+                }
+                // Ctrl key-down enables one-shot; if Ctrl was used as a physically held shortcut,
+                // clear that one-shot on release so Ctrl doesn't remain active.
+                if (shortcutUsedDuringHold && ctrlOneShot && !ctrlLatchActive) {
+                    ctrlOneShot = false
+                    updateStatusBarText()
                 }
                 modifierDownTimes.remove(keyCode)
             }

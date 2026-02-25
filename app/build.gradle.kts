@@ -176,6 +176,9 @@ android {
             excludes += "assets/common/dictionaries/*_base.json"
         }
     }
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
     
     // Esegui incrementBuildNumber prima di preBuild
     tasks.named("preBuild").configure {

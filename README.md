@@ -15,6 +15,7 @@ Input method for physical keyboards android devices (e.g. Unihertz Titan 2), des
 ## Typing and modifiers
 - Long press on a key can input Alt+key or Shift+Key (uppercase) timing configurable.
 - Shift/Ctrl/Alt in one-shot or lock mode (double tap), option to clear Alt on space.
+- Current behavior note: `Ctrl` used as a physically held shortcut modifier (e.g. hold `Ctrl` + `A`) intentionally follows the app shortcut path and is not the same flow as Nav Mode (`Ctrl` double-tap latch outside text fields). Nav Mode remains a separate implementation/state.
 - Multi-tap support for keys with layout-defined variants (e.g. Cyrillic)
 - Standard shortcuts: Ctrl+C/X/V, Ctrl+A, Ctrl+Backspace, Ctrl+E/D/S/F or I/J/K/L for arrows, Ctrl+W/R for selection, Ctrl+T for Tab, Ctrl+Y/H for Page Up/Down, Ctrl+Q for Esc (all customizable in the Customize Nav screen).
 
@@ -69,3 +70,15 @@ Input method for physical keyboards android devices (e.g. Unihertz Titan 2), des
 ## Requirements
 - Android 10 (API 29) or higher.
 - Device with a physical keyboard (profiled on Unihertz Titan 2, adaptable via JSON).
+
+## Development / Tests
+- Run core + routing + service modifier regression tests:
+  - `./gradlew :app:testDebugUnitTest --tests it.palsoftware.pastiera.core.ModifierStateControllerTest --tests it.palsoftware.pastiera.inputmethod.InputEventRouterModifierE2ETest --tests it.palsoftware.pastiera.inputmethod.PhysicalKeyboardInputMethodServiceDeviceBehaviorTest`
+- Service-level (device-near) modifier behavior regressions:
+  - `./gradlew :app:testDebugUnitTest --tests it.palsoftware.pastiera.inputmethod.PhysicalKeyboardInputMethodServiceDeviceBehaviorTest`
+- Router-level input pipeline modifier/SYM tests:
+  - `./gradlew :app:testDebugUnitTest --tests it.palsoftware.pastiera.inputmethod.InputEventRouterModifierE2ETest`
+- Core modifier state machine tests:
+  - `./gradlew :app:testDebugUnitTest --tests it.palsoftware.pastiera.core.ModifierStateControllerTest`
+- Build debug APK:
+  - `./gradlew :app:assembleDebug`
