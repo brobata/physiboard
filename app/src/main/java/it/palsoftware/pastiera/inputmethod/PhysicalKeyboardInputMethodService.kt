@@ -2330,7 +2330,12 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             ensureInputViewCreated()
         }
         val altActiveNow = event?.isAltPressed == true || altLatchActive || altOneShot
-        val ctrlActiveNow = event?.isCtrlPressed == true || ctrlLatchActive || ctrlOneShot
+        val ctrlActiveNow = event?.isCtrlPressed == true ||
+            ctrlPressed ||
+            ctrlPhysicallyPressed ||
+            ctrlLatchActive ||
+            ctrlOneShot ||
+            ctrlLatchFromNavMode
         if (
             inputEventRouter.handleConfiguredForwardDeleteAlternatives(
                 context = this,

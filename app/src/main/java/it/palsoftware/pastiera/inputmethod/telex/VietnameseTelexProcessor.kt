@@ -126,18 +126,28 @@ internal object VietnameseTelexProcessor {
 
     private fun applyUoWCluster(chars: List<Char>): String? {
         if (chars.size < 2) return null
-        val last = Parts.fromChar(chars[chars.lastIndex])
-        val prev = Parts.fromChar(chars[chars.lastIndex - 1])
-        if (!last.isBase('o') || last.hasShape()) return null
-        if (!prev.isBase('u') || prev.hasShape()) return null
 
-        val newPrev = prev.withShape(HORN).toChar()
-        val newLast = last.withShape(HORN).toChar()
-        return buildString(chars.size) {
-            append(chars.subList(0, chars.lastIndex - 1).joinToString(""))
-            append(newPrev)
-            append(newLast)
+        for (oIndex in chars.lastIndex downTo 1) {
+            val uIndex = oIndex - 1
+            val trailing = chars.subList(oIndex + 1, chars.size).joinToString("")
+            if (!isValidVietnameseCoda(trailing)) continue
+
+            val o = Parts.fromChar(chars[oIndex])
+            val u = Parts.fromChar(chars[uIndex])
+            if (!o.isBase('o') || o.hasShape()) continue
+            if (!u.isBase('u') || u.hasShape()) continue
+
+            val newU = u.withShape(HORN).toChar()
+            val newO = o.withShape(HORN).toChar()
+            return buildString(chars.size) {
+                append(chars.subList(0, uIndex).joinToString(""))
+                append(newU)
+                append(newO)
+                append(trailing)
+            }
         }
+
+        return null
     }
 
     private fun applyToneKey(syllable: String, keyChar: Char): String? {

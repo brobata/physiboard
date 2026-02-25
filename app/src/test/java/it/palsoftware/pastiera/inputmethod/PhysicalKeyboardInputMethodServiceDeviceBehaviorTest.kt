@@ -258,6 +258,36 @@ class PhysicalKeyboardInputMethodServiceDeviceBehaviorTest {
         assertFalse("Telex rewrite should not commit transformed text", recorder.committedTexts.contains("câ"))
     }
 
+    @Test
+    fun vietnameseTelexLayout_physicalCtrlHold_shortcutWinsWhenEventCtrlMetaMissing() {
+        LayoutMappingRepository.loadLayout(service.assets, "vietnamese_telex_qwerty", service)
+        setField(service, "activeKeyboardLayoutName", "vietnamese_telex_qwerty")
+        recorder.textBeforeCursor = "ca"
+
+        val t0 = 5_400L
+        service.onKeyDown(
+            KeyEvent.KEYCODE_CTRL_LEFT,
+            keyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_CTRL_LEFT, t0, t0)
+        )
+        service.onKeyDown(
+            KeyEvent.KEYCODE_A,
+            keyEvent(
+                action = KeyEvent.ACTION_DOWN,
+                keyCode = KeyEvent.KEYCODE_A,
+                downTime = t0,
+                eventTime = t0 + 80L,
+                metaState = 0
+            )
+        )
+
+        assertTrue(
+            "Expected shortcut path with physical Ctrl fallback, commits=${recorder.committedTexts}, deleteCalls=${recorder.deleteSurroundingTextCalls}",
+            recorder.contextMenuActions.contains(android.R.id.selectAll) || recorder.sentKeyEvents.isNotEmpty()
+        )
+        assertTrue("Telex rewrite should not delete text", recorder.deleteSurroundingTextCalls.isEmpty())
+        assertFalse("Telex rewrite should not commit transformed text", recorder.committedTexts.contains("câ"))
+    }
+
     private fun tapAlt(start: Long) {
         service.onKeyDown(
             KeyEvent.KEYCODE_ALT_LEFT,

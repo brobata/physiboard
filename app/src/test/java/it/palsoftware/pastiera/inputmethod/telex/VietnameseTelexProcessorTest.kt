@@ -20,6 +20,7 @@ class VietnameseTelexProcessorTest {
     @Test
     fun `uow creates uo horn cluster`() {
         assertRewrite("tuo", 'w', "tươ")
+        assertRewrite("tuong", 'w', "tương")
     }
 
     @Test
