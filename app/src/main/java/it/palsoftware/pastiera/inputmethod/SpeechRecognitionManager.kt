@@ -11,6 +11,7 @@ import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.util.Log
 import android.view.inputmethod.InputConnection
+import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import it.palsoftware.pastiera.R
@@ -32,6 +33,26 @@ class SpeechRecognitionManager(
 ) {
     companion object {
         private const val TAG = "SpeechRecognitionMgr"
+
+        internal fun normalizeSubtypeLocaleToLanguageTag(subtypeLocale: String?): String? {
+            val normalized = subtypeLocale
+                ?.trim()
+                ?.replace('_', '-')
+                ?.takeIf { it.isNotEmpty() }
+                ?: return null
+
+            val locale = Locale.forLanguageTag(normalized)
+            return if (locale.language.isNullOrEmpty()) null else locale.toLanguageTag()
+        }
+
+        internal fun buildRecognitionLanguageTag(
+            imeSubtypeLocale: String?,
+            deviceLocale: Locale?
+        ): String {
+            return normalizeSubtypeLocaleToLanguageTag(imeSubtypeLocale)
+                ?: deviceLocale?.toLanguageTag()?.takeIf { it.isNotEmpty() }
+                ?: "it-IT"
+        }
     }
 
     private var speechRecognizer: SpeechRecognizer? = null
@@ -370,14 +391,20 @@ class SpeechRecognitionManager(
         }
         
         try {
-            // Get device locale for better recognition
-            val locale = context.resources.configuration.locales[0]
-            val languageTag = locale?.language?.let { lang ->
-                val country = locale.country
-                if (country.isNotEmpty()) "$lang-$country" else lang
-            } ?: "it-IT"
-            
-            Log.d(TAG, "Device locale: ${locale?.displayName}, using language tag: $languageTag")
+            val deviceLocale = context.resources.configuration.locales[0]
+            val imeSubtypeLocale = context
+                .getSystemService(InputMethodManager::class.java)
+                ?.currentInputMethodSubtype
+                ?.locale
+            val languageTag = buildRecognitionLanguageTag(
+                imeSubtypeLocale = imeSubtypeLocale,
+                deviceLocale = deviceLocale
+            )
+
+            Log.d(
+                TAG,
+                "Speech locale source: subtype=$imeSubtypeLocale, device=${deviceLocale?.toLanguageTag()}, using=$languageTag"
+            )
             
             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
@@ -421,4 +448,3 @@ class SpeechRecognitionManager(
         Log.d(TAG, "SpeechRecognizer destroyed")
     }
 }
-
