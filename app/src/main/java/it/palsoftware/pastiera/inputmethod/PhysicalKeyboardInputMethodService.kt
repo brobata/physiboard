@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.content.res.Configuration
+import it.palsoftware.pastiera.AppBroadcastActions
 import it.palsoftware.pastiera.SettingsManager
 import android.inputmethodservice.InputMethodService
 import android.os.Build
@@ -1147,7 +1148,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // Register broadcast receiver for user dictionary updates
         userDictionaryReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
-                if (intent?.action == "it.palsoftware.pastiera.ACTION_USER_DICTIONARY_UPDATED") {
+                if (intent?.action == AppBroadcastActions.USER_DICTIONARY_UPDATED) {
                     Log.d(TAG, "User dictionary updated, refreshing...")
                     if (::suggestionController.isInitialized) {
                         suggestionController.refreshUserDictionary()
@@ -1156,7 +1157,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             }
         }
         
-        val userDictFilter = IntentFilter("it.palsoftware.pastiera.ACTION_USER_DICTIONARY_UPDATED")
+        val userDictFilter = IntentFilter(AppBroadcastActions.USER_DICTIONARY_UPDATED)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(userDictionaryReceiver, userDictFilter, ContextCompat.RECEIVER_NOT_EXPORTED)
         } else {

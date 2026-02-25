@@ -651,7 +651,7 @@ private fun UserDictionaryScreen(
     }
 
     fun notifyDictionaryUpdated() {
-        val intent = Intent("it.palsoftware.pastiera.ACTION_USER_DICTIONARY_UPDATED").apply {
+        val intent = Intent(AppBroadcastActions.USER_DICTIONARY_UPDATED).apply {
             setPackage(context.packageName)
         }
         context.sendBroadcast(intent)
