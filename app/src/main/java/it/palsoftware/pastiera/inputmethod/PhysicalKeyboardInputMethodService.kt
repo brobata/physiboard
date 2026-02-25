@@ -2011,6 +2011,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
         
         if (cursorPositionChanged && collapsedSelection && !shouldSkipForCommit) {
+            if (symPage == 4 && ::candidatesBarController.isInitialized) {
+                // User likely tapped/moved cursor in the target app text field: return hardware typing to app.
+                candidatesBarController.disableEmojiPickerSearchInputCapture()
+            }
             // Update suggestions on cursor movement (if suggestions enabled)
             if (!state.shouldDisableSuggestions) {
                 suggestionController.onCursorMoved(currentInputConnection)

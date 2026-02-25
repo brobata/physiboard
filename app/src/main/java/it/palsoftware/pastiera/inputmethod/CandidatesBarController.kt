@@ -110,6 +110,11 @@ class CandidatesBarController(
             candidatesStatusBar.shouldConsumeEmojiPickerSearchKeyUp(event)
     }
 
+    fun disableEmojiPickerSearchInputCapture() {
+        inputStatusBar.disableEmojiPickerSearchInputCapture()
+        candidatesStatusBar.disableEmojiPickerSearchInputCapture()
+    }
+
     fun isMinimalUiActive(): Boolean = inputStatusBar.isMinimalUiActive()
     
     fun invalidateStaticVariations() {

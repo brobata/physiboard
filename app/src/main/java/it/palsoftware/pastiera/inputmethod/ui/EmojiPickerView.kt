@@ -88,6 +88,7 @@ class EmojiPickerView(
     private var searchQuery: String = ""
     private var searchJob: Job? = null
     private var isSearchMode: Boolean = false
+    private var searchInputCaptureEnabled: Boolean = true
     private val selectedTabBackground = createTabBackground(true)
     private val unselectedTabBackground = createTabBackground(false)
     private var tabCategoryIds: List<String> = emptyList()
@@ -137,7 +138,11 @@ class EmojiPickerView(
                     scheduleSearch()
                 }
             })
+            setOnClickListener {
+                setSearchInputCaptureEnabled(!searchInputCaptureEnabled)
+            }
         }
+        setSearchInputCaptureEnabled(true)
 
         // RecyclerView with headers and emoji grid
         recyclerView = RecyclerView(context).apply {
@@ -274,6 +279,7 @@ class EmojiPickerView(
      * Handle printable keys manually while emoji picker page is open.
      */
     fun handleSearchKeyDown(event: KeyEvent): Boolean {
+        if (!searchInputCaptureEnabled) return false
         if (event.isCtrlPressed || event.isAltPressed || event.isMetaPressed) return false
 
         return when (event.keyCode) {
@@ -301,6 +307,7 @@ class EmojiPickerView(
     }
 
     fun shouldConsumeSearchKeyUp(event: KeyEvent): Boolean {
+        if (!searchInputCaptureEnabled) return false
         if (event.isCtrlPressed || event.isAltPressed || event.isMetaPressed) return false
         return when (event.keyCode) {
             KeyEvent.KEYCODE_DEL,
@@ -390,6 +397,24 @@ class EmojiPickerView(
         val editable = searchField.text ?: return
         editable.append(text)
         searchField.setSelection(editable.length)
+    }
+
+    fun disableSearchInputCapture() {
+        setSearchInputCaptureEnabled(false)
+    }
+
+    private fun setSearchInputCaptureEnabled(enabled: Boolean) {
+        searchInputCaptureEnabled = enabled
+        searchField.isCursorVisible = enabled
+        searchField.alpha = if (enabled) 1f else 0.75f
+        if (enabled) {
+            val editable = searchField.text
+            if (editable != null) {
+                searchField.setSelection(editable.length)
+            }
+        } else {
+            searchField.clearFocus()
+        }
     }
 
     private fun applySearchNow() {
