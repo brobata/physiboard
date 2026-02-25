@@ -2,6 +2,7 @@ package it.palsoftware.pastiera.inputmethod
 
 import android.content.Context
 import android.content.res.AssetManager
+import android.view.KeyEvent
 import android.widget.LinearLayout
 import android.view.inputmethod.InputConnection
 
@@ -97,6 +98,16 @@ class CandidatesBarController(
 
     fun handleBackPressed(): Boolean {
         return inputStatusBar.handleBackPressed() || candidatesStatusBar.handleBackPressed()
+    }
+
+    fun handleEmojiPickerSearchKeyDown(event: KeyEvent?): Boolean {
+        return inputStatusBar.handleEmojiPickerSearchKeyDown(event) ||
+            candidatesStatusBar.handleEmojiPickerSearchKeyDown(event)
+    }
+
+    fun shouldConsumeEmojiPickerSearchKeyUp(event: KeyEvent?): Boolean {
+        return inputStatusBar.shouldConsumeEmojiPickerSearchKeyUp(event) ||
+            candidatesStatusBar.shouldConsumeEmojiPickerSearchKeyUp(event)
     }
 
     fun isMinimalUiActive(): Boolean = inputStatusBar.isMinimalUiActive()

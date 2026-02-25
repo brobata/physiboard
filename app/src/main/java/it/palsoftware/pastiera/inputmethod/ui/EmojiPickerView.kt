@@ -10,6 +10,7 @@ import android.text.Editable
 import android.text.InputType
 import android.text.TextWatcher
 import android.util.TypedValue
+import android.view.KeyEvent
 import android.view.Gravity
 import android.view.View
 import android.view.View.MeasureSpec
@@ -267,6 +268,51 @@ class EmojiPickerView(
     fun refresh() {
         loadCategories()
     }
+
+    /**
+     * IME hardware keys do not automatically target this EditText.
+     * Handle printable keys manually while emoji picker page is open.
+     */
+    fun handleSearchKeyDown(event: KeyEvent): Boolean {
+        if (event.isCtrlPressed || event.isAltPressed || event.isMetaPressed) return false
+
+        return when (event.keyCode) {
+            KeyEvent.KEYCODE_DEL -> {
+                val text = searchField.text ?: return true
+                if (text.isEmpty()) return true
+                text.delete(text.length - 1, text.length)
+                true
+            }
+            KeyEvent.KEYCODE_SPACE -> {
+                appendSearchText(" ")
+                true
+            }
+            KeyEvent.KEYCODE_ENTER,
+            KeyEvent.KEYCODE_NUMPAD_ENTER -> true
+            else -> {
+                val unicode = event.unicodeChar
+                if (unicode <= 0) return false
+                val ch = unicode.toChar()
+                if (Character.isISOControl(ch)) return false
+                appendSearchText(ch.toString())
+                true
+            }
+        }
+    }
+
+    fun shouldConsumeSearchKeyUp(event: KeyEvent): Boolean {
+        if (event.isCtrlPressed || event.isAltPressed || event.isMetaPressed) return false
+        return when (event.keyCode) {
+            KeyEvent.KEYCODE_DEL,
+            KeyEvent.KEYCODE_SPACE,
+            KeyEvent.KEYCODE_ENTER,
+            KeyEvent.KEYCODE_NUMPAD_ENTER -> true
+            else -> {
+                val unicode = event.unicodeChar
+                unicode > 0 && !Character.isISOControl(unicode.toChar())
+            }
+        }
+    }
     
     /**
      * Scrolls to the top of the emoji picker.
@@ -337,6 +383,13 @@ class EmojiPickerView(
             kotlinx.coroutines.delay(120)
             applySearchNow()
         }
+    }
+
+    private fun appendSearchText(text: String) {
+        if (text.isEmpty()) return
+        val editable = searchField.text ?: return
+        editable.append(text)
+        searchField.setSelection(editable.length)
     }
 
     private fun applySearchNow() {
