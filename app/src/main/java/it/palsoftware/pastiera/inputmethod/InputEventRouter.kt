@@ -625,6 +625,44 @@ class InputEventRouter(
         return EditableFieldRoutingResult.CallSuper
     }
 
+    fun handleConfiguredForwardDeleteAlternatives(
+        context: android.content.Context,
+        keyCode: Int,
+        event: KeyEvent?,
+        inputConnection: InputConnection?,
+        altActive: Boolean
+    ): Boolean {
+        if (keyCode != KeyEvent.KEYCODE_DEL || inputConnection == null) {
+            return false
+        }
+
+        val shiftTrigger =
+            SettingsManager.getShiftBackspaceDelete(context) &&
+            event?.isShiftPressed == true
+        val altTrigger =
+            SettingsManager.getAltBackspaceDelete(context) &&
+            altActive
+
+        if (shiftTrigger || altTrigger) {
+            inputConnection.deleteSurroundingText(0, 1)
+            return true
+        }
+
+        if (
+            SettingsManager.getBackspaceAtStartDelete(context) &&
+            event?.isShiftPressed != true &&
+            !altActive
+        ) {
+            val textBefore = inputConnection.getTextBeforeCursor(1, 0)
+            if (textBefore?.isEmpty() == true) {
+                inputConnection.deleteSurroundingText(0, 1)
+                return true
+            }
+        }
+
+        return false
+    }
+
     fun handleTextInputPipeline(
         context: android.content.Context,
         keyCode: Int,

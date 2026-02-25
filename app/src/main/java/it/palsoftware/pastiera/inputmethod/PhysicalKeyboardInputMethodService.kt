@@ -2271,6 +2271,17 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             ensureInputViewCreated()
         }
         val altActiveNow = event?.isAltPressed == true || altLatchActive || altOneShot
+        if (
+            inputEventRouter.handleConfiguredForwardDeleteAlternatives(
+                context = this,
+                keyCode = keyCode,
+                event = event,
+                inputConnection = ic,
+                altActive = altActiveNow
+            )
+        ) {
+            return true
+        }
         if (!altActiveNow) {
             if (
                 inputEventRouter.handleTextInputPipeline(

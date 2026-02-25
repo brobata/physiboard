@@ -53,6 +53,9 @@ object SettingsManager {
     private const val KEY_CLIPBOARD_RETENTION_TIME = "clipboard_retention_time" // How long to keep clipboard entries (in minutes)
     private const val KEY_TRACKPAD_GESTURES_ENABLED = "trackpad_gestures_enabled" // Whether trackpad gesture suggestions are enabled
     private const val KEY_TRACKPAD_SWIPE_THRESHOLD = "trackpad_swipe_threshold" // Threshold for swipe detection on trackpad
+    private const val KEY_SHIFT_BACKSPACE_DELETE = "shift_backspace_delete" // Shift + Backspace performs forward delete
+    private const val KEY_ALT_BACKSPACE_DELETE = "alt_backspace_delete" // Alt + Backspace performs forward delete
+    private const val KEY_BACKSPACE_AT_START_DELETE = "backspace_at_start_delete" // Backspace at line start performs forward delete
     private const val KEY_PASTIERINA_MODE_OVERRIDE = "pastierina_mode_override" // follow_system | force_minimal | force_full
     private const val KEY_PASTIERINA_MODE_ACTIVE = "pastierina_mode_active" // Current effective state
     private const val KEY_TITAN2_LAYOUT_ENABLED = "titan2_layout_enabled" // Align OSK with Titan 2 physical layout
@@ -121,6 +124,9 @@ object SettingsManager {
     private const val DEFAULT_TRACKPAD_SWIPE_THRESHOLD = 300f
     private const val MIN_TRACKPAD_SWIPE_THRESHOLD = 120f
     private const val MAX_TRACKPAD_SWIPE_THRESHOLD = 600f
+    private const val DEFAULT_SHIFT_BACKSPACE_DELETE = false
+    private const val DEFAULT_ALT_BACKSPACE_DELETE = false
+    private const val DEFAULT_BACKSPACE_AT_START_DELETE = false
     private val STATIC_VARIATION_BASE_PRESET_DEFAULT = listOf("@", "\"", ":", "!", "?", ",", ".")
     private val STATIC_VARIATION_BASE_PRESET_ALTERNATIVE = listOf("[", "]", "$", "%", "^", "&", "\\")
     private val STATIC_VARIATION_SHIFT_PRESET_DEFAULT = listOf("{", "}", "€", "=", "~", ";", "¿")
@@ -357,6 +363,54 @@ object SettingsManager {
     fun setAltCtrlSpeechShortcutEnabled(context: Context, enabled: Boolean) {
         getPreferences(context).edit()
             .putBoolean(KEY_ALT_CTRL_SPEECH_SHORTCUT, enabled)
+            .apply()
+    }
+
+    /**
+     * Returns whether Shift+Backspace performs forward delete.
+     */
+    fun getShiftBackspaceDelete(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_SHIFT_BACKSPACE_DELETE, DEFAULT_SHIFT_BACKSPACE_DELETE)
+    }
+
+    /**
+     * Sets whether Shift+Backspace performs forward delete.
+     */
+    fun setShiftBackspaceDelete(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_SHIFT_BACKSPACE_DELETE, enabled)
+            .apply()
+    }
+
+    /**
+     * Returns whether Alt+Backspace performs forward delete.
+     */
+    fun getAltBackspaceDelete(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_ALT_BACKSPACE_DELETE, DEFAULT_ALT_BACKSPACE_DELETE)
+    }
+
+    /**
+     * Sets whether Alt+Backspace performs forward delete.
+     */
+    fun setAltBackspaceDelete(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_ALT_BACKSPACE_DELETE, enabled)
+            .apply()
+    }
+
+    /**
+     * Returns whether Backspace at line start performs forward delete.
+     */
+    fun getBackspaceAtStartDelete(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_BACKSPACE_AT_START_DELETE, DEFAULT_BACKSPACE_AT_START_DELETE)
+    }
+
+    /**
+     * Sets whether Backspace at line start performs forward delete.
+     */
+    fun setBackspaceAtStartDelete(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_BACKSPACE_AT_START_DELETE, enabled)
             .apply()
     }
 
