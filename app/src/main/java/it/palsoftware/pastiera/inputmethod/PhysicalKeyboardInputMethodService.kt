@@ -2011,6 +2011,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
         
         if (cursorPositionChanged && collapsedSelection && !shouldSkipForCommit) {
+            if (symPage == 4 && ::candidatesBarController.isInitialized) {
+                // User likely tapped/moved cursor in the target app text field: return hardware typing to app.
+                candidatesBarController.disableEmojiPickerSearchInputCapture()
+            }
             // Update suggestions on cursor movement (if suggestions enabled)
             if (!state.shouldDisableSuggestions) {
                 suggestionController.onCursorMoved(currentInputConnection)
@@ -2078,6 +2082,19 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         val hasEditableField = initialInputConnection != null && inputType != EditorInfo.TYPE_NULL
         if (hasEditableField && !isInputViewActive) {
             isInputViewActive = true
+        }
+
+        // When the inline emoji picker (SYM page 4) is open, route printable hardware input
+        // to the picker search field instead of the target app text field.
+        if (
+            hasEditableField &&
+            symPage == 4 &&
+            keyCode != KeyEvent.KEYCODE_BACK &&
+            keyCode != KEYCODE_SYM &&
+            ::candidatesBarController.isInitialized &&
+            candidatesBarController.handleEmojiPickerSearchKeyDown(event)
+        ) {
+            return true
         }
 
         if (hasEditableField && keyCode == KEYCODE_SYM && event?.repeatCount == 0) {
@@ -2378,6 +2395,17 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         val ic = currentInputConnection
         val inputType = info?.inputType ?: EditorInfo.TYPE_NULL
         val hasEditableField = ic != null && inputType != EditorInfo.TYPE_NULL
+
+        if (
+            hasEditableField &&
+            symPage == 4 &&
+            keyCode != KeyEvent.KEYCODE_BACK &&
+            keyCode != KEYCODE_SYM &&
+            ::candidatesBarController.isInitialized &&
+            candidatesBarController.shouldConsumeEmojiPickerSearchKeyUp(event)
+        ) {
+            return true
+        }
         
         // If NO editable field is active, handle ONLY nav mode Ctrl release
         if (!hasEditableField) {

@@ -492,6 +492,20 @@ class StatusBarController(
         return false
     }
 
+    fun handleEmojiPickerSearchKeyDown(event: KeyEvent?): Boolean {
+        if (event == null) return false
+        return emojiPickerView?.handleSearchKeyDown(event) == true
+    }
+
+    fun shouldConsumeEmojiPickerSearchKeyUp(event: KeyEvent?): Boolean {
+        if (event == null) return false
+        return emojiPickerView?.shouldConsumeSearchKeyUp(event) == true
+    }
+
+    fun disableEmojiPickerSearchInputCapture() {
+        emojiPickerView?.disableSearchInputCapture()
+    }
+
     private fun openSettings() {
         try {
             val intent = Intent(context, SettingsActivity::class.java).apply {

@@ -5,7 +5,12 @@ import android.graphics.Color
 import android.graphics.Rect
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.ColorDrawable
+import android.os.Build
+import android.text.Editable
+import android.text.InputType
+import android.text.TextWatcher
 import android.util.TypedValue
+import android.view.KeyEvent
 import android.view.Gravity
 import android.view.View
 import android.view.View.MeasureSpec
@@ -16,6 +21,7 @@ import android.widget.HorizontalScrollView
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
+import android.widget.EditText
 import android.widget.TextView
 import android.widget.PopupWindow
 import androidx.recyclerview.widget.DiffUtil
@@ -26,6 +32,7 @@ import android.content.res.Configuration
 import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.data.emoji.EmojiRepository
 import it.palsoftware.pastiera.data.emoji.RecentEmojiManager
+import it.palsoftware.pastiera.data.emoji.EmojiSearchRepository
 import android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -46,6 +53,7 @@ class EmojiPickerView(
 
     private var currentInputConnection: InputConnection? = null
     private val recyclerView: RecyclerView
+    private val searchField: EditText
     private val loadingView: ProgressBar
     private val emptyView: TextView
     private val tabScrollView: HorizontalScrollView
@@ -73,8 +81,14 @@ class EmojiPickerView(
 
     // Adapter
     private val sectionAdapter: SectionAdapter
+    private val searchAdapter: SearchAdapter
     private val columns: Int
     private var regularCategories: List<EmojiRepository.EmojiCategory> = emptyList()
+    private var searchIndex: EmojiSearchRepository.EmojiSearchIndex? = null
+    private var searchQuery: String = ""
+    private var searchJob: Job? = null
+    private var isSearchMode: Boolean = false
+    private var searchInputCaptureEnabled: Boolean = true
     private val selectedTabBackground = createTabBackground(true)
     private val unselectedTabBackground = createTabBackground(false)
     private var tabCategoryIds: List<String> = emptyList()
@@ -94,6 +108,42 @@ class EmojiPickerView(
             layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, fixedHeight)
         }
 
+        searchField = EditText(context).apply {
+            hint = context.getString(R.string.emoji_picker_search_placeholder)
+            setTextColor(Color.WHITE)
+            setHintTextColor(Color.argb(160, 255, 255, 255))
+            textSize = 14f
+            setSingleLine(true)
+            inputType = InputType.TYPE_CLASS_TEXT
+            setBackgroundColor(Color.argb(30, 255, 255, 255))
+            val padH = dpToPx(10f)
+            val padV = dpToPx(6f)
+            setPadding(padH, padV, padH, padV)
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                setMargins(smallPadding, smallPadding, smallPadding, 0)
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                showSoftInputOnFocus = false
+            }
+            addTextChangedListener(object : TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+                override fun afterTextChanged(s: Editable?) {
+                    val newQuery = s?.toString().orEmpty()
+                    if (newQuery == searchQuery) return
+                    searchQuery = newQuery
+                    scheduleSearch()
+                }
+            })
+            setOnClickListener {
+                setSearchInputCaptureEnabled(!searchInputCaptureEnabled)
+            }
+        }
+        setSearchInputCaptureEnabled(true)
+
         // RecyclerView with headers and emoji grid
         recyclerView = RecyclerView(context).apply {
             overScrollMode = View.OVER_SCROLL_ALWAYS
@@ -109,6 +159,7 @@ class EmojiPickerView(
 
         val gridLayoutManager = GridLayoutManager(context, columns, RecyclerView.VERTICAL, false)
         sectionAdapter = SectionAdapter(columns)
+        searchAdapter = SearchAdapter()
         gridLayoutManager.spanSizeLookup = sectionAdapter.spanSizeLookup
         recyclerView.layoutManager = gridLayoutManager
         recyclerView.adapter = sectionAdapter
@@ -117,7 +168,7 @@ class EmojiPickerView(
             override fun getItemOffsets(outRect: Rect, view: View, parent: RecyclerView, state: RecyclerView.State) {
                 val pos = parent.getChildAdapterPosition(view)
                 if (pos == RecyclerView.NO_POSITION) return
-                when (sectionAdapter.getItemViewType(pos)) {
+                when (parent.adapter?.getItemViewType(pos) ?: return) {
                     VIEW_TYPE_HEADER -> {
                         outRect.set(0, spacing, 0, spacing)
                     }
@@ -144,6 +195,7 @@ class EmojiPickerView(
             }
 
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                if (isSearchMode) return
                 if (isTabClickScroll) return
                 val lm = recyclerView.layoutManager as? GridLayoutManager ?: return
                 val firstVisible = lm.findFirstVisibleItemPosition()
@@ -198,6 +250,7 @@ class EmojiPickerView(
         }
         tabScrollView.addView(tabRow)
 
+        vertical.addView(searchField)
         vertical.addView(recyclerView)
         vertical.addView(tabScrollView)
 
@@ -219,6 +272,53 @@ class EmojiPickerView(
 
     fun refresh() {
         loadCategories()
+    }
+
+    /**
+     * IME hardware keys do not automatically target this EditText.
+     * Handle printable keys manually while emoji picker page is open.
+     */
+    fun handleSearchKeyDown(event: KeyEvent): Boolean {
+        if (!searchInputCaptureEnabled) return false
+        if (event.isCtrlPressed || event.isAltPressed || event.isMetaPressed) return false
+
+        return when (event.keyCode) {
+            KeyEvent.KEYCODE_DEL -> {
+                val text = searchField.text ?: return true
+                if (text.isEmpty()) return true
+                text.delete(text.length - 1, text.length)
+                true
+            }
+            KeyEvent.KEYCODE_SPACE -> {
+                appendSearchText(" ")
+                true
+            }
+            KeyEvent.KEYCODE_ENTER,
+            KeyEvent.KEYCODE_NUMPAD_ENTER -> true
+            else -> {
+                val unicode = event.unicodeChar
+                if (unicode <= 0) return false
+                val ch = unicode.toChar()
+                if (Character.isISOControl(ch)) return false
+                appendSearchText(ch.toString())
+                true
+            }
+        }
+    }
+
+    fun shouldConsumeSearchKeyUp(event: KeyEvent): Boolean {
+        if (!searchInputCaptureEnabled) return false
+        if (event.isCtrlPressed || event.isAltPressed || event.isMetaPressed) return false
+        return when (event.keyCode) {
+            KeyEvent.KEYCODE_DEL,
+            KeyEvent.KEYCODE_SPACE,
+            KeyEvent.KEYCODE_ENTER,
+            KeyEvent.KEYCODE_NUMPAD_ENTER -> true
+            else -> {
+                val unicode = event.unicodeChar
+                unicode > 0 && !Character.isISOControl(unicode.toChar())
+            }
+        }
     }
     
     /**
@@ -244,7 +344,9 @@ class EmojiPickerView(
             try {
                 val recentCategory = withContext(Dispatchers.IO) { RecentEmojiManager.getRecentEmojiCategory(context) }
                 val regularCategories = withContext(Dispatchers.IO) { EmojiRepository.getEmojiCategories(context) }
+                val loadedSearchIndex = withContext(Dispatchers.IO) { EmojiSearchRepository.getSearchIndex(context) }
                 this@EmojiPickerView.regularCategories = regularCategories
+                this@EmojiPickerView.searchIndex = loadedSearchIndex
 
                 val allCategories = mutableListOf<EmojiRepository.EmojiCategory>()
                 if (recentCategory != null) allCategories.add(recentCategory)
@@ -258,20 +360,122 @@ class EmojiPickerView(
 
                 loadingView.visibility = View.GONE
                 if (allCategories.isEmpty()) {
+                    emptyView.text = context.getString(R.string.emoji_picker_error)
                     emptyView.visibility = View.VISIBLE
                 } else {
-                    recyclerView.visibility = View.VISIBLE
-                    // Always start from top when opening emoji picker
-                    recyclerView.scrollToPosition(0)
+                    if (searchQuery.isNotBlank()) {
+                        applySearchNow()
+                    } else {
+                        setSearchMode(false)
+                        emptyView.visibility = View.GONE
+                        recyclerView.visibility = View.VISIBLE
+                        // Always start from top when opening emoji picker
+                        recyclerView.scrollToPosition(0)
+                    }
                 }
             } catch (e: CancellationException) {
                 throw e // Re-throw cancellation to properly cancel coroutine
             } catch (e: Exception) {
                 loadingView.visibility = View.GONE
+                emptyView.text = context.getString(R.string.emoji_picker_error)
                 emptyView.visibility = View.VISIBLE
                 recyclerView.visibility = View.GONE
             }
         }
+    }
+
+    private fun scheduleSearch() {
+        searchJob?.cancel()
+        searchJob = coroutineScope.launch {
+            kotlinx.coroutines.delay(120)
+            applySearchNow()
+        }
+    }
+
+    private fun appendSearchText(text: String) {
+        if (text.isEmpty()) return
+        val editable = searchField.text ?: return
+        editable.append(text)
+        searchField.setSelection(editable.length)
+    }
+
+    fun disableSearchInputCapture() {
+        setSearchInputCaptureEnabled(false)
+    }
+
+    private fun setSearchInputCaptureEnabled(enabled: Boolean) {
+        searchInputCaptureEnabled = enabled
+        searchField.isCursorVisible = enabled
+        searchField.alpha = if (enabled) 1f else 0.75f
+        if (enabled) {
+            val editable = searchField.text
+            if (editable != null) {
+                searchField.setSelection(editable.length)
+            }
+        } else {
+            searchField.clearFocus()
+        }
+    }
+
+    private fun applySearchNow() {
+        val query = searchQuery.trim()
+        if (query.isEmpty()) {
+            setSearchMode(false)
+            emptyView.text = context.getString(R.string.emoji_picker_error)
+            emptyView.visibility = View.GONE
+            recyclerView.visibility = if (sectionAdapter.itemCount > 0) View.VISIBLE else View.GONE
+            return
+        }
+
+        val index = searchIndex
+        if (index == null) {
+            setSearchMode(true)
+            emptyView.text = context.getString(R.string.emoji_picker_error)
+            emptyView.visibility = View.VISIBLE
+            recyclerView.visibility = View.GONE
+            return
+        }
+
+        val results = EmojiSearchRepository.search(index, query)
+        setSearchMode(true)
+        searchAdapter.submitList(results)
+        if (results.isEmpty()) {
+            emptyView.text = context.getString(R.string.emoji_picker_no_results)
+            emptyView.visibility = View.VISIBLE
+            recyclerView.visibility = View.GONE
+        } else {
+            emptyView.visibility = View.GONE
+            recyclerView.visibility = View.VISIBLE
+            recyclerView.scrollToPosition(0)
+        }
+    }
+
+    private fun setSearchMode(enabled: Boolean) {
+        if (isSearchMode == enabled) {
+            // Ensure adapter is set correctly if external code changed it during refresh.
+            val lm = recyclerView.layoutManager as? GridLayoutManager ?: return
+            if (enabled && recyclerView.adapter !== searchAdapter) {
+                recyclerView.adapter = searchAdapter
+                lm.spanSizeLookup = searchAdapter.spanSizeLookup
+            } else if (!enabled && recyclerView.adapter !== sectionAdapter) {
+                recyclerView.adapter = sectionAdapter
+                lm.spanSizeLookup = sectionAdapter.spanSizeLookup
+            }
+            tabRow.alpha = if (enabled) 0.55f else 1f
+            return
+        }
+
+        isSearchMode = enabled
+        val lm = recyclerView.layoutManager as? GridLayoutManager ?: return
+        if (enabled) {
+            recyclerView.adapter = searchAdapter
+            lm.spanSizeLookup = searchAdapter.spanSizeLookup
+        } else {
+            recyclerView.adapter = sectionAdapter
+            lm.spanSizeLookup = sectionAdapter.spanSizeLookup
+            updateTabsSelection()
+        }
+        tabRow.alpha = if (enabled) 0.55f else 1f
     }
 
     private fun buildSections(categories: List<EmojiRepository.EmojiCategory>) {
@@ -320,6 +524,7 @@ class EmojiPickerView(
                     1f // Equal weight for all tabs
                 )
                 setOnClickListener {
+                    if (isSearchMode) return@setOnClickListener
                     selectedCategoryId = category.id
                     updateTabsSelection()
                     isTabClickScroll = true
@@ -646,6 +851,46 @@ class EmojiPickerView(
 
     private class HeaderViewHolder(view: View) : RecyclerView.ViewHolder(view)
     private class EmojiViewHolder(val textView: TextView) : RecyclerView.ViewHolder(textView)
+    private class SearchEmojiViewHolder(val textView: TextView) : RecyclerView.ViewHolder(textView)
+
+    private inner class SearchAdapter :
+        ListAdapter<EmojiSearchRepository.EmojiSearchResult, SearchEmojiViewHolder>(SearchResultDiffCallback()) {
+        val spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
+            override fun getSpanSize(position: Int): Int = 1
+        }
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SearchEmojiViewHolder {
+            val tv = TextView(parent.context).apply {
+                gravity = Gravity.CENTER
+                textSize = 28.8f
+                minHeight = emojiSize
+                minWidth = emojiSize
+                layoutParams = RecyclerView.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+            }
+            return SearchEmojiViewHolder(tv)
+        }
+
+        override fun onBindViewHolder(holder: SearchEmojiViewHolder, position: Int) {
+            val item = getItem(position)
+            holder.textView.text = item.entry.base
+            val nightModeFlags = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+            val isDarkTheme = nightModeFlags == Configuration.UI_MODE_NIGHT_YES
+            holder.textView.setTextColor(if (isDarkTheme) Color.WHITE else Color.BLACK)
+            holder.textView.setOnClickListener {
+                onEmojiSelected(item.entry.base, item.categoryId)
+            }
+            holder.textView.setOnLongClickListener {
+                if (item.entry.variants.isEmpty()) return@setOnLongClickListener false
+                showVariantsPopup(holder.textView, item.entry, item.categoryId)
+                true
+            }
+        }
+
+        override fun getItemViewType(position: Int): Int = VIEW_TYPE_EMOJI
+    }
 
     private sealed class SectionItem {
         data class Header(val categoryId: String, val title: String) : SectionItem()
@@ -664,6 +909,23 @@ class EmojiPickerView(
         }
 
         override fun areContentsTheSame(oldItem: SectionItem, newItem: SectionItem): Boolean {
+            return oldItem == newItem
+        }
+    }
+
+    private class SearchResultDiffCallback :
+        DiffUtil.ItemCallback<EmojiSearchRepository.EmojiSearchResult>() {
+        override fun areItemsTheSame(
+            oldItem: EmojiSearchRepository.EmojiSearchResult,
+            newItem: EmojiSearchRepository.EmojiSearchResult
+        ): Boolean {
+            return oldItem.entry.base == newItem.entry.base && oldItem.categoryId == newItem.categoryId
+        }
+
+        override fun areContentsTheSame(
+            oldItem: EmojiSearchRepository.EmojiSearchResult,
+            newItem: EmojiSearchRepository.EmojiSearchResult
+        ): Boolean {
             return oldItem == newItem
         }
     }

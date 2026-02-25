@@ -188,6 +188,9 @@
     <string name="emoji_category_food_and_drink">Essen und Trinken</string>
     <string name="emoji_category_travel_and_places">Reisen und Orte</string>
     <string name="emoji_picker_error">Emojis konnten nicht geladen werden</string>
+    <string name="emoji_picker_search_label">Suche</string>
+    <string name="emoji_picker_search_placeholder">Emoji suchen…</string>
+    <string name="emoji_picker_no_results">Keine Emojis gefunden</string>
     
     <!-- Modifiers -->
     <string name="modifier_shift">SHIFT</string>
