@@ -44,6 +44,7 @@ import it.palsoftware.pastiera.data.mappings.KeyMappingLoader
 import it.palsoftware.pastiera.data.variation.VariationRepository
 import it.palsoftware.pastiera.inputmethod.SpeechRecognitionActivity
 import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils
+import it.palsoftware.pastiera.inputmethod.telex.VietnameseTelexProcessor
 import it.palsoftware.pastiera.inputmethod.trackpad.TrackpadGestureDetector
 import java.util.Locale
 import android.view.inputmethod.InputMethodManager
@@ -91,6 +92,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private var lastLayoutToastText: String? = null
     private var lastLayoutToastTime: Long = 0
     private var suppressNextLayoutReload: Boolean = false
+    private var activeKeyboardLayoutName: String = "qwerty"
     
     // Aggiungi per Power Shortcuts
     private var powerShortcutToast: android.widget.Toast? = null
@@ -536,7 +538,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             Log.w(TAG, "Error getting layout from subtype, using preferences", e)
             SettingsManager.getKeyboardLayout(this)
         }
-        
+        activeKeyboardLayoutName = layoutName
         val layout = LayoutMappingRepository.loadLayout(assets, layoutName, this)
         Log.d(TAG, "Keyboard layout loaded: $layoutName")
     }
@@ -570,6 +572,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     }
 
     private fun switchToLayout(layoutName: String, showToast: Boolean) {
+        activeKeyboardLayoutName = layoutName
         LayoutMappingRepository.loadLayout(assets, layoutName, this)
         updateStatusBarText()
 
@@ -583,6 +586,45 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         if (nextLayout != null) {
             switchToLayout(nextLayout, showToast = false)
         }
+    }
+
+    private fun isVietnameseTelexActive(): Boolean {
+        return VietnameseTelexProcessor.isActiveForLayout(activeKeyboardLayoutName)
+    }
+
+    private fun handleVietnameseTelexKey(keyCode: Int, event: KeyEvent?, inputConnection: InputConnection?): Boolean {
+        if (!isVietnameseTelexActive()) return false
+        val ic = inputConnection ?: return false
+        if (event == null || event.repeatCount > 0) return false
+        if (!LayoutMappingRepository.isMapped(keyCode)) return false
+
+        val char = LayoutMappingRepository.getCharacterStringWithModifiers(
+            keyCode = keyCode,
+            isShiftPressed = event.isShiftPressed,
+            capsLockEnabled = capsLockEnabled,
+            shiftOneShot = shiftOneShot
+        )
+        if (char.length != 1) return false
+
+        val rewrite = VietnameseTelexProcessor.rewrite(
+            textBeforeCursor = ic.getTextBeforeCursor(64, 0)?.toString().orEmpty(),
+            keyChar = char[0]
+        ) ?: return false
+
+        ic.finishComposingText()
+        ic.beginBatchEdit()
+        ic.deleteSurroundingText(rewrite.replaceCount, 0)
+        ic.commitText(rewrite.replacement, 1)
+        ic.endBatchEdit()
+
+        if (shiftOneShot) {
+            modifierStateController.consumeShiftOneShot()
+        }
+
+        Handler(Looper.getMainLooper()).postDelayed({
+            updateStatusBarText()
+        }, CURSOR_UPDATE_DELAY)
+        return true
     }
 
     /**
@@ -2288,6 +2330,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             ensureInputViewCreated()
         }
         val altActiveNow = event?.isAltPressed == true || altLatchActive || altOneShot
+        val ctrlActiveNow = event?.isCtrlPressed == true || ctrlLatchActive || ctrlOneShot
         if (
             inputEventRouter.handleConfiguredForwardDeleteAlternatives(
                 context = this,
@@ -2320,6 +2363,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             ) {
                 return true
             }
+        }
+
+        if (!altActiveNow && !ctrlActiveNow && handleVietnameseTelexKey(keyCode, event, ic)) {
+            return true
         }
         
         val routingDecision = inputEventRouter.routeEditableFieldKeyDown(

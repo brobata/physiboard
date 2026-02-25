@@ -9,6 +9,7 @@ import it.palsoftware.pastiera.SettingsManager
 import it.palsoftware.pastiera.SymPagesConfig
 import it.palsoftware.pastiera.core.InputContextState
 import it.palsoftware.pastiera.core.ModifierStateController
+import it.palsoftware.pastiera.data.layout.LayoutMappingRepository
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -221,6 +222,42 @@ class PhysicalKeyboardInputMethodServiceDeviceBehaviorTest {
         assertTrue("commits=${recorder.committedTexts}", recorder.committedTexts.contains("="))
     }
 
+    @Test
+    fun vietnameseTelexLayout_rewritesThroughImePath() {
+        LayoutMappingRepository.loadLayout(service.assets, "vietnamese_telex_qwerty", service)
+        setField(service, "activeKeyboardLayoutName", "vietnamese_telex_qwerty")
+        recorder.textBeforeCursor = "ca"
+
+        val handled = service.onKeyDown(
+            KeyEvent.KEYCODE_A,
+            keyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_A, 5_000L, 5_000L)
+        )
+
+        assertTrue(handled)
+        assertTrue(recorder.deleteSurroundingTextCalls.contains(2 to 0))
+        assertTrue("commits=${recorder.committedTexts}", recorder.committedTexts.contains("câ"))
+    }
+
+    @Test
+    fun vietnameseTelexLayout_ctrlA_shortcutWinsOverTelexRewrite_midWord() {
+        LayoutMappingRepository.loadLayout(service.assets, "vietnamese_telex_qwerty", service)
+        setField(service, "activeKeyboardLayoutName", "vietnamese_telex_qwerty")
+        recorder.textBeforeCursor = "ca"
+
+        tapCtrl(5_200L) // ctrl one-shot
+        service.onKeyDown(
+            KeyEvent.KEYCODE_A,
+            keyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_A, 5_260L, 5_260L)
+        )
+
+        assertTrue(
+            "Expected shortcut path, commits=${recorder.committedTexts}, deleteCalls=${recorder.deleteSurroundingTextCalls}",
+            recorder.contextMenuActions.contains(android.R.id.selectAll) || recorder.sentKeyEvents.isNotEmpty()
+        )
+        assertTrue("Telex rewrite should not delete text", recorder.deleteSurroundingTextCalls.isEmpty())
+        assertFalse("Telex rewrite should not commit transformed text", recorder.committedTexts.contains("câ"))
+    }
+
     private fun tapAlt(start: Long) {
         service.onKeyDown(
             KeyEvent.KEYCODE_ALT_LEFT,
@@ -310,9 +347,11 @@ class PhysicalKeyboardInputMethodServiceDeviceBehaviorTest {
     }
 
     private class RecordingInputConnection {
+        var textBeforeCursor: String = ""
         val committedTexts = mutableListOf<String>()
         val sentKeyEvents = mutableListOf<KeyEvent>()
         val contextMenuActions = mutableListOf<Int>()
+        val deleteSurroundingTextCalls = mutableListOf<Pair<Int, Int>>()
 
         fun asProxy(): InputConnection {
             return Proxy.newProxyInstance(
@@ -322,7 +361,20 @@ class PhysicalKeyboardInputMethodServiceDeviceBehaviorTest {
                 when (method.name) {
                     "commitText" -> {
                         val text = args?.getOrNull(0)?.toString()
-                        if (text != null) committedTexts += text
+                        if (text != null) {
+                            committedTexts += text
+                            textBeforeCursor += text
+                        }
+                        true
+                    }
+                    "deleteSurroundingText" -> {
+                        val before = (args?.getOrNull(0) as? Int) ?: 0
+                        val after = (args?.getOrNull(1) as? Int) ?: 0
+                        deleteSurroundingTextCalls += before to after
+                        if (before > 0 && textBeforeCursor.isNotEmpty()) {
+                            val keep = (textBeforeCursor.length - before).coerceAtLeast(0)
+                            textBeforeCursor = textBeforeCursor.take(keep)
+                        }
                         true
                     }
                     "sendKeyEvent" -> {
@@ -335,11 +387,16 @@ class PhysicalKeyboardInputMethodServiceDeviceBehaviorTest {
                         if (id != null) contextMenuActions += id
                         true
                     }
-                    "getTextBeforeCursor" -> ""
-                    "getExtractedText" -> ExtractedText().apply {
-                        selectionStart = 0
-                        selectionEnd = 0
+                    "getTextBeforeCursor" -> {
+                        val count = (args?.getOrNull(0) as? Int) ?: textBeforeCursor.length
+                        textBeforeCursor.takeLast(count)
                     }
+                    "getExtractedText" -> ExtractedText().apply {
+                        text = textBeforeCursor
+                        selectionStart = textBeforeCursor.length
+                        selectionEnd = textBeforeCursor.length
+                    }
+                    "beginBatchEdit", "endBatchEdit", "finishComposingText" -> true
                     else -> defaultValue(method.returnType)
                 }
             } as InputConnection

@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.activity.compose.BackHandler
+import it.palsoftware.pastiera.data.layout.LayoutFileStore
 import it.palsoftware.pastiera.data.layout.LayoutMappingRepository
 import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils
 import it.palsoftware.pastiera.SettingsManager
@@ -577,7 +578,9 @@ private fun AddCustomInputStyleDialog(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = currentLayout ?: stringResource(R.string.custom_input_styles_default_layout),
+                                    text = currentLayout
+                                        ?.let { getLayoutDisplayName(context, it) }
+                                        ?: stringResource(R.string.custom_input_styles_default_layout),
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Medium
                                 )
@@ -691,6 +694,12 @@ private fun AddCustomInputStyleDialog(
             }
         )
     }
+}
+
+private fun getLayoutDisplayName(context: Context, layoutName: String): String {
+    return LayoutFileStore.getLayoutMetadataFromAssets(context.assets, layoutName)?.name
+        ?: LayoutFileStore.getLayoutMetadata(context, layoutName)?.name
+        ?: layoutName
 }
 
 /**
@@ -870,7 +879,7 @@ private fun getLocaleDisplayName(locale: String): String {
         } else {
             Locale(lang)
         }
-        localeObj.getDisplayName(Locale.ENGLISH)
+        localeObj.getDisplayName(Locale.getDefault())
     } catch (e: Exception) {
         locale
     }
@@ -1040,4 +1049,3 @@ private fun updateLocaleLayoutMapping(context: Context, locale: String, layout: 
         android.util.Log.e("CustomInputStyles", "Error updating locale-layout mapping", e)
     }
 }
-

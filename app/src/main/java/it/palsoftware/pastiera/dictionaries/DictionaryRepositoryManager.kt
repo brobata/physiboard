@@ -6,6 +6,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.cbor.Cbor
+import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -193,8 +195,14 @@ object DictionaryRepositoryManager {
      */
     @OptIn(ExperimentalSerializationApi::class)
     private fun validateDictionaryStream(input: InputStream) {
-        val json = Json { ignoreUnknownKeys = true }
-        json.decodeFromStream<DictionaryIndex>(input)
+        val bytes = input.readBytes()
+        val isJson = bytes.isNotEmpty() && bytes[0] == '{'.code.toByte()
+        if (isJson) {
+            val json = Json { ignoreUnknownKeys = true }
+            json.decodeFromString<DictionaryIndex>(bytes.decodeToString())
+        } else {
+            Cbor.decodeFromByteArray<DictionaryIndex>(bytes)
+        }
     }
     
     /**
