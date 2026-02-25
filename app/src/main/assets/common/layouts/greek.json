@@ -22,7 +22,8 @@
       "taps": [
         { "lowercase": "υ", "uppercase": "Υ" },
         { "lowercase": "ύ", "uppercase": "Ύ" },
-        { "lowercase": "ϋ", "uppercase": "Ϋ" }
+        { "lowercase": "ϋ", "uppercase": "Ϋ" },
+        { "lowercase": "ΰ", "uppercase": "Ϋ" }
       ]
     },
     "KEYCODE_U": { "lowercase": "θ", "uppercase": "Θ" },
@@ -33,7 +34,8 @@
       "taps": [
         { "lowercase": "ι", "uppercase": "Ι" },
         { "lowercase": "ί", "uppercase": "Ί" },
-        { "lowercase": "ϊ", "uppercase": "Ϊ" }
+        { "lowercase": "ϊ", "uppercase": "Ϊ" },
+        { "lowercase": "ΐ", "uppercase": "Ϊ" }
       ]
     },
     "KEYCODE_O": {
@@ -88,4 +90,3 @@
     "KEYCODE_M": { "lowercase": "μ", "uppercase": "Μ" }
   }
 }
-
