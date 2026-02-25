@@ -1,0 +1,132 @@
+{
+  "name": "Serbian Cyrillic",
+  "description": "Cyrillic layout for Serbian on QWERTY keyboard",
+  "mappings": {
+    "KEYCODE_Q": {
+      "lowercase": "љ",
+      "uppercase": "Љ"
+    },
+    "KEYCODE_W": {
+      "lowercase": "њ",
+      "uppercase": "Њ"
+    },
+    "KEYCODE_E": {
+      "lowercase": "е",
+      "uppercase": "Е"
+    },
+    "KEYCODE_R": {
+      "lowercase": "р",
+      "uppercase": "Р"
+    },
+    "KEYCODE_T": {
+      "lowercase": "т",
+      "uppercase": "Т",
+      "multiTapEnabled": true,
+      "taps": [
+        { "lowercase": "т", "uppercase": "Т" },
+        { "lowercase": "ћ", "uppercase": "Ћ" }
+      ]
+    },
+    "KEYCODE_Y": {
+      "lowercase": "з",
+      "uppercase": "З"
+    },
+    "KEYCODE_U": {
+      "lowercase": "у",
+      "uppercase": "У"
+    },
+    "KEYCODE_I": {
+      "lowercase": "и",
+      "uppercase": "И"
+    },
+    "KEYCODE_O": {
+      "lowercase": "о",
+      "uppercase": "О"
+    },
+    "KEYCODE_P": {
+      "lowercase": "п",
+      "uppercase": "П"
+    },
+    "KEYCODE_A": {
+      "lowercase": "а",
+      "uppercase": "А"
+    },
+    "KEYCODE_S": {
+      "lowercase": "с",
+      "uppercase": "С",
+      "multiTapEnabled": true,
+      "taps": [
+        { "lowercase": "с", "uppercase": "С" },
+        { "lowercase": "ш", "uppercase": "Ш" }
+      ]
+    },
+    "KEYCODE_D": {
+      "lowercase": "д",
+      "uppercase": "Д",
+      "multiTapEnabled": true,
+      "taps": [
+        { "lowercase": "д", "uppercase": "Д" },
+        { "lowercase": "ђ", "uppercase": "Ђ" }
+      ]
+    },
+    "KEYCODE_F": {
+      "lowercase": "ф",
+      "uppercase": "Ф"
+    },
+    "KEYCODE_G": {
+      "lowercase": "г",
+      "uppercase": "Г"
+    },
+    "KEYCODE_H": {
+      "lowercase": "х",
+      "uppercase": "Х"
+    },
+    "KEYCODE_J": {
+      "lowercase": "ј",
+      "uppercase": "Ј"
+    },
+    "KEYCODE_K": {
+      "lowercase": "к",
+      "uppercase": "К"
+    },
+    "KEYCODE_L": {
+      "lowercase": "л",
+      "uppercase": "Л"
+    },
+    "KEYCODE_Z": {
+      "lowercase": "ж",
+      "uppercase": "Ж"
+    },
+    "KEYCODE_X": {
+      "lowercase": "џ",
+      "uppercase": "Џ"
+    },
+    "KEYCODE_C": {
+      "lowercase": "ц",
+      "uppercase": "Ц",
+      "multiTapEnabled": true,
+      "taps": [
+        { "lowercase": "ц", "uppercase": "Ц" },
+        { "lowercase": "ч", "uppercase": "Ч" }
+      ]
+    },
+    "KEYCODE_V": {
+      "lowercase": "в",
+      "uppercase": "В"
+    },
+    "KEYCODE_B": {
+      "lowercase": "б",
+      "uppercase": "Б"
+    },
+    "KEYCODE_N": {
+      "lowercase": "н",
+      "uppercase": "Н"
+    },
+    "KEYCODE_M": {
+      "lowercase": "м",
+      "uppercase": "М"
+    }
+  }
+}
+
+

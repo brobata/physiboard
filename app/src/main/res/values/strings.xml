@@ -9,7 +9,8 @@
     <string name="input_method_name_es">Español</string>
     <string name="input_method_name_pt">Português</string>
     <string name="input_method_name_ru">Русский</string>
-    
+    <string name="input_method_name_sr">Српски</string>
+
     <!-- Settings Screen -->
     <string name="settings_title">Settings</string>
     <string name="back">Back</string>
