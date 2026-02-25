@@ -74,6 +74,13 @@ class VietnameseTelexProcessorTest {
     }
 
     @Test
+    fun `foreign word sequences like telex are not rewritten`() {
+        assertNull(VietnameseTelexProcessor.rewrite("tel", 'e'))
+        assertNull(VietnameseTelexProcessor.rewrite("tele", 'x'))
+        assertNull(VietnameseTelexProcessor.rewrite("Tele", 'x'))
+    }
+
+    @Test
     fun `layout activation is tied to layout id`() {
         assertEquals(true, VietnameseTelexProcessor.isActiveForLayout("vietnamese_telex_qwerty"))
         assertEquals(false, VietnameseTelexProcessor.isActiveForLayout("qwerty"))

@@ -2313,6 +2313,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             ensureInputViewCreated()
         }
         val altActiveNow = event?.isAltPressed == true || altLatchActive || altOneShot
+        val ctrlActiveNow = event?.isCtrlPressed == true || ctrlLatchActive || ctrlOneShot
         if (
             inputEventRouter.handleConfiguredForwardDeleteAlternatives(
                 context = this,
@@ -2347,7 +2348,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             }
         }
 
-        if (!altActiveNow && handleVietnameseTelexKey(keyCode, event, ic)) {
+        if (!altActiveNow && !ctrlActiveNow && handleVietnameseTelexKey(keyCode, event, ic)) {
             return true
         }
         

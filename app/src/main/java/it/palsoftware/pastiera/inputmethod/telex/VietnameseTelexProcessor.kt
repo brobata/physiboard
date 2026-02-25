@@ -77,18 +77,22 @@ internal object VietnameseTelexProcessor {
         for (idx in chars.indices.reversed()) {
             if (!chars[idx].isLetter()) continue
             val parts = Parts.fromChar(chars[idx])
+            val trailing = chars.subList(idx + 1, chars.size).joinToString("")
             val replacement = when (key) {
                 'a' -> when {
+                    trailing.isNotEmpty() && !isValidVietnameseTail(trailing) -> null
                     parts.isBase('a') && !parts.hasShape() -> parts.withShape(CIRCUMFLEX).toChar().toString()
                     parts.isBase('a') && parts.hasShape(CIRCUMFLEX) -> "${caseOf(parts.base)}$keyChar"
                     else -> null
                 }
                 'e' -> when {
+                    trailing.isNotEmpty() && !isValidVietnameseTail(trailing) -> null
                     parts.isBase('e') && !parts.hasShape() -> parts.withShape(CIRCUMFLEX).toChar().toString()
                     parts.isBase('e') && parts.hasShape(CIRCUMFLEX) -> "${caseOf(parts.base)}$keyChar"
                     else -> null
                 }
                 'o' -> when {
+                    trailing.isNotEmpty() && !isValidVietnameseTail(trailing) -> null
                     parts.isBase('o') && !parts.hasShape() -> parts.withShape(CIRCUMFLEX).toChar().toString()
                     parts.isBase('o') && parts.hasShape(CIRCUMFLEX) -> "${caseOf(parts.base)}$keyChar"
                     else -> null
@@ -102,6 +106,7 @@ internal object VietnameseTelexProcessor {
                     else -> null
                 }
                 'w' -> when {
+                    trailing.isNotEmpty() && !isValidVietnameseTail(trailing) -> null
                     parts.isBase('a') && !parts.hasShape() -> parts.withShape(BREVE).toChar().toString()
                     parts.isBase('o') && !parts.hasShape() -> parts.withShape(HORN).toChar().toString()
                     parts.isBase('u') && !parts.hasShape() -> parts.withShape(HORN).toChar().toString()
@@ -136,6 +141,7 @@ internal object VietnameseTelexProcessor {
     }
 
     private fun applyToneKey(syllable: String, keyChar: Char): String? {
+        if (hasSeparatedVowelGroups(syllable)) return null
         val key = keyChar.lowercaseChar()
         val toneMark = toneByKey[key] ?: return null
         val chars = syllable.toMutableList()
@@ -228,6 +234,36 @@ internal object VietnameseTelexProcessor {
     }
 
     private fun caseOf(base: Char): String = if (base.isUpperCase()) base.toString() else base.lowercaseChar().toString()
+
+    private fun hasSeparatedVowelGroups(syllable: String): Boolean {
+        var groups = 0
+        var inVowelGroup = false
+        for (ch in syllable) {
+            val isVowel = Parts.fromChar(ch).isVietnameseVowel()
+            if (isVowel) {
+                if (!inVowelGroup) {
+                    groups++
+                    if (groups > 1) return true
+                }
+                inVowelGroup = true
+            } else {
+                inVowelGroup = false
+            }
+        }
+        return false
+    }
+
+    private fun isValidVietnameseCoda(trailing: String): Boolean {
+        if (trailing.isEmpty()) return true
+        val tail = trailing.lowercase()
+        return tail in setOf("c", "ch", "m", "n", "ng", "nh", "p", "t")
+    }
+
+    private fun isValidVietnameseTail(trailing: String): Boolean {
+        if (trailing.isEmpty()) return true
+        if (trailing.all { Parts.fromChar(it).isVietnameseVowel() }) return true
+        return isValidVietnameseCoda(trailing)
+    }
 
     private data class Parts(
         val base: Char,

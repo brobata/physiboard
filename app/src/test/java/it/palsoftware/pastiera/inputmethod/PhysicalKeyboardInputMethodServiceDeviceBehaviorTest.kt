@@ -238,6 +238,26 @@ class PhysicalKeyboardInputMethodServiceDeviceBehaviorTest {
         assertTrue("commits=${recorder.committedTexts}", recorder.committedTexts.contains("câ"))
     }
 
+    @Test
+    fun vietnameseTelexLayout_ctrlA_shortcutWinsOverTelexRewrite_midWord() {
+        LayoutMappingRepository.loadLayout(service.assets, "vietnamese_telex_qwerty", service)
+        setField(service, "activeKeyboardLayoutName", "vietnamese_telex_qwerty")
+        recorder.textBeforeCursor = "ca"
+
+        tapCtrl(5_200L) // ctrl one-shot
+        service.onKeyDown(
+            KeyEvent.KEYCODE_A,
+            keyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_A, 5_260L, 5_260L)
+        )
+
+        assertTrue(
+            "Expected shortcut path, commits=${recorder.committedTexts}, deleteCalls=${recorder.deleteSurroundingTextCalls}",
+            recorder.contextMenuActions.contains(android.R.id.selectAll) || recorder.sentKeyEvents.isNotEmpty()
+        )
+        assertTrue("Telex rewrite should not delete text", recorder.deleteSurroundingTextCalls.isEmpty())
+        assertFalse("Telex rewrite should not commit transformed text", recorder.committedTexts.contains("câ"))
+    }
+
     private fun tapAlt(start: Long) {
         service.onKeyDown(
             KeyEvent.KEYCODE_ALT_LEFT,
