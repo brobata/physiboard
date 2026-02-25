@@ -597,6 +597,7 @@
     <!-- Input method names -->
     <string name="input_method_name_pt">Português</string>
     <string name="input_method_name_ru">Русский</string>
+    <string name="input_method_name_uk">Українська</string>
 
     <!-- Nav mode -->
     <string name="nav_mode_warning_icon">⚠</string>

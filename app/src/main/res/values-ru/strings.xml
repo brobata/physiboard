@@ -9,6 +9,7 @@
     <string name="input_method_name_es">Español</string>
     <string name="input_method_name_pt">Português</string>
     <string name="input_method_name_ru">Русский</string>
+    <string name="input_method_name_uk">Українська</string>
 
     <!-- Settings Screen -->
     <string name="settings_title">Настройки</string>
