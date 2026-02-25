@@ -1,0 +1,657 @@
+<resources>
+    <string name="app_name">Pastiera</string>
+    <string name="input_method_name">Pastiera</string>
+    <string name="input_method_name_en">English</string>
+    <string name="input_method_name_it">Italiano</string>
+    <string name="input_method_name_fr">Français</string>
+    <string name="input_method_name_de">Deutsch</string>
+    <string name="input_method_name_pl">Polski</string>
+    <string name="input_method_name_es">Español</string>
+    <string name="input_method_name_pt">Português</string>
+    <string name="input_method_name_ru">Русский</string>
+    <string name="input_method_name_sr">Српски</string>
+    <string name="input_method_name_uk">Українська</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">Cài đặt</string>
+    <string name="back">Quay lại</string>
+    <string name="settings_back_content_description">Quay lại</string>
+    
+    <!-- Long Press Section -->
+    <string name="long_press_title">Nhấn giữ</string>
+    <string name="keyboard_timing_long_press_value">%1$dms</string>
+    <string name="long_press_duration">Thời gian nhấn giữ: %1$dms</string>
+    <string name="long_press_description">Thời gian chờ trước khi nhận diện nhấn giữ. Giá trị thấp giúp phản hồi nhanh hơn, giá trị cao yêu cầu giữ lâu hơn.</string>
+    <string name="setting_applied_immediately">Cài đặt được áp dụng ngay</string>
+    
+    <!-- Auto Capitalize Section -->
+    <string name="auto_capitalize_title">Tự viết hoa chữ cái đầu</string>
+    <string name="auto_capitalize_description">Tự động viết hoa chữ cái đầu khi bắt đầu nhập trong ô văn bản trống.</string>
+
+    <!-- Auto Capitalize After Period Section -->
+    <string name="auto_capitalize_after_period_title">Tự viết hoa sau dấu chấm</string>
+    <string name="auto_capitalize_after_period_description">Tự động viết hoa chữ tiếp theo sau khi nhập dấu chấm và dấu cách (kết thúc câu).</string>
+
+    <!-- Double Space to Period Section -->
+    <string name="double_space_to_period_title">Nhấn đúp dấu cách để chèn dấu chấm</string>
+    <string name="double_space_to_period_description">Nhấn đúp phím cách để chèn dấu chấm, thêm dấu cách và viết hoa chữ tiếp theo.</string>
+
+    <!-- Clear Alt on Space Section -->
+    <string name="clear_alt_on_space_title">Tắt Alt khi nhấn Space</string>
+    <string name="clear_alt_on_space_description">Tự động tắt Alt hoặc Alt-Lock khi nhấn phím cách.</string>
+    
+    <!-- Swipe to Delete Section -->
+    <string name="swipe_to_delete_title">Bật vuốt để xóa</string>
+
+    <!-- Delete Alternatives Section -->
+    <string name="delete_alternatives_title">Xóa</string>
+    <string name="delete_alternatives_description">Các cách thay thế để xóa ký tự bên phải con trỏ</string>
+    <string name="shift_backspace_delete_title">Shift + Backspace</string>
+    <string name="alt_backspace_delete_title">Alt + Backspace</string>
+    <string name="backspace_at_start_delete_title">Backspace ở đầu dòng</string>
+    <string name="delete_alternatives_hint">Gợi ý: Có thể cấu hình Ctrl + phím trong cài đặt Nav Mode</string>
+
+    <!-- Swipe Incremental Threshold Section -->
+    <string name="swipe_incremental_threshold_title">Độ nhạy thanh vuốt</string>
+    <string name="swipe_incremental_threshold_description">Khoảng cách cần để di chuyển con trỏ một vị trí. Giá trị thấp làm con trỏ di chuyển nhanh hơn.</string>
+    
+    <!-- Auto Show Keyboard Section -->
+    <string name="auto_show_keyboard_title">Tự động hiển thị bàn phím</string>
+    
+    <!-- Alt+Ctrl Speech Recognition Shortcut Section -->
+    <string name="alt_ctrl_speech_shortcut_title">Nhận diện giọng nói Alt+Ctrl</string>
+    <string name="alt_ctrl_speech_shortcut_description">Bật phím tắt Alt+Ctrl để bắt đầu nhận diện giọng nói</string>
+
+    <!-- Static Variation Bar Mode -->
+    <string name="static_variation_bar_mode_title">Thanh biến thể tĩnh</string>
+    <string name="static_variation_bar_mode_description">Luôn hiển thị một nhóm phím tiện ích cố định ở hàng biến thể thay vì biến thể theo ngữ cảnh.</string>
+    <string name="static_variation_base_layer_title">Mẫu hàng trên thay thế</string>
+    <string name="static_variation_base_layer_description">Chuyển hàng tĩnh trên cùng giữa bộ ký hiệu mặc định và bộ ngoặc/ký tự đặc biệt thay thế. Lớp Shift và Alt vẫn độc lập.</string>
+    <string name="static_variation_layer_sticky_title">Lớp dính</string>
+    <string name="static_variation_layer_sticky_description">Khi lớp Shift/Alt được khóa bằng nhấn đúp, giữ lớp đó hoạt động sau khi chọn một ký hiệu từ lớp đó.</string>
+    <string name="swipe_to_move_cursor">Vuốt để di chuyển con trỏ</string>
+    
+    <!-- Info Section -->
+    <string name="info_title">Thông tin</string>
+    <string name="info_description">Cài đặt được lưu tự động và áp dụng ngay cho bộ gõ.</string>
+    
+    <!-- Main Activity -->
+    <string name="keyboard_title">Bàn phím Pastiera</string>
+    <string name="keyboard_subtitle">Bàn phím vật lý có hỗ trợ nhấn giữ</string>
+    <string name="settings_content_description">Cài đặt</string>
+    
+    <!-- Installation Section -->
+    <string name="installation_title">Cài đặt ban đầu</string>
+    <string name="installation_step1">1. Nhấn nút bên dưới để mở cài đặt</string>
+    <string name="installation_step2">2. Bật \'Pastiera Physical Keyboard\'</string>
+    <string name="installation_step3">3. Quay lại đây và thử bàn phím</string>
+    <string name="open_keyboard_settings">Mở cài đặt bàn phím</string>
+    
+    <!-- Main Activity - Enable/Select IME -->
+    <string name="enable_pastiera">Bật Pastiera</string>
+    <string name="pastiera_not_enabled">Pastiera chưa được bật</string>
+    <string name="choose_input_method">Chọn phương thức nhập</string>
+    <string name="pastiera_not_selected">Pastiera chưa được chọn</string>
+    
+    <!-- Test Section -->
+    <string name="test_keyboard_title">Kiểm tra bàn phím</string>
+    <string name="test_keyboard_description">Kết nối bàn phím vật lý và thử bên dưới:</string>
+    <string name="test_keyboard_normal">• Nhấn thường: chèn ký tự</string>
+    <string name="test_keyboard_long_press">• Nhấn giữ (500ms): chèn ký tự Alt</string>
+    <string name="test_field_label">Ô kiểm tra</string>
+    <string name="test_field_placeholder">Gõ ở đây bằng bàn phím vật lý…</string>
+    
+    <!-- Last Event Section -->
+    <string name="last_keyboard_event_title">Sự kiện bàn phím gần nhất</string>
+    <string name="no_event_yet">Chưa có sự kiện</string>
+    
+    <!-- Long Press Mappings Section -->
+    <string name="long_press_mappings_title">Ánh xạ nhấn giữ</string>
+    <string name="long_press_mappings_line1">Q→0, W→1, E→2, R→3, T→(, Y→), U→-, I→_, O→\', P→:</string>
+    <string name="long_press_mappings_line2">A→@, S→4, D→5, F→6, G→*, H→#, J→+, K→\", L→\'</string>
+    <string name="long_press_mappings_line3">Z→!, X→7, C→8, V→9, B→., N→\', M→?</string>
+    
+    <!-- Buttons -->
+    <string name="settings_button">Cài đặt</string>
+    <string name="change_keyboard_button">Đổi bàn phím</string>
+    <string name="save">Lưu</string>
+    
+    <!-- SYM Customization -->
+    <string name="sym_customization_title">Tùy chỉnh bàn phím SYM</string>
+    <string name="sym_customization_button">Tùy chỉnh bàn phím SYM</string>
+    <string name="sym_customization_description">Cá nhân hóa ánh xạ emoji cho bàn phím SYM. Chạm vào bất kỳ phím nào để đổi emoji.</string>
+    <string name="reset_to_default">Khôi phục mặc định</string>
+    <string name="select_emoji">Chọn emoji</string>
+    <string name="close">Đóng</string>
+    
+    <!-- Auto-Correction Section -->
+    <string name="auto_correct_title">Thay thế tự động</string>
+    <string name="auto_correct_languages_title">Bộ thay thế</string>
+    <string name="auto_correct_settings_title">Bộ thay thế sửa tự động</string>
+    <string name="auto_correct_settings_description">Chọn các bộ thay thế dùng cho sửa tự động. Ngôn ngữ hệ thống được hiển thị ở trên cùng.</string>
+    <string name="auto_correct_system_language">Ngôn ngữ hệ thống</string>
+    <string name="auto_correct_ricette_pastiera_description">Tùy chỉnh áp dụng cho tất cả bộ thay thế</string>
+    <string name="auto_correct_other_languages">Bộ thay thế khác</string>
+    <string name="auto_correct_custom_languages">Bộ thay thế tùy chỉnh</string>
+    <string name="auto_correct_at_least_one_language_required">Cần ít nhất một bộ thay thế để hoạt động</string>
+    <string name="auto_correct_edit">Sửa</string>
+    <string name="auto_correct_edit_description">Chạm vào một mục sửa để chỉnh sửa, hoặc dùng nút + để thêm mục mới.</string>
+    <string name="auto_correct_add_correction">Thêm mục sửa</string>
+    <string name="auto_correct_edit_correction">Chỉnh sửa mục sửa</string>
+    <string name="auto_correct_original">Gốc</string>
+    <string name="auto_correct_corrected">Đã sửa</string>
+    <string name="auto_correct_delete">Xóa</string>
+    <string name="auto_correct_save">Lưu</string>
+    <string name="auto_correct_cancel">Hủy</string>
+    <string name="auto_correct_no_corrections">Chưa có mục sửa nào. Nhấn nút + để thêm.</string>
+    <string name="auto_correct_add_language">Thêm bộ thay thế mới</string>
+    <string name="auto_correct_language_code">Mã bộ thay thế</string>
+    <string name="auto_correct_language_name">Tên bộ thay thế</string>
+    <string name="auto_correct_language_code_hint">Nhập mã và tên cho bộ thay thế tùy chỉnh (ví dụ: \"fr\" / \"French\", \"mydict\" / \"Từ điển của tôi\")</string>
+    <string name="auto_correct_language_code_required">Bắt buộc có tên bộ thay thế</string>
+    <string name="auto_correct_language_already_exists">Bộ thay thế này đã tồn tại</string>
+    <string name="auto_correct_suggestions_toggle_title">Gợi ý khi đang gõ</string>
+    <string name="auto_correct_accent_matching_title">Khớp từ có dấu</string>
+    <string name="auto_correct_auto_replace_title">Tự thay thế khi nhấn cách/enter</string>
+    <string name="auto_correct_max_distance_title">Khoảng cách sửa tối đa</string>
+    <string name="auto_correct_max_distance_off">Tắt</string>
+    <string name="auto_correct_max_distance_description">Số khác biệt ký tự tối đa cho phép khi sửa tự động. 0 = tắt, 1-3 = độ dung sai tăng dần.</string>
+    <string name="auto_correct_manage_user_dict_title">Quản lý từ điển người dùng</string>
+    <string name="auto_correct_keyboard_proximity_title">Xếp hạng độ gần bàn phím</string>
+    <string name="auto_correct_keyboard_proximity_description">Lọc lỗi gõ khó xảy ra dựa trên khoảng cách phím (QWERTY/AZERTY/QWERTZ)</string>
+    <string name="auto_correct_edit_type_ranking_title">Xếp hạng theo loại chỉnh sửa</string>
+    <string name="auto_correct_edit_type_ranking_description">Xếp hạng gợi ý theo loại chỉnh sửa (chèn &gt; thay thế &gt; xóa)</string>
+    <string name="clear">Xóa</string>
+    <string name="experimental_suggestions_title">Gợi ý thử nghiệm</string>
+    <string name="experimental_suggestions_subtitle">Bật bộ máy từ điển/gợi ý mới (beta)</string>
+
+    <!-- User dictionary management -->
+    <string name="user_dict_title">Từ điển người dùng</string>
+    <string name="user_dict_add_hint">Thêm từ</string>
+    <string name="user_dict_add_button">Lưu từ</string>
+    <string name="user_dict_empty_state">Chưa có từ người dùng nào được lưu.</string>
+    <string name="user_dict_edit_title">Sửa từ</string>
+    <string name="user_dict_frequency_label">Số lần dùng: %1$d</string>
+    
+    <!-- SYM Customization Screen -->
+    <string name="sym_customize_title">Tùy chỉnh bàn phím SYM</string>
+    <string name="sym_auto_close_title">Tự đóng bố cục SYM</string>
+    <string name="sym_auto_close_description">Tự động đóng bố cục SYM sau khi chèn ký tự, nhấn Alt hoặc nhấn Enter. Không đóng khi dùng Control hoặc Shift.</string>
+    <string name="sym_enable_emoji_page_title">Bật trang Emoji</string>
+    <string name="sym_enable_emoji_page_description">Hiển thị bố cục SYM emoji khi chuyển trang.</string>
+    <string name="sym_enable_symbols_page_title">Bật trang Ký hiệu</string>
+    <string name="sym_enable_symbols_page_description">Hiển thị bố cục SYM ký hiệu khi chuyển trang.</string>
+    <string name="sym_enable_clipboard_page_title">Bật trang Bộ nhớ tạm</string>
+    <string name="sym_enable_clipboard_page_description">Hiển thị lịch sử bộ nhớ tạm khi chuyển trang.</string>
+    <string name="sym_enable_emoji_picker_page_title">Bật trang chọn Emoji</string>
+    <string name="sym_enable_emoji_picker_page_description">Hiển thị bộ chọn emoji đầy đủ khi chuyển trang.</string>
+    <string name="sym_swap_pages_title">Sắp xếp thứ tự trang SYM</string>
+    <string name="sym_swap_pages_description">Đặt đúng thứ tự chuyển của tất cả trang SYM bằng cách kéo từng hàng.</string>
+    <string name="sym_order_emoji_first">Emoji trước</string>
+    <string name="sym_order_symbols_first">Ký hiệu trước</string>
+    <string name="sym_order_clipboard_first">Bộ nhớ tạm trước</string>
+    <string name="sym_instructions_title">Hướng dẫn</string>
+    <string name="sym_instructions_text">Chạm vào bất kỳ phím nào bên dưới để đổi emoji. Thay đổi được lưu tự động.</string>
+    <string name="sym_reset_to_default">Khôi phục mặc định</string>
+    <string name="sym_reset_confirm_title">Khôi phục mặc định</string>
+    <string name="sym_reset_confirm_message">Bạn có chắc muốn đặt lại tất cả ánh xạ SYM về mặc định? Hành động này không thể hoàn tác.</string>
+    <string name="sym_reset_confirm_button">Đặt lại</string>
+    <string name="cancel">Hủy</string>
+    
+    <!-- Emoji Picker Dialog -->
+    <string name="emoji_picker_title">Chọn emoji</string>
+    <string name="emoji_picker_title_for_letter">Chọn emoji cho chữ %1$s</string>
+    <string name="emoji_picker_close">Đóng</string>
+    <string name="emoji_category_smileys">Mặt cười &amp; Con người</string>
+    <string name="emoji_category_animals">Động vật &amp; Thiên nhiên</string>
+    <string name="emoji_category_food">Đồ ăn &amp; Đồ uống</string>
+    <string name="emoji_category_travel">Du lịch &amp; Địa điểm</string>
+    
+    <!-- Modifiers -->
+    <string name="modifier_shift">SHIFT</string>
+    <string name="modifier_ctrl">CTRL</string>
+    
+    <!-- Long Press Modifier Section -->
+    <string name="long_press_modifier_title">Chức năng nhấn giữ</string>
+    <string name="long_press_modifier_description">Chọn hành động của nhấn giữ: Alt+phím, Shift+phím, biến thể ký tự hoặc ánh xạ Sym</string>
+    <string name="long_press_modifier_alt">Alt</string>
+    <string name="long_press_modifier_shift">Shift</string>
+    <string name="long_press_modifier_variations">Biến thể</string>
+    <string name="long_press_modifier_sym">Sym</string>
+    
+    <!-- Keyboard Layout Section -->
+    <string name="keyboard_layout_title">Bố cục bàn phím</string>
+    <string name="keyboard_layout_description">Chọn bố cục bàn phím của bạn. Ánh xạ ALT, SYM và Ctrl vẫn dựa trên vị trí phím vật lý.</string>
+    <string name="keyboard_layout_editor_title">Trình chỉnh sửa bố cục bàn phím</string>
+    <string name="keyboard_layout_no_conversion">Chuẩn</string>
+    <string name="keyboard_layout_no_conversion_description">Bố cục QWERTY chuẩn (không chuyển đổi)</string>
+    <string name="keyboard_layout_conversions_title">Chuyển đổi bố cục</string>
+    <string name="keyboard_layout_conversions_description">Chuyển đổi các phím chữ để khớp bố cục đã chọn</string>
+    <string name="keyboard_layout_viewer_title">Sơ đồ bàn phím</string>
+    <string name="keyboard_layout_viewer_subtitle">Bố cục: %1$s</string>
+    <string name="keyboard_layout_viewer_unavailable">Không thể tải ánh xạ bố cục này.</string>
+    <string name="keyboard_layout_viewer_empty">Không tìm thấy ánh xạ phím cho bố cục này.</string>
+    <string name="keyboard_layout_multitap_badge">multitap</string>
+    <string name="keyboard_layout_viewer_multitap_on">multitap</string>
+    <string name="keyboard_layout_viewer_multitap_off">đơn</string>
+    <string name="keyboard_layout_viewer_open">Xem ánh xạ</string>
+    <string name="keyboard_layout_settings_button">Cài đặt bố cục bàn phím</string>
+    
+    <!-- About Section -->
+    <string name="about_github">GitHub</string>
+    <string name="about_build_info">Pastiera IME - Palsoftware 2025</string>
+    <string name="about_title">Giới thiệu</string>
+    <string name="about_credits_error">Không thể tải thông tin ghi nhận.</string>
+    
+    <!-- Launcher Shortcuts Section -->
+    <string name="launcher_shortcuts_title">Phím tắt</string>
+    <string name="launcher_shortcuts_experimental">Thử nghiệm</string>
+    <string name="launcher_shortcuts_description">Bật phím tắt bàn phím</string>
+    <string name="launcher_shortcuts_configure">Cấu hình phím tắt</string>
+    <string name="launcher_shortcuts_configure_description">Gán phím để mở ứng dụng</string>
+    
+    <!-- Launcher Shortcuts Screen -->
+    <string name="launcher_shortcuts_screen_title">Phím tắt</string>
+    <string name="launcher_shortcuts_not_assigned">Chưa gán</string>
+    <string name="launcher_shortcuts_remove">Xóa</string>
+    <string name="launcher_shortcuts_app_name_unavailable">Ứng dụng (không có tên)</string>
+    <string name="launcher_shortcuts_shortcut_type">Phím tắt: %1$s</string>
+    <string name="launcher_shortcuts_shortcut_unknown">không xác định</string>
+    <string name="launcher_shortcuts_action_type">Hành động: %1$s</string>
+    
+    <!-- Launcher Shortcut Assignment Activity -->
+    <string name="launcher_shortcut_assignment_title">Gán ứng dụng cho phím</string>
+    <string name="launcher_shortcut_assignment_key">Phím %1$s</string>
+    <string name="launcher_shortcut_assignment_header">Phím tắt</string>
+    <string name="launcher_shortcut_assignment_search_placeholder">Tìm ứng dụng...</string>
+    <string name="launcher_shortcut_assignment_search_description">Tìm kiếm</string>
+    <string name="launcher_shortcut_assignment_close">Đóng</string>
+    <string name="launcher_shortcut_assignment_no_apps">Không tìm thấy ứng dụng</string>
+    <string name="launcher_shortcut_assignment_no_results">Không có kết quả cho \"%1$s\"</string>
+    <string name="launcher_shortcut_assignment_key_name">Phím %1$d</string>
+    
+    <!-- Power Shortcuts Section -->
+    <string name="power_shortcuts_title">Power Shortcuts</string>
+    <string name="power_shortcuts_description">Nhấn SYM rồi một phím để chạy phím tắt khi không ở trong ô văn bản</string>
+    <string name="power_shortcuts_press_key">Nhấn phím tắt để chạy</string>
+    
+    <!-- Notification Helper -->
+    <string name="notification_nav_mode_channel_name">Pastiera Nav Mode</string>
+    <string name="notification_nav_mode_channel_description">Thông báo cho chế độ điều hướng Pastiera</string>
+    <string name="notification_nav_mode_activated_title">Đã bật Nav Mode</string>
+    <string name="notification_nav_mode_activated_text">Nav Mode đã được bật</string>
+    
+    <!-- Update Notifications -->
+    <string name="notification_update_channel_name">Cập nhật Pastiera</string>
+    <string name="notification_update_channel_description">Thông báo về phiên bản Pastiera mới</string>
+    <string name="notification_update_available_title">Pastiera - Có bản cập nhật mới</string>
+    <string name="notification_update_available_text">Có phiên bản Pastiera mới (%1$s)</string>
+    
+    <!-- Speech Recognition -->
+    <string name="speech_recognition_prompt">Hãy nói...</string>
+    <string name="speech_recognition_error_no_match">Không nhận diện được văn bản. Thử lại.</string>
+    <string name="speech_recognition_error_timeout">Không phát hiện giọng nói.</string>
+    <string name="speech_recognition_error_permission">Quyền micro bị từ chối.</string>
+    <string name="speech_recognition_error_network">Lỗi mạng.</string>
+    <string name="speech_recognition_error_generic">Lỗi nhận diện giọng nói.</string>
+    <string name="speech_recognition_error_not_available">Nhận diện giọng nói không khả dụng.</string>
+    
+    <!-- Auto Correct Edit Screen -->
+    <string name="auto_correct_search_placeholder">Tìm mục sửa...</string>
+    <string name="auto_correct_search_description">Tìm kiếm</string>
+    <string name="auto_correct_clear_search">Xóa tìm kiếm</string>
+    <string name="auto_correct_no_corrections_found">Không tìm thấy mục sửa</string>
+    
+    <!-- Nav Mode Settings -->
+    <string name="nav_mode_title">Nav Mode</string>
+    <string name="nav_mode_enable_title">Bật Nav Mode</string>
+    <string name="nav_mode_enable_description">Nhấn đúp Ctrl để kích hoạt chế độ điều hướng</string>
+    <string name="nav_mode_key_mappings">Ánh xạ phím</string>
+    <string name="nav_mode_revert_to_default">Khôi phục mặc định</string>
+    <string name="nav_mode_note">Lưu ý: Thay đổi phím Nav Mode cũng ảnh hưởng đến tổ hợp Ctrl+phím trong ô văn bản.</string>
+    <string name="nav_mode_warning_icon">⚠</string>
+    <string name="nav_mode_configure_key">Cấu hình %1$s</string>
+    <string name="nav_mode_type">Loại</string>
+    <string name="nav_mode_keycode">Keycode</string>
+    <string name="nav_mode_action">Hành động</string>
+    <string name="nav_mode_none">Không có</string>
+    <string name="nav_mode_use_default">Dùng mặc định: %1$s</string>
+    <string name="nav_mode_save">Lưu</string>
+    <string name="nav_mode_cancel">Hủy</string>
+    <string name="nav_mode_default">mặc định</string>
+    
+    <!-- Unicode Character Picker -->
+    <string name="unicode_picker_title_for_letter">Chọn ký tự cho %1$s</string>
+    <string name="unicode_picker_title">Chọn ký tự unicode</string>
+    <string name="unicode_picker_close">Đóng</string>
+    <string name="unicode_category_punctuation">Dấu câu</string>
+    <string name="unicode_category_math">Ký hiệu toán học</string>
+    <string name="unicode_category_currency">Tiền tệ</string>
+    <string name="unicode_category_technical">Ký hiệu kỹ thuật</string>
+    <string name="unicode_category_arrows">Mũi tên</string>
+    <string name="unicode_category_misc">Khác</string>
+    <string name="unicode_category_variations">Biến thể</string>
+    <string name="emoji_category_smileys_and_emotion">Mặt cười &amp; Cảm xúc</string>
+    <string name="emoji_category_people_and_body">Con người &amp; Cơ thể</string>
+    <string name="emoji_category_animals_and_nature">Động vật &amp; Thiên nhiên</string>
+    <string name="emoji_category_food_and_drink">Đồ ăn &amp; Đồ uống</string>
+    <string name="emoji_category_travel_and_places">Du lịch &amp; Địa điểm</string>
+    <string name="emoji_category_activities">Hoạt động</string>
+    <string name="emoji_category_objects">Đồ vật</string>
+    <string name="emoji_category_symbols">Ký hiệu</string>
+    <string name="emoji_category_flags">Cờ</string>
+    <string name="emoji_category_recents">Gần đây</string>
+    <string name="emoji_category_emoticons">Biểu tượng cảm xúc</string>
+    <string name="emoji_picker_error">Không thể tải emoji</string>
+    
+    <!-- Variation Customization -->
+    <string name="variation_customize_title">Tùy chỉnh biến thể</string>
+    <string name="variation_instructions_title">Hướng dẫn</string>
+    <string name="variation_instructions_description">Chạm vào ô biến thể để chọn ký tự. Mỗi chữ cái có thể có tối đa 7 ký tự biến thể.</string>
+    <string name="variation_picker_title">Chọn biến thể cho %1$s</string>
+    <string name="custom_variation_input">Ký tự tùy chỉnh</string>
+    <string name="add">Thêm</string>
+    <string name="variation_picker_clear">Xóa (trống)</string>
+    <string name="variation_reset_to_default">Khôi phục mặc định</string>
+    <string name="variation_reset_confirm_title">Khôi phục mặc định</string>
+    <string name="variation_reset_confirm_message">Bạn có chắc muốn đặt lại tất cả biến thể về mặc định? Hành động này không thể hoàn tác.</string>
+    <string name="variation_reset_confirm_button">Đặt lại</string>
+    <string name="static_variation_input_label">Giá trị</string>
+    <string name="static_variation_input_hint">Để trống rồi lưu để xóa ô này.</string>
+    
+    <!-- SYM Customization Screen -->
+    <string name="sym_tab_emoji">Emoji</string>
+    <string name="sym_tab_characters">Ký tự</string>
+    
+    <!-- App Picker Dialog -->
+    <string name="app_picker_title">Chọn ứng dụng</string>
+    <string name="app_picker_cancel">Hủy</string>
+    <string name="app_picker_search_placeholder">Tìm ứng dụng...</string>
+    
+    <!-- Settings Screen -->
+    <string name="settings_support_ko_fi">Ủng hộ trên Ko-fi</string>
+    <string name="settings_nav_mode_configure">Cấu hình ánh xạ phím chế độ điều hướng</string>
+    <string name="settings_update_section_title">Cập nhật</string>
+    <string name="settings_update_section_description">Kiểm tra bản phát hành mới nhất trên GitHub.</string>
+    <string name="settings_update_button">Kiểm tra cập nhật</string>
+    <string name="settings_update_checking">Đang kiểm tra cập nhật…</string>
+    <string name="settings_update_up_to_date">Ứng dụng đã là bản mới nhất.</string>
+    <string name="settings_update_check_failed">Không thể kết nối GitHub.</string>
+    <string name="update_dialog_title">Có bản cập nhật mới</string>
+    <string name="update_dialog_message">Phiên bản %1$s hiện có trên GitHub.</string>
+    <string name="update_dialog_open_github">Mở GitHub</string>
+    <string name="update_dialog_later">Để sau</string>
+    <string name="update_dialog_download_apk">Tải APK</string>
+    
+    <!-- Auto Correct Settings -->
+    <string name="auto_correct_ricette_pastiera_name">Ricette Pastiera</string>
+    
+    <!-- Settings Categories -->
+    <string name="settings_category_keyboard_timing">Bàn phím &amp; Thời gian</string>
+    <string name="settings_category_text_input">Tính năng thông minh</string>
+    <string name="settings_category_auto_correction">Sửa tự động</string>
+    <string name="settings_category_customization">Tùy chỉnh</string>
+    <string name="settings_category_advanced">Nâng cao</string>
+    
+    <!-- Languages (Input Method Subtypes) -->
+    <string name="languages_title">Ngôn ngữ</string>
+    <string name="languages_description">Thêm ngôn ngữ vào bộ chọn phương thức nhập Android. Chỉ hiển thị các ngôn ngữ có từ điển và không phải ngôn ngữ hệ thống.</string>
+    <string name="languages_no_available">Tất cả ngôn ngữ khả dụng đã được thêm hoặc là ngôn ngữ hệ thống.</string>
+    
+    <!-- Keyboard Layout Settings -->
+    <string name="layout_save_content_description">Lưu bố cục</string>
+    <string name="layout_import_content_description">Nhập bố cục</string>
+    <string name="layout_imported_successfully">Nhập bố cục thành công</string>
+    <string name="layout_import_failed">Nhập bố cục thất bại</string>
+    <string name="layout_invalid_file">Tệp bố cục không hợp lệ</string>
+    <string name="layout_import_error">Lỗi khi nhập bố cục: %1$s</string>
+    <string name="layout_save_canceled">Đã hủy lưu</string>
+    <string name="layout_saved_successfully">Lưu bố cục thành công</string>
+    <string name="layout_save_error">Lỗi khi lưu bố cục: %1$s</string>
+    <string name="layout_imported_name">Bố cục đã nhập</string>
+    <string name="layout_imported_description">Nhập từ tệp</string>
+    <string name="layout_import_from_file">Nhập từ tệp</string>
+    <string name="layout_download_from_cloud">Tải từ kho đám mây</string>
+    <string name="online_layouts_title">Bố cục đám mây</string>
+    <string name="online_layouts_refresh">Làm mới</string>
+    <string name="online_layouts_empty">Không tìm thấy bố cục đám mây.</string>
+    <string name="online_layouts_manifest_error">Không tải được danh sách bố cục</string>
+    <string name="online_layouts_installed_badge">Đã cài</string>
+    <string name="online_layouts_size">Size: %1$s</string>
+    <string name="online_layouts_download">Tải xuống</string>
+    <string name="online_layouts_downloading">Đang tải xuống...</string>
+    <string name="online_layouts_download_progress">%1$s / %2$s</string>
+    <string name="online_layouts_download_success">Đã tải %1$s</string>
+    <string name="online_layouts_download_network_error">Lỗi mạng</string>
+    <string name="online_layouts_download_invalid_format">Định dạng bố cục không hợp lệ</string>
+    <string name="online_layouts_download_hash_mismatch">Xác minh tải xuống thất bại</string>
+    <string name="online_layouts_download_failed">Tải xuống thất bại</string>
+    <string name="online_layouts_uninstall">Xóa</string>
+    <string name="online_layouts_uninstall_confirm_title">Xóa bố cục</string>
+    <string name="online_layouts_uninstall_confirm_message">Bạn có chắc muốn xóa %1$s? Hành động này không thể hoàn tác.</string>
+    <string name="online_layouts_uninstall_success">Đã xóa %1$s</string>
+    <string name="online_layouts_uninstall_failed">Xóa bố cục thất bại</string>
+    <string name="layout_delete_content_description">Xóa bố cục</string>
+    <string name="layout_delete_confirmation_title">Xóa bố cục</string>
+    <string name="layout_delete_confirmation_message">Bạn có chắc muốn xóa bố cục \"%1$s\"? Hành động này không thể hoàn tác.</string>
+    <string name="layout_delete_success">Đã xóa bố cục thành công</string>
+    <string name="layout_delete_failed">Xóa bố cục thất bại</string>
+    <string name="layout_view_mapping">Xem ánh xạ</string>
+    <string name="layout_delete">Xóa</string>
+    <string name="layout_enable_for_cycling">Bật để chuyển vòng</string>
+    <string name="layout_select_as_active">Chọn làm bố cục đang dùng</string>
+    <string name="delete">Xóa</string>
+    
+    <!-- Main Activity Event Display -->
+    <string name="modifier_alt">ALT</string>
+    <string name="event_unicode_label">Unicode: </string>
+    <string name="event_output_label">Đầu ra: </string>
+    <string name="event_not_available">N/A</string>
+    
+    <!-- Nav Mode Key Labels -->
+    <string name="nav_mode_action_copy">Sao chép</string>
+    <string name="nav_mode_action_paste">Dán</string>
+    <string name="nav_mode_action_cut">Cắt</string>
+    <string name="nav_mode_action_undo">Hoàn tác</string>
+    <string name="nav_mode_action_select_all">SelAll</string>
+    <string name="nav_mode_action_expand_selection_left">←Sel</string>
+    <string name="nav_mode_action_expand_selection_right">→Sel</string>
+    <string name="nav_mode_action_toggle_pastierina">Pastierina</string>
+    <string name="nav_mode_keycode_up">↑</string>
+    <string name="nav_mode_keycode_down">↓</string>
+    <string name="nav_mode_keycode_left">←</string>
+    <string name="nav_mode_keycode_right">→</string>
+    <string name="nav_mode_keycode_center">○</string>
+    <string name="nav_mode_keycode_page_up">PgUp</string>
+    <string name="nav_mode_keycode_page_down">PgDn</string>
+    <string name="nav_mode_keycode_escape">Esc</string>
+    <string name="nav_mode_keycode_tab">Tab</string>
+    <string name="nav_mode_keycode_forward_delete">Del→</string>
+    <string name="nav_mode_key_unknown">?</string>
+    
+    <!-- Tutorial -->
+    <string name="tutorial_skip">Bỏ qua</string>
+    <string name="tutorial_previous">Trước</string>
+    <string name="tutorial_next">Tiếp</string>
+    <string name="tutorial_finish">Hoàn tất</string>
+    <string name="tutorial_page_welcome_title">Chào mừng đến với Pastiera</string>
+    <string name="tutorial_page_welcome_description">Pastiera là một phương thức nhập nâng cao cho thiết bị Android PKB, hỗ trợ Nav Mode, phím tắt, ánh xạ bàn phím tùy chỉnh và nhiều hơn nữa.</string>
+    <string name="tutorial_page_enable_title">Bật Pastiera</string>
+    <string name="tutorial_page_enable_description">Để bắt đầu, bạn cần bật Pastiera làm phương thức nhập trong Cài đặt Android. Nhấn nút bên dưới để mở cài đặt.</string>
+    <string name="tutorial_page_select_title">Chọn Pastiera</string>
+    <string name="tutorial_page_select_description">Để dùng Pastiera, hãy chọn nó trong danh sách phương thức nhập. Chọn giữa giao diện IME đầy đủ với tùy chọn &quot;Use on-screen keyboard&quot; bật hoặc giao diện &quot;Pastierina&quot; tối giản khi tắt tùy chọn đó.</string>
+    <string name="tutorial_page_led_title">Đèn LED</string>
+    <string name="tutorial_page_led_description">Để tận dụng Pastiera tốt hơn, hãy đặt phím Fn hoạt động như Ctrl trong cài đặt hệ thống Android. Thanh IME hiển thị bốn đèn LED: màu xanh khi modifier đang bật một lần, màu cam khi bị khóa. LED của bố cục SYM màu xanh ở trang emoji và màu cam ở trang ký hiệu.</string>
+    <string name="tutorial_page_nav_mode_title">Nav Mode</string>
+    <string name="tutorial_page_nav_mode_description">Nav Mode cho phép bạn điều hướng giao diện thiết bị bằng các phím chữ như IJKL hoặc ESDF.\nĐể kích hoạt:\n• Nhấn Ctrl nhanh hai lần\n• Các phím chữ trở thành phím điều hướng\n• Nhấn Ctrl lần nữa để thoát\nMọi phím tắt đều có thể đổi trong Cài đặt nâng cao.</string>
+    <string name="tutorial_page_customization_title">Tùy chỉnh</string>
+    <string name="tutorial_page_customization_description">Pastiera cung cấp nhiều tùy chọn tùy chỉnh:\n• Bố cục bàn phím tùy chỉnh\n• Launcher shortcuts &amp; Power Shortcuts\n• Thanh IME có thể dùng như thanh vuốt để di chuyển con trỏ\n• Ánh xạ tùy chỉnh cho Nav Mode\nHãy khám phá phần cài đặt để tìm cấu hình phù hợp nhất với bạn!</string>
+    <string name="tutorial_page_ready_title">Sẵn sàng bắt đầu</string>
+    <string name="tutorial_page_ready_description">Bạn đã sẵn sàng dùng Pastiera! Hãy nhớ rằng bạn luôn có thể quay lại cài đặt để tùy chỉnh bàn phím theo nhu cầu.</string>
+    <string name="tutorial_enable_button">Bật Pastiera</string>
+    <string name="tutorial_enabled_message">Pastiera đã được bật!</string>
+    <string name="tutorial_select_button">Chọn Pastiera</string>
+    <string name="tutorial_enable_first_message">Hãy bật Pastiera trước ở trang trước</string>
+    <string name="tutorial_selected_message">Pastiera đã được chọn!</string>
+    <string name="tutorial_show">Hiển thị hướng dẫn</string>
+    <string name="tutorial_review_description">Xem lại hướng dẫn giới thiệu</string>
+
+    <string name="pastierina_mode_title">Chế độ Pastierina</string>
+    <string name="pastierina_mode_description">Bật/tắt giao diện tối giản</string>
+
+    <string name="titan2_layout_title">Căn chỉnh bố cục Titan 2</string>
+    <string name="titan2_layout_description">Căn bàn phím trên màn hình theo phím vật lý Titan 2</string>
+
+    <!-- Backup & Restore -->
+    <string name="backup_now">Sao lưu ngay</string>
+    <string name="backup_now_description">Xuất tất cả cài đặt và bố cục tùy chỉnh thành tệp ZIP</string>
+    <string name="restore_from_file">Khôi phục từ tệp</string>
+    <string name="restore_from_file_description">Nhập tệp sao lưu ZIP của Pastiera</string>
+    <string name="backup_completed">Sao lưu hoàn tất</string>
+    <string name="restore_completed">Khôi phục hoàn tất</string>
+    <string name="backup_failed">Sao lưu thất bại: %1$s</string>
+    <string name="restore_failed">Khôi phục thất bại: %1$s</string>
+    
+    <!-- Units -->
+    <string name="dip_unit">DIP</string>
+    
+    <!-- Custom Input Styles -->
+    <string name="custom_input_styles_title">Ngôn ngữ và bố cục</string>
+    <string name="custom_input_styles_description">Thêm ngôn ngữ và bố cục bàn phím không gắn với locale hệ thống</string>
+    <string name="custom_input_styles_add">Thêm kiểu nhập</string>
+    <string name="custom_input_styles_empty">Chưa có kiểu nhập tùy chỉnh nào. Nhấn nút + để thêm.</string>
+    <string name="custom_input_styles_delete">Xóa</string>
+    <string name="custom_input_styles_delete_confirm_title">Xóa kiểu nhập</string>
+    <string name="custom_input_styles_delete_confirm_message">Bạn có chắc muốn xóa kiểu nhập này?</string>
+    <string name="custom_input_styles_add_dialog_title">Thêm kiểu nhập</string>
+    <string name="custom_input_styles_edit_dialog_title">Sửa kiểu nhập</string>
+    <string name="custom_input_styles_edit_system_locale_title">Sửa bố cục locale hệ thống</string>
+    <string name="custom_input_styles_select_locale">Chọn ngôn ngữ</string>
+    <string name="custom_input_styles_select_layout">Chọn bố cục bàn phím</string>
+    <string name="custom_input_styles_save">Lưu</string>
+    <string name="custom_input_styles_cancel">Hủy</string>
+    <string name="custom_input_styles_duplicate_error">Tổ hợp ngôn ngữ và bố cục này đã tồn tại</string>
+    <string name="custom_input_styles_open_ime_picker">Mở bộ chọn IME</string>
+    <string name="custom_input_styles_open_ime_picker_description">Mở bộ chọn phương thức nhập hệ thống để bật ngôn ngữ mới</string>
+    <string name="custom_input_styles_format">%1$s - %2$s</string>
+    <string name="custom_input_styles_add_custom_locale">Thêm locale tùy chỉnh…</string>
+    <string name="custom_input_styles_custom_locale_title">Nhập mã locale tùy chỉnh</string>
+    <string name="custom_input_styles_custom_locale_label">Mã locale</string>
+    <string name="custom_input_styles_custom_locale_hint">Nhập mã locale (ví dụ: en_US, it_IT, fr_FR)</string>
+    <string name="custom_input_styles_custom_locale_empty_error">Mã locale không được để trống</string>
+    <string name="custom_input_styles_custom_locale_invalid_error">Định dạng mã locale không hợp lệ. Dùng định dạng: xx_XX hoặc xx</string>
+    <string name="custom_input_styles_no_dictionary_warning">Không có từ điển cho locale này. Gợi ý và sửa tự động sẽ bị tắt.</string>
+    <string name="custom_input_styles_layout_mapping_updated">Đã cập nhật ánh xạ bố cục: %1$s - %2$s</string>
+    <string name="custom_input_styles_input_style_updated">Đã cập nhật kiểu nhập: %1$s - %2$s</string>
+    <string name="custom_input_styles_input_style_added">Đã thêm kiểu nhập: %1$s - %2$s</string>
+    <string name="custom_input_styles_input_style_deleted">Đã xóa kiểu nhập</string>
+    <string name="custom_input_styles_language_label">Ngôn ngữ</string>
+    <string name="custom_input_styles_locale_display">%1$s (%2$s)</string>
+    <string name="custom_input_styles_system_locale_hint">Locale hệ thống - không thể thay đổi</string>
+    <string name="custom_input_styles_system_badge">Hệ thống</string>
+    <string name="custom_input_styles_default_layout">qwerty</string>
+    <string name="custom_input_styles_change_layout_hint">Chạm để đổi bố cục</string>
+    <string name="custom_input_styles_custom_locale_placeholder">en_US, it_IT, fr_FR, v.v.</string>
+    <string name="custom_input_styles_installed_dictionaries">Từ điển đã cài</string>
+
+    <!-- Installed dictionaries screen -->
+    <string name="installed_dictionaries_title">Từ điển đã cài</string>
+    <string name="installed_dictionaries_empty">Không tìm thấy từ điển đã serialize.</string>
+    <string name="installed_dictionaries_language_code">Ngôn ngữ: %1$s</string>
+    <string name="installed_dictionaries_filename">Tệp: %1$s</string>
+    <string name="installed_dictionaries_import">Nhập từ điển</string>
+    <string name="installed_dictionaries_import_success">Đã nhập %1$s</string>
+    <string name="installed_dictionaries_import_invalid_name">Tên tệp không hợp lệ. Cần dạng *_base.dict</string>
+    <string name="installed_dictionaries_import_invalid_format">Định dạng từ điển không hợp lệ</string>
+    <string name="installed_dictionaries_import_failed">Nhập thất bại</string>
+    <string name="installed_dictionaries_imported_badge">Đã nhập</string>
+    <string name="installed_dictionaries_installed_badge">Đã cài</string>
+    <string name="installed_dictionaries_available_online">Có sẵn trực tuyến</string>
+    <string name="installed_dictionaries_size">Size: %1$s</string>
+    <string name="installed_dictionaries_refresh">Làm mới</string>
+    <string name="installed_dictionaries_download">Tải xuống</string>
+    <string name="installed_dictionaries_download_success">Đã tải %1$s</string>
+    <string name="installed_dictionaries_download_network_error">Lỗi mạng</string>
+    <string name="installed_dictionaries_download_invalid_format">Định dạng từ điển không hợp lệ</string>
+    <string name="installed_dictionaries_download_hash_mismatch">Xác minh tải xuống thất bại</string>
+    <string name="installed_dictionaries_download_failed">Tải xuống thất bại</string>
+    <string name="installed_dictionaries_download_progress">%1$s / %2$s</string>
+    <string name="installed_dictionaries_manifest_error">Không tải được danh sách từ điển</string>
+    <string name="installed_dictionaries_uninstall">Gỡ cài đặt</string>
+    <string name="installed_dictionaries_uninstall_confirm_title">Gỡ từ điển</string>
+    <string name="installed_dictionaries_uninstall_confirm_message">Bạn có chắc muốn gỡ %1$s? Hành động này không thể hoàn tác.</string>
+    <string name="installed_dictionaries_uninstall_success">Đã gỡ %1$s</string>
+    <string name="installed_dictionaries_uninstall_not_found">Không tìm thấy tệp từ điển</string>
+    <string name="installed_dictionaries_uninstall_cannot_delete_asset">Không thể gỡ từ điển tích hợp sẵn</string>
+    <string name="installed_dictionaries_uninstall_failed">Gỡ từ điển thất bại</string>
+
+    <!-- Clipboard page UI -->
+    <string name="clipboard_history_title">Lịch sử bộ nhớ tạm</string>
+    <string name="clipboard_clear_all">Xóa tất cả</string>
+    <string name="clipboard_empty_state">Không có lịch sử bộ nhớ tạm</string>
+    <string name="clipboard_pin">Ghim</string>
+    <string name="clipboard_unpin">Bỏ ghim</string>
+    <string name="clipboard_delete">Xóa</string>
+    <string name="clipboard_retention_apply">Áp dụng</string>
+    <string name="clipboard_retention_time_title">Thời gian giữ bộ nhớ tạm</string>
+    <string name="clipboard_retention_time_description">0 = không bao giờ xóa mục đã chép</string>
+    <string name="clipboard_retention_time_minutes">%1$d phút</string>
+
+    <!-- Trackpad Gesture Settings -->
+    <string name="trackpad_gestures_title">Gợi ý bằng cử chỉ trackpad</string>
+    <string name="trackpad_gestures_description">Vuốt lên trên trackpad để chấp nhận gợi ý</string>
+    <string name="trackpad_gestures_enabled_title">Bật cử chỉ trackpad</string>
+    <string name="trackpad_gestures_enabled_description">Vuốt lên trên trackpad để chấp nhận gợi ý từ</string>
+    <string name="trackpad_gestures_show_tutorial">Hiển thị hướng dẫn</string>
+    <string name="trackpad_gestures_tutorial_description">Tìm hiểu cách dùng cử chỉ trackpad</string>
+    <string name="trackpad_gestures_install_shizuku">Cài Shizuku</string>
+    <string name="trackpad_gestures_install_shizuku_description">Cần thiết để phát hiện cử chỉ trackpad</string>
+    <string name="trackpad_gestures_shizuku_url">https://github.com/RikkaApps/Shizuku/releases/</string>
+    <string name="trackpad_gestures_shizuku_connected">Shizuku đã kết nối</string>
+    <string name="trackpad_gestures_shizuku_not_connected">Shizuku chưa kết nối</string>
+    <string name="trackpad_gestures_shizuku_not_authorized">Ứng dụng chưa được cấp quyền trong Shizuku</string>
+    <string name="trackpad_swipe_threshold_title">Độ nhạy vuốt trackpad</string>
+    <string name="trackpad_swipe_threshold_description">Điều chỉnh khoảng cách cần vuốt lên để chấp nhận một gợi ý.</string>
+
+    <!-- Trackpad Gesture Tutorial -->
+    <string name="trackpad_tutorial_title">Gợi ý bằng cử chỉ trackpad</string>
+    <string name="trackpad_tutorial_welcome_title">Gợi ý bằng cử chỉ trackpad</string>
+    <string name="trackpad_tutorial_welcome_description">Vuốt lên trên trackpad để nhanh chóng chấp nhận gợi ý từ mà không cần nhấn!</string>
+    <string name="trackpad_tutorial_how_it_works_title">Cách hoạt động</string>
+    <string name="trackpad_tutorial_how_it_works_description">Trackpad được chia thành ba phần:\n\n• 1/3 bên trái → Chấp nhận gợi ý bên trái\n• 1/3 ở giữa → Chấp nhận gợi ý ở giữa\n• 1/3 bên phải → Chấp nhận gợi ý bên phải\n\nChỉ cần vuốt lên trong vùng tương ứng để chèn gợi ý đó.</string>
+    <string name="trackpad_tutorial_shizuku_required_title">Cần Shizuku</string>
+    <string name="trackpad_tutorial_shizuku_required_description">Tính năng này cần Shizuku để truy cập sự kiện trackpad.\n\n1. Cài Shizuku từ GitHub releases\n2. Bật tùy chọn nhà phát triển trong cài đặt Android\n3. Kết nối thiết bị với PC có cài ADB\n4. Chạy lệnh mà Shizuku hiển thị trong ứng dụng\n5. Cấp quyền cho Pastiera trong Shizuku\n\nTính năng sẽ hoạt động tự động khi Shizuku đang chạy.</string>
+    <string name="trackpad_tutorial_tips_title">Mẹo</string>
+    <string name="trackpad_tutorial_tips_description">• Đảm bảo thao tác vuốt của bạn chủ yếu theo chiều dọc\n• Cử chỉ hoạt động tốt nhất với thao tác vuốt nhanh, dứt khoát\n• Nếu các ngón tay khác đang đặt trên bàn phím, cử chỉ có thể không được nhận (chống chạm nhầm phần cứng)\n• Có thể bật/tắt tính năng này trong Cài đặt nâng cao</string>
+    <string name="trackpad_tutorial_complete">Đã hiểu</string>
+    <string name="trackpad_tutorial_next">Tiếp</string>
+    <string name="trackpad_tutorial_previous">Trước</string>
+
+    <!-- Trackpad Debug Accessibility Service -->
+    <string name="trackpad_debug_service_description">Hiển thị sự kiện trackpad trong một lớp phủ nhỏ để phục vụ gỡ lỗi</string>
+
+    <!-- Status Bar Buttons Configuration -->
+    <string name="status_bar_buttons_title">Nút thanh trạng thái</string>
+    <string name="status_bar_buttons_description">Tùy chỉnh các nút thanh trạng thái</string>
+    <string name="status_bar_slot_left">Vị trí trái</string>
+    <string name="status_bar_slot_right_1">Vị trí phải 1</string>
+    <string name="status_bar_slot_right_2">Vị trí phải 2</string>
+    <string name="status_bar_button_none">Không có</string>
+    <string name="status_bar_button_none_description">Trống</string>
+    <string name="status_bar_button_clipboard">Bộ nhớ tạm</string>
+    <string name="status_bar_button_clipboard_description">Lịch sử bộ nhớ tạm</string>
+    <string name="status_bar_button_microphone">Micro</string>
+    <string name="status_bar_button_microphone_description">Nhập giọng nói</string>
+    <string name="status_bar_button_emoji">Emoji</string>
+    <string name="status_bar_button_emoji_description">Bộ chọn emoji</string>
+    <string name="status_bar_button_language">Ngôn ngữ</string>
+    <string name="status_bar_button_language_description">Chuyển ngôn ngữ</string>
+    <string name="status_bar_button_language_state_description">Ngôn ngữ %1$s, bố cục %2$s</string>
+    <string name="status_bar_button_hamburger">Menu</string>
+    <string name="status_bar_button_hamburger_description">Thao tác nhanh</string>
+    <string name="status_bar_button_settings">Cài đặt</string>
+    <string name="status_bar_button_settings_description">Mở cài đặt</string>
+    <string name="status_bar_button_symbols">Ký hiệu</string>
+    <string name="status_bar_button_symbols_description">Bàn phím ký hiệu</string>
+    <string name="status_bar_buttons_reset">Đặt lại</string>
+</resources>

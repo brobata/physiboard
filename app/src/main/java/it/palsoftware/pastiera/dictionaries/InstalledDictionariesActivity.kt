@@ -66,6 +66,8 @@ import kotlinx.coroutines.launch
 import android.provider.OpenableColumns
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerializationException
+import kotlinx.serialization.cbor.Cbor
+import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
 import it.palsoftware.pastiera.core.suggestions.DictionaryIndex
@@ -642,8 +644,14 @@ private fun importDictionaryFromSaf(context: Context, uri: android.net.Uri): Imp
 
 @OptIn(ExperimentalSerializationApi::class)
 private fun validateDictionaryStream(input: InputStream) {
-    val json = Json { ignoreUnknownKeys = true }
-    json.decodeFromStream<DictionaryIndex>(input)
+    val bytes = input.readBytes()
+    val isJson = bytes.isNotEmpty() && bytes[0] == '{'.code.toByte()
+    if (isJson) {
+        val json = Json { ignoreUnknownKeys = true }
+        json.decodeFromString<DictionaryIndex>(bytes.decodeToString())
+    } else {
+        Cbor.decodeFromByteArray<DictionaryIndex>(bytes)
+    }
 }
 
 private fun deleteDictionaryFile(context: Context, dictionary: UnifiedDictionaryItem): UninstallResult {

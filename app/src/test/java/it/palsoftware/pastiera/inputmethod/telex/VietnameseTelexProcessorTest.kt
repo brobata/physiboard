@@ -34,6 +34,17 @@ class VietnameseTelexProcessorTest {
     }
 
     @Test
+    fun `tone target handles common Vietnamese clusters`() {
+        assertRewrite("hoa", 'f', "hòa")
+        assertRewrite("qua", 's', "quá")
+        assertRewrite("gia", 'f', "già")
+        assertRewrite("giai", 'r', "giải")
+        assertRewrite("thuy", 's', "thuý")
+        assertRewrite("huê", 's', "huế")
+        assertRewrite("tươ", 'r', "tưở")
+    }
+
+    @Test
     fun `z clears diacritics in syllable`() {
         assertRewrite("tưở", 'z', "tuo")
     }
@@ -47,6 +58,14 @@ class VietnameseTelexProcessorTest {
     fun `repeating shape key can escape transformed vowel`() {
         assertRewrite("xô", 'o', "xoo")
         assertRewrite("mơ", 'w', "mow")
+    }
+
+    @Test
+    fun `uppercase keys preserve case in transformations and escapes`() {
+        assertRewrite("TA", 'S', "TÁ")
+        assertRewrite("D", 'D', "Đ")
+        assertRewrite("Ô", 'O', "OO")
+        assertRewrite("Ư", 'W', "UW")
     }
 
     @Test

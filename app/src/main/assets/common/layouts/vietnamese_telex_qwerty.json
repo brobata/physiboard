@@ -1,6 +1,6 @@
 {
-  "name": "Vietnamese (TELEX, QWERTY) / Tiếng Việt (TELEX, QWERTY)",
-  "description": "QWERTY layout with Vietnamese TELEX live composition input mode. / Bố cục QWERTY với bộ gõ TELEX tiếng Việt nhập liệu trực tiếp khi đang gõ.",
+  "name": "Tiếng Việt (TELEX, QWERTY) / Vietnamese (TELEX, QWERTY)",
+  "description": "Bố cục QWERTY với bộ gõ TELEX tiếng Việt nhập liệu trực tiếp khi đang gõ. / QWERTY layout with Vietnamese TELEX live composition input mode.",
   "mappings": {
     "KEYCODE_Q": { "lowercase": "q", "uppercase": "Q" },
     "KEYCODE_W": { "lowercase": "w", "uppercase": "W" },

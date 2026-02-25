@@ -80,17 +80,17 @@ internal object VietnameseTelexProcessor {
             val replacement = when (key) {
                 'a' -> when {
                     parts.isBase('a') && !parts.hasShape() -> parts.withShape(CIRCUMFLEX).toChar().toString()
-                    parts.isBase('a') && parts.hasShape(CIRCUMFLEX) -> "${caseOf(parts.base)}${keyChar.lowercaseChar()}"
+                    parts.isBase('a') && parts.hasShape(CIRCUMFLEX) -> "${caseOf(parts.base)}$keyChar"
                     else -> null
                 }
                 'e' -> when {
                     parts.isBase('e') && !parts.hasShape() -> parts.withShape(CIRCUMFLEX).toChar().toString()
-                    parts.isBase('e') && parts.hasShape(CIRCUMFLEX) -> "${caseOf(parts.base)}${keyChar.lowercaseChar()}"
+                    parts.isBase('e') && parts.hasShape(CIRCUMFLEX) -> "${caseOf(parts.base)}$keyChar"
                     else -> null
                 }
                 'o' -> when {
                     parts.isBase('o') && !parts.hasShape() -> parts.withShape(CIRCUMFLEX).toChar().toString()
-                    parts.isBase('o') && parts.hasShape(CIRCUMFLEX) -> "${caseOf(parts.base)}${keyChar.lowercaseChar()}"
+                    parts.isBase('o') && parts.hasShape(CIRCUMFLEX) -> "${caseOf(parts.base)}$keyChar"
                     else -> null
                 }
                 'd' -> when (chars[idx]) {
@@ -105,9 +105,9 @@ internal object VietnameseTelexProcessor {
                     parts.isBase('a') && !parts.hasShape() -> parts.withShape(BREVE).toChar().toString()
                     parts.isBase('o') && !parts.hasShape() -> parts.withShape(HORN).toChar().toString()
                     parts.isBase('u') && !parts.hasShape() -> parts.withShape(HORN).toChar().toString()
-                    parts.isBase('a') && parts.hasShape(BREVE) -> "${caseOf(parts.base)}w"
-                    parts.isBase('o') && parts.hasShape(HORN) -> "${caseOf(parts.base)}w"
-                    parts.isBase('u') && parts.hasShape(HORN) -> "${caseOf(parts.base)}w"
+                    parts.isBase('a') && parts.hasShape(BREVE) -> "${caseOf(parts.base)}$keyChar"
+                    parts.isBase('o') && parts.hasShape(HORN) -> "${caseOf(parts.base)}$keyChar"
+                    parts.isBase('u') && parts.hasShape(HORN) -> "${caseOf(parts.base)}$keyChar"
                     else -> null
                 }
                 else -> null
@@ -152,35 +152,79 @@ internal object VietnameseTelexProcessor {
     }
 
     private fun findToneTargetIndex(chars: List<Char>): Int? {
-        val vowelIndices = chars.indices.filter { Parts.fromChar(chars[it]).isVietnameseVowel() }
-        if (vowelIndices.isEmpty()) return null
+        val allVowelIndices = chars.indices.filter { Parts.fromChar(chars[it]).isVietnameseVowel() }
+        if (allVowelIndices.isEmpty()) return null
+        if (allVowelIndices.size == 1) return allVowelIndices.first()
+
+        // Drop semivowels in common Vietnamese onset digraphs (qu-, gi-) when another vowel follows.
+        val vowelIndices = dropLeadingSemivowels(chars, allVowelIndices)
         if (vowelIndices.size == 1) return vowelIndices.first()
 
-        // Common-case heuristics for Vietnamese TELEX.
-        val lastIdx = vowelIndices.last()
-        val last = Parts.fromChar(chars[lastIdx])
-        val prevIdx = vowelIndices.getOrNull(vowelIndices.size - 2)
-        val prev = prevIdx?.let { Parts.fromChar(chars[it]) }
+        val vowelParts = vowelIndices.map { Parts.fromChar(chars[it]) }
+        val bases = vowelParts.map { it.base.lowercaseChar() }
 
-        // Common "ươ" cluster -> tone on ơ.
-        if (prev != null && prev.isBase('u') && prev.hasShape(HORN) && last.isBase('o') && last.hasShape(HORN)) {
-            return lastIdx
+        // Prefer explicit Vietnamese shaped vowels (ă â ê ô ơ ư) when present.
+        val shapedPositions = vowelParts.indices.filter { vowelParts[it].hasShape() }
+        if (shapedPositions.isNotEmpty()) {
+            val uoHornPos = findUoHornClusterPosition(vowelParts)
+            if (uoHornPos != null) return vowelIndices[uoHornPos + 1] // tone on ơ in "ươ"
+            if (shapedPositions.size == 1) return vowelIndices[shapedPositions.first()]
+            return vowelIndices[shapedPositions.last()]
+        }
+
+        // Common raw-vowel triphthongs where tone lands on the middle vowel.
+        if (bases.size >= 3) {
+            val seq = bases.joinToString("")
+            if (seq.startsWith("uy")) return vowelIndices[1] // e.g. khuỷu, khuya
+        }
+
+        val lastPos = vowelIndices.lastIndex
+        val last = vowelParts[lastPos]
+        val prevPos = lastPos - 1
+        val prev = vowelParts.getOrNull(prevPos)
+
+        // "oa"/"oe" commonly take tone on 'o'.
+        if (prev != null && prev.base.lowercaseChar() == 'o' && last.base.lowercaseChar() in setOf('a', 'e')) {
+            return vowelIndices[prevPos]
         }
 
         // If the final vowel is a semivowel, prefer the previous vowel.
-        if (prevIdx != null && last.base.lowercaseChar() in setOf('i', 'y', 'u')) {
+        if (prev != null && last.base.lowercaseChar() in setOf('i', 'y', 'u')) {
             // Exception: "uy" usually carries tone on y.
-            if (!(prev!!.base.lowercaseChar() == 'u' && last.base.lowercaseChar() == 'y')) {
-                return prevIdx
+            if (!(prev.base.lowercaseChar() == 'u' && last.base.lowercaseChar() == 'y')) {
+                return vowelIndices[prevPos]
             }
         }
 
-        // "oa"/"oe" commonly take tone on 'o'.
-        if (prevIdx != null && prev!!.base.lowercaseChar() == 'o' && last.base.lowercaseChar() in setOf('a', 'e')) {
-            return prevIdx
-        }
+        return vowelIndices[lastPos]
+    }
 
-        return lastIdx
+    private fun dropLeadingSemivowels(chars: List<Char>, vowelIndices: List<Int>): List<Int> {
+        if (vowelIndices.size < 2) return vowelIndices
+        val firstIdx = vowelIndices.first()
+        val first = Parts.fromChar(chars[firstIdx])
+
+        if (firstIdx == 1 && chars[0].lowercaseChar() == 'q' && first.isBase('u')) {
+            return vowelIndices.drop(1)
+        }
+        if (firstIdx == 1 && chars[0].lowercaseChar() == 'g' && first.isBase('i')) {
+            return vowelIndices.drop(1)
+        }
+        return vowelIndices
+    }
+
+    private fun findUoHornClusterPosition(vowelParts: List<Parts>): Int? {
+        for (i in 0 until vowelParts.lastIndex) {
+            val first = vowelParts[i]
+            val second = vowelParts[i + 1]
+            if (
+                first.isBase('u') && first.hasShape(HORN) &&
+                second.isBase('o') && second.hasShape(HORN)
+            ) {
+                return i
+            }
+        }
+        return null
     }
 
     private fun caseOf(base: Char): String = if (base.isUpperCase()) base.toString() else base.lowercaseChar().toString()
