@@ -4,31 +4,88 @@
   "mappings": {
     "KEYCODE_Q": { "lowercase": ";", "uppercase": ":" },
     "KEYCODE_W": { "lowercase": "ς", "uppercase": "Σ" },
-    "KEYCODE_E": { "lowercase": "ε", "uppercase": "Ε" },
+    "KEYCODE_E": {
+      "lowercase": "ε",
+      "uppercase": "Ε",
+      "multiTapEnabled": true,
+      "taps": [
+        { "lowercase": "ε", "uppercase": "Ε" },
+        { "lowercase": "έ", "uppercase": "Έ" }
+      ]
+    },
     "KEYCODE_R": { "lowercase": "ρ", "uppercase": "Ρ" },
     "KEYCODE_T": { "lowercase": "τ", "uppercase": "Τ" },
-    "KEYCODE_Y": { "lowercase": "υ", "uppercase": "Υ" },
+    "KEYCODE_Y": {
+      "lowercase": "υ",
+      "uppercase": "Υ",
+      "multiTapEnabled": true,
+      "taps": [
+        { "lowercase": "υ", "uppercase": "Υ" },
+        { "lowercase": "ύ", "uppercase": "Ύ" },
+        { "lowercase": "ϋ", "uppercase": "Ϋ" }
+      ]
+    },
     "KEYCODE_U": { "lowercase": "θ", "uppercase": "Θ" },
-    "KEYCODE_I": { "lowercase": "ι", "uppercase": "Ι" },
-    "KEYCODE_O": { "lowercase": "ο", "uppercase": "Ο" },
+    "KEYCODE_I": {
+      "lowercase": "ι",
+      "uppercase": "Ι",
+      "multiTapEnabled": true,
+      "taps": [
+        { "lowercase": "ι", "uppercase": "Ι" },
+        { "lowercase": "ί", "uppercase": "Ί" },
+        { "lowercase": "ϊ", "uppercase": "Ϊ" }
+      ]
+    },
+    "KEYCODE_O": {
+      "lowercase": "ο",
+      "uppercase": "Ο",
+      "multiTapEnabled": true,
+      "taps": [
+        { "lowercase": "ο", "uppercase": "Ο" },
+        { "lowercase": "ό", "uppercase": "Ό" }
+      ]
+    },
     "KEYCODE_P": { "lowercase": "π", "uppercase": "Π" },
-    "KEYCODE_A": { "lowercase": "α", "uppercase": "Α" },
+    "KEYCODE_A": {
+      "lowercase": "α",
+      "uppercase": "Α",
+      "multiTapEnabled": true,
+      "taps": [
+        { "lowercase": "α", "uppercase": "Α" },
+        { "lowercase": "ά", "uppercase": "Ά" }
+      ]
+    },
     "KEYCODE_S": { "lowercase": "σ", "uppercase": "Σ" },
     "KEYCODE_D": { "lowercase": "δ", "uppercase": "Δ" },
     "KEYCODE_F": { "lowercase": "φ", "uppercase": "Φ" },
     "KEYCODE_G": { "lowercase": "γ", "uppercase": "Γ" },
-    "KEYCODE_H": { "lowercase": "η", "uppercase": "Η" },
+    "KEYCODE_H": {
+      "lowercase": "η",
+      "uppercase": "Η",
+      "multiTapEnabled": true,
+      "taps": [
+        { "lowercase": "η", "uppercase": "Η" },
+        { "lowercase": "ή", "uppercase": "Ή" }
+      ]
+    },
     "KEYCODE_J": { "lowercase": "ξ", "uppercase": "Ξ" },
     "KEYCODE_K": { "lowercase": "κ", "uppercase": "Κ" },
     "KEYCODE_L": { "lowercase": "λ", "uppercase": "Λ" },
     "KEYCODE_Z": { "lowercase": "ζ", "uppercase": "Ζ" },
     "KEYCODE_X": { "lowercase": "χ", "uppercase": "Χ" },
     "KEYCODE_C": { "lowercase": "ψ", "uppercase": "Ψ" },
-    "KEYCODE_V": { "lowercase": "ω", "uppercase": "Ω" },
+    "KEYCODE_V": {
+      "lowercase": "ω",
+      "uppercase": "Ω",
+      "multiTapEnabled": true,
+      "taps": [
+        { "lowercase": "ω", "uppercase": "Ω" },
+        { "lowercase": "ώ", "uppercase": "Ώ" }
+      ]
+    },
     "KEYCODE_B": { "lowercase": "β", "uppercase": "Β" },
     "KEYCODE_N": { "lowercase": "ν", "uppercase": "Ν" },
     "KEYCODE_M": { "lowercase": "μ", "uppercase": "Μ" }
   }
 }
-
 
