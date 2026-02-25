@@ -28,7 +28,18 @@
     },
     "KEYCODE_U": {
       "lowercase": "г",
-      "uppercase": "Г"
+      "uppercase": "Г",
+      "multiTapEnabled": true,
+      "taps": [
+        {
+          "lowercase": "г",
+          "uppercase": "Г"
+        },
+        {
+          "lowercase": "ґ",
+          "uppercase": "Ґ"
+        }
+      ]
     },
     "KEYCODE_I": {
       "lowercase": "ш",
@@ -69,10 +80,6 @@
         {
           "lowercase": "ф",
           "uppercase": "Ф"
-        },
-        {
-          "lowercase": "",
-          "uppercase": ""
         }
       ]
     },
