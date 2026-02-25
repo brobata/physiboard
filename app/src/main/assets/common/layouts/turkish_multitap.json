@@ -1,0 +1,90 @@
+{
+  "name": "Turkish (multi-tap)",
+  "description": "QWERTY-based Turkish layout with multi-tap access to Turkish-specific letters.",
+  "mappings": {
+    "KEYCODE_Q": { "lowercase": "q", "uppercase": "Q" },
+    "KEYCODE_W": { "lowercase": "w", "uppercase": "W" },
+    "KEYCODE_E": { "lowercase": "e", "uppercase": "E" },
+    "KEYCODE_R": { "lowercase": "r", "uppercase": "R" },
+    "KEYCODE_T": { "lowercase": "t", "uppercase": "T" },
+    "KEYCODE_Y": { "lowercase": "y", "uppercase": "Y" },
+    "KEYCODE_U": {
+      "lowercase": "u",
+      "uppercase": "U",
+      "multiTapEnabled": true,
+      "taps": [
+        { "lowercase": "u", "uppercase": "U" },
+        { "lowercase": "ü", "uppercase": "Ü" },
+        { "lowercase": "û", "uppercase": "Û" }
+      ]
+    },
+    "KEYCODE_I": {
+      "lowercase": "i",
+      "uppercase": "İ",
+      "multiTapEnabled": true,
+      "taps": [
+        { "lowercase": "i", "uppercase": "İ" },
+        { "lowercase": "ı", "uppercase": "I" },
+        { "lowercase": "î", "uppercase": "Î" }
+      ]
+    },
+    "KEYCODE_O": {
+      "lowercase": "o",
+      "uppercase": "O",
+      "multiTapEnabled": true,
+      "taps": [
+        { "lowercase": "o", "uppercase": "O" },
+        { "lowercase": "ö", "uppercase": "Ö" }
+      ]
+    },
+    "KEYCODE_P": { "lowercase": "p", "uppercase": "P" },
+    "KEYCODE_A": {
+      "lowercase": "a",
+      "uppercase": "A",
+      "multiTapEnabled": true,
+      "taps": [
+        { "lowercase": "a", "uppercase": "A" },
+        { "lowercase": "â", "uppercase": "Â" }
+      ]
+    },
+    "KEYCODE_S": {
+      "lowercase": "s",
+      "uppercase": "S",
+      "multiTapEnabled": true,
+      "taps": [
+        { "lowercase": "s", "uppercase": "S" },
+        { "lowercase": "ş", "uppercase": "Ş" }
+      ]
+    },
+    "KEYCODE_D": { "lowercase": "d", "uppercase": "D" },
+    "KEYCODE_F": { "lowercase": "f", "uppercase": "F" },
+    "KEYCODE_G": {
+      "lowercase": "g",
+      "uppercase": "G",
+      "multiTapEnabled": true,
+      "taps": [
+        { "lowercase": "g", "uppercase": "G" },
+        { "lowercase": "ğ", "uppercase": "Ğ" }
+      ]
+    },
+    "KEYCODE_H": { "lowercase": "h", "uppercase": "H" },
+    "KEYCODE_J": { "lowercase": "j", "uppercase": "J" },
+    "KEYCODE_K": { "lowercase": "k", "uppercase": "K" },
+    "KEYCODE_L": { "lowercase": "l", "uppercase": "L" },
+    "KEYCODE_Z": { "lowercase": "z", "uppercase": "Z" },
+    "KEYCODE_X": { "lowercase": "x", "uppercase": "X" },
+    "KEYCODE_C": {
+      "lowercase": "c",
+      "uppercase": "C",
+      "multiTapEnabled": true,
+      "taps": [
+        { "lowercase": "c", "uppercase": "C" },
+        { "lowercase": "ç", "uppercase": "Ç" }
+      ]
+    },
+    "KEYCODE_V": { "lowercase": "v", "uppercase": "V" },
+    "KEYCODE_B": { "lowercase": "b", "uppercase": "B" },
+    "KEYCODE_N": { "lowercase": "n", "uppercase": "N" },
+    "KEYCODE_M": { "lowercase": "m", "uppercase": "M" }
+  }
+}
