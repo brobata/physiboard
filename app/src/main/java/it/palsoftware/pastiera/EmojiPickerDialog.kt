@@ -18,6 +18,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import it.palsoftware.pastiera.data.emoji.EmojiRepository
+import it.palsoftware.pastiera.data.emoji.EmojiSearchRepository
 
 /**
  * Dialog for selecting an emoji.
@@ -32,15 +33,21 @@ fun EmojiPickerDialog(
     val context = LocalContext.current
     var uiState by remember { mutableStateOf(EmojiPickerState()) }
     var selectedCategoryId by remember { mutableStateOf<String?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
         uiState = EmojiPickerState(isLoading = true, error = null)
-        runCatching { EmojiRepository.getEmojiCategories(context) }
-            .onSuccess { categories ->
+        runCatching {
+            val categories = EmojiRepository.getEmojiCategories(context)
+            val searchIndex = EmojiSearchRepository.getSearchIndex(context)
+            categories to searchIndex
+        }
+            .onSuccess { (categories, searchIndex) ->
                 selectedCategoryId = categories.firstOrNull()?.id
                 uiState = EmojiPickerState(
                     isLoading = false,
                     categories = categories,
+                    searchIndex = searchIndex,
                     error = null
                 )
             }
@@ -91,6 +98,17 @@ fun EmojiPickerDialog(
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp, vertical = 4.dp),
+                    label = { Text(stringResource(R.string.emoji_picker_search_label)) },
+                    placeholder = { Text(stringResource(R.string.emoji_picker_search_placeholder)) },
+                    singleLine = true
+                )
+
                 when {
                     uiState.isLoading -> {
                         Box(
@@ -127,34 +145,68 @@ fun EmojiPickerDialog(
 
                     else -> {
                         val categories = uiState.categories
+                        val trimmedQuery = searchQuery.trim()
+                        val isSearching = trimmedQuery.isNotEmpty()
+                        val searchResults = if (isSearching) {
+                            uiState.searchIndex?.let { index ->
+                                EmojiSearchRepository.search(index, trimmedQuery).map { it.entry }
+                            }.orEmpty()
+                        } else {
+                            emptyList()
+                        }
 
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            categories.forEach { category ->
-                                val label = category.displayNameRes?.let { stringResource(id = it) } ?: category.id
-                                FilterChip(
-                                    selected = selectedCategoryId == category.id,
-                                    onClick = { selectedCategoryId = category.id },
-                                    label = {
-                                        Text(
-                                            label,
-                                            style = MaterialTheme.typography.labelMedium
-                                        )
-                                    },
-                                    modifier = Modifier.padding(horizontal = 2.dp)
-                                )
+                        if (!isSearching) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                categories.forEach { category ->
+                                    val label = category.displayNameRes?.let { stringResource(id = it) } ?: category.id
+                                    FilterChip(
+                                        selected = selectedCategoryId == category.id,
+                                        onClick = { selectedCategoryId = category.id },
+                                        label = {
+                                            Text(
+                                                label,
+                                                style = MaterialTheme.typography.labelMedium
+                                            )
+                                        },
+                                        modifier = Modifier.padding(horizontal = 2.dp)
+                                    )
+                                }
                             }
                         }
 
                         Spacer(modifier = Modifier.height(4.dp))
 
-                        val selectedCategory = categories.firstOrNull { it.id == selectedCategoryId } ?: categories.first()
+                        if (isSearching && searchResults.isEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(stringResource(R.string.emoji_picker_no_results))
+                            }
+                            return@Column
+                        }
 
-                        key(selectedCategory.id) {
+                        val entriesToShow = if (isSearching) {
+                            searchResults
+                        } else {
+                            val selectedCategory = categories.firstOrNull { it.id == selectedCategoryId } ?: categories.first()
+                            selectedCategory.emojis
+                        }
+
+                        val contentKey = if (isSearching) {
+                            "search:$trimmedQuery:${entriesToShow.size}"
+                        } else {
+                            "category:${selectedCategoryId ?: "none"}"
+                        }
+
+                        key(contentKey) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -173,7 +225,7 @@ fun EmojiPickerDialog(
 
                                         recyclerView.apply {
                                             layoutManager = GridLayoutManager(context, columns)
-                                            adapter = EmojiEntryRecyclerViewAdapter(selectedCategory.emojis) { emoji ->
+                                            adapter = EmojiEntryRecyclerViewAdapter(entriesToShow) { emoji ->
                                                 onEmojiSelected(emoji)
                                                 onDismiss()
                                             }
@@ -183,6 +235,12 @@ fun EmojiPickerDialog(
                                             setItemViewCacheSize(20)
                                         }
                                         recyclerView
+                                    },
+                                    update = { recyclerView ->
+                                        recyclerView.adapter = EmojiEntryRecyclerViewAdapter(entriesToShow) { emoji ->
+                                            onEmojiSelected(emoji)
+                                            onDismiss()
+                                        }
                                     },
                                     modifier = Modifier.fillMaxSize()
                                 )
@@ -198,9 +256,9 @@ fun EmojiPickerDialog(
 private data class EmojiPickerState(
     val isLoading: Boolean = true,
     val categories: List<EmojiRepository.EmojiCategory> = emptyList(),
+    val searchIndex: EmojiSearchRepository.EmojiSearchIndex? = null,
     val error: String? = null
 )
-
 
 
 
