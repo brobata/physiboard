@@ -120,6 +120,22 @@ class PhysicalKeyboardInputMethodServiceDeviceBehaviorTest {
     }
 
     @Test
+    fun shiftDoubleTapLatch_thenSingleTapFullyDeactivates() {
+        val t0 = 2_500L
+
+        tapShift(t0)          // one-shot
+        tapShift(t0 + 120L)   // latch (+ visual shiftLayerLatched on quick double tap)
+        tapShift(t0 + 240L)   // user expects off
+
+        val modifier = modifierController()
+        val shiftLayerLatched = getField<Boolean>(service, "shiftLayerLatched")
+
+        assertFalse(modifier.shiftOneShot)
+        assertFalse(modifier.capsLockEnabled)
+        assertFalse(shiftLayerLatched)
+    }
+
+    @Test
     fun deviceSanity_ctrlLatch_canBeDisabledByAnotherCtrlTap() {
         val t0 = 3_000L
         tapCtrl(t0)
@@ -213,6 +229,17 @@ class PhysicalKeyboardInputMethodServiceDeviceBehaviorTest {
         service.onKeyUp(
             KeyEvent.KEYCODE_ALT_LEFT,
             keyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ALT_LEFT, start, start + 30L)
+        )
+    }
+
+    private fun tapShift(start: Long) {
+        service.onKeyDown(
+            KeyEvent.KEYCODE_SHIFT_LEFT,
+            keyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_SHIFT_LEFT, start, start)
+        )
+        service.onKeyUp(
+            KeyEvent.KEYCODE_SHIFT_LEFT,
+            keyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_SHIFT_LEFT, start, start + 30L)
         )
     }
 

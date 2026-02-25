@@ -295,6 +295,18 @@ class ModifierStateController(
     }
 
     /**
+     * Clears Shift state (one-shot/caps) and, when requested, resets pressed tracking.
+     * Used when a visual shift latch is explicitly toggled off by tapping Shift again.
+     */
+    fun clearShiftState(resetPressedState: Boolean = false) {
+        shiftStateMachine.reset()
+        if (resetPressedState) {
+            shiftPressedFlag = false
+            shiftPhysicallyPressedFlag = false
+        }
+    }
+
+    /**
      * Clears Alt latch/one-shot state (used when Space should auto-disable Alt).
      * Optionally resets pressed flags if they are not reliable anymore.
      */

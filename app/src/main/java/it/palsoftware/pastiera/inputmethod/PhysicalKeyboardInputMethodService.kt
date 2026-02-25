@@ -2130,7 +2130,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             if ((keyCode == KeyEvent.KEYCODE_SHIFT_LEFT || keyCode == KeyEvent.KEYCODE_SHIFT_RIGHT) && shiftLayerLatched) {
                 shiftLayerLatched = false
                 lastShiftTapUpTime = 0L
-                modifierStateBeforeHold?.let { modifierStateController.restoreLogicalState(it) }
+                // Tapping SHIFT while the visual Shift layer is latched should fully disable Shift.
+                // Restoring the pre-hold snapshot here can resurrect stale one-shot/caps state.
+                modifierStateController.clearShiftState(resetPressedState = true)
                 modifierStateBeforeHold = null
                 updateStatusBarText()
                 return true
