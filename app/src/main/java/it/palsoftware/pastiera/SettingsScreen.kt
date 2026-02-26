@@ -42,6 +42,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import it.palsoftware.pastiera.R
 import android.widget.Toast
 import it.palsoftware.pastiera.BuildConfig
+import it.palsoftware.pastiera.inputmethod.DeviceSpecific
 import it.palsoftware.pastiera.update.checkForUpdate
 import it.palsoftware.pastiera.update.showUpdateDialog
 
@@ -588,7 +589,7 @@ private fun SettingsMainScreen(
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(64.dp)
+                        .height(70.dp)
                 ) {
                     Row(
                         modifier = Modifier
@@ -615,6 +616,12 @@ private fun SettingsMainScreen(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1
+                            )
+                            Text(
+                                text = "Device: " + DeviceSpecific.deviceName() + "; Keyboard: " + DeviceSpecific.keyboardName(),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 2
                             )
                         }
                     }

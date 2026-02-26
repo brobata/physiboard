@@ -5,6 +5,7 @@ import android.content.res.AssetManager
 import android.util.Log
 import android.view.KeyEvent
 import it.palsoftware.pastiera.SettingsManager
+import it.palsoftware.pastiera.inputmethod.DeviceSpecific
 import org.json.JSONObject
 import java.io.InputStream
 
@@ -15,7 +16,7 @@ object KeyMappingLoader {
     private const val TAG = "KeyMappingLoader"
 
     fun getDeviceName(context: Context? = null): String {
-        return "titan2"
+        return DeviceSpecific.physicalKeyboardName()
     }
 
     private val keyCodeMap = mapOf(
