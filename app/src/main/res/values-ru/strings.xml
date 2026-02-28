@@ -616,10 +616,12 @@
     <string name="status_bar_button_language_description">Изменить</string>
     <string name="status_bar_button_hamburger">Меню</string>
     <string name="status_bar_button_hamburger_description">Быстрые действия</string>
+    <string name="status_bar_button_close_menu_description">Закрыть быстрые действия</string>
     <string name="status_bar_button_settings">Настройки</string>
     <string name="status_bar_button_settings_description">Открыть настройки</string>
     <string name="status_bar_button_symbols">Символы</string>
     <string name="status_bar_button_symbols_description">Клавиатура символов</string>
+    <string name="status_bar_button_minimal_ui_description">Переключить компактный интерфейс клавиатуры</string>
     <string name="status_bar_buttons_reset">Сброс</string>
     <string name="layout_import_from_file">Импортировать из файла</string>
     <string name="layout_download_from_cloud">Скачать из репозитория</string>

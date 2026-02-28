@@ -630,6 +630,8 @@
     <string name="status_bar_button_settings_description">Ouvrir les paramètres</string>
     <string name="status_bar_button_symbols">Symboles</string>
     <string name="status_bar_button_symbols_description">Clavier de symboles</string>
+    <string name="status_bar_button_close_menu_description">Fermer les actions rapides</string>
+    <string name="status_bar_button_minimal_ui_description">Activer ou désactiver l\'interface clavier compacte</string>
     <string name="status_bar_buttons_reset">Réinitialiser</string>
     <string name="layout_import_from_file">Importer depuis fichier</string>
     <string name="layout_download_from_cloud">Télécharger depuis dépôt</string>
@@ -653,4 +655,3 @@
     <string name="online_layouts_uninstall_success">%1$s supprimé</string>
     <string name="online_layouts_uninstall_failed">Suppression impossible</string>
 </resources>
-

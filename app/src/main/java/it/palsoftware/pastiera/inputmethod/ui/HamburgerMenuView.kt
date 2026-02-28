@@ -247,6 +247,7 @@ class HamburgerMenuView(
         return ImageView(context).apply {
             setImageResource(R.drawable.ic_close_24)
             setColorFilter(Color.WHITE)
+            contentDescription = context.getString(R.string.status_bar_button_close_menu_description)
             background = StatusBarButtonStyles.createButtonDrawable(heightPx)
             scaleType = ImageView.ScaleType.CENTER
             isClickable = true

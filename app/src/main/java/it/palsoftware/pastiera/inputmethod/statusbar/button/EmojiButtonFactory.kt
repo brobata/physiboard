@@ -36,6 +36,7 @@ class EmojiButtonFactory : StatusBarButtonFactory {
         return ImageView(context).apply {
             setImageResource(R.drawable.ic_emoji_emotions_24)
             setColorFilter(Color.WHITE)
+            contentDescription = context.getString(R.string.status_bar_button_emoji_description)
             background = StatusBarButtonStyles.createButtonDrawable(size)
             scaleType = ImageView.ScaleType.CENTER
             isClickable = true

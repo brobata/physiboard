@@ -100,6 +100,7 @@ class MicrophoneButtonFactory : StatusBarButtonFactory {
         return ImageView(context).apply {
             setImageResource(R.drawable.ic_baseline_mic_24)
             setColorFilter(Color.WHITE)
+            contentDescription = context.getString(R.string.status_bar_button_microphone_description)
             background = StatusBarButtonStyles.createButtonDrawable(size)
             scaleType = ImageView.ScaleType.CENTER
             isClickable = true

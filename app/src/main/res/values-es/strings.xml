@@ -543,6 +543,8 @@
     <string name="status_bar_button_settings_description">Abrir ajustes</string>
     <string name="status_bar_button_symbols">Símbolos</string>
     <string name="status_bar_button_symbols_description">Teclado de símbolos</string>
+    <string name="status_bar_button_close_menu_description">Cerrar acciones rápidas</string>
+    <string name="status_bar_button_minimal_ui_description">Alternar interfaz compacta del teclado</string>
     <string name="status_bar_buttons_reset">Restablecer</string>
     <string name="layout_import_from_file">Importar desde archivo</string>
     <string name="layout_download_from_cloud">Descargar desde repositorio</string>

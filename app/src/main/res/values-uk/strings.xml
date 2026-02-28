@@ -506,4 +506,6 @@
     <string name="trackpad_tutorial_previous">Назад</string>
 
     <string name="trackpad_debug_service_description">Показує події тачпада в маленькому оверлеї для відладки</string>
+    <string name="status_bar_button_close_menu_description">Закрити швидкі дії</string>
+    <string name="status_bar_button_minimal_ui_description">Перемкнути компактний інтерфейс клавіатури</string>
 </resources>

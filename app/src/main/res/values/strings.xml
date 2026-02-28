@@ -652,9 +652,11 @@
     <string name="status_bar_button_language_state_description">Language %1$s, layout %2$s</string>
     <string name="status_bar_button_hamburger">Menu</string>
     <string name="status_bar_button_hamburger_description">Quick actions</string>
+    <string name="status_bar_button_close_menu_description">Close quick actions</string>
     <string name="status_bar_button_settings">Settings</string>
     <string name="status_bar_button_settings_description">Open settings</string>
     <string name="status_bar_button_symbols">Symbols</string>
     <string name="status_bar_button_symbols_description">Symbols keyboard</string>
+    <string name="status_bar_button_minimal_ui_description">Toggle compact keyboard UI</string>
     <string name="status_bar_buttons_reset">Reset</string>
 </resources>

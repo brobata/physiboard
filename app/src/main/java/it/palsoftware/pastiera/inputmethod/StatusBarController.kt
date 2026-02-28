@@ -923,6 +923,7 @@ class StatusBarController(
             background = null
             setImageResource(R.drawable.ic_sentiment_satisfied_24)
             setColorFilter(Color.WHITE)
+            contentDescription = context.getString(R.string.status_bar_button_emoji_description)
             scaleType = ImageView.ScaleType.FIT_CENTER
             adjustViewBounds = true
             maxWidth = iconSize
@@ -971,6 +972,7 @@ class StatusBarController(
             background = null
             setImageResource(R.drawable.ic_edit_24)
             setColorFilter(Color.WHITE) // Bianco
+            contentDescription = context.getString(R.string.sym_customization_button)
             scaleType = ImageView.ScaleType.FIT_CENTER
             adjustViewBounds = true
             maxWidth = iconSize
@@ -1101,6 +1103,7 @@ class StatusBarController(
             layoutParams = LinearLayout.LayoutParams(width, height)
             isClickable = true
             isFocusable = true
+            contentDescription = context.getString(R.string.close)
         }
         val icon = ImageView(context).apply {
             setImageResource(R.drawable.ic_close_24)
@@ -1124,6 +1127,7 @@ class StatusBarController(
             layoutParams = LinearLayout.LayoutParams(width, height)
             isClickable = true
             isFocusable = true
+            contentDescription = context.getString(R.string.change_keyboard_button)
         }
         val icon = ImageView(context).apply {
             setImageResource(R.drawable.ic_globe_24)

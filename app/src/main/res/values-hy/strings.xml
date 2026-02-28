@@ -404,6 +404,8 @@
     <string name="status_bar_button_settings_description">Բացել կարգավորումները</string>
     <string name="status_bar_button_symbols">Սիմվոլներ</string>
     <string name="status_bar_button_symbols_description">Սիմվոլների ստեղնաշար</string>
+    <string name="status_bar_button_close_menu_description">Փակել արագ գործողությունները</string>
+    <string name="status_bar_button_minimal_ui_description">Փոխարկել ստեղնաշարի կոմպակտ միջերեսը</string>
     <string name="status_bar_buttons_reset">Վերակայել</string>
     <string name="layout_import_from_file">Ներմուծել ֆայլից</string>
     <string name="layout_download_from_cloud">Ներբեռնել պահոցից</string>
@@ -427,4 +429,3 @@
     <string name="online_layouts_uninstall_success">Հեռացվեց %1$s</string>
     <string name="online_layouts_uninstall_failed">Չհաջողվեց հեռացնել դասավորությունը</string>
 </resources>
-

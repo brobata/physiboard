@@ -97,6 +97,7 @@ class FullSuggestionsBar(
             hamburgerButton = ImageView(context).apply {
                 setImageResource(R.drawable.ic_menu_24)
                 setColorFilter(Color.WHITE)
+                contentDescription = context.getString(R.string.status_bar_button_hamburger_description)
                 scaleType = ImageView.ScaleType.CENTER
                 background = null
                 val buttonSize = dpToPx(32f)

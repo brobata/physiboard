@@ -547,6 +547,8 @@
     <string name="status_bar_button_settings_description">Einstellungen öffnen</string>
     <string name="status_bar_button_symbols">Symbole</string>
     <string name="status_bar_button_symbols_description">Symboltastatur</string>
+    <string name="status_bar_button_close_menu_description">Schnellaktionen schließen</string>
+    <string name="status_bar_button_minimal_ui_description">Kompakte Tastaturansicht umschalten</string>
     <string name="status_bar_buttons_reset">Zurücksetzen</string>
     <string name="layout_import_from_file">Aus Datei importieren</string>
     <string name="layout_download_from_cloud">Aus Cloud-Repository herunterladen</string>

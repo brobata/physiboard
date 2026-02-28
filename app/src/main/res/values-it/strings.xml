@@ -593,9 +593,11 @@
     <string name="status_bar_button_language_description">Cambia</string>
     <string name="status_bar_button_hamburger">Menu</string>
     <string name="status_bar_button_hamburger_description">Azioni rapide</string>
+    <string name="status_bar_button_close_menu_description">Chiudi azioni rapide</string>
     <string name="status_bar_button_settings">Impostazioni</string>
     <string name="status_bar_button_settings_description">Apri impostazioni</string>
     <string name="status_bar_button_symbols">Simboli</string>
     <string name="status_bar_button_symbols_description">Tastiera simboli</string>
+    <string name="status_bar_button_minimal_ui_description">Attiva/disattiva interfaccia tastiera compatta</string>
     <string name="status_bar_buttons_reset">Reset</string>
 </resources>

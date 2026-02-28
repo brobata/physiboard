@@ -19,6 +19,7 @@ class MinimalUiButtonFactory : StatusBarButtonFactory {
         val button = ImageView(context).apply {
             setImageResource(R.drawable.ic_minimal_ui_24)
             setColorFilter(Color.WHITE)
+            contentDescription = context.getString(R.string.status_bar_button_minimal_ui_description)
             background = StatusBarButtonStyles.createButtonDrawable(size)
             scaleType = ImageView.ScaleType.CENTER
             isClickable = true
