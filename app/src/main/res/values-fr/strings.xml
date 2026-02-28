@@ -631,6 +631,11 @@
     <string name="status_bar_button_symbols">Symboles</string>
     <string name="status_bar_button_symbols_description">Clavier de symboles</string>
     <string name="status_bar_button_close_menu_description">Fermer les actions rapides</string>
+    <string name="status_bar_state_on">Activé</string>
+    <string name="status_bar_state_off">Désactivé</string>
+    <string name="status_bar_button_clipboard_state_empty">Vide</string>
+    <string name="status_bar_button_clipboard_state_items">%1$d éléments</string>
+    <string name="sym_key_content_description">%1$s, %2$s</string>
     <string name="status_bar_button_minimal_ui_description">Activer ou désactiver l\'interface clavier compacte</string>
     <string name="status_bar_buttons_reset">Réinitialiser</string>
     <string name="layout_import_from_file">Importer depuis fichier</string>

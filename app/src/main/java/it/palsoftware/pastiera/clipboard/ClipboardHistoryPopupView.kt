@@ -163,6 +163,7 @@ class ClipboardHistoryPopupView(private val context: Context) {
             }
             isClickable = true
             isFocusable = true
+            contentDescription = entry.text
             setOnClickListener {
                 onItemClickListener?.invoke(entry)
             }
@@ -184,9 +185,10 @@ class ClipboardHistoryPopupView(private val context: Context) {
 
         // Pin button
         val pinButton = ImageButton(context).apply {
-            // TODO: Add pin icon drawable
+            setImageResource(android.R.drawable.btn_star_big_on)
             setBackgroundColor(Color.TRANSPARENT)
             setColorFilter(if (entry.isPinned) Color.YELLOW else Color.GRAY)
+            contentDescription = context.getString(if (entry.isPinned) R.string.clipboard_unpin else R.string.clipboard_pin)
             val size = dpToPx(32f)
             layoutParams = LinearLayout.LayoutParams(size, size)
             setOnClickListener {
@@ -197,9 +199,10 @@ class ClipboardHistoryPopupView(private val context: Context) {
 
         // Delete button
         val deleteButton = ImageButton(context).apply {
-            // TODO: Add delete icon drawable
+            setImageResource(android.R.drawable.ic_menu_delete)
             setBackgroundColor(Color.TRANSPARENT)
             setColorFilter(Color.RED)
+            contentDescription = context.getString(R.string.clipboard_delete)
             val size = dpToPx(32f)
             layoutParams = LinearLayout.LayoutParams(size, size)
             setOnClickListener {

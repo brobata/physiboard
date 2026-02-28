@@ -657,6 +657,11 @@
     <string name="status_bar_button_settings_description">Open settings</string>
     <string name="status_bar_button_symbols">Symbols</string>
     <string name="status_bar_button_symbols_description">Symbols keyboard</string>
+    <string name="status_bar_state_on">On</string>
+    <string name="status_bar_state_off">Off</string>
+    <string name="status_bar_button_clipboard_state_empty">Empty</string>
+    <string name="status_bar_button_clipboard_state_items">%1$d items</string>
+    <string name="sym_key_content_description">%1$s, %2$s</string>
     <string name="status_bar_button_minimal_ui_description">Toggle compact keyboard UI</string>
     <string name="status_bar_buttons_reset">Reset</string>
 </resources>

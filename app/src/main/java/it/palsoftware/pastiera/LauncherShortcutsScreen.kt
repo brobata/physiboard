@@ -548,7 +548,7 @@ fun LauncherShortcutsScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Delete,
-                            contentDescription = "Delete shortcut",
+                            contentDescription = stringResource(R.string.launcher_shortcuts_remove),
                             tint = if (isTrashHighlighted) {
                                 Color.White
                             } else {

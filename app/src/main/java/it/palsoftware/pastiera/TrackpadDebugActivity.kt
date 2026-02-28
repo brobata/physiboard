@@ -23,6 +23,7 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import it.palsoftware.pastiera.ui.theme.PastieraTheme
@@ -171,14 +172,14 @@ fun TrackpadDebugScreen(
                     IconButton(onClick = { events.clear() }) {
                         Icon(
                             imageVector = Icons.Filled.Delete,
-                            contentDescription = "Clear",
+                            contentDescription = stringResource(R.string.clear),
                             tint = androidx.compose.ui.graphics.Color.Green
                         )
                     }
                     IconButton(onClick = onBackPressed) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Close",
+                            contentDescription = stringResource(R.string.close),
                             tint = androidx.compose.ui.graphics.Color.Green
                         )
                     }

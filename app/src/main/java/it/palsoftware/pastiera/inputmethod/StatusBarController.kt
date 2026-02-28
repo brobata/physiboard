@@ -1025,6 +1025,7 @@ class StatusBarController(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 height
             )
+            contentDescription = buildSymKeyContentDescription(label, content)
         }
         
         // Background del tasto con angoli leggermente arrotondati
@@ -1096,6 +1097,13 @@ class StatusBarController(
         keyLayout.addView(labelText)
         
         return keyLayout
+    }
+
+    private fun buildSymKeyContentDescription(label: String, content: String): String {
+        if (content.isBlank()) {
+            return label
+        }
+        return context.getString(R.string.sym_key_content_description, label, content)
     }
 
     private fun createHideKeyboardButton(height: Int, width: Int): View {

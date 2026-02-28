@@ -405,6 +405,11 @@
     <string name="status_bar_button_symbols">Սիմվոլներ</string>
     <string name="status_bar_button_symbols_description">Սիմվոլների ստեղնաշար</string>
     <string name="status_bar_button_close_menu_description">Փակել արագ գործողությունները</string>
+    <string name="status_bar_state_on">Միացված</string>
+    <string name="status_bar_state_off">Անջատված</string>
+    <string name="status_bar_button_clipboard_state_empty">Դատարկ</string>
+    <string name="status_bar_button_clipboard_state_items">%1$d տարր</string>
+    <string name="sym_key_content_description">%1$s, %2$s</string>
     <string name="status_bar_button_minimal_ui_description">Փոխարկել ստեղնաշարի կոմպակտ միջերեսը</string>
     <string name="status_bar_buttons_reset">Վերակայել</string>
     <string name="layout_import_from_file">Ներմուծել ֆայլից</string>

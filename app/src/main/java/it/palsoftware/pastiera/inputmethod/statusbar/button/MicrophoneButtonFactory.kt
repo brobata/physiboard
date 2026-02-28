@@ -7,6 +7,7 @@ import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.StateListDrawable
 import android.view.View
 import android.widget.ImageView
+import androidx.core.view.ViewCompat
 import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.inputmethod.statusbar.ButtonCreationResult
 import it.palsoftware.pastiera.inputmethod.statusbar.ButtonState
@@ -101,6 +102,7 @@ class MicrophoneButtonFactory : StatusBarButtonFactory {
             setImageResource(R.drawable.ic_baseline_mic_24)
             setColorFilter(Color.WHITE)
             contentDescription = context.getString(R.string.status_bar_button_microphone_description)
+            ViewCompat.setStateDescription(this, context.getString(R.string.status_bar_state_off))
             background = StatusBarButtonStyles.createButtonDrawable(size)
             scaleType = ImageView.ScaleType.CENTER
             isClickable = true
@@ -110,6 +112,7 @@ class MicrophoneButtonFactory : StatusBarButtonFactory {
     }
     
     private fun startAudioFeedback(button: ImageView, stateHolder: MicrophoneStateHolder) {
+        ViewCompat.setStateDescription(button, button.context.getString(R.string.status_bar_state_on))
         // Stop any existing animation
         stateHolder.pulseAnimator?.cancel()
         stateHolder.pulseAnimator = null
@@ -138,6 +141,7 @@ class MicrophoneButtonFactory : StatusBarButtonFactory {
     }
     
     private fun stopAudioFeedback(button: ImageView, stateHolder: MicrophoneStateHolder) {
+        ViewCompat.setStateDescription(button, button.context.getString(R.string.status_bar_state_off))
         // Cancel any pulse animation if still running
         stateHolder.pulseAnimator?.cancel()
         stateHolder.pulseAnimator = null

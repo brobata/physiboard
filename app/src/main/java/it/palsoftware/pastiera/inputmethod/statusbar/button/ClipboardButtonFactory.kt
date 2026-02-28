@@ -12,6 +12,7 @@ import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.core.view.ViewCompat
 import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.inputmethod.statusbar.ButtonCreationResult
 import it.palsoftware.pastiera.inputmethod.statusbar.ButtonState
@@ -46,6 +47,7 @@ class ClipboardButtonFactory : StatusBarButtonFactory {
         // Store references in tags for later updates
         button.setTag(R.id.tag_badge_view, badge)
         button.setTag(R.id.tag_flash_overlay, flashOverlay)
+        ViewCompat.setStateDescription(button, context.getString(R.string.status_bar_button_clipboard_state_empty))
         
         return ButtonCreationResult(
             view = button,
@@ -62,6 +64,14 @@ class ClipboardButtonFactory : StatusBarButtonFactory {
         val previousCount = view.getTag(R.id.tag_previous_count) as? Int
         
         updateBadge(badge, state.itemCount)
+        ViewCompat.setStateDescription(
+            view,
+            if (state.itemCount <= 0) {
+                view.context.getString(R.string.status_bar_button_clipboard_state_empty)
+            } else {
+                view.context.getString(R.string.status_bar_button_clipboard_state_items, state.itemCount)
+            }
+        )
         
         // Flash when count increases
         if (previousCount != null && state.itemCount > 0 && state.itemCount != previousCount && flashOverlay != null) {

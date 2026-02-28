@@ -621,6 +621,11 @@
     <string name="status_bar_button_settings_description">Открыть настройки</string>
     <string name="status_bar_button_symbols">Символы</string>
     <string name="status_bar_button_symbols_description">Клавиатура символов</string>
+    <string name="status_bar_state_on">Включено</string>
+    <string name="status_bar_state_off">Выключено</string>
+    <string name="status_bar_button_clipboard_state_empty">Пусто</string>
+    <string name="status_bar_button_clipboard_state_items">%1$d элементов</string>
+    <string name="sym_key_content_description">%1$s, %2$s</string>
     <string name="status_bar_button_minimal_ui_description">Переключить компактный интерфейс клавиатуры</string>
     <string name="status_bar_buttons_reset">Сброс</string>
     <string name="layout_import_from_file">Импортировать из файла</string>

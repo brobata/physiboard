@@ -508,4 +508,9 @@
     <string name="trackpad_debug_service_description">Показує події тачпада в маленькому оверлеї для відладки</string>
     <string name="status_bar_button_close_menu_description">Закрити швидкі дії</string>
     <string name="status_bar_button_minimal_ui_description">Перемкнути компактний інтерфейс клавіатури</string>
+    <string name="status_bar_state_on">Увімкнено</string>
+    <string name="status_bar_state_off">Вимкнено</string>
+    <string name="status_bar_button_clipboard_state_empty">Порожньо</string>
+    <string name="status_bar_button_clipboard_state_items">%1$d елементів</string>
+    <string name="sym_key_content_description">%1$s, %2$s</string>
 </resources>

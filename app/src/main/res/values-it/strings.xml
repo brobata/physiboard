@@ -598,6 +598,11 @@
     <string name="status_bar_button_settings_description">Apri impostazioni</string>
     <string name="status_bar_button_symbols">Simboli</string>
     <string name="status_bar_button_symbols_description">Tastiera simboli</string>
+    <string name="status_bar_state_on">Attivo</string>
+    <string name="status_bar_state_off">Disattivo</string>
+    <string name="status_bar_button_clipboard_state_empty">Vuoto</string>
+    <string name="status_bar_button_clipboard_state_items">%1$d elementi</string>
+    <string name="sym_key_content_description">%1$s, %2$s</string>
     <string name="status_bar_button_minimal_ui_description">Attiva/disattiva interfaccia tastiera compatta</string>
     <string name="status_bar_buttons_reset">Reset</string>
 </resources>

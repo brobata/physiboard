@@ -544,6 +544,11 @@
     <string name="status_bar_button_symbols">Símbolos</string>
     <string name="status_bar_button_symbols_description">Teclado de símbolos</string>
     <string name="status_bar_button_close_menu_description">Cerrar acciones rápidas</string>
+    <string name="status_bar_state_on">Activado</string>
+    <string name="status_bar_state_off">Desactivado</string>
+    <string name="status_bar_button_clipboard_state_empty">Vacío</string>
+    <string name="status_bar_button_clipboard_state_items">%1$d elementos</string>
+    <string name="sym_key_content_description">%1$s, %2$s</string>
     <string name="status_bar_button_minimal_ui_description">Alternar interfaz compacta del teclado</string>
     <string name="status_bar_buttons_reset">Restablecer</string>
     <string name="layout_import_from_file">Importar desde archivo</string>
