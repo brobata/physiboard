@@ -102,7 +102,7 @@ class MicrophoneButtonFactory : StatusBarButtonFactory {
             setImageResource(R.drawable.ic_baseline_mic_24)
             setColorFilter(Color.WHITE)
             contentDescription = context.getString(R.string.status_bar_button_microphone_description)
-            ViewCompat.setStateDescription(this, context.getString(R.string.status_bar_state_off))
+            setStateDescriptionIfChanged(this, context.getString(R.string.status_bar_state_off))
             background = StatusBarButtonStyles.createButtonDrawable(size)
             scaleType = ImageView.ScaleType.CENTER
             isClickable = true
@@ -112,7 +112,7 @@ class MicrophoneButtonFactory : StatusBarButtonFactory {
     }
     
     private fun startAudioFeedback(button: ImageView, stateHolder: MicrophoneStateHolder) {
-        ViewCompat.setStateDescription(button, button.context.getString(R.string.status_bar_state_on))
+        setStateDescriptionIfChanged(button, button.context.getString(R.string.status_bar_state_on))
         // Stop any existing animation
         stateHolder.pulseAnimator?.cancel()
         stateHolder.pulseAnimator = null
@@ -141,7 +141,7 @@ class MicrophoneButtonFactory : StatusBarButtonFactory {
     }
     
     private fun stopAudioFeedback(button: ImageView, stateHolder: MicrophoneStateHolder) {
-        ViewCompat.setStateDescription(button, button.context.getString(R.string.status_bar_state_off))
+        setStateDescriptionIfChanged(button, button.context.getString(R.string.status_bar_state_off))
         // Cancel any pulse animation if still running
         stateHolder.pulseAnimator?.cancel()
         stateHolder.pulseAnimator = null
@@ -192,5 +192,12 @@ class MicrophoneButtonFactory : StatusBarButtonFactory {
 
     private fun resolveHeightPx(button: View, stateHolder: MicrophoneStateHolder): Int {
         return if (button.height > 0) button.height else stateHolder.baseHeightPx
+    }
+
+    private fun setStateDescriptionIfChanged(view: View, stateDescription: String) {
+        if (ViewCompat.getStateDescription(view)?.toString() == stateDescription) {
+            return
+        }
+        ViewCompat.setStateDescription(view, stateDescription)
     }
 }

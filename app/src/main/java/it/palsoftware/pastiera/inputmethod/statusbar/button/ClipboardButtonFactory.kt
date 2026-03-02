@@ -47,7 +47,10 @@ class ClipboardButtonFactory : StatusBarButtonFactory {
         // Store references in tags for later updates
         button.setTag(R.id.tag_badge_view, badge)
         button.setTag(R.id.tag_flash_overlay, flashOverlay)
-        ViewCompat.setStateDescription(button, context.getString(R.string.status_bar_button_clipboard_state_empty))
+        setStateDescriptionIfChanged(
+            button,
+            context.getString(R.string.status_bar_button_clipboard_state_empty)
+        )
         
         return ButtonCreationResult(
             view = button,
@@ -64,7 +67,7 @@ class ClipboardButtonFactory : StatusBarButtonFactory {
         val previousCount = view.getTag(R.id.tag_previous_count) as? Int
         
         updateBadge(badge, state.itemCount)
-        ViewCompat.setStateDescription(
+        setStateDescriptionIfChanged(
             view,
             if (state.itemCount <= 0) {
                 view.context.getString(R.string.status_bar_button_clipboard_state_empty)
@@ -167,5 +170,12 @@ class ClipboardButtonFactory : StatusBarButtonFactory {
             dp,
             context.resources.displayMetrics
         ).toInt()
+    }
+
+    private fun setStateDescriptionIfChanged(view: View, stateDescription: String) {
+        if (ViewCompat.getStateDescription(view)?.toString() == stateDescription) {
+            return
+        }
+        ViewCompat.setStateDescription(view, stateDescription)
     }
 }

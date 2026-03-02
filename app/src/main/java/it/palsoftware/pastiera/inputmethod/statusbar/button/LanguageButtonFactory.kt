@@ -88,7 +88,7 @@ class LanguageButtonFactory : StatusBarButtonFactory {
         if (state !is ButtonState.LanguageState) return
         val button = view as? TextView ?: return
         
-        applyLanguageText(button, state.languageCode)
+        applyLanguageTextIfChanged(button, state.languageCode)
     }
     
     /**
@@ -128,16 +128,20 @@ class LanguageButtonFactory : StatusBarButtonFactory {
             } else {
                 "??"
             }
-            applyLanguageText(button, languageCode)
-            updateAccessibilityStateDescription(context, button, currentSubtype)
+            applyLanguageTextIfChanged(button, languageCode)
+            updateAccessibilityStateDescriptionIfChanged(context, button, currentSubtype)
         } catch (e: Exception) {
             Log.e(TAG, "Error updating language button text", e)
-            applyLanguageText(button, "??")
-            updateAccessibilityStateDescription(context, button, null)
+            applyLanguageTextIfChanged(button, "??")
+            updateAccessibilityStateDescriptionIfChanged(context, button, null)
         }
     }
-    
-    private fun applyLanguageText(button: TextView, languageCode: String) {
+
+    private fun applyLanguageTextIfChanged(button: TextView, languageCode: String) {
+        if (button.text?.toString() == languageCode) {
+            return
+        }
+
         // Clear any icons so the label stays perfectly centered.
         button.setCompoundDrawables(null, null, null, null)
         button.compoundDrawablePadding = 0
@@ -173,21 +177,22 @@ class LanguageButtonFactory : StatusBarButtonFactory {
         button.text = dottedText
     }
 
-    private fun updateAccessibilityStateDescription(
+    private fun updateAccessibilityStateDescriptionIfChanged(
         context: Context,
         button: TextView,
         subtype: InputMethodSubtype?
     ) {
         val languageLabel = getLanguageLabel(context, subtype)
         val layoutLabel = getLayoutLabel(context, subtype)
-        ViewCompat.setStateDescription(
-            button,
-            context.getString(
-                R.string.status_bar_button_language_state_description,
-                languageLabel,
-                layoutLabel
-            )
+        val newStateDescription = context.getString(
+            R.string.status_bar_button_language_state_description,
+            languageLabel,
+            layoutLabel
         )
+        if (ViewCompat.getStateDescription(button)?.toString() == newStateDescription) {
+            return
+        }
+        ViewCompat.setStateDescription(button, newStateDescription)
     }
 
     private fun getLanguageLabel(context: Context, subtype: InputMethodSubtype?): String {

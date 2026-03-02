@@ -1729,7 +1729,11 @@ class StatusBarController(
     }
 
     private fun updateAccessibilityStateDescription(view: View) {
-        ViewCompat.setStateDescription(view, buildLayoutAccessibilityStateDescription())
+        val newStateDescription = buildLayoutAccessibilityStateDescription()
+        if (ViewCompat.getStateDescription(view)?.toString() == newStateDescription) {
+            return
+        }
+        ViewCompat.setStateDescription(view, newStateDescription)
     }
 
     private fun buildLayoutAccessibilityStateDescription(): String {

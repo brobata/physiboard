@@ -21,7 +21,7 @@ class MinimalUiButtonFactory : StatusBarButtonFactory {
             setImageResource(R.drawable.ic_minimal_ui_24)
             setColorFilter(Color.WHITE)
             contentDescription = context.getString(R.string.status_bar_button_minimal_ui_description)
-            ViewCompat.setStateDescription(this, context.getString(R.string.status_bar_state_off))
+            setStateDescriptionIfChanged(this, context.getString(R.string.status_bar_state_off))
             background = StatusBarButtonStyles.createButtonDrawable(size)
             scaleType = ImageView.ScaleType.CENTER
             isClickable = true
@@ -53,12 +53,19 @@ class MinimalUiButtonFactory : StatusBarButtonFactory {
         }
         button.background = background
         button.rotation = if (state.isActive) 180f else 0f
-        ViewCompat.setStateDescription(
+        setStateDescriptionIfChanged(
             button,
             button.context.getString(
                 if (state.isActive) R.string.status_bar_state_on else R.string.status_bar_state_off
             )
         )
+    }
+
+    private fun setStateDescriptionIfChanged(view: View, stateDescription: String) {
+        if (ViewCompat.getStateDescription(view)?.toString() == stateDescription) {
+            return
+        }
+        ViewCompat.setStateDescription(view, stateDescription)
     }
 
     private data class MinimalUiStateHolder(
