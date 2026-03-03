@@ -13,6 +13,7 @@ import it.palsoftware.pastiera.data.mappings.KeyMappingLoader
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -34,6 +35,7 @@ class InputEventRouterModifierE2ETest {
     private lateinit var ctrlKeyMap: Map<Int, KeyMappingLoader.CtrlMapping>
     private lateinit var inputConnectionRecorder: RecordingInputConnection
     private lateinit var inputConnection: InputConnection
+    private lateinit var prefs: android.content.SharedPreferences
 
     private val doubleTapThreshold = 300L
 
@@ -43,7 +45,7 @@ class InputEventRouterModifierE2ETest {
         SettingsManager.setSymPagesConfig(context, SymPagesConfig())
         SettingsManager.resetSymMappings(context)
         SettingsManager.resetSymMappingsPage2(context)
-        val prefs = context.getSharedPreferences("router_e2e_modifier_tests", Context.MODE_PRIVATE)
+        prefs = context.getSharedPreferences("router_e2e_modifier_tests", Context.MODE_PRIVATE)
         prefs.edit().clear().commit()
 
         modifierStateController = ModifierStateController(doubleTapThreshold)
@@ -59,6 +61,11 @@ class InputEventRouterModifierE2ETest {
 
         inputConnectionRecorder = RecordingInputConnection()
         inputConnection = inputConnectionRecorder.asProxy()
+    }
+
+    @After
+    fun tearDown() {
+        DeviceSpecific.clearTestOverrides()
     }
 
     @Test
@@ -258,6 +265,81 @@ class InputEventRouterModifierE2ETest {
         assertEquals("#", inputConnectionRecorder.committedTexts.last())
     }
 
+    @Test
+    fun altMapping_q25Profile_usesQ25AssetAndCommitsMappedChar() {
+        DeviceSpecific.setBuildFingerprintForTests(
+            brand = "zinwa",
+            manufacturer = "zinwa",
+            model = "Q25",
+            device = "Q25",
+            product = "q25"
+        )
+        rebuildAltSymControllers()
+        assertEquals("Q25", KeyMappingLoader.getDeviceName(context))
+
+        val callbacks = TestCallbacks(modifierStateController)
+        primeAltOneShot(callbacks)
+
+        val result = routeKeyDown(
+            keyCode = KeyEvent.KEYCODE_K,
+            event = keyDown(KeyEvent.KEYCODE_K),
+            callbacks = callbacks
+        )
+
+        assertTrue(result is InputEventRouter.EditableFieldRoutingResult.Consume)
+        assertEquals("'", inputConnectionRecorder.committedTexts.last())
+    }
+
+    @Test
+    fun altMapping_key2Profile_usesKey2AssetAndCommitsMappedChar() {
+        DeviceSpecific.setBuildFingerprintForTests(
+            brand = "blackberry",
+            manufacturer = "blackberry",
+            model = "bbf100-1",
+            device = "athena",
+            product = "lineage_athena"
+        )
+        rebuildAltSymControllers()
+        assertEquals("key2", KeyMappingLoader.getDeviceName(context))
+
+        val callbacks = TestCallbacks(modifierStateController)
+        primeAltOneShot(callbacks)
+
+        val result = routeKeyDown(
+            keyCode = KeyEvent.KEYCODE_K,
+            event = keyDown(KeyEvent.KEYCODE_K),
+            callbacks = callbacks
+        )
+
+        assertTrue(result is InputEventRouter.EditableFieldRoutingResult.Consume)
+        assertEquals("'", inputConnectionRecorder.committedTexts.last())
+    }
+
+    @Test
+    fun altMapping_unknownProfile_fallsBackToDefaultMappings() {
+        DeviceSpecific.setBuildFingerprintForTests(
+            brand = "unknown",
+            manufacturer = "unknown",
+            model = "unknown",
+            device = "unknown",
+            product = "unknown"
+        )
+        rebuildAltSymControllers()
+        assertEquals("unknown", KeyMappingLoader.getDeviceName(context))
+
+        val callbacks = TestCallbacks(modifierStateController)
+        primeAltOneShot(callbacks)
+
+        val result = routeKeyDown(
+            keyCode = KeyEvent.KEYCODE_T,
+            event = keyDown(KeyEvent.KEYCODE_T),
+            callbacks = callbacks
+        )
+
+        assertTrue(result is InputEventRouter.EditableFieldRoutingResult.Consume)
+        assertEquals("(", inputConnectionRecorder.committedTexts.last())
+    }
+
     private fun routeKeyDown(
         keyCode: Int,
         event: KeyEvent,
@@ -307,6 +389,24 @@ class InputEventRouterModifierE2ETest {
             0,
             metaState
         )
+    }
+
+    private fun rebuildAltSymControllers() {
+        altSymManager = AltSymManager(context.assets, prefs, context)
+        altSymManager.reloadSymMappings()
+        altSymManager.reloadSymMappings2()
+        symLayoutController = SymLayoutController(context, prefs, altSymManager)
+        inputConnectionRecorder.committedTexts.clear()
+    }
+
+    private fun primeAltOneShot(callbacks: TestCallbacks) {
+        val altDownResult = routeKeyDown(
+            keyCode = KeyEvent.KEYCODE_ALT_LEFT,
+            event = keyDown(KeyEvent.KEYCODE_ALT_LEFT),
+            callbacks = callbacks
+        )
+        assertTrue(altDownResult is InputEventRouter.EditableFieldRoutingResult.Consume)
+        modifierStateController.handleAltKeyUp(KeyEvent.KEYCODE_ALT_LEFT)
     }
 
     private class TestCallbacks(
