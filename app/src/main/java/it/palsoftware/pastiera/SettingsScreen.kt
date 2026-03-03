@@ -618,7 +618,11 @@ private fun SettingsMainScreen(
                                 maxLines = 1
                             )
                             Text(
-                                text = "Device: " + DeviceSpecific.deviceName() + "; Keyboard: " + DeviceSpecific.keyboardName(),
+                                text = stringResource(
+                                    R.string.settings_device_keyboard_info,
+                                    DeviceSpecific.deviceName(),
+                                    DeviceSpecific.keyboardName()
+                                ),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 2
