@@ -2092,12 +2092,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         )
     }
 
+    private fun remapHardwareEvent(keyCode: Int, event: KeyEvent?): Pair<Int, KeyEvent?> {
+        val remapped = DeviceSpecific.remapHardwareKeyEvent(keyCode, event)
+        return remapped.keyCode to remapped.event
+    }
+
     override fun onKeyLongPress(keyCode_: Int, event_: KeyEvent?): Boolean {
-        var t: Pair<Int, KeyEvent?>? = null
-        if (DeviceSpecific.needsRemapping())
-            t = DeviceSpecific.remapKeyEvent(keyCode_, event_)
-        val keyCode = if (t != null) t.first else keyCode_
-        val event = if (t != null) t.second else event_
+        val (keyCode, event) = remapHardwareEvent(keyCode_, event_)
         // Handle long press even when the keyboard is hidden but we still have a valid InputConnection.
         val inputConnection = currentInputConnection
         if (inputConnection == null) {
@@ -2130,11 +2131,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         if (hasEditableField && !isInputViewActive) {
             isInputViewActive = true
         }
-        var t: Pair<Int, KeyEvent?>? = null
-        if (DeviceSpecific.needsRemapping())
-            t = DeviceSpecific.remapKeyEvent(keyCode_, event_)
-        val keyCode = if (t != null) t.first else keyCode_
-        val event = if (t != null) t.second else event_
+        val (keyCode, event) = remapHardwareEvent(keyCode_, event_)
 
         // When the inline emoji picker (SYM page 4) is open, route printable hardware input
         // to the picker search field instead of the target app text field.
@@ -2457,11 +2454,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         val ic = currentInputConnection
         val inputType = info?.inputType ?: EditorInfo.TYPE_NULL
         val hasEditableField = ic != null && inputType != EditorInfo.TYPE_NULL
-        var t: Pair<Int, KeyEvent?>? = null
-        if (DeviceSpecific.needsRemapping())
-            t = DeviceSpecific.remapKeyEvent(keyCode_, event_)
-        val keyCode = if (t != null) t.first else keyCode_
-        val event = if (t != null) t.second else event_
+        val (keyCode, event) = remapHardwareEvent(keyCode_, event_)
 
         if (
             hasEditableField &&
