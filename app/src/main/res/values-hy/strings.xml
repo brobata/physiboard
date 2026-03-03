@@ -160,6 +160,7 @@
     <string name="keyboard_layout_viewer_multitap_off">մեկ սեղմում</string>
     <string name="keyboard_layout_viewer_open">Դիտել դասավորությունը</string>
     <string name="keyboard_layout_settings_button">Դասավորության կարգավորումներ</string>
+    <string name="settings_device_keyboard_info">Սարք՝ %1$s; Ստեղնաշար՝ %2$s</string>
     <string name="about_title">Ծրագրի մասին</string>
     <string name="about_credits_error">Հնարավոր չէ բեռնել վարկերի տեղեկատվությունը:</string>
     <string name="launcher_shortcuts_title">Դյուրանցումներ</string>

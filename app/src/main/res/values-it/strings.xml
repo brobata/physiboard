@@ -206,6 +206,7 @@
     <!-- About Section -->
     <string name="about_github">GitHub</string>
     <string name="about_build_info">Pastiera IME - Palsoftware 2025</string>
+    <string name="settings_device_keyboard_info">Dispositivo: %1$s; Tastiera: %2$s</string>
     <string name="about_title">Informazioni</string>
     <string name="about_credits_error">Impossibile caricare le informazioni sui crediti.</string>
     

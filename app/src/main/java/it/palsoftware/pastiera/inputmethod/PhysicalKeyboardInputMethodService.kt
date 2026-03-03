@@ -2092,7 +2092,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         )
     }
 
-    override fun onKeyLongPress(keyCode: Int, event: KeyEvent?): Boolean {
+    private fun remapHardwareEvent(keyCode: Int, event: KeyEvent?): Pair<Int, KeyEvent?> {
+        val remapped = DeviceSpecific.remapHardwareKeyEvent(keyCode, event)
+        return remapped.keyCode to remapped.event
+    }
+
+    override fun onKeyLongPress(keyCode_: Int, event_: KeyEvent?): Boolean {
+        val (keyCode, event) = remapHardwareEvent(keyCode_, event_)
         // Handle long press even when the keyboard is hidden but we still have a valid InputConnection.
         val inputConnection = currentInputConnection
         if (inputConnection == null) {
@@ -2116,7 +2122,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         return super.onKeyLongPress(keyCode, event)
     }
 
-    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+    override fun onKeyDown(keyCode_: Int, event_: KeyEvent?): Boolean {
         // Check if we have an editable field at the very start
         val info = currentInputEditorInfo
         val initialInputConnection = currentInputConnection
@@ -2125,6 +2131,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         if (hasEditableField && !isInputViewActive) {
             isInputViewActive = true
         }
+        val (keyCode, event) = remapHardwareEvent(keyCode_, event_)
 
         // When the inline emoji picker (SYM page 4) is open, route printable hardware input
         // to the picker search field instead of the target app text field.
@@ -2441,12 +2448,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
     }
 
-    override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+    override fun onKeyUp(keyCode_: Int, event_: KeyEvent?): Boolean {
         // Check if we have an editable field at the start (same logic as onKeyDown)
         val info = currentInputEditorInfo
         val ic = currentInputConnection
         val inputType = info?.inputType ?: EditorInfo.TYPE_NULL
         val hasEditableField = ic != null && inputType != EditorInfo.TYPE_NULL
+        val (keyCode, event) = remapHardwareEvent(keyCode_, event_)
 
         if (
             hasEditableField &&

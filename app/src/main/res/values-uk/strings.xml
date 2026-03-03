@@ -195,6 +195,7 @@
     
     <string name="about_github">GitHub</string>
     <string name="about_build_info">Pastiera IME - Palsoftware 2025</string>
+    <string name="settings_device_keyboard_info">Пристрій: %1$s; Клавіатура: %2$s</string>
     <string name="about_title">Про програму</string>
     <string name="about_credits_error">Не вдалося завантажити інформацію.</string>
     

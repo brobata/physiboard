@@ -196,6 +196,7 @@
     <!-- About Section -->
     <string name="about_github">GitHub</string>
     <string name="about_build_info">Pastiera IME - Palsoftware 2025</string>
+    <string name="settings_device_keyboard_info">Appareil : %1$s ; Clavier : %2$s</string>
     <string name="about_title">À Propos</string>
     
     <!-- Launcher Shortcuts Section -->

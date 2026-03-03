@@ -240,6 +240,7 @@
     <!-- About Section -->
     <string name="about_github">GitHub</string>
     <string name="about_build_info">Pastiera IME - Palsoftware 2025</string>
+    <string name="settings_device_keyboard_info">Thiết bị: %1$s; Bàn phím: %2$s</string>
     <string name="about_title">Giới thiệu</string>
     <string name="about_credits_error">Không thể tải thông tin ghi nhận.</string>
     
