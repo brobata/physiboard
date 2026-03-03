@@ -32,7 +32,7 @@ object DeviceSpecific {
         val needsEventRemapping: Boolean
     )
 
-    private val deviceProfile: DeviceProfile = resolveDeviceProfile()
+    private var testBuildFingerprintOverride: BuildFingerprint? = null
 
     // Unihertz scan codes (Titan2)
     private const val SCANCODE_TITAN2_CTRL: Int = 251
@@ -62,10 +62,10 @@ object DeviceSpecific {
 
     private var lastQ25MetaState: Int = 0
 
-    fun needsRemapping(): Boolean = deviceProfile.needsEventRemapping
+    fun needsRemapping(): Boolean = currentDeviceProfile().needsEventRemapping
 
     fun remapHardwareKeyEvent(keyCode: Int, event: KeyEvent?): RemappedHardwareEvent {
-        return when (deviceProfile.model) {
+        return when (currentDeviceProfile().model) {
             KeyboardModel.Q25 -> remapQ25KeyEvent(keyCode, event)
             else -> RemappedHardwareEvent(keyCode, event)
         }
@@ -217,6 +217,7 @@ object DeviceSpecific {
     }
 
     private fun buildFingerprint(): BuildFingerprint {
+        testBuildFingerprintOverride?.let { return it }
         return BuildFingerprint(
             brand = Build.BRAND.orEmpty().lowercase(),
             manufacturer = Build.MANUFACTURER.orEmpty().lowercase(),
@@ -224,6 +225,29 @@ object DeviceSpecific {
             device = Build.DEVICE.orEmpty().lowercase(),
             product = Build.PRODUCT.orEmpty().lowercase()
         )
+    }
+
+    private fun currentDeviceProfile(): DeviceProfile = resolveDeviceProfile()
+
+    internal fun setBuildFingerprintForTests(
+        brand: String,
+        manufacturer: String,
+        model: String,
+        device: String,
+        product: String
+    ) {
+        testBuildFingerprintOverride = BuildFingerprint(
+            brand = brand.lowercase(),
+            manufacturer = manufacturer.lowercase(),
+            model = model.lowercase(),
+            device = device.lowercase(),
+            product = product.lowercase()
+        )
+    }
+
+    internal fun clearTestOverrides() {
+        testBuildFingerprintOverride = null
+        lastQ25MetaState = 0
     }
 
     private fun isQ25(fp: BuildFingerprint): Boolean {
@@ -260,7 +284,7 @@ object DeviceSpecific {
     }
 
     fun keyboardName(): String {
-        return when (deviceProfile.family) {
+        return when (currentDeviceProfile().family) {
             KeyboardFamily.BLACKBERRY -> "Blackberry"
             KeyboardFamily.UNIHERTZ -> "Unihertz"
             KeyboardFamily.UNKNOWN -> "unknown"
@@ -268,6 +292,6 @@ object DeviceSpecific {
     }
 
     fun physicalKeyboardName(): String {
-        return deviceProfile.physicalLayoutName
+        return currentDeviceProfile().physicalLayoutName
     }
 }
