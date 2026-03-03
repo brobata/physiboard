@@ -17,6 +17,7 @@ object DeviceSpecific {
 
     private enum class KeyboardModel {
         Q25,
+        KEY2,
         TITAN_2,
         TITAN_POCKET,
         TITAN_SLIM,
@@ -191,6 +192,14 @@ object DeviceSpecific {
                 needsEventRemapping = true
             )
         }
+        if (isKey2(fp)) {
+            return DeviceProfile(
+                family = KeyboardFamily.BLACKBERRY,
+                model = KeyboardModel.KEY2,
+                physicalLayoutName = "key2",
+                needsEventRemapping = false
+            )
+        }
         if (isTitanFamily(fp)) {
             return DeviceProfile(
                 family = KeyboardFamily.UNIHERTZ,
@@ -220,6 +229,16 @@ object DeviceSpecific {
     private fun isQ25(fp: BuildFingerprint): Boolean {
         return fp.containsAny("q25") &&
             (fp.containsAny("zinwa", "blackberry", "q20") || fp.device == "q25" || fp.model == "q25")
+    }
+
+    private fun isKey2(fp: BuildFingerprint): Boolean {
+        // LineageOS Key2 codenames:
+        // - KEY2: athena
+        // - KEY2 LE: luna
+        if (fp.device == "athena" || fp.device == "luna") {
+            return true
+        }
+        return fp.containsAny("blackberry key2", "key2", "bbf100")
     }
 
     private fun isTitanFamily(fp: BuildFingerprint): Boolean {
