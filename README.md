@@ -127,3 +127,21 @@ Input method for physical keyboards android devices (e.g. Unihertz Titan 2), des
   - `./scripts/build-nightly.sh 0.85 --publish`
   - `./scripts/build-release.sh 0.85 85`
   - `./scripts/build-release.sh 0.85 85 --publish`
+
+## Signing Attestations
+These attestations document the public signing certificates used for Nightly and official Release builds.
+They are intended to strengthen the project's chain of trust: the markdown files are the browser-friendly reference version rendered directly on GitHub, and the signed PDFs are the archival verification artifacts.
+The `_signed.pdf` variants do not turn the APK signing certificates themselves into identity certificates. They are private attestations: the signer states that the published public key is the one they currently trust for the respective build channel.
+Where a qualified electronic signature is present, that attestation can be validated against the EU DSS validator and interpreted in the context of the eIDAS trust-services framework.
+
+| Channel | Source | Signed PDF | Purpose |
+| --- | --- | --- | --- |
+| Nightly | [docs/nightly-signing-certificate-attestation.md](docs/nightly-signing-certificate-attestation.md) | [docs/nightly-signing-certificate-attestation_signed.pdf](docs/nightly-signing-certificate-attestation_signed.pdf) | Documents the shared Nightly signing certificate used by local and CI Nightly builds. |
+| Release | [docs/release-signing-certificate-attestation.md](docs/release-signing-certificate-attestation.md) | [docs/release-signing-certificate-attestation_signed.pdf](docs/release-signing-certificate-attestation_signed.pdf) | Documents the official Release signing certificate used for stable public releases. |
+
+External verification references:
+
+| Reference | Link | Purpose |
+| --- | --- | --- |
+| EU DSS Validator Demo | [ec.europa.eu/digital-building-blocks/DSS/webapp-demo/validation](https://ec.europa.eu/digital-building-blocks/DSS/webapp-demo/validation) | Validate the signed PDF attestations with the European Commission DSS demo service. |
+| eIDAS overview | [digital-strategy.ec.europa.eu/en/policies/eidas-regulation](https://digital-strategy.ec.europa.eu/en/policies/eidas-regulation) | Background on the EU trust-services framework under which qualified electronic signatures are defined. |
