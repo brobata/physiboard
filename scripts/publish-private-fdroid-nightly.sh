@@ -18,9 +18,10 @@ fi
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FDROID_ROOT="${FDROID_ROOT:-$ROOT_DIR/.fdroid/nightly}"
 FDROID_REPO_DIR="$FDROID_ROOT/repo"
+FDROID_METADATA_DIR="$FDROID_ROOT/metadata"
 TARGET_REPO_DIR="$PAGES_PUBLIC_DIR/fdroid/nightly/repo"
 APK_PATH="$ROOT_DIR/app/build/outputs/apk/nightly/release/app-nightly-release.apk"
-SHA_PATH="${APK_PATH}.sha256"
+APP_ID="it.palsoftware.pastiera.nightly"
 
 if [ ! -d "$PAGES_PUBLIC_DIR" ]; then
   echo "Pages public directory not found: $PAGES_PUBLIC_DIR" >&2
@@ -52,18 +53,30 @@ ensure_yaml_value "$FDROID_ROOT/config.yml" "repo_url" "$REPO_URL"
 ensure_yaml_value "$FDROID_ROOT/config.yml" "repo_name" "Pastiera Nightly"
 ensure_yaml_value "$FDROID_ROOT/config.yml" "repo_description" "Nightly builds for Pastiera"
 
+mkdir -p "$FDROID_METADATA_DIR"
+find "$FDROID_METADATA_DIR" -maxdepth 1 -type f ! -name "${APP_ID}.yml" -delete
+
+cat > "$FDROID_METADATA_DIR/${APP_ID}.yml" <<EOF
+AuthorName: PalSoftware
+Categories:
+  - nightly
+IssueTracker: https://github.com/palsoftware/pastiera/issues
+License: GPL-3.0-only
+Name: Pastiera Nightly
+SourceCode: https://github.com/palsoftware/pastiera
+Summary: Nightly builds for Pastiera
+WebSite: https://pastiera.eu
+EOF
+
 "$ROOT_DIR/scripts/build-nightly.sh" "$BASE_VERSION"
 
 mkdir -p "$FDROID_REPO_DIR"
 rm -f "$FDROID_REPO_DIR"/*.apk "$FDROID_REPO_DIR"/*.apk.sha256
 cp "$APK_PATH" "$FDROID_REPO_DIR/"
-if [ -f "$SHA_PATH" ]; then
-  cp "$SHA_PATH" "$FDROID_REPO_DIR/"
-fi
 
 (
   cd "$FDROID_ROOT"
-  fdroid update --create-metadata
+  fdroid update
 )
 
 mkdir -p "$TARGET_REPO_DIR"
