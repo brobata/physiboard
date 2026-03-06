@@ -355,9 +355,19 @@
     <!-- Settings Categories -->
     <string name="settings_category_keyboard_timing">Tastiera &amp; Temporizzazione</string>
     <string name="settings_category_text_input">Smart Features</string>
+    <string name="settings_category_accessibility">Accessibilità</string>
     <string name="settings_category_auto_correction">Auto-correzione</string>
     <string name="settings_category_customization">Personalizzazione</string>
     <string name="settings_category_advanced">Avanzate</string>
+    <string name="settings_accessibility_live_read_title">Lettura live dei cambiamenti nella barra di stato</string>
+    <string name="settings_accessibility_live_read_description">Se attivo, TalkBack può annunciare automaticamente lingua/layout e cambiamenti della barra di stato.</string>
+    <string name="settings_accessibility_second_row_title">Leggi seconda riga (impostazioni rapide e variazioni)</string>
+    <string name="settings_accessibility_second_row_description">Se disattivato, TalkBack salta la riga inferiore e mantiene separate le parole suggerite.</string>
+    <string name="settings_accessibility_suggestions_delay_title">Ritardo lettura suggerimenti</string>
+    <string name="settings_accessibility_suggestions_delay_value">%1$d ms</string>
+    <string name="settings_accessibility_delay_decrease">Riduci ritardo di 50 millisecondi</string>
+    <string name="settings_accessibility_delay_increase">Aumenta ritardo di 50 millisecondi</string>
+    <string name="settings_accessibility_delay_feedback">Ritardo suggerimenti: %1$d ms</string>
     
     <!-- Keyboard Layout Settings -->
     <string name="layout_save_content_description">Salva layout</string>

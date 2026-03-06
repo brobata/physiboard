@@ -393,9 +393,19 @@
     <!-- Settings Categories -->
     <string name="settings_category_keyboard_timing">Keyboard &amp; Timing</string>
     <string name="settings_category_text_input">Smart Features</string>
+    <string name="settings_category_accessibility">Accessibility</string>
     <string name="settings_category_auto_correction">Auto-correction</string>
     <string name="settings_category_customization">Customization</string>
     <string name="settings_category_advanced">Advanced</string>
+    <string name="settings_accessibility_live_read_title">Live reading for status bar changes</string>
+    <string name="settings_accessibility_live_read_description">When enabled, TalkBack can announce language/layout and status bar changes automatically.</string>
+    <string name="settings_accessibility_second_row_title">Read second row (quick settings and variations)</string>
+    <string name="settings_accessibility_second_row_description">When disabled, TalkBack will skip the lower row and keep word suggestions separate.</string>
+    <string name="settings_accessibility_suggestions_delay_title">Suggestions read delay</string>
+    <string name="settings_accessibility_suggestions_delay_value">%1$d ms</string>
+    <string name="settings_accessibility_delay_decrease">Decrease delay by 50 milliseconds</string>
+    <string name="settings_accessibility_delay_increase">Increase delay by 50 milliseconds</string>
+    <string name="settings_accessibility_delay_feedback">Suggestions delay: %1$d ms</string>
     
     <!-- Languages (Input Method Subtypes) -->
     <string name="languages_title">Languages</string>

@@ -327,9 +327,19 @@
     <!-- Settings Categories -->
     <string name="settings_category_keyboard_timing">Tastatur &amp; Timing</string>
     <string name="settings_category_text_input">Texteingabe</string>
+    <string name="settings_category_accessibility">Barrierefreiheit</string>
     <string name="settings_category_auto_correction">Autokorrektur</string>
     <string name="settings_category_customization">Anpassung</string>
     <string name="settings_category_advanced">Erweitert</string>
+    <string name="settings_accessibility_live_read_title">Live-Vorlesen bei Statusleisten-Änderungen</string>
+    <string name="settings_accessibility_live_read_description">Wenn aktiviert, kann TalkBack Sprache/Layout und Statusleisten-Änderungen automatisch ansagen.</string>
+    <string name="settings_accessibility_second_row_title">Zweite Zeile vorlesen (Schnellaktionen und Variationen)</string>
+    <string name="settings_accessibility_second_row_description">Wenn deaktiviert, überspringt TalkBack die untere Zeile und hält Wortvorschläge getrennt.</string>
+    <string name="settings_accessibility_suggestions_delay_title">Verzögerung für Vorschlagsansage</string>
+    <string name="settings_accessibility_suggestions_delay_value">%1$d ms</string>
+    <string name="settings_accessibility_delay_decrease">Verzögerung um 50 Millisekunden verringern</string>
+    <string name="settings_accessibility_delay_increase">Verzögerung um 50 Millisekunden erhöhen</string>
+    <string name="settings_accessibility_delay_feedback">Vorschlagsverzögerung: %1$d ms</string>
     
     <!-- Keyboard Layout Settings -->
     <string name="layout_save_content_description">Layout speichern</string>

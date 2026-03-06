@@ -53,6 +53,7 @@ sealed class SettingsDestination {
     object Main : SettingsDestination()
     object KeyboardTiming : SettingsDestination()
     object TextInput : SettingsDestination()
+    object Accessibility : SettingsDestination()
     object AutoCorrection : SettingsDestination()
     object Customization : SettingsDestination()
     object Advanced : SettingsDestination()
@@ -145,6 +146,7 @@ fun SettingsScreen(
                     onCheckingForUpdatesChange = { checkingForUpdates = it },
                     onKeyboardTimingClick = { navigateTo(SettingsDestination.KeyboardTiming) },
                     onTextInputClick = { navigateTo(SettingsDestination.TextInput) },
+                    onAccessibilityClick = { navigateTo(SettingsDestination.Accessibility) },
                     onAutoCorrectionClick = { navigateTo(SettingsDestination.AutoCorrection) },
                     onCustomizationClick = { navigateTo(SettingsDestination.Customization) },
                     onAdvancedClick = { navigateTo(SettingsDestination.Advanced) },
@@ -161,6 +163,12 @@ fun SettingsScreen(
             }
             is SettingsDestination.TextInput -> {
                 TextInputSettingsScreen(
+                    modifier = modifier,
+                    onBack = { navigateBack() }
+                )
+            }
+            is SettingsDestination.Accessibility -> {
+                AccessibilitySettingsScreen(
                     modifier = modifier,
                     onBack = { navigateBack() }
                 )
@@ -212,6 +220,7 @@ private fun SettingsMainScreen(
     onCheckingForUpdatesChange: (Boolean) -> Unit,
     onKeyboardTimingClick: () -> Unit,
     onTextInputClick: () -> Unit,
+    onAccessibilityClick: () -> Unit,
     onAutoCorrectionClick: () -> Unit,
     onCustomizationClick: () -> Unit,
     onAdvancedClick: () -> Unit,
@@ -326,7 +335,43 @@ private fun SettingsMainScreen(
                         )
                     }
                 }
-            
+
+                // Accessibility
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(64.dp)
+                        .clickable(onClick = onAccessibilityClick)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.TouchApp,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.settings_category_accessibility),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
                 // Languages and Maps (Custom Input Styles)
                 Surface(
                     modifier = Modifier

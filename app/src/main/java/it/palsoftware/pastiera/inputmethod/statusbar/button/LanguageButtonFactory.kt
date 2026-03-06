@@ -18,6 +18,7 @@ import android.view.inputmethod.InputMethodSubtype
 import android.widget.TextView
 import androidx.core.view.ViewCompat
 import it.palsoftware.pastiera.R
+import it.palsoftware.pastiera.SettingsManager
 import it.palsoftware.pastiera.data.layout.LayoutFileStore
 import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils
 import it.palsoftware.pastiera.inputmethod.statusbar.ButtonCreationResult
@@ -110,7 +111,7 @@ class LanguageButtonFactory : StatusBarButtonFactory {
             isClickable = true
             isFocusable = true
             contentDescription = context.getString(R.string.status_bar_button_language_description)
-            accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
+            accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_NONE
             includeFontPadding = false
             setPadding(0, 0, 0, 0)
             // layoutParams will be set by VariationBarView for consistency
@@ -118,6 +119,10 @@ class LanguageButtonFactory : StatusBarButtonFactory {
     }
     
     private fun updateLanguageText(context: Context, button: TextView) {
+        if (button.accessibilityLiveRegion != View.ACCESSIBILITY_LIVE_REGION_NONE) {
+            button.accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_NONE
+        }
+
         try {
             val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
             val currentSubtype = imm.currentInputMethodSubtype

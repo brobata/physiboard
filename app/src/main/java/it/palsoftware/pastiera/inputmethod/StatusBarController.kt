@@ -309,7 +309,7 @@ class StatusBarController(
                 )
                 setBackgroundColor(DEFAULT_BACKGROUND)
                 importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
-                accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
+                accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_NONE
             }
             statusBarLayout?.let { layout ->
                 baseBottomPadding = layout.paddingBottom
@@ -427,6 +427,7 @@ class StatusBarController(
                 addView(emojiKeyboardContainer) // Griglia emoji prima dei LED
                 addView(ledStrip) // LED sempre in fondo
             }
+            applyAccessibilitySecondRowReadPreference()
             statusBarLayout?.let { ViewCompat.requestApplyInsets(it) }
         } else if (emojiMapText.isNotEmpty()) {
             emojiMapTextView?.text = emojiMapText
@@ -1561,6 +1562,7 @@ class StatusBarController(
         }
         
         val layout = ensureLayoutCreated(emojiMapText) ?: return
+        applyAccessibilitySecondRowReadPreference()
         val modifiersContainerView = modifiersContainer ?: return
         val emojiView = emojiMapTextView ?: return
         val emojiKeyboardView = emojiKeyboardContainer ?: return
@@ -1571,7 +1573,7 @@ class StatusBarController(
             return
         }
         layout.visibility = View.VISIBLE
-        updateAccessibilityStateDescription(layout)
+        applyAccessibilityLiveRegionPreference(layout)
         
         if (layout.background !is ColorDrawable) {
             layout.background = ColorDrawable(DEFAULT_BACKGROUND)
@@ -1592,6 +1594,10 @@ class StatusBarController(
             !snapshot.shouldDisableSuggestions &&
             snapshot.symPage == 0 &&
             !snapshot.clipboardOverlay
+        fullSuggestionsBar?.setAccessibilityAnnouncementConfig(
+            liveAnnouncementsEnabled = isAccessibilityLiveAnnouncementsEnabled(),
+            suggestionsAnnouncementDelayMs = SettingsManager.getAccessibilitySuggestionsAnnouncementDelayMs(context)
+        )
         fullSuggestionsBar?.update(
             snapshot.suggestions,
             showFullBar,
@@ -1734,6 +1740,39 @@ class StatusBarController(
             return
         }
         ViewCompat.setStateDescription(view, newStateDescription)
+    }
+
+    private fun isAccessibilityLiveAnnouncementsEnabled(): Boolean {
+        return SettingsManager.getAccessibilityLiveAnnouncementsEnabled(context)
+    }
+
+    private fun isAccessibilityReadSecondRowEnabled(): Boolean {
+        return SettingsManager.getAccessibilityReadSecondRowEnabled(context)
+    }
+
+    private fun applyAccessibilityLiveRegionPreference(view: View) {
+        if (view.accessibilityLiveRegion != View.ACCESSIBILITY_LIVE_REGION_NONE) {
+            view.accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_NONE
+        }
+    }
+
+    private fun applyAccessibilitySecondRowReadPreference() {
+        val importance = if (isAccessibilityReadSecondRowEnabled()) {
+            View.IMPORTANT_FOR_ACCESSIBILITY_YES
+        } else {
+            View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+        }
+
+        variationsWrapper?.let { wrapper ->
+            if (wrapper.importantForAccessibility != importance) {
+                wrapper.importantForAccessibility = importance
+            }
+        }
+        modifiersContainer?.let { container ->
+            if (container.importantForAccessibility != importance) {
+                container.importantForAccessibility = importance
+            }
+        }
     }
 
     private fun buildLayoutAccessibilityStateDescription(): String {

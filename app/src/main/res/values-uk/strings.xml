@@ -327,9 +327,19 @@
     
     <string name="settings_category_keyboard_timing">Клавіатура і тайминг</string>
     <string name="settings_category_text_input">Розумні функції</string>
+    <string name="settings_category_accessibility">Доступність</string>
     <string name="settings_category_auto_correction">Автокорекція</string>
     <string name="settings_category_customization">Персоналізація</string>
     <string name="settings_category_advanced">Додатково</string>
+    <string name="settings_accessibility_live_read_title">Озвучення змін рядка стану</string>
+    <string name="settings_accessibility_live_read_description">Якщо увімкнено, TalkBack може автоматично озвучувати мову/розкладку та зміни рядка стану.</string>
+    <string name="settings_accessibility_second_row_title">Озвучувати другий ряд (швидкі дії та варіації)</string>
+    <string name="settings_accessibility_second_row_description">Якщо вимкнено, TalkBack пропускає нижній ряд і лишає підказки слів окремо.</string>
+    <string name="settings_accessibility_suggestions_delay_title">Затримка озвучення підказок</string>
+    <string name="settings_accessibility_suggestions_delay_value">%1$d ms</string>
+    <string name="settings_accessibility_delay_decrease">Зменшити затримку на 50 мілісекунд</string>
+    <string name="settings_accessibility_delay_increase">Збільшити затримку на 50 мілісекунд</string>
+    <string name="settings_accessibility_delay_feedback">Затримка підказок: %1$d ms</string>
     
     <string name="languages_title">Мови</string>
     <string name="languages_description">Додати мови до селектора методів введення Android. Показуються лише мови зі словниками, які не є системними.</string>

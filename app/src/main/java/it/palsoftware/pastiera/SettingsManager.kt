@@ -59,6 +59,9 @@ object SettingsManager {
     private const val KEY_PASTIERINA_MODE_OVERRIDE = "pastierina_mode_override" // follow_system | force_minimal | force_full
     private const val KEY_PASTIERINA_MODE_ACTIVE = "pastierina_mode_active" // Current effective state
     private const val KEY_TITAN2_LAYOUT_ENABLED = "titan2_layout_enabled" // Align OSK with Titan 2 physical layout
+    private const val KEY_ACCESSIBILITY_LIVE_ANNOUNCEMENTS_ENABLED = "accessibility_live_announcements_enabled" // Whether status bar accessibility live announcements are enabled
+    private const val KEY_ACCESSIBILITY_READ_SECOND_ROW_ENABLED = "accessibility_read_second_row_enabled" // Whether TalkBack should read quick settings/variations row
+    private const val KEY_ACCESSIBILITY_SUGGESTIONS_ANNOUNCEMENT_DELAY_MS = "accessibility_suggestions_announcement_delay_ms" // Delay before suggestions become accessible again while typing
     
     // Status bar button slot configuration keys
     private const val KEY_STATUS_BAR_SLOT_LEFT = "status_bar_slot_left"
@@ -127,6 +130,11 @@ object SettingsManager {
     private const val DEFAULT_SHIFT_BACKSPACE_DELETE = false
     private const val DEFAULT_ALT_BACKSPACE_DELETE = false
     private const val DEFAULT_BACKSPACE_AT_START_DELETE = false
+    private const val DEFAULT_ACCESSIBILITY_LIVE_ANNOUNCEMENTS_ENABLED = false
+    private const val DEFAULT_ACCESSIBILITY_READ_SECOND_ROW_ENABLED = false
+    private const val DEFAULT_ACCESSIBILITY_SUGGESTIONS_ANNOUNCEMENT_DELAY_MS = 500L
+    private const val MIN_ACCESSIBILITY_SUGGESTIONS_ANNOUNCEMENT_DELAY_MS = 100L
+    private const val MAX_ACCESSIBILITY_SUGGESTIONS_ANNOUNCEMENT_DELAY_MS = 2000L
     private val STATIC_VARIATION_BASE_PRESET_DEFAULT = listOf("@", "\"", ":", "!", "?", ",", ".")
     private val STATIC_VARIATION_BASE_PRESET_ALTERNATIVE = listOf("[", "]", "$", "%", "^", "&", "\\")
     private val STATIC_VARIATION_SHIFT_PRESET_DEFAULT = listOf("{", "}", "€", "=", "~", ";", "¿")
@@ -365,6 +373,75 @@ object SettingsManager {
             .putBoolean(KEY_ALT_CTRL_SPEECH_SHORTCUT, enabled)
             .apply()
     }
+
+    /**
+     * Returns whether accessibility live announcements are enabled.
+     */
+    fun getAccessibilityLiveAnnouncementsEnabled(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_ACCESSIBILITY_LIVE_ANNOUNCEMENTS_ENABLED,
+            DEFAULT_ACCESSIBILITY_LIVE_ANNOUNCEMENTS_ENABLED
+        )
+    }
+
+    /**
+     * Sets whether accessibility live announcements are enabled.
+     */
+    fun setAccessibilityLiveAnnouncementsEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_ACCESSIBILITY_LIVE_ANNOUNCEMENTS_ENABLED, enabled)
+            .apply()
+    }
+
+    /**
+     * Returns whether accessibility should read the second IME row
+     * (quick settings and variations).
+     */
+    fun getAccessibilityReadSecondRowEnabled(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_ACCESSIBILITY_READ_SECOND_ROW_ENABLED,
+            DEFAULT_ACCESSIBILITY_READ_SECOND_ROW_ENABLED
+        )
+    }
+
+    /**
+     * Sets whether accessibility should read the second IME row
+     * (quick settings and variations).
+     */
+    fun setAccessibilityReadSecondRowEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_ACCESSIBILITY_READ_SECOND_ROW_ENABLED, enabled)
+            .apply()
+    }
+
+    /**
+     * Returns the delay before suggestion row accessibility is re-enabled after updates.
+     */
+    fun getAccessibilitySuggestionsAnnouncementDelayMs(context: Context): Long {
+        return getPreferences(context).getLong(
+            KEY_ACCESSIBILITY_SUGGESTIONS_ANNOUNCEMENT_DELAY_MS,
+            DEFAULT_ACCESSIBILITY_SUGGESTIONS_ANNOUNCEMENT_DELAY_MS
+        )
+    }
+
+    /**
+     * Sets the delay before suggestion row accessibility is re-enabled after updates.
+     */
+    fun setAccessibilitySuggestionsAnnouncementDelayMs(context: Context, delayMs: Long) {
+        val clamped = delayMs.coerceIn(
+            MIN_ACCESSIBILITY_SUGGESTIONS_ANNOUNCEMENT_DELAY_MS,
+            MAX_ACCESSIBILITY_SUGGESTIONS_ANNOUNCEMENT_DELAY_MS
+        )
+        getPreferences(context).edit()
+            .putLong(KEY_ACCESSIBILITY_SUGGESTIONS_ANNOUNCEMENT_DELAY_MS, clamped)
+            .apply()
+    }
+
+    fun getMinAccessibilitySuggestionsAnnouncementDelayMs(): Long =
+        MIN_ACCESSIBILITY_SUGGESTIONS_ANNOUNCEMENT_DELAY_MS
+
+    fun getMaxAccessibilitySuggestionsAnnouncementDelayMs(): Long =
+        MAX_ACCESSIBILITY_SUGGESTIONS_ANNOUNCEMENT_DELAY_MS
 
     /**
      * Returns whether Shift+Backspace performs forward delete.

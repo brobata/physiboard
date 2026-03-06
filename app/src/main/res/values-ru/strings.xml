@@ -382,9 +382,19 @@
     <!-- Settings Categories -->
     <string name="settings_category_keyboard_timing">Клавиатура и тайминг</string>
     <string name="settings_category_text_input">Умные возможности</string>
+    <string name="settings_category_accessibility">Спецвозможности</string>
     <string name="settings_category_auto_correction">Автоисправление</string>
     <string name="settings_category_customization">Персонализация</string>
     <string name="settings_category_advanced">Продвинутые</string>
+    <string name="settings_accessibility_live_read_title">Озвучивание изменений строки состояния</string>
+    <string name="settings_accessibility_live_read_description">Если включено, TalkBack может автоматически озвучивать язык/раскладку и изменения строки состояния.</string>
+    <string name="settings_accessibility_second_row_title">Озвучивать вторую строку (быстрые действия и вариации)</string>
+    <string name="settings_accessibility_second_row_description">Если отключено, TalkBack пропускает нижнюю строку и оставляет подсказки слов отдельно.</string>
+    <string name="settings_accessibility_suggestions_delay_title">Задержка озвучивания подсказок</string>
+    <string name="settings_accessibility_suggestions_delay_value">%1$d ms</string>
+    <string name="settings_accessibility_delay_decrease">Уменьшить задержку на 50 миллисекунд</string>
+    <string name="settings_accessibility_delay_increase">Увеличить задержку на 50 миллисекунд</string>
+    <string name="settings_accessibility_delay_feedback">Задержка подсказок: %1$d ms</string>
     
     <!-- Languages (Input Method Subtypes) -->
     <string name="languages_title">Языки</string>

@@ -390,9 +390,19 @@
     <!-- Settings Categories -->
     <string name="settings_category_keyboard_timing">Bàn phím &amp; Thời gian</string>
     <string name="settings_category_text_input">Tính năng thông minh</string>
+    <string name="settings_category_accessibility">Trợ năng</string>
     <string name="settings_category_auto_correction">Sửa tự động</string>
     <string name="settings_category_customization">Tùy chỉnh</string>
     <string name="settings_category_advanced">Nâng cao</string>
+    <string name="settings_accessibility_live_read_title">Đọc trực tiếp thay đổi thanh trạng thái</string>
+    <string name="settings_accessibility_live_read_description">Khi bật, TalkBack có thể tự động đọc ngôn ngữ/bố cục và các thay đổi của thanh trạng thái.</string>
+    <string name="settings_accessibility_second_row_title">Đọc hàng thứ hai (thao tác nhanh và biến thể)</string>
+    <string name="settings_accessibility_second_row_description">Khi tắt, TalkBack sẽ bỏ qua hàng dưới và giữ phần gợi ý từ tách biệt.</string>
+    <string name="settings_accessibility_suggestions_delay_title">Độ trễ đọc gợi ý</string>
+    <string name="settings_accessibility_suggestions_delay_value">%1$d ms</string>
+    <string name="settings_accessibility_delay_decrease">Giảm độ trễ 50 mili giây</string>
+    <string name="settings_accessibility_delay_increase">Tăng độ trễ 50 mili giây</string>
+    <string name="settings_accessibility_delay_feedback">Độ trễ gợi ý: %1$d ms</string>
     
     <!-- Languages (Input Method Subtypes) -->
     <string name="languages_title">Ngôn ngữ</string>

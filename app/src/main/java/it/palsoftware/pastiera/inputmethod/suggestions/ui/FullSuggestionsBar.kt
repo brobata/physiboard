@@ -5,6 +5,8 @@ import android.content.Intent
 import android.content.res.AssetManager
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
+import android.os.Handler
+import android.os.Looper
 import android.text.TextUtils
 import android.util.TypedValue
 import android.view.Gravity
@@ -56,6 +58,11 @@ class FullSuggestionsBar(
     private var imeServiceClass: Class<*>? = null
     private var showHamburgerButton: Boolean = false // Control visibility of hamburger button
     private val suggestionButtons: MutableList<TextView> = mutableListOf()
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var reenableSuggestionsAccessibilityRunnable: Runnable? = null
+    private var liveAnnouncementsEnabled: Boolean = false
+    private var suggestionsAnnouncementDelayMs: Long = 600L
+    private var lastAnnouncedSlots: List<String?> = emptyList()
     private val targetHeightPx: Int by lazy {
         // Compact row sized around three suggestion pills
         dpToPx(36f)
@@ -69,6 +76,15 @@ class FullSuggestionsBar(
         this.imeServiceClass = imeServiceClass
     }
 
+    fun setAccessibilityAnnouncementConfig(
+        liveAnnouncementsEnabled: Boolean,
+        suggestionsAnnouncementDelayMs: Long
+    ) {
+        this.liveAnnouncementsEnabled = liveAnnouncementsEnabled
+        this.suggestionsAnnouncementDelayMs = suggestionsAnnouncementDelayMs
+            .coerceAtLeast(0L)
+    }
+
     fun ensureView(): FrameLayout {
         if (frameContainer == null) {
             // Create frame container to allow overlaying the language button
@@ -79,6 +95,7 @@ class FullSuggestionsBar(
                 )
                 visibility = View.GONE
                 minimumHeight = targetHeightPx
+                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_AUTO
             }
             
             // Create the suggestions container
@@ -91,6 +108,8 @@ class FullSuggestionsBar(
                 )
                 visibility = View.GONE
                 minimumHeight = targetHeightPx
+                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+                accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_NONE
             }
             
             // Create hamburger menu button positioned absolutely on the right
@@ -224,12 +243,14 @@ class FullSuggestionsBar(
         // Hide bar if shouldShow is false or if no dictionary exists for current subtype
         val hasDictionary = hasDictionaryForCurrentSubtype()
         if (!shouldShow || !hasDictionary) {
+            cancelPendingSuggestionsAccessibilityEnable()
             suggestionButtons.clear()
             frame.visibility = View.GONE
             bar.visibility = View.GONE
             bar.removeAllViews()
             hamburgerButton?.visibility = View.GONE
             lastSlots = emptyList()
+            lastAnnouncedSlots = emptyList()
             return
         }
 
@@ -238,6 +259,7 @@ class FullSuggestionsBar(
         hamburgerButton?.visibility = if (showHamburgerButton) View.VISIBLE else View.GONE
 
         val slots = buildSlots(suggestions)
+        applySuggestionsAccessibilityThrottle(slots)
         if (slots == lastSlots && bar.childCount > 0) {
             bar.visibility = View.VISIBLE
             return
@@ -319,6 +341,11 @@ class FullSuggestionsBar(
                 layoutParams = weightLayoutParams
                 isClickable = suggestion != null
                 isFocusable = suggestion != null
+                importantForAccessibility = if (suggestion.isNullOrBlank()) {
+                    View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                } else {
+                    View.IMPORTANT_FOR_ACCESSIBILITY_YES
+                }
                 if (suggestion != null) {
                     if (addWordCandidate != null && suggestion.equals(addWordCandidate, ignoreCase = true)) {
                         val addDrawable = androidx.core.content.ContextCompat.getDrawable(context, android.R.drawable.ic_input_add)?.mutate()
@@ -361,6 +388,52 @@ class FullSuggestionsBar(
             // right
             if (suggestions.size >= 2) s1 else null
         )
+    }
+
+    private fun applySuggestionsAccessibilityThrottle(slots: List<String?>) {
+        val bar = container ?: return
+        val hasVisibleSuggestions = slots.any { !it.isNullOrBlank() }
+        if (!hasVisibleSuggestions || !liveAnnouncementsEnabled) {
+            cancelPendingSuggestionsAccessibilityEnable()
+            if (bar.importantForAccessibility != View.IMPORTANT_FOR_ACCESSIBILITY_YES) {
+                bar.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+            }
+            if (bar.accessibilityLiveRegion != View.ACCESSIBILITY_LIVE_REGION_NONE) {
+                bar.accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_NONE
+            }
+            return
+        }
+
+        if (bar.importantForAccessibility != View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS) {
+            bar.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+        }
+        if (bar.accessibilityLiveRegion != View.ACCESSIBILITY_LIVE_REGION_NONE) {
+            bar.accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_NONE
+        }
+        cancelPendingSuggestionsAccessibilityEnable()
+        val slotsSnapshot = slots.toList()
+        val enableRunnable = Runnable {
+            if (bar.importantForAccessibility != View.IMPORTANT_FOR_ACCESSIBILITY_YES) {
+                bar.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+            }
+            if (slotsSnapshot != lastAnnouncedSlots) {
+                val announcement = slotsSnapshot
+                    .mapNotNull { it?.trim() }
+                    .filter { it.isNotEmpty() }
+                    .joinToString(", ")
+                if (announcement.isNotBlank()) {
+                    bar.announceForAccessibility(announcement)
+                    lastAnnouncedSlots = slotsSnapshot
+                }
+            }
+        }
+        reenableSuggestionsAccessibilityRunnable = enableRunnable
+        mainHandler.postDelayed(enableRunnable, suggestionsAnnouncementDelayMs)
+    }
+
+    private fun cancelPendingSuggestionsAccessibilityEnable() {
+        reenableSuggestionsAccessibilityRunnable?.let { mainHandler.removeCallbacks(it) }
+        reenableSuggestionsAccessibilityRunnable = null
     }
 
     /**
