@@ -294,4 +294,8 @@ object DeviceSpecific {
     fun physicalKeyboardName(): String {
         return currentDeviceProfile().physicalLayoutName
     }
+
+    fun isTitan2Device(): Boolean {
+        return currentDeviceProfile().model == KeyboardModel.TITAN_2
+    }
 }

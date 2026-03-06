@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
 import android.view.KeyEvent
+import it.palsoftware.pastiera.inputmethod.DeviceSpecific
 import org.json.JSONObject
 import java.io.InputStream
 import java.io.File
@@ -181,7 +182,11 @@ object SettingsManager {
     }
 
     fun isTitan2LayoutEnabled(context: Context): Boolean {
-        return getPreferences(context).getBoolean(KEY_TITAN2_LAYOUT_ENABLED, false)
+        val prefs = getPreferences(context)
+        if (prefs.contains(KEY_TITAN2_LAYOUT_ENABLED)) {
+            return prefs.getBoolean(KEY_TITAN2_LAYOUT_ENABLED, false)
+        }
+        return DeviceSpecific.isTitan2Device()
     }
 
     fun setTitan2LayoutEnabled(context: Context, enabled: Boolean) {
