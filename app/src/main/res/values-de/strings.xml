@@ -296,6 +296,9 @@
     <string name="variation_reset_confirm_button">Zurücksetzen</string>
     <string name="static_variation_input_label">Wert</string>
     <string name="static_variation_input_hint">Leer lassen und speichern, um den Slot zu entfernen.</string>
+    <string name="variation_global_layout_override_title">Globale Variationszuordnung</string>
+    <string name="variation_global_layout_override_description">Erzwingt die Reihenfolge der Variationen aus einem Layout für alle Layouts. Standard ist das aktuelle IME-Layout (%1$s).</string>
+    <string name="variation_global_layout_override_none">Keine (aktuelles Layout verwenden)</string>
     
     <!-- Static Variation Bar Mode -->
     <string name="static_variation_bar_mode_title">Statische Variationsleiste</string>

@@ -277,6 +277,8 @@ object AdditionalSubtypeUtils {
      * Falls back to "qwerty" if not found.
      */
     fun getLayoutForLocale(assets: AssetManager, locale: String, context: Context? = null): String {
+        val languageOnly = locale.substringBefore("_").substringBefore("-")
+
         // First, try custom file if context is provided
         if (context != null) {
             try {
@@ -286,6 +288,12 @@ object AdditionalSubtypeUtils {
                     val json = JSONObject(jsonString)
                     if (json.has(locale)) {
                         val layout = json.getString(locale)
+                        if (layout.isNotEmpty()) {
+                            return layout
+                        }
+                    }
+                    if (languageOnly.isNotEmpty() && json.has(languageOnly)) {
+                        val layout = json.getString(languageOnly)
                         if (layout.isNotEmpty()) {
                             return layout
                         }
@@ -301,7 +309,12 @@ object AdditionalSubtypeUtils {
             assets.open("common/locale_layout_mapping.json").use { input ->
                 val jsonString = input.bufferedReader().use { it.readText() }
                 val json = JSONObject(jsonString)
-                json.optString(locale, "qwerty")
+                val exact = json.optString(locale, "")
+                when {
+                    exact.isNotEmpty() -> exact
+                    languageOnly.isNotEmpty() -> json.optString(languageOnly, "qwerty")
+                    else -> "qwerty"
+                }
             }
         } catch (e: Exception) {
             Log.w(TAG, "Error loading layout for locale $locale, defaulting to qwerty", e)

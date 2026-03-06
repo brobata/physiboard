@@ -4,7 +4,15 @@
   "mappings": {
     "KEYCODE_Q": { "lowercase": "q", "uppercase": "Q" },
     "KEYCODE_W": { "lowercase": "w", "uppercase": "W" },
-    "KEYCODE_E": { "lowercase": "e", "uppercase": "E" },
+    "KEYCODE_E": {
+      "lowercase": "e",
+      "uppercase": "E",
+      "multiTapEnabled": true,
+      "taps": [
+        { "lowercase": "e", "uppercase": "E" },
+        { "lowercase": "€", "uppercase": "€" }
+      ]
+    },
     "KEYCODE_R": { "lowercase": "r", "uppercase": "R" },
     "KEYCODE_T": { "lowercase": "t", "uppercase": "T" },
     "KEYCODE_Y": { "lowercase": "z", "uppercase": "Z" },

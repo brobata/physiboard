@@ -21,7 +21,8 @@ import java.util.concurrent.ConcurrentHashMap
 class AltSymManager(
     private val assets: AssetManager,
     private val prefs: SharedPreferences,
-    private val context: Context? = null
+    private val context: Context? = null,
+    private val activeLayoutNameProvider: (() -> String?)? = null
 ) {
     // Callback invoked when an Alt character is inserted after a long press
     var onAltCharInserted: ((Char) -> Unit)? = null
@@ -246,7 +247,11 @@ class AltSymManager(
                     false
                 } else {
                     val variations = context?.let { ctx ->
-                        VariationRepository.loadVariations(ctx.assets, ctx)
+                        VariationRepository.loadVariations(
+                            assets = ctx.assets,
+                            context = ctx,
+                            activeLayoutName = activeLayoutNameProvider?.invoke()
+                        )
                     } ?: emptyMap()
                     variations[normalChar.firstOrNull()]?.isNotEmpty() == true
                 }
@@ -363,7 +368,11 @@ class AltSymManager(
                             }
 
                             val variations = context?.let { ctx ->
-                                VariationRepository.loadVariations(ctx.assets, ctx)[lookupChar]
+                                VariationRepository.loadVariations(
+                                    assets = ctx.assets,
+                                    context = ctx,
+                                    activeLayoutName = activeLayoutNameProvider?.invoke()
+                                )[lookupChar]
                             }
                             if (!variations.isNullOrEmpty()) {
                                 val firstVariation = variations.first()

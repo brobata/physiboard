@@ -62,6 +62,7 @@ object SettingsManager {
     private const val KEY_ACCESSIBILITY_LIVE_ANNOUNCEMENTS_ENABLED = "accessibility_live_announcements_enabled" // Whether status bar accessibility live announcements are enabled
     private const val KEY_ACCESSIBILITY_READ_SECOND_ROW_ENABLED = "accessibility_read_second_row_enabled" // Whether TalkBack should read quick settings/variations row
     private const val KEY_ACCESSIBILITY_SUGGESTIONS_ANNOUNCEMENT_DELAY_MS = "accessibility_suggestions_announcement_delay_ms" // Delay before suggestions become accessible again while typing
+    private const val KEY_GLOBAL_VARIATION_LAYOUT_OVERRIDE = "global_variation_layout_override" // Optional layout id used for variation ordering across all layouts
     
     // Status bar button slot configuration keys
     private const val KEY_STATUS_BAR_SLOT_LEFT = "status_bar_slot_left"
@@ -133,6 +134,7 @@ object SettingsManager {
     private const val DEFAULT_ACCESSIBILITY_LIVE_ANNOUNCEMENTS_ENABLED = false
     private const val DEFAULT_ACCESSIBILITY_READ_SECOND_ROW_ENABLED = false
     private const val DEFAULT_ACCESSIBILITY_SUGGESTIONS_ANNOUNCEMENT_DELAY_MS = 500L
+    private const val DEFAULT_GLOBAL_VARIATION_LAYOUT_OVERRIDE = ""
     private const val MIN_ACCESSIBILITY_SUGGESTIONS_ANNOUNCEMENT_DELAY_MS = 100L
     private const val MAX_ACCESSIBILITY_SUGGESTIONS_ANNOUNCEMENT_DELAY_MS = 2000L
     private val STATIC_VARIATION_BASE_PRESET_DEFAULT = listOf("@", "\"", ":", "!", "?", ",", ".")
@@ -435,6 +437,34 @@ object SettingsManager {
         getPreferences(context).edit()
             .putLong(KEY_ACCESSIBILITY_SUGGESTIONS_ANNOUNCEMENT_DELAY_MS, clamped)
             .apply()
+    }
+
+    /**
+     * Returns the optional global layout id used for variation ordering across all layouts.
+     * Returns null when no override is configured.
+     */
+    fun getGlobalVariationLayoutOverride(context: Context): String? {
+        val stored = getPreferences(context).getString(
+            KEY_GLOBAL_VARIATION_LAYOUT_OVERRIDE,
+            DEFAULT_GLOBAL_VARIATION_LAYOUT_OVERRIDE
+        )?.trim().orEmpty()
+        return stored.ifEmpty { null }
+    }
+
+    /**
+     * Sets the optional global layout id used for variation ordering.
+     * Pass null/blank to disable the override and use per-layout behavior.
+     */
+    fun setGlobalVariationLayoutOverride(context: Context, layoutName: String?) {
+        val normalized = layoutName?.trim().orEmpty()
+        val editor = getPreferences(context).edit()
+        if (normalized.isEmpty()) {
+            editor.remove(KEY_GLOBAL_VARIATION_LAYOUT_OVERRIDE)
+        } else {
+            editor.putString(KEY_GLOBAL_VARIATION_LAYOUT_OVERRIDE, normalized)
+        }
+        editor.apply()
+        notifyVariationsUpdated(context)
     }
 
     fun getMinAccessibilitySuggestionsAnnouncementDelayMs(): Long =
@@ -1954,22 +1984,19 @@ object SettingsManager {
                 variationsObject.put(letter, variationsArray)
             }
             
-            val jsonObject = JSONObject()
-            jsonObject.put("variations", variationsObject)
-
             val currentJson = loadCurrentJson(context)
+            val jsonObject = if (currentJson != null) {
+                JSONObject(currentJson.toString())
+            } else {
+                JSONObject()
+            }
+            jsonObject.put("variations", variationsObject)
 
             // Preserve/update staticVariations
             if (staticVariations != null) {
                 val staticArray = org.json.JSONArray()
                 staticVariations.forEach { staticArray.put(it) }
                 jsonObject.put("staticVariations", staticArray)
-            } else {
-                currentJson?.let {
-                    if (it.has("staticVariations")) {
-                        jsonObject.put("staticVariations", it.getJSONArray("staticVariations"))
-                    }
-                }
             }
 
             // Preserve/update staticVariationsShift
@@ -1977,12 +2004,6 @@ object SettingsManager {
                 val staticArray = org.json.JSONArray()
                 staticVariationsShift.forEach { staticArray.put(it) }
                 jsonObject.put("staticVariationsShift", staticArray)
-            } else {
-                currentJson?.let {
-                    if (it.has("staticVariationsShift")) {
-                        jsonObject.put("staticVariationsShift", it.getJSONArray("staticVariationsShift"))
-                    }
-                }
             }
 
             // Preserve/update staticVariationsAlt
@@ -1990,12 +2011,6 @@ object SettingsManager {
                 val staticArray = org.json.JSONArray()
                 staticVariationsAlt.forEach { staticArray.put(it) }
                 jsonObject.put("staticVariationsAlt", staticArray)
-            } else {
-                currentJson?.let {
-                    if (it.has("staticVariationsAlt")) {
-                        jsonObject.put("staticVariationsAlt", it.getJSONArray("staticVariationsAlt"))
-                    }
-                }
             }
             
             FileOutputStream(getVariationsFile(context)).use { outputStream ->

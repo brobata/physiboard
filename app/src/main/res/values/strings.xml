@@ -362,6 +362,9 @@
     <string name="variation_reset_confirm_button">Reset</string>
     <string name="static_variation_input_label">Value</string>
     <string name="static_variation_input_hint">Leave empty and save to remove the slot.</string>
+    <string name="variation_global_layout_override_title">Global Variation Mapping</string>
+    <string name="variation_global_layout_override_description">Force variation ordering from one layout across all layouts. Default is current IME layout (%1$s).</string>
+    <string name="variation_global_layout_override_none">None (use current layout)</string>
     
     <!-- SYM Customization Screen -->
     <string name="sym_tab_emoji">Emoji</string>

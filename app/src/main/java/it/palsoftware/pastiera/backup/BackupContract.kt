@@ -210,6 +210,7 @@ object PreferenceSchemas {
             "static_variation_bar_mode" to PreferenceValueType.BOOLEAN,
             "static_variation_bar_base_layer_enabled" to PreferenceValueType.BOOLEAN,
             "static_variation_bar_modifier_hold_restoration" to PreferenceValueType.BOOLEAN,
+            "global_variation_layout_override" to PreferenceValueType.STRING,
             "variations_updated" to PreferenceValueType.LONG,
             "status_bar_slot_left" to PreferenceValueType.STRING,
             "status_bar_slot_right_1" to PreferenceValueType.STRING,

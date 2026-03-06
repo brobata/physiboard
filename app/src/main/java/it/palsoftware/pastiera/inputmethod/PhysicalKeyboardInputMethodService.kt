@@ -574,6 +574,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private fun switchToLayout(layoutName: String, showToast: Boolean) {
         activeKeyboardLayoutName = layoutName
         LayoutMappingRepository.loadLayout(assets, layoutName, this)
+        variationStateController = VariationStateController(
+            VariationRepository.loadVariations(assets, this, activeKeyboardLayoutName)
+        )
         updateStatusBarText()
 
         // Update suggestion engine's keyboard layout for proximity-based ranking
@@ -924,7 +927,12 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 postClipboardBadgeUpdate()
             }
         })
-        altSymManager = AltSymManager(assets, prefs, this)
+        altSymManager = AltSymManager(
+            assets = assets,
+            prefs = prefs,
+            context = this,
+            activeLayoutNameProvider = { activeKeyboardLayoutName }
+        )
         altSymManager.reloadSymMappings() // Load custom mappings for page 1 if present
         altSymManager.reloadSymMappings2() // Load custom mappings for page 2 if present
         // Register callback to be notified when an Alt character is inserted after long press.
@@ -997,7 +1005,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // Initialize nav mode mappings file if needed
         it.palsoftware.pastiera.SettingsManager.initializeNavModeMappingsFile(this)
         ctrlKeyMap.putAll(KeyMappingLoader.loadCtrlKeyMappings(assets, this))
-        variationStateController = VariationStateController(VariationRepository.loadVariations(assets, this))
+        variationStateController = VariationStateController(
+            VariationRepository.loadVariations(assets, this, activeKeyboardLayoutName)
+        )
         keyboardVisibilityController.syncMinimalUiOverrideFromSettings()
         
         // Load auto-correction rules
@@ -1044,7 +1054,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             } else if (key == "variations_updated") {
                 Log.d(TAG, "Variations file changed, reloading...")
                 // Reload variations from file
-                variationStateController = VariationStateController(VariationRepository.loadVariations(assets, this))
+                variationStateController = VariationStateController(
+                    VariationRepository.loadVariations(assets, this, activeKeyboardLayoutName)
+                )
                 candidatesBarController.invalidateStaticVariations()
                 // Update status bar to reflect new variations
                 Handler(Looper.getMainLooper()).post {

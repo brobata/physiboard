@@ -3,6 +3,7 @@ package it.palsoftware.pastiera.data.variation
 import android.content.Context
 import android.content.res.AssetManager
 import android.util.Log
+import it.palsoftware.pastiera.SettingsManager
 import org.json.JSONObject
 import java.io.File
 
@@ -14,12 +15,21 @@ object VariationRepository {
     private const val TAG = "VariationRepository"
     private const val VARIATIONS_FILE_NAME = "variations.json"
 
-    fun loadVariations(assets: AssetManager, context: Context? = null): Map<Char, List<String>> {
+    fun loadVariations(
+        assets: AssetManager,
+        context: Context? = null,
+        activeLayoutName: String? = null
+    ): Map<Char, List<String>> {
         val variationsMap = mutableMapOf<Char, List<String>>()
         return try {
             val jsonString = loadJsonString(assets, context)
-            val jsonObject = JSONObject(jsonString)
+            val jsonObject = enrichWithDefaultLayoutOverrides(
+                jsonObject = JSONObject(jsonString),
+                assets = assets
+            )
             val variationsObject = jsonObject.getJSONObject("variations")
+            val layoutName = resolveEffectiveLayoutName(context, activeLayoutName)
+            val layoutPriorities = loadLayoutPriorityMap(jsonObject, layoutName)
 
             val keys = variationsObject.keys()
             while (keys.hasNext()) {
@@ -30,7 +40,12 @@ object VariationRepository {
                     for (i in 0 until variationsArray.length()) {
                         variationsList.add(variationsArray.getString(i))
                     }
-                    variationsMap[baseChar[0]] = variationsList
+                    val priorityList = layoutPriorities[baseChar[0]]
+                    variationsMap[baseChar[0]] = if (priorityList.isNullOrEmpty()) {
+                        variationsList
+                    } else {
+                        (priorityList + variationsList).distinct()
+                    }
                 }
             }
             variationsMap
@@ -126,5 +141,76 @@ object VariationRepository {
             val filePath = "common/variations/variations.json"
             assets.open(filePath).bufferedReader().use { it.readText() }
         }
+    }
+
+    private fun enrichWithDefaultLayoutOverrides(
+        jsonObject: JSONObject,
+        assets: AssetManager
+    ): JSONObject {
+        if (jsonObject.has("layoutVariationOverrides")) {
+            return jsonObject
+        }
+        return try {
+            val defaultsString = assets.open("common/variations/variations.json")
+                .bufferedReader()
+                .use { it.readText() }
+            val defaultsObject = JSONObject(defaultsString)
+            if (defaultsObject.has("layoutVariationOverrides")) {
+                jsonObject.put(
+                    "layoutVariationOverrides",
+                    defaultsObject.getJSONObject("layoutVariationOverrides")
+                )
+            }
+            jsonObject
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not enrich layout variation overrides from defaults", e)
+            jsonObject
+        }
+    }
+
+    private fun loadLayoutPriorityMap(jsonObject: JSONObject, layoutName: String?): Map<Char, List<String>> {
+        if (layoutName.isNullOrBlank()) return emptyMap()
+        if (!jsonObject.has("layoutVariationOverrides")) return emptyMap()
+        return try {
+            val layoutOverridesRoot = jsonObject.getJSONObject("layoutVariationOverrides")
+            if (!layoutOverridesRoot.has(layoutName)) return emptyMap()
+
+            val layoutObject = layoutOverridesRoot.getJSONObject(layoutName)
+            val result = mutableMapOf<Char, List<String>>()
+            val keys = layoutObject.keys()
+            while (keys.hasNext()) {
+                val baseChar = keys.next()
+                if (baseChar.length != 1) continue
+
+                val array = layoutObject.optJSONArray(baseChar) ?: continue
+                val prioritized = mutableListOf<String>()
+                for (i in 0 until array.length()) {
+                    val value = array.optString(i)
+                    if (value.isNotEmpty()) {
+                        prioritized.add(value)
+                    }
+                }
+                if (prioritized.isNotEmpty()) {
+                    result[baseChar[0]] = prioritized
+                }
+            }
+            result
+        } catch (e: Exception) {
+            Log.e(TAG, "Error loading layout variation overrides for layout '$layoutName'", e)
+            emptyMap()
+        }
+    }
+
+    private fun resolveEffectiveLayoutName(
+        context: Context?,
+        activeLayoutName: String?
+    ): String? {
+        if (context != null) {
+            val globalOverride = SettingsManager.getGlobalVariationLayoutOverride(context)
+            if (!globalOverride.isNullOrEmpty()) {
+                return globalOverride
+            }
+        }
+        return activeLayoutName ?: context?.let { SettingsManager.getKeyboardLayout(it) }
     }
 }
