@@ -61,12 +61,18 @@ android {
     namespace = "it.palsoftware.pastiera"
     compileSdk = 36
 
+    val defaultVersionCode = 84
+    val defaultVersionName = "0.84beta"
+    val ciVersionCode = providers.gradleProperty("PASTIERA_VERSION_CODE").orNull?.toIntOrNull()
+    val ciVersionName = providers.gradleProperty("PASTIERA_VERSION_NAME").orNull
+    val nightlyVersionNameSuffix = providers.gradleProperty("PASTIERA_NIGHTLY_VERSION_SUFFIX").orNull ?: "-nightly"
+
     defaultConfig {
         applicationId = "it.palsoftware.pastiera"
         minSdk = 29
         targetSdk = 36
-        versionCode = 84
-        versionName = "0.84beta"
+        versionCode = ciVersionCode ?: defaultVersionCode
+        versionName = ciVersionName ?: defaultVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         
@@ -90,6 +96,22 @@ android {
         // Aggiungi a BuildConfig
         buildConfigField("int", "BUILD_NUMBER", buildNumber.toString())
         buildConfigField("String", "BUILD_DATE", "\"$buildDate\"")
+    }
+
+    flavorDimensions += "channel"
+
+    productFlavors {
+        create("stable") {
+            dimension = "channel"
+        }
+        create("nightly") {
+            dimension = "channel"
+            applicationIdSuffix = ".nightly"
+            versionNameSuffix = nightlyVersionNameSuffix
+            resValue("string", "app_name", "Pastiera Nightly")
+            resValue("string", "input_method_name", "Pastiera Nightly")
+            buildConfigField("String", "RELEASE_CHANNEL", "\"nightly\"")
+        }
     }
 
     signingConfigs {
