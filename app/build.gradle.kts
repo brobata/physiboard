@@ -7,13 +7,7 @@ plugins {
 
 import java.io.File
 import java.util.Properties
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import org.gradle.api.GradleException
-
-// File per salvare il build number incrementale
-val buildPropertiesFile = file("build.properties")
 
 // Config di firma letta da release/keystore.properties (non tracciato) o da env vars
 val keystorePropertiesFileCandidates = listOf(
@@ -42,30 +36,8 @@ fun resolveSigningStoreFile(storePath: String): File =
 fun hasSigningConfig(storePath: String?, storePass: String?, alias: String?, keyPass: String?): Boolean =
     storePath != null && storePass != null && alias != null && keyPass != null
 
-// Task per incrementare il build number
-tasks.register("incrementBuildNumber") {
-    doLast {
-        val buildNumber = if (buildPropertiesFile.exists()) {
-            val props = Properties()
-            buildPropertiesFile.inputStream().use { props.load(it) }
-            (props.getProperty("buildNumber", "0").toIntOrNull() ?: 0) + 1
-        } else {
-            1
-        }
-        
-        // Ottieni data/ora corrente
-        val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.ITALIAN)
-        val buildDate = dateFormat.format(Date())
-        
-        // Salva nel file
-        val props = Properties()
-        props.setProperty("buildNumber", buildNumber.toString())
-        props.setProperty("buildDate", buildDate)
-        buildPropertiesFile.outputStream().use { props.store(it, "Build number and date") }
-        
-        println("Build number incremented to: $buildNumber - $buildDate")
-    }
-}
+fun gradleBooleanProperty(name: String): Boolean =
+    providers.gradleProperty(name).orNull?.equals("true", ignoreCase = true) == true
 
 android {
     namespace = "it.palsoftware.pastiera"
@@ -76,6 +48,7 @@ android {
     val ciVersionCode = providers.gradleProperty("PASTIERA_VERSION_CODE").orNull?.toIntOrNull()
     val ciVersionName = providers.gradleProperty("PASTIERA_VERSION_NAME").orNull
     val nightlyVersionNameSuffix = providers.gradleProperty("PASTIERA_NIGHTLY_VERSION_SUFFIX").orNull ?: "-nightly"
+    val isFdroidBuild = gradleBooleanProperty("PASTIERA_FDROID_BUILD")
 
     defaultConfig {
         applicationId = "it.palsoftware.pastiera"
@@ -85,27 +58,6 @@ android {
         versionName = ciVersionName ?: defaultVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        
-        // Leggi build number e data dal file
-        val buildNumber = if (buildPropertiesFile.exists()) {
-            val props = Properties()
-            buildPropertiesFile.inputStream().use { props.load(it) }
-            props.getProperty("buildNumber", "0").toIntOrNull() ?: 0
-        } else {
-            0
-        }
-        
-        val buildDate = if (buildPropertiesFile.exists()) {
-            val props = Properties()
-            buildPropertiesFile.inputStream().use { props.load(it) }
-            props.getProperty("buildDate", "")
-        } else {
-            ""
-        }
-        
-        // Aggiungi a BuildConfig
-        buildConfigField("int", "BUILD_NUMBER", buildNumber.toString())
-        buildConfigField("String", "BUILD_DATE", "\"$buildDate\"")
     }
 
     signingConfigs {
@@ -145,6 +97,9 @@ android {
     productFlavors {
         create("stable") {
             dimension = "channel"
+            buildConfigField("String", "RELEASE_CHANNEL", "\"stable\"")
+            buildConfigField("boolean", "IS_FDROID_BUILD", if (isFdroidBuild) "true" else "false")
+            buildConfigField("boolean", "ENABLE_GITHUB_UPDATE_CHECKS", if (isFdroidBuild) "false" else "true")
         }
         create("nightly") {
             dimension = "channel"
@@ -153,6 +108,8 @@ android {
             resValue("string", "app_name", "Pastiera Nightly")
             resValue("string", "input_method_name", "Pastiera Nightly")
             buildConfigField("String", "RELEASE_CHANNEL", "\"nightly\"")
+            buildConfigField("boolean", "IS_FDROID_BUILD", "false")
+            buildConfigField("boolean", "ENABLE_GITHUB_UPDATE_CHECKS", "true")
             val storePath = signingProp("nightlyStoreFile", "PASTIERA_NIGHTLY_KEYSTORE_PATH")
             val storePass = signingProp("nightlyStorePassword", "PASTIERA_NIGHTLY_KEYSTORE_PASSWORD")
             val alias = signingProp("nightlyKeyAlias", "PASTIERA_NIGHTLY_KEY_ALIAS")
@@ -176,7 +133,7 @@ android {
             val alias = signingProp("keyAlias", "PASTIERA_KEY_ALIAS")
             val keyPass = signingProp("keyPassword", "PASTIERA_KEY_PASSWORD")
             
-            if (hasSigningConfig(storePath, storePass, alias, keyPass)) {
+            if (!isFdroidBuild && hasSigningConfig(storePath, storePass, alias, keyPass)) {
                 signingConfig = signingConfigs.getByName("release")
             }
             // Disable lint for release to avoid file lock issues
@@ -186,23 +143,24 @@ android {
     
     // Validate signing config only when building release
     tasks.whenTaskAdded {
-        if (name.contains("Stable", ignoreCase = true) && name.contains("Release", ignoreCase = true)) {
+        if (!isFdroidBuild && name.equals("preStableReleaseBuild", ignoreCase = true)) {
             doFirst {
                 val storePath = signingProp("storeFile", "PASTIERA_KEYSTORE_PATH")
                 val storePass = signingProp("storePassword", "PASTIERA_KEYSTORE_PASSWORD")
                 val alias = signingProp("keyAlias", "PASTIERA_KEY_ALIAS")
                 val keyPass = signingProp("keyPassword", "PASTIERA_KEY_PASSWORD")
-                
+
                 if (!hasSigningConfig(storePath, storePass, alias, keyPass)) {
                     throw GradleException(
                         "Missing signing config for release build. Define storeFile, storePassword, keyAlias e keyPassword in " +
                             "keystore.properties (non tracciato) o nelle variabili d'ambiente PASTIERA_KEYSTORE_PATH, " +
-                            "PASTIERA_KEYSTORE_PASSWORD, PASTIERA_KEY_ALIAS, PASTIERA_KEY_PASSWORD."
+                            "PASTIERA_KEYSTORE_PASSWORD, PASTIERA_KEY_ALIAS, PASTIERA_KEY_PASSWORD. " +
+                            "Use -PPASTIERA_FDROID_BUILD=true only for the unsigned F-Droid release path."
                     )
                 }
             }
         }
-        if (name.contains("Nightly", ignoreCase = true)) {
+        if (name.equals("preNightlyReleaseBuild", ignoreCase = true)) {
             doFirst {
                 val storePath = signingProp("nightlyStoreFile", "PASTIERA_NIGHTLY_KEYSTORE_PATH")
                 val storePass = signingProp("nightlyStorePassword", "PASTIERA_NIGHTLY_KEYSTORE_PASSWORD")
@@ -243,11 +201,6 @@ android {
     }
     testOptions {
         unitTests.isIncludeAndroidResources = true
-    }
-    
-    // Esegui incrementBuildNumber prima di preBuild
-    tasks.named("preBuild").configure {
-        dependsOn("incrementBuildNumber")
     }
 }
 

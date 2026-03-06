@@ -16,6 +16,11 @@ on:
         required: true
         default: false
         type: boolean
+      build_fdroid_artifact:
+        description: "Also build the unsigned F-Droid APK artifact"
+        required: true
+        default: true
+        type: boolean
 
 jobs:
   build-release:
@@ -64,27 +69,66 @@ jobs:
             -PPASTIERA_VERSION_CODE=${{ inputs.version_code }} \
             -PPASTIERA_VERSION_NAME=${{ inputs.version_name }}
 
+      - name: Run stable F-Droid-path unit tests
+        if: ${{ inputs.build_fdroid_artifact }}
+        run: |
+          ./gradlew :app:testStableDebugUnitTest \
+            -PPASTIERA_VERSION_CODE=${{ inputs.version_code }} \
+            -PPASTIERA_VERSION_NAME=${{ inputs.version_name }} \
+            -PPASTIERA_FDROID_BUILD=true
+
       - name: Build release APK
         run: |
           ./gradlew :app:assembleStableRelease \
             -PPASTIERA_VERSION_CODE=${{ inputs.version_code }} \
             -PPASTIERA_VERSION_NAME=${{ inputs.version_name }}
 
+      - name: Archive signed release outputs
+        run: |
+          mkdir -p /tmp/pastiera-release-artifacts
+          cp app/build/outputs/apk/stable/release/app-stable-release.apk /tmp/pastiera-release-artifacts/pastiera-${{ inputs.version_name }}-release-signed.apk
+
       - name: Verify APK signing
         run: |
           BUILD_TOOLS_DIR=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)
-          "$BUILD_TOOLS_DIR/apksigner" verify --print-certs app/build/outputs/apk/stable/release/app-stable-release.apk
+          "$BUILD_TOOLS_DIR/apksigner" verify --print-certs /tmp/pastiera-release-artifacts/pastiera-${{ inputs.version_name }}-release-signed.apk
 
       - name: Compute checksums
-        run: sha256sum app/build/outputs/apk/stable/release/app-stable-release.apk | tee app/build/outputs/apk/stable/release/app-stable-release.apk.sha256
+        run: |
+          sha256sum /tmp/pastiera-release-artifacts/pastiera-${{ inputs.version_name }}-release-signed.apk \
+            | tee /tmp/pastiera-release-artifacts/pastiera-${{ inputs.version_name }}-release-signed.apk.sha256
+
+      - name: Build unsigned F-Droid APK
+        if: ${{ inputs.build_fdroid_artifact }}
+        run: |
+          ./gradlew :app:assembleStableRelease \
+            -PPASTIERA_VERSION_CODE=${{ inputs.version_code }} \
+            -PPASTIERA_VERSION_NAME=${{ inputs.version_name }} \
+            -PPASTIERA_FDROID_BUILD=true
+
+      - name: Archive unsigned F-Droid outputs
+        if: ${{ inputs.build_fdroid_artifact }}
+        run: |
+          cp app/build/outputs/apk/stable/release/app-stable-release.apk /tmp/pastiera-release-artifacts/pastiera-${{ inputs.version_name }}-fdroid-unsigned.apk
+          sha256sum /tmp/pastiera-release-artifacts/pastiera-${{ inputs.version_name }}-fdroid-unsigned.apk \
+            | tee /tmp/pastiera-release-artifacts/pastiera-${{ inputs.version_name }}-fdroid-unsigned.apk.sha256
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: pastiera-${{ inputs.version_name }}-release
           path: |
-            app/build/outputs/apk/stable/release/app-stable-release.apk
-            app/build/outputs/apk/stable/release/app-stable-release.apk.sha256
+            /tmp/pastiera-release-artifacts/pastiera-${{ inputs.version_name }}-release-signed.apk
+            /tmp/pastiera-release-artifacts/pastiera-${{ inputs.version_name }}-release-signed.apk.sha256
+
+      - name: Upload F-Droid APK artifact
+        if: ${{ inputs.build_fdroid_artifact }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: pastiera-${{ inputs.version_name }}-fdroid
+          path: |
+            /tmp/pastiera-release-artifacts/pastiera-${{ inputs.version_name }}-fdroid-unsigned.apk
+            /tmp/pastiera-release-artifacts/pastiera-${{ inputs.version_name }}-fdroid-unsigned.apk.sha256
 
       - name: Create GitHub release
         if: ${{ inputs.create_github_release }}
@@ -94,5 +138,5 @@ jobs:
           name: Pastiera v${{ inputs.version_name }}
           generate_release_notes: true
           files: |
-            app/build/outputs/apk/stable/release/app-stable-release.apk
-            app/build/outputs/apk/stable/release/app-stable-release.apk.sha256
+            /tmp/pastiera-release-artifacts/pastiera-${{ inputs.version_name }}-release-signed.apk
+            /tmp/pastiera-release-artifacts/pastiera-${{ inputs.version_name }}-release-signed.apk.sha256

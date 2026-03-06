@@ -1,0 +1,13 @@
+Pastiera is an input method for Android devices with a physical keyboard.
+
+It is designed to make typing faster through shortcuts, gestures, and extensive layout customization.
+
+Features include:
+- long-press mappings and configurable modifier behavior
+- navigation shortcuts and cursor movement gestures
+- customizable keyboard layouts and symbol pages
+- clipboard history and user dictionaries
+- backup and restore of settings and custom data
+
+The stable release is prepared for the official F-Droid build path.
+Nightly builds use a separate application ID and are intended for a private repository.

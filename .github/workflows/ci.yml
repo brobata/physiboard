@@ -1,0 +1,37 @@
+name: Android CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Make Gradle executable
+        run: chmod +x ./gradlew
+
+      - name: Run stable flavor tests
+        run: |
+          ./gradlew :app:testStableDebugUnitTest
+
+      - name: Run stable F-Droid-path tests
+        run: |
+          ./gradlew :app:testStableDebugUnitTest -PPASTIERA_FDROID_BUILD=true
+
+      - name: Run nightly flavor tests
+        run: |
+          ./gradlew :app:testNightlyDebugUnitTest

@@ -22,7 +22,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.IconCompat
 import it.palsoftware.pastiera.R
-import it.palsoftware.pastiera.update.GITHUB_LATEST_RELEASE_PAGE
+import it.palsoftware.pastiera.update.GITHUB_RELEASES_PAGE
 
 /**
  * Helper for managing app notifications.
@@ -232,7 +232,8 @@ object NotificationHelper {
     fun showUpdateAvailableNotification(
         context: Context,
         latestVersion: String,
-        downloadUrl: String?
+        downloadUrl: String?,
+        releasePageUrl: String?
     ) {
         if (!hasNotificationPermission(context)) {
             android.util.Log.w("NotificationHelper", "Notification permission not granted")
@@ -246,7 +247,7 @@ object NotificationHelper {
         }
         
         // Open the direct APK download if available, otherwise the GitHub releases page.
-        val targetUrl = downloadUrl ?: GITHUB_LATEST_RELEASE_PAGE
+        val targetUrl = downloadUrl ?: releasePageUrl ?: GITHUB_RELEASES_PAGE
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(targetUrl)).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }

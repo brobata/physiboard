@@ -65,9 +65,9 @@ jobs:
           chmod +x ./scripts/nightly-version.sh
           ./scripts/nightly-version.sh "${{ inputs.version_name }}" >> "$GITHUB_OUTPUT"
 
-      - name: Run nightly unit tests
+      - name: Run nightly debug-flavor unit tests
         run: |
-          ./gradlew :app:testNightlyReleaseUnitTest \
+          ./gradlew :app:testNightlyDebugUnitTest \
             -PPASTIERA_VERSION_NAME=${{ inputs.version_name }} \
             -PPASTIERA_NIGHTLY_VERSION_SUFFIX=-nightly.${{ steps.nightly_meta.outputs.timestamp }}
 

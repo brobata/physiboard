@@ -33,18 +33,21 @@ class UpdateCheckWorker(
         val hasUpdateRef = AtomicBoolean(false)
         val latestVersionRef = AtomicReference<String?>()
         val downloadUrlRef = AtomicReference<String?>()
+        val releasePageUrlRef = AtomicReference<String?>()
         val completedRef = AtomicBoolean(false)
         val latch = CountDownLatch(1)
 
         checkForUpdate(
             context = context,
             currentVersion = BuildConfig.VERSION_NAME,
+            releaseChannel = BuildConfig.RELEASE_CHANNEL,
             // Respect releases dismissed by the user via the dialog.
             ignoreDismissedReleases = true
-        ) { hasUpdate, latestVersion, downloadUrl ->
+        ) { hasUpdate, latestVersion, downloadUrl, releasePageUrl ->
             hasUpdateRef.set(hasUpdate)
             latestVersionRef.set(latestVersion)
             downloadUrlRef.set(downloadUrl)
+            releasePageUrlRef.set(releasePageUrl)
             completedRef.set(true)
             latch.countDown()
         }
@@ -59,11 +62,13 @@ class UpdateCheckWorker(
         if (hasUpdateRef.get()) {
             val latestVersion = latestVersionRef.get()
             val downloadUrl = downloadUrlRef.get()
+            val releasePageUrl = releasePageUrlRef.get()
             if (latestVersion != null) {
                 NotificationHelper.showUpdateAvailableNotification(
                     context = context,
                     latestVersion = latestVersion,
-                    downloadUrl = downloadUrl
+                    downloadUrl = downloadUrl,
+                    releasePageUrl = releasePageUrl
                 )
             }
         }
@@ -79,6 +84,11 @@ class UpdateCheckWorker(
          * If already scheduled, the existing work is kept.
          */
         fun schedule(context: Context) {
+            if (!BuildConfig.ENABLE_GITHUB_UPDATE_CHECKS) {
+                WorkManager.getInstance(context).cancelUniqueWork(UNIQUE_WORK_NAME)
+                return
+            }
+
             val constraints = Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .build()

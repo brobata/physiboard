@@ -1,0 +1,23 @@
+Categories:
+  - Writing
+License: GPL-3.0-only
+SourceCode: https://github.com/palsoftware/pastiera
+IssueTracker: https://github.com/palsoftware/pastiera/issues
+Changelog: https://github.com/palsoftware/pastiera/releases
+AutoName: Pastiera
+
+RepoType: git
+Repo: https://github.com/palsoftware/pastiera.git
+
+Builds:
+  - versionName: '0.85'
+    versionCode: 85
+    # Replace with the exact release tag used for the official stable release.
+    commit: v0.85
+    gradle:
+      - stable
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags
+CurrentVersion: '0.85'
+CurrentVersionCode: 85

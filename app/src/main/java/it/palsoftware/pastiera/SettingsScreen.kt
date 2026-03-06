@@ -96,14 +96,17 @@ fun SettingsScreen(
     }
     
     // Automatic update check on screen open (only once, respecting dismissed releases)
-    LaunchedEffect(Unit) {
-        checkForUpdate(
-            context = context,
-            currentVersion = BuildConfig.VERSION_NAME,
-            ignoreDismissedReleases = true
-        ) { hasUpdate, latestVersion, downloadUrl ->
-            if (hasUpdate && latestVersion != null) {
-                showUpdateDialog(context, latestVersion, downloadUrl)
+    if (BuildConfig.ENABLE_GITHUB_UPDATE_CHECKS) {
+        LaunchedEffect(Unit) {
+            checkForUpdate(
+                context = context,
+                currentVersion = BuildConfig.VERSION_NAME,
+                releaseChannel = BuildConfig.RELEASE_CHANNEL,
+                ignoreDismissedReleases = true
+            ) { hasUpdate, latestVersion, downloadUrl, releasePageUrl ->
+                if (hasUpdate && latestVersion != null) {
+                    showUpdateDialog(context, latestVersion, downloadUrl, releasePageUrl)
+                }
             }
         }
     }
@@ -554,77 +557,80 @@ private fun SettingsMainScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    tonalElevation = 0.dp,
-                    shadowElevation = 0.dp,
-                    shape = MaterialTheme.shapes.extraSmall,
-                    color = MaterialTheme.colorScheme.surfaceVariant
-                ) {
-                    Column(
+                if (BuildConfig.ENABLE_GITHUB_UPDATE_CHECKS) {
+                    Surface(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 16.dp, horizontal = 12.dp)
+                            .padding(horizontal = 16.dp),
+                        tonalElevation = 0.dp,
+                        shadowElevation = 0.dp,
+                        shape = MaterialTheme.shapes.extraSmall,
+                        color = MaterialTheme.colorScheme.surfaceVariant
                     ) {
-                        Text(
-                            text = stringResource(R.string.settings_update_section_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Text(
-                            text = stringResource(R.string.settings_update_section_description),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Button(
-                            onClick = {
-                                onCheckingForUpdatesChange(true)
-                                checkForUpdate(
-                                    context = context,
-                                    currentVersion = BuildConfig.VERSION_NAME,
-                                    ignoreDismissedReleases = false
-                                ) { hasUpdate, latestVersion, downloadUrl ->
-                                    onCheckingForUpdatesChange(false)
-                                    when {
-                                        latestVersion == null -> {
-                                            Toast.makeText(
-                                                context,
-                                                context.getString(R.string.settings_update_check_failed),
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                        }
-                                        hasUpdate -> showUpdateDialog(context, latestVersion, downloadUrl)
-                                        else -> {
-                                            Toast.makeText(
-                                                context,
-                                                context.getString(R.string.settings_update_up_to_date),
-                                                Toast.LENGTH_SHORT
-                                            ).show()
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 16.dp, horizontal = 12.dp)
+                        ) {
+                            Text(
+                                text = stringResource(R.string.settings_update_section_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = stringResource(R.string.settings_update_section_description),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(
+                                onClick = {
+                                    onCheckingForUpdatesChange(true)
+                                    checkForUpdate(
+                                        context = context,
+                                        currentVersion = BuildConfig.VERSION_NAME,
+                                        releaseChannel = BuildConfig.RELEASE_CHANNEL,
+                                        ignoreDismissedReleases = false
+                                    ) { hasUpdate, latestVersion, downloadUrl, releasePageUrl ->
+                                        onCheckingForUpdatesChange(false)
+                                        when {
+                                            latestVersion == null -> {
+                                                Toast.makeText(
+                                                    context,
+                                                    context.getString(R.string.settings_update_check_failed),
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                            }
+                                            hasUpdate -> showUpdateDialog(context, latestVersion, downloadUrl, releasePageUrl)
+                                            else -> {
+                                                Toast.makeText(
+                                                    context,
+                                                    context.getString(R.string.settings_update_up_to_date),
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                            }
                                         }
                                     }
+                                },
+                                enabled = !checkingForUpdates,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                if (checkingForUpdates) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        CircularProgressIndicator(
+                                            strokeWidth = 2.dp,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(stringResource(R.string.settings_update_checking))
+                                    }
+                                } else {
+                                    Text(stringResource(R.string.settings_update_button))
                                 }
-                            },
-                            enabled = !checkingForUpdates,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            if (checkingForUpdates) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center
-                                ) {
-                                    CircularProgressIndicator(
-                                        strokeWidth = 2.dp,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(stringResource(R.string.settings_update_checking))
-                                }
-                            } else {
-                                Text(stringResource(R.string.settings_update_button))
                             }
                         }
                     }

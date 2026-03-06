@@ -74,6 +74,11 @@ Input method for physical keyboards android devices (e.g. Unihertz Titan 2), des
 ## Development / Tests
 - Run core + routing + service modifier regression tests:
   - `./gradlew :app:testDebugUnitTest --tests it.palsoftware.pastiera.core.ModifierStateControllerTest --tests it.palsoftware.pastiera.inputmethod.InputEventRouterModifierE2ETest --tests it.palsoftware.pastiera.inputmethod.PhysicalKeyboardInputMethodServiceDeviceBehaviorTest`
+- Run release/update flavor coverage tests:
+  - `./gradlew :app:testStableDebugUnitTest --tests it.palsoftware.pastiera.FlavorBuildConfigTest --tests it.palsoftware.pastiera.update.UpdateCheckerFlavorLogicTest`
+  - `./gradlew :app:testNightlyDebugUnitTest --tests it.palsoftware.pastiera.FlavorBuildConfigTest --tests it.palsoftware.pastiera.update.UpdateCheckerFlavorLogicTest`
+- Run the stable F-Droid-path tests:
+  - `./gradlew :app:testStableDebugUnitTest -PPASTIERA_FDROID_BUILD=true`
 - Service-level (device-near) modifier behavior regressions:
   - `./gradlew :app:testDebugUnitTest --tests it.palsoftware.pastiera.inputmethod.PhysicalKeyboardInputMethodServiceDeviceBehaviorTest`
 - Router-level input pipeline modifier/SYM tests:
@@ -82,6 +87,13 @@ Input method for physical keyboards android devices (e.g. Unihertz Titan 2), des
   - `./gradlew :app:testDebugUnitTest --tests it.palsoftware.pastiera.core.ModifierStateControllerTest`
 - Build debug APK:
   - `./gradlew :app:assembleDebug`
+
+## Continuous Integration
+- Pushes to `main` and pull requests run `.github/workflows/ci.yml`.
+- The CI job runs, in order:
+  - `:app:testStableDebugUnitTest`
+  - `:app:testStableDebugUnitTest -PPASTIERA_FDROID_BUILD=true`
+  - `:app:testNightlyDebugUnitTest`
 
 ## Manual release CI
 - The repository includes a manually triggered GitHub Actions workflow at `.github/workflows/release.yml`.
@@ -92,15 +104,20 @@ Input method for physical keyboards android devices (e.g. Unihertz Titan 2), des
   - `PASTIERA_KEY_PASSWORD`
 - The workflow:
   - runs stable flavor unit tests
+  - optionally runs the stable F-Droid-path unit tests
   - builds a signed stable release APK
+  - optionally builds an unsigned stable APK for the official F-Droid path
   - verifies APK signing
-  - uploads the APK and its SHA256 checksum as artifacts
+  - uploads the signed APK and its SHA256 checksum as artifacts
+  - uploads the unsigned F-Droid APK and its SHA256 checksum as artifacts
   - optionally creates a GitHub Release
 - Release versioning is injected via Gradle properties:
   - `-PPASTIERA_VERSION_CODE=...`
   - `-PPASTIERA_VERSION_NAME=...`
 - Local release builds can use the same mechanism:
   - `./gradlew :app:assembleStableRelease -PPASTIERA_VERSION_CODE=85 -PPASTIERA_VERSION_NAME=0.85`
+  - `./scripts/build-release.sh 0.85 85`
+  - `./scripts/build-fdroid.sh 0.85 85`
 
 ## Manual nightly CI
 - The repository includes a manually triggered nightly workflow at `.github/workflows/debug.yml`.
@@ -110,7 +127,7 @@ Input method for physical keyboards android devices (e.g. Unihertz Titan 2), des
   - `PASTIERA_NIGHTLY_KEY_ALIAS`
   - `PASTIERA_NIGHTLY_KEY_PASSWORD`
 - The workflow:
-  - runs nightly flavor release-unit tests
+  - runs nightly flavor debug-unit tests
   - builds a nightly release APK signed with the shared nightly key
   - computes a SHA256 checksum
   - uploads the APK and checksum as workflow artifacts
@@ -125,8 +142,24 @@ Input method for physical keyboards android devices (e.g. Unihertz Titan 2), des
 - Local wrappers are available:
   - `./scripts/build-nightly.sh 0.85`
   - `./scripts/build-nightly.sh 0.85 --publish`
+  - `./scripts/publish-private-fdroid-nightly.sh 0.85`
   - `./scripts/build-release.sh 0.85 85`
   - `./scripts/build-release.sh 0.85 85 --publish`
+
+## Private F-Droid Nightly Repo
+- Local Pages target:
+  - `/Users/user/gits/GitHub/palsoftware-web/apps/docs/public/fdroid/nightly/repo`
+- Public repo URL:
+  - `https://pastiera.eu/fdroid/nightly/repo`
+- Local publish flow:
+  - install `fdroidserver`
+  - make sure nightly signing is configured
+  - run `./scripts/publish-private-fdroid-nightly.sh 0.85`
+- The script:
+  - builds the signed nightly APK
+  - initializes or reuses a local F-Droid repo under `.fdroid/nightly`
+  - updates the repo metadata with `fdroid update`
+  - syncs the generated `repo/` contents into the Pages public directory
 
 ## Signing Attestations
 These attestations document the public signing certificates used for Nightly and official Release builds.

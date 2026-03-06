@@ -7,31 +7,11 @@ import it.palsoftware.pastiera.BuildConfig
  */
 object BuildInfo {
     /**
-     * Ottiene il numero di build incrementale.
-     */
-    fun getBuildNumber(): Int {
-        return BuildConfig.BUILD_NUMBER
-    }
-    
-    /**
-     * Ottiene la data della build.
-     */
-    fun getBuildDate(): String {
-        return BuildConfig.BUILD_DATE
-    }
-    
-    /**
-     * Ottiene la stringa formattata con versione, build number e data.
-     * Formato: "Ver. X.X - Build X - DD MMM YYYY"
+     * Ottiene la stringa formattata con versione e canale di release.
      */
     fun getBuildInfoString(): String {
         val version = BuildConfig.VERSION_NAME
-        val buildNumber = getBuildNumber()
-        val buildDate = getBuildDate()
-        return when {
-            buildDate.isNotEmpty() -> "Ver. $version - Build $buildNumber - $buildDate"
-            else -> "Ver. $version - Build $buildNumber"
-        }
+        val channel = BuildConfig.RELEASE_CHANNEL.replaceFirstChar { it.uppercase() }
+        return "Ver. $version - $channel"
     }
 }
-

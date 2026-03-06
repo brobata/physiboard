@@ -15,13 +15,19 @@ class SettingsActivity : AppCompatActivity() {
         setContentView(R.layout.activity_settings)
 
         findViewById<Button>(R.id.check_updates_button).setOnClickListener {
+            if (!BuildConfig.ENABLE_GITHUB_UPDATE_CHECKS) {
+                Toast.makeText(this, getString(R.string.settings_update_up_to_date), Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
             checkForUpdate(
                 context = this,
                 currentVersion = BuildConfig.VERSION_NAME,
+                releaseChannel = BuildConfig.RELEASE_CHANNEL,
                 ignoreDismissedReleases = false
-            ) { hasUpdate, latestVersion, downloadUrl ->
+            ) { hasUpdate, latestVersion, downloadUrl, releasePageUrl ->
                 if (hasUpdate && latestVersion != null) {
-                    showUpdateDialog(this, latestVersion, downloadUrl)
+                    showUpdateDialog(this, latestVersion, downloadUrl, releasePageUrl)
                 } else {
                     Toast.makeText(this, getString(R.string.settings_update_up_to_date), Toast.LENGTH_SHORT).show()
                 }
@@ -29,4 +35,3 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 }
-

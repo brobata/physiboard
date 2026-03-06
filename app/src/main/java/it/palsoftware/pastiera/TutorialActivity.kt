@@ -161,14 +161,17 @@ fun TutorialScreen(
     }
     
     // Automatic update check at tutorial start (only once, respecting dismissed releases)
-    LaunchedEffect(Unit) {
-        checkForUpdate(
-            context = context,
-            currentVersion = BuildConfig.VERSION_NAME,
-            ignoreDismissedReleases = true
-        ) { hasUpdate, latestVersion, downloadUrl ->
-            if (hasUpdate && latestVersion != null) {
-                showUpdateDialog(context, latestVersion, downloadUrl)
+    if (BuildConfig.ENABLE_GITHUB_UPDATE_CHECKS) {
+        LaunchedEffect(Unit) {
+            checkForUpdate(
+                context = context,
+                currentVersion = BuildConfig.VERSION_NAME,
+                releaseChannel = BuildConfig.RELEASE_CHANNEL,
+                ignoreDismissedReleases = true
+            ) { hasUpdate, latestVersion, downloadUrl, releasePageUrl ->
+                if (hasUpdate && latestVersion != null) {
+                    showUpdateDialog(context, latestVersion, downloadUrl, releasePageUrl)
+                }
             }
         }
     }
