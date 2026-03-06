@@ -32,6 +32,16 @@ fun signingProp(key: String, env: String): String? =
     keystoreProperties.getProperty(key)?.takeIf { it.isNotBlank() }
         ?: System.getenv(env)?.takeIf { it.isNotBlank() }
 
+fun resolveSigningStoreFile(storePath: String): File =
+    if (File(storePath).isAbsolute) {
+        File(storePath)
+    } else {
+        keystorePropertiesFile.parentFile.resolve(storePath)
+    }
+
+fun hasSigningConfig(storePath: String?, storePass: String?, alias: String?, keyPass: String?): Boolean =
+    storePath != null && storePass != null && alias != null && keyPass != null
+
 // Task per incrementare il build number
 tasks.register("incrementBuildNumber") {
     doLast {
@@ -98,6 +108,38 @@ android {
         buildConfigField("String", "BUILD_DATE", "\"$buildDate\"")
     }
 
+    signingConfigs {
+        create("release") {
+            val storePath = signingProp("storeFile", "PASTIERA_KEYSTORE_PATH")
+            val storePass = signingProp("storePassword", "PASTIERA_KEYSTORE_PASSWORD")
+            val alias = signingProp("keyAlias", "PASTIERA_KEY_ALIAS")
+            val keyPass = signingProp("keyPassword", "PASTIERA_KEY_PASSWORD")
+
+            // Only configure signing if all credentials are provided
+            if (hasSigningConfig(storePath, storePass, alias, keyPass)) {
+                val resolvedStoreFile = resolveSigningStoreFile(storePath!!)
+                storeFile = resolvedStoreFile
+                storePassword = storePass
+                keyAlias = alias
+                keyPassword = keyPass
+            }
+        }
+        create("nightly") {
+            val storePath = signingProp("nightlyStoreFile", "PASTIERA_NIGHTLY_KEYSTORE_PATH")
+            val storePass = signingProp("nightlyStorePassword", "PASTIERA_NIGHTLY_KEYSTORE_PASSWORD")
+            val alias = signingProp("nightlyKeyAlias", "PASTIERA_NIGHTLY_KEY_ALIAS")
+            val keyPass = signingProp("nightlyKeyPassword", "PASTIERA_NIGHTLY_KEY_PASSWORD")
+
+            if (hasSigningConfig(storePath, storePass, alias, keyPass)) {
+                val resolvedStoreFile = resolveSigningStoreFile(storePath!!)
+                storeFile = resolvedStoreFile
+                storePassword = storePass
+                keyAlias = alias
+                keyPassword = keyPass
+            }
+        }
+    }
+
     flavorDimensions += "channel"
 
     productFlavors {
@@ -111,27 +153,12 @@ android {
             resValue("string", "app_name", "Pastiera Nightly")
             resValue("string", "input_method_name", "Pastiera Nightly")
             buildConfigField("String", "RELEASE_CHANNEL", "\"nightly\"")
-        }
-    }
-
-    signingConfigs {
-        create("release") {
-            val storePath = signingProp("storeFile", "PASTIERA_KEYSTORE_PATH")
-            val storePass = signingProp("storePassword", "PASTIERA_KEYSTORE_PASSWORD")
-            val alias = signingProp("keyAlias", "PASTIERA_KEY_ALIAS")
-            val keyPass = signingProp("keyPassword", "PASTIERA_KEY_PASSWORD")
-
-            // Only configure signing if all credentials are provided
-            if (storePath != null && storePass != null && alias != null && keyPass != null) {
-                val resolvedStoreFile = if (File(storePath).isAbsolute) {
-                    File(storePath)
-                } else {
-                    keystorePropertiesFile.parentFile.resolve(storePath)
-                }
-                storeFile = resolvedStoreFile
-                storePassword = storePass
-                keyAlias = alias
-                keyPassword = keyPass
+            val storePath = signingProp("nightlyStoreFile", "PASTIERA_NIGHTLY_KEYSTORE_PATH")
+            val storePass = signingProp("nightlyStorePassword", "PASTIERA_NIGHTLY_KEYSTORE_PASSWORD")
+            val alias = signingProp("nightlyKeyAlias", "PASTIERA_NIGHTLY_KEY_ALIAS")
+            val keyPass = signingProp("nightlyKeyPassword", "PASTIERA_NIGHTLY_KEY_PASSWORD")
+            if (hasSigningConfig(storePath, storePass, alias, keyPass)) {
+                signingConfig = signingConfigs.getByName("nightly")
             }
         }
     }
@@ -149,7 +176,7 @@ android {
             val alias = signingProp("keyAlias", "PASTIERA_KEY_ALIAS")
             val keyPass = signingProp("keyPassword", "PASTIERA_KEY_PASSWORD")
             
-            if (storePath != null && storePass != null && alias != null && keyPass != null) {
+            if (hasSigningConfig(storePath, storePass, alias, keyPass)) {
                 signingConfig = signingConfigs.getByName("release")
             }
             // Disable lint for release to avoid file lock issues
@@ -159,18 +186,34 @@ android {
     
     // Validate signing config only when building release
     tasks.whenTaskAdded {
-        if (name.contains("Release", ignoreCase = true) && !name.contains("Debug", ignoreCase = true)) {
+        if (name.contains("Stable", ignoreCase = true) && name.contains("Release", ignoreCase = true)) {
             doFirst {
                 val storePath = signingProp("storeFile", "PASTIERA_KEYSTORE_PATH")
                 val storePass = signingProp("storePassword", "PASTIERA_KEYSTORE_PASSWORD")
                 val alias = signingProp("keyAlias", "PASTIERA_KEY_ALIAS")
                 val keyPass = signingProp("keyPassword", "PASTIERA_KEY_PASSWORD")
                 
-                if (storePath == null || storePass == null || alias == null || keyPass == null) {
+                if (!hasSigningConfig(storePath, storePass, alias, keyPass)) {
                     throw GradleException(
                         "Missing signing config for release build. Define storeFile, storePassword, keyAlias e keyPassword in " +
                             "keystore.properties (non tracciato) o nelle variabili d'ambiente PASTIERA_KEYSTORE_PATH, " +
                             "PASTIERA_KEYSTORE_PASSWORD, PASTIERA_KEY_ALIAS, PASTIERA_KEY_PASSWORD."
+                    )
+                }
+            }
+        }
+        if (name.contains("Nightly", ignoreCase = true)) {
+            doFirst {
+                val storePath = signingProp("nightlyStoreFile", "PASTIERA_NIGHTLY_KEYSTORE_PATH")
+                val storePass = signingProp("nightlyStorePassword", "PASTIERA_NIGHTLY_KEYSTORE_PASSWORD")
+                val alias = signingProp("nightlyKeyAlias", "PASTIERA_NIGHTLY_KEY_ALIAS")
+                val keyPass = signingProp("nightlyKeyPassword", "PASTIERA_NIGHTLY_KEY_PASSWORD")
+
+                if (!hasSigningConfig(storePath, storePass, alias, keyPass)) {
+                    throw GradleException(
+                        "Missing signing config for nightly build. Define nightlyStoreFile, nightlyStorePassword, nightlyKeyAlias e nightlyKeyPassword in " +
+                            "keystore.properties (non tracciato) o nelle variabili d'ambiente PASTIERA_NIGHTLY_KEYSTORE_PATH, " +
+                            "PASTIERA_NIGHTLY_KEYSTORE_PASSWORD, PASTIERA_NIGHTLY_KEY_ALIAS, PASTIERA_NIGHTLY_KEY_PASSWORD."
                     )
                 }
             }

@@ -104,16 +104,26 @@ Input method for physical keyboards android devices (e.g. Unihertz Titan 2), des
 
 ## Manual nightly CI
 - The repository includes a manually triggered nightly workflow at `.github/workflows/debug.yml`.
-- No secrets are required.
+- Required GitHub Actions secrets:
+  - `PASTIERA_NIGHTLY_KEYSTORE_B64`
+  - `PASTIERA_NIGHTLY_KEYSTORE_PASSWORD`
+  - `PASTIERA_NIGHTLY_KEY_ALIAS`
+  - `PASTIERA_NIGHTLY_KEY_PASSWORD`
 - The workflow:
-  - runs nightly flavor unit tests
-  - builds a nightly debug APK
+  - runs nightly flavor release-unit tests
+  - builds a nightly release APK signed with the shared nightly key
   - computes a SHA256 checksum
   - uploads the APK and checksum as workflow artifacts
   - automatically turns a base version like `0.85` into a unique nightly version like `0.85-nightly.20260306.195412`
   - optionally publishes a GitHub pre-release under the `nightly/v*` tag scheme using that full nightly version
 - The nightly flavor uses a separate application ID so it installs alongside the stable release.
+- The nightly flavor is signed with a shared nightly key so local and CI nightly builds remain upgrade-compatible.
 - Nightly pre-release disclaimer text is maintained in `.github/release-templates/debug-prerelease.md`.
 - The same versioning can be generated locally:
   - `./scripts/nightly-version.sh 0.85`
-  - `./gradlew :app:assembleNightlyDebug -PPASTIERA_VERSION_NAME=0.85 -PPASTIERA_NIGHTLY_VERSION_SUFFIX=-nightly.$(./scripts/nightly-version.sh 0.85 | awk -F= '/^timestamp=/{print $2}')`
+  - `./gradlew :app:assembleNightlyRelease -PPASTIERA_VERSION_NAME=0.85 -PPASTIERA_NIGHTLY_VERSION_SUFFIX=-nightly.$(./scripts/nightly-version.sh 0.85 | awk -F= '/^timestamp=/{print $2}')`
+- Local wrappers are available:
+  - `./scripts/build-nightly.sh 0.85`
+  - `./scripts/build-nightly.sh 0.85 --publish`
+  - `./scripts/build-release.sh 0.85 85`
+  - `./scripts/build-release.sh 0.85 85 --publish`
