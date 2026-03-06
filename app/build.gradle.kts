@@ -71,8 +71,8 @@ android {
     namespace = "it.palsoftware.pastiera"
     compileSdk = 36
 
-    val defaultVersionCode = 84
-    val defaultVersionName = "0.84beta"
+    val defaultVersionCode = 85
+    val defaultVersionName = "0.85"
     val ciVersionCode = providers.gradleProperty("PASTIERA_VERSION_CODE").orNull?.toIntOrNull()
     val ciVersionName = providers.gradleProperty("PASTIERA_VERSION_NAME").orNull
     val nightlyVersionNameSuffix = providers.gradleProperty("PASTIERA_NIGHTLY_VERSION_SUFFIX").orNull ?: "-nightly"
