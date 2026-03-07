@@ -53,10 +53,6 @@ class KeyboardVisibilityController(
 
     fun onEvaluateInputViewShown(shouldShowInputView: Boolean): Boolean {
         systemRequestsMinimalUi = !shouldShowInputView
-        if (systemRequestsMinimalUi && minimalUiOverride != MinimalUiOverride.FORCE_MINIMAL) {
-            minimalUiOverride = MinimalUiOverride.FORCE_MINIMAL
-            persistOverride(minimalUiOverride)
-        }
         applyMinimalUiState()
         setCandidatesViewShown(false)
         return true
