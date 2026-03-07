@@ -135,6 +135,8 @@ Input method for physical keyboards android devices (e.g. Unihertz Titan 2), des
   - optionally publishes a GitHub pre-release under the `nightly/v*` tag scheme using that full nightly version
 - The nightly flavor uses a separate application ID so it installs alongside the stable release.
 - The nightly flavor is signed with a shared nightly key so local and CI nightly builds remain upgrade-compatible.
+- Nightly version names follow the pattern `BASE-nightly.YYYYMMDD.HHMMSS`, for example `0.85-nightly.20260307.005731`.
+- GitHub Nightly builds and private F-Droid Nightly builds share the same application ID and signing key, but F-Droid Nightly builds disable GitHub update checks so updates come from the F-Droid repo.
 - Nightly pre-release disclaimer text is maintained in `.github/release-templates/debug-prerelease.md`.
 - The same versioning can be generated locally:
   - `./scripts/nightly-version.sh 0.85`
@@ -147,10 +149,14 @@ Input method for physical keyboards android devices (e.g. Unihertz Titan 2), des
   - `./scripts/build-release.sh 0.85 85 --publish`
 
 ## Private F-Droid Nightly Repo
+- Docs landing page:
+  - `https://pastiera.eu/`
 - Local Pages target:
   - `/Users/user/gits/GitHub/palsoftware-web/apps/docs/public/fdroid/nightly/repo`
 - Public repo URL:
   - `https://pastiera.eu/fdroid/nightly/repo`
+- GitHub Nightly releases:
+  - `https://github.com/palsoftware/pastiera/releases?q=nightly%2F`
 - Local publish flow:
   - install `fdroidserver`
   - make sure nightly signing is configured

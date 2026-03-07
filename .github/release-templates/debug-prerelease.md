@@ -9,6 +9,9 @@ This APK is a nightly flavor build for testing only.
 - It may be significantly buggier than a stable release because features can land mid-cycle before they receive the same stabilization work as official releases.
 - It can upgrade other Pastiera Nightly builds signed with the same nightly key, but it cannot replace or upgrade the official stable release because the signing key and application ID are different.
 - Pastiera Nightly installs separately from the official release, so both can coexist on the same device.
+- Nightly versions use the format `BASE-nightly.YYYYMMDD.HHMMSS`.
+- Project docs and release hub: https://pastiera.eu/
+- Private Nightly F-Droid repo: https://pastiera.eu/fdroid/nightly/repo
 
 Artifacts attached to this pre-release:
 

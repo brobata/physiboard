@@ -3,9 +3,10 @@ set -euo pipefail
 
 BASE_VERSION="${1:-}"
 PUBLISH="${2:-}"
+BUILD_MODE="${3:-}"
 
 if [ -z "$BASE_VERSION" ]; then
-  echo "Usage: $0 <base-version> [--publish]" >&2
+  echo "Usage: $0 <base-version> [--publish] [--fdroid]" >&2
   exit 1
 fi
 
@@ -17,16 +18,20 @@ TAG_NAME="$(printf '%s\n' "$VERSION_INFO" | awk -F= '/^tag_name=/{print $2}')"
 APK_PATH="$ROOT_DIR/app/build/outputs/apk/nightly/release/app-nightly-release.apk"
 SHA_PATH="${APK_PATH}.sha256"
 NOTES_PATH="$ROOT_DIR/.github/release-templates/debug-prerelease.md"
+GRADLE_ARGS=(
+  -PPASTIERA_VERSION_NAME="$BASE_VERSION"
+  -PPASTIERA_NIGHTLY_VERSION_SUFFIX="-nightly.${TIMESTAMP}"
+)
+
+if [ "$PUBLISH" = "--fdroid" ] || [ "$BUILD_MODE" = "--fdroid" ]; then
+  GRADLE_ARGS+=(-PPASTIERA_FDROID_BUILD=true)
+fi
 
 cd "$ROOT_DIR"
 
-./gradlew :app:testNightlyReleaseUnitTest \
-  -PPASTIERA_VERSION_NAME="$BASE_VERSION" \
-  -PPASTIERA_NIGHTLY_VERSION_SUFFIX="-nightly.${TIMESTAMP}"
+./gradlew :app:testNightlyReleaseUnitTest "${GRADLE_ARGS[@]}"
 
-./gradlew :app:assembleNightlyRelease \
-  -PPASTIERA_VERSION_NAME="$BASE_VERSION" \
-  -PPASTIERA_NIGHTLY_VERSION_SUFFIX="-nightly.${TIMESTAMP}"
+./gradlew :app:assembleNightlyRelease "${GRADLE_ARGS[@]}"
 
 sha256sum "$APK_PATH" | tee "$SHA_PATH"
 

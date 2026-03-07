@@ -16,8 +16,7 @@ class FlavorBuildConfigTest {
                 assertEquals("Ver. ${BuildConfig.VERSION_NAME} - Stable", BuildInfo.getBuildInfoString())
             }
             "nightly" -> {
-                assertFalse(BuildConfig.IS_FDROID_BUILD)
-                assertTrue(BuildConfig.ENABLE_GITHUB_UPDATE_CHECKS)
+                assertEquals(BuildConfig.IS_FDROID_BUILD, !BuildConfig.ENABLE_GITHUB_UPDATE_CHECKS)
                 assertTrue(BuildConfig.VERSION_NAME.contains("nightly"))
                 assertEquals("Ver. ${BuildConfig.VERSION_NAME} - Nightly", BuildInfo.getBuildInfoString())
             }

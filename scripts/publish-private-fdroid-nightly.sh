@@ -68,7 +68,7 @@ Summary: Nightly builds for Pastiera
 WebSite: https://pastiera.eu
 EOF
 
-"$ROOT_DIR/scripts/build-nightly.sh" "$BASE_VERSION"
+"$ROOT_DIR/scripts/build-nightly.sh" "$BASE_VERSION" --fdroid
 
 mkdir -p "$FDROID_REPO_DIR"
 rm -f "$FDROID_REPO_DIR"/*.apk "$FDROID_REPO_DIR"/*.apk.sha256

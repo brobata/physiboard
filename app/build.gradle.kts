@@ -108,8 +108,8 @@ android {
             resValue("string", "app_name", "Pastiera Nightly")
             resValue("string", "input_method_name", "Pastiera Nightly")
             buildConfigField("String", "RELEASE_CHANNEL", "\"nightly\"")
-            buildConfigField("boolean", "IS_FDROID_BUILD", "false")
-            buildConfigField("boolean", "ENABLE_GITHUB_UPDATE_CHECKS", "true")
+            buildConfigField("boolean", "IS_FDROID_BUILD", if (isFdroidBuild) "true" else "false")
+            buildConfigField("boolean", "ENABLE_GITHUB_UPDATE_CHECKS", if (isFdroidBuild) "false" else "true")
             val storePath = signingProp("nightlyStoreFile", "PASTIERA_NIGHTLY_KEYSTORE_PATH")
             val storePass = signingProp("nightlyStorePassword", "PASTIERA_NIGHTLY_KEYSTORE_PASSWORD")
             val alias = signingProp("nightlyKeyAlias", "PASTIERA_NIGHTLY_KEY_ALIAS")
@@ -155,7 +155,7 @@ android {
                         "Missing signing config for release build. Define storeFile, storePassword, keyAlias e keyPassword in " +
                             "keystore.properties (non tracciato) o nelle variabili d'ambiente PASTIERA_KEYSTORE_PATH, " +
                             "PASTIERA_KEYSTORE_PASSWORD, PASTIERA_KEY_ALIAS, PASTIERA_KEY_PASSWORD. " +
-                            "Use -PPASTIERA_FDROID_BUILD=true only for the unsigned F-Droid release path."
+                            "Use -PPASTIERA_FDROID_BUILD=true only for the unsigned stable F-Droid release path."
                     )
                 }
             }
