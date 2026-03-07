@@ -1,13 +1,10 @@
 name: Android CI
 
 on:
-  push:
-    branches:
-      - main
   pull_request:
 
 jobs:
-  unit-tests:
+  gradle-checks:
     runs-on: ubuntu-latest
 
     steps:
@@ -24,14 +21,61 @@ jobs:
       - name: Make Gradle executable
         run: chmod +x ./gradlew
 
-      - name: Run stable flavor tests
+      - name: Run core modifier regression tests
+        run: |
+          ./gradlew :app:testStableDebugUnitTest --tests it.palsoftware.pastiera.core.ModifierStateControllerTest
+
+      - name: Run input router modifier E2E tests
+        run: |
+          ./gradlew :app:testStableDebugUnitTest --tests it.palsoftware.pastiera.inputmethod.InputEventRouterModifierE2ETest
+
+      - name: Run input router forward-delete tests
+        run: |
+          ./gradlew :app:testStableDebugUnitTest --tests it.palsoftware.pastiera.inputmethod.InputEventRouterForwardDeleteAlternativesTest
+
+      - name: Run IME device behavior tests
+        run: |
+          ./gradlew :app:testStableDebugUnitTest --tests it.palsoftware.pastiera.inputmethod.PhysicalKeyboardInputMethodServiceDeviceBehaviorTest
+
+      - name: Run stable debug unit tests
         run: |
           ./gradlew :app:testStableDebugUnitTest
 
-      - name: Run stable F-Droid-path tests
+      - name: Run stable release unit tests (F-Droid path)
         run: |
-          ./gradlew :app:testStableDebugUnitTest -PPASTIERA_FDROID_BUILD=true
+          ./gradlew :app:testStableReleaseUnitTest -PPASTIERA_FDROID_BUILD=true
 
-      - name: Run nightly flavor tests
+      - name: Run nightly debug unit tests
         run: |
           ./gradlew :app:testNightlyDebugUnitTest
+
+      - name: Run nightly release unit tests
+        run: |
+          ./gradlew :app:testNightlyReleaseUnitTest
+
+      - name: Run stable debug lint
+        run: |
+          ./gradlew :app:lintStableDebug
+
+      - name: Run stable release lint
+        run: |
+          ./gradlew :app:lintStableRelease
+
+      - name: Run nightly debug lint
+        run: |
+          ./gradlew :app:lintNightlyDebug
+
+      - name: Run nightly release lint
+        run: |
+          ./gradlew :app:lintNightlyRelease
+
+      - name: Upload test and lint reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-test-and-lint-reports
+          path: |
+            app/build/reports/tests
+            app/build/test-results
+            app/build/reports/lint-results-*.html
+            app/build/reports/lint-results-*.xml
