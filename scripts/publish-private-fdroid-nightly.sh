@@ -4,7 +4,7 @@ set -euo pipefail
 BASE_VERSION="${1:-}"
 PAGES_PUBLIC_DIR="${2:-../palsoftware-web/apps/docs/public}"
 REPO_URL="${3:-https://pastiera.eu/fdroid/nightly/repo}"
-PAGES_REPO_DIR="${PAGES_REPO_DIR:-$PAGES_PUBLIC_DIR/../..}"
+PAGES_REPO_DIR="${PAGES_REPO_DIR:-$PAGES_PUBLIC_DIR/../../..}"
 AUTO_PUSH_PAGES="${AUTO_PUSH_PAGES:-true}"
 
 if [ -z "$BASE_VERSION" ]; then

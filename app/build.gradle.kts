@@ -47,6 +47,7 @@ android {
     val defaultVersionName = "0.85"
     val ciVersionCode = providers.gradleProperty("PASTIERA_VERSION_CODE").orNull?.toIntOrNull()
     val ciVersionName = providers.gradleProperty("PASTIERA_VERSION_NAME").orNull
+    val nightlyVersionCode = providers.gradleProperty("PASTIERA_NIGHTLY_VERSION_CODE").orNull?.toIntOrNull()
     val nightlyVersionNameSuffix = providers.gradleProperty("PASTIERA_NIGHTLY_VERSION_SUFFIX").orNull ?: "-nightly"
     val isFdroidBuild = gradleBooleanProperty("PASTIERA_FDROID_BUILD")
 
@@ -104,6 +105,9 @@ android {
         create("nightly") {
             dimension = "channel"
             applicationIdSuffix = ".nightly"
+            if (nightlyVersionCode != null) {
+                versionCode = nightlyVersionCode
+            }
             versionNameSuffix = nightlyVersionNameSuffix
             resValue("string", "app_name", "Pastiera Nightly")
             resValue("string", "input_method_name", "Pastiera Nightly")

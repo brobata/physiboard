@@ -15,11 +15,13 @@ VERSION_INFO="$("$ROOT_DIR/scripts/nightly-version.sh" "$BASE_VERSION")"
 TIMESTAMP="$(printf '%s\n' "$VERSION_INFO" | awk -F= '/^timestamp=/{print $2}')"
 FULL_VERSION="$(printf '%s\n' "$VERSION_INFO" | awk -F= '/^full_version=/{print $2}')"
 TAG_NAME="$(printf '%s\n' "$VERSION_INFO" | awk -F= '/^tag_name=/{print $2}')"
+VERSION_CODE="$(printf '%s\n' "$VERSION_INFO" | awk -F= '/^version_code=/{print $2}')"
 APK_PATH="$ROOT_DIR/app/build/outputs/apk/nightly/release/app-nightly-release.apk"
 SHA_PATH="${APK_PATH}.sha256"
 NOTES_PATH="$ROOT_DIR/.github/release-templates/debug-prerelease.md"
 GRADLE_ARGS=(
   -PPASTIERA_VERSION_NAME="$BASE_VERSION"
+  -PPASTIERA_NIGHTLY_VERSION_CODE="$VERSION_CODE"
   -PPASTIERA_NIGHTLY_VERSION_SUFFIX="-nightly.${TIMESTAMP}"
 )
 
@@ -45,5 +47,6 @@ fi
 
 printf 'full_version=%s\n' "$FULL_VERSION"
 printf 'tag_name=%s\n' "$TAG_NAME"
+printf 'version_code=%s\n' "$VERSION_CODE"
 printf 'apk=%s\n' "$APK_PATH"
 printf 'sha256=%s\n' "$SHA_PATH"
