@@ -2,12 +2,18 @@
 set -euo pipefail
 
 BASE_VERSION="${1:-}"
-PAGES_PUBLIC_DIR="${2:-/Users/user/gits/GitHub/palsoftware-web/apps/docs/public}"
+PAGES_PUBLIC_DIR="${2:-../palsoftware-web/apps/docs/public}"
 REPO_URL="${3:-https://pastiera.eu/fdroid/nightly/repo}"
+PAGES_REPO_DIR="${PAGES_REPO_DIR:-$PAGES_PUBLIC_DIR/../..}"
+AUTO_PUSH_PAGES="${AUTO_PUSH_PAGES:-true}"
 
 if [ -z "$BASE_VERSION" ]; then
-  echo "Usage: $0 <base-version> [pages-public-dir] [repo-url]" >&2
+  echo "Usage: $0 <base-version> [pages-public-dir] [repo-url] [--no-push-pages]" >&2
   exit 1
+fi
+
+if [ "${4:-}" = "--no-push-pages" ]; then
+  AUTO_PUSH_PAGES=false
 fi
 
 if ! command -v fdroid >/dev/null 2>&1; then
@@ -22,6 +28,9 @@ FDROID_METADATA_DIR="$FDROID_ROOT/metadata"
 TARGET_REPO_DIR="$PAGES_PUBLIC_DIR/fdroid/nightly/repo"
 APK_PATH="$ROOT_DIR/app/build/outputs/apk/nightly/release/app-nightly-release.apk"
 APP_ID="it.palsoftware.pastiera.nightly"
+VERSION_INFO="$("$ROOT_DIR/scripts/nightly-version.sh" "$BASE_VERSION")"
+FULL_VERSION="$(printf '%s\n' "$VERSION_INFO" | awk -F= '/^full_version=/{print $2}')"
+COMMIT_MESSAGE="${COMMIT_MESSAGE:-Publish Pastiera nightly F-Droid repo ${FULL_VERSION}}"
 
 if [ ! -d "$PAGES_PUBLIC_DIR" ]; then
   echo "Pages public directory not found: $PAGES_PUBLIC_DIR" >&2
@@ -81,6 +90,17 @@ cp "$APK_PATH" "$FDROID_REPO_DIR/"
 
 mkdir -p "$TARGET_REPO_DIR"
 rsync -a --delete "$FDROID_REPO_DIR/" "$TARGET_REPO_DIR/"
+
+if [ "$AUTO_PUSH_PAGES" = "true" ]; then
+  (
+    cd "$PAGES_REPO_DIR"
+    git add apps/docs/public/fdroid/nightly/repo
+    if ! git diff --cached --quiet; then
+      git commit -m "$COMMIT_MESSAGE"
+      git push origin main
+    fi
+  )
+fi
 
 printf 'repo_url=%s\n' "$REPO_URL"
 printf 'fdroid_root=%s\n' "$FDROID_ROOT"

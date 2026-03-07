@@ -145,6 +145,8 @@ Input method for physical keyboards android devices (e.g. Unihertz Titan 2), des
   - `./scripts/build-nightly.sh 0.85`
   - `./scripts/build-nightly.sh 0.85 --publish`
   - `./scripts/publish-private-fdroid-nightly.sh 0.85`
+  - `./scripts/publish-private-fdroid-nightly.sh 0.85 ../palsoftware-web/apps/docs/public https://pastiera.eu/fdroid/nightly/repo`
+  - `./scripts/publish-private-fdroid-nightly.sh 0.85 ../palsoftware-web/apps/docs/public https://pastiera.eu/fdroid/nightly/repo --no-push-pages`
   - `./scripts/build-release.sh 0.85 85`
   - `./scripts/build-release.sh 0.85 85 --publish`
 
@@ -152,7 +154,7 @@ Input method for physical keyboards android devices (e.g. Unihertz Titan 2), des
 - Docs landing page:
   - `https://pastiera.eu/`
 - Local Pages target:
-  - `/Users/user/gits/GitHub/palsoftware-web/apps/docs/public/fdroid/nightly/repo`
+  - `../palsoftware-web/apps/docs/public/fdroid/nightly/repo`
 - Public repo URL:
   - `https://pastiera.eu/fdroid/nightly/repo`
 - GitHub Nightly releases:
@@ -161,11 +163,13 @@ Input method for physical keyboards android devices (e.g. Unihertz Titan 2), des
   - install `fdroidserver`
   - make sure nightly signing is configured
   - run `./scripts/publish-private-fdroid-nightly.sh 0.85`
+  - optional: add `--no-push-pages` if you explicitly do not want the generated Pages repo changes committed and pushed
 - The script:
   - builds the signed nightly APK
   - initializes or reuses a local F-Droid repo under `.fdroid/nightly`
   - updates the repo metadata with `fdroid update`
   - syncs the generated `repo/` contents into the Pages public directory
+  - by default commits and pushes only `apps/docs/public/fdroid/nightly/repo` in `palsoftware-web`, which triggers the GitHub Pages deployment
 
 ## Signing Attestations
 These attestations document the public signing certificates used for Nightly and official Release builds.
