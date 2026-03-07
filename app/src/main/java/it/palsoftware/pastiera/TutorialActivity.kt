@@ -654,8 +654,8 @@ private fun checkImeStatus(
 ) {
     try {
         val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-        val pastieraPackageName = "it.palsoftware.pastiera"
-        val pastieraImeId = "it.palsoftware.pastiera/.inputmethod.PhysicalKeyboardInputMethodService"
+        val pastieraPackageName = ImeIdentity.packageName
+        val pastieraImeId = ImeIdentity.imeId
         
         val enabledInputMethods = imm.enabledInputMethodList
         val isEnabled = enabledInputMethods.any { inputMethodInfo ->
