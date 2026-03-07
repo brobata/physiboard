@@ -577,7 +577,7 @@ private fun checkImeStatus(
         val enabledInputMethods = imm.enabledInputMethodList
         val isEnabled = enabledInputMethods.any { inputMethodInfo ->
             inputMethodInfo.packageName == pastieraPackageName ||
-            inputMethodInfo.id == pastieraImeId
+            ImeIdentity.matchesImeId(inputMethodInfo.id)
         }
         
         // Check if Pastiera is selected
@@ -591,7 +591,7 @@ private fun checkImeStatus(
                     context.contentResolver,
                     android.provider.Settings.Secure.DEFAULT_INPUT_METHOD
                 ) ?: ""
-                isSelected = defaultInputMethod == pastieraImeId
+                isSelected = ImeIdentity.matchesImeId(defaultInputMethod)
             } catch (e: SecurityException) {
                 // On Android 14+ (API 34+) with targetSdk 36, we can't read this setting
                 // Try alternative method: check if we can get current input method info
@@ -604,7 +604,7 @@ private fun checkImeStatus(
                         // Note: This is a heuristic and may not be 100% accurate
                         val allInputMethods = imm.inputMethodList
                         val pastieraInputMethod = allInputMethods.find { 
-                            it.packageName == pastieraPackageName || it.id == pastieraImeId 
+                            it.packageName == pastieraPackageName || ImeIdentity.matchesImeId(it.id)
                         }
                         // If Pastiera is the only enabled IME, assume it's selected
                         if (pastieraInputMethod != null && enabledInputMethods.size == 1) {

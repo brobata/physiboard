@@ -660,7 +660,7 @@ private fun checkImeStatus(
         val enabledInputMethods = imm.enabledInputMethodList
         val isEnabled = enabledInputMethods.any { inputMethodInfo ->
             inputMethodInfo.packageName == pastieraPackageName ||
-            inputMethodInfo.id == pastieraImeId
+            ImeIdentity.matchesImeId(inputMethodInfo.id)
         }
         
         var isSelected = false
@@ -670,14 +670,14 @@ private fun checkImeStatus(
                     context.contentResolver,
                     Settings.Secure.DEFAULT_INPUT_METHOD
                 ) ?: ""
-                isSelected = defaultInputMethod == pastieraImeId
+                isSelected = ImeIdentity.matchesImeId(defaultInputMethod)
             } catch (e: SecurityException) {
                 try {
                     val currentSubtype = imm.currentInputMethodSubtype
                     if (currentSubtype != null) {
                         val allInputMethods = imm.inputMethodList
                         val pastieraInputMethod = allInputMethods.find { 
-                            it.packageName == pastieraPackageName || it.id == pastieraImeId 
+                            it.packageName == pastieraPackageName || ImeIdentity.matchesImeId(it.id)
                         }
                         if (pastieraInputMethod != null && enabledInputMethods.size == 1) {
                             isSelected = true
