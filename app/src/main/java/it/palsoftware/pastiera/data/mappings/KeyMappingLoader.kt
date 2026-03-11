@@ -70,7 +70,10 @@ object KeyMappingLoader {
         "KEYCODE_APOSTROPHE" to KeyEvent.KEYCODE_APOSTROPHE,
         "KEYCODE_COMMA" to KeyEvent.KEYCODE_COMMA,
         "KEYCODE_PERIOD" to KeyEvent.KEYCODE_PERIOD,
-        "KEYCODE_SLASH" to KeyEvent.KEYCODE_SLASH
+        "KEYCODE_SLASH" to KeyEvent.KEYCODE_SLASH,
+        // Minimal Phone (MP01) custom keycodes
+        "KEYCODE_EM" to 666,  // Emoji key
+        "KEYCODE_MIC" to 667  // Mic key
     )
 
     fun loadAltKeyMappings(assets: AssetManager, context: Context? = null): Map<Int, String> {

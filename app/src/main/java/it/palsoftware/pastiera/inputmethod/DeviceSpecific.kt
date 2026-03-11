@@ -12,6 +12,7 @@ object DeviceSpecific {
     private enum class KeyboardFamily {
         BLACKBERRY,
         UNIHERTZ,
+        MINIMAL,
         UNKNOWN
     }
 
@@ -22,6 +23,7 @@ object DeviceSpecific {
         TITAN_POCKET,
         TITAN_SLIM,
         TITAN_ORIGINAL,
+        MINIMAL_PHONE,
         UNKNOWN
     }
 
@@ -254,6 +256,14 @@ object DeviceSpecific {
                 needsEventRemapping = false
             )
         }
+        if (isMinimalPhone(fp)) {
+            return DeviceProfile(
+                family = KeyboardFamily.MINIMAL,
+                model = KeyboardModel.MINIMAL_PHONE,
+                physicalLayoutName = "mp01",
+                needsEventRemapping = false
+            )
+        }
         return DeviceProfile(
             family = KeyboardFamily.UNKNOWN,
             model = KeyboardModel.UNKNOWN,
@@ -329,6 +339,10 @@ object DeviceSpecific {
         return fp.containsAny("blackberry key2", "key2", "bbf100")
     }
 
+    private fun isMinimalPhone(fp: BuildFingerprint): Boolean {
+        return fp.containsAny("minimal_phone") || (fp.containsAny("mp01") && fp.containsAny("along"))
+    }
+
     private fun isTitanFamily(fp: BuildFingerprint): Boolean {
         return fp.containsAny("unihertz", "titan")
     }
@@ -351,6 +365,7 @@ object DeviceSpecific {
         return when (currentDeviceProfile().family) {
             KeyboardFamily.BLACKBERRY -> "Blackberry"
             KeyboardFamily.UNIHERTZ -> "Unihertz"
+            KeyboardFamily.MINIMAL -> "Minimal"
             KeyboardFamily.UNKNOWN -> "unknown"
         }
     }
