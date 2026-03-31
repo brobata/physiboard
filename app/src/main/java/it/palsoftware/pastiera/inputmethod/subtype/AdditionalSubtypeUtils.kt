@@ -270,6 +270,33 @@ object AdditionalSubtypeUtils {
     fun getKeyboardLayoutFromSubtype(subtype: InputMethodSubtype): String? {
         return extractLayoutFromExtraValue(subtype.extraValue ?: "")
     }
+
+    /**
+     * Resolves the active keyboard layout based on the central layout mode:
+     * - Auto mode: subtype layout -> locale mapping
+     * - Manual mode: explicit user-selected layout from settings
+     */
+    fun resolveActiveLayout(
+        assets: AssetManager,
+        context: Context,
+        subtype: InputMethodSubtype?
+    ): String {
+        if (!SettingsManager.isKeyboardLayoutAutoByLocale(context)) {
+            return SettingsManager.getKeyboardLayout(context)
+        }
+
+        if (subtype != null) {
+            val layoutFromSubtype = getKeyboardLayoutFromSubtype(subtype)
+            if (!layoutFromSubtype.isNullOrEmpty()) {
+                return layoutFromSubtype
+            }
+            val locale = subtype.locale ?: "en_US"
+            return getLayoutForLocale(assets, locale, context)
+        }
+
+        // No subtype available: keep current selection to avoid unexpected jumps.
+        return SettingsManager.getKeyboardLayout(context)
+    }
     
     /**
      * Gets the default keyboard layout for a locale from the JSON mapping.

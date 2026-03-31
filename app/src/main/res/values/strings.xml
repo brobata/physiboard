@@ -236,6 +236,9 @@
     <string name="keyboard_layout_viewer_multitap_off">single</string>
     <string name="keyboard_layout_viewer_open">View mapping</string>
     <string name="keyboard_layout_settings_button">Keyboard Layout Settings</string>
+    <string name="keyboard_layout_mode_title">Automatic Layout Mapping</string>
+    <string name="keyboard_layout_mode_auto_description">ON: follow subtype/locale mapping defaults.</string>
+    <string name="keyboard_layout_mode_manual_description">OFF: use one manually selected layout for all locales.</string>
     
     <!-- About Section -->
     <string name="about_github">GitHub</string>
@@ -461,6 +464,9 @@
     
     <!-- Main Activity Event Display -->
     <string name="modifier_alt">ALT</string>
+    <string name="event_action_label">Action: </string>
+    <string name="event_keycode_label">KeyCode: </string>
+    <string name="event_scancode_label">ScanCode: </string>
     <string name="event_unicode_label">Unicode: </string>
     <string name="event_output_label">Output: </string>
     <string name="event_not_available">N/A</string>

@@ -17,6 +17,7 @@ object KeyboardEventTracker {
         val keyCode: Int,
         val keyCodeName: String,
         val action: String,
+        val scanCode: Int,
         val unicodeChar: Int,
         val isAltPressed: Boolean,
         val isShiftPressed: Boolean,
@@ -39,6 +40,7 @@ object KeyboardEventTracker {
                 keyCode = keyCode,
                 keyCodeName = getKeyCodeName(keyCode),
                 action = action,
+                scanCode = event.scanCode,
                 unicodeChar = event.unicodeChar,
                 isAltPressed = event.isAltPressed,
                 isShiftPressed = event.isShiftPressed,
@@ -100,6 +102,5 @@ object KeyboardEventTracker {
         return getKeyCodeName(keyCode)
     }
 }
-
 
 

@@ -511,29 +511,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     }
     
     /**
-     * Loads keyboard layout from the current subtype if available, otherwise from JSON mapping or preferences.
+     * Loads keyboard layout using the central resolver (auto-by-locale or manual override).
      */
     private fun loadKeyboardLayout() {
         val layoutName = try {
-            // First, try to get layout from current subtype
             val imm = getSystemService(InputMethodManager::class.java)
             val currentSubtype = imm.currentInputMethodSubtype
-            if (currentSubtype != null) {
-                val layoutFromSubtype = AdditionalSubtypeUtils.getKeyboardLayoutFromSubtype(currentSubtype)
-                if (layoutFromSubtype != null) {
-                    Log.d(TAG, "Loading layout from subtype: $layoutFromSubtype")
-                    layoutFromSubtype
-                } else {
-                    // If not in subtype, get from JSON mapping based on locale
-                    val locale = currentSubtype.locale ?: "en_US"
-                            val layoutFromMapping = AdditionalSubtypeUtils.getLayoutForLocale(assets, locale, this)
-                    Log.d(TAG, "Loading layout from JSON mapping for locale $locale: $layoutFromMapping")
-                    layoutFromMapping
-                }
-            } else {
-                // No subtype available, use preferences
-                SettingsManager.getKeyboardLayout(this)
-            }
+            AdditionalSubtypeUtils.resolveActiveLayout(assets, this, currentSubtype)
         } catch (e: Exception) {
             Log.w(TAG, "Error getting layout from subtype, using preferences", e)
             SettingsManager.getKeyboardLayout(this)
@@ -1994,24 +1978,14 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             }
         }
         
-        // Get layout from subtype if specified, otherwise from JSON mapping
-        val layoutToUse = AdditionalSubtypeUtils.getKeyboardLayoutFromSubtype(newSubtype)
-            ?: run {
-                val locale = newSubtype.locale ?: "en_US"
-                AdditionalSubtypeUtils.getLayoutForLocale(assets, locale, this)
-            }
-        
-        // Always switch to the layout for the current locale (they are strictly linked)
-        // Update preferences to keep them in sync
+        val layoutToUse = AdditionalSubtypeUtils.resolveActiveLayout(assets, this, newSubtype)
+
         val currentLayout = SettingsManager.getKeyboardLayout(this)
         if (layoutToUse != currentLayout) {
             Log.d(TAG, "Switching layout for locale ${newSubtype.locale}: $layoutToUse (was: $currentLayout)")
-            // Update preferences first to keep them in sync
             SettingsManager.setKeyboardLayout(this, layoutToUse)
-            // Then load the layout
             switchToLayout(layoutToUse, showToast = false)
         } else {
-            // Even if layout matches, ensure it's loaded (in case it was changed manually)
             switchToLayout(layoutToUse, showToast = false)
         }
     }

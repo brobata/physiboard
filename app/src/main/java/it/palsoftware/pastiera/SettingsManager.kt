@@ -37,6 +37,7 @@ object SettingsManager {
     private const val KEY_AUTO_CAPITALIZE_AFTER_PERIOD = "auto_capitalize_after_period"
     private const val KEY_LONG_PRESS_MODIFIER = "long_press_modifier" // "alt", "shift", "variations", or "sym"
     private const val KEY_KEYBOARD_LAYOUT = "keyboard_layout" // "qwerty", "azerty", etc.
+    private const val KEY_KEYBOARD_LAYOUT_AUTO_BY_LOCALE = "keyboard_layout_auto_by_locale" // If true, resolve layout from subtype/locale mapping
     private const val KEY_KEYBOARD_LAYOUT_LIST = "keyboard_layout_list" // JSON array of layout ids for cycling
     private const val KEY_RESTORE_SYM_PAGE = "restore_sym_page" // SYM page to restore when returning from settings
     private const val KEY_PENDING_RESTORE_SYM_PAGE = "pending_restore_sym_page" // Temporary SYM page state saved when opening settings
@@ -108,6 +109,7 @@ object SettingsManager {
     private const val DEFAULT_AUTO_CAPITALIZE_AFTER_PERIOD = true
     private const val DEFAULT_LONG_PRESS_MODIFIER = "alt"
     private const val DEFAULT_KEYBOARD_LAYOUT = "qwerty"
+    private const val DEFAULT_KEYBOARD_LAYOUT_AUTO_BY_LOCALE = true
     private const val DEFAULT_SYM_AUTO_CLOSE = true
     private val DEFAULT_SYM_PAGES_CONFIG = SymPagesConfig()
     private const val DEFAULT_STATIC_VARIATION_BAR_MODE = false
@@ -1534,6 +1536,26 @@ object SettingsManager {
     fun setKeyboardLayout(context: Context, layoutName: String) {
         getPreferences(context).edit()
             .putString(KEY_KEYBOARD_LAYOUT, layoutName)
+            .apply()
+    }
+
+    /**
+     * Returns whether keyboard layout should be resolved automatically from subtype/locale mapping.
+     * If false, the manually selected layout is used across all locales.
+     */
+    fun isKeyboardLayoutAutoByLocale(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_KEYBOARD_LAYOUT_AUTO_BY_LOCALE,
+            DEFAULT_KEYBOARD_LAYOUT_AUTO_BY_LOCALE
+        )
+    }
+
+    /**
+     * Enables/disables automatic keyboard layout resolution by locale mapping.
+     */
+    fun setKeyboardLayoutAutoByLocale(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_KEYBOARD_LAYOUT_AUTO_BY_LOCALE, enabled)
             .apply()
     }
 

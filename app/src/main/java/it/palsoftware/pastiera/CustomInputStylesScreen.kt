@@ -1037,7 +1037,7 @@ private fun updateLocaleLayoutMapping(context: Context, locale: String, layout: 
             val currentSubtype = imm?.currentInputMethodSubtype
             val currentLocale = currentSubtype?.locale
             
-            if (currentLocale == locale) {
+            if (currentLocale == locale && SettingsManager.isKeyboardLayoutAutoByLocale(context)) {
                 // The locale being updated is currently active, immediately apply the layout change
                 android.util.Log.d("CustomInputStyles", "Locale $locale is currently active, applying layout change immediately")
                 SettingsManager.setKeyboardLayout(context, layout)

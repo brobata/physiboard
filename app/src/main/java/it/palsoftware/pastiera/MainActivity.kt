@@ -497,6 +497,21 @@ fun KeyboardSetupScreen(
                         fontFamily = FontFamily.Monospace
                     )
                     Text(
+                        text = "${stringResource(R.string.event_action_label)}${event.action}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Text(
+                        text = "${stringResource(R.string.event_keycode_label)}${event.keyCode}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Text(
+                        text = "${stringResource(R.string.event_scancode_label)}${event.scanCode}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Text(
                         text = "${stringResource(R.string.event_unicode_label)}${event.unicodeChar} (${if (event.unicodeChar != 0) event.unicodeChar.toChar() else stringResource(R.string.event_not_available)})",
                         style = MaterialTheme.typography.bodyMedium,
                         fontFamily = FontFamily.Monospace

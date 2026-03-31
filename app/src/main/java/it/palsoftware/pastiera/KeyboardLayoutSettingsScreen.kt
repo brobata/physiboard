@@ -57,10 +57,16 @@ fun KeyboardLayoutSettingsScreen(
 ) {
     val context = LocalContext.current
     
-    // Get layout from locale-layout mapping
-    var selectedLayout by remember(locale) { 
+    var automaticLayoutMode by remember {
+        mutableStateOf(SettingsManager.isKeyboardLayoutAutoByLocale(context))
+    }
+    var selectedLayout by remember(locale, automaticLayoutMode) {
         mutableStateOf(
-            AdditionalSubtypeUtils.getLayoutForLocale(context.assets, locale, context)
+            if (automaticLayoutMode) {
+                AdditionalSubtypeUtils.getLayoutForLocale(context.assets, locale, context)
+            } else {
+                SettingsManager.getKeyboardLayout(context)
+            }
         )
     }
     
@@ -218,8 +224,12 @@ fun KeyboardLayoutSettingsScreen(
                     // Save button
                     IconButton(
                         onClick = {
-                            // Save the layout selection and go back
-                            onLayoutSelected(locale, selectedLayout)
+                            SettingsManager.setKeyboardLayoutAutoByLocale(context, automaticLayoutMode)
+                            if (automaticLayoutMode) {
+                                onLayoutSelected(locale, selectedLayout)
+                            } else {
+                                SettingsManager.setKeyboardLayout(context, selectedLayout)
+                            }
                             onBack()
                         }
                     ) {
@@ -277,6 +287,43 @@ fun KeyboardLayoutSettingsScreen(
                 }
                 
                 Spacer(modifier = Modifier.height(8.dp))
+
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.keyboard_layout_mode_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = if (automaticLayoutMode) {
+                                    stringResource(R.string.keyboard_layout_mode_auto_description)
+                                } else {
+                                    stringResource(R.string.keyboard_layout_mode_manual_description)
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = automaticLayoutMode,
+                            onCheckedChange = { enabled ->
+                                automaticLayoutMode = enabled
+                            }
+                        )
+                    }
+                }
                 
                 // No Conversion (QWERTY - default, passes keycodes as-is)
                 Surface(
@@ -464,7 +511,11 @@ fun KeyboardLayoutSettingsScreen(
                             // If deleted layout was selected, switch to qwerty
                             if (selectedLayout == layoutName) {
                                 selectedLayout = "qwerty"
-                                onLayoutSelected(locale, "qwerty")
+                                if (automaticLayoutMode) {
+                                    onLayoutSelected(locale, "qwerty")
+                                } else {
+                                    SettingsManager.setKeyboardLayout(context, "qwerty")
+                                }
                             }
                             
                             refreshTrigger++
