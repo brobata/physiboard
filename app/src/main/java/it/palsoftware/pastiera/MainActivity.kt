@@ -22,6 +22,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -225,8 +226,10 @@ fun KeyboardSetupScreen(
     val context = LocalContext.current
     
     var testText by remember { mutableStateOf("") }
-    val lastKeyEventState = remember { mutableStateOf<KeyboardEventTracker.KeyEventInfo?>(null) }
-    val lastKeyEvent by lastKeyEventState
+    val rawLastKeyEventState = remember { mutableStateOf<KeyboardEventTracker.KeyEventInfo?>(null) }
+    val rawLastKeyEvent by rawLastKeyEventState
+    var displayedLastKeyEvent by remember { mutableStateOf<KeyboardEventTracker.KeyEventInfo?>(null) }
+    var ignoreKeyboardCloseBackEvent by rememberSaveable { mutableStateOf(true) }
     
     // State for IME status
     var isPastieraEnabled by remember { mutableStateOf(false) }
@@ -274,7 +277,19 @@ fun KeyboardSetupScreen(
     
     // Connect state to the global tracker
     LaunchedEffect(Unit) {
-        KeyboardEventTracker.registerState(lastKeyEventState)
+        KeyboardEventTracker.registerState(rawLastKeyEventState)
+    }
+
+    // Keep the latest useful debug event visible when software keyboard close emits BACK/KEY_UP.
+    LaunchedEffect(rawLastKeyEvent, ignoreKeyboardCloseBackEvent) {
+        val event = rawLastKeyEvent ?: return@LaunchedEffect
+        val isKeyboardCloseBackEvent = event.keyCode == KeyEvent.KEYCODE_BACK &&
+            event.action == "KEY_UP" &&
+            event.scanCode == 0
+        if (ignoreKeyboardCloseBackEvent && isKeyboardCloseBackEvent) {
+            return@LaunchedEffect
+        }
+        displayedLastKeyEvent = event
     }
     
     // Clear state when the composable is removed
@@ -465,15 +480,15 @@ fun KeyboardSetupScreen(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
             placeholder = { Text(stringResource(R.string.test_field_placeholder)) },
-            minLines = 2,
-            maxLines = 5,
+            minLines = 1,
+            maxLines = 2,
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.Sentences
             )
         )
-        
+
         // Last keyboard event (only if present)
-        val event = lastKeyEvent
+        val event = displayedLastKeyEvent
         if (event != null) {
             Surface(
                 modifier = Modifier
@@ -483,47 +498,79 @@ fun KeyboardSetupScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Text(
-                        text = stringResource(R.string.last_keyboard_event_title),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = "${event.keyCodeName}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontFamily = FontFamily.Monospace
-                    )
-                    Text(
-                        text = "${stringResource(R.string.event_action_label)}${event.action}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontFamily = FontFamily.Monospace
-                    )
-                    Text(
-                        text = "${stringResource(R.string.event_keycode_label)}${event.keyCode}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontFamily = FontFamily.Monospace
-                    )
-                    Text(
-                        text = "${stringResource(R.string.event_scancode_label)}${event.scanCode}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontFamily = FontFamily.Monospace
-                    )
-                    Text(
-                        text = "${stringResource(R.string.event_unicode_label)}${event.unicodeChar} (${if (event.unicodeChar != 0) event.unicodeChar.toChar() else stringResource(R.string.event_not_available)})",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontFamily = FontFamily.Monospace
-                    )
-                    if (event.outputKeyCodeName != null) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
                         Text(
-                            text = "${stringResource(R.string.event_output_label)}${event.outputKeyCodeName}${if (event.outputKeyCode != null) " (${event.outputKeyCode})" else ""}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontFamily = FontFamily.Monospace,
-                            color = MaterialTheme.colorScheme.primary
+                            text = stringResource(R.string.last_keyboard_event_title),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        FilterChip(
+                            selected = ignoreKeyboardCloseBackEvent,
+                            onClick = { ignoreKeyboardCloseBackEvent = !ignoreKeyboardCloseBackEvent },
+                            label = {
+                                Text(
+                                    text = stringResource(R.string.ignore_back_short),
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Text(
+                                text = event.keyCodeName,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontFamily = FontFamily.Monospace
+                            )
+                            Text(
+                                text = "${stringResource(R.string.event_action_label)}${event.action}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontFamily = FontFamily.Monospace
+                            )
+                            Text(
+                                text = "${stringResource(R.string.event_keycode_label)}${event.keyCode}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Text(
+                                text = "${stringResource(R.string.event_scancode_label)}${event.scanCode}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontFamily = FontFamily.Monospace
+                            )
+                            Text(
+                                text = "${stringResource(R.string.event_unicode_label)}${event.unicodeChar} (${if (event.unicodeChar != 0) event.unicodeChar.toChar() else stringResource(R.string.event_not_available)})",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontFamily = FontFamily.Monospace
+                            )
+                            if (event.outputKeyCodeName != null) {
+                                Text(
+                                    text = "${stringResource(R.string.event_output_label)}${event.outputKeyCodeName}${if (event.outputKeyCode != null) " (${event.outputKeyCode})" else ""}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
                     }
                     if (event.isShiftPressed || event.isCtrlPressed || event.isAltPressed) {
                         Row(

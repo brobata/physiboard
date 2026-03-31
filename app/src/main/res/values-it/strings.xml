@@ -80,6 +80,7 @@
     <!-- Last Event Section -->
     <string name="last_keyboard_event_title">Ultimo Evento Tastiera</string>
     <string name="no_event_yet">Nessun evento ancora</string>
+    <string name="ignore_back_short">Ignora BACK</string>
     
     <!-- Long Press Mappings Section -->
     <string name="long_press_mappings_title">Mappature Long Press</string>

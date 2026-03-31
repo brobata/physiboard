@@ -79,6 +79,7 @@
     <!-- Last Event Section -->
     <string name="last_keyboard_event_title">Letztes Tastaturereignis</string>
     <string name="no_event_yet">Noch kein Ereignis</string>
+    <string name="ignore_back_short">BACK ignorieren</string>
     
     <!-- Long Press Mappings Section -->
     <string name="long_press_mappings_title">Zuordnungen für langen Druck</string>
