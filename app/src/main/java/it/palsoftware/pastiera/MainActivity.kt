@@ -47,6 +47,7 @@ import it.palsoftware.pastiera.BuildConfig
 import it.palsoftware.pastiera.update.checkForUpdate
 import it.palsoftware.pastiera.update.showUpdateDialog
 import it.palsoftware.pastiera.update.UpdateCheckWorker
+import it.palsoftware.pastiera.update.shouldUseGithubUpdateChecks
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Settings
@@ -175,7 +176,7 @@ class MainActivity : ComponentActivity() {
         // This ensures dynamic languages are available when IME is enabled
         AdditionalSubtypeUtils.registerAdditionalSubtypes(this)
         
-        if (BuildConfig.ENABLE_GITHUB_UPDATE_CHECKS) {
+        if (shouldUseGithubUpdateChecks(this)) {
             // Schedule periodic background update checks (every 24 hours).
             UpdateCheckWorker.schedule(applicationContext)
         }
@@ -284,7 +285,7 @@ fun KeyboardSetupScreen(
     }
     
     // Automatic update check on screen open (only once, respecting dismissed releases)
-    if (BuildConfig.ENABLE_GITHUB_UPDATE_CHECKS) {
+    if (shouldUseGithubUpdateChecks(context)) {
         LaunchedEffect(Unit) {
             checkForUpdate(
                 context = context,

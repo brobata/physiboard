@@ -32,6 +32,11 @@ fun checkForUpdate(
     ignoreDismissedReleases: Boolean = true,
     callback: (hasUpdate: Boolean, latestVersion: String?, downloadUrl: String?, releasePageUrl: String?) -> Unit
 ) {
+    if (!shouldUseGithubUpdateChecks(context)) {
+        postResult(callback, false, null, null, null)
+        return
+    }
+
     val request = Request.Builder()
         .url(GITHUB_RELEASES_URL)
         .header("Accept", "application/vnd.github+json")

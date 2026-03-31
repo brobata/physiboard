@@ -45,6 +45,7 @@ import it.palsoftware.pastiera.ui.theme.PastieraTheme
 import it.palsoftware.pastiera.BuildConfig
 import it.palsoftware.pastiera.update.checkForUpdate
 import it.palsoftware.pastiera.update.showUpdateDialog
+import it.palsoftware.pastiera.update.shouldUseGithubUpdateChecks
 
 class TutorialActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -161,7 +162,7 @@ fun TutorialScreen(
     }
     
     // Automatic update check at tutorial start (only once, respecting dismissed releases)
-    if (BuildConfig.ENABLE_GITHUB_UPDATE_CHECKS) {
+    if (shouldUseGithubUpdateChecks(context)) {
         LaunchedEffect(Unit) {
             checkForUpdate(
                 context = context,

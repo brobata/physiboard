@@ -8,6 +8,7 @@ import it.palsoftware.pastiera.BuildConfig
 import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.update.checkForUpdate
 import it.palsoftware.pastiera.update.showUpdateDialog
+import it.palsoftware.pastiera.update.shouldUseGithubUpdateChecks
 
 class SettingsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -15,7 +16,7 @@ class SettingsActivity : AppCompatActivity() {
         setContentView(R.layout.activity_settings)
 
         findViewById<Button>(R.id.check_updates_button).setOnClickListener {
-            if (!BuildConfig.ENABLE_GITHUB_UPDATE_CHECKS) {
+            if (!shouldUseGithubUpdateChecks(this)) {
                 Toast.makeText(this, getString(R.string.settings_update_up_to_date), Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }

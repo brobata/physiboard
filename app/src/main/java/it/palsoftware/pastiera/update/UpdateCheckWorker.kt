@@ -27,6 +27,9 @@ class UpdateCheckWorker(
 
     override fun doWork(): Result {
         val context = applicationContext
+        if (!shouldUseGithubUpdateChecks(context)) {
+            return Result.success()
+        }
 
         // Use a latch to bridge the async callback-based API with the
         // synchronous Worker API.
@@ -84,7 +87,7 @@ class UpdateCheckWorker(
          * If already scheduled, the existing work is kept.
          */
         fun schedule(context: Context) {
-            if (!BuildConfig.ENABLE_GITHUB_UPDATE_CHECKS) {
+            if (!shouldUseGithubUpdateChecks(context)) {
                 WorkManager.getInstance(context).cancelUniqueWork(UNIQUE_WORK_NAME)
                 return
             }

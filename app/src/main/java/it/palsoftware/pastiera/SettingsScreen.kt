@@ -45,6 +45,7 @@ import it.palsoftware.pastiera.BuildConfig
 import it.palsoftware.pastiera.inputmethod.DeviceSpecific
 import it.palsoftware.pastiera.update.checkForUpdate
 import it.palsoftware.pastiera.update.showUpdateDialog
+import it.palsoftware.pastiera.update.shouldUseGithubUpdateChecks
 
 /**
  * Sealed class per rappresentare lo stato della navigazione nelle settings.
@@ -96,7 +97,7 @@ fun SettingsScreen(
     }
     
     // Automatic update check on screen open (only once, respecting dismissed releases)
-    if (BuildConfig.ENABLE_GITHUB_UPDATE_CHECKS) {
+    if (shouldUseGithubUpdateChecks(context)) {
         LaunchedEffect(Unit) {
             checkForUpdate(
                 context = context,
@@ -557,7 +558,7 @@ private fun SettingsMainScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                if (BuildConfig.ENABLE_GITHUB_UPDATE_CHECKS) {
+                if (shouldUseGithubUpdateChecks(context)) {
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
