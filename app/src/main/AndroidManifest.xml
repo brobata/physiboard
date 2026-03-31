@@ -36,20 +36,20 @@
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
-        android:label="@string/app_name"
+        android:label="${appLabel}"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Pastiera">
         <activity
             android:name=".TutorialActivity"
             android:exported="false"
-            android:label="@string/app_name"
+            android:label="${appLabel}"
             android:theme="@style/Theme.Pastiera" />
         
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:label="@string/app_name"
+            android:label="${appLabel}"
             android:theme="@style/Theme.Pastiera">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -103,7 +103,7 @@
         <!-- Servizio di immissione per tastiera fisica -->
         <service
             android:name=".inputmethod.PhysicalKeyboardInputMethodService"
-            android:label="@string/input_method_name"
+            android:label="${imeLabel}"
             android:permission="android.permission.BIND_INPUT_METHOD"
             android:exported="true">
             <intent-filter>

@@ -98,6 +98,8 @@ android {
     productFlavors {
         create("stable") {
             dimension = "channel"
+            manifestPlaceholders["appLabel"] = "Pastiera"
+            manifestPlaceholders["imeLabel"] = "Pastiera"
             buildConfigField("String", "RELEASE_CHANNEL", "\"stable\"")
             buildConfigField("boolean", "IS_FDROID_BUILD", if (isFdroidBuild) "true" else "false")
             buildConfigField("boolean", "ENABLE_GITHUB_UPDATE_CHECKS", if (isFdroidBuild) "false" else "true")
@@ -109,8 +111,8 @@ android {
                 versionCode = nightlyVersionCode
             }
             versionNameSuffix = nightlyVersionNameSuffix
-            resValue("string", "app_name", "Pastiera Nightly")
-            resValue("string", "input_method_name", "Pastiera Nightly")
+            manifestPlaceholders["appLabel"] = "Pastiera Nightly"
+            manifestPlaceholders["imeLabel"] = "Pastiera Nightly"
             buildConfigField("String", "RELEASE_CHANNEL", "\"nightly\"")
             buildConfigField("boolean", "IS_FDROID_BUILD", if (isFdroidBuild) "true" else "false")
             buildConfigField("boolean", "ENABLE_GITHUB_UPDATE_CHECKS", if (isFdroidBuild) "false" else "true")
