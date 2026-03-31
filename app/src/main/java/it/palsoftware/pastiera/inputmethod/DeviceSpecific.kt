@@ -42,6 +42,9 @@ object DeviceSpecific {
     private const val KEYCODE_SYM: Int = KeyEvent.KEYCODE_SYM
     private const val KEYCODE_Q25_CTRL: Int = KeyEvent.KEYCODE_SHIFT_RIGHT
     private const val KEYCODE_Q25_SYM: Int = KeyEvent.KEYCODE_ALT_RIGHT
+    private const val SCANCODE_KEY2_W: Int = 17
+    private const val SCANCODE_KEY2_Z: Int = 44
+    private const val SCANCODE_KEY2_M: Int = 50
 
     private const val RELOADABLE_META_MASK: Int =
         KeyEvent.META_SHIFT_MASK or
@@ -67,6 +70,7 @@ object DeviceSpecific {
     fun remapHardwareKeyEvent(keyCode: Int, event: KeyEvent?): RemappedHardwareEvent {
         return when (currentDeviceProfile().model) {
             KeyboardModel.Q25 -> remapQ25KeyEvent(keyCode, event)
+            KeyboardModel.KEY2 -> remapKey2KeyEvent(keyCode, event)
             else -> RemappedHardwareEvent(keyCode, event)
         }
     }
@@ -95,6 +99,40 @@ object DeviceSpecific {
             keyCode = normalizedKeyCode,
             event = patchQ25MetaState(event)
         )
+    }
+
+    private fun remapKey2KeyEvent(keyCode: Int, event: KeyEvent?): RemappedHardwareEvent {
+        val normalizedKeyCode = normalizeKey2KeyCode(keyCode, event?.scanCode ?: -1)
+        if (event == null || normalizedKeyCode == keyCode) {
+            return RemappedHardwareEvent(normalizedKeyCode, event)
+        }
+
+        return RemappedHardwareEvent(
+            keyCode = normalizedKeyCode,
+            event = KeyEvent(
+                event.downTime,
+                event.eventTime,
+                event.action,
+                normalizedKeyCode,
+                event.repeatCount,
+                event.metaState,
+                event.deviceId,
+                event.scanCode,
+                event.flags,
+                event.source
+            )
+        )
+    }
+
+    private fun normalizeKey2KeyCode(keyCode: Int, scanCode: Int): Int {
+        return when (scanCode) {
+            // Some BBF100-4 / LineageOS builds report these keys with layout-shifted keycodes.
+            // Normalize by scan code so physical key behavior stays consistent.
+            SCANCODE_KEY2_M -> KeyEvent.KEYCODE_M
+            SCANCODE_KEY2_W -> KeyEvent.KEYCODE_W
+            SCANCODE_KEY2_Z -> KeyEvent.KEYCODE_Z
+            else -> keyCode
+        }
     }
 
     private fun shouldRemapQ25Event(keyCode: Int, event: KeyEvent?): Boolean {

@@ -135,7 +135,48 @@ class DeviceSpecificTest {
         assertSame(input, remapped.event)
     }
 
-    private fun keyEvent(action: Int, keyCode: Int, metaState: Int): KeyEvent {
+    @Test
+    fun key2Bbf1004ScanCodes_areNormalizedToExpectedKeyCodes() {
+        DeviceSpecific.setBuildFingerprintForTests(
+            brand = "blackberry",
+            manufacturer = "blackberry",
+            model = "bbf100-4",
+            device = "athena",
+            product = "lineage_athena"
+        )
+
+        val mInput = keyEvent(
+            action = KeyEvent.ACTION_DOWN,
+            keyCode = KeyEvent.KEYCODE_COMMA,
+            metaState = 0,
+            scanCode = 50
+        )
+        val mRemapped = DeviceSpecific.remapHardwareKeyEvent(KeyEvent.KEYCODE_COMMA, mInput)
+        assertEquals(KeyEvent.KEYCODE_M, mRemapped.keyCode)
+        assertEquals(KeyEvent.KEYCODE_M, mRemapped.event?.keyCode)
+
+        val wInput = keyEvent(
+            action = KeyEvent.ACTION_DOWN,
+            keyCode = KeyEvent.KEYCODE_Z,
+            metaState = 0,
+            scanCode = 17
+        )
+        val wRemapped = DeviceSpecific.remapHardwareKeyEvent(KeyEvent.KEYCODE_Z, wInput)
+        assertEquals(KeyEvent.KEYCODE_W, wRemapped.keyCode)
+        assertEquals(KeyEvent.KEYCODE_W, wRemapped.event?.keyCode)
+
+        val zInput = keyEvent(
+            action = KeyEvent.ACTION_DOWN,
+            keyCode = KeyEvent.KEYCODE_W,
+            metaState = 0,
+            scanCode = 44
+        )
+        val zRemapped = DeviceSpecific.remapHardwareKeyEvent(KeyEvent.KEYCODE_W, zInput)
+        assertEquals(KeyEvent.KEYCODE_Z, zRemapped.keyCode)
+        assertEquals(KeyEvent.KEYCODE_Z, zRemapped.event?.keyCode)
+    }
+
+    private fun keyEvent(action: Int, keyCode: Int, metaState: Int, scanCode: Int = 1): KeyEvent {
         return KeyEvent(
             1000L,
             1010L,
@@ -144,7 +185,7 @@ class DeviceSpecificTest {
             0,
             metaState,
             1,
-            1,
+            scanCode,
             0,
             0
         )
