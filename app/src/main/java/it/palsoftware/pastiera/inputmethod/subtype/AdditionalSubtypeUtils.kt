@@ -427,7 +427,7 @@ object AdditionalSubtypeUtils {
         try {
             val systemLocales = getSystemEnabledLocales(context)
             val localesWithDict = getLocalesWithDictionary(context)
-            val baseSubtypesInMethodXml = setOf("en_US", "it_IT", "fr_FR", "de_DE", "pl_PL", "da_DK", "es_ES", "pt_PT", "ru_RU")
+            val baseSubtypesInMethodXml = setOf("en_US", "it_IT", "fr_FR", "de_DE", "pl_PL", "da_DK", "no_NO", "es_ES", "pt_PT", "ru_RU")
             
             // Get current custom input styles
             val currentStyles = SettingsManager.getCustomInputStyles(context)
@@ -580,6 +580,9 @@ object AdditionalSubtypeUtils {
             "de" -> listOf("de_DE", "de_AT", "de_CH", "de")
             "pl" -> listOf("pl_PL", "pl")
             "da" -> listOf("da_DK", "da")
+            "no" -> listOf("no_NO", "nb_NO", "nn_NO", "nb", "nn", "no")
+            "nb" -> listOf("nb_NO", "no_NO", "nb", "no")
+            "nn" -> listOf("nn_NO", "no_NO", "nn", "no")
             "es" -> listOf("es_ES", "es_MX", "es_AR", "es")
             "pt" -> listOf("pt_PT", "pt_BR", "pt")
             "ru" -> listOf("ru_RU", "ru")
