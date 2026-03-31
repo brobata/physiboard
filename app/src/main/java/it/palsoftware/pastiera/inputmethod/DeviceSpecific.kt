@@ -67,8 +67,12 @@ object DeviceSpecific {
 
     fun needsRemapping(): Boolean = currentDeviceProfile().needsEventRemapping
 
-    fun remapHardwareKeyEvent(keyCode: Int, event: KeyEvent?): RemappedHardwareEvent {
-        return when (currentDeviceProfile().model) {
+    fun remapHardwareKeyEvent(
+        keyCode: Int,
+        event: KeyEvent?,
+        physicalProfileOverride: String? = null
+    ): RemappedHardwareEvent {
+        return when (resolveKeyboardModel(physicalProfileOverride)) {
             KeyboardModel.Q25 -> remapQ25KeyEvent(keyCode, event)
             KeyboardModel.KEY2 -> remapKey2KeyEvent(keyCode, event)
             else -> RemappedHardwareEvent(keyCode, event)
@@ -76,8 +80,12 @@ object DeviceSpecific {
     }
 
     // Backward-compatible API used by existing callers.
-    fun remapKeyEvent(keyCode: Int, event: KeyEvent?): Pair<Int, KeyEvent?>? {
-        val remapped = remapHardwareKeyEvent(keyCode, event)
+    fun remapKeyEvent(
+        keyCode: Int,
+        event: KeyEvent?,
+        physicalProfileOverride: String? = null
+    ): Pair<Int, KeyEvent?>? {
+        val remapped = remapHardwareKeyEvent(keyCode, event, physicalProfileOverride)
         if (remapped.keyCode == keyCode && remapped.event === event) {
             return null
         }
@@ -266,6 +274,24 @@ object DeviceSpecific {
     }
 
     private fun currentDeviceProfile(): DeviceProfile = resolveDeviceProfile()
+
+    private fun resolveKeyboardModel(physicalProfileOverride: String?): KeyboardModel {
+        return when (normalizePhysicalProfileOverride(physicalProfileOverride)) {
+            "key2" -> KeyboardModel.KEY2
+            "q25" -> KeyboardModel.Q25
+            "titan2" -> KeyboardModel.TITAN_2
+            else -> currentDeviceProfile().model
+        }
+    }
+
+    private fun normalizePhysicalProfileOverride(physicalProfileOverride: String?): String? {
+        val normalized = physicalProfileOverride?.trim()?.lowercase().orEmpty()
+        return when (normalized) {
+            "", "auto" -> null
+            "key2", "q25", "titan2" -> normalized
+            else -> null
+        }
+    }
 
     internal fun setBuildFingerprintForTests(
         brand: String,

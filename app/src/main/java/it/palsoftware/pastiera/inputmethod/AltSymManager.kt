@@ -62,6 +62,11 @@ class AltSymManager(
         longPressThreshold = prefs.getLong("long_press_threshold", 500L).coerceIn(50L, 1000L)
     }
 
+    fun reloadAltMappings() {
+        altKeyMap.clear()
+        altKeyMap.putAll(KeyMappingLoader.loadAltKeyMappings(assets, context))
+    }
+
     fun getAltMappings(): Map<Int, String> = altKeyMap
 
     fun getSymMappings(): Map<Int, String> = symKeyMap

@@ -72,7 +72,11 @@ class MainActivity : ComponentActivity() {
     )
 
     private fun remapHardwareEvent(keyCode: Int, event: KeyEvent?): Pair<Int, KeyEvent?> {
-        val remapped = DeviceSpecific.remapHardwareKeyEvent(keyCode, event)
+        val remapped = DeviceSpecific.remapHardwareKeyEvent(
+            keyCode,
+            event,
+            SettingsManager.getPhysicalKeyboardProfileOverride(this)
+        )
         return remapped.keyCode to remapped.event
     }
     

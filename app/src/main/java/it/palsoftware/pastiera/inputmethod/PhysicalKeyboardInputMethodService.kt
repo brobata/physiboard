@@ -188,6 +188,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private lateinit var clipboardHistoryManager: ClipboardHistoryManager
     private var latestSuggestions: List<String> = emptyList()
     private var clearAltOnSpaceEnabled: Boolean = false
+    private var physicalKeyboardProfileOverride: String = "auto"
     private var isLanguageSwitchInProgress: Boolean = false
     // Stato per ricordare se il nav mode era attivo prima di entrare in un campo di testo
     private var navModeWasActiveBeforeEditableField: Boolean = false
@@ -745,6 +746,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         super.onCreate()
         prefs = getSharedPreferences("pastiera_prefs", Context.MODE_PRIVATE)
         clearAltOnSpaceEnabled = SettingsManager.getClearAltOnSpace(this)
+        physicalKeyboardProfileOverride = SettingsManager.getPhysicalKeyboardProfileOverride(this)
 
         // Clear legacy nav mode notification since we now rely on the status icon only.
         NotificationHelper.cancelNavModeNotification(this)
@@ -1031,6 +1033,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 }
             } else if (key == "clear_alt_on_space") {
                 clearAltOnSpaceEnabled = SettingsManager.getClearAltOnSpace(this)
+            } else if (key == "physical_keyboard_profile_override") {
+                Log.d(TAG, "Physical keyboard profile override changed, reloading Alt mappings...")
+                physicalKeyboardProfileOverride = SettingsManager.getPhysicalKeyboardProfileOverride(this)
+                altSymManager.reloadAltMappings()
+                Handler(Looper.getMainLooper()).post {
+                    updateStatusBarText()
+                }
             } else if (key != null && (key.startsWith("auto_correct_custom_") || key == "auto_correct_enabled_languages")) {
                 Log.d(TAG, "Auto-correction rules changed, reloading...")
                 // Reload auto-corrections (including new custom languages)
@@ -2079,7 +2088,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     }
 
     private fun remapHardwareEvent(keyCode: Int, event: KeyEvent?): Pair<Int, KeyEvent?> {
-        val remapped = DeviceSpecific.remapHardwareKeyEvent(keyCode, event)
+        val remapped = DeviceSpecific.remapHardwareKeyEvent(
+            keyCode,
+            event,
+            physicalKeyboardProfileOverride
+        )
         return remapped.keyCode to remapped.event
     }
 

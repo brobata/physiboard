@@ -16,6 +16,12 @@ object KeyMappingLoader {
     private const val TAG = "KeyMappingLoader"
 
     fun getDeviceName(context: Context? = null): String {
+        if (context != null) {
+            val manualOverride = SettingsManager.getPhysicalKeyboardProfileOverride(context)
+            if (manualOverride != "auto") {
+                return manualOverride
+            }
+        }
         return DeviceSpecific.physicalKeyboardName()
     }
 
@@ -306,4 +312,3 @@ object KeyMappingLoader {
         return ctrlKeyMap
     }
 }
-

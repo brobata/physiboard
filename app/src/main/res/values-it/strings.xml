@@ -263,6 +263,13 @@
     <string name="speech_recognition_error_network">Errore di rete.</string>
     <string name="speech_recognition_error_generic">Errore riconoscimento vocale.</string>
     <string name="speech_recognition_error_not_available">Riconoscimento vocale non disponibile.</string>
+    <string name="keyboard_profile_override_title">Profilo tastiera fisica</string>
+    <string name="keyboard_profile_override_auto_description">Rilevamento automatico dal fingerprint del dispositivo (attuale: %1$s).</string>
+    <string name="keyboard_profile_override_manual_description">Override manuale per mappature tasti specifiche del dispositivo.</string>
+    <string name="keyboard_profile_option_auto">Auto</string>
+    <string name="keyboard_profile_option_key2">BlackBerry Key2</string>
+    <string name="keyboard_profile_option_q25">BlackBerry Q25</string>
+    <string name="keyboard_profile_option_titan2">Unihertz Titan / Titan 2</string>
     <!-- Static Variation Bar Mode -->
     <string name="static_variation_bar_mode_title">Barra variazioni statica</string>
     <string name="static_variation_bar_mode_description">Mostra sempre una serie fissa di tasti di utilità nella barra variazioni invece delle variazioni contestuali.</string>

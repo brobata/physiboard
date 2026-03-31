@@ -32,6 +32,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import it.palsoftware.pastiera.data.layout.LayoutFileStore
 import it.palsoftware.pastiera.data.layout.LayoutMappingRepository
 import it.palsoftware.pastiera.layout.OnlineLayoutsActivity
+import it.palsoftware.pastiera.inputmethod.DeviceSpecific
 import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils
 import it.palsoftware.pastiera.R
 import kotlinx.coroutines.launch
@@ -60,6 +61,11 @@ fun KeyboardLayoutSettingsScreen(
     var automaticLayoutMode by remember {
         mutableStateOf(SettingsManager.isKeyboardLayoutAutoByLocale(context))
     }
+    var physicalKeyboardProfileOverride by remember {
+        mutableStateOf(SettingsManager.getPhysicalKeyboardProfileOverride(context))
+    }
+    val detectedPhysicalProfile = remember { DeviceSpecific.physicalKeyboardName() }
+    var showPhysicalProfileMenu by remember { mutableStateOf(false) }
     var selectedLayout by remember(locale, automaticLayoutMode) {
         mutableStateOf(
             if (automaticLayoutMode) {
@@ -225,6 +231,7 @@ fun KeyboardLayoutSettingsScreen(
                     IconButton(
                         onClick = {
                             SettingsManager.setKeyboardLayoutAutoByLocale(context, automaticLayoutMode)
+                            SettingsManager.setPhysicalKeyboardProfileOverride(context, physicalKeyboardProfileOverride)
                             if (automaticLayoutMode) {
                                 onLayoutSelected(locale, selectedLayout)
                             } else {
@@ -325,6 +332,63 @@ fun KeyboardLayoutSettingsScreen(
                     }
                 }
                 
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.keyboard_profile_override_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = if (physicalKeyboardProfileOverride == "auto") {
+                                    stringResource(
+                                        R.string.keyboard_profile_override_auto_description,
+                                        detectedPhysicalProfile
+                                    )
+                                } else {
+                                    stringResource(R.string.keyboard_profile_override_manual_description)
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Box {
+                            TextButton(onClick = { showPhysicalProfileMenu = true }) {
+                                Text(text = keyboardProfileLabel(context, physicalKeyboardProfileOverride))
+                                Icon(
+                                    imageVector = Icons.Filled.ArrowDropDown,
+                                    contentDescription = null
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = showPhysicalProfileMenu,
+                                onDismissRequest = { showPhysicalProfileMenu = false }
+                            ) {
+                                listOf("auto", "key2", "Q25", "titan2").forEach { profile ->
+                                    DropdownMenuItem(
+                                        text = { Text(keyboardProfileLabel(context, profile)) },
+                                        onClick = {
+                                            physicalKeyboardProfileOverride = profile
+                                            showPhysicalProfileMenu = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // No Conversion (QWERTY - default, passes keycodes as-is)
                 Surface(
                     modifier = Modifier
@@ -540,6 +604,18 @@ fun KeyboardLayoutSettingsScreen(
                 }
             }
         )
+    }
+}
+
+/**
+ * User-facing label for physical keyboard profile override values.
+ */
+private fun keyboardProfileLabel(context: Context, profile: String): String {
+    return when (profile) {
+        "key2" -> context.getString(R.string.keyboard_profile_option_key2)
+        "Q25" -> context.getString(R.string.keyboard_profile_option_q25)
+        "titan2" -> context.getString(R.string.keyboard_profile_option_titan2)
+        else -> context.getString(R.string.keyboard_profile_option_auto)
     }
 }
 

@@ -240,6 +240,13 @@
     <string name="keyboard_layout_mode_title">Automatic Layout Mapping</string>
     <string name="keyboard_layout_mode_auto_description">ON: follow subtype/locale mapping defaults.</string>
     <string name="keyboard_layout_mode_manual_description">OFF: use one manually selected layout for all locales.</string>
+    <string name="keyboard_profile_override_title">Physical Keyboard Profile</string>
+    <string name="keyboard_profile_override_auto_description">Auto detect from device fingerprint (current: %1$s).</string>
+    <string name="keyboard_profile_override_manual_description">Manual override for device-specific key mappings.</string>
+    <string name="keyboard_profile_option_auto">Auto</string>
+    <string name="keyboard_profile_option_key2">BlackBerry Key2</string>
+    <string name="keyboard_profile_option_q25">BlackBerry Q25</string>
+    <string name="keyboard_profile_option_titan2">Unihertz Titan / Titan 2</string>
     
     <!-- About Section -->
     <string name="about_github">GitHub</string>

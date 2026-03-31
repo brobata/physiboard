@@ -176,6 +176,57 @@ class DeviceSpecificTest {
         assertEquals(KeyEvent.KEYCODE_Z, zRemapped.event?.keyCode)
     }
 
+    @Test
+    fun manualKey2Override_appliesScanCodeNormalizationEvenWhenDeviceIsNotKey2() {
+        DeviceSpecific.setBuildFingerprintForTests(
+            brand = "unihertz",
+            manufacturer = "unihertz",
+            model = "Titan 2",
+            device = "titan2",
+            product = "titan2"
+        )
+
+        val input = keyEvent(
+            action = KeyEvent.ACTION_DOWN,
+            keyCode = KeyEvent.KEYCODE_COMMA,
+            metaState = 0,
+            scanCode = 50
+        )
+        val remapped = DeviceSpecific.remapHardwareKeyEvent(
+            keyCode = KeyEvent.KEYCODE_COMMA,
+            event = input,
+            physicalProfileOverride = "key2"
+        )
+
+        assertEquals(KeyEvent.KEYCODE_M, remapped.keyCode)
+        assertEquals(KeyEvent.KEYCODE_M, remapped.event?.keyCode)
+    }
+
+    @Test
+    fun manualQ25Override_remapsModifierKeysEvenWhenDeviceIsNotQ25() {
+        DeviceSpecific.setBuildFingerprintForTests(
+            brand = "blackberry",
+            manufacturer = "blackberry",
+            model = "bbf100-4",
+            device = "athena",
+            product = "lineage_athena"
+        )
+
+        val input = keyEvent(
+            action = KeyEvent.ACTION_DOWN,
+            keyCode = KeyEvent.KEYCODE_SHIFT_RIGHT,
+            metaState = KeyEvent.META_SHIFT_RIGHT_ON
+        )
+        val remapped = DeviceSpecific.remapHardwareKeyEvent(
+            keyCode = KeyEvent.KEYCODE_SHIFT_RIGHT,
+            event = input,
+            physicalProfileOverride = "Q25"
+        )
+
+        assertEquals(KeyEvent.KEYCODE_CTRL_LEFT, remapped.keyCode)
+        assertEquals(KeyEvent.KEYCODE_CTRL_LEFT, remapped.event?.keyCode)
+    }
+
     private fun keyEvent(action: Int, keyCode: Int, metaState: Int, scanCode: Int = 1): KeyEvent {
         return KeyEvent(
             1000L,
