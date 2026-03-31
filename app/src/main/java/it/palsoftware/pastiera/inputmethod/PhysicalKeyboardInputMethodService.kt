@@ -2375,6 +2375,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 isNumericField = isNumericField,
                 isInputViewActive = isInputViewActive,
                 shiftPressed = shiftPressed,
+                shiftLayerLatched = shiftLayerLatched,
                 ctrlPressed = ctrlPressed,
                 altPressed = altPressed,
                 ctrlLatchActive = ctrlLatchActive,

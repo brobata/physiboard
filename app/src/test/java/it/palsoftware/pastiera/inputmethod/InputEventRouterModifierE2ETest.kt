@@ -36,6 +36,7 @@ class InputEventRouterModifierE2ETest {
     private lateinit var inputConnectionRecorder: RecordingInputConnection
     private lateinit var inputConnection: InputConnection
     private lateinit var prefs: android.content.SharedPreferences
+    private var shiftLayerLatchedForTest: Boolean = false
 
     private val doubleTapThreshold = 300L
 
@@ -45,6 +46,8 @@ class InputEventRouterModifierE2ETest {
         SettingsManager.setSymPagesConfig(context, SymPagesConfig())
         SettingsManager.resetSymMappings(context)
         SettingsManager.resetSymMappingsPage2(context)
+        SettingsManager.resetVariationsToDefault(context)
+        SettingsManager.setLongPressModifier(context, "alt")
         prefs = context.getSharedPreferences("router_e2e_modifier_tests", Context.MODE_PRIVATE)
         prefs.edit().clear().commit()
 
@@ -66,6 +69,39 @@ class InputEventRouterModifierE2ETest {
     @After
     fun tearDown() {
         DeviceSpecific.clearTestOverrides()
+        SettingsManager.resetVariationsToDefault(context)
+        SettingsManager.setLongPressModifier(context, "alt")
+    }
+
+    @Test
+    fun variationsLongPress_path_respectsShiftLayerLatch_forInitialCommit() {
+        SettingsManager.setLongPressModifier(context, "variations")
+        SettingsManager.saveVariations(
+            context,
+            variations = mapOf(
+                "a" to listOf("á"),
+                "A" to listOf("Á")
+            )
+        )
+        variationStateController = VariationStateController(
+            mapOf(
+                'a' to listOf("á"),
+                'A' to listOf("Á")
+            )
+        )
+        shiftLayerLatchedForTest = true
+
+        val callbacks = TestCallbacks(modifierStateController)
+        val result = routeKeyDown(
+            keyCode = KeyEvent.KEYCODE_A,
+            event = keyDown(KeyEvent.KEYCODE_A),
+            callbacks = callbacks
+        )
+
+        assertTrue(result is InputEventRouter.EditableFieldRoutingResult.Consume)
+        // Regression guard: with old code this was "a" because shift latch
+        // was ignored by the long-press behavior path.
+        assertEquals("A", inputConnectionRecorder.committedTexts.first())
     }
 
     @Test
@@ -365,6 +401,7 @@ class InputEventRouterModifierE2ETest {
             isNumericField = false,
             isInputViewActive = true,
             shiftPressed = modifierStateController.shiftPressed,
+            shiftLayerLatched = shiftLayerLatchedForTest,
             ctrlPressed = modifierStateController.ctrlPressed,
             altPressed = modifierStateController.altPressed,
             ctrlLatchActive = modifierStateController.ctrlLatchActive,

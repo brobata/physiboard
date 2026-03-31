@@ -216,6 +216,7 @@ class InputEventRouter(
         val isNumericField: Boolean,
         val isInputViewActive: Boolean,
         val shiftPressed: Boolean,
+        val shiftLayerLatched: Boolean,
         val ctrlPressed: Boolean,
         val altPressed: Boolean,
         val ctrlLatchActive: Boolean,
@@ -452,22 +453,24 @@ class InputEventRouter(
         // Compute long-press eligibility up front so multi-tap can still schedule it.
         val longPressSuppressed = callbacks.isLongPressSuppressed(keyCode)
         val longPressMode = SettingsManager.getLongPressModifier(context)
+        val effectiveShiftForLongPress =
+            event?.isShiftPressed == true || shiftOneShotActive || params.shiftLayerLatched
         val charForLongPress = if (LayoutMappingRepository.isMapped(keyCode)) {
             LayoutMappingRepository.getCharacterWithModifiers(
                 keyCode,
-                event?.isShiftPressed == true,
+                effectiveShiftForLongPress,
                 params.capsLockEnabled,
                 shiftOneShotActive
             )
         } else {
-            callbacks.getCharacterFromLayout(keyCode, event, event?.isShiftPressed == true)
+            callbacks.getCharacterFromLayout(keyCode, event, effectiveShiftForLongPress)
         }
         val hasLongPressSupport = when (longPressMode) {
             "shift" -> !longPressSuppressed && event != null && event.unicodeChar != 0 && event.unicodeChar.toChar().isLetter()
             "variations" -> !longPressSuppressed && charForLongPress != null && controllers.variationStateController.hasVariationsFor(charForLongPress)
             "sym" -> !longPressSuppressed && controllers.altSymManager.hasSymLongPressMapping(
                 keyCode = keyCode,
-                shiftPressed = event?.isShiftPressed == true || shiftOneShotActive
+                shiftPressed = effectiveShiftForLongPress
             )
             else -> !longPressSuppressed && controllers.altSymManager.hasAltMapping(keyCode)
         }
@@ -497,7 +500,7 @@ class InputEventRouter(
             val trackedChar = if (LayoutMappingRepository.isMapped(keyCode)) {
                 LayoutMappingRepository.getCharacterStringWithModifiers(
                     keyCode,
-                    event?.isShiftPressed == true,
+                    effectiveShiftForLongPress,
                     params.capsLockEnabled,
                     shiftOneShotActive
                 )
@@ -507,7 +510,7 @@ class InputEventRouter(
             val layoutChar = callbacks.getCharacterFromLayout(
                 keyCode,
                 event,
-                event?.isShiftPressed == true
+                effectiveShiftForLongPress
             )
             if (ic != null) {
                 controllers.altSymManager.handleKeyWithAltMapping(
@@ -515,7 +518,7 @@ class InputEventRouter(
                     event,
                     params.capsLockEnabled,
                     ic,
-                    shiftOneShotActive,
+                    shiftOneShotActive || params.shiftLayerLatched,
                     layoutChar
                 )
                 // Track immediately only when using Shift long press (result still a letter).
