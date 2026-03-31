@@ -2653,7 +2653,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         try {
             val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
             val packageName = packageName
-            val serviceName = "${packageName}.inputmethod.PhysicalKeyboardInputMethodService"
+            val serviceName = PhysicalKeyboardInputMethodService::class.java.name
             
             val imeInfo = imm.enabledInputMethodList.find {
                 it.packageName == packageName && 

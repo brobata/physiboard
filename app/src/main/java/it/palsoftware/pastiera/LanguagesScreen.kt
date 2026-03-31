@@ -284,7 +284,7 @@ private fun getEnabledSubtypes(context: Context): Set<String> {
     try {
         val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         val packageName = context.packageName
-        val serviceName = "${packageName}.inputmethod.PhysicalKeyboardInputMethodService"
+        val serviceName = ImeIdentity.serviceClassName
         
         val imeInfo = imm.enabledInputMethodList.find {
             it.packageName == packageName && 
@@ -424,4 +424,3 @@ private fun getSubtypeNameResourceId(context: Context, languageCode: String): In
         resourceName, "string", context.packageName
     ).takeIf { it != 0 } ?: R.string.input_method_name
 }
-

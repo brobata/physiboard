@@ -39,11 +39,9 @@ private fun getImeSubtypeLanguageCodes(context: Context): Set<String> {
         val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
             ?: return emptySet()
 
-        val packageName = context.packageName
-        val serviceName = "$packageName.inputmethod.PhysicalKeyboardInputMethodService"
-
         val imeInfo = imm.enabledInputMethodList.find {
-            it.packageName == packageName && it.serviceName == serviceName
+            it.packageName == ImeIdentity.packageName &&
+                it.serviceName == ImeIdentity.serviceClassName
         } ?: return emptySet()
 
         val enabledSubtypes = imm.getEnabledInputMethodSubtypeList(imeInfo, true)

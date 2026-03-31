@@ -1,13 +1,22 @@
 package it.palsoftware.pastiera
 
+import it.palsoftware.pastiera.inputmethod.PhysicalKeyboardInputMethodService
+
 object ImeIdentity {
     val packageName: String = BuildConfig.APPLICATION_ID
-    val serviceClassName: String = "$packageName.inputmethod.PhysicalKeyboardInputMethodService"
-    val imeId: String = "$packageName/$serviceClassName"
-    private val shortImeId: String = "$packageName/.inputmethod.PhysicalKeyboardInputMethodService"
+    val serviceClassName: String = PhysicalKeyboardInputMethodService::class.java.name
+    val imeId: String = imeIdForPackage(packageName)
 
-    fun matchesImeId(value: String?): Boolean {
+    fun imeIdForPackage(appPackageName: String): String {
+        return "$appPackageName/$serviceClassName"
+    }
+
+    private fun shortImeIdForPackage(appPackageName: String): String {
+        return "$appPackageName/.inputmethod.PhysicalKeyboardInputMethodService"
+    }
+
+    fun matchesImeId(value: String?, appPackageName: String = packageName): Boolean {
         if (value.isNullOrBlank()) return false
-        return value == imeId || value == shortImeId
+        return value == imeIdForPackage(appPackageName) || value == shortImeIdForPackage(appPackageName)
     }
 }
