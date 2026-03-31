@@ -2729,6 +2729,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             "ru" to "ru_RU",
             "pt" to "pt_PT",
             "de" to "de_DE",
+            "da" to "da_DK",
             "fr" to "fr_FR",
             "es" to "es_ES",
             "pl" to "pl_PL",
