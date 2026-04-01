@@ -36,6 +36,10 @@ class AutoReplaceControllerLogicTest {
         val res1 = AutoReplaceController.isAccentOnlyVariant("perche", "perché")
         assertEquals(true, res1)
 
+        // Ligature variant should also be considered equivalent ("oeil" vs "œil")
+        val resLigature = AutoReplaceController.isAccentOnlyVariant("oeil", "œil")
+        assertEquals(true, resLigature)
+
         // "hallo" vs "halle" -> false (anderer Buchstabe)
         val res2 = AutoReplaceController.isAccentOnlyVariant("hallo", "halle")
         assertEquals(false, res2)

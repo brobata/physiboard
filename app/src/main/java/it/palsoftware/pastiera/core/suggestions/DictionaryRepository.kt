@@ -7,7 +7,6 @@ import android.os.Looper
 import org.json.JSONArray
 import java.util.concurrent.CancellationException
 import kotlin.coroutines.coroutineContext
-import java.text.Normalizer
 import java.util.Locale
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
@@ -431,13 +430,15 @@ class AndroidDictionaryRepository(
             prefixCache[prefix] = entries.map { it.toDictionaryEntry() }.toMutableList()
         }
 
+        val aliasTerms = addCompatibilityAliasesFromExistingIndex()
+
         if (index.symDeletes != null && index.symMeta != null) {
             val engine = SymSpell(
                 maxEditDistance = index.symMeta.maxEditDistance,
                 prefixLength = index.symMeta.prefixLength
             )
-            val termFrequencies = index.normalizedIndex.mapValues { (_, entries) ->
-                entries.maxOfOrNull { effectiveFrequency(it.toDictionaryEntry()) } ?: 0
+            val termFrequencies = normalizedIndex.mapValues { (_, entries) ->
+                entries.maxOfOrNull { effectiveFrequency(it) } ?: 0
             }
             val prefixToTerms = mutableMapOf<String, MutableList<String>>()
             termFrequencies.keys.forEach { term ->
@@ -460,6 +461,12 @@ class AndroidDictionaryRepository(
                 }
             }
             engine.loadSerialized(termFrequencies, expandedDeletes)
+            if (aliasTerms.isNotEmpty()) {
+                aliasTerms.forEach { alias ->
+                    val freq = termFrequencies[alias] ?: return@forEach
+                    engine.addWord(alias, freq)
+                }
+            }
             symSpell = engine
             symSpellBuilt = true
             Log.i(tag, "Loaded precomputed SymSpell deletes: ${expandedDeletes.size} keys")
@@ -616,12 +623,54 @@ class AndroidDictionaryRepository(
     }
 
     internal fun normalize(word: String): String {
-        val normalized = Normalizer.normalize(word.lowercase(baseLocale), Normalizer.Form.NFD)
-        // Remove combining marks (accents) explicitly - same logic as SuggestionEngine
-        val withoutAccents = normalized.replace("\\p{Mn}".toRegex(), "")
-        // Keep only Unicode letters (supports Latin, Cyrillic, Greek, Arabic, Chinese, etc.)
-        // Removes: punctuation, numbers, spaces, emoji, symbols
-        return withoutAccents.replace("[^\\p{L}]".toRegex(), "")
+        return WordNormalization.normalizeForDictionary(word, baseLocale)
+    }
+
+    /**
+     * Adds normalization aliases (e.g. œil -> oeil) for dictionaries generated
+     * with older normalization rules.
+     *
+     * Returns the set of normalized alias terms that were added.
+     */
+    private fun addCompatibilityAliasesFromExistingIndex(): Set<String> {
+        if (normalizedIndex.isEmpty()) return emptySet()
+
+        val aliasTerms = linkedSetOf<String>()
+        val snapshot = normalizedIndex.entries.toList()
+        snapshot.forEach { (term, entries) ->
+            val alias = normalize(term)
+            if (alias.isBlank() || alias == term) return@forEach
+
+            val aliasBucket = normalizedIndex.getOrPut(alias) { mutableListOf() }
+            entries.forEach { entry ->
+                val exists = aliasBucket.any {
+                    it.source == entry.source && it.word.equals(entry.word, ignoreCase = true)
+                }
+                if (!exists) {
+                    aliasBucket.add(entry)
+                }
+            }
+            aliasTerms.add(alias)
+        }
+
+        if (aliasTerms.isNotEmpty()) {
+            rebuildPrefixCacheFromNormalizedIndex()
+            Log.i(tag, "Added ${aliasTerms.size} normalization alias terms for compatibility")
+        }
+
+        return aliasTerms
+    }
+
+    private fun rebuildPrefixCacheFromNormalizedIndex() {
+        prefixCache.clear()
+        normalizedIndex.forEach { (normalized, list) ->
+            val maxPrefixLength = normalized.length.coerceAtMost(cachePrefixLength)
+            for (length in 1..maxPrefixLength) {
+                val prefix = normalized.take(length)
+                val prefixList = prefixCache.getOrPut(prefix) { mutableListOf() }
+                prefixList.addAll(list)
+            }
+        }
     }
 
     internal fun sortCachesByEffectiveFrequency() {

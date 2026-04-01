@@ -18,9 +18,6 @@ class SuggestionEngine(
     private val debugLogging: Boolean = false
 ) {
 
-    // Keep letters and in-word apostrophes (for contractions/elisions like we'll, l'acqua).
-    // Removes: numbers, spaces, emoji, other symbols/punctuation.
-    private val normalizeRegex = "[^\\p{L}']".toRegex()
     private val accentCache: MutableMap<String, String> = mutableMapOf()
     private val tag = "SuggestionEngine"
     private val wordNormalizeCache: MutableMap<String, String> = mutableMapOf()
@@ -242,10 +239,7 @@ class SuggestionEngine(
     private data class ApostropheSplit(val prefix: String, val root: String)
 
     private fun normalizeApostrophes(input: String): String {
-        return input
-            .replace("’", "'")
-            .replace("‘", "'")
-            .replace("ʼ", "'")
+        return WordNormalization.normalizeApostrophes(input)
     }
 
     private fun recomposeApostropheCandidate(
@@ -713,12 +707,7 @@ class SuggestionEngine(
     }
 
     private fun normalize(word: String): String {
-        val normalizedApostrophes = word
-            .replace("’", "'")
-            .replace("‘", "'")
-            .replace("ʼ", "'")
-        return stripAccents(normalizedApostrophes.lowercase(locale))
-            .replace(normalizeRegex, "")
+        return WordNormalization.normalizeForSuggestion(word, locale)
     }
 
     private fun normalizeCached(word: String): String {

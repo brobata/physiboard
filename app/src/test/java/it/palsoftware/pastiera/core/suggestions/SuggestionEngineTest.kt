@@ -130,5 +130,46 @@ class SuggestionEngineTest {
         assertEquals(1, results.size)
         assertEquals("hallo", results[0].candidate)
     }
-}
 
+    @Test
+    fun testLigatureFoldPrefersOeilOverNeil() {
+        fakeRepo.isReady = true
+        fakeRepo.addTestEntry("œil", 116)
+        fakeRepo.addTestEntry("Neil", 97)
+
+        val results = engine.suggest("oeil")
+        assertEquals("œil", results.firstOrNull()?.candidate)
+    }
+
+    @Test
+    fun testApostropheLigatureRecompose() {
+        fakeRepo.isReady = true
+        fakeRepo.addTestEntry("œil", 116)
+        fakeRepo.addTestEntry("Neil", 97)
+
+        val results = engine.suggest("l'oeil")
+        assertEquals("l'œil", results.firstOrNull()?.candidate)
+    }
+
+    @Test
+    fun testProperNameScenario_LorealVsLoral() {
+        fakeRepo.isReady = true
+        fakeRepo.addTestEntry("L'Oréal", 120)
+        fakeRepo.addTestEntry("l'oral", 220)
+
+        val results = engine.suggest("l'oreal")
+        assertEquals("l'Oréal", results.firstOrNull()?.candidate)
+    }
+
+    @Test
+    fun testProperNameScenario_GenericCloserThanProperName() {
+        fakeRepo.isReady = true
+        fakeRepo.addTestEntry("L'Oréal", 120)
+        fakeRepo.addTestEntry("l'oral", 220)
+
+        // Typo closer to generic word: "l'orak" -> "l'oral" (distance 1)
+        // while "L'Oréal" requires more edits.
+        val results = engine.suggest("l'orak")
+        assertEquals("l'oral", results.firstOrNull()?.candidate)
+    }
+}

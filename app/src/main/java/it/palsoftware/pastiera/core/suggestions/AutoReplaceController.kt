@@ -6,6 +6,7 @@ import it.palsoftware.pastiera.core.AutoSpaceTracker
 import android.util.Log
 import java.io.File
 import java.text.Normalizer
+import java.util.Locale
 import org.json.JSONObject
 
 class AutoReplaceController(
@@ -39,10 +40,7 @@ class AutoReplaceController(
         internal data class ApostropheSplit(val prefix: String, val root: String)
 
         internal fun normalizeApostrophes(input: String): String {
-            return input
-                .replace("’", "'")
-                .replace("‘", "'")
-                .replace("ʼ", "'")
+            return WordNormalization.normalizeApostrophes(input)
         }
 
         internal fun stripAccents(input: String): String {
@@ -74,8 +72,8 @@ class AutoReplaceController(
 
         internal fun isAccentOnlyVariant(input: String, candidate: String): Boolean {
             if (input.equals(candidate, ignoreCase = true)) return false
-            val normalizedInput = stripAccents(input.lowercase())
-            val normalizedCandidate = stripAccents(candidate.lowercase())
+            val normalizedInput = WordNormalization.normalizeForDictionary(input, Locale.ROOT)
+            val normalizedCandidate = WordNormalization.normalizeForDictionary(candidate, Locale.ROOT)
             return normalizedInput == normalizedCandidate
         }
 
@@ -207,8 +205,8 @@ class AutoReplaceController(
         }
         
         // Safety checks for auto-replace
-        val isAccentVariant = top != null && isAccentOnlyVariant(word, top.candidate)
-        val minWordLength = if (isAccentVariant) 2 else 3 // Allow short accent-only fixes (e.g., "ja" -> "já")
+        val isOrthographicVariant = top != null && isAccentOnlyVariant(word, top.candidate)
+        val minWordLength = if (isOrthographicVariant) 2 else 3 // Allow short orthographic fixes (e.g., "ja" -> "já")
         val maxLengthRatio = 1.25 // Don't auto-correct if replacement is >25% longer
         
         // Check if word has been rejected by user
@@ -222,7 +220,7 @@ class AutoReplaceController(
         // Only auto-replace if word is NOT known (i.e., it's a typo/unknown word)
         // Don't replace valid words with other valid words, even if they have higher frequency
         val shouldReplace = top != null
-            && (!isKnownWord || (isAccentVariant && !isExactKnownWord)) // Allow accent-only fix when exact word isn't known
+            && (!isKnownWord || (isOrthographicVariant && !isExactKnownWord)) // Allow orthographic fix when exact word isn't known
             && !isRejected // Don't auto-correct if user has rejected this word
             && top.distance <= settings.maxAutoReplaceDistance
             && lookupWord.length >= minWordLength // Minimum word length check on root

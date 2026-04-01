@@ -1,6 +1,5 @@
 package it.palsoftware.pastiera.core.suggestions
 
-import java.text.Normalizer
 import java.util.Locale
 import kotlin.math.pow
 
@@ -95,9 +94,7 @@ class FakeDictionaryRepository : DictionaryRepository {
     }
 
     private fun normalize(word: String): String {
-        val normalized = Normalizer.normalize(word.lowercase(baseLocale), Normalizer.Form.NFD)
-        val withoutAccents = normalized.replace("\\p{Mn}".toRegex(), "")
-        return withoutAccents.replace("[^\\p{L}]".toRegex(), "")
+        return WordNormalization.normalizeForDictionary(word, baseLocale)
     }
 
     private fun levenshtein(s: String, t: String): Int {
@@ -119,4 +116,3 @@ class FakeDictionaryRepository : DictionaryRepository {
         return v0[t.length]
     }
 }
-
