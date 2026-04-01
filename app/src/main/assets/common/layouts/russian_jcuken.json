@@ -1,6 +1,6 @@
 {
-  "name": "Russian JCUKEN",
-  "description": "Cyrillic layout for Russian inspired by JCUKEN",
+  "name": "Russian (JCUKEN compact)",
+  "description": "Compact Russian JCUKEN-inspired layout for physical keyboards; optimized for familiarity and reduced travel on constrained key grids.",
   "mappings": {
     "KEYCODE_Q": {
       "lowercase": "й",
