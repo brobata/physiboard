@@ -8,7 +8,7 @@ Andrea Palumbo (PalSoftware)
 Andrea Palumbo, Patrick Zauner
 
 #### Additional Contributors
-Justin Mitchell, NeoTheFox
+Justin Mitchell, NeoTheFox, Oleksii Ilienko, Nikola Vukobrat, Mircea Horea IONICĂ, Nikita Tseykovets
 ---
 #### Pastiera Beta Testing Team
 Laggy Luke, Vittorio, Emmanuel, Sadako, NotTeganQuinn, DrumSyBeat
@@ -25,7 +25,6 @@ Unihertz Titan 2 Discord, Unihertz Titan 2 FB page and all the people for the ou
 #### [Buy me a Coffee](https://ko-fi.com/palsoftware/)
 ---
 **Grazie for using Pastiera! <3**
-
 
 
 
