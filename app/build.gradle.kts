@@ -55,6 +55,22 @@ fun shouldValidateNightlySigning(taskNames: List<String>): Boolean {
     }
 }
 
+fun shouldValidateStableSigning(taskNames: List<String>): Boolean {
+    if (taskNames.isEmpty()) {
+        return true
+    }
+    val signingTaskHints = listOf(
+        "assembleStableRelease",
+        "bundleStableRelease",
+        "packageStableRelease",
+        "publishStableRelease",
+        "installStableRelease"
+    )
+    return taskNames.any { task ->
+        signingTaskHints.any { hint -> task.contains(hint, ignoreCase = true) }
+    }
+}
+
 android {
     namespace = "it.palsoftware.pastiera"
     compileSdk = 36
@@ -167,6 +183,10 @@ android {
     tasks.whenTaskAdded {
         if (!isFdroidBuild && name.equals("preStableReleaseBuild", ignoreCase = true)) {
             doFirst {
+                if (!shouldValidateStableSigning(gradle.startParameter.taskNames)) {
+                    logger.lifecycle("Skipping stable signing validation for non-packaging task(s): ${gradle.startParameter.taskNames}")
+                    return@doFirst
+                }
                 val storePath = signingProp("storeFile", "PASTIERA_KEYSTORE_PATH")
                 val storePass = signingProp("storePassword", "PASTIERA_KEYSTORE_PASSWORD")
                 val alias = signingProp("keyAlias", "PASTIERA_KEY_ALIAS")
