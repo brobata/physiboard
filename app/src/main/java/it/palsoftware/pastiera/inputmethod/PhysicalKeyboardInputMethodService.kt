@@ -280,7 +280,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     }
 
     private fun isMinimalPhoneHardwareActive(): Boolean {
-        return DeviceSpecific.isMinimalPhoneDevice()
+        return DeviceSpecific.isMinimalPhoneDevice(physicalKeyboardProfileOverride)
     }
     
     /**

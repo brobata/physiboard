@@ -290,6 +290,7 @@ object DeviceSpecific {
             "key2" -> KeyboardModel.KEY2
             "q25" -> KeyboardModel.Q25
             "titan2" -> KeyboardModel.TITAN_2
+            "mp01" -> KeyboardModel.MINIMAL_PHONE
             else -> currentDeviceProfile().model
         }
     }
@@ -298,7 +299,7 @@ object DeviceSpecific {
         val normalized = physicalProfileOverride?.trim()?.lowercase().orEmpty()
         return when (normalized) {
             "", "auto" -> null
-            "key2", "q25", "titan2" -> normalized
+            "key2", "q25", "titan2", "mp01" -> normalized
             else -> null
         }
     }
@@ -378,7 +379,7 @@ object DeviceSpecific {
         return currentDeviceProfile().model == KeyboardModel.TITAN_2
     }
 
-    fun isMinimalPhoneDevice(): Boolean {
-        return currentDeviceProfile().model == KeyboardModel.MINIMAL_PHONE
+    fun isMinimalPhoneDevice(physicalProfileOverride: String? = null): Boolean {
+        return resolveKeyboardModel(physicalProfileOverride) == KeyboardModel.MINIMAL_PHONE
     }
 }

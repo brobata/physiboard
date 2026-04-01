@@ -83,6 +83,20 @@ class DeviceSpecificTest {
     }
 
     @Test
+    fun minimalPhoneManualOverride_forcesMp01Model() {
+        DeviceSpecific.setBuildFingerprintForTests(
+            brand = "unihertz",
+            manufacturer = "unihertz",
+            model = "Titan 2",
+            device = "titan2",
+            product = "titan2"
+        )
+
+        assertFalse(DeviceSpecific.isMinimalPhoneDevice())
+        assertTrue(DeviceSpecific.isMinimalPhoneDevice("mp01"))
+    }
+
+    @Test
     fun q25CtrlEvent_remapsToCtrlKeyAndMeta() {
         DeviceSpecific.setBuildFingerprintForTests(
             brand = "zinwa",
