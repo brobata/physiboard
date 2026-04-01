@@ -63,6 +63,23 @@ class DeviceSpecificTest {
         assertEquals("titan2", DeviceSpecific.physicalKeyboardName())
         assertEquals("Unihertz", DeviceSpecific.keyboardName())
         assertFalse(DeviceSpecific.needsRemapping())
+        assertFalse(DeviceSpecific.isMinimalPhoneDevice())
+    }
+
+    @Test
+    fun minimalPhoneProfile_detectsMp01LayoutWithoutRemapping() {
+        DeviceSpecific.setBuildFingerprintForTests(
+            brand = "minimal",
+            manufacturer = "minimal company",
+            model = "MP01",
+            device = "mp01",
+            product = "along_mp01"
+        )
+
+        assertEquals("mp01", DeviceSpecific.physicalKeyboardName())
+        assertEquals("Minimal", DeviceSpecific.keyboardName())
+        assertFalse(DeviceSpecific.needsRemapping())
+        assertTrue(DeviceSpecific.isMinimalPhoneDevice())
     }
 
     @Test

@@ -377,4 +377,8 @@ object DeviceSpecific {
     fun isTitan2Device(): Boolean {
         return currentDeviceProfile().model == KeyboardModel.TITAN_2
     }
+
+    fun isMinimalPhoneDevice(): Boolean {
+        return currentDeviceProfile().model == KeyboardModel.MINIMAL_PHONE
+    }
 }

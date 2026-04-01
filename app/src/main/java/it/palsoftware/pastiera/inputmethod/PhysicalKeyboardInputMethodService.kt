@@ -278,6 +278,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             keyCode == KeyEvent.KEYCODE_ALT_RIGHT ||
             keyCode == KEYCODE_SYM
     }
+
+    private fun isMinimalPhoneHardwareActive(): Boolean {
+        return DeviceSpecific.isMinimalPhoneDevice()
+    }
     
     /**
      * Starts voice input using SpeechRecognizer via SpeechRecognitionManager.
@@ -2155,8 +2159,15 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
 
         // Minimal Phone dedicated keys (skip when Alt is active in any form so alt mappings can fire)
+        // Gate this behavior to Minimal Phone devices only.
         val altActiveForDedicatedKeys = event?.isAltPressed == true || altLatchActive || altOneShot
-        if (keyCode == KEYCODE_EM && event?.repeatCount == 0 && !altActiveForDedicatedKeys) {
+        if (
+            hasEditableField &&
+            isMinimalPhoneHardwareActive() &&
+            keyCode == KEYCODE_EM &&
+            event?.repeatCount == 0 &&
+            !altActiveForDedicatedKeys
+        ) {
             if (symPage == 4) {
                 symLayoutController.closeSymPage()
                 updateStatusBarText()
@@ -2167,7 +2178,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             }
             return true
         }
-        if (keyCode == KEYCODE_MIC && event?.repeatCount == 0 && !altActiveForDedicatedKeys) {
+        if (
+            hasEditableField &&
+            isMinimalPhoneHardwareActive() &&
+            keyCode == KEYCODE_MIC &&
+            event?.repeatCount == 0 &&
+            !altActiveForDedicatedKeys
+        ) {
             startSpeechRecognition()
             return true
         }
