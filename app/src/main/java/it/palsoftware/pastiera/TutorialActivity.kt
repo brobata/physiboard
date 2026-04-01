@@ -2,10 +2,10 @@ package it.palsoftware.pastiera
 
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.view.inputmethod.InputMethodManager
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.DrawableRes
@@ -46,6 +46,7 @@ import it.palsoftware.pastiera.BuildConfig
 import it.palsoftware.pastiera.update.checkForUpdate
 import it.palsoftware.pastiera.update.showUpdateDialog
 import it.palsoftware.pastiera.update.shouldUseGithubUpdateChecks
+import java.util.Locale
 
 class TutorialActivity : LocalizedComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -74,6 +75,20 @@ sealed class TutorialPageType {
     ) : TutorialPageType()
     
     data class Standard(
+        val title: String,
+        val description: String,
+        val icon: ImageVector,
+        val iconTint: Color
+    ) : TutorialPageType()
+
+    data class NavMode(
+        val title: String,
+        val description: String,
+        val icon: ImageVector,
+        val iconTint: Color
+    ) : TutorialPageType()
+
+    data class Customization(
         val title: String,
         val description: String,
         val icon: ImageVector,
@@ -117,13 +132,13 @@ fun TutorialScreen(
             icon = Icons.Filled.Lightbulb,
             iconTint = MaterialTheme.colorScheme.secondary
         ),
-        TutorialPageType.Standard(
+        TutorialPageType.NavMode(
             title = stringResource(R.string.tutorial_page_nav_mode_title),
             description = stringResource(R.string.tutorial_page_nav_mode_description),
             icon = Icons.Filled.Navigation,
             iconTint = MaterialTheme.colorScheme.tertiary
         ),
-        TutorialPageType.Standard(
+        TutorialPageType.Customization(
             title = stringResource(R.string.tutorial_page_customization_title),
             description = stringResource(R.string.tutorial_page_customization_description),
             icon = Icons.Filled.Settings,
@@ -217,6 +232,18 @@ fun TutorialScreen(
                     }
                     is TutorialPageType.Standard -> {
                         TutorialStandardPageContent(
+                            page = pageType,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                    is TutorialPageType.NavMode -> {
+                        TutorialNavModePageContent(
+                            page = pageType,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                    is TutorialPageType.Customization -> {
+                        TutorialCustomizationPageContent(
                             page = pageType,
                             modifier = Modifier.fillMaxSize()
                         )
@@ -361,6 +388,8 @@ private fun TutorialPageLayout(
     title: String,
     description: String,
     modifier: Modifier = Modifier,
+    centered: Boolean = true,
+    descriptionLeftAligned: Boolean = false,
     iconContent: @Composable () -> Unit,
     content: @Composable ColumnScope.() -> Unit = {}
 ) {
@@ -371,13 +400,13 @@ private fun TutorialPageLayout(
             .fillMaxSize()
             .verticalScroll(scrollState)
             .padding(horizontal = 20.dp, vertical = 16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = if (centered) Alignment.CenterHorizontally else Alignment.Start
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(TutorialIconAreaHeight),
-            contentAlignment = Alignment.Center
+            contentAlignment = if (centered) Alignment.Center else Alignment.CenterStart
         ) {
             iconContent()
         }
@@ -388,8 +417,9 @@ private fun TutorialPageLayout(
             text = title,
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onBackground
+            textAlign = if (centered) TextAlign.Center else TextAlign.Start,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.fillMaxWidth()
         )
         
         Spacer(modifier = Modifier.height(8.dp))
@@ -397,9 +427,10 @@ private fun TutorialPageLayout(
         Text(
             text = description,
             style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.Center,
+            textAlign = if (descriptionLeftAligned) TextAlign.Start else if (centered) TextAlign.Center else TextAlign.Start,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.15f
+            lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.15f,
+            modifier = Modifier.fillMaxWidth()
         )
         
         content()
@@ -498,6 +529,149 @@ fun TutorialStandardPageContent(
             )
         }
     )
+}
+
+@Composable
+fun TutorialNavModePageContent(
+    page: TutorialPageType.NavMode,
+    modifier: Modifier = Modifier
+) {
+    TutorialPageLayout(
+        title = page.title,
+        description = page.description,
+        modifier = modifier,
+        centered = true,
+        descriptionLeftAligned = true,
+        iconContent = {
+            TutorialIconSurface(
+                icon = page.icon,
+                tint = page.iconTint
+            )
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TutorialCustomizationPageContent(
+    page: TutorialPageType.Customization,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    var appLanguageExpanded by remember { mutableStateOf(false) }
+    var modifierExpanded by remember { mutableStateOf(false) }
+    var selectedLanguageTag by remember { mutableStateOf(SettingsManager.getAppLanguageTag(context)) }
+    var selectedLongPressModifier by remember { mutableStateOf(SettingsManager.getLongPressModifier(context)) }
+
+    val languageOptions = remember {
+        listOf(null, "en", "it", "de", "es", "fr", "pl", "ru", "uk", "vi", "hy")
+    }
+
+    val selectedLanguageLabel = if (selectedLanguageTag == null) {
+        stringResource(R.string.app_language_system_default)
+    } else {
+        getTutorialLanguageOptionLabel(context, selectedLanguageTag!!)
+    }
+
+    val selectedLongPressModifierLabel = when (selectedLongPressModifier) {
+        "shift" -> stringResource(R.string.long_press_modifier_shift)
+        "variations" -> stringResource(R.string.long_press_modifier_variations)
+        "sym" -> stringResource(R.string.long_press_modifier_sym)
+        else -> stringResource(R.string.long_press_modifier_alt)
+    }
+
+    TutorialPageLayout(
+        title = page.title,
+        description = page.description,
+        modifier = modifier,
+        centered = true,
+        descriptionLeftAligned = true,
+        iconContent = {
+            TutorialIconSurface(
+                icon = page.icon,
+                tint = page.iconTint
+            )
+        }
+    ) {
+        Spacer(modifier = Modifier.height(16.dp))
+
+        ExposedDropdownMenuBox(
+            expanded = appLanguageExpanded,
+            onExpandedChange = { appLanguageExpanded = it }
+        ) {
+            OutlinedTextField(
+                value = selectedLanguageLabel,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text(stringResource(R.string.app_language_label)) },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = appLanguageExpanded) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor()
+            )
+
+            ExposedDropdownMenu(
+                expanded = appLanguageExpanded,
+                onDismissRequest = { appLanguageExpanded = false }
+            ) {
+                languageOptions.forEach { tag ->
+                    val label = if (tag == null) {
+                        context.getString(R.string.app_language_system_default)
+                    } else {
+                        getTutorialLanguageOptionLabel(context, tag)
+                    }
+                    DropdownMenuItem(
+                        text = { Text(label) },
+                        onClick = {
+                            SettingsManager.setAppLanguageTag(context, tag)
+                            selectedLanguageTag = tag
+                            appLanguageExpanded = false
+                            (context as? TutorialActivity)?.recreate()
+                        }
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        ExposedDropdownMenuBox(
+            expanded = modifierExpanded,
+            onExpandedChange = { modifierExpanded = it }
+        ) {
+            OutlinedTextField(
+                value = selectedLongPressModifierLabel,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text(stringResource(R.string.long_press_modifier_title)) },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = modifierExpanded) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor()
+            )
+
+            ExposedDropdownMenu(
+                expanded = modifierExpanded,
+                onDismissRequest = { modifierExpanded = false }
+            ) {
+                listOf(
+                    "alt" to stringResource(R.string.long_press_modifier_alt),
+                    "shift" to stringResource(R.string.long_press_modifier_shift),
+                    "variations" to stringResource(R.string.long_press_modifier_variations),
+                    "sym" to stringResource(R.string.long_press_modifier_sym)
+                ).forEach { (value, label) ->
+                    DropdownMenuItem(
+                        text = { Text(label) },
+                        onClick = {
+                            SettingsManager.setLongPressModifier(context, value)
+                            selectedLongPressModifier = value
+                            modifierExpanded = false
+                        }
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -700,5 +874,22 @@ private fun checkImeStatus(
     } catch (e: Exception) {
         android.util.Log.e("TutorialActivity", "Error checking IME status", e)
         callback(false, false)
+    }
+}
+
+private fun getTutorialLanguageOptionLabel(context: Context, languageTag: String): String {
+    return try {
+        val languageLocale = Locale.forLanguageTag(languageTag)
+        val uiLocale = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            context.resources.configuration.locales[0]
+        } else {
+            @Suppress("DEPRECATION")
+            context.resources.configuration.locale
+        }
+        val nativeName = languageLocale.getDisplayLanguage(languageLocale)
+        val uiName = languageLocale.getDisplayLanguage(uiLocale)
+        if (nativeName.equals(uiName, ignoreCase = true)) nativeName else "$nativeName - $uiName"
+    } catch (_: Exception) {
+        languageTag
     }
 }
