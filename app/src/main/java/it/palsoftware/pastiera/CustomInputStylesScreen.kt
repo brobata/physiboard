@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.os.Build
+import android.app.Activity
 import android.view.inputmethod.InputMethodManager
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -18,6 +19,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -141,47 +143,48 @@ fun CustomInputStylesScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(paddingValues),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // List of custom input styles
+            item {
+                AppLanguageSelectorCard()
+            }
+
             if (inputStyles.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(32.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = stringResource(R.string.custom_input_styles_empty),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(inputStyles, key = { "${it.locale}:${it.layout}" }) { style ->
-                        CustomInputStyleItem(
-                            style = style,
-                            onClick = {
-                                // Allow editing both custom styles and system locales (locale can't be changed for system locales)
-                                editStyle = style
-                                showAddDialog = true
-                            },
-                            onDelete = {
-                                // Only allow deleting custom styles, not system locales
-                                if (!style.isSystemLocale) {
-                                    deleteConfirmStyle = style
-                                }
-                            }
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = stringResource(R.string.custom_input_styles_empty),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                }
+            } else {
+                items(inputStyles, key = { "${it.locale}:${it.layout}" }) { style ->
+                    CustomInputStyleItem(
+                        style = style,
+                        onClick = {
+                            // Allow editing both custom styles and system locales (locale can't be changed for system locales)
+                            editStyle = style
+                            showAddDialog = true
+                        },
+                        onDelete = {
+                            // Only allow deleting custom styles, not system locales
+                            if (!style.isSystemLocale) {
+                                deleteConfirmStyle = style
+                            }
+                        }
+                    )
                 }
             }
         }
@@ -317,7 +320,7 @@ fun CustomInputStylesScreen(
                         inputStyles = loadCustomInputStyles(context)
                         deleteConfirmStyle = null
                         // Immediately re-register subtypes to remove deleted one from Android
-                        AdditionalSubtypeUtils.registerAdditionalSubtypes(context)
+                        AdditionalSubtypeUtils.registerAdditionalSubtypes(context.applicationContext)
                         coroutineScope.launch {
                             snackbarHostState.showSnackbar(context.getString(R.string.custom_input_styles_input_style_deleted))
                         }
@@ -332,6 +335,104 @@ fun CustomInputStylesScreen(
                 }
             }
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AppLanguageSelectorCard() {
+    val context = LocalContext.current
+    var expanded by remember { mutableStateOf(false) }
+    var selectedTag by remember { mutableStateOf(getCurrentAppLanguageTag(context)) }
+
+    val options = remember {
+        listOf(
+            null,
+            "en",
+            "it",
+            "de",
+            "es",
+            "fr",
+            "pl",
+            "ru",
+            "uk",
+            "vi",
+            "hy"
+        )
+    }
+
+    val selectedLabel = if (selectedTag == null) {
+        stringResource(R.string.app_language_system_default)
+    } else {
+        getLanguageOptionLabel(context, selectedTag!!)
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Language,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = stringResource(R.string.app_language_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            Text(
+                text = stringResource(R.string.app_language_description),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { expanded = it }
+            ) {
+                OutlinedTextField(
+                    value = selectedLabel,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text(stringResource(R.string.app_language_label)) },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor()
+                )
+
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    options.forEach { tag ->
+                        val label = if (tag == null) {
+                            context.getString(R.string.app_language_system_default)
+                        } else {
+                            getLanguageOptionLabel(context, tag)
+                        }
+                        DropdownMenuItem(
+                            text = { Text(label) },
+                            onClick = {
+                                setApplicationLanguage(context, tag)
+                                selectedTag = tag
+                                expanded = false
+                            }
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -702,6 +803,38 @@ private fun getLayoutDisplayName(context: Context, layoutName: String): String {
         ?: layoutName
 }
 
+private fun getCurrentAppLanguageTag(context: Context): String? {
+    return SettingsManager.getAppLanguageTag(context)
+}
+
+private fun getLanguageOptionLabel(context: Context, languageTag: String): String {
+    return try {
+        val languageLocale = Locale.forLanguageTag(languageTag)
+        val uiLocale = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            context.resources.configuration.locales[0]
+        } else {
+            @Suppress("DEPRECATION")
+            context.resources.configuration.locale
+        }
+
+        val nativeName = languageLocale.getDisplayLanguage(languageLocale)
+        val uiName = languageLocale.getDisplayLanguage(uiLocale)
+
+        if (nativeName.equals(uiName, ignoreCase = true)) {
+            nativeName
+        } else {
+            "$nativeName - $uiName"
+        }
+    } catch (_: Exception) {
+        languageTag
+    }
+}
+
+private fun setApplicationLanguage(context: Context, languageTag: String?) {
+    SettingsManager.setAppLanguageTag(context, languageTag)
+    (context as? Activity)?.recreate()
+}
+
 /**
  * Loads custom input styles from preferences and system-enabled locales.
  */
@@ -753,7 +886,7 @@ private fun getSystemEnabledLocales(context: Context): List<String> {
     val locales = mutableListOf<String>()
     
     try {
-        val config = context.resources.configuration
+            val config = context.applicationContext.resources.configuration
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             // Android N+ (API 24+)
             val localeList = config.locales

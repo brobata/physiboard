@@ -3,7 +3,6 @@ package it.palsoftware.pastiera.layout
 import android.content.Context
 import android.os.Bundle
 import android.util.Log
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
@@ -28,6 +27,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import it.palsoftware.pastiera.R
+import it.palsoftware.pastiera.LocalizedComponentActivity
 import it.palsoftware.pastiera.data.layout.LayoutFileStore
 import it.palsoftware.pastiera.data.layout.LayoutItem
 import it.palsoftware.pastiera.data.layout.LayoutManifest
@@ -39,7 +39,7 @@ import kotlinx.coroutines.launch
 
 private const val TAG = "OnlineLayouts"
 
-class OnlineLayoutsActivity : ComponentActivity() {
+class OnlineLayoutsActivity : LocalizedComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {

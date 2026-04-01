@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="app_name">Pastiera</string>
     <string name="input_method_name">Pastiera</string>
@@ -8,98 +9,60 @@
     <string name="input_method_name_pl">Polski</string>
     <string name="input_method_name_es">Español</string>
     <string name="input_method_name_uk">Українська</string>
-    
-    <!-- Settings Screen -->
     <string name="settings_title">Einstellungen</string>
     <string name="back">Zurück</string>
     <string name="settings_back_content_description">Zurück</string>
-    
-    <!-- Long Press Section -->
     <string name="long_press_title">Langer Druck</string>
     <string name="keyboard_timing_long_press_value">%1$dms</string>
     <string name="long_press_duration">Dauer des langen Drucks: %1$dms</string>
     <string name="long_press_description">Wartezeit, bevor ein langer Druck erkannt wird. Ein niedrigerer Wert macht den langen Druck reaktionsschneller, während ein höherer Wert einen längeren Druck erfordert.</string>
     <string name="setting_applied_immediately">Einstellung sofort angewendet</string>
-    
-    <!-- Auto Capitalize Section -->
     <string name="auto_capitalize_title">Automatische Großschreibung Erster Buchstabe</string>
     <string name="auto_capitalize_description">Schreibt automatisch den ersten Buchstaben groß, wenn in einem leeren Textfeld mit der Eingabe begonnen wird.</string>
-
-    <!-- Auto Capitalize After Period Section -->
     <string name="auto_capitalize_after_period_title">Automatische Großschreibung Nach Punkt</string>
     <string name="auto_capitalize_after_period_description">Schreibt automatisch den nächsten Buchstaben groß, nachdem ein Punkt gefolgt von einem Leerzeichen eingegeben wurde (Satzende).</string>
-
-    <!-- Double Space to Period Section -->
     <string name="double_space_to_period_title">Doppeltes Leerzeichen zu Punkt</string>
     <string name="double_space_to_period_description">Doppeltippen auf Leerzeichen, um einen Punkt gefolgt von einem Leerzeichen einzufügen und den nächsten Buchstaben großzuschreiben.</string>
-    
-    <!-- Clear Alt on Space Section -->
     <string name="clear_alt_on_space_title">Alt bei Leerzeichen löschen</string>
     <string name="clear_alt_on_space_description">Deaktiviert automatisch Alt oder Alt-Lock beim Drücken der Leertaste.</string>
-    
-    <!-- Swipe to Delete Section -->
     <string name="swipe_to_delete_title">Wischen zum Löschen aktivieren</string>
-    
-    <!-- Swipe Incremental Threshold Section -->
     <string name="swipe_incremental_threshold_title">Wischleisten-Empfindlichkeit</string>
-    
-    <!-- Auto Show Keyboard Section -->
     <string name="auto_show_keyboard_title">Tastatur automatisch anzeigen</string>
-    
-    <!-- Info Section -->
     <string name="info_title">Informationen</string>
     <string name="info_description">Einstellungen werden automatisch gespeichert und sofort auf die Eingabemethode angewendet.</string>
-    
-    <!-- Main Activity -->
     <string name="keyboard_title">Pastiera Tastatur</string>
     <string name="keyboard_subtitle">Physikalische Tastatur mit Unterstützung für langen Druck</string>
     <string name="settings_content_description">Einstellungen</string>
-    
-    <!-- Installation Section -->
     <string name="installation_title">Installation</string>
     <string name="installation_step1">1. Klicken Sie auf die Schaltfläche unten, um die Einstellungen zu öffnen</string>
     <string name="installation_step2">2. Aktivieren Sie \'Pastiera Physical Keyboard\'</string>
     <string name="installation_step3">3. Kommen Sie hierher zurück und testen Sie die Tastatur</string>
     <string name="open_keyboard_settings">Tastatureinstellungen öffnen</string>
-    
-    <!-- Main Activity - Enable/Select IME -->
     <string name="enable_pastiera">Pastiera aktivieren</string>
     <string name="pastiera_not_enabled">Pastiera ist nicht aktiviert</string>
     <string name="choose_input_method">Eingabemethode wählen</string>
     <string name="pastiera_not_selected">Pastiera ist nicht ausgewählt</string>
-    
-    <!-- Test Section -->
     <string name="test_keyboard_title">Tastaturtest</string>
     <string name="test_keyboard_description">Schließen Sie eine physikalische Tastatur an und testen Sie unten:</string>
     <string name="test_keyboard_normal">• Normaler Druck: fügt das Zeichen ein</string>
     <string name="test_keyboard_long_press">• Langer Druck (500ms): fügt das Alt-Zeichen ein</string>
     <string name="test_field_label">Testfeld</string>
     <string name="test_field_placeholder">Tippen Sie hier mit der physikalischen Tastatur…</string>
-    
-    <!-- Last Event Section -->
     <string name="last_keyboard_event_title">Letztes Tastaturereignis</string>
     <string name="no_event_yet">Noch kein Ereignis</string>
     <string name="ignore_back_short">BACK ignorieren</string>
-    
-    <!-- Long Press Mappings Section -->
     <string name="long_press_mappings_title">Zuordnungen für langen Druck</string>
     <string name="long_press_mappings_line1">Q→0, W→1, E→2, R→3, T→(, Y→), U→-, I→_, O→\', P→:</string>
     <string name="long_press_mappings_line2">A→@, S→4, D→5, F→6, G→*, H→#, J→+, K→\", L→\'</string>
     <string name="long_press_mappings_line3">Z→!, X→7, C→8, V→9, B→., N→\', M→?</string>
-    
-    <!-- Buttons -->
     <string name="settings_button">Einstellungen</string>
     <string name="change_keyboard_button">Tastatur ändern</string>
-    
-    <!-- SYM Customization -->
     <string name="sym_customization_title">SYM-Tastatur anpassen</string>
     <string name="sym_customization_button">SYM-Tastatur anpassen</string>
     <string name="sym_customization_description">Personalisieren Sie die Emoji-Zuordnungen für die SYM-Tastatur. Tippen Sie auf eine Taste, um ihr Emoji zu ändern.</string>
     <string name="reset_to_default">Auf Standard zurücksetzen</string>
     <string name="select_emoji">Emoji auswählen</string>
     <string name="close">Schließen</string>
-    
-    <!-- Auto-Correction Section -->
     <string name="auto_correct_title">Auto Ersetzungen</string>
     <string name="auto_correct_languages_title">Ersetzungen</string>
     <string name="auto_correct_settings_title">Autokorrektur-Ersetzungen</string>
@@ -132,24 +95,19 @@
     <string name="auto_correct_max_distance_off">Aus</string>
     <string name="auto_correct_max_distance_description">Maximale Anzahl von Zeichenunterschieden, die für die Autokorrektur erlaubt sind. 0 = deaktiviert, 1-3 = zunehmende Toleranz.</string>
     <string name="auto_correct_manage_user_dict_title">Benutzerwörterbuch verwalten</string>
-    
-    <!-- User dictionary management -->
     <string name="user_dict_title">Benutzerwörterbuch</string>
     <string name="user_dict_add_hint">Wort hinzufügen</string>
     <string name="user_dict_add_button">Wort speichern</string>
     <string name="user_dict_empty_state">Noch keine Benutzerwörter gespeichert.</string>
     <string name="user_dict_edit_title">Wort bearbeiten</string>
     <string name="user_dict_frequency_label">Verwendungen: %1$d</string>
-    
     <string name="auto_correct_keyboard_proximity_title">Tastatur-Näherungsbewertung</string>
     <string name="auto_correct_keyboard_proximity_description">Unwahrscheinliche Tippfehler basierend auf Tastenabstand filtern (QWERTY/AZERTY/QWERTZ)</string>
     <string name="auto_correct_edit_type_ranking_title">Bearbeitungstyp-Bewertung</string>
-    <string name="auto_correct_edit_type_ranking_description">Vorschläge nach Bearbeitungstyp sortieren (Einfügen > Ersetzen > Löschen)</string>
+    <string name="auto_correct_edit_type_ranking_description">Vorschläge nach Bearbeitungstyp sortieren (Einfügen &gt; Ersetzen &gt; Löschen)</string>
     <string name="clear">Löschen</string>
     <string name="experimental_suggestions_title">Experimentelle Vorschläge</string>
     <string name="experimental_suggestions_subtitle">Neuen Wörterbuch/Vorschlags-Engine aktivieren (Beta)</string>
-    
-    <!-- SYM Customization Screen -->
     <string name="sym_customize_title">SYM-Tastatur anpassen</string>
     <string name="sym_auto_close_title">SYM-Layout automatisch schließen</string>
     <string name="sym_auto_close_description">Schließt das SYM-Layout automatisch nach dem Einfügen eines Zeichens, Drücken von Alt oder Drücken von Enter. Schließt nicht mit Control oder Shift.</string>
@@ -169,8 +127,6 @@
     <string name="sym_reset_confirm_title">Auf Standard zurücksetzen</string>
     <string name="sym_reset_confirm_message">Möchten Sie alle SYM-Zuordnungen auf die Standardwerte zurücksetzen? Diese Aktion kann nicht rückgängig gemacht werden.</string>
     <string name="sym_reset_confirm_button">Zurücksetzen</string>
-    
-    <!-- Emoji Picker Dialog -->
     <string name="emoji_picker_title">Emoji auswählen</string>
     <string name="emoji_picker_title_for_letter">Emoji für Buchstabe %1$s auswählen</string>
     <string name="emoji_picker_close">Schließen</string>
@@ -192,34 +148,24 @@
     <string name="emoji_picker_search_label">Suche</string>
     <string name="emoji_picker_search_placeholder">Emoji suchen…</string>
     <string name="emoji_picker_no_results">Keine Emojis gefunden</string>
-    
-    <!-- Modifiers -->
     <string name="modifier_shift">SHIFT</string>
     <string name="modifier_ctrl">CTRL</string>
-    
-    <!-- Long Press Modifier Section -->
     <string name="long_press_modifier_title">Modifikator für langen Druck</string>
     <string name="long_press_modifier_description">Wählen Sie, was langer Druck macht: Alt+Taste, Shift+Taste, Zeichenvariationen oder Sym-Belegungen</string>
     <string name="long_press_modifier_alt">Alt</string>
     <string name="long_press_modifier_shift">Shift</string>
     <string name="long_press_modifier_variations">Variationen</string>
     <string name="long_press_modifier_sym">Sym</string>
-    
-    <!-- About Section -->
     <string name="about_github">GitHub</string>
     <string name="about_build_info">Pastiera IME - Palsoftware 2025</string>
     <string name="settings_device_keyboard_info">Gerät: %1$s; Tastatur: %2$s</string>
     <string name="about_title">Über</string>
     <string name="about_credits_error">Credits-Informationen konnten nicht geladen werden.</string>
-    
-    <!-- Launcher Shortcuts Section -->
     <string name="launcher_shortcuts_title">Launcher-Verknüpfungen</string>
     <string name="launcher_shortcuts_experimental">Experimentell</string>
     <string name="launcher_shortcuts_description">Tastenkürzel im Launcher aktivieren</string>
     <string name="launcher_shortcuts_configure">Verknüpfungen konfigurieren</string>
     <string name="launcher_shortcuts_configure_description">Tasten zuweisen, um Apps im Launcher zu öffnen</string>
-    
-    <!-- Launcher Shortcuts Screen -->
     <string name="launcher_shortcuts_screen_title">Launcher-Verknüpfungen</string>
     <string name="launcher_shortcuts_not_assigned">Nicht zugewiesen</string>
     <string name="launcher_shortcuts_remove">Entfernen</string>
@@ -227,8 +173,6 @@
     <string name="launcher_shortcuts_shortcut_type">Verknüpfung: %1$s</string>
     <string name="launcher_shortcuts_shortcut_unknown">unbekannt</string>
     <string name="launcher_shortcuts_action_type">Aktion: %1$s</string>
-    
-    <!-- Launcher Shortcut Assignment Activity -->
     <string name="launcher_shortcut_assignment_title">App einer Taste zuweisen</string>
     <string name="launcher_shortcut_assignment_key">Taste %1$s</string>
     <string name="launcher_shortcut_assignment_header">Verknüpfung</string>
@@ -238,23 +182,15 @@
     <string name="launcher_shortcut_assignment_no_apps">Keine Apps gefunden</string>
     <string name="launcher_shortcut_assignment_no_results">Keine Ergebnisse für \"%1$s\"</string>
     <string name="launcher_shortcut_assignment_key_name">Taste %1$d</string>
-    
-    <!-- Notification Helper -->
     <string name="notification_nav_mode_channel_name">Pastiera Nav Mode</string>
     <string name="notification_nav_mode_channel_description">Benachrichtigungen für Pastiera Nav-Modus</string>
     <string name="notification_nav_mode_activated_title">Nav-Modus aktiviert</string>
     <string name="notification_nav_mode_activated_text">Nav-Modus aktiviert</string>
-    
-    <!-- Speech Recognition -->
     <string name="speech_recognition_prompt">Jetzt sprechen…</string>
-    
-    <!-- Auto Correct Edit Screen -->
     <string name="auto_correct_search_placeholder">Korrekturen suchen…</string>
     <string name="auto_correct_search_description">Suchen</string>
     <string name="auto_correct_clear_search">Suche löschen</string>
     <string name="auto_correct_no_corrections_found">Keine Korrekturen gefunden</string>
-    
-    <!-- Nav Mode Settings -->
     <string name="nav_mode_title">Nav-Modus</string>
     <string name="nav_mode_enable_title">Nav-Modus aktivieren</string>
     <string name="nav_mode_enable_description">Doppeltippen auf Ctrl, um den Navigationsmodus zu aktivieren</string>
@@ -270,8 +206,6 @@
     <string name="nav_mode_save">Speichern</string>
     <string name="nav_mode_cancel">Abbrechen</string>
     <string name="nav_mode_default">Standard</string>
-    
-    <!-- Unicode Character Picker -->
     <string name="unicode_picker_title_for_letter">Zeichen für %1$s auswählen</string>
     <string name="unicode_picker_title">Unicode-Zeichen auswählen</string>
     <string name="unicode_picker_close">Schließen</string>
@@ -282,8 +216,6 @@
     <string name="unicode_category_arrows">Pfeile</string>
     <string name="unicode_category_misc">Verschiedenes</string>
     <string name="unicode_category_variations">Variationen</string>
-    
-    <!-- Variation Customization -->
     <string name="variation_customize_title">Variationen anpassen</string>
     <string name="variation_instructions_title">Anweisungen</string>
     <string name="variation_instructions_description">Tippen Sie auf ein Variationsfeld, um ein Zeichen auszuwählen. Jeder Buchstabe kann bis zu 7 Variationszeichen haben.</string>
@@ -300,19 +232,14 @@
     <string name="variation_global_layout_override_title">Globale Variationszuordnung</string>
     <string name="variation_global_layout_override_description">Erzwingt die Reihenfolge der Variationen aus einem Layout für alle Layouts. Standard ist das aktuelle IME-Layout (%1$s).</string>
     <string name="variation_global_layout_override_none">Keine (aktuelles Layout verwenden)</string>
-    
-    <!-- Static Variation Bar Mode -->
     <string name="static_variation_bar_mode_title">Statische Variationsleiste</string>
     <string name="static_variation_bar_mode_description">Immer einen festen Satz von Hilfstasten in der Variationszeile anzeigen anstelle von kontextbasierten Variationen.</string>
     <string name="static_variation_base_layer_title">Alternative obere Reihenbelegung</string>
     <string name="static_variation_base_layer_description">Schaltet die obere statische Reihe zwischen Standardsymbolen und einem alternativen Klammer-/Sonderzeichensatz um. Shift- und Alt-Layer bleiben unabhängig.</string>
     <string name="static_variation_layer_sticky_title">Einrastendes Layer</string>
     <string name="static_variation_layer_sticky_description">Wenn Shift/Alt per Doppeltipp eingerastet ist, bleibt das Layer nach Auswahl eines Symbols aktiv.</string>
-    
-    <!-- SYM Customization Screen -->
     <string name="sym_tab_emoji">Emoji</string>
     <string name="sym_tab_characters">Zeichen</string>
-    
     <string name="titan2_layout_title">Titan 2 Layout-Ausrichtung</string>
     <string name="titan2_layout_description">On-Screen-Tastatur an physische Titan 2 Tasten anpassen</string>
     <string name="keyboard_profile_override_title">Profil der physischen Tastatur</string>
@@ -322,20 +249,12 @@
     <string name="keyboard_profile_option_key2">BlackBerry Key2</string>
     <string name="keyboard_profile_option_q25">BlackBerry Q25</string>
     <string name="keyboard_profile_option_titan2">Unihertz Titan / Titan 2</string>
-    
-    <!-- App Picker Dialog -->
     <string name="app_picker_title">App auswählen</string>
     <string name="app_picker_cancel">Abbrechen</string>
     <string name="app_picker_search_placeholder">Apps suchen…</string>
-    
-    <!-- Settings Screen -->
     <string name="settings_support_ko_fi">Auf Ko-fi unterstützen</string>
     <string name="settings_nav_mode_configure">Tastenzuordnungen für Navigationsmodus konfigurieren</string>
-    
-    <!-- Auto Correct Settings -->
     <string name="auto_correct_ricette_pastiera_name">Ricette Pastiera</string>
-    
-    <!-- Settings Categories -->
     <string name="settings_category_keyboard_timing">Tastatur &amp; Timing</string>
     <string name="settings_category_text_input">Texteingabe</string>
     <string name="settings_category_accessibility">Barrierefreiheit</string>
@@ -351,8 +270,6 @@
     <string name="settings_accessibility_delay_decrease">Verzögerung um 50 Millisekunden verringern</string>
     <string name="settings_accessibility_delay_increase">Verzögerung um 50 Millisekunden erhöhen</string>
     <string name="settings_accessibility_delay_feedback">Vorschlagsverzögerung: %1$d ms</string>
-    
-    <!-- Keyboard Layout Settings -->
     <string name="layout_save_content_description">Layout speichern</string>
     <string name="layout_import_content_description">Layout importieren</string>
     <string name="layout_imported_successfully">Layout erfolgreich importiert</string>
@@ -373,14 +290,10 @@
     <string name="layout_delete">Löschen</string>
     <string name="layout_enable_for_cycling">Aktivieren für den Zyklus</string>
     <string name="layout_select_as_active">Als aktives Layout auswählen</string>
-    
-    <!-- Main Activity Event Display -->
     <string name="modifier_alt">ALT</string>
     <string name="event_unicode_label">Unicode: </string>
     <string name="event_output_label">Ausgabe: </string>
     <string name="event_not_available">N/V</string>
-    
-    <!-- Nav Mode Key Labels -->
     <string name="nav_mode_action_copy">Kopieren</string>
     <string name="nav_mode_action_paste">Einfügen</string>
     <string name="nav_mode_action_cut">Ausschneiden</string>
@@ -400,8 +313,6 @@
     <string name="nav_mode_keycode_tab">Tab</string>
     <string name="nav_mode_keycode_forward_delete">Del→</string>
     <string name="nav_mode_key_unknown">?</string>
-    
-    <!-- Tutorial -->
     <string name="tutorial_skip">Überspringen</string>
     <string name="tutorial_previous">Zurück</string>
     <string name="tutorial_next">Weiter</string>
@@ -411,7 +322,7 @@
     <string name="tutorial_page_enable_title">Pastiera aktivieren</string>
     <string name="tutorial_page_enable_description">Um zu beginnen, müssen Sie Pastiera als Eingabemethode in den Android-Einstellungen aktivieren. Tippen Sie auf die Schaltfläche unten, um die Einstellungen zu öffnen.</string>
     <string name="tutorial_page_select_title">Pastiera auswählen</string>
-    <string name="tutorial_page_select_description">Um Pastiera zu verwenden, wähle sie unter den Eingabemethoden aus. Du kannst die vollständige IME-Oberfläche mit dem Schalter &quot;Use on-screen keyboard&quot; auf ON oder die minimale &quot;Pastierina&quot;-UI mit dem Schalter auf OFF nutzen.</string>
+    <string name="tutorial_page_select_description">Um Pastiera zu verwenden, wähle sie unter den Eingabemethoden aus. Du kannst die vollständige IME-Oberfläche mit dem Schalter "Use on-screen keyboard" auf ON oder die minimale "Pastierina"-UI mit dem Schalter auf OFF nutzen.</string>
     <string name="tutorial_page_led_title">LED-Anzeige</string>
     <string name="tutorial_page_led_description">Um Pastiera optimal zu nutzen, stelle in den Systemeinstellungen die Fn-Taste auf Ctrl um. Die IME-Leiste zeigt vier LEDs: Sie leuchten blau, wenn der Modifikator als One-Shot aktiv ist, und orange, wenn er gelockt ist. Die SYM-Layout-LED ist blau auf der Emoji-Seite und orange auf der Symbols-Seite.</string>
     <string name="tutorial_page_nav_mode_title">Nav-Modus</string>
@@ -427,11 +338,8 @@
     <string name="tutorial_selected_message">Pastiera ist ausgewählt!</string>
     <string name="tutorial_show">Tutorial anzeigen</string>
     <string name="tutorial_review_description">Einführungstutorial überprüfen</string>
-
     <string name="pastierina_mode_title">Pastierina-Modus</string>
     <string name="pastierina_mode_description">Minimale UI umschalten</string>
-
-    <!-- Backup & Restore -->
     <string name="backup_now">Jetzt sichern</string>
     <string name="backup_now_description">Alle Einstellungen und benutzerdefinierten Layouts in eine ZIP-Datei exportieren</string>
     <string name="restore_from_file">Von Datei wiederherstellen</string>
@@ -440,12 +348,9 @@
     <string name="restore_completed">Wiederherstellung abgeschlossen</string>
     <string name="backup_failed">Sicherung fehlgeschlagen: %1$s</string>
     <string name="restore_failed">Wiederherstellung fehlgeschlagen: %1$s</string>
-    
-    <!-- Swipe Incremental Threshold -->
     <string name="swipe_incremental_threshold_description">Erforderliche Entfernung, um den Cursor um eine Position zu bewegen. Niedrigere Werte lassen den Cursor schneller bewegen.</string>
     <string name="swipe_to_move_cursor">Wischen, um den Cursor zu bewegen</string>
     <string name="dip_unit">DIP</string>
-    <!-- Clipboard page UI -->
     <string name="clipboard_history_title">Zwischenablageverlauf</string>
     <string name="clipboard_clear_all">Alle löschen</string>
     <string name="clipboard_empty_state">Kein Zwischenablageverlauf</string>
@@ -461,10 +366,12 @@
     <string name="update_dialog_open_github">GitHub öffnen</string>
     <string name="update_dialog_later">Später</string>
     <string name="update_dialog_download_apk">APK herunterladen</string>
-    
-    <!-- Custom Input Styles -->
     <string name="custom_input_styles_title">Sprachen und Tastaturbelegungen</string>
     <string name="custom_input_styles_description">Zusätzliche Sprachen und Tastaturlayouts hinzufügen, die nicht an die Systemsprache gebunden sind</string>
+    <string name="app_language_title">App-Sprache</string>
+    <string name="app_language_description">Wähle die Sprache für die Oberflächentexte der App.</string>
+    <string name="app_language_label">Sprache</string>
+    <string name="app_language_system_default">Systemstandard</string>
     <string name="custom_input_styles_language_label">Sprache</string>
     <string name="custom_input_styles_locale_display">%1$s (%2$s)</string>
     <string name="custom_input_styles_system_locale_hint">Systemsprache – kann nicht geändert werden</string>
@@ -484,8 +391,6 @@
     <string name="custom_input_styles_input_style_added">Eingabestil hinzugefügt: %1$s - %2$s</string>
     <string name="custom_input_styles_input_style_deleted">Eingabestil gelöscht</string>
     <string name="custom_input_styles_installed_dictionaries">Installierte Wörterbücher</string>
-
-    <!-- Installierte Wörterbücher -->
     <string name="installed_dictionaries_title">Installierte Wörterbücher</string>
     <string name="installed_dictionaries_empty">Keine serialisierten Wörterbücher gefunden.</string>
     <string name="installed_dictionaries_language_code">Sprache: %1$s</string>
@@ -515,8 +420,6 @@
     <string name="installed_dictionaries_uninstall_not_found">Wörterbuchdatei nicht gefunden</string>
     <string name="installed_dictionaries_uninstall_cannot_delete_asset">Integrierte Wörterbücher können nicht deinstalliert werden</string>
     <string name="installed_dictionaries_uninstall_failed">Deinstallation fehlgeschlagen</string>
-
-    <!-- Trackpad Gesture Settings -->
     <string name="trackpad_gestures_title">Trackpad-Gesten-Vorschläge</string>
     <string name="trackpad_gestures_description">Nach oben wischen auf dem Trackpad, um Vorschläge zu akzeptieren</string>
     <string name="trackpad_gestures_enabled_title">Trackpad-Gesten Aktivieren</string>
@@ -531,8 +434,6 @@
     <string name="trackpad_gestures_shizuku_not_authorized">App Nicht in Shizuku Autorisiert</string>
     <string name="trackpad_swipe_threshold_title">Trackpad-Wisch-Empfindlichkeit</string>
     <string name="trackpad_swipe_threshold_description">Passen Sie an, wie weit Sie nach oben wischen müssen, um einen Vorschlag zu akzeptieren.</string>
-
-    <!-- Trackpad Gesture Tutorial -->
     <string name="trackpad_tutorial_title">Trackpad-Gesten-Vorschläge</string>
     <string name="trackpad_tutorial_welcome_title">Trackpad-Gesten-Vorschläge</string>
     <string name="trackpad_tutorial_welcome_description">Wischen Sie nach oben auf Ihrem Trackpad, um schnell Wortvorschläge zu akzeptieren, ohne zu klicken!</string>
@@ -545,11 +446,7 @@
     <string name="trackpad_tutorial_complete">Verstanden</string>
     <string name="trackpad_tutorial_next">Weiter</string>
     <string name="trackpad_tutorial_previous">Zurück</string>
-
-    <!-- Trackpad Debug Accessibility Service -->
     <string name="trackpad_debug_service_description">Zeigt Trackpad-Ereignisse in einem kleinen Overlay zu Debugging-Zwecken an</string>
-    
-    <!-- Status Bar Buttons Configuration -->
     <string name="status_bar_buttons_title">Statusleisten-Buttons</string>
     <string name="status_bar_buttons_description">Statusleisten-Buttons anpassen</string>
     <string name="status_bar_slot_left">Linker Slot</string>
@@ -598,4 +495,88 @@
     <string name="online_layouts_uninstall_confirm_message">Möchten Sie %1$s wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.</string>
     <string name="online_layouts_uninstall_success">%1$s gelöscht</string>
     <string name="online_layouts_uninstall_failed">Layout konnte nicht gelöscht werden</string>
+    <string name="input_method_name_da">Dansk</string>
+    <string name="input_method_name_no">Norsk</string>
+    <string name="input_method_name_pt">Português</string>
+    <string name="input_method_name_ru">Русский</string>
+    <string name="input_method_name_sr">Српски</string>
+    <string name="delete_alternatives_title">Löschen</string>
+    <string name="delete_alternatives_description">Alternative Methoden, um Zeichen rechts vom Cursor zu löschen</string>
+    <string name="shift_backspace_delete_title">Shift + Backspace</string>
+    <string name="alt_backspace_delete_title">Alt + Backspace</string>
+    <string name="backspace_at_start_delete_title">Backspace am Zeilenanfang</string>
+    <string name="delete_alternatives_hint">Hinweis: Ctrl + Taste kann in den Nav-Modus-Einstellungen konfiguriert werden</string>
+    <string name="alt_ctrl_speech_shortcut_title">Alt+Ctrl-Spracherkennung</string>
+    <string name="alt_ctrl_speech_shortcut_description">Alt+Ctrl-Tastenkürzel aktivieren, um die Spracherkennung zu starten</string>
+    <string name="save">Speichern</string>
+    <string name="sym_enable_emoji_picker_page_title">Emoji-Picker-Seite aktivieren</string>
+    <string name="sym_enable_emoji_picker_page_description">Zeigt beim Durchschalten den vollständigen Emoji-Picker an.</string>
+    <string name="sym_order_clipboard_first">Zwischenablage zuerst</string>
+    <string name="cancel">Abbrechen</string>
+    <string name="keyboard_layout_title">Tastaturlayout</string>
+    <string name="keyboard_layout_description">Wähle dein Tastaturlayout. ALT-, SYM- und Ctrl-Zuordnungen bleiben an die physische Tastenposition gebunden.</string>
+    <string name="keyboard_layout_editor_title">Tastaturlayout-Editor</string>
+    <string name="keyboard_layout_no_conversion">Standard</string>
+    <string name="keyboard_layout_no_conversion_description">Standard-QWERTY-Layout (keine Umwandlung)</string>
+    <string name="keyboard_layout_conversions_title">Layout-Umwandlungen</string>
+    <string name="keyboard_layout_conversions_description">Buchstabentasten passend zum ausgewählten Layout umwandeln</string>
+    <string name="keyboard_layout_viewer_title">Tastaturbelegung</string>
+    <string name="keyboard_layout_viewer_subtitle">Layout: %1$s</string>
+    <string name="keyboard_layout_viewer_unavailable">Diese Layout-Zuordnung konnte nicht geladen werden.</string>
+    <string name="keyboard_layout_viewer_empty">Für dieses Layout wurden keine Tastenzuordnungen gefunden.</string>
+    <string name="keyboard_layout_multitap_badge">Multitap</string>
+    <string name="keyboard_layout_viewer_multitap_on">Multitap</string>
+    <string name="keyboard_layout_viewer_multitap_off">Einzeln</string>
+    <string name="keyboard_layout_viewer_open">Belegung anzeigen</string>
+    <string name="keyboard_layout_settings_button">Tastaturlayout-Einstellungen</string>
+    <string name="keyboard_layout_mode_title">Automatische Layout-Zuordnung</string>
+    <string name="keyboard_layout_mode_auto_description">AN: Standardzuordnung des Subtypes/der Sprache verwenden.</string>
+    <string name="keyboard_layout_mode_manual_description">AUS: Ein manuell ausgewähltes Layout für alle Sprachen verwenden.</string>
+    <string name="power_shortcuts_title">Power-Shortcuts</string>
+    <string name="power_shortcuts_description">SYM drücken und dann eine Taste, um Shortcuts außerhalb von Textfeldern zu starten</string>
+    <string name="power_shortcuts_press_key">Zum Starten die Shortcut-Taste drücken</string>
+    <string name="notification_update_channel_name">Pastiera-Updates</string>
+    <string name="notification_update_channel_description">Benachrichtigungen über neue Pastiera-Versionen</string>
+    <string name="notification_update_available_title">Pastiera - Neues Update verfügbar</string>
+    <string name="notification_update_available_text">Eine neue Version von Pastiera ist verfügbar (%1$s)</string>
+    <string name="speech_recognition_error_no_match">Kein Text erkannt. Bitte erneut versuchen.</string>
+    <string name="speech_recognition_error_timeout">Keine Spracheingabe erkannt.</string>
+    <string name="speech_recognition_error_permission">Mikrofonberechtigung verweigert.</string>
+    <string name="speech_recognition_error_network">Netzwerkfehler.</string>
+    <string name="speech_recognition_error_generic">Fehler bei der Spracherkennung.</string>
+    <string name="speech_recognition_error_not_available">Spracherkennung nicht verfügbar.</string>
+    <string name="nav_mode_warning_icon">⚠</string>
+    <string name="emoji_category_emoticons">Emoticons</string>
+    <string name="settings_update_section_title">Updates</string>
+    <string name="settings_update_section_description">Neueste Veröffentlichung auf GitHub prüfen.</string>
+    <string name="settings_update_button">Nach Updates suchen</string>
+    <string name="settings_update_checking">Suche nach Updates…</string>
+    <string name="settings_update_up_to_date">App ist auf dem neuesten Stand.</string>
+    <string name="settings_update_check_failed">GitHub konnte nicht erreicht werden.</string>
+    <string name="languages_title">Sprachen</string>
+    <string name="languages_description">Sprachen zum Android-Eingabemethoden-Auswähler hinzufügen. Es werden nur Sprachen mit Wörterbuch angezeigt, die keine Systemsprachen sind.</string>
+    <string name="languages_no_available">Alle verfügbaren Sprachen sind bereits hinzugefügt oder sind Systemsprachen.</string>
+    <string name="delete">Löschen</string>
+    <string name="event_action_label">Aktion: </string>
+    <string name="event_keycode_label">KeyCode: </string>
+    <string name="event_scancode_label">ScanCode: </string>
+    <string name="custom_input_styles_add">Eingabestil hinzufügen</string>
+    <string name="custom_input_styles_empty">Noch keine benutzerdefinierten Eingabestile hinzugefügt. Tippe auf +, um einen hinzuzufügen.</string>
+    <string name="custom_input_styles_delete">Löschen</string>
+    <string name="custom_input_styles_delete_confirm_title">Eingabestil löschen</string>
+    <string name="custom_input_styles_delete_confirm_message">Möchtest du diesen Eingabestil wirklich löschen?</string>
+    <string name="custom_input_styles_duplicate_error">Diese Kombination aus Sprache und Layout existiert bereits</string>
+    <string name="custom_input_styles_open_ime_picker">IME-Auswahl öffnen</string>
+    <string name="custom_input_styles_open_ime_picker_description">System-Eingabemethoden-Auswahl öffnen, um die neue Sprache zu aktivieren</string>
+    <string name="custom_input_styles_format">%1$s - %2$s</string>
+    <string name="custom_input_styles_add_custom_locale">Benutzerdefinierte Locale hinzufügen…</string>
+    <string name="custom_input_styles_custom_locale_title">Benutzerdefinierten Locale-Code eingeben</string>
+    <string name="custom_input_styles_custom_locale_label">Locale-Code</string>
+    <string name="custom_input_styles_custom_locale_hint">Locale-Code eingeben (z. B. en_US, it_IT, fr_FR)</string>
+    <string name="custom_input_styles_custom_locale_empty_error">Locale-Code darf nicht leer sein</string>
+    <string name="custom_input_styles_custom_locale_invalid_error">Ungültiges Locale-Code-Format. Verwende das Format: xx_XX oder xx</string>
+    <string name="custom_input_styles_no_dictionary_warning">Für diese Locale ist kein Wörterbuch verfügbar. Vorschläge und Autokorrektur werden deaktiviert.</string>
+    <string name="status_bar_button_language_state_description">Sprache %1$s, Layout %2$s</string>
+    <string name="status_bar_button_hamburger">Menü</string>
+    <string name="status_bar_button_hamburger_description">Schnellaktionen</string>
 </resources>

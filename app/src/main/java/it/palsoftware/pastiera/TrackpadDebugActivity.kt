@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.dp
 import it.palsoftware.pastiera.ui.theme.PastieraTheme
 import kotlinx.coroutines.launch
 
-class TrackpadDebugActivity : ComponentActivity() {
+class TrackpadDebugActivity : LocalizedComponentActivity() {
     private val events = mutableStateListOf<String>()
 
     override fun onCreate(savedInstanceState: Bundle?) {

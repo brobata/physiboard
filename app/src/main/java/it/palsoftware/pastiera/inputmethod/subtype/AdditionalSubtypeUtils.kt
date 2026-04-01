@@ -490,7 +490,7 @@ object AdditionalSubtypeUtils {
     private fun getSystemEnabledLocales(context: Context): List<String> {
         val locales = mutableListOf<String>()
         try {
-            val config = context.resources.configuration
+            val config = context.applicationContext.resources.configuration
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 val localeList = config.locales
                 for (i in 0 until localeList.size()) {

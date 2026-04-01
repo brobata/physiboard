@@ -195,7 +195,7 @@ fun AutoCorrectSettingsScreen(
         mutableStateOf(AutoCorrector.getAllAvailableLanguages().toList()) 
     }
     val systemLocale = remember {
-        context.resources.configuration.locales[0].language.lowercase()
+        context.applicationContext.resources.configuration.locales[0].language.lowercase()
     }
     
     // Load enabled languages

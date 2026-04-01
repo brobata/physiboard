@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="app_name">Pastiera</string>
     <string name="input_method_name">Pastiera</string>
@@ -22,8 +22,8 @@
     <string name="swipe_incremental_threshold_description">Հեռավորությունը՝ կուրսորը մեկ դիրքով տեղափոխելու համար։ Ավելի փոքր արժեքները արագացնում են կուրսորը։</string>
     <string name="swipe_to_move_cursor">Սվայփ՝ կուրսորը տեղափոխելու համար</string>
     <string name="auto_show_keyboard_title">Ավտոմատ ցույց տալ ստեղնաշարը</string>
-    <string name="alt_ctrl_speech_shortcut_title">Խոսքի ճանաչում Alt+Ctrl-ով</string>
-    <string name="alt_ctrl_speech_shortcut_description">Միացնում է խոսքի ճանաչումը Alt+Ctrl-ով</string>
+    <string name="alt_ctrl_speech_shortcut_title">Alt+Ctrl խոսքի ճանաչում</string>
+    <string name="alt_ctrl_speech_shortcut_description">Միացնել Alt+Ctrl դյուրանցումը՝ խոսքի ճանաչումը սկսելու համար</string>
     <string name="info_title">Տեղեկատվություն</string>
     <string name="info_description">Կարգավորումները ավտոմատ պահվում և կիրառվում են անմիջապես։</string>
     <string name="keyboard_subtitle">Ֆիզիկական ստեղնաշար երկար սեղմման աջակցությամբ</string>
@@ -86,19 +86,16 @@
     <string name="auto_correct_max_distance_off">Անջատված</string>
     <string name="auto_correct_max_distance_description">Նիշերի առավելագույն քանակի տարբերություններ, թույլատրված ավտո-ուղղման համար։ 0 = անջատված, 1-3 = աճող հանդուրժողականություն։</string>
     <string name="auto_correct_manage_user_dict_title">Կառավարել օգտագործողի բառարանը</string>
-    
-    <!-- User dictionary management -->
     <string name="user_dict_title">Օգտագործողի բառարան</string>
     <string name="user_dict_add_hint">Ավելացնել բառ</string>
     <string name="user_dict_add_button">Պահպանել բառ</string>
     <string name="user_dict_empty_state">Օգտագործողի բառեր դեռ չեն պահպանվել:</string>
     <string name="user_dict_edit_title">Խմբագրել բառ</string>
     <string name="user_dict_frequency_label">Օգտագործումներ: %1$d</string>
-    
     <string name="auto_correct_keyboard_proximity_title">Դասակարգում ստեղնաշարի մոտիկությամբ</string>
     <string name="auto_correct_keyboard_proximity_description">Ֆիլտրել անհավանական տառասխալները՝ հիմնված ստեղների հեռավորության վրա (QWERTY/AZERTY/QWERTZ)</string>
     <string name="auto_correct_edit_type_ranking_title">Դասակարգում խմբագրման տեսակով</string>
-    <string name="auto_correct_edit_type_ranking_description">Դասակարգել առաջարկները խմբագրման տեսակով (տեղադրում > փոխարինում > ջնջում)</string>
+    <string name="auto_correct_edit_type_ranking_description">Դասակարգել առաջարկները խմբագրման տեսակով (տեղադրում &gt; փոխարինում &gt; ջնջում)</string>
     <string name="clear">Մաքրել</string>
     <string name="experimental_suggestions_title">Փորձարարական առաջարկներ</string>
     <string name="experimental_suggestions_subtitle">Միացնել նոր բառարան/առաջարկների շարժիչը (բետա)</string>
@@ -147,19 +144,19 @@
     <string name="long_press_modifier_variations">Տարբերակներ</string>
     <string name="long_press_modifier_sym">Sym</string>
     <string name="keyboard_layout_title">Ստեղնաշարի դասավորություն</string>
-    <string name="keyboard_layout_description">Ընտրեք ձեր դասավորությունը։ ALT, SYM և Ctrl դասավորությունները կախված են ֆիզիկական ստեղների տեղաբաշխումից։</string>
+    <string name="keyboard_layout_description">Ընտրեք ձեր ստեղնաշարի դասավորությունը։ ALT, SYM և Ctrl քարտեզավորումները մնում են ֆիզիկական ստեղների դիրքի հիման վրա։</string>
     <string name="keyboard_layout_no_conversion">Ստանդարտ</string>
-    <string name="keyboard_layout_no_conversion_description">Ստանդարտ QWERTY (առանց փոխակերպման)</string>
+    <string name="keyboard_layout_no_conversion_description">Ստանդարտ QWERTY դասավորություն (առանց փոխակերպման)</string>
     <string name="keyboard_layout_conversions_title">Դասավորության փոխակերպումներ</string>
-    <string name="keyboard_layout_conversions_description">Փոխակերպում է տառերը նոր դասավորության</string>
+    <string name="keyboard_layout_conversions_description">Փոխակերպել տառային ստեղները՝ ընտրված դասավորությանը համապատասխանեցնելու համար</string>
     <string name="keyboard_layout_viewer_title">Ստեղնաշարի քարտեզ</string>
     <string name="keyboard_layout_viewer_subtitle">Դասավորություն՝ %1$s</string>
-    <string name="keyboard_layout_viewer_unavailable">Չհաջողվեց բեռնել այս դասավորությունը։</string>
-    <string name="keyboard_layout_viewer_empty">Այս դասավորության համար ստեղներ չեն նշանակված։</string>
+    <string name="keyboard_layout_viewer_unavailable">Չհաջողվեց բեռնել այս դասավորության քարտեզավորումը։</string>
+    <string name="keyboard_layout_viewer_empty">Այս դասավորության համար ստեղների քարտեզավորում չի գտնվել։</string>
     <string name="keyboard_layout_viewer_multitap_on">բազմասեղմում</string>
-    <string name="keyboard_layout_viewer_multitap_off">մեկ սեղմում</string>
-    <string name="keyboard_layout_viewer_open">Դիտել դասավորությունը</string>
-    <string name="keyboard_layout_settings_button">Դասավորության կարգավորումներ</string>
+    <string name="keyboard_layout_viewer_multitap_off">մեկական</string>
+    <string name="keyboard_layout_viewer_open">Դիտել քարտեզավորումը</string>
+    <string name="keyboard_layout_settings_button">Ստեղնաշարի դասավորության կարգավորումներ</string>
     <string name="settings_device_keyboard_info">Սարք՝ %1$s; Ստեղնաշար՝ %2$s</string>
     <string name="about_title">Ծրագրի մասին</string>
     <string name="about_credits_error">Հնարավոր չէ բեռնել վարկերի տեղեկատվությունը:</string>
@@ -184,17 +181,17 @@
     <string name="launcher_shortcut_assignment_no_apps">Ծրագրեր չեն գտնվել</string>
     <string name="launcher_shortcut_assignment_no_results">Արդյունք չկա՝ "%$1s"</string>
     <string name="launcher_shortcut_assignment_key_name">Ստեղն՝ %$1s</string>
-    <string name="power_shortcuts_title">Սնուցման ստեղն</string>
-    <string name="power_shortcuts_description">Սեղմեք SYM, հետո՝ ստեղն, որպեսզի բացեք ծրագիրը, երբ տեքստի դաշտ ընտրված չէ</string>
-    <string name="power_shortcuts_press_key">Սեղմեք դյուրանցման ստեղնը՝ գործարկելու համար</string>
+    <string name="power_shortcuts_title">Արագ դյուրանցումներ</string>
+    <string name="power_shortcuts_description">Սեղմեք SYM, ապա ստեղն՝ տեքստային դաշտից դուրս դյուրանցում գործարկելու համար</string>
+    <string name="power_shortcuts_press_key">Գործարկելու համար սեղմեք դյուրանցման ստեղնը</string>
     <string name="notification_nav_mode_channel_name">Նավիգացիայի ռեժիմ</string>
     <string name="notification_nav_mode_channel_description">Նավիգացիայի ռեժիմի ծանուցումներ</string>
     <string name="notification_nav_mode_activated_title">Նավիգացիայի ռեժիմը միացված է</string>
     <string name="notification_nav_mode_activated_text">Նավիգացիայի ռեժիմը միացված է</string>
-    <string name="notification_update_channel_name">Pastiera-ի թարմացումներ</string>
-    <string name="notification_update_channel_description">Pastiera-ի նոր տարբերակների մասին ծանուցումներ</string>
-    <string name="notification_update_available_title">Pastiera — Առկա է թարմացում</string>
-    <string name="notification_update_available_text">Առկա է Pastiera-ի նոր տարբերակը (%1$s)</string>
+    <string name="notification_update_channel_name">Pastiera թարմացումներ</string>
+    <string name="notification_update_channel_description">Ծանուցումներ Pastiera-ի նոր տարբերակների մասին</string>
+    <string name="notification_update_available_title">Pastiera - Նոր թարմացում հասանելի է</string>
+    <string name="notification_update_available_text">Pastiera-ի նոր տարբերակ հասանելի է (%1$s)</string>
     <string name="speech_recognition_prompt">Խոսեք…</string>
     <string name="auto_correct_search_placeholder">Փնտրել ուղղումները...</string>
     <string name="auto_correct_search_description">Փնտրել</string>
@@ -225,8 +222,6 @@
     <string name="unicode_category_arrows">Սլաքներ</string>
     <string name="unicode_category_misc">Այլ</string>
     <string name="unicode_category_variations">Տարբերակներ</string>
-    
-    <!-- Variation Customization -->
     <string name="variation_customize_title">Փոփոխել տարբերակները</string>
     <string name="variation_instructions_title">Հրահանգներ</string>
     <string name="variation_instructions_description">Հպեք տարբերակի վանդակին՝ սիմվոլ ընտրելու համար։ Յուրաքանչյուր տառ կարող է ունենալ մինչև 7 տարբերակի սիմվոլներ:</string>
@@ -244,24 +239,21 @@
     <string name="static_variation_base_layer_description">Ակտիվացնում է նախադրված նշանները վերևի հիմնական տողի համար։ Shift և Alt շերտերը մնում են առանձին հասանելի։</string>
     <string name="static_variation_layer_sticky_title">Ֆիքսվող շերտ</string>
     <string name="static_variation_layer_sticky_description">Եթե Shift/Alt շերտը ֆիքսված է կրկնահպումով, այն մնում է ակտիվ այդ շերտից նշան ընտրելուց հետո։</string>
-    
     <string name="sym_tab_emoji">Էմոջի</string>
     <string name="sym_tab_characters">Նշաններ</string>
-    
     <string name="titan2_layout_title">Titan 2 դասավորության հավասարեցում</string>
     <string name="titan2_layout_description">Հավասարեցնել էկրանային ստեղնաշարը Titan 2-ի ֆիզիկական ստեղների հետ</string>
-    
     <string name="app_picker_title">Ընտրել ծրագիր</string>
     <string name="app_picker_cancel">Չեղարկել</string>
     <string name="app_picker_search_placeholder">Փնտրել ծրագրեր...</string>
     <string name="settings_support_ko_fi">Աջակցել Ko-fi-ում</string>
     <string name="settings_nav_mode_configure">Կարգավորել նավիգացիայի ռեժիմի դասավորությունը</string>
     <string name="settings_update_section_title">Թարմացումներ</string>
-    <string name="settings_update_section_description">Ստուգել նոր թողարկումը GitHub-ում</string>
+    <string name="settings_update_section_description">Ստուգել GitHub-ի վերջին թողարկումը։</string>
     <string name="settings_update_button">Ստուգել թարմացումները</string>
-    <string name="settings_update_checking">Ստուգում եմ թարմացումները...</string>
-    <string name="settings_update_up_to_date">Ծրագիրը վերջին տարբերակով է։</string>
-    <string name="settings_update_check_failed">GitHub-ը հասանելի չէ։</string>
+    <string name="settings_update_checking">Ստուգվում են թարմացումները…</string>
+    <string name="settings_update_up_to_date">Հավելվածը արդիական է։</string>
+    <string name="settings_update_check_failed">Չհաջողվեց կապ հաստատել GitHub-ի հետ։</string>
     <string name="settings_category_keyboard_timing">Ստեղնաշար և ժամանակավորում</string>
     <string name="settings_category_text_input">Խելացի հնարավորություններ</string>
     <string name="settings_category_accessibility">Հասանելիություն</string>
@@ -308,11 +300,8 @@
     <string name="nav_mode_action_expand_selection_left">←Ընտր</string>
     <string name="nav_mode_action_expand_selection_right">→Ընտր</string>
     <string name="nav_mode_action_toggle_pastierina">Pastierina</string>
-
     <string name="pastierina_mode_title">Pastierina ռեժիմ</string>
     <string name="pastierina_mode_description">Փոխարկել նվազագույն UI</string>
-
-    <!-- Backup & Restore -->
     <string name="backup_now">Ստեղծել պահուստային պատճեն</string>
     <string name="backup_now_description">Արտահանել բոլոր կարգավորումները ZIP ֆայլում</string>
     <string name="restore_from_file">Վերականգնել ֆայլից</string>
@@ -321,7 +310,6 @@
     <string name="restore_completed">Վերականգնումը ավարտված է</string>
     <string name="backup_failed">Պահուստավորումը ձախողվեց՝ %1$s</string>
     <string name="restore_failed">Վերականգնումը ձախողվեց՝ %1$s</string>
-    <!-- Clipboard page UI -->
     <string name="clipboard_history_title">Պահոցի պատմություն</string>
     <string name="clipboard_clear_all">Մաքրել բոլորը</string>
     <string name="clipboard_empty_state">Պահոցի պատմություն չկա</string>
@@ -337,8 +325,6 @@
     <string name="update_dialog_open_github">Բացել GitHub-ը</string>
     <string name="update_dialog_later">Հետո</string>
     <string name="update_dialog_download_apk">Ներբեռնել APK</string>
-    
-    <!-- Custom Input Styles -->
     <string name="custom_input_styles_title">Լեզուներ և դասավորություններ</string>
     <string name="custom_input_styles_description">Ավելացնել լրացուցիչ լեզուներ և ստեղնաշարի դասավորություններ, որոնք չեն կապված համակարգի տեղակայման հետ</string>
     <string name="custom_input_styles_language_label">Լեզու</string>
@@ -360,8 +346,6 @@
     <string name="custom_input_styles_input_style_added">Մուտքագրման ոճը ավելացված է: %1$s - %2$s</string>
     <string name="custom_input_styles_input_style_deleted">Մուտքագրման ոճը ջնջված է</string>
     <string name="custom_input_styles_installed_dictionaries">Տեղադրված բառարաններ</string>
-
-    <!-- Տեղադրված բառարաններ -->
     <string name="installed_dictionaries_title">Տեղադրված բառարաններ</string>
     <string name="installed_dictionaries_empty">Սերիալիզացված բառարաններ չեն գտնվել։</string>
     <string name="installed_dictionaries_language_code">Լեզու․ %1$s</string>
@@ -391,11 +375,7 @@
     <string name="installed_dictionaries_uninstall_not_found">Բառարանի ֆայլը չի գտնվել</string>
     <string name="installed_dictionaries_uninstall_cannot_delete_asset">Չի կարելի հեռացնել ներկառուցված բառարանները</string>
     <string name="installed_dictionaries_uninstall_failed">Հեռացումը ձախողվեց</string>
-
-    <!-- Trackpad Debug Accessibility Service -->
     <string name="trackpad_debug_service_description">Ցուցադրում է trackpad-ի իրադարձությունները փոքր overlay-ում debug-ի համար</string>
-    
-    <!-- Status Bar Buttons Configuration -->
     <string name="status_bar_buttons_title">Պանելի Կոճակներ</string>
     <string name="status_bar_buttons_description">Կարգավորել կոճակներ</string>
     <string name="status_bar_slot_left">Ձախ Բաժին</string>
@@ -444,4 +424,155 @@
     <string name="online_layouts_uninstall_confirm_message">Իսկապե՞ս ցանկանում եք հեռացնել %1$s: Այս գործողությունը չի կարող հետարկվել:</string>
     <string name="online_layouts_uninstall_success">Հեռացվեց %1$s</string>
     <string name="online_layouts_uninstall_failed">Չհաջողվեց հեռացնել դասավորությունը</string>
+    <string name="input_method_name_en">English</string>
+    <string name="input_method_name_it">Italiano</string>
+    <string name="input_method_name_fr">Français</string>
+    <string name="input_method_name_de">Deutsch</string>
+    <string name="input_method_name_pl">Polski</string>
+    <string name="input_method_name_da">Dansk</string>
+    <string name="input_method_name_no">Norsk</string>
+    <string name="input_method_name_es">Español</string>
+    <string name="input_method_name_pt">Português</string>
+    <string name="input_method_name_ru">Русский</string>
+    <string name="input_method_name_sr">Српски</string>
+    <string name="settings_title">Settings</string>
+    <string name="keyboard_timing_long_press_value">%1$dms</string>
+    <string name="delete_alternatives_title">Ջնջում</string>
+    <string name="delete_alternatives_description">Կուրսորի աջ կողմի նշանները ջնջելու այլընտրանքային եղանակներ</string>
+    <string name="shift_backspace_delete_title">Shift + Backspace</string>
+    <string name="alt_backspace_delete_title">Alt + Backspace</string>
+    <string name="backspace_at_start_delete_title">Backspace տողի սկզբում</string>
+    <string name="delete_alternatives_hint">Հուշում․ Ctrl + ստեղնը կարելի է կարգավորել Nav Mode-ի կարգավորումներում</string>
+    <string name="static_variation_bar_mode_title">Static Variation Bar</string>
+    <string name="static_variation_bar_mode_description">Always show a fixed set of utility keys in the variation row instead of context-based variations.</string>
+    <string name="keyboard_title">Pastiera Keyboard</string>
+    <string name="ignore_back_short">Ignore BACK</string>
+    <string name="long_press_mappings_line1">Q→0, W→1, E→2, R→3, T→(, Y→), U→-, I→_, O→\', P→:</string>
+    <string name="long_press_mappings_line2">A→@, S→4, D→5, F→6, G→*, H→#, J→+, K→\", L→\'</string>
+    <string name="long_press_mappings_line3">Z→!, X→7, C→8, V→9, B→., N→\', M→?</string>
+    <string name="save">Պահպանել</string>
+    <string name="sym_enable_emoji_picker_page_title">Միացնել emoji ընտրիչի էջը</string>
+    <string name="sym_enable_emoji_picker_page_description">Փոխարկելիս ցույց տալ ամբողջ emoji ընտրիչը։</string>
+    <string name="sym_order_clipboard_first">Սեղմատախտակն առաջինը</string>
+    <string name="modifier_shift">SHIFT</string>
+    <string name="modifier_ctrl">CTRL</string>
+    <string name="keyboard_layout_editor_title">Ստեղնաշարի դասավորության խմբագիր</string>
+    <string name="keyboard_layout_multitap_badge">բազմասեղմում</string>
+    <string name="keyboard_layout_mode_title">Դասավորության ավտոմատ քարտեզավորում</string>
+    <string name="keyboard_layout_mode_auto_description">ՄԻԱՑՎԱԾ․ կիրառել subtype/locale լռելյայն քարտեզավորումը։</string>
+    <string name="keyboard_layout_mode_manual_description">ԱՆՋԱՏՎԱԾ․ բոլոր locale-ների համար կիրառել մեկ ձեռքով ընտրված դասավորություն։</string>
+    <string name="keyboard_profile_override_title">Physical Keyboard Profile</string>
+    <string name="keyboard_profile_override_auto_description">Auto detect from device fingerprint (current: %1$s).</string>
+    <string name="keyboard_profile_override_manual_description">Manual override for device-specific key mappings.</string>
+    <string name="keyboard_profile_option_auto">Auto</string>
+    <string name="keyboard_profile_option_key2">BlackBerry Key2</string>
+    <string name="keyboard_profile_option_q25">BlackBerry Q25</string>
+    <string name="keyboard_profile_option_titan2">Unihertz Titan / Titan 2</string>
+    <string name="about_github">GitHub</string>
+    <string name="about_build_info">Pastiera IME - Palsoftware 2025</string>
+    <string name="speech_recognition_error_no_match">Տեքստը չի ճանաչվել։ Կրկին փորձեք։</string>
+    <string name="speech_recognition_error_timeout">Խոսքային մուտք չի հայտնաբերվել։</string>
+    <string name="speech_recognition_error_permission">Միկրոֆոնի թույլտվությունը մերժված է։</string>
+    <string name="speech_recognition_error_network">Ցանցի սխալ։</string>
+    <string name="speech_recognition_error_generic">Խոսքի ճանաչման սխալ։</string>
+    <string name="speech_recognition_error_not_available">Խոսքի ճանաչումը հասանելի չէ։</string>
+    <string name="nav_mode_warning_icon">⚠</string>
+    <string name="emoji_category_emoticons">Էմոտիկոններ</string>
+    <string name="emoji_picker_search_label">Search</string>
+    <string name="emoji_picker_search_placeholder">Search emoji...</string>
+    <string name="emoji_picker_no_results">No emoji found</string>
+    <string name="variation_global_layout_override_title">Global Variation Mapping</string>
+    <string name="variation_global_layout_override_description">Force variation ordering from one layout across all layouts. Default is current IME layout (%1$s).</string>
+    <string name="variation_global_layout_override_none">None (use current layout)</string>
+    <string name="auto_correct_ricette_pastiera_name">Ricette Pastiera</string>
+    <string name="languages_title">Լեզուներ</string>
+    <string name="languages_description">Ավելացրեք լեզուներ Android-ի մուտքագրման մեթոդի ընտրիչին։ Ցուցադրվում են միայն բառարան ունեցող և համակարգային չլինող լեզուները։</string>
+    <string name="languages_no_available">Բոլոր հասանելի լեզուներն արդեն ավելացված են կամ համակարգային են։</string>
+    <string name="delete">Ջնջել</string>
+    <string name="modifier_alt">ALT</string>
+    <string name="event_action_label">Գործողություն՝ </string>
+    <string name="event_keycode_label">KeyCode: </string>
+    <string name="event_scancode_label">ScanCode: </string>
+    <string name="nav_mode_keycode_up">↑</string>
+    <string name="nav_mode_keycode_down">↓</string>
+    <string name="nav_mode_keycode_left">←</string>
+    <string name="nav_mode_keycode_right">→</string>
+    <string name="nav_mode_keycode_center">○</string>
+    <string name="nav_mode_keycode_page_up">PgUp</string>
+    <string name="nav_mode_keycode_page_down">PgDn</string>
+    <string name="nav_mode_keycode_escape">Esc</string>
+    <string name="nav_mode_keycode_tab">Tab</string>
+    <string name="nav_mode_keycode_forward_delete">Del→</string>
+    <string name="nav_mode_key_unknown">?</string>
+    <string name="tutorial_skip">Skip</string>
+    <string name="tutorial_previous">Previous</string>
+    <string name="tutorial_next">Next</string>
+    <string name="tutorial_finish">Finish</string>
+    <string name="tutorial_page_welcome_title">Welcome to Pastiera</string>
+    <string name="tutorial_page_welcome_description">Pastiera is an advanced input method for PKB Android devices with support for Nav Mode, shortcuts, custom keyboard mappings, and more.</string>
+    <string name="tutorial_page_enable_title">Enable Pastiera</string>
+    <string name="tutorial_page_enable_description">To get started, you need to enable Pastiera as an input method in Android Settings. Tap the button below to open settings.</string>
+    <string name="tutorial_page_select_title">Select Pastiera</string>
+    <string name="tutorial_page_select_description">To use Pastiera, select it among the input methods. Pick between the full IME UI with the "Use on-screen keyboard" toggle ON or the minimal "Pastierina" UI with the toggle OFF.</string>
+    <string name="tutorial_page_led_title">LED Indicator</string>
+    <string name="tutorial_page_led_description">To get the most out of Pastiera, set the Fn key to act as Ctrl from Android system settings. The IME bar shows four LEDs: they turn blue when the modifier is active one-shot and orange when it is locked. The SYM layout LED is blue on the emoji page and orange on the symbols page.</string>
+    <string name="tutorial_page_nav_mode_title">Nav Mode</string>
+    <string name="tutorial_page_nav_mode_description">Nav Mode lets you navigate the device UI with letter shortcuts such as IJKL or ESDF.\nTo activate:\n• Press Ctrl twice quickly\n• Letter keys become navigation controls\n• Press Ctrl again to exit\nEvery shortcut can be remapped in Advanced Settings.</string>
+    <string name="tutorial_page_customization_title">Customization</string>
+    <string name="tutorial_page_customization_description">Pastiera offers many customization options:\n• Customizable keyboard layouts\n• Launcher shortcuts &amp; Power Shortcuts\n• IME bar can act as a swipe bar to move the cursor\n• Custom mappings for Nav Mode\nExplore the settings to find the perfect configuration for you!</string>
+    <string name="tutorial_page_ready_title">Ready to Start</string>
+    <string name="tutorial_page_ready_description">You are now ready to use Pastiera! Remember that you can always return to settings to further customize the keyboard to your needs.</string>
+    <string name="tutorial_enable_button">Enable Pastiera</string>
+    <string name="tutorial_enabled_message">Pastiera is enabled!</string>
+    <string name="tutorial_select_button">Select Pastiera</string>
+    <string name="tutorial_enable_first_message">Enable Pastiera first on the previous page</string>
+    <string name="tutorial_selected_message">Pastiera is selected!</string>
+    <string name="tutorial_show">Show Tutorial</string>
+    <string name="tutorial_review_description">Review the introductory tutorial</string>
+    <string name="dip_unit">DIP</string>
+    <string name="custom_input_styles_add">Ավելացնել մուտքագրման ոճ</string>
+    <string name="custom_input_styles_empty">Դեռևս ոչ մի հատուկ մուտքագրման ոճ չի ավելացվել։ Ավելացնելու համար սեղմեք + կոճակը։</string>
+    <string name="custom_input_styles_delete">Ջնջել</string>
+    <string name="custom_input_styles_delete_confirm_title">Ջնջել մուտքագրման ոճը</string>
+    <string name="custom_input_styles_delete_confirm_message">Իսկապե՞ս ցանկանում եք ջնջել այս մուտքագրման ոճը։</string>
+    <string name="custom_input_styles_duplicate_error">Լեզվի և դասավորության այս համադրությունն արդեն գոյություն ունի</string>
+    <string name="custom_input_styles_open_ime_picker">Բացել IME ընտրիչը</string>
+    <string name="custom_input_styles_open_ime_picker_description">Բացել համակարգի մուտքագրման մեթոդի ընտրիչը՝ նոր լեզուն միացնելու համար</string>
+    <string name="custom_input_styles_format">%1$s - %2$s</string>
+    <string name="custom_input_styles_add_custom_locale">Ավելացնել հատուկ locale…</string>
+    <string name="custom_input_styles_custom_locale_title">Մուտքագրեք հատուկ locale-ի կոդը</string>
+    <string name="custom_input_styles_custom_locale_label">Locale-ի կոդ</string>
+    <string name="custom_input_styles_custom_locale_hint">Մուտքագրեք locale-ի կոդ (օր.` en_US, it_IT, fr_FR)</string>
+    <string name="custom_input_styles_custom_locale_empty_error">Locale-ի կոդը չի կարող դատարկ լինել</string>
+    <string name="custom_input_styles_custom_locale_invalid_error">Locale-ի կոդի սխալ ձևաչափ։ Օգտագործեք՝ xx_XX կամ xx</string>
+    <string name="custom_input_styles_no_dictionary_warning">Այս locale-ի համար բառարան չկա։ Առաջարկներն ու ինքնուղղումը կանջատվեն։</string>
+    <string name="trackpad_gestures_title">Trackpad Gesture Suggestions</string>
+    <string name="trackpad_gestures_description">Swipe up on the trackpad to accept suggestions</string>
+    <string name="trackpad_gestures_enabled_title">Enable Trackpad Gestures</string>
+    <string name="trackpad_gestures_enabled_description">Swipe up on trackpad to accept word suggestions</string>
+    <string name="trackpad_gestures_show_tutorial">Show Tutorial</string>
+    <string name="trackpad_gestures_tutorial_description">Learn how to use trackpad gestures</string>
+    <string name="trackpad_gestures_install_shizuku">Install Shizuku</string>
+    <string name="trackpad_gestures_install_shizuku_description">Required for trackpad gesture detection</string>
+    <string name="trackpad_gestures_shizuku_url">https://github.com/RikkaApps/Shizuku/releases/</string>
+    <string name="trackpad_gestures_shizuku_connected">Shizuku Connected</string>
+    <string name="trackpad_gestures_shizuku_not_connected">Shizuku Not Connected</string>
+    <string name="trackpad_gestures_shizuku_not_authorized">App Not Authorized in Shizuku</string>
+    <string name="trackpad_swipe_threshold_title">Trackpad Swipe Sensitivity</string>
+    <string name="trackpad_swipe_threshold_description">Adjust how far you need to swipe up to accept a suggestion.</string>
+    <string name="trackpad_tutorial_title">Trackpad Gesture Suggestions</string>
+    <string name="trackpad_tutorial_welcome_title">Trackpad Gesture Suggestions</string>
+    <string name="trackpad_tutorial_welcome_description">Swipe up on your trackpad to quickly accept word suggestions without clicking!</string>
+    <string name="trackpad_tutorial_how_it_works_title">How It Works</string>
+    <string name="trackpad_tutorial_how_it_works_description">The trackpad is divided into three sections:\n\n• Left third → Accept left suggestion\n• Center third → Accept center suggestion\n• Right third → Accept right suggestion\n\nSimply swipe up in the corresponding area to insert that suggestion.</string>
+    <string name="trackpad_tutorial_shizuku_required_title">Shizuku Required</string>
+    <string name="trackpad_tutorial_shizuku_required_description">This feature requires Shizuku to access trackpad events.\n\n1. Install Shizuku from GitHub releases\n2. Enable developer options in Android settings\n3. Plug your device into a PC with ADB installed\n4. Run the command that Shizuku shows in its app\n5. Grant permission to Pastiera in Shizuku\n\nThe feature will work automatically once Shizuku is running.</string>
+    <string name="trackpad_tutorial_tips_title">Tips</string>
+    <string name="trackpad_tutorial_tips_description">• Make sure your swipe is primarily vertical\n• The gesture works best with quick, deliberate swipes\n• If other fingers are on the keyboard, gestures may not be detected (hardware palm rejection)\n• The feature can be enabled/disabled in Advanced Settings</string>
+    <string name="trackpad_tutorial_complete">Got It</string>
+    <string name="trackpad_tutorial_next">Next</string>
+    <string name="trackpad_tutorial_previous">Previous</string>
+    <string name="status_bar_button_language_state_description">Լեզու %1$s, դասավորություն %2$s</string>
+    <string name="status_bar_button_hamburger">Մենյու</string>
+    <string name="status_bar_button_hamburger_description">Արագ գործողություններ</string>
 </resources>

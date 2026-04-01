@@ -59,7 +59,7 @@ import androidx.activity.compose.BackHandler
 import it.palsoftware.pastiera.inputmethod.DeviceSpecific
 import kotlinx.coroutines.delay
 
-class MainActivity : ComponentActivity() {
+class MainActivity : LocalizedComponentActivity() {
     
     data class KeyEventInfo(
         val keyCode: Int,
@@ -179,7 +179,7 @@ class MainActivity : ComponentActivity() {
         
         // Register additional subtypes (custom input styles) when app starts
         // This ensures dynamic languages are available when IME is enabled
-        AdditionalSubtypeUtils.registerAdditionalSubtypes(this)
+        AdditionalSubtypeUtils.registerAdditionalSubtypes(applicationContext)
         
         if (shouldUseGithubUpdateChecks(this)) {
             // Schedule periodic background update checks (every 24 hours).

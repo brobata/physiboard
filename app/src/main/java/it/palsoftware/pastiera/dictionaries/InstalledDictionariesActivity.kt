@@ -3,7 +3,6 @@ package it.palsoftware.pastiera.dictionaries
 import android.content.Context
 import android.os.Bundle
 import android.util.Log
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -57,6 +56,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import it.palsoftware.pastiera.LocalizedComponentActivity
 import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.ui.theme.PastieraTheme
 import java.io.File
@@ -76,7 +76,7 @@ import it.palsoftware.pastiera.core.suggestions.DictionaryIndex
  * Activity that shows the list of serialized dictionaries bundled with the app
  * and available for download from the online repository.
  */
-class InstalledDictionariesActivity : ComponentActivity() {
+class InstalledDictionariesActivity : LocalizedComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()

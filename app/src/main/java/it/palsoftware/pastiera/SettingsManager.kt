@@ -66,6 +66,7 @@ object SettingsManager {
     private const val KEY_ACCESSIBILITY_READ_SECOND_ROW_ENABLED = "accessibility_read_second_row_enabled" // Whether TalkBack should read quick settings/variations row
     private const val KEY_ACCESSIBILITY_SUGGESTIONS_ANNOUNCEMENT_DELAY_MS = "accessibility_suggestions_announcement_delay_ms" // Delay before suggestions become accessible again while typing
     private const val KEY_GLOBAL_VARIATION_LAYOUT_OVERRIDE = "global_variation_layout_override" // Optional layout id used for variation ordering across all layouts
+    private const val KEY_APP_LANGUAGE_TAG = "app_language_tag" // BCP-47 language tag for app UI (null/blank = system)
     
     // Status bar button slot configuration keys
     private const val KEY_STATUS_BAR_SLOT_LEFT = "status_bar_slot_left"
@@ -158,6 +159,16 @@ object SettingsManager {
      */
     fun getPreferences(context: Context): SharedPreferences {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    }
+
+    fun getAppLanguageTag(context: Context): String? {
+        return getPreferences(context).getString(KEY_APP_LANGUAGE_TAG, null)?.takeIf { it.isNotBlank() }
+    }
+
+    fun setAppLanguageTag(context: Context, languageTag: String?) {
+        getPreferences(context).edit()
+            .putString(KEY_APP_LANGUAGE_TAG, languageTag?.takeIf { it.isNotBlank() })
+            .apply()
     }
 
     fun getPastierinaModeOverride(context: Context): PastierinaModeOverride {
@@ -988,7 +999,7 @@ object SettingsManager {
         }
         
         // Default: system language + x-pastiera, with fallback to English
-        val systemLanguage = context.resources.configuration.locales[0].language.lowercase()
+        val systemLanguage = context.applicationContext.resources.configuration.locales[0].language.lowercase()
         val supportedLanguages = setOf("it", "en", "es", "fr", "de", "pl")
         
         val defaultLanguage = if (systemLanguage in supportedLanguages) {

@@ -46,7 +46,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
  * Viene mostrata quando si preme un tasto non assegnato nel launcher.
  * Usa un BottomSheet che appare sopra il launcher.
  */
-class LauncherShortcutAssignmentActivity : ComponentActivity() {
+class LauncherShortcutAssignmentActivity : LocalizedComponentActivity() {
     companion object {
         const val EXTRA_KEY_CODE = "key_code"
         const val EXTRA_SKIP_LAUNCH = "skip_launch"
