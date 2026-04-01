@@ -39,6 +39,22 @@ fun hasSigningConfig(storePath: String?, storePass: String?, alias: String?, key
 fun gradleBooleanProperty(name: String): Boolean =
     providers.gradleProperty(name).orNull?.equals("true", ignoreCase = true) == true
 
+fun shouldValidateNightlySigning(taskNames: List<String>): Boolean {
+    if (taskNames.isEmpty()) {
+        return true
+    }
+    val signingTaskHints = listOf(
+        "assembleNightlyRelease",
+        "bundleNightlyRelease",
+        "packageNightlyRelease",
+        "publishNightlyRelease",
+        "installNightlyRelease"
+    )
+    return taskNames.any { task ->
+        signingTaskHints.any { hint -> task.contains(hint, ignoreCase = true) }
+    }
+}
+
 android {
     namespace = "it.palsoftware.pastiera"
     compileSdk = 36
@@ -168,6 +184,10 @@ android {
         }
         if (name.equals("preNightlyReleaseBuild", ignoreCase = true)) {
             doFirst {
+                if (!shouldValidateNightlySigning(gradle.startParameter.taskNames)) {
+                    logger.lifecycle("Skipping nightly signing validation for non-packaging task(s): ${gradle.startParameter.taskNames}")
+                    return@doFirst
+                }
                 val storePath = signingProp("nightlyStoreFile", "PASTIERA_NIGHTLY_KEYSTORE_PATH")
                 val storePass = signingProp("nightlyStorePassword", "PASTIERA_NIGHTLY_KEYSTORE_PASSWORD")
                 val alias = signingProp("nightlyKeyAlias", "PASTIERA_NIGHTLY_KEY_ALIAS")
