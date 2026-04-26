@@ -18,6 +18,7 @@ object DeviceSpecific {
     private enum class KeyboardModel {
         Q25,
         KEY2,
+        TITAN_2_ELITE_QWERTY,
         TITAN_2,
         TITAN_POCKET,
         TITAN_SLIM,
@@ -246,6 +247,14 @@ object DeviceSpecific {
                 needsEventRemapping = false
             )
         }
+        if (isTitan2EliteQwerty(fp)) {
+            return DeviceProfile(
+                family = KeyboardFamily.UNIHERTZ,
+                model = KeyboardModel.TITAN_2_ELITE_QWERTY,
+                physicalLayoutName = "titan2elite_qwerty",
+                needsEventRemapping = false
+            )
+        }
         if (isTitanFamily(fp)) {
             return DeviceProfile(
                 family = KeyboardFamily.UNIHERTZ,
@@ -279,6 +288,7 @@ object DeviceSpecific {
         return when (normalizePhysicalProfileOverride(physicalProfileOverride)) {
             "key2" -> KeyboardModel.KEY2
             "q25" -> KeyboardModel.Q25
+            "titan2elite_qwerty" -> KeyboardModel.TITAN_2_ELITE_QWERTY
             "titan2" -> KeyboardModel.TITAN_2
             else -> currentDeviceProfile().model
         }
@@ -288,7 +298,7 @@ object DeviceSpecific {
         val normalized = physicalProfileOverride?.trim()?.lowercase().orEmpty()
         return when (normalized) {
             "", "auto" -> null
-            "key2", "q25", "titan2" -> normalized
+            "key2", "q25", "titan2", "titan2elite_qwerty" -> normalized
             else -> null
         }
     }
@@ -333,6 +343,15 @@ object DeviceSpecific {
         return fp.containsAny("unihertz", "titan")
     }
 
+    private fun isTitan2EliteQwerty(fp: BuildFingerprint): Boolean {
+        // Keep detection intentionally strict to avoid stealing regular Titan 2 users.
+        return fp.containsAny(
+            "titan2elite_qwerty",
+            "titan2elite-qwerty",
+            "titan2eliteqwerty"
+        )
+    }
+
     private fun resolveTitanModel(fp: BuildFingerprint): KeyboardModel {
         return when {
             fp.containsAny("titan pocket", "titan_pocket") -> KeyboardModel.TITAN_POCKET
@@ -360,6 +379,10 @@ object DeviceSpecific {
     }
 
     fun isTitan2Device(): Boolean {
-        return currentDeviceProfile().model == KeyboardModel.TITAN_2
+        return when (currentDeviceProfile().model) {
+            KeyboardModel.TITAN_2,
+            KeyboardModel.TITAN_2_ELITE_QWERTY -> true
+            else -> false
+        }
     }
 }

@@ -66,6 +66,37 @@ class DeviceSpecificTest {
     }
 
     @Test
+    fun titan2EliteQwertyProfile_detectsOnlyWithStrictToken() {
+        DeviceSpecific.setBuildFingerprintForTests(
+            brand = "unihertz",
+            manufacturer = "unihertz",
+            model = "Titan2Elite_QWERTY",
+            device = "titan2elite_qwerty",
+            product = "titan2elite_qwerty"
+        )
+
+        assertEquals("titan2elite_qwerty", DeviceSpecific.physicalKeyboardName())
+        assertEquals("Unihertz", DeviceSpecific.keyboardName())
+        assertFalse(DeviceSpecific.needsRemapping())
+        assertTrue(DeviceSpecific.isTitan2Device())
+    }
+
+    @Test
+    fun titan2EliteLooseName_doesNotOverrideTitan2Detection() {
+        DeviceSpecific.setBuildFingerprintForTests(
+            brand = "unihertz",
+            manufacturer = "unihertz",
+            model = "Titan 2 Elite",
+            device = "titan2",
+            product = "titan2"
+        )
+
+        assertEquals("titan2", DeviceSpecific.physicalKeyboardName())
+        assertEquals("Unihertz", DeviceSpecific.keyboardName())
+        assertFalse(DeviceSpecific.needsRemapping())
+    }
+
+    @Test
     fun q25CtrlEvent_remapsToCtrlKeyAndMeta() {
         DeviceSpecific.setBuildFingerprintForTests(
             brand = "zinwa",

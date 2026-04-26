@@ -375,7 +375,7 @@ fun KeyboardLayoutSettingsScreen(
                                 expanded = showPhysicalProfileMenu,
                                 onDismissRequest = { showPhysicalProfileMenu = false }
                             ) {
-                                listOf("auto", "key2", "Q25", "titan2").forEach { profile ->
+                                listOf("auto", "key2", "Q25", "titan2", "titan2elite_qwerty").forEach { profile ->
                                     DropdownMenuItem(
                                         text = { Text(keyboardProfileLabel(context, profile)) },
                                         onClick = {
@@ -615,6 +615,7 @@ private fun keyboardProfileLabel(context: Context, profile: String): String {
         "key2" -> context.getString(R.string.keyboard_profile_option_key2)
         "Q25" -> context.getString(R.string.keyboard_profile_option_q25)
         "titan2" -> context.getString(R.string.keyboard_profile_option_titan2)
+        "titan2elite_qwerty" -> context.getString(R.string.keyboard_profile_option_titan2elite_qwerty)
         else -> context.getString(R.string.keyboard_profile_option_auto)
     }
 }
