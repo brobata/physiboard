@@ -11,6 +11,7 @@ import android.os.Bundle
 import android.os.SystemClock
 import android.provider.Settings
 import android.view.KeyEvent
+import android.view.InputDevice
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -939,6 +940,46 @@ private fun sha256Hex(input: String): String {
 
 private fun formatHexInt(value: Int): String = "0x${value.toUInt().toString(16)}"
 
+private data class KeyboardInputDeviceDebugInfo(
+    val id: Int,
+    val name: String,
+    val descriptor: String,
+    val vendorId: Int,
+    val productId: Int,
+    val keyboardType: Int,
+    val sources: Int,
+    val isExternal: Boolean,
+    val isVirtual: Boolean
+)
+
+private fun keyboardInputDevicesSnapshot(): List<KeyboardInputDeviceDebugInfo> {
+    val rows = mutableListOf<KeyboardInputDeviceDebugInfo>()
+    val deviceIds: IntArray = InputDevice.getDeviceIds()
+    for (id in deviceIds) {
+        val device: InputDevice = InputDevice.getDevice(id) ?: continue
+        val hasKeyboardSource =
+            (device.sources and InputDevice.SOURCE_KEYBOARD) == InputDevice.SOURCE_KEYBOARD
+        val hasKeyboardType = device.keyboardType != InputDevice.KEYBOARD_TYPE_NONE
+        if (!hasKeyboardSource && !hasKeyboardType) {
+            continue
+        }
+        rows.add(
+            KeyboardInputDeviceDebugInfo(
+                id = device.id,
+                name = device.name ?: "unknown",
+                descriptor = device.descriptor ?: "unknown",
+                vendorId = device.vendorId,
+                productId = device.productId,
+                keyboardType = device.keyboardType,
+                sources = device.sources,
+                isExternal = device.isExternal,
+                isVirtual = device.isVirtual
+            )
+        )
+    }
+    return rows
+}
+
 private data class SuggestionsExportRow(
     val timestampMs: Long,
     val entries: List<DebugCaptureStore.SuggestionEntry>,
@@ -987,6 +1028,8 @@ private fun buildKeyboardDebugReport(
     val suggestionsSnapshots = if (includeSuggestions) DebugCaptureStore.suggestionsSnapshot() else emptyList()
     val filteredSuggestionsRows = if (includeSuggestions) buildFilteredSuggestionRows(suggestionsSnapshots) else emptyList()
     val suggestionFilterMode = "empty_hidden,dedupe_consecutive"
+    val inputDevices = keyboardInputDevicesSnapshot()
+    val resolvedPhysicalProfile = DeviceSpecific.physicalKeyboardName()
     val settingsDump = prefs.all.entries
         .sortedBy { it.key }
         .joinToString("\n") { (key, value) -> "$key=${flattenPreferenceValue(value)}" }
@@ -1021,9 +1064,43 @@ private fun buildKeyboardDebugReport(
         appendLine("product=${Build.PRODUCT}")
         appendLine("fingerprint=${Build.FINGERPRINT}")
         appendLine("hardware=${Build.HARDWARE}")
+        appendLine("board=${Build.BOARD}")
+        appendLine("bootloader=${Build.BOOTLOADER}")
+        appendLine("build_display=${Build.DISPLAY}")
+        appendLine("build_id=${Build.ID}")
+        appendLine("build_tags=${Build.TAGS}")
+        appendLine("build_type=${Build.TYPE}")
+        appendLine("supported_abis=${Build.SUPPORTED_ABIS.joinToString(",")}")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            appendLine("sku=${Build.SKU}")
+            appendLine("odm_sku=${Build.ODM_SKU}")
+            appendLine("soc_manufacturer=${Build.SOC_MANUFACTURER}")
+        appendLine("soc_model=${Build.SOC_MODEL}")
+        } else {
+            appendLine("sku=n/a")
+            appendLine("odm_sku=n/a")
+            appendLine("soc_manufacturer=n/a")
+            appendLine("soc_model=n/a")
+        }
         appendLine("physical_keyboard_name=${DeviceSpecific.physicalKeyboardName()}")
         appendLine("keyboard_family=${DeviceSpecific.keyboardName()}")
         appendLine("profile_override=${SettingsManager.getPhysicalKeyboardProfileOverride(context)}")
+        appendLine("resolved_physical_profile=$resolvedPhysicalProfile")
+        appendLine()
+        appendLine("[input_devices]")
+        if (inputDevices.isEmpty()) {
+            appendLine("(no keyboard-like input devices found)")
+        } else {
+            inputDevices.forEach { device ->
+                appendLine(
+                    "id=${device.id} name='${device.name}' descriptor='${device.descriptor}' " +
+                        "vendor_id=${device.vendorId} product_id=${device.productId} " +
+                        "keyboard_type=${device.keyboardType} sources=${device.sources} " +
+                        "sources_hex=${formatHexInt(device.sources)} " +
+                        "external=${device.isExternal} virtual=${device.isVirtual}"
+                )
+            }
+        }
         appendLine()
         appendLine("[recording]")
         appendLine("started_at=${recordStartedAtMs?.let { formatDebugTimestamp(it) } ?: "n/a"}")
@@ -1039,6 +1116,7 @@ private fun buildKeyboardDebugReport(
         appendLine("subtype_locale=${imeContext?.subtypeLocale ?: "n/a"}")
         appendLine("resolved_layout=${imeContext?.resolvedLayout ?: "n/a"}")
         appendLine("profile_override_snapshot=${imeContext?.physicalProfileOverride ?: "n/a"}")
+        appendLine("resolved_physical_profile_snapshot=$resolvedPhysicalProfile")
         appendLine()
         appendLine("[settings_snapshot]")
         appendLine(settingsDump.ifBlank { "(empty)" })

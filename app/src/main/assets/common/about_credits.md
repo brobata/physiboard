@@ -11,7 +11,7 @@ Andrea Palumbo, Patrick Zauner
 Justin Mitchell, NeoTheFox, Oleksii Ilienko, Nikola Vukobrat, Mircea Horea IONICĂ, Nikita Tseykovets
 ---
 #### Pastiera Beta Testing Team
-Laggy Luke, Vittorio, Emmanuel, Sadako, NotTeganQuinn, DrumSyBeat
+Laggy Luke, Vittorio, Emmanuel, Sadako, NotTeganQuinn, DrumSyBeat, [Shane Craig (ShaneCraig.Tech)](https://shanecraig.tech/)
 
 #### Special Thanks
 Unihertz Titan 2 Discord, Unihertz Titan 2 FB page and all the people for the outstanding support! 
@@ -25,7 +25,4 @@ Unihertz Titan 2 Discord, Unihertz Titan 2 FB page and all the people for the ou
 #### [Buy me a Coffee](https://ko-fi.com/palsoftware/)
 ---
 **Grazie for using Pastiera! <3**
-
-
-
 

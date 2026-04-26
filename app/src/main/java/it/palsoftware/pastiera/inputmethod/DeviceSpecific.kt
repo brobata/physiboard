@@ -216,7 +216,9 @@ object DeviceSpecific {
         val manufacturer: String,
         val model: String,
         val device: String,
-        val product: String
+        val product: String,
+        val board: String,
+        val display: String
     ) {
         fun containsAny(vararg tokens: String): Boolean {
             return tokens.any { token ->
@@ -224,7 +226,9 @@ object DeviceSpecific {
                     manufacturer.contains(token) ||
                     model.contains(token) ||
                     device.contains(token) ||
-                    product.contains(token)
+                    product.contains(token) ||
+                    board.contains(token) ||
+                    display.contains(token)
             }
         }
     }
@@ -278,7 +282,9 @@ object DeviceSpecific {
             manufacturer = Build.MANUFACTURER.orEmpty().lowercase(),
             model = Build.MODEL.orEmpty().lowercase(),
             device = Build.DEVICE.orEmpty().lowercase(),
-            product = Build.PRODUCT.orEmpty().lowercase()
+            product = Build.PRODUCT.orEmpty().lowercase(),
+            board = Build.BOARD.orEmpty().lowercase(),
+            display = Build.DISPLAY.orEmpty().lowercase()
         )
     }
 
@@ -308,14 +314,18 @@ object DeviceSpecific {
         manufacturer: String,
         model: String,
         device: String,
-        product: String
+        product: String,
+        board: String = "",
+        display: String = ""
     ) {
         testBuildFingerprintOverride = BuildFingerprint(
             brand = brand.lowercase(),
             manufacturer = manufacturer.lowercase(),
             model = model.lowercase(),
             device = device.lowercase(),
-            product = product.lowercase()
+            product = product.lowercase(),
+            board = board.lowercase(),
+            display = display.lowercase()
         )
     }
 
@@ -344,12 +354,21 @@ object DeviceSpecific {
     }
 
     private fun isTitan2EliteQwerty(fp: BuildFingerprint): Boolean {
-        // Keep detection intentionally strict to avoid stealing regular Titan 2 users.
-        return fp.containsAny(
+        val strictTokenMatch = fp.containsAny(
             "titan2elite_qwerty",
             "titan2elite-qwerty",
             "titan2eliteqwerty"
         )
+        if (strictTokenMatch) {
+            return true
+        }
+
+        // Reviewer devices may expose Titan 2-like model/product, but still leak Elite traits
+        // via BOARD or DISPLAY. Use these only inside the Unihertz Titan family.
+        val looksLikeTitanFamily = fp.containsAny("unihertz", "titan")
+        val hasEliteDisplay = fp.display.contains("elite")
+        val hasEliteBoard = fp.board.contains("g72")
+        return looksLikeTitanFamily && (hasEliteDisplay || hasEliteBoard)
     }
 
     private fun resolveTitanModel(fp: BuildFingerprint): KeyboardModel {
