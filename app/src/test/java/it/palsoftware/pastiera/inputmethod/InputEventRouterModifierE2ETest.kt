@@ -327,6 +327,42 @@ class InputEventRouterModifierE2ETest {
     }
 
     @Test
+    fun altMapping_q25Profile_mapsReportedZeroAndCurrencyKeys() {
+        DeviceSpecific.setBuildFingerprintForTests(
+            brand = "zinwa",
+            manufacturer = "zinwa",
+            model = "Q25",
+            device = "Q25",
+            product = "q25"
+        )
+        rebuildAltSymControllers()
+        assertEquals("Q25", KeyMappingLoader.getDeviceName(context))
+
+        val callbacks = TestCallbacks(modifierStateController)
+        primeAltOneShot(callbacks)
+
+        val zeroResult = routeKeyDown(
+            keyCode = KeyEvent.KEYCODE_0,
+            event = keyDown(KeyEvent.KEYCODE_0),
+            callbacks = callbacks
+        )
+
+        assertTrue(zeroResult is InputEventRouter.EditableFieldRoutingResult.Consume)
+        assertEquals("0", inputConnectionRecorder.committedTexts.last())
+
+        primeAltOneShot(callbacks)
+
+        val currencyResult = routeKeyDown(
+            keyCode = KeyEvent.KEYCODE_GRAVE,
+            event = keyDown(KeyEvent.KEYCODE_GRAVE),
+            callbacks = callbacks
+        )
+
+        assertTrue(currencyResult is InputEventRouter.EditableFieldRoutingResult.Consume)
+        assertEquals("€", inputConnectionRecorder.committedTexts.last())
+    }
+
+    @Test
     fun altMapping_key2Profile_usesKey2AssetAndCommitsMappedChar() {
         DeviceSpecific.setBuildFingerprintForTests(
             brand = "blackberry",

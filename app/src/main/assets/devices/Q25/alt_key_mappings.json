@@ -22,6 +22,8 @@
     "KEYCODE_Z": "7",
     "KEYCODE_X": "8",
     "KEYCODE_C": "9",
+    "KEYCODE_0": "0",
+    "KEYCODE_GRAVE": "€",
     "KEYCODE_V": "?",
     "KEYCODE_B": "!",
     "KEYCODE_N": ",",

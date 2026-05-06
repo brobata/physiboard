@@ -62,6 +62,7 @@ object KeyMappingLoader {
         "KEYCODE_8" to KeyEvent.KEYCODE_8,
         "KEYCODE_9" to KeyEvent.KEYCODE_9,
         "KEYCODE_0" to KeyEvent.KEYCODE_0,
+        "KEYCODE_GRAVE" to KeyEvent.KEYCODE_GRAVE,
         "KEYCODE_MINUS" to KeyEvent.KEYCODE_MINUS,
         "KEYCODE_EQUALS" to KeyEvent.KEYCODE_EQUALS,
         "KEYCODE_LEFT_BRACKET" to KeyEvent.KEYCODE_LEFT_BRACKET,
