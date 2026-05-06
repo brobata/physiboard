@@ -352,6 +352,32 @@ class InputEventRouterModifierE2ETest {
     }
 
     @Test
+    fun altMapping_titan2EliteQwertyOverride_usesEliteAssetAndCommitsMappedChar() {
+        DeviceSpecific.setBuildFingerprintForTests(
+            brand = "unihertz",
+            manufacturer = "unihertz",
+            model = "Titan 2",
+            device = "titan2",
+            product = "titan2"
+        )
+        SettingsManager.setPhysicalKeyboardProfileOverride(context, "titan2elite_qwerty")
+        rebuildAltSymControllers()
+        assertEquals("titan2elite_qwerty", KeyMappingLoader.getDeviceName(context))
+
+        val callbacks = TestCallbacks(modifierStateController)
+        primeAltOneShot(callbacks)
+
+        val result = routeKeyDown(
+            keyCode = KeyEvent.KEYCODE_J,
+            event = keyDown(KeyEvent.KEYCODE_J),
+            callbacks = callbacks
+        )
+
+        assertTrue(result is InputEventRouter.EditableFieldRoutingResult.Consume)
+        assertEquals("#", inputConnectionRecorder.committedTexts.last())
+    }
+
+    @Test
     fun altMapping_unknownProfile_fallsBackToDefaultMappings() {
         DeviceSpecific.setBuildFingerprintForTests(
             brand = "unknown",

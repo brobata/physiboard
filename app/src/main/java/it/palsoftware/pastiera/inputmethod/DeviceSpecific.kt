@@ -19,6 +19,7 @@ object DeviceSpecific {
     private enum class KeyboardModel {
         Q25,
         KEY2,
+        TITAN_2_ELITE_QWERTY,
         TITAN_2,
         TITAN_POCKET,
         TITAN_SLIM,
@@ -217,7 +218,9 @@ object DeviceSpecific {
         val manufacturer: String,
         val model: String,
         val device: String,
-        val product: String
+        val product: String,
+        val board: String,
+        val display: String
     ) {
         fun containsAny(vararg tokens: String): Boolean {
             return tokens.any { token ->
@@ -225,7 +228,9 @@ object DeviceSpecific {
                     manufacturer.contains(token) ||
                     model.contains(token) ||
                     device.contains(token) ||
-                    product.contains(token)
+                    product.contains(token) ||
+                    board.contains(token) ||
+                    display.contains(token)
             }
         }
     }
@@ -245,6 +250,14 @@ object DeviceSpecific {
                 family = KeyboardFamily.BLACKBERRY,
                 model = KeyboardModel.KEY2,
                 physicalLayoutName = "key2",
+                needsEventRemapping = false
+            )
+        }
+        if (isTitan2EliteQwerty(fp)) {
+            return DeviceProfile(
+                family = KeyboardFamily.UNIHERTZ,
+                model = KeyboardModel.TITAN_2_ELITE_QWERTY,
+                physicalLayoutName = "titan2elite_qwerty",
                 needsEventRemapping = false
             )
         }
@@ -279,7 +292,9 @@ object DeviceSpecific {
             manufacturer = Build.MANUFACTURER.orEmpty().lowercase(),
             model = Build.MODEL.orEmpty().lowercase(),
             device = Build.DEVICE.orEmpty().lowercase(),
-            product = Build.PRODUCT.orEmpty().lowercase()
+            product = Build.PRODUCT.orEmpty().lowercase(),
+            board = Build.BOARD.orEmpty().lowercase(),
+            display = Build.DISPLAY.orEmpty().lowercase()
         )
     }
 
@@ -289,6 +304,7 @@ object DeviceSpecific {
         return when (normalizePhysicalProfileOverride(physicalProfileOverride)) {
             "key2" -> KeyboardModel.KEY2
             "q25" -> KeyboardModel.Q25
+            "titan2elite_qwerty" -> KeyboardModel.TITAN_2_ELITE_QWERTY
             "titan2" -> KeyboardModel.TITAN_2
             "mp01" -> KeyboardModel.MINIMAL_PHONE
             else -> currentDeviceProfile().model
@@ -299,7 +315,7 @@ object DeviceSpecific {
         val normalized = physicalProfileOverride?.trim()?.lowercase().orEmpty()
         return when (normalized) {
             "", "auto" -> null
-            "key2", "q25", "titan2", "mp01" -> normalized
+            "key2", "q25", "titan2", "titan2elite_qwerty", "mp01" -> normalized
             else -> null
         }
     }
@@ -309,14 +325,18 @@ object DeviceSpecific {
         manufacturer: String,
         model: String,
         device: String,
-        product: String
+        product: String,
+        board: String = "",
+        display: String = ""
     ) {
         testBuildFingerprintOverride = BuildFingerprint(
             brand = brand.lowercase(),
             manufacturer = manufacturer.lowercase(),
             model = model.lowercase(),
             device = device.lowercase(),
-            product = product.lowercase()
+            product = product.lowercase(),
+            board = board.lowercase(),
+            display = display.lowercase()
         )
     }
 
@@ -348,6 +368,24 @@ object DeviceSpecific {
         return fp.containsAny("unihertz", "titan")
     }
 
+    private fun isTitan2EliteQwerty(fp: BuildFingerprint): Boolean {
+        val strictTokenMatch = fp.containsAny(
+            "titan2elite_qwerty",
+            "titan2elite-qwerty",
+            "titan2eliteqwerty"
+        )
+        if (strictTokenMatch) {
+            return true
+        }
+
+        // Reviewer devices may expose Titan 2-like model/product, but still leak Elite traits
+        // via BOARD or DISPLAY. Use these only inside the Unihertz Titan family.
+        val looksLikeTitanFamily = fp.containsAny("unihertz", "titan")
+        val hasEliteDisplay = fp.display.contains("elite")
+        val hasEliteBoard = fp.board.contains("g72")
+        return looksLikeTitanFamily && (hasEliteDisplay || hasEliteBoard)
+    }
+
     private fun resolveTitanModel(fp: BuildFingerprint): KeyboardModel {
         return when {
             fp.containsAny("titan pocket", "titan_pocket") -> KeyboardModel.TITAN_POCKET
@@ -376,7 +414,11 @@ object DeviceSpecific {
     }
 
     fun isTitan2Device(): Boolean {
-        return currentDeviceProfile().model == KeyboardModel.TITAN_2
+        return when (currentDeviceProfile().model) {
+            KeyboardModel.TITAN_2,
+            KeyboardModel.TITAN_2_ELITE_QWERTY -> true
+            else -> false
+        }
     }
 
     fun isMinimalPhoneDevice(physicalProfileOverride: String? = null): Boolean {

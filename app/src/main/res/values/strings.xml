@@ -249,6 +249,7 @@
     <string name="keyboard_profile_option_key2">BlackBerry Key2</string>
     <string name="keyboard_profile_option_q25">BlackBerry Q25</string>
     <string name="keyboard_profile_option_titan2">Unihertz Titan / Titan 2</string>
+    <string name="keyboard_profile_option_titan2elite_qwerty">Titan 2 Elite (QWERTY)</string>
     <string name="keyboard_profile_option_mp01">Minimal Phone (MP01)</string>
     
     <!-- About Section -->
@@ -481,6 +482,20 @@
     <string name="event_unicode_label">Unicode: </string>
     <string name="event_output_label">Output: </string>
     <string name="event_not_available">N/A</string>
+    <string name="debug_recorder_record">Record</string>
+    <string name="debug_recorder_stop">Stop</string>
+    <string name="debug_recorder_copy">Copy</string>
+    <string name="debug_recorder_clear">Clear</string>
+    <string name="debug_recorder_view">View</string>
+    <string name="debug_recorder_share">Share</string>
+    <string name="debug_recorder_share_chooser">Share debug report</string>
+    <string name="debug_recorder_copied">Copied debug report (%1$d events)</string>
+    <string name="debug_recorder_status">Recorder: %1$s · Events: %2$d</string>
+    <string name="debug_recorder_status_recording">recording</string>
+    <string name="debug_recorder_status_stopped">stopped</string>
+    <string name="debug_recorder_started_at">Started at: </string>
+    <string name="debug_recorder_include_suggestions">incl. suggestions</string>
+    <string name="debug_report_viewer_title">Debug Report Viewer</string>
     
     <!-- Nav Mode Key Labels -->
     <string name="nav_mode_action_copy">Copy</string>

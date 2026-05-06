@@ -7,6 +7,7 @@ import android.view.inputmethod.InputConnection
 import it.palsoftware.pastiera.SettingsManager
 import it.palsoftware.pastiera.core.suggestions.CasingHelper
 import it.palsoftware.pastiera.inputmethod.AutoCapitalizeHelper
+import it.palsoftware.pastiera.inputmethod.DebugCaptureStore
 import it.palsoftware.pastiera.inputmethod.NotificationHelper
 import it.palsoftware.pastiera.inputmethod.VariationButtonHandler
 import it.palsoftware.pastiera.core.AutoSpaceTracker
@@ -143,6 +144,14 @@ object SuggestionButtonHandler {
         }
         val textToCommit = if (shouldAppendSpace) "$replacement " else replacement
         Log.d(TAG, "Suggestion inserted as '$textToCommit' (committed=$committed)")
+        if (committed) {
+            DebugCaptureStore.recordAutoCorrectionCommit(
+                before = currentWord,
+                after = replacement,
+                trigger = DebugCaptureStore.AutoCorrectionTrigger.SUGGESTION_TAP,
+                source = "UNKNOWN"
+            )
+        }
         return committed
     }
 }

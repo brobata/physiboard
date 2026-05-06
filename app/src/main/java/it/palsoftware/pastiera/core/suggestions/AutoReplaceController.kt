@@ -8,12 +8,21 @@ import java.io.File
 import java.text.Normalizer
 import java.util.Locale
 import org.json.JSONObject
+import it.palsoftware.pastiera.inputmethod.DebugCaptureStore
 
 class AutoReplaceController(
     private val repository: DictionaryRepository,
     private val suggestionEngine: SuggestionEngine,
     private val settingsProvider: () -> SuggestionSettings
 ) {
+    private fun triggerFromBoundaryChar(boundaryChar: Char?): DebugCaptureStore.AutoCorrectionTrigger {
+        return when (boundaryChar) {
+            ' ' -> DebugCaptureStore.AutoCorrectionTrigger.SPACE
+            '\n' -> DebugCaptureStore.AutoCorrectionTrigger.ENTER
+            else -> DebugCaptureStore.AutoCorrectionTrigger.OTHER
+        }
+    }
+
     // #region agent log
     private fun debugLog(hypothesisId: String, location: String, message: String, data: Map<String, Any?> = emptyMap()) {
         try {
@@ -155,8 +164,15 @@ class AutoReplaceController(
         }
 
         val settings = settingsProvider()
+        val trigger = triggerFromBoundaryChar(boundaryChar)
         if (!settings.autoReplaceOnSpaceEnter || inputConnection == null) {
             tracker.onBoundaryReached(boundaryChar, inputConnection)
+            DebugCaptureStore.recordAutoCorrectionAttempt(
+                before = tracker.currentWord,
+                trigger = trigger,
+                outcome = DebugCaptureStore.AutoCorrectionOutcome.NOT_APPLICABLE,
+                reason = if (!settings.autoReplaceOnSpaceEnter) "auto_replace_disabled" else "no_input_connection"
+            )
             return ReplaceResult(false, unicodeChar != 0)
         }
 
@@ -164,6 +180,12 @@ class AutoReplaceController(
         val textBefore = inputConnection.getTextBeforeCursor(32, 0)?.toString().orEmpty()
         if (hasTrailingHardBoundary(textBefore)) {
             tracker.onBoundaryReached(boundaryChar, inputConnection)
+            DebugCaptureStore.recordAutoCorrectionAttempt(
+                before = tracker.currentWord,
+                trigger = trigger,
+                outcome = DebugCaptureStore.AutoCorrectionOutcome.SKIPPED,
+                reason = "hard_boundary_before_cursor"
+            )
             return ReplaceResult(false, unicodeChar != 0)
         }
 
@@ -181,6 +203,12 @@ class AutoReplaceController(
         // #endregion
         if (word.isBlank()) {
             tracker.onBoundaryReached(boundaryChar, inputConnection)
+            DebugCaptureStore.recordAutoCorrectionAttempt(
+                before = word,
+                trigger = trigger,
+                outcome = DebugCaptureStore.AutoCorrectionOutcome.NOT_APPLICABLE,
+                reason = "empty_word"
+            )
             return ReplaceResult(false, unicodeChar != 0)
         }
 
@@ -228,6 +256,7 @@ class AutoReplaceController(
 
         if (shouldReplace) {
             val replacement = applyCasing(top!!.candidate, word)
+            val source = top.source.name
             // #region agent log
             val textBeforeDelete = inputConnection.getTextBeforeCursor(16, 0)?.toString().orEmpty()
             debugLog("C", "AutoReplaceController.handleBoundary:beforeDelete", "about to deleteSurroundingText", mapOf(
@@ -278,9 +307,33 @@ class AutoReplaceController(
                 AutoSpaceTracker.markAutoSpace()
             }
             val committedSuffix = if (boundaryCommitted && shouldAppendBoundary) boundaryChar.toString() else ""
+            DebugCaptureStore.recordAutoCorrectionCommit(
+                before = word,
+                after = replacement,
+                trigger = trigger,
+                source = source
+            )
             Log.d("AutoReplaceController", "Committed text '${replacement + committedSuffix}', markAutoSpace=${boundaryCommitted && boundaryChar == ' '}")
             return ReplaceResult(true, true)
         }
+
+        val skipReason = when {
+            top == null -> "no_suggestion"
+            isRejected -> "rejected_by_user"
+            isKnownWord && !(isOrthographicVariant && !isExactKnownWord) -> "known_word"
+            top.distance > settings.maxAutoReplaceDistance -> "distance_too_high"
+            lookupWord.length < minWordLength -> "word_too_short"
+            top.candidate.length > (word.length * maxLengthRatio).toInt() -> "candidate_too_long"
+            else -> "constraints_not_met"
+        }
+        DebugCaptureStore.recordAutoCorrectionAttempt(
+            before = word,
+            trigger = trigger,
+            source = top?.source?.name ?: "UNKNOWN",
+            after = top?.candidate,
+            outcome = DebugCaptureStore.AutoCorrectionOutcome.SKIPPED,
+            reason = skipReason
+        )
 
         // Clear last replacement if no replacement happened
         lastReplacement = null

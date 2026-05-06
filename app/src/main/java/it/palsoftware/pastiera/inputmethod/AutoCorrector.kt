@@ -533,6 +533,7 @@ object AutoCorrector {
             correctedWord = correctedWord,
             correctionLength = correctedWord.length
         )
+        DebugCaptureStore.recordAutoCorrectionApplied(originalWord, correctedWord)
         Log.d(TAG, "Correction recorded: '$originalWord' → '$correctedWord'")
     }
 

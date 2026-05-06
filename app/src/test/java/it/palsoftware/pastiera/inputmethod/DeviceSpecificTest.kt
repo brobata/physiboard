@@ -97,6 +97,54 @@ class DeviceSpecificTest {
     }
 
     @Test
+    fun titan2EliteQwertyProfile_detectsOnlyWithStrictToken() {
+        DeviceSpecific.setBuildFingerprintForTests(
+            brand = "unihertz",
+            manufacturer = "unihertz",
+            model = "Titan2Elite_QWERTY",
+            device = "titan2elite_qwerty",
+            product = "titan2elite_qwerty"
+        )
+
+        assertEquals("titan2elite_qwerty", DeviceSpecific.physicalKeyboardName())
+        assertEquals("Unihertz", DeviceSpecific.keyboardName())
+        assertFalse(DeviceSpecific.needsRemapping())
+        assertTrue(DeviceSpecific.isTitan2Device())
+    }
+
+    @Test
+    fun titan2EliteDetectedFromDisplayEvenWithoutStrictToken() {
+        DeviceSpecific.setBuildFingerprintForTests(
+            brand = "unihertz",
+            manufacturer = "unihertz",
+            model = "Titan 2 Elite",
+            device = "titan2",
+            product = "titan2",
+            display = "Titan 2 Elite_V02.00.00"
+        )
+
+        assertEquals("titan2elite_qwerty", DeviceSpecific.physicalKeyboardName())
+        assertEquals("Unihertz", DeviceSpecific.keyboardName())
+        assertFalse(DeviceSpecific.needsRemapping())
+    }
+
+    @Test
+    fun titan2EliteDetectedFromBoardToken() {
+        DeviceSpecific.setBuildFingerprintForTests(
+            brand = "unihertz",
+            manufacturer = "unihertz",
+            model = "Titan 2",
+            device = "titan_2",
+            product = "titan_2",
+            board = "G72BoardV1"
+        )
+
+        assertEquals("titan2elite_qwerty", DeviceSpecific.physicalKeyboardName())
+        assertEquals("Unihertz", DeviceSpecific.keyboardName())
+        assertFalse(DeviceSpecific.needsRemapping())
+    }
+
+    @Test
     fun q25CtrlEvent_remapsToCtrlKeyAndMeta() {
         DeviceSpecific.setBuildFingerprintForTests(
             brand = "zinwa",

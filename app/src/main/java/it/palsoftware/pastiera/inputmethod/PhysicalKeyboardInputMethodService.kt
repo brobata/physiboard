@@ -435,10 +435,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         val performed = ic.performEditorAction(actionId)
         if (performed) {
             suggestionController.onContextReset()
-            KeyboardEventTracker.notifyKeyEvent(
+            notifyDebugKeyEvent(
                 keyCode,
                 event,
                 "KEY_DOWN",
+                origin = "ime_service",
                 outputKeyCode = null,
                 outputKeyCodeName = "editor_action_$actionId"
             )
@@ -446,8 +447,45 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         return performed
     }
 
+    private fun notifyDebugKeyEvent(
+        keyCode: Int,
+        event: KeyEvent?,
+        action: String,
+        origin: String,
+        unicodeCharOverride: Int? = null,
+        outputKeyCode: Int? = null,
+        outputKeyCodeName: String? = null
+    ) {
+        KeyboardEventTracker.notifyKeyEvent(
+            keyCode = keyCode,
+            event = event,
+            action = action,
+            origin = origin,
+            altLatchActive = altLatchActive,
+            altOneShot = altOneShot,
+            shiftLatchActive = shiftLayerLatched,
+            ctrlLatchActive = ctrlLatchActive,
+            symPage = symPage,
+            resolvedLayout = activeKeyboardLayoutName,
+            unicodeCharOverride = unicodeCharOverride,
+            outputKeyCode = outputKeyCode,
+            outputKeyCodeName = outputKeyCodeName
+        )
+    }
+
+    private fun resolveAltMappedUnicodeForDebug(
+        keyCode: Int,
+        altActive: Boolean
+    ): Int? {
+        if (!altActive) return null
+        val mapped = altSymManager.getAltMappings()[keyCode] ?: return null
+        if (mapped.isEmpty()) return null
+        return mapped.codePointAt(0)
+    }
+
     private fun handleSuggestionsUpdated(suggestions: List<SuggestionResult>) {
         latestSuggestions = suggestions.map { it.candidate }
+        DebugCaptureStore.recordSuggestionsUpdated(suggestions)
         uiHandler.post { updateStatusBarText() }
     }
     
@@ -1463,6 +1501,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         super.onStartInput(info, restarting)
         
         currentPackageName = info?.packageName
+        updateDebugImeContextSnapshot(info)
         
         // Reset clipboard overlay when starting new input
 
@@ -1539,6 +1578,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
+        updateDebugImeContextSnapshot(info)
 
         // Register additional subtypes when IME becomes active
         // This ensures dynamic languages are loaded even if service was already created
@@ -1627,6 +1667,21 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             resetModifierStates(preserveNavMode = true)
             suggestionController.onContextReset()
         }
+    }
+
+    private fun updateDebugImeContextSnapshot(info: EditorInfo?) {
+        val imm = getSystemService(InputMethodManager::class.java)
+        val subtype = imm.currentInputMethodSubtype
+        val resolvedLayout = runCatching {
+            AdditionalSubtypeUtils.resolveActiveLayout(assets, this, subtype)
+        }.getOrNull()
+        DebugCaptureStore.updateImeContext(
+            packageName = info?.packageName ?: currentPackageName,
+            inputType = info?.inputType,
+            subtypeLocale = subtype?.locale,
+            resolvedLayout = resolvedLayout,
+            physicalProfileOverride = physicalKeyboardProfileOverride
+        )
     }
     
     override fun onWindowShown() {
@@ -2369,12 +2424,23 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             return true
         }
         
+        val altActiveNow = event?.isAltPressed == true || altLatchActive || altOneShot
+        val debugUnicodeOverride = resolveAltMappedUnicodeForDebug(
+            keyCode = keyCode,
+            altActive = altActiveNow
+        )
+
         // Continue with normal IME logic
-        KeyboardEventTracker.notifyKeyEvent(keyCode, event, "KEY_DOWN")
+        notifyDebugKeyEvent(
+            keyCode = keyCode,
+            event = event,
+            action = "KEY_DOWN",
+            origin = "ime_service",
+            unicodeCharOverride = debugUnicodeOverride
+        )
         if (!isInputViewShown && isInputViewActive) {
             ensureInputViewCreated()
         }
-        val altActiveNow = event?.isAltPressed == true || altLatchActive || altOneShot
         val ctrlActiveNow = event?.isCtrlPressed == true ||
             ctrlPressed ||
             ctrlPhysicallyPressed ||
@@ -2537,7 +2603,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         val inputConnection = currentInputConnection ?: return super.onKeyUp(keyCode, event)
         
         // Always notify the tracker (even when the event is consumed)
-        KeyboardEventTracker.notifyKeyEvent(keyCode, event, "KEY_UP")
+        notifyDebugKeyEvent(keyCode, event, "KEY_UP", origin = "ime_service")
         
         // Handle Shift release for double-tap
         if (keyCode == KeyEvent.KEYCODE_SHIFT_LEFT || keyCode == KeyEvent.KEYCODE_SHIFT_RIGHT) {
@@ -2896,6 +2962,12 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             ic.deleteSurroundingText(deleteBefore, deleteAfter)
             val textToCommit = if (shouldAppendSpace) "$replacement " else replacement
             ic.commitText(textToCommit, 1)
+            DebugCaptureStore.recordAutoCorrectionCommit(
+                before = currentWord,
+                after = replacement,
+                trigger = DebugCaptureStore.AutoCorrectionTrigger.SUGGESTION_TAP,
+                source = "UNKNOWN"
+            )
 
             if (shouldAppendSpace) {
                 it.palsoftware.pastiera.core.AutoSpaceTracker.markAutoSpace()

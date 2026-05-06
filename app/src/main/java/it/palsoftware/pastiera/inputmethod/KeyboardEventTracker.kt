@@ -16,14 +16,29 @@ object KeyboardEventTracker {
     data class KeyEventInfo(
         val keyCode: Int,
         val keyCodeName: String,
+        val origin: String,
         val action: String,
         val scanCode: Int,
+        val deviceId: Int,
+        val source: Int,
+        val flags: Int,
+        val repeatCount: Int,
+        val metaState: Int,
         val unicodeChar: Int,
+        val rawUnicodeChar: Int,
+        val effectiveUnicodeChar: Int,
         val isAltPressed: Boolean,
         val isShiftPressed: Boolean,
         val isCtrlPressed: Boolean,
+        val altLatchActive: Boolean? = null,
+        val altOneShot: Boolean? = null,
+        val shiftLatchActive: Boolean? = null,
+        val ctrlLatchActive: Boolean? = null,
+        val symPage: Int? = null,
+        val resolvedLayout: String? = null,
         val outputKeyCode: Int? = null,
-        val outputKeyCodeName: String? = null
+        val outputKeyCodeName: String? = null,
+        val eventTimeUptimeMs: Long = 0L
     )
     
     fun registerState(state: MutableState<KeyEventInfo?>) {
@@ -34,19 +49,50 @@ object KeyboardEventTracker {
         _keyEventState = null
     }
     
-    fun notifyKeyEvent(keyCode: Int, event: KeyEvent?, action: String, outputKeyCode: Int? = null, outputKeyCodeName: String? = null) {
+    fun notifyKeyEvent(
+        keyCode: Int,
+        event: KeyEvent?,
+        action: String,
+        origin: String = "unknown",
+        altLatchActive: Boolean? = null,
+        altOneShot: Boolean? = null,
+        shiftLatchActive: Boolean? = null,
+        ctrlLatchActive: Boolean? = null,
+        symPage: Int? = null,
+        resolvedLayout: String? = null,
+        outputKeyCode: Int? = null,
+        outputKeyCodeName: String? = null,
+        unicodeCharOverride: Int? = null
+    ) {
         if (event != null) {
+            val rawUnicodeChar = event.unicodeChar
+            val effectiveUnicodeChar = unicodeCharOverride ?: rawUnicodeChar
             val keyEventInfo = KeyEventInfo(
                 keyCode = keyCode,
                 keyCodeName = getKeyCodeName(keyCode),
+                origin = origin,
                 action = action,
                 scanCode = event.scanCode,
-                unicodeChar = event.unicodeChar,
+                deviceId = event.deviceId,
+                source = event.source,
+                flags = event.flags,
+                repeatCount = event.repeatCount,
+                metaState = event.metaState,
+                unicodeChar = effectiveUnicodeChar,
+                rawUnicodeChar = rawUnicodeChar,
+                effectiveUnicodeChar = effectiveUnicodeChar,
                 isAltPressed = event.isAltPressed,
                 isShiftPressed = event.isShiftPressed,
                 isCtrlPressed = event.isCtrlPressed,
+                altLatchActive = altLatchActive,
+                altOneShot = altOneShot,
+                shiftLatchActive = shiftLatchActive,
+                ctrlLatchActive = ctrlLatchActive,
+                symPage = symPage,
+                resolvedLayout = resolvedLayout,
                 outputKeyCode = outputKeyCode,
-                outputKeyCodeName = outputKeyCodeName
+                outputKeyCodeName = outputKeyCodeName,
+                eventTimeUptimeMs = event.eventTime
             )
             _keyEventState?.value = keyEventInfo
         }
@@ -102,5 +148,3 @@ object KeyboardEventTracker {
         return getKeyCodeName(keyCode)
     }
 }
-
-

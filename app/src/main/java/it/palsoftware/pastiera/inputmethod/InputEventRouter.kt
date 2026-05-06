@@ -1031,6 +1031,7 @@ class InputEventRouter(
                                 keyCode,
                                 event,
                                 "KEY_DOWN",
+                                origin = "ime_router",
                                 outputKeyCode = null,
                                 outputKeyCodeName = "expand_selection_left"
                             )
@@ -1042,6 +1043,7 @@ class InputEventRouter(
                                 keyCode,
                                 event,
                                 "KEY_DOWN",
+                                origin = "ime_router",
                                 outputKeyCode = null,
                                 outputKeyCodeName = "expand_selection_right"
                             )
@@ -1053,6 +1055,7 @@ class InputEventRouter(
                                 keyCode,
                                 event,
                                 "KEY_DOWN",
+                                origin = "ime_router",
                                 outputKeyCode = null,
                                 outputKeyCodeName = "toggle_minimal_ui"
                             )
@@ -1073,6 +1076,7 @@ class InputEventRouter(
                                     keyCode,
                                     event,
                                     "KEY_DOWN",
+                                    origin = "ime_router",
                                     outputKeyCode = null,
                                     outputKeyCodeName = ctrlMapping.value
                                 )
@@ -1103,6 +1107,7 @@ class InputEventRouter(
                             keyCode,
                             event,
                             "KEY_DOWN",
+                            origin = "ime_router",
                             outputKeyCode = mappedKeyCode,
                             outputKeyCodeName = KeyboardEventTracker.getOutputKeyCodeName(mappedKeyCode)
                         )
@@ -1147,6 +1152,7 @@ class InputEventRouter(
                         keyCode,
                         event,
                         "KEY_DOWN",
+                        origin = "ime_router",
                         outputKeyCode = null,
                         outputKeyCodeName = "delete_selection"
                     )
@@ -1157,6 +1163,7 @@ class InputEventRouter(
                         keyCode,
                         event,
                         "KEY_DOWN",
+                        origin = "ime_router",
                         outputKeyCode = null,
                         outputKeyCodeName = "delete_last_word"
                     )
