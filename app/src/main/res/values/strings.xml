@@ -242,6 +242,10 @@
     <string name="keyboard_layout_mode_title">Automatic Layout Mapping</string>
     <string name="keyboard_layout_mode_auto_description">ON: follow subtype/locale mapping defaults.</string>
     <string name="keyboard_layout_mode_manual_description">OFF: use one manually selected layout for all locales.</string>
+    <string name="alt_shift_layout_switch_title">Alt+Shift Layout Switch</string>
+    <string name="alt_shift_layout_switch_description">Cycle languages/layouts with Alt+Shift.</string>
+    <string name="toast_on_layout_switch_title">Layout Switch Toast</string>
+    <string name="toast_on_layout_switch_description">Show a toast when switching languages/layouts.</string>
     <string name="keyboard_profile_override_title">Physical Keyboard Profile</string>
     <string name="keyboard_profile_override_auto_description">Auto detect from device fingerprint (current: %1$s).</string>
     <string name="keyboard_profile_override_manual_description">Manual override for device-specific key mappings.</string>

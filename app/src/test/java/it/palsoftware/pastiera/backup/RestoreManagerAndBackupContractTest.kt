@@ -23,6 +23,18 @@ class RestoreManagerAndBackupContractTest {
     }
 
     @Test
+    fun layoutSwitchPreferences_areRecognizedForRestore() {
+        assertEquals(
+            PreferenceValueType.BOOLEAN,
+            PreferenceSchemas.expectedType("pastiera_prefs", "alt_shift_layout_switch")
+        )
+        assertEquals(
+            PreferenceValueType.BOOLEAN,
+            PreferenceSchemas.expectedType("pastiera_prefs", "toast_on_layout_switch")
+        )
+    }
+
+    @Test
     fun shouldNotifyUserDictionaryRefresh_whenUserDictionaryPrefsRestored() {
         val prefs = PreferencesRestoreSummary(
             appliedKeys = listOf("pastiera_prefs:user_dictionary_entries"),

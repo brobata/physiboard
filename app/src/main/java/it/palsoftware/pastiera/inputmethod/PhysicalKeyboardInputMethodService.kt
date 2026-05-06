@@ -2372,6 +2372,32 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             InputEventRouter.EditableFieldRoutingResult.Continue -> {}
         }
         
+        // Handle Alt+Shift for subtype cycling
+        if (
+            hasEditableField &&
+            event != null &&
+            event.repeatCount == 0 &&
+            SettingsManager.isAltShiftLayoutSwitchEnabled(this) &&
+            (((keyCode == KeyEvent.KEYCODE_SHIFT_LEFT || keyCode == KeyEvent.KEYCODE_SHIFT_RIGHT) &&
+                (event.isAltPressed || altPressed || altLatchActive || altOneShot)) ||
+                ((keyCode == KeyEvent.KEYCODE_ALT_LEFT || keyCode == KeyEvent.KEYCODE_ALT_RIGHT) &&
+                    (event.isShiftPressed || shiftPressed || shiftLayerLatched || shiftOneShot)))
+        ) {
+            modifierStateController.clearAltState(resetPressedState = true)
+            modifierStateController.clearShiftState(resetPressedState = true)
+
+            val showToast = SettingsManager.isToastOnLayoutSwitchEnabled(this)
+            SubtypeCycler.cycleToNextSubtype(
+                context = this,
+                imeServiceClass = PhysicalKeyboardInputMethodService::class.java,
+                assets = assets,
+                showToast = showToast
+            )
+
+            updateStatusBarText()
+            return true
+        }
+
         // Handle Ctrl+Space for subtype cycling
         if (
             hasEditableField &&
@@ -2404,7 +2430,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             }
 
             // Cycle to next subtype
-            if (SubtypeCycler.cycleToNextSubtype(this, PhysicalKeyboardInputMethodService::class.java, assets, showToast = true)) {
+            val showToast = SettingsManager.isToastOnLayoutSwitchEnabled(this)
+            if (SubtypeCycler.cycleToNextSubtype(this, PhysicalKeyboardInputMethodService::class.java, assets, showToast = showToast)) {
                 shouldUpdateStatusBar = true
             }
 
@@ -2413,7 +2440,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             }
             return true
         }
-        
+
         val ic = currentInputConnection
         val state = inputContextState
         val isAutoCorrectEnabled = SettingsManager.getAutoCorrectEnabled(this) && !state.shouldDisableAutoCorrect

@@ -39,6 +39,7 @@ object SettingsManager {
     private const val KEY_KEYBOARD_LAYOUT = "keyboard_layout" // "qwerty", "azerty", etc.
     private const val KEY_KEYBOARD_LAYOUT_AUTO_BY_LOCALE = "keyboard_layout_auto_by_locale" // If true, resolve layout from subtype/locale mapping
     private const val KEY_KEYBOARD_LAYOUT_LIST = "keyboard_layout_list" // JSON array of layout ids for cycling
+    private const val KEY_ALT_SHIFT_LAYOUT_SWITCH = "alt_shift_layout_switch" // Enable Alt+Shift shortcut for layout cycling
     private const val KEY_PHYSICAL_KEYBOARD_PROFILE_OVERRIDE = "physical_keyboard_profile_override" // auto | key2 | Q25 | titan2 | titan2elite_qwerty | mp01
     private const val KEY_RESTORE_SYM_PAGE = "restore_sym_page" // SYM page to restore when returning from settings
     private const val KEY_PENDING_RESTORE_SYM_PAGE = "pending_restore_sym_page" // Temporary SYM page state saved when opening settings
@@ -112,6 +113,9 @@ object SettingsManager {
     private const val DEFAULT_LONG_PRESS_MODIFIER = "alt"
     private const val DEFAULT_KEYBOARD_LAYOUT = "qwerty"
     private const val DEFAULT_KEYBOARD_LAYOUT_AUTO_BY_LOCALE = true
+    private const val DEFAULT_ALT_SHIFT_LAYOUT_SWITCH = false
+    private const val KEY_TOAST_ON_LAYOUT_SWITCH = "toast_on_layout_switch"
+    private const val DEFAULT_TOAST_ON_LAYOUT_SWITCH = true
     private const val DEFAULT_PHYSICAL_KEYBOARD_PROFILE_OVERRIDE = "auto"
     private const val DEFAULT_SYM_AUTO_CLOSE = true
     private val DEFAULT_SYM_PAGES_CONFIG = SymPagesConfig()
@@ -1592,6 +1596,44 @@ object SettingsManager {
         val normalized = normalizePhysicalKeyboardProfileOverride(profile)
         getPreferences(context).edit()
             .putString(KEY_PHYSICAL_KEYBOARD_PROFILE_OVERRIDE, normalized)
+            .apply()
+    }
+
+    /**
+     * Returns whether Alt+Shift shortcut for keyboard layout cycling is enabled.
+     */
+    fun isAltShiftLayoutSwitchEnabled(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_ALT_SHIFT_LAYOUT_SWITCH,
+            DEFAULT_ALT_SHIFT_LAYOUT_SWITCH
+        )
+    }
+
+    /**
+     * Enables/disables Alt+Shift shortcut for keyboard layout cycling.
+     */
+    fun setAltShiftLayoutSwitchEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_ALT_SHIFT_LAYOUT_SWITCH, enabled)
+            .apply()
+    }
+
+    /**
+     * Returns whether toast notification on layout switch is enabled.
+     */
+    fun isToastOnLayoutSwitchEnabled(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_TOAST_ON_LAYOUT_SWITCH,
+            DEFAULT_TOAST_ON_LAYOUT_SWITCH
+        )
+    }
+
+    /**
+     * Enables/disables toast notification on layout switch.
+     */
+    fun setToastOnLayoutSwitchEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_TOAST_ON_LAYOUT_SWITCH, enabled)
             .apply()
     }
 

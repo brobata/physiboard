@@ -64,6 +64,12 @@ fun KeyboardLayoutSettingsScreen(
     var physicalKeyboardProfileOverride by remember {
         mutableStateOf(SettingsManager.getPhysicalKeyboardProfileOverride(context))
     }
+    var altShiftLayoutSwitch by remember {
+        mutableStateOf(SettingsManager.isAltShiftLayoutSwitchEnabled(context))
+    }
+    var toastOnLayoutSwitch by remember {
+        mutableStateOf(SettingsManager.isToastOnLayoutSwitchEnabled(context))
+    }
     val detectedPhysicalProfile = remember { DeviceSpecific.physicalKeyboardName() }
     var showPhysicalProfileMenu by remember { mutableStateOf(false) }
     var selectedLayout by remember(locale, automaticLayoutMode) {
@@ -232,6 +238,8 @@ fun KeyboardLayoutSettingsScreen(
                         onClick = {
                             SettingsManager.setKeyboardLayoutAutoByLocale(context, automaticLayoutMode)
                             SettingsManager.setPhysicalKeyboardProfileOverride(context, physicalKeyboardProfileOverride)
+                            SettingsManager.setAltShiftLayoutSwitchEnabled(context, altShiftLayoutSwitch)
+                            SettingsManager.setToastOnLayoutSwitchEnabled(context, toastOnLayoutSwitch)
                             if (automaticLayoutMode) {
                                 onLayoutSelected(locale, selectedLayout)
                             } else {
@@ -386,6 +394,72 @@ fun KeyboardLayoutSettingsScreen(
                                 }
                             }
                         }
+                    }
+                }
+
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.alt_shift_layout_switch_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = stringResource(R.string.alt_shift_layout_switch_description),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = altShiftLayoutSwitch,
+                            onCheckedChange = { enabled ->
+                                altShiftLayoutSwitch = enabled
+                            }
+                        )
+                    }
+                }
+
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.toast_on_layout_switch_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = stringResource(R.string.toast_on_layout_switch_description),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = toastOnLayoutSwitch,
+                            onCheckedChange = { enabled ->
+                                toastOnLayoutSwitch = enabled
+                            }
+                        )
                     }
                 }
 
