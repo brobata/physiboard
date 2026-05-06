@@ -234,7 +234,9 @@ object PreferenceSchemas {
             "use_keyboard_proximity" to PreferenceValueType.BOOLEAN,
             "use_edit_type_ranking" to PreferenceValueType.BOOLEAN,
             "custom_input_styles" to PreferenceValueType.STRING,
-            "titan2_layout_enabled" to PreferenceValueType.BOOLEAN
+            "titan2_layout_enabled" to PreferenceValueType.BOOLEAN,
+            "alt_shift_layout_switch" to PreferenceValueType.BOOLEAN,
+            "toast_on_layout_switch" to PreferenceValueType.BOOLEAN
         ),
         dynamicKeys = listOf(
             PreferenceFileSchema.DynamicKey(

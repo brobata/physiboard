@@ -242,6 +242,40 @@ class PhysicalKeyboardInputMethodServiceDeviceBehaviorTest {
     }
 
     @Test
+    fun altShiftLayoutSwitch_consumesShortcutAndClearsModifiers_whenEnabled() {
+        val context = RuntimeEnvironment.getApplication()
+        SettingsManager.setAltShiftLayoutSwitchEnabled(context, true)
+        val t0 = 3_900L
+
+        service.onKeyDown(
+            KeyEvent.KEYCODE_ALT_LEFT,
+            keyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ALT_LEFT, t0, t0)
+        )
+        assertTrue(modifierController().altPressed)
+
+        val handled = service.onKeyDown(
+            KeyEvent.KEYCODE_SHIFT_LEFT,
+            keyEvent(
+                action = KeyEvent.ACTION_DOWN,
+                keyCode = KeyEvent.KEYCODE_SHIFT_LEFT,
+                downTime = t0,
+                eventTime = t0 + 80L,
+                metaState = KeyEvent.META_ALT_ON or KeyEvent.META_ALT_LEFT_ON
+            )
+        )
+
+        val modifier = modifierController()
+        assertTrue(handled)
+        assertFalse(modifier.altPressed)
+        assertFalse(modifier.altPhysicallyPressed)
+        assertFalse(modifier.altOneShot)
+        assertFalse(modifier.altLatchActive)
+        assertFalse(modifier.shiftPressed)
+        assertFalse(modifier.shiftOneShot)
+        assertFalse(modifier.capsLockEnabled)
+    }
+
+    @Test
     fun deviceSanity_symATogglesEmojiThenSymbols_exactMappings() {
         val t0 = 4_000L
 
