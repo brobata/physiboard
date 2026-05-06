@@ -565,6 +565,7 @@
     <string name="keyboard_profile_option_key2">BlackBerry Key2</string>
     <string name="keyboard_profile_option_q25">BlackBerry Q25</string>
     <string name="keyboard_profile_option_titan2">Unihertz Titan / Titan 2</string>
+    <string name="keyboard_profile_option_mp01">Minimal Phone (MP01)</string>
     <string name="emoji_picker_search_label">Search</string>
     <string name="emoji_picker_search_placeholder">Search emoji...</string>
     <string name="emoji_picker_no_results">No emoji found</string>

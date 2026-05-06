@@ -88,6 +88,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     // Keycode for the SYM key
     private val KEYCODE_SYM = 63
 
+    // Minimal Phone (MP01) custom hardware keycodes
+    private val KEYCODE_EM = 666  // Emoji key
+    private val KEYCODE_MIC = 667 // Mic / speech-to-text key
+
     // Single instance to show toasts without overlapping
     private var lastLayoutToastText: String? = null
     private var lastLayoutToastTime: Long = 0
@@ -273,6 +277,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             keyCode == KeyEvent.KEYCODE_ALT_LEFT ||
             keyCode == KeyEvent.KEYCODE_ALT_RIGHT ||
             keyCode == KEYCODE_SYM
+    }
+
+    private fun isMinimalPhoneHardwareActive(): Boolean {
+        return DeviceSpecific.isMinimalPhoneDevice(physicalKeyboardProfileOverride)
     }
     
     /**
@@ -2203,6 +2211,37 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         if (hasEditableField && keyCode == KEYCODE_SYM && event?.repeatCount == 0) {
             symTogglePendingOnKeyUp = true
             symChordUsedSinceKeyDown = false
+        }
+
+        // Minimal Phone dedicated keys (skip when Alt is active in any form so alt mappings can fire)
+        // Gate this behavior to Minimal Phone devices only.
+        val altActiveForDedicatedKeys = event?.isAltPressed == true || altLatchActive || altOneShot
+        if (
+            hasEditableField &&
+            isMinimalPhoneHardwareActive() &&
+            keyCode == KEYCODE_EM &&
+            event?.repeatCount == 0 &&
+            !altActiveForDedicatedKeys
+        ) {
+            if (symPage == 4) {
+                symLayoutController.closeSymPage()
+                updateStatusBarText()
+            } else {
+                ensureInputViewCreated()
+                symLayoutController.openEmojiPickerPage()
+                updateStatusBarText()
+            }
+            return true
+        }
+        if (
+            hasEditableField &&
+            isMinimalPhoneHardwareActive() &&
+            keyCode == KEYCODE_MIC &&
+            event?.repeatCount == 0 &&
+            !altActiveForDedicatedKeys
+        ) {
+            startSpeechRecognition()
+            return true
         }
 
         if (
