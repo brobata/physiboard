@@ -28,6 +28,19 @@ class AutoReplaceControllerLogicTest {
         val split4 = AutoReplaceController.splitApostropheWord("l’amico")
         assertNotNull("l’amico sollte gesplittet werden", split4)
         assertEquals("l'", split4!!.prefix)
+
+        val split5 = AutoReplaceController.splitApostropheWord("dell'amico")
+        assertNotNull("dell'amico sollte gesplittet werden", split5)
+        assertEquals("dell'", split5!!.prefix)
+        assertEquals("amico", split5.root)
+
+        val split6 = AutoReplaceController.splitApostropheWord("nell'amico")
+        assertNotNull("nell'amico sollte gesplittet werden", split6)
+        assertEquals("nell'", split6!!.prefix)
+        assertEquals("amico", split6.root)
+
+        val split7 = AutoReplaceController.splitApostropheWord("rock'nroll")
+        assertNull("Beliebige längere Präfixe sollten nicht als Elision behandelt werden", split7)
     }
 
     @Test

@@ -277,10 +277,23 @@ class SuggestionEngine(
         val prefixRaw = prefix.dropLast(1) // remove apostrophe
 
         val isPrefixOk = prefixRaw.isNotEmpty() &&
-                prefixRaw.length <= 3 &&
+                isSupportedApostrophePrefix(prefixRaw) &&
                 prefixRaw.all { it.isLetter() }
         val isRootOk = root.length >= 3 && root.all { it.isLetter() }
         return if (isPrefixOk && isRootOk) ApostropheSplit(prefix, root) else null
+    }
+
+    private fun isSupportedApostrophePrefix(prefix: String): Boolean {
+        if (prefix.length <= 3) return true
+        return prefix.lowercase(Locale.ROOT) in setOf(
+            "dall",
+            "dell",
+            "nell",
+            "sull",
+            "coll",
+            "quell",
+            "quest"
+        )
     }
 
     fun suggest(

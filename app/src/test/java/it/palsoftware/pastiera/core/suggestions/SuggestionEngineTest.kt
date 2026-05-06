@@ -152,6 +152,15 @@ class SuggestionEngineTest {
     }
 
     @Test
+    fun testLongItalianElisionRecompose() {
+        fakeRepo.isReady = true
+        fakeRepo.addTestEntry("amico", 120)
+
+        val results = engine.suggest("dell'amivo")
+        assertEquals("dell'amico", results.firstOrNull()?.candidate)
+    }
+
+    @Test
     fun testProperNameScenario_LorealVsLoral() {
         fakeRepo.isReady = true
         fakeRepo.addTestEntry("L'Oréal", 120)
