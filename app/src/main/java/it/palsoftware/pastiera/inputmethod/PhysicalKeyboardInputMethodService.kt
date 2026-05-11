@@ -787,7 +787,14 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             else -> false
         }
     }
-    
+
+    private fun isShortcutKey(keyCode: Int): Boolean =
+        isAlphabeticKey(keyCode) ||
+                keyCode == KeyEvent.KEYCODE_ENTER ||
+                keyCode == KeyEvent.KEYCODE_DEL ||
+                keyCode == KeyEvent.KEYCODE_SPACE
+
+
     override fun onCreate() {
         super.onCreate()
         prefs = getSharedPreferences("pastiera_prefs", Context.MODE_PRIVATE)
@@ -2331,7 +2338,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 event = event,
                 ctrlKeyMap = ctrlKeyMap,
                 callbacks = InputEventRouter.NoEditableFieldCallbacks(
-                    isAlphabeticKey = { code -> isAlphabeticKey(code) },
+                    isShortcutKey = { code -> isShortcutKey(code) },
                     isLauncherPackage = { pkg -> launcherShortcutController.isLauncher(pkg) },
                     handleLauncherShortcut = { key -> launcherShortcutController.handleLauncherShortcut(key) },
                     handlePowerShortcut = { key -> launcherShortcutController.handlePowerShortcut(key) },
@@ -2610,7 +2617,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 event = event,
                 ctrlKeyMap = ctrlKeyMap,
                 callbacks = InputEventRouter.NoEditableFieldCallbacks(
-                    isAlphabeticKey = { code -> isAlphabeticKey(code) },
+                    isShortcutKey = { code -> isShortcutKey(code) },
                     isLauncherPackage = { pkg -> launcherShortcutController.isLauncher(pkg) },
                     handleLauncherShortcut = { key -> launcherShortcutController.handleLauncherShortcut(key) },
                     handlePowerShortcut = { key -> launcherShortcutController.handlePowerShortcut(key) },

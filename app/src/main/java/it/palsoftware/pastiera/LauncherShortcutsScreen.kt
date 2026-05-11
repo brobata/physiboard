@@ -172,8 +172,8 @@ fun LauncherShortcutsScreen(
         // Griglia QWERTY con larghezza fissa (come SYM layers)
         val qwertyRows = listOf(
             listOf("Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"),
-            listOf("A", "S", "D", "F", "G", "H", "J", "K", "L"),
-            listOf("Z", "X", "C", "V", "B", "N", "M")
+            listOf("A", "S", "D", "F", "G", "H", "J", "K", "L", "⌫"),
+            listOf("Z", "X", "C", "V","␣", "B", "N", "M", "⏎")
         )
         
         // Funzione helper per ottenere l'icona dell'app
@@ -192,7 +192,7 @@ fun LauncherShortcutsScreen(
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = 8.dp)
                 .onGloballyPositioned { coordinates ->
                     val position = coordinates.positionInRoot()
                     containerPosition = position
@@ -201,7 +201,7 @@ fun LauncherShortcutsScreen(
             val density = LocalDensity.current
             // Calcola la larghezza fissa per ogni tasto (come nella visuale SYM)
             val maxKeysInRow = qwertyRows.maxOf { it.size }
-            val keySpacing = 8.dp
+            val keySpacing = 4.dp
             val totalSpacing = keySpacing * (maxKeysInRow - 1)
             val availableWidth = maxWidth - totalSpacing
             val fixedKeyWidth = availableWidth / maxKeysInRow
@@ -209,7 +209,7 @@ fun LauncherShortcutsScreen(
             
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(keySpacing)
             ) {
                 qwertyRows.forEachIndexed { rowIndex, row ->
                     // Calcola lo spazio necessario per centrare la riga
@@ -255,6 +255,9 @@ fun LauncherShortcutsScreen(
                                 "B" -> KeyEvent.KEYCODE_B
                                 "N" -> KeyEvent.KEYCODE_N
                                 "M" -> KeyEvent.KEYCODE_M
+                                "⌫" -> KeyEvent.KEYCODE_DEL
+                                "␣" -> KeyEvent.KEYCODE_SPACE
+                                "⏎" -> KeyEvent.KEYCODE_ENTER
                                 else -> null
                             }
                             
@@ -477,7 +480,7 @@ fun LauncherShortcutsScreen(
                                                 // Mostra la lettera del tasto
                                                 Text(
                                                     text = keyName,
-                                                    style = MaterialTheme.typography.titleLarge,
+                                                    style = MaterialTheme.typography.bodyLarge,
                                                     fontWeight = FontWeight.Bold,
                                                     color = if (hasApp) {
                                                         MaterialTheme.colorScheme.onPrimaryContainer
@@ -500,12 +503,11 @@ fun LauncherShortcutsScreen(
                 }
             }
             
-            // Trash icon positioned absolutely: right aligned, positioned lower
-            // Calculate horizontal position: align right with same padding as keyboard (16.dp), shifted left a bit
-            val keyboardPadding = 16.dp
-            val trashX = maxWidth - keyboardPadding - keySize - 9.dp
-            // Calculate vertical position: start of third row (moved down half key from previous position)
-            val trashY = keySize * 2 + keySpacing * 2
+            // Trash icon positioned absolutely: center aligned, positioned under keys
+            val trashX = (maxWidth - keySize) / 2
+            // Calculate vertical position: moved down third row
+            val rowsCount = 3
+            val trashY = keySize * rowsCount + keySpacing * rowsCount
             
             Box(
                 modifier = Modifier.fillMaxSize()
@@ -520,7 +522,7 @@ fun LauncherShortcutsScreen(
                         pos.y <= rect.bottom
                     } ?: false
                 } ?: false
-                
+
                 Surface(
                     modifier = Modifier
                         .width(keySize)
