@@ -362,7 +362,7 @@
     <string name="tutorial_page_enable_title">Включить Pastiera</string>
     <string name="tutorial_page_enable_description">Для начала вам нужно включить Pastiera как метод ввода в настройках Android. Нажмите кнопку ниже, чтобы открыть настройки.</string>
     <string name="tutorial_page_select_title">Выбрать Pastiera</string>
-    <string name="tutorial_page_select_description">Чтобы использовать Pastiera, выберите его среди методов ввода. Выберите между полнофункциональным интерфейсом с включённым переключателем "Использовать экранную клавиатуру" или минималистичным интерфейсом "Pastierina" с выключенным переключателем.</string>
+    <string name="tutorial_page_select_description">Чтобы использовать Pastiera, выберите его среди методов ввода. На следующем шаге можно выбрать виртуальную клавиатуру или режим аппаратной клавиатуры.</string>
     <string name="tutorial_page_led_title">Светодиодный индикатор</string>
     <string name="tutorial_page_led_description">Чтобы максимально эффективно использовать Pastiera, настройте клавишу FN на использование CTRL в системных настройках Android. На панели метода ввода отображаются четыре светодиода: они загораются синим цветом, когда модификатор активен, и оранжевым, когда он заблокирован. Светодиод раскладки SYM горит синим на странице эмодзи и оранжевым на странице символов.</string>
     <string name="tutorial_page_nav_mode_title">Режим навигации</string>
@@ -576,4 +576,16 @@
     <string name="event_keycode_label">KeyCode: </string>
     <string name="event_scancode_label">ScanCode: </string>
     <string name="status_bar_button_language_state_description">Язык %1$s, раскладка %2$s</string>
+    <string name="tutorial_page_software_keyboard_title">Режим клавиатуры</string>
+    <string name="tutorial_page_software_keyboard_description">Выберите, как Pastiera должна работать на этом устройстве.
+
+• Авто: режим аппаратной клавиатуры на известных PKB-устройствах; виртуальная клавиатура на Pixel, Samsung и большинстве сенсорных устройств.
+• Всегда виртуальная клавиатура: всегда показывает полную экранную клавиатуру.
+• Всегда аппаратная клавиатура: использует компактную поверхность для аппаратной клавиатуры и не принуждает полную экранную клавиатуру.</string>
+    <string name="software_keyboard_mode_title">Режим клавиатуры</string>
+    <string name="software_keyboard_mode_description">Независимо от Pastierina. Управляет аппаратной или виртуальной клавиатурой.</string>
+    <string name="software_keyboard_mode_auto_current">Авто (сейчас: %1$s)</string>
+    <string name="software_keyboard_mode_always_virtual">Всегда виртуальная клавиатура</string>
+    <string name="software_keyboard_mode_always_hardware">Всегда аппаратная клавиатура</string>
+    <string name="software_keyboard_mode_auto_short">Авто (PKB: аппаратная, иначе виртуальная)</string>
 </resources>

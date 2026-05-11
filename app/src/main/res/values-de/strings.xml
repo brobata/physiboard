@@ -323,7 +323,7 @@
     <string name="tutorial_page_enable_title">Pastiera aktivieren</string>
     <string name="tutorial_page_enable_description">Um zu beginnen, müssen Sie Pastiera als Eingabemethode in den Android-Einstellungen aktivieren. Tippen Sie auf die Schaltfläche unten, um die Einstellungen zu öffnen.</string>
     <string name="tutorial_page_select_title">Pastiera auswählen</string>
-    <string name="tutorial_page_select_description">Um Pastiera zu verwenden, wähle sie unter den Eingabemethoden aus. Du kannst die vollständige IME-Oberfläche mit dem Schalter "Use on-screen keyboard" auf ON oder die minimale "Pastierina"-UI mit dem Schalter auf OFF nutzen.</string>
+    <string name="tutorial_page_select_description">Um Pastiera zu verwenden, wähle sie unter den Eingabemethoden aus. Im nächsten Schritt legst du fest, ob Pastiera eine virtuelle Tastatur oder den Hardware-Tastaturmodus verwenden soll.</string>
     <string name="tutorial_page_led_title">LED-Anzeige</string>
     <string name="tutorial_page_led_description">Um Pastiera optimal zu nutzen, stelle in den Systemeinstellungen die Fn-Taste auf Ctrl um. Die IME-Leiste zeigt vier LEDs: Sie leuchten blau, wenn der Modifikator als One-Shot aktiv ist, und orange, wenn er gelockt ist. Die SYM-Layout-LED ist blau auf der Emoji-Seite und orange auf der Symbols-Seite.</string>
     <string name="tutorial_page_nav_mode_title">Nav-Modus</string>
@@ -580,4 +580,16 @@
     <string name="status_bar_button_language_state_description">Sprache %1$s, Layout %2$s</string>
     <string name="status_bar_button_hamburger">Menü</string>
     <string name="status_bar_button_hamburger_description">Schnellaktionen</string>
+    <string name="tutorial_page_software_keyboard_title">Tastaturmodus</string>
+    <string name="tutorial_page_software_keyboard_description">Wähle, wie Pastiera auf diesem Gerät arbeiten soll.
+
+• Auto: Hardware-Tastaturmodus auf bekannten PKB-Geräten; virtuelle Tastatur auf Pixel, Samsung und den meisten Touch-Geräten.
+• Immer virtuelle Tastatur: zeigt immer die vollständige Bildschirmtastatur.
+• Immer Hardware-Tastatur: nutzt die kompakte Hardware-Tastatur-Oberfläche und erzwingt keine vollständige Bildschirmtastatur.</string>
+    <string name="software_keyboard_mode_title">Tastaturmodus</string>
+    <string name="software_keyboard_mode_description">Unabhängig von Pastierina. Steuert Hardware- vs. virtuelle Tastatur.</string>
+    <string name="software_keyboard_mode_auto_current">Auto (aktuell: %1$s)</string>
+    <string name="software_keyboard_mode_always_virtual">Immer virtuelle Tastatur</string>
+    <string name="software_keyboard_mode_always_hardware">Immer Hardware-Tastatur</string>
+    <string name="software_keyboard_mode_auto_short">Auto (PKB: Hardware, sonst virtuell)</string>
 </resources>

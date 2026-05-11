@@ -303,7 +303,7 @@
     <string name="tutorial_page_enable_title">Activer Pastiera</string>
     <string name="tutorial_page_enable_description">Pour commencer, vous devez activer Pastiera comme méthode de saisie dans les Paramètres Android. Appuyez sur le bouton ci-dessous pour ouvrir les paramètres.</string>
     <string name="tutorial_page_select_title">Sélectionner Pastiera</string>
-    <string name="tutorial_page_select_description">Pour utiliser Pastiera, sélectionnez-la parmi les méthodes de saisie. Choisissez l’interface IME complète avec le commutateur "Use on-screen keyboard" sur ON ou l’interface minimale "Pastierina" avec le commutateur sur OFF.</string>
+    <string name="tutorial_page_select_description">Pour utiliser Pastiera, sélectionnez-la parmi les méthodes de saisie. L’étape suivante permet de choisir entre clavier virtuel et mode clavier matériel.</string>
     <string name="tutorial_page_led_title">Indicateur LED</string>
     <string name="tutorial_page_led_description">Pour tirer le meilleur parti de Pastiera, définissez la touche Fn comme Ctrl dans les paramètres système. La barre IME affiche quatre LED: elles deviennent bleues quand le modificateur est actif one-shot et orangées quand il est verrouillé. La LED du layout SYM est bleue sur la page emoji et orange sur la page symbols.</string>
     <string name="tutorial_page_nav_mode_title">Mode Nav</string>
@@ -576,4 +576,16 @@
     <string name="status_bar_button_language_state_description">Langue %1$s, disposition %2$s</string>
     <string name="status_bar_button_hamburger">Menu</string>
     <string name="status_bar_button_hamburger_description">Actions rapides</string>
+    <string name="tutorial_page_software_keyboard_title">Mode clavier</string>
+    <string name="tutorial_page_software_keyboard_description">Choisissez le comportement de Pastiera sur cet appareil.
+
+• Auto : mode clavier matériel sur les appareils PKB connus ; clavier virtuel sur Pixel, Samsung et la plupart des appareils tactiles.
+• Toujours clavier virtuel : affiche toujours le clavier complet à l’écran.
+• Toujours clavier matériel : utilise la surface compacte pour clavier matériel et ne force pas le clavier complet à l’écran.</string>
+    <string name="software_keyboard_mode_title">Mode clavier</string>
+    <string name="software_keyboard_mode_description">Indépendant de Pastierina. Contrôle clavier matériel vs virtuel.</string>
+    <string name="software_keyboard_mode_auto_current">Auto (actuel : %1$s)</string>
+    <string name="software_keyboard_mode_always_virtual">Toujours clavier virtuel</string>
+    <string name="software_keyboard_mode_always_hardware">Toujours clavier matériel</string>
+    <string name="software_keyboard_mode_auto_short">Auto (PKB : matériel, sinon virtuel)</string>
 </resources>

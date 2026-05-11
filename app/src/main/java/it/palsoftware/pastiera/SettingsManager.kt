@@ -62,6 +62,7 @@ object SettingsManager {
     private const val KEY_BACKSPACE_AT_START_DELETE = "backspace_at_start_delete" // Backspace at line start performs forward delete
     private const val KEY_PASTIERINA_MODE_OVERRIDE = "pastierina_mode_override" // follow_system | force_minimal | force_full
     private const val KEY_PASTIERINA_MODE_ACTIVE = "pastierina_mode_active" // Current effective state
+    private const val KEY_SOFTWARE_KEYBOARD_MODE = "software_keyboard_mode" // auto | force_hardware | force_virtual
     private const val KEY_TITAN2_LAYOUT_ENABLED = "titan2_layout_enabled" // Align OSK with Titan 2 physical layout
     private const val KEY_ACCESSIBILITY_LIVE_ANNOUNCEMENTS_ENABLED = "accessibility_live_announcements_enabled" // Whether status bar accessibility live announcements are enabled
     private const val KEY_ACCESSIBILITY_READ_SECOND_ROW_ENABLED = "accessibility_read_second_row_enabled" // Whether TalkBack should read quick settings/variations row
@@ -158,6 +159,12 @@ object SettingsManager {
         FORCE_FULL("force_full")
     }
 
+    enum class SoftwareKeyboardMode(val storageValue: String) {
+        AUTO("auto"),
+        FORCE_HARDWARE("force_hardware"),
+        FORCE_VIRTUAL("force_virtual")
+    }
+
     /**
      * Returns the SharedPreferences instance for Pastiera.
      */
@@ -198,6 +205,29 @@ object SettingsManager {
         getPreferences(context).edit()
             .putBoolean(KEY_PASTIERINA_MODE_ACTIVE, isActive)
             .apply()
+    }
+
+    fun getSoftwareKeyboardMode(context: Context): SoftwareKeyboardMode {
+        val value = getPreferences(context).getString(
+            KEY_SOFTWARE_KEYBOARD_MODE,
+            SoftwareKeyboardMode.AUTO.storageValue
+        )
+        return SoftwareKeyboardMode.values().firstOrNull { it.storageValue == value }
+            ?: SoftwareKeyboardMode.AUTO
+    }
+
+    fun setSoftwareKeyboardMode(context: Context, mode: SoftwareKeyboardMode) {
+        getPreferences(context).edit()
+            .putString(KEY_SOFTWARE_KEYBOARD_MODE, mode.storageValue)
+            .apply()
+    }
+
+    fun resolveEffectiveSoftwareKeyboardMode(context: Context): SoftwareKeyboardMode {
+        val configured = getSoftwareKeyboardMode(context)
+        if (configured != SoftwareKeyboardMode.AUTO) {
+            return configured
+        }
+        return it.palsoftware.pastiera.inputmethod.SoftwareKeyboardAutoDetector.resolve(context)
     }
 
     fun isTitan2LayoutEnabled(context: Context): Boolean {

@@ -351,7 +351,7 @@
     <string name="tutorial_page_enable_title">Увімкнути Pastiera</string>
     <string name="tutorial_page_enable_description">Для початку потрібно увімкнути Pastiera як метод введення в налаштуваннях Android. Натисніть кнопку нижче щоб відкрити налаштування.</string>
     <string name="tutorial_page_select_title">Обрати Pastiera</string>
-    <string name="tutorial_page_select_description">Щоб використовувати Pastiera, оберіть її серед методів введення. Виберіть повний IME UI з перемикачем \"Екранна клавіатура\" або мінімальний \"Pastierina\" UI з вимкненим перемикачем.</string>
+    <string name="tutorial_page_select_description">Щоб використовувати Pastiera, оберіть її серед методів введення. На наступному кроці можна вибрати віртуальну клавіатуру або режим апаратної клавіатури.</string>
     <string name="tutorial_page_led_title">Індикатори</string>
     <string name="tutorial_page_led_description">Щоб отримати максимум від Pastiera, встановіть клавішу Fn як Ctrl у системних налаштуваннях. Панель IME показує чотири індикатори: вони стають синіми, коли модифікатор активний одноразово, і помаранчевими, коли заблоковано. Індикатор SYM синій на сторінці емодзі і помаранчевий на сторінці символів.</string>
     <string name="tutorial_page_nav_mode_title">Режим навігації</string>
@@ -575,4 +575,16 @@
     <string name="status_bar_button_symbols">Symbols</string>
     <string name="status_bar_button_symbols_description">Symbols keyboard</string>
     <string name="status_bar_buttons_reset">Reset</string>
+    <string name="tutorial_page_software_keyboard_title">Режим клавіатури</string>
+    <string name="tutorial_page_software_keyboard_description">Виберіть, як Pastiera має працювати на цьому пристрої.
+
+• Авто: режим апаратної клавіатури на відомих PKB-пристроях; віртуальна клавіатура на Pixel, Samsung і більшості сенсорних пристроїв.
+• Завжди віртуальна клавіатура: завжди показує повну екранну клавіатуру.
+• Завжди апаратна клавіатура: використовує компактну поверхню для апаратної клавіатури й не примушує повну екранну клавіатуру.</string>
+    <string name="software_keyboard_mode_title">Режим клавіатури</string>
+    <string name="software_keyboard_mode_description">Незалежно від Pastierina. Керує апаратною або віртуальною клавіатурою.</string>
+    <string name="software_keyboard_mode_auto_current">Авто (зараз: %1$s)</string>
+    <string name="software_keyboard_mode_always_virtual">Завжди віртуальна клавіатура</string>
+    <string name="software_keyboard_mode_always_hardware">Завжди апаратна клавіатура</string>
+    <string name="software_keyboard_mode_auto_short">Авто (PKB: апаратна, інакше віртуальна)</string>
 </resources>

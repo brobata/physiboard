@@ -32,6 +32,10 @@ class RestoreManagerAndBackupContractTest {
             PreferenceValueType.BOOLEAN,
             PreferenceSchemas.expectedType("pastiera_prefs", "toast_on_layout_switch")
         )
+        assertEquals(
+            PreferenceValueType.STRING,
+            PreferenceSchemas.expectedType("pastiera_prefs", "software_keyboard_mode")
+        )
     }
 
     @Test

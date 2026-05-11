@@ -26,3 +26,9 @@ Unihertz Titan 2 Discord, Unihertz Titan 2 FB page and all the people for the ou
 ---
 **Grazie for using Pastiera! <3**
 
+---
+## Open Source Notices
+#### Android Open Source Project LatinIME
+Pastiera's full virtual keyboard mode uses AOSP LatinIME as a reference for keyboard geometry and includes AOSP-derived keyboard visual assets.
+
+License: Apache License, Version 2.0. Source: [platform/packages/inputmethods/LatinIME](https://android.googlesource.com/platform/packages/inputmethods/LatinIME) at commit `127336e9f29d69607eab55982324b210279ae8c5`.

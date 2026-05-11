@@ -43,7 +43,28 @@ object LayoutFileStore {
         "KEYCODE_V" to KeyEvent.KEYCODE_V,
         "KEYCODE_B" to KeyEvent.KEYCODE_B,
         "KEYCODE_N" to KeyEvent.KEYCODE_N,
-        "KEYCODE_M" to KeyEvent.KEYCODE_M
+        "KEYCODE_M" to KeyEvent.KEYCODE_M,
+        "KEYCODE_1" to KeyEvent.KEYCODE_1,
+        "KEYCODE_2" to KeyEvent.KEYCODE_2,
+        "KEYCODE_3" to KeyEvent.KEYCODE_3,
+        "KEYCODE_4" to KeyEvent.KEYCODE_4,
+        "KEYCODE_5" to KeyEvent.KEYCODE_5,
+        "KEYCODE_6" to KeyEvent.KEYCODE_6,
+        "KEYCODE_7" to KeyEvent.KEYCODE_7,
+        "KEYCODE_8" to KeyEvent.KEYCODE_8,
+        "KEYCODE_9" to KeyEvent.KEYCODE_9,
+        "KEYCODE_0" to KeyEvent.KEYCODE_0,
+        "KEYCODE_GRAVE" to KeyEvent.KEYCODE_GRAVE,
+        "KEYCODE_MINUS" to KeyEvent.KEYCODE_MINUS,
+        "KEYCODE_EQUALS" to KeyEvent.KEYCODE_EQUALS,
+        "KEYCODE_LEFT_BRACKET" to KeyEvent.KEYCODE_LEFT_BRACKET,
+        "KEYCODE_RIGHT_BRACKET" to KeyEvent.KEYCODE_RIGHT_BRACKET,
+        "KEYCODE_BACKSLASH" to KeyEvent.KEYCODE_BACKSLASH,
+        "KEYCODE_SEMICOLON" to KeyEvent.KEYCODE_SEMICOLON,
+        "KEYCODE_APOSTROPHE" to KeyEvent.KEYCODE_APOSTROPHE,
+        "KEYCODE_COMMA" to KeyEvent.KEYCODE_COMMA,
+        "KEYCODE_PERIOD" to KeyEvent.KEYCODE_PERIOD,
+        "KEYCODE_SLASH" to KeyEvent.KEYCODE_SLASH
     )
     private val keyboardLayoutKeyCodeToName = keyboardLayoutNameToKeyCode.entries.associate { (name, code) ->
         code to name

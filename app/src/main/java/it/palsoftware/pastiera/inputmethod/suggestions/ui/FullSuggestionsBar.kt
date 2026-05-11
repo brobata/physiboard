@@ -10,6 +10,7 @@ import android.os.Looper
 import android.text.TextUtils
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.HapticFeedbackConstants
 import android.view.View
 import android.view.ViewGroup
 import android.graphics.drawable.StateListDrawable
@@ -162,7 +163,7 @@ class FullSuggestionsBar(
         if (menu.isVisible()) {
             menu.hide()
         } else {
-            callbacks.onHapticFeedback?.invoke()
+            hamburgerButton?.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
             menu.show(callbacks) {
                 menu.hide()
             }

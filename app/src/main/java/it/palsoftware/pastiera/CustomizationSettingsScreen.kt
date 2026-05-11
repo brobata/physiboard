@@ -32,6 +32,7 @@ import it.palsoftware.pastiera.R
 /**
  * Customization settings screen.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomizationSettingsScreen(
     modifier: Modifier = Modifier,
@@ -42,6 +43,10 @@ fun CustomizationSettingsScreen(
     var pastierinaModeEnabled by remember {
         mutableStateOf(SettingsManager.getPastierinaModeActive(context))
     }
+    var softwareKeyboardMode by remember {
+        mutableStateOf(SettingsManager.getSoftwareKeyboardMode(context))
+    }
+    var softwareKeyboardModeExpanded by remember { mutableStateOf(false) }
     var navigationDirection by remember { mutableStateOf(CustomizationNavigationDirection.Push) }
     val navigationStack = remember {
         mutableStateListOf<CustomizationDestination>(CustomizationDestination.Main)
@@ -54,6 +59,9 @@ fun CustomizationSettingsScreen(
         val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
             if (key == "pastierina_mode_active") {
                 pastierinaModeEnabled = SettingsManager.getPastierinaModeActive(context)
+            }
+            if (key == "software_keyboard_mode") {
+                softwareKeyboardMode = SettingsManager.getSoftwareKeyboardMode(context)
             }
         }
         prefs.registerOnSharedPreferenceChangeListener(listener)
@@ -361,6 +369,88 @@ fun CustomizationSettingsScreen(
                                         SettingsManager.setPastierinaModeOverride(context, override)
                                     }
                                 )
+                            }
+                        }
+
+                        val effectiveSoftwareMode = SettingsManager.resolveEffectiveSoftwareKeyboardMode(context)
+                        val modeLabel = when (softwareKeyboardMode) {
+                            SettingsManager.SoftwareKeyboardMode.AUTO -> {
+                                val currentLabel = if (effectiveSoftwareMode == SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL) {
+                                    stringResource(R.string.software_keyboard_mode_always_virtual)
+                                } else {
+                                    stringResource(R.string.software_keyboard_mode_always_hardware)
+                                }
+                                stringResource(R.string.software_keyboard_mode_auto_current, currentLabel)
+                            }
+                            SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL -> stringResource(R.string.software_keyboard_mode_always_virtual)
+                            SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE -> stringResource(R.string.software_keyboard_mode_always_hardware)
+                        }
+
+                        ExposedDropdownMenuBox(
+                            expanded = softwareKeyboardModeExpanded,
+                            onExpandedChange = { softwareKeyboardModeExpanded = it }
+                        ) {
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(82.dp)
+                                .clickable {
+                                    softwareKeyboardModeExpanded = true
+                                }
+                                .menuAnchor()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Language,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = stringResource(R.string.software_keyboard_mode_title),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1
+                                    )
+                                    Text(
+                                        text = modeLabel,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 2
+                                    )
+                                }
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                            ExposedDropdownMenu(
+                                expanded = softwareKeyboardModeExpanded,
+                                onDismissRequest = { softwareKeyboardModeExpanded = false }
+                            ) {
+                                listOf(
+                                    SettingsManager.SoftwareKeyboardMode.AUTO to stringResource(R.string.software_keyboard_mode_auto_short),
+                                    SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL to stringResource(R.string.software_keyboard_mode_always_virtual),
+                                    SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE to stringResource(R.string.software_keyboard_mode_always_hardware)
+                                ).forEach { (mode, title) ->
+                                    DropdownMenuItem(
+                                        text = { Text(title) },
+                                        onClick = {
+                                            softwareKeyboardMode = mode
+                                            SettingsManager.setSoftwareKeyboardMode(context, mode)
+                                            softwareKeyboardModeExpanded = false
+                                        }
+                                    )
+                                }
                             }
                         }
                     

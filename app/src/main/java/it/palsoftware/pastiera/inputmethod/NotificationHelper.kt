@@ -56,9 +56,9 @@ object NotificationHelper {
      * @param context The context to get the vibrator service
      * @param durationMs Duration of the vibration in milliseconds (default: 70ms)
      */
-    fun triggerHapticFeedback(context: Context, durationMs: Long = 70) {
+    fun triggerHapticFeedback(context: Context, durationMs: Long = 25) {
         try {
-            if (tryModernHapticFeedback(context)) {
+            if (durationMs > 30 && tryModernHapticFeedback(context)) {
                 return
             }
 

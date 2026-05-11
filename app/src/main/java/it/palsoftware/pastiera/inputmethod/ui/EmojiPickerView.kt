@@ -58,11 +58,13 @@ class EmojiPickerView(
     private val emptyView: TextView
     private val tabScrollView: HorizontalScrollView
     private val tabRow: LinearLayout
+    private val vertical: LinearLayout
+    private val keyboardSwitcherButton: ImageView
 
     private var coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var loadingJob: Job? = null
 
-    private val fixedHeight = dpToPx(177f)
+    private val compactHeight = dpToPx(177f)
     private val emojiSize = dpToPx(48f)
     private val spacing = dpToPx(4f)
     private val smallPadding = dpToPx(8f)
@@ -103,9 +105,9 @@ class EmojiPickerView(
         columns = ((availableWidth + spacing) / (emojiSize + spacing)).coerceAtLeast(4).coerceAtMost(10)
 
         // Layout container: vertical stack (recycler + bottom tabs)
-        val vertical = LinearLayout(context).apply {
+        vertical = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, fixedHeight)
+            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, compactHeight)
         }
 
         searchField = EditText(context).apply {
@@ -249,10 +251,33 @@ class EmojiPickerView(
             )
         }
         tabScrollView.addView(tabRow)
+        keyboardSwitcherButton = ImageView(context).apply {
+            setImageResource(R.drawable.ic_close_24)
+            contentDescription = context.getString(R.string.close)
+            setColorFilter(Color.WHITE)
+            background = createTabBackground(false)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            val pad = dpToPx(4f)
+            setPadding(pad, pad, pad, pad)
+            visibility = View.GONE
+            layoutParams = LinearLayout.LayoutParams(tabHeight, tabHeight).apply {
+                marginStart = spacing
+            }
+        }
 
         vertical.addView(searchField)
         vertical.addView(recyclerView)
-        vertical.addView(tabScrollView)
+        vertical.addView(
+            LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    tabHeight
+                )
+                addView(keyboardSwitcherButton)
+                addView(tabScrollView, LinearLayout.LayoutParams(0, tabHeight, 1f))
+            }
+        )
 
         addView(vertical)
         addView(loadingView)
@@ -260,7 +285,7 @@ class EmojiPickerView(
 
         layoutParams = LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
-            fixedHeight
+            compactHeight
         )
 
         loadCategories()
@@ -268,6 +293,26 @@ class EmojiPickerView(
 
     fun setInputConnection(connection: InputConnection?) {
         currentInputConnection = connection
+    }
+
+    fun configureSoftwareKeyboardMode(heightPx: Int?, onKeyboardLayoutRequested: (() -> Unit)?) {
+        val targetHeight = heightPx?.takeIf { it > 0 } ?: compactHeight
+        updateHeight(targetHeight)
+        keyboardSwitcherButton.visibility = if (onKeyboardLayoutRequested != null) View.VISIBLE else View.GONE
+        keyboardSwitcherButton.setOnClickListener {
+            onKeyboardLayoutRequested?.invoke()
+        }
+    }
+
+    private fun updateHeight(heightPx: Int) {
+        (layoutParams ?: LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, heightPx)).also {
+            it.height = heightPx
+            layoutParams = it
+        }
+        (vertical.layoutParams ?: LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, heightPx)).also {
+            it.height = heightPx
+            vertical.layoutParams = it
+        }
     }
 
     fun refresh() {

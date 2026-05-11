@@ -101,6 +101,13 @@ class KeyboardVisibilityController(
     private fun applyMinimalUiState() {
         candidatesBarController.setForceMinimalUi(isMinimalUiActive())
         SettingsManager.setPastierinaModeActive(context, isMinimalUiActive())
+        if (!isMinimalUiActive()) {
+            try {
+                requestShowInputView()
+            } catch (_: Exception) {
+                // System can reject this request in some states; keep UI stable.
+            }
+        }
         refreshStatusBar()
     }
 

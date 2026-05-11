@@ -2,6 +2,7 @@ package it.palsoftware.pastiera.inputmethod.statusbar.button
 
 import android.content.Context
 import android.graphics.Color
+import android.view.HapticFeedbackConstants
 import android.view.View
 import android.widget.ImageView
 import androidx.core.view.ViewCompat
@@ -27,7 +28,7 @@ class MinimalUiButtonFactory : StatusBarButtonFactory {
             isClickable = true
             isFocusable = true
             setOnClickListener {
-                callbacks.onHapticFeedback?.invoke()
+                performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                 callbacks.onMinimalUiToggleRequested?.invoke()
             }
         }

@@ -5,6 +5,7 @@ import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.StateListDrawable
+import android.view.HapticFeedbackConstants
 import android.view.View
 import android.widget.ImageView
 import androidx.core.view.ViewCompat
@@ -33,7 +34,7 @@ class MicrophoneButtonFactory : StatusBarButtonFactory {
         
         // Set up click listener using the microphone-specific callback
         button.setOnClickListener {
-            callbacks.onHapticFeedback?.invoke()
+            button.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
             callbacks.onSpeechRecognitionRequested?.invoke()
         }
         

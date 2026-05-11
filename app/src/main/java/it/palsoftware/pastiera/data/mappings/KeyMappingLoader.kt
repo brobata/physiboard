@@ -79,9 +79,39 @@ object KeyMappingLoader {
 
     fun loadAltKeyMappings(assets: AssetManager, context: Context? = null): Map<Int, String> {
         val altKeyMap = mutableMapOf<Int, String>()
+        val deviceName = getDeviceName(context)
+        val candidateDeviceNames = if (deviceName == "unknown") {
+            listOf("titan2")
+        } else {
+            listOf(deviceName)
+        }
+
+        for (candidateDeviceName in candidateDeviceNames) {
+            try {
+                val filePath = "devices/$candidateDeviceName/alt_key_mappings.json"
+                val inputStream: InputStream = assets.open(filePath)
+                val jsonString = inputStream.bufferedReader().use { it.readText() }
+                val jsonObject = JSONObject(jsonString)
+                val mappingsObject = jsonObject.getJSONObject("mappings")
+
+                val keys = mappingsObject.keys()
+                while (keys.hasNext()) {
+                    val keyName = keys.next()
+                    val keyCode = keyCodeMap[keyName]
+                    val character = mappingsObject.getString(keyName)
+                    if (keyCode != null) {
+                        altKeyMap[keyCode] = character
+                    }
+                }
+                Log.d(TAG, "Loaded Alt mappings for device: $candidateDeviceName")
+                return altKeyMap
+            } catch (e: Exception) {
+                Log.w(TAG, "Error loading Alt mappings for device: $candidateDeviceName", e)
+            }
+        }
+
         try {
-            val deviceName = getDeviceName(context)
-            val filePath = "devices/$deviceName/alt_key_mappings.json"
+            val filePath = "devices/titan2/alt_key_mappings.json"
             val inputStream: InputStream = assets.open(filePath)
             val jsonString = inputStream.bufferedReader().use { it.readText() }
             val jsonObject = JSONObject(jsonString)
@@ -96,7 +126,7 @@ object KeyMappingLoader {
                     altKeyMap[keyCode] = character
                 }
             }
-            Log.d(TAG, "Loaded Alt mappings for device: $deviceName")
+            Log.d(TAG, "Loaded fallback Alt mappings for device: titan2")
         } catch (e: Exception) {
             Log.e(TAG, "Error loading Alt mappings", e)
             altKeyMap[KeyEvent.KEYCODE_T] = "("

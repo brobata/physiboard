@@ -391,7 +391,7 @@
     <string name="tutorial_page_enable_title">Bật Pastiera</string>
     <string name="tutorial_page_enable_description">Để bắt đầu, bạn cần bật Pastiera làm phương thức nhập trong Cài đặt Android. Nhấn nút bên dưới để mở cài đặt.</string>
     <string name="tutorial_page_select_title">Chọn Pastiera</string>
-    <string name="tutorial_page_select_description">Để dùng Pastiera, hãy chọn nó trong danh sách phương thức nhập. Chọn giữa giao diện IME đầy đủ với tùy chọn "Use on-screen keyboard" bật hoặc giao diện "Pastierina" tối giản khi tắt tùy chọn đó.</string>
+    <string name="tutorial_page_select_description">Để dùng Pastiera, hãy chọn nó trong danh sách phương thức nhập. Bước tiếp theo cho phép chọn bàn phím ảo hoặc chế độ bàn phím phần cứng.</string>
     <string name="tutorial_page_led_title">Đèn LED</string>
     <string name="tutorial_page_led_description">Để tận dụng Pastiera tốt hơn, hãy đặt phím Fn hoạt động như Ctrl trong cài đặt hệ thống Android. Thanh IME hiển thị bốn đèn LED: màu xanh khi modifier đang bật một lần, màu cam khi bị khóa. LED của bố cục SYM màu xanh ở trang emoji và màu cam ở trang ký hiệu.</string>
     <string name="tutorial_page_nav_mode_title">Nav Mode</string>
@@ -575,4 +575,16 @@
     <string name="status_bar_button_clipboard_state_items">%1$d items</string>
     <string name="sym_key_content_description">%1$s, %2$s</string>
     <string name="status_bar_button_minimal_ui_description">Toggle compact keyboard UI</string>
+    <string name="tutorial_page_software_keyboard_title">Chế độ bàn phím</string>
+    <string name="tutorial_page_software_keyboard_description">Chọn cách Pastiera hoạt động trên thiết bị này.
+
+• Tự động: chế độ bàn phím phần cứng trên các thiết bị PKB đã biết; bàn phím ảo trên Pixel, Samsung và hầu hết thiết bị cảm ứng.
+• Luôn dùng bàn phím ảo: luôn hiển thị bàn phím đầy đủ trên màn hình.
+• Luôn dùng bàn phím phần cứng: dùng giao diện gọn cho bàn phím phần cứng và không ép hiển thị bàn phím đầy đủ trên màn hình.</string>
+    <string name="software_keyboard_mode_title">Chế độ bàn phím</string>
+    <string name="software_keyboard_mode_description">Độc lập với Pastierina. Điều khiển bàn phím phần cứng hoặc bàn phím ảo.</string>
+    <string name="software_keyboard_mode_auto_current">Tự động (hiện tại: %1$s)</string>
+    <string name="software_keyboard_mode_always_virtual">Luôn dùng bàn phím ảo</string>
+    <string name="software_keyboard_mode_always_hardware">Luôn dùng bàn phím phần cứng</string>
+    <string name="software_keyboard_mode_auto_short">Tự động (PKB: phần cứng, còn lại: ảo)</string>
 </resources>

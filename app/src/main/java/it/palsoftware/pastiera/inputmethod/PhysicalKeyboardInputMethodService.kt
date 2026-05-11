@@ -944,6 +944,19 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             symLayoutController.openSymbolsPage()
             updateStatusBarText()
         }
+        candidatesBarController.onSoftwareKeyboardTextInput = { text, inputConnection, snapshot ->
+            if (text != " ") {
+                false
+            } else {
+                textInputController.handleDoubleSpaceToPeriod(
+                    keyCode = KeyEvent.KEYCODE_SPACE,
+                    inputConnection = inputConnection,
+                    shouldDisableDoubleSpaceToPeriod = snapshot.shouldDisableDoubleSpaceToPeriod,
+                    shouldDisableAutoCapitalize = snapshot.shouldDisableAutoCapitalize,
+                    onStatusBarUpdate = { updateStatusBarText() }
+                )
+            }
+        }
         candidatesBarController.onMinimalUiToggleRequested = {
             keyboardVisibilityController.toggleUserMinimalUi()
         }
@@ -1155,6 +1168,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                     Log.d(TRACKPAD_DEBUG_TAG, "Detector NOT initialized yet, skipping restart")
                 }
             } else if (key == "pastierina_mode_override") {
+                keyboardVisibilityController.syncMinimalUiOverrideFromSettings()
+            } else if (key == "software_keyboard_mode") {
                 keyboardVisibilityController.syncMinimalUiOverrideFromSettings()
             }
         }
@@ -1482,6 +1497,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             isEmailField = state.isEmailField,
             shiftLayerLatched = shiftLayerLatched,
             altLayerLatched = altLayerLatched,
+            activeKeyboardLayoutName = activeKeyboardLayoutName,
             // Legacy flag for backward compatibility
             shouldDisableSmartFeatures = shouldDisableSmartFeatures
         )

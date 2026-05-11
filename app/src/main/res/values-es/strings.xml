@@ -307,7 +307,7 @@
     <string name="tutorial_page_enable_title">Activar Pastiera</string>
     <string name="tutorial_page_enable_description">Para comenzar, debes activar Pastiera como método de entrada en la Configuración de Android. Toca el botón a continuación para abrir la configuración.</string>
     <string name="tutorial_page_select_title">Seleccionar Pastiera</string>
-    <string name="tutorial_page_select_description">Para usar Pastiera, selecciónala entre los métodos de entrada. Puedes optar por la interfaz IME completa con el interruptor "Use on-screen keyboard" en ON o por la interfaz mínima "Pastierina" con el interruptor en OFF.</string>
+    <string name="tutorial_page_select_description">Para usar Pastiera, selecciónala entre los métodos de entrada. En el siguiente paso eliges si Pastiera debe usar un teclado virtual o el modo de teclado físico.</string>
     <string name="tutorial_page_led_title">Indicador LED</string>
     <string name="tutorial_page_led_description">Para aprovechar al máximo Pastiera, configura la tecla Fn como Ctrl desde los ajustes del sistema. La barra IME muestra cuatro LED: se ponen azules cuando el modificador está activo one-shot y naranjas cuando está bloqueado. El LED del diseño SYM es azul en la página de emojis y naranja en la página de símbolos.</string>
     <string name="tutorial_page_nav_mode_title">Modo Nav</string>
@@ -575,4 +575,16 @@
     <string name="status_bar_button_language_state_description">Idioma %1$s, diseño %2$s</string>
     <string name="status_bar_button_hamburger">Menú</string>
     <string name="status_bar_button_hamburger_description">Acciones rápidas</string>
+    <string name="tutorial_page_software_keyboard_title">Modo de teclado</string>
+    <string name="tutorial_page_software_keyboard_description">Elige cómo debe comportarse Pastiera en este dispositivo.
+
+• Auto: modo de teclado físico en dispositivos PKB conocidos; teclado virtual en Pixel, Samsung y la mayoría de dispositivos táctiles.
+• Siempre teclado virtual: muestra siempre el teclado completo en pantalla.
+• Siempre teclado físico: usa la superficie compacta para teclado físico y no fuerza el teclado completo en pantalla.</string>
+    <string name="software_keyboard_mode_title">Modo de teclado</string>
+    <string name="software_keyboard_mode_description">Independiente de Pastierina. Controla teclado físico vs. virtual.</string>
+    <string name="software_keyboard_mode_auto_current">Auto (actual: %1$s)</string>
+    <string name="software_keyboard_mode_always_virtual">Siempre teclado virtual</string>
+    <string name="software_keyboard_mode_always_hardware">Siempre teclado físico</string>
+    <string name="software_keyboard_mode_auto_short">Auto (PKB: físico, si no virtual)</string>
 </resources>

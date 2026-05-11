@@ -1,0 +1,595 @@
+/*
+ * Pastiera modifications for full virtual keyboard mode.
+ *
+ * This file derives keyboard geometry behavior from Android Open Source Project LatinIME
+ * (`platform/packages/inputmethods/LatinIME`) at commit
+ * 127336e9f29d69607eab55982324b210279ae8c5.
+ *
+ * AOSP LatinIME is licensed under the Apache License, Version 2.0. See
+ * THIRD_PARTY_NOTICES.md and third_party/licenses/Apache-2.0.txt in this repository.
+ */
+package it.palsoftware.pastiera.inputmethod.aospkeyboard
+
+import android.content.Context
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.PixelFormat
+import android.graphics.RectF
+import android.graphics.Typeface
+import android.graphics.ColorFilter
+import android.graphics.drawable.Drawable
+import android.os.Handler
+import android.os.Looper
+import android.util.AttributeSet
+import android.util.TypedValue
+import android.view.HapticFeedbackConstants
+import android.view.MotionEvent
+import android.view.View
+import android.view.inputmethod.InputMethodManager
+import androidx.core.content.ContextCompat
+import it.palsoftware.pastiera.R
+import java.util.Locale
+
+/**
+ * AOSP LatinIME alphabet key plane embedded in Pastiera.
+ *
+ * This intentionally keeps Pastiera's IME lifecycle/suggestions/status bars, but mirrors the
+ * AOSP qwerty/qwertz/azerty key geometry from rows_*.xml and row_qwerty4.xml.
+ */
+class AospKeyboardView @JvmOverloads constructor(
+    context: Context,
+    attrs: AttributeSet? = null
+) : View(context, attrs) {
+
+    interface Listener {
+        fun onText(text: String)
+        fun onBackspace()
+        fun onEnter()
+        fun onShift()
+        fun onSymbols()
+        fun onLanguageSwitch()
+        fun onCursorMove(delta: Int)
+    }
+
+    private enum class KeyType { CHAR, SHIFT, BACKSPACE, SYMBOLS, COMMA, PERIOD, SPACE, ENTER, LANGUAGE }
+
+    private data class KeySpec(
+        val type: KeyType,
+        val label: String,
+        val output: String = label,
+        val hint: String = "",
+        val moreKeys: List<String> = emptyList(),
+        val xPercent: Float,
+        val widthPercent: Float,
+        val visualInsetLeftPercent: Float = 0f,
+        val visualInsetRightPercent: Float = 0f
+    )
+
+    private data class Key(
+        val spec: KeySpec,
+        val hitRect: RectF,
+        val visualRect: RectF
+    )
+
+    private data class MoreKeysPanelState(
+        val baseKey: Key,
+        val keys: List<String>,
+        val popupRectInView: RectF,
+        val keyWidth: Float,
+        val keyHeight: Float,
+        val padding: Float,
+        var selectedIndex: Int = -1
+    )
+
+    private data class PreviewPopupState(
+        val label: String,
+        val rect: RectF,
+        val hasMoreKeys: Boolean
+    )
+
+    var listener: Listener? = null
+    var layoutName: String = "qwerty"
+        set(value) {
+            field = value.trim().lowercase(Locale.ROOT).ifBlank { "qwerty" }
+            rebuildKeys(width, height)
+            invalidate()
+        }
+    var shifted: Boolean = false
+        set(value) {
+            field = value
+            rebuildKeys(width, height)
+            invalidate()
+        }
+    var spacebarLabel: String = "space"
+        set(value) {
+            field = value.ifBlank { "space" }
+            invalidate()
+        }
+    var longPressTimeoutMs: Long = 500L
+        set(value) {
+            field = value.coerceIn(50L, 1000L)
+        }
+    var longPressAlternatesProvider: ((String) -> List<String>)? = null
+
+    private val keys = mutableListOf<Key>()
+    private var pressedKey: Key? = null
+    private var previewPopupState: PreviewPopupState? = null
+    private var moreKeysPanelState: MoreKeysPanelState? = null
+    private var popupOverlayDrawable: Drawable? = null
+    private val handler = Handler(Looper.getMainLooper())
+    private var longPressTriggered = false
+    private val longPressRunnable = Runnable { showMoreKeysOrRepeat() }
+    private var spaceSwipeActive = false
+    private var spaceSwipeLastX = 0f
+    private var spaceLongPressArmed = false
+
+    private val keyboardBackground = drawable(R.drawable.keyboard_background_lxx_dark)
+    private val normalKeyBackground = drawable(R.drawable.btn_keyboard_key_normal_off_lxx_dark)
+    private val normalKeyPressedBackground = drawable(R.drawable.btn_keyboard_key_pressed_off_lxx_dark)
+    private val shiftedKeyBackground = drawable(R.drawable.btn_keyboard_key_normal_on_lxx_dark)
+    private val shiftedKeyPressedBackground = drawable(R.drawable.btn_keyboard_key_pressed_on_lxx_dark)
+    private val spacebarBackground = drawable(R.drawable.btn_keyboard_spacebar_normal_lxx_dark)
+    private val spacebarPressedBackground = drawable(R.drawable.btn_keyboard_spacebar_pressed_lxx_dark)
+    private val previewBackground = drawable(R.drawable.keyboard_key_feedback_background_lxx_dark)
+    private val previewMoreBackground = drawable(R.drawable.keyboard_key_feedback_more_background_lxx_dark)
+    private val moreKeysBackground = drawable(R.drawable.keyboard_popup_panel_background_lxx_dark)
+    private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.rgb(238, 238, 238)
+        textAlign = Paint.Align.CENTER
+        typeface = Typeface.DEFAULT
+    }
+    private val hintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.rgb(156, 164, 172)
+        textAlign = Paint.Align.CENTER
+        typeface = Typeface.DEFAULT
+    }
+
+    private val gapPx = dp(2f)
+    private val horizontalPaddingPx = 0
+    private val verticalPaddingPx = 0
+    private val preferredKeyHeightPx = dp(50f)
+    private val rowGapPx = 0
+
+    init {
+        isClickable = true
+        isFocusable = true
+        setBackgroundColor(Color.BLACK)
+    }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val width = MeasureSpec.getSize(widthMeasureSpec)
+        val desiredHeight = verticalPaddingPx * 2 + preferredKeyHeightPx * 4 + rowGapPx * 3
+        val resolvedHeight = resolveSize(desiredHeight, heightMeasureSpec)
+        setMeasuredDimension(width, resolvedHeight)
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        rebuildKeys(w, h)
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        drawDrawable(canvas, keyboardBackground, RectF(0f, 0f, width.toFloat(), height.toFloat()))
+        keys.forEach { key ->
+            drawDrawable(canvas, backgroundFor(key), key.visualRect)
+            val label = displayLabel(key.spec)
+            textPaint.textSize = when (key.spec.type) {
+                KeyType.SPACE -> sp(12f)
+                KeyType.SYMBOLS -> sp(16f)
+                KeyType.ENTER, KeyType.SHIFT, KeyType.BACKSPACE, KeyType.LANGUAGE -> sp(23f)
+                else -> sp(24f)
+            }
+            textPaint.typeface = if (key.spec.type == KeyType.SPACE) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+            textPaint.color = if (isFunctional(key.spec.type)) Color.rgb(202, 209, 216) else Color.rgb(238, 238, 238)
+            val baselineOffset = -(textPaint.ascent() + textPaint.descent()) / 2f
+            val y = if (key.spec.type == KeyType.SPACE) key.visualRect.centerY() + dp(7f) else key.visualRect.centerY() + baselineOffset
+            canvas.drawText(label, key.visualRect.centerX(), y, textPaint)
+            val hint = displayHint(key)
+            if (hint.isNotBlank()) {
+                hintPaint.textSize = sp(10f)
+                canvas.drawText(hint, key.visualRect.right - dp(9f), key.visualRect.top + dp(12f), hintPaint)
+            }
+        }
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                val key = findKey(event.x, event.y)
+                pressedKey = key
+                spaceSwipeActive = false
+                spaceSwipeLastX = event.x
+                spaceLongPressArmed = false
+                longPressTriggered = false
+                invalidate()
+                key?.let {
+                    performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                    showPreview(it)
+                    handler.postDelayed(longPressRunnable, longPressTimeoutMs)
+                }
+                return true
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (moreKeysPanelState != null) {
+                    updateMoreKeysSelection(event.x, event.y)
+                    return true
+                }
+                val pressed = pressedKey
+                if (pressed?.spec?.type == KeyType.SPACE) {
+                    val step = dp(18f).toFloat()
+                    val delta = event.x - spaceSwipeLastX
+                    if (kotlin.math.abs(delta) >= step) {
+                        handler.removeCallbacks(longPressRunnable)
+                        dismissPopup()
+                        spaceSwipeActive = true
+                        spaceLongPressArmed = false
+                        longPressTriggered = true
+                        val steps = (delta / step).toInt()
+                        repeat(kotlin.math.abs(steps).coerceAtMost(4)) {
+                            listener?.onCursorMove(if (steps > 0) 1 else -1)
+                        }
+                        spaceSwipeLastX += steps * step
+                    }
+                    return true
+                }
+                val key = findKey(event.x, event.y)
+                if (key != pressedKey) {
+                    dismissPopup()
+                    pressedKey = key
+                    invalidate()
+                    key?.let { showPreview(it) }
+                }
+                return true
+            }
+            MotionEvent.ACTION_UP -> {
+                handler.removeCallbacks(longPressRunnable)
+                moreKeysPanelState?.let { panel ->
+                    val selected = selectedMoreKey(event.x, event.y, panel)
+                    dismissPopup()
+                    pressedKey = null
+                    invalidate()
+                    if (selected != null) {
+                        listener?.onText(selected)
+                    }
+                    return true
+                }
+                val key = pressedKey
+                dismissPopup()
+                val wasSpaceSwipe = spaceSwipeActive
+                val wasSpaceLongPress = spaceLongPressArmed
+                spaceSwipeActive = false
+                spaceLongPressArmed = false
+                pressedKey = null
+                invalidate()
+                if (key?.spec?.type == KeyType.SPACE && wasSpaceLongPress && !wasSpaceSwipe) {
+                    listener?.onLanguageSwitch()
+                    return true
+                }
+                if (key != null && !longPressTriggered && !wasSpaceSwipe) {
+                    dispatchKey(key)
+                }
+                return true
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                handler.removeCallbacks(longPressRunnable)
+                dismissPopup()
+                spaceSwipeActive = false
+                spaceLongPressArmed = false
+                pressedKey = null
+                invalidate()
+                return true
+            }
+        }
+        return true
+    }
+
+    private fun rebuildKeys(viewWidth: Int, viewHeight: Int) {
+        keys.clear()
+        if (viewWidth <= 0 || viewHeight <= 0) return
+        val usableWidth = viewWidth - horizontalPaddingPx * 2
+        val rowHeight = (viewHeight - verticalPaddingPx * 2 - rowGapPx * 3) / 4f
+        rowsFor(layoutName).forEachIndexed { rowIndex, row ->
+            val y = verticalPaddingPx + rowIndex * (rowHeight + rowGapPx)
+            row.forEach { spec ->
+                val rawLeft = horizontalPaddingPx + usableWidth * (spec.xPercent / 100f)
+                val rawRight = horizontalPaddingPx + usableWidth * ((spec.xPercent + spec.widthPercent) / 100f)
+                val hit = RectF(rawLeft, y, rawRight, y + rowHeight)
+                val visual = RectF(
+                    hit.left + gapPx / 2f + usableWidth * (spec.visualInsetLeftPercent / 100f),
+                    hit.top,
+                    hit.right - gapPx / 2f - usableWidth * (spec.visualInsetRightPercent / 100f),
+                    hit.bottom
+                )
+                keys.add(Key(spec, hit, visual))
+            }
+        }
+    }
+
+    private fun rowsFor(layout: String): List<List<KeySpec>> {
+        val rowStrings = when (layout) {
+            "german_multitap_qwertz" -> listOf("qwertzuiopü", "asdfghjklöä", "yxcvbnm")
+            "qwertz" -> listOf("qwertzuiop", "asdfghjkl", "yxcvbnm")
+            "azerty" -> listOf("azertyuiop", "qsdfghjklm", "wxcvbn'")
+            else -> listOf("qwertyuiop", "asdfghjkl", "zxcvbnm")
+        }
+        val row1Width = 100f / rowStrings[0].length
+        val row1 = rowStrings[0].mapIndexed { index, ch ->
+            charSpec(ch, index * row1Width, widthPercent = row1Width)
+        }
+        val row2Start = if (layout == "azerty" || layout == "german_multitap_qwertz") 0f else 5f
+        val row2Width = if (layout == "german_multitap_qwertz") 100f / rowStrings[1].length else 10f
+        val row2 = rowStrings[1].mapIndexed { index, ch -> charSpec(ch, row2Start + index * row2Width, widthPercent = row2Width) }
+        val row3Chars = rowStrings[2].mapIndexed { index, ch -> charSpec(ch, 15f + index * 10f) }
+        val row3 = listOf(
+            KeySpec(KeyType.SHIFT, "⇧", xPercent = 0f, widthPercent = 15f, visualInsetRightPercent = 1f)
+        ) + row3Chars + listOf(
+            KeySpec(KeyType.BACKSPACE, "⌫", xPercent = 85f, widthPercent = 15f, visualInsetLeftPercent = 1f)
+        )
+        val row4 = listOf(
+            KeySpec(KeyType.SYMBOLS, "?123", xPercent = 0f, widthPercent = 15f),
+            KeySpec(KeyType.COMMA, ",", xPercent = 15f, widthPercent = 10f, moreKeys = listOf("'", "\"", ";", ":")),
+            KeySpec(KeyType.SPACE, "space", output = " ", xPercent = 25f, widthPercent = 50f),
+            KeySpec(KeyType.PERIOD, ".", xPercent = 75f, widthPercent = 10f, moreKeys = listOf("!", "?", ";", ":", "…")),
+            KeySpec(KeyType.ENTER, "↵", output = "\n", xPercent = 85f, widthPercent = 15f)
+        )
+        return listOf(row1, row2, row3, row4)
+    }
+
+    private fun charSpec(ch: Char, xPercent: Float, hint: String = "", widthPercent: Float = 10f): KeySpec {
+        val label = ch.toString()
+        return KeySpec(
+            type = KeyType.CHAR,
+            label = label,
+            output = label,
+            hint = hint,
+            moreKeys = moreKeysFor(ch),
+            xPercent = xPercent,
+            widthPercent = widthPercent
+        )
+    }
+
+    private fun moreKeysFor(ch: Char): List<String> = when (ch.lowercaseChar()) {
+        'a' -> listOf("à", "á", "â", "ä", "æ", "ã", "å", "ā")
+        'c' -> listOf("ç", "ć", "č")
+        'e' -> listOf("è", "é", "ê", "ë", "ē", "ė", "ę")
+        'i' -> listOf("î", "ï", "í", "ī", "į", "ì")
+        'n' -> listOf("ñ", "ń")
+        'o' -> listOf("ô", "ö", "ò", "ó", "œ", "ø", "ō", "õ")
+        's' -> listOf("ß", "ś", "š")
+        'u' -> listOf("û", "ü", "ù", "ú", "ū")
+        'y' -> listOf("ÿ")
+        'z' -> listOf("ž", "ź", "ż")
+        else -> emptyList()
+    }
+
+    private fun displayLabel(spec: KeySpec): String = when (spec.type) {
+        KeyType.CHAR -> if (shifted && spec.label == "'") "?" else if (shifted) spec.label.uppercase(Locale.ROOT) else spec.label
+        KeyType.SPACE -> spacebarLabel
+        else -> spec.label
+    }
+
+    private fun displayHint(key: Key): String {
+        if (key.spec.type !in listOf(KeyType.CHAR, KeyType.COMMA, KeyType.PERIOD)) return ""
+        return longPressAlternatesFor(key).firstOrNull().orEmpty()
+    }
+
+    private fun dispatchKey(key: Key) {
+        when (key.spec.type) {
+            KeyType.CHAR -> listener?.onText(if (shifted && key.spec.output == "'") "?" else if (shifted) key.spec.output.uppercase(Locale.ROOT) else key.spec.output)
+            KeyType.COMMA, KeyType.PERIOD, KeyType.SPACE -> listener?.onText(key.spec.output)
+            KeyType.BACKSPACE -> listener?.onBackspace()
+            KeyType.ENTER -> listener?.onEnter()
+            KeyType.SHIFT -> listener?.onShift()
+            KeyType.SYMBOLS -> listener?.onSymbols()
+            KeyType.LANGUAGE -> listener?.onLanguageSwitch()
+        }
+    }
+
+    private fun showMoreKeysOrRepeat() {
+        val key = pressedKey ?: return
+        if (key.spec.type == KeyType.BACKSPACE) {
+            longPressTriggered = true
+            listener?.onBackspace()
+            handler.postDelayed(longPressRunnable, 55L)
+            return
+        }
+        if (key.spec.type == KeyType.SPACE) {
+            longPressTriggered = true
+            spaceLongPressArmed = true
+            dismissPopup()
+            invalidate()
+            return
+        }
+        val resolvedMoreKeys = longPressAlternatesFor(key)
+        if (resolvedMoreKeys.isEmpty()) return
+        longPressTriggered = true
+        dismissPopup()
+        val moreKeys = resolvedMoreKeys.map { if (shifted && it.length == 1 && it[0].isLetter()) it.uppercase(Locale.ROOT) else it }
+        val itemWidth = dp(42f)
+        val itemHeight = dp(52f)
+        val padding = dp(6f)
+        val popupWidth = padding * 2 + moreKeys.size * itemWidth
+        val popupHeight = padding * 2 + itemHeight
+        val popupLeft = (key.visualRect.centerX() - popupWidth / 2f).coerceIn(0f, width - popupWidth.toFloat())
+        val popupTop = key.visualRect.top - popupHeight - dp(8f)
+        moreKeysPanelState = MoreKeysPanelState(
+            baseKey = key,
+            keys = moreKeys,
+            popupRectInView = RectF(popupLeft, popupTop, popupLeft + popupWidth, popupTop + popupHeight),
+            keyWidth = itemWidth.toFloat(),
+            keyHeight = itemHeight.toFloat(),
+            padding = padding.toFloat(),
+            selectedIndex = 0
+        )
+        previewPopupState = null
+        updatePopupOverlay()
+        invalidate()
+    }
+
+    private fun showPreview(key: Key) {
+        if (key.spec.type != KeyType.CHAR && key.spec.type != KeyType.COMMA && key.spec.type != KeyType.PERIOD) return
+        val previewWidth = maxOf(key.visualRect.width() + dp(18f), dp(52f).toFloat())
+        val previewHeight = dp(72f).toFloat()
+        val popupLeft = (key.visualRect.centerX() - previewWidth / 2f).coerceIn(0f, width - previewWidth)
+        val popupTop = key.visualRect.top - previewHeight - dp(8f)
+        previewPopupState = PreviewPopupState(
+            label = displayLabel(key.spec),
+            rect = RectF(popupLeft, popupTop, popupLeft + previewWidth, popupTop + previewHeight),
+            hasMoreKeys = longPressAlternatesFor(key).isNotEmpty()
+        )
+        moreKeysPanelState = null
+        updatePopupOverlay()
+        invalidate()
+    }
+
+    private fun dismissPopup() {
+        previewPopupState = null
+        moreKeysPanelState = null
+        updatePopupOverlay()
+    }
+
+    private fun updateMoreKeysSelection(x: Float, y: Float) {
+        val panel = moreKeysPanelState ?: return
+        val selected = selectedMoreKeyIndex(x, y, panel)
+        if (selected < 0) {
+            return
+        }
+        if (selected == panel.selectedIndex) return
+        panel.selectedIndex = selected
+        updatePopupOverlay()
+        invalidate()
+    }
+
+    private fun selectedMoreKey(x: Float, y: Float, panel: MoreKeysPanelState): String? {
+        val index = selectedMoreKeyIndex(x, y, panel).takeIf { it >= 0 } ?: panel.selectedIndex
+        return panel.keys.getOrNull(index)
+    }
+
+    private fun selectedMoreKeyIndex(x: Float, y: Float, panel: MoreKeysPanelState): Int {
+        val rect = panel.popupRectInView
+        val verticalSlop = dp(24f)
+        if (y < rect.top - verticalSlop || y > rect.bottom + verticalSlop) return -1
+        val relativeX = (x - rect.left - panel.padding).coerceIn(0f, panel.keys.size * panel.keyWidth - 1f)
+        return (relativeX / panel.keyWidth).toInt().coerceIn(0, panel.keys.lastIndex)
+    }
+
+    private fun findKey(x: Float, y: Float): Key? = keys.firstOrNull { it.hitRect.contains(x, y) }
+
+    private fun longPressAlternatesFor(key: Key): List<String> {
+        val providerAlternates = longPressAlternatesProvider
+            ?.invoke(key.spec.output)
+            ?.filter { it.isNotEmpty() }
+            .orEmpty()
+        return providerAlternates.ifEmpty { key.spec.moreKeys }
+    }
+
+
+    private fun drawPreviewPopup(canvas: Canvas, offsetX: Float = 0f, offsetY: Float = 0f) {
+        val popup = previewPopupState ?: return
+        val rect = popup.rect.offsetBy(offsetX, offsetY)
+        drawDrawable(canvas, if (popup.hasMoreKeys) previewMoreBackground else previewBackground, rect)
+        textPaint.textSize = sp(30f)
+        textPaint.typeface = Typeface.DEFAULT
+        textPaint.color = Color.rgb(238, 238, 238)
+        val baselineOffset = -(textPaint.ascent() + textPaint.descent()) / 2f
+        canvas.drawText(popup.label, rect.centerX(), rect.centerY() + baselineOffset, textPaint)
+    }
+
+    private fun drawMoreKeysPanel(canvas: Canvas, offsetX: Float = 0f, offsetY: Float = 0f) {
+        val panel = moreKeysPanelState ?: return
+        val panelRect = panel.popupRectInView.offsetBy(offsetX, offsetY)
+        drawDrawable(canvas, moreKeysBackground, panelRect)
+        panel.keys.forEachIndexed { index, label ->
+            val left = panelRect.left + panel.padding + index * panel.keyWidth
+            val top = panelRect.top + panel.padding
+            val rect = RectF(left, top, left + panel.keyWidth, top + panel.keyHeight)
+            if (index == panel.selectedIndex) {
+                drawDrawable(canvas, normalKeyBackground, rect)
+            }
+            textPaint.textSize = sp(24f)
+            textPaint.typeface = Typeface.DEFAULT
+            textPaint.color = if (index == panel.selectedIndex) Color.BLACK else Color.rgb(238, 238, 238)
+            val baselineOffset = -(textPaint.ascent() + textPaint.descent()) / 2f
+            canvas.drawText(label, rect.centerX(), rect.centerY() + baselineOffset, textPaint)
+        }
+    }
+
+    private fun updatePopupOverlay() {
+        val root = rootView ?: return
+        popupOverlayDrawable?.let { root.overlay.remove(it) }
+        popupOverlayDrawable = null
+        if (previewPopupState == null && moreKeysPanelState == null) {
+            root.invalidate()
+            return
+        }
+        val location = IntArray(2)
+        val rootLocation = IntArray(2)
+        getLocationOnScreen(location)
+        root.getLocationOnScreen(rootLocation)
+        val offsetX = (location[0] - rootLocation[0]).toFloat()
+        val offsetY = (location[1] - rootLocation[1]).toFloat()
+        popupOverlayDrawable = object : Drawable() {
+            override fun draw(canvas: Canvas) {
+                drawPreviewPopup(canvas, offsetX, offsetY)
+                drawMoreKeysPanel(canvas, offsetX, offsetY)
+            }
+
+            override fun setAlpha(alpha: Int) = Unit
+            override fun setColorFilter(colorFilter: ColorFilter?) = Unit
+            override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
+        }.also { drawable ->
+            drawable.setBounds(0, 0, root.width, root.height)
+            root.overlay.add(drawable)
+        }
+        root.invalidate()
+    }
+
+    override fun onDetachedFromWindow() {
+        popupOverlayDrawable?.let { rootView?.overlay?.remove(it) }
+        popupOverlayDrawable = null
+        super.onDetachedFromWindow()
+    }
+
+    private fun backgroundFor(key: Key): Drawable? {
+        val pressed = key == pressedKey
+        val drawable = when {
+            key.spec.type == KeyType.SPACE && pressed -> spacebarPressedBackground
+            key.spec.type == KeyType.SPACE -> spacebarBackground
+            key.spec.type == KeyType.SHIFT && shifted && pressed -> shiftedKeyPressedBackground
+            key.spec.type == KeyType.SHIFT && shifted -> shiftedKeyBackground
+            pressed -> normalKeyPressedBackground
+            else -> normalKeyBackground
+        }
+        return drawable?.constantState?.newDrawable()?.mutate() ?: drawable
+    }
+
+    private fun drawDrawable(canvas: Canvas, drawable: Drawable?, rect: RectF) {
+        if (drawable == null) return
+        drawable.setBounds(rect.left.toInt(), rect.top.toInt(), rect.right.toInt(), rect.bottom.toInt())
+        drawable.draw(canvas)
+    }
+
+    private fun RectF.offsetBy(dx: Float, dy: Float): RectF =
+        RectF(left + dx, top + dy, right + dx, bottom + dy)
+
+    private fun isFunctional(type: KeyType): Boolean =
+        type == KeyType.SHIFT || type == KeyType.BACKSPACE || type == KeyType.SYMBOLS || type == KeyType.ENTER || type == KeyType.LANGUAGE
+
+    private fun drawable(resId: Int): Drawable? = ContextCompat.getDrawable(context, resId)
+
+    private fun dp(value: Float): Int = TypedValue.applyDimension(
+        TypedValue.COMPLEX_UNIT_DIP,
+        value,
+        resources.displayMetrics
+    ).toInt()
+
+    private fun sp(value: Float): Float = TypedValue.applyDimension(
+        TypedValue.COMPLEX_UNIT_SP,
+        value,
+        resources.displayMetrics
+    )
+
+    fun showInputMethodPicker() {
+        (context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager)?.showInputMethodPicker()
+    }
+}

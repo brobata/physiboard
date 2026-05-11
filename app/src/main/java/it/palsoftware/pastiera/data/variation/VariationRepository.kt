@@ -147,19 +147,39 @@ object VariationRepository {
         jsonObject: JSONObject,
         assets: AssetManager
     ): JSONObject {
-        if (jsonObject.has("layoutVariationOverrides")) {
-            return jsonObject
-        }
         return try {
             val defaultsString = assets.open("common/variations/variations.json")
                 .bufferedReader()
                 .use { it.readText() }
             val defaultsObject = JSONObject(defaultsString)
-            if (defaultsObject.has("layoutVariationOverrides")) {
-                jsonObject.put(
-                    "layoutVariationOverrides",
-                    defaultsObject.getJSONObject("layoutVariationOverrides")
-                )
+            if (!defaultsObject.has("layoutVariationOverrides")) {
+                return jsonObject
+            }
+
+            val defaultOverrides = defaultsObject.getJSONObject("layoutVariationOverrides")
+            val mergedOverrides = if (jsonObject.has("layoutVariationOverrides")) {
+                jsonObject.getJSONObject("layoutVariationOverrides")
+            } else {
+                JSONObject().also { jsonObject.put("layoutVariationOverrides", it) }
+            }
+
+            val layoutKeys = defaultOverrides.keys()
+            while (layoutKeys.hasNext()) {
+                val layoutName = layoutKeys.next()
+                val defaultLayoutOverrides = defaultOverrides.getJSONObject(layoutName)
+                val targetLayoutOverrides = if (mergedOverrides.has(layoutName)) {
+                    mergedOverrides.getJSONObject(layoutName)
+                } else {
+                    JSONObject().also { mergedOverrides.put(layoutName, it) }
+                }
+
+                val charKeys = defaultLayoutOverrides.keys()
+                while (charKeys.hasNext()) {
+                    val charKey = charKeys.next()
+                    if (!targetLayoutOverrides.has(charKey)) {
+                        targetLayoutOverrides.put(charKey, defaultLayoutOverrides.getJSONArray(charKey))
+                    }
+                }
             }
             jsonObject
         } catch (e: Exception) {

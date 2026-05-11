@@ -231,6 +231,7 @@ object PreferenceSchemas {
             "trackpad_swipe_threshold" to PreferenceValueType.FLOAT,
             "pastierina_mode_override" to PreferenceValueType.STRING,
             "pastierina_mode_active" to PreferenceValueType.BOOLEAN,
+            "software_keyboard_mode" to PreferenceValueType.STRING,
             "use_keyboard_proximity" to PreferenceValueType.BOOLEAN,
             "use_edit_type_ranking" to PreferenceValueType.BOOLEAN,
             "custom_input_styles" to PreferenceValueType.STRING,

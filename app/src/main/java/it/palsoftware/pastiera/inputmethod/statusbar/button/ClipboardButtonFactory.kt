@@ -7,6 +7,7 @@ import android.content.Context
 import android.graphics.Color
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.HapticFeedbackConstants
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.FrameLayout
@@ -40,7 +41,7 @@ class ClipboardButtonFactory : StatusBarButtonFactory {
         
         // Set up click listener using the clipboard-specific callback
         button.setOnClickListener {
-            callbacks.onHapticFeedback?.invoke()
+            button.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
             callbacks.onClipboardRequested?.invoke()
         }
         

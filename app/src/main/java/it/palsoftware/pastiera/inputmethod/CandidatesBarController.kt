@@ -76,6 +76,13 @@ class CandidatesBarController(
             candidatesStatusBar.onSymbolsPageRequested = value
         }
 
+    var onSoftwareKeyboardTextInput: ((String, InputConnection?, StatusBarController.StatusSnapshot) -> Boolean)? = null
+        set(value) {
+            field = value
+            inputStatusBar.onSoftwareKeyboardTextInput = value
+            candidatesStatusBar.onSoftwareKeyboardTextInput = value
+        }
+
     var onMinimalUiToggleRequested: (() -> Unit)? = null
         set(value) {
             field = value

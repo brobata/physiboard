@@ -513,7 +513,7 @@
     <string name="tutorial_page_enable_title">Enable Pastiera</string>
     <string name="tutorial_page_enable_description">To get started, you need to enable Pastiera as an input method in Android Settings. Tap the button below to open settings.</string>
     <string name="tutorial_page_select_title">Select Pastiera</string>
-    <string name="tutorial_page_select_description">To use Pastiera, select it among the input methods. Pick between the full IME UI with the "Use on-screen keyboard" toggle ON or the minimal "Pastierina" UI with the toggle OFF.</string>
+    <string name="tutorial_page_select_description">To use Pastiera, select it among the input methods. The next step lets you choose whether Pastiera should use a virtual keyboard or hardware-keyboard mode.</string>
     <string name="tutorial_page_led_title">LED Indicator</string>
     <string name="tutorial_page_led_description">To get the most out of Pastiera, set the Fn key to act as Ctrl from Android system settings. The IME bar shows four LEDs: they turn blue when the modifier is active one-shot and orange when it is locked. The SYM layout LED is blue on the emoji page and orange on the symbols page.</string>
     <string name="tutorial_page_nav_mode_title">Nav Mode</string>
@@ -575,4 +575,16 @@
     <string name="status_bar_button_language_state_description">Լեզու %1$s, դասավորություն %2$s</string>
     <string name="status_bar_button_hamburger">Մենյու</string>
     <string name="status_bar_button_hamburger_description">Արագ գործողություններ</string>
+    <string name="tutorial_page_software_keyboard_title">Ստեղնաշարի ռեժիմ</string>
+    <string name="tutorial_page_software_keyboard_description">Ընտրեք, թե Pastiera-ն ինչպես պետք է աշխատի այս սարքում։
+
+• Ավտո. ապարատային ստեղնաշարի ռեժիմ հայտնի PKB սարքերում, իսկ Pixel, Samsung և մեծ մասի հպումով սարքերում՝ վիրտուալ ստեղնաշար։
+• Միշտ վիրտուալ ստեղնաշար. միշտ ցուցադրում է ամբողջական էկրանային ստեղնաշարը։
+• Միշտ ապարատային ստեղնաշար. օգտագործում է ապարատային ստեղնաշարի կոմպակտ մակերեսը և չի պարտադրում ամբողջական էկրանային ստեղնաշարը։</string>
+    <string name="software_keyboard_mode_title">Ստեղնաշարի ռեժիմ</string>
+    <string name="software_keyboard_mode_description">Անկախ է Pastierina-ից։ Կառավարում է ապարատային կամ վիրտուալ ստեղնաշարը։</string>
+    <string name="software_keyboard_mode_auto_current">Ավտո (այժմ՝ %1$s)</string>
+    <string name="software_keyboard_mode_always_virtual">Միշտ վիրտուալ ստեղնաշար</string>
+    <string name="software_keyboard_mode_always_hardware">Միշտ ապարատային ստեղնաշար</string>
+    <string name="software_keyboard_mode_auto_short">Ավտո (PKB՝ ապարատային, այլապես՝ վիրտուալ)</string>
 </resources>

@@ -532,7 +532,13 @@
     <string name="tutorial_page_enable_title">Enable Pastiera</string>
     <string name="tutorial_page_enable_description">To get started, you need to enable Pastiera as an input method in Android Settings. Tap the button below to open settings.</string>
     <string name="tutorial_page_select_title">Select Pastiera</string>
-    <string name="tutorial_page_select_description">To use Pastiera, select it among the input methods. Pick between the full IME UI with the &quot;Use on-screen keyboard&quot; toggle ON or the minimal &quot;Pastierina&quot; UI with the toggle OFF.</string>
+    <string name="tutorial_page_select_description">To use Pastiera, select it among the input methods. The next step lets you choose whether Pastiera should use a virtual keyboard or hardware-keyboard mode.</string>
+    <string name="tutorial_page_software_keyboard_title">Keyboard Mode</string>
+    <string name="tutorial_page_software_keyboard_description">Choose how Pastiera should behave for this device.
+
+• Auto: hardware-keyboard mode on known PKB devices; virtual keyboard mode on Pixel, Samsung, and most touch devices.
+• Always Virtual Keyboard: always show the full on-screen keyboard.
+• Always Hardware Keyboard: use the compact hardware-keyboard surface and do not force the full on-screen keyboard.</string>
     <string name="tutorial_page_led_title">LED Indicator</string>
     <string name="tutorial_page_led_description">To get the most out of Pastiera, set the Fn key to act as Ctrl from Android system settings. The IME bar shows four LEDs: they turn blue when the modifier is active one-shot and orange when it is locked. The SYM layout LED is blue on the emoji page and orange on the symbols page.</string>
     <string name="tutorial_page_nav_mode_title">Nav Mode</string>
@@ -551,6 +557,12 @@
 
     <string name="pastierina_mode_title">Pastierina Mode</string>
     <string name="pastierina_mode_description">Toggle minimal ui</string>
+    <string name="software_keyboard_mode_title">Keyboard Mode</string>
+    <string name="software_keyboard_mode_description">Separate from Pastierina. Controls hardware vs virtual keyboard behavior.</string>
+    <string name="software_keyboard_mode_auto_current">Auto (current: %1$s)</string>
+    <string name="software_keyboard_mode_always_virtual">Always Virtual Keyboard</string>
+    <string name="software_keyboard_mode_always_hardware">Always Hardware Keyboard</string>
+    <string name="software_keyboard_mode_auto_short">Auto (PKB: Hardware, otherwise Virtual)</string>
 
     <string name="titan2_layout_title">Titan 2 Layout Alignment</string>
     <string name="titan2_layout_description">Align on-screen keyboard with Titan 2 physical keys</string>

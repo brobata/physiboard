@@ -307,7 +307,7 @@
     <string name="tutorial_page_enable_title">Włącz Pastiera</string>
     <string name="tutorial_page_enable_description">Aby rozpocząć, musisz włączyć Pastiera jako metodę wprowadzania w Ustawieniach Androida. Naciśnij przycisk poniżej, aby otworzyć ustawienia.</string>
     <string name="tutorial_page_select_title">Wybierz Pastiera</string>
-    <string name="tutorial_page_select_description">Aby korzystać z Pastiera, wybierz ją wśród metod wprowadzania. Możesz użyć pełnego interfejsu IME z przełącznikiem "Use on-screen keyboard" na ON albo minimalistycznego trybu "Pastierina" z przełącznikiem na OFF.</string>
+    <string name="tutorial_page_select_description">Aby korzystać z Pastiera, wybierz ją wśród metod wprowadzania. W następnym kroku wybierzesz klawiaturę wirtualną albo tryb klawiatury sprzętowej.</string>
     <string name="tutorial_page_led_title">Wskaźnik LED</string>
     <string name="tutorial_page_led_description">Aby w pełni wykorzystać Pastierę, ustaw w systemie klawisz Fn jako Ctrl. Pasek IME pokazuje cztery diody LED: świecą na niebiesko, gdy modyfikator jest aktywny one-shot, oraz na pomarańczowo, gdy jest zablokowany. Dioda LED układu SYM jest niebieska na stronie emoji i pomarańczowa na stronie symboli.</string>
     <string name="tutorial_page_nav_mode_title">Tryb Nav</string>
@@ -575,4 +575,16 @@
     <string name="status_bar_button_language_state_description">Język %1$s, układ %2$s</string>
     <string name="status_bar_button_hamburger">Menu</string>
     <string name="status_bar_button_hamburger_description">Szybkie akcje</string>
+    <string name="tutorial_page_software_keyboard_title">Tryb klawiatury</string>
+    <string name="tutorial_page_software_keyboard_description">Wybierz, jak Pastiera ma działać na tym urządzeniu.
+
+• Auto: tryb klawiatury sprzętowej na znanych urządzeniach PKB; klawiatura wirtualna na Pixelach, Samsungach i większości urządzeń dotykowych.
+• Zawsze klawiatura wirtualna: zawsze pokazuje pełną klawiaturę ekranową.
+• Zawsze klawiatura sprzętowa: używa kompaktowej powierzchni dla klawiatury sprzętowej i nie wymusza pełnej klawiatury ekranowej.</string>
+    <string name="software_keyboard_mode_title">Tryb klawiatury</string>
+    <string name="software_keyboard_mode_description">Niezależne od Pastieriny. Steruje trybem sprzętowym vs wirtualnym.</string>
+    <string name="software_keyboard_mode_auto_current">Auto (teraz: %1$s)</string>
+    <string name="software_keyboard_mode_always_virtual">Zawsze klawiatura wirtualna</string>
+    <string name="software_keyboard_mode_always_hardware">Zawsze klawiatura sprzętowa</string>
+    <string name="software_keyboard_mode_auto_short">Auto (PKB: sprzętowa, inaczej wirtualna)</string>
 </resources>

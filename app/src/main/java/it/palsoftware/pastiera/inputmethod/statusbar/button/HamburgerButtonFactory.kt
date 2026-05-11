@@ -2,6 +2,7 @@ package it.palsoftware.pastiera.inputmethod.statusbar.button
 
 import android.content.Context
 import android.graphics.Color
+import android.view.HapticFeedbackConstants
 import android.view.View
 import android.widget.ImageView
 import it.palsoftware.pastiera.R
@@ -18,7 +19,7 @@ class HamburgerButtonFactory : StatusBarButtonFactory {
         val button = createButton(context, size)
 
         button.setOnClickListener {
-            callbacks.onHapticFeedback?.invoke()
+            button.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
             callbacks.onHamburgerMenuRequested?.invoke()
         }
 

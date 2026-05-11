@@ -424,4 +424,18 @@ object DeviceSpecific {
     fun isMinimalPhoneDevice(physicalProfileOverride: String? = null): Boolean {
         return resolveKeyboardModel(physicalProfileOverride) == KeyboardModel.MINIMAL_PHONE
     }
+
+    fun isPhysicalKeyboardDevice(physicalProfileOverride: String? = null): Boolean {
+        return when (resolveKeyboardModel(physicalProfileOverride)) {
+            KeyboardModel.Q25,
+            KeyboardModel.KEY2,
+            KeyboardModel.TITAN_2_ELITE_QWERTY,
+            KeyboardModel.TITAN_2,
+            KeyboardModel.TITAN_POCKET,
+            KeyboardModel.TITAN_SLIM,
+            KeyboardModel.TITAN_ORIGINAL,
+            KeyboardModel.MINIMAL_PHONE -> true
+            KeyboardModel.UNKNOWN -> false
+        }
+    }
 }

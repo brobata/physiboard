@@ -458,7 +458,7 @@
     <string name="tutorial_page_enable_title">Abilita Pastiera</string>
     <string name="tutorial_page_enable_description">Per iniziare, devi abilitare Pastiera come metodo di input nelle Impostazioni Android. Tocca il pulsante qui sotto per aprire le impostazioni.</string>
     <string name="tutorial_page_select_title">Seleziona Pastiera</string>
-    <string name="tutorial_page_select_description">Per usare Pastiera selezionala fra i metodi di input. Puoi scegliere la modalità IME completa con il toggle &quot;Use on-screen keyboard&quot; su ON oppure la modalità minimale &quot;Pastierina&quot; con il toggle su OFF.</string>
+    <string name="tutorial_page_select_description">Per usare Pastiera, selezionala fra i metodi di input. Nel passaggio successivo scegli se Pastiera deve usare una tastiera virtuale o la modalità tastiera hardware.</string>
     <string name="tutorial_page_led_title">LED Indicator</string>
     <string name="tutorial_page_led_description">Per sfruttare al meglio Pastiera, imposta il tasto Fn come Ctrl dalle impostazioni di sistema. La barra IME mostra quattro LED: diventano blu quando il modificatore è attivo one-shot e arancioni quando è locked. Il LED del layout SYM è blu nella pagina emoji e arancione nella pagina symbols.</string>
     <string name="tutorial_page_nav_mode_title">Nav Mode</string>
@@ -625,4 +625,16 @@
     <string name="sym_key_content_description">%1$s, %2$s</string>
     <string name="status_bar_button_minimal_ui_description">Attiva/disattiva interfaccia tastiera compatta</string>
     <string name="status_bar_buttons_reset">Reset</string>
+    <string name="tutorial_page_software_keyboard_title">Modalità tastiera</string>
+    <string name="tutorial_page_software_keyboard_description">Scegli come deve comportarsi Pastiera su questo dispositivo.
+
+• Auto: modalità tastiera hardware sui dispositivi PKB noti; tastiera virtuale su Pixel, Samsung e sulla maggior parte dei dispositivi touch.
+• Sempre tastiera virtuale: mostra sempre la tastiera completa sullo schermo.
+• Sempre tastiera hardware: usa la superficie compatta per tastiera hardware e non forza la tastiera completa sullo schermo.</string>
+    <string name="software_keyboard_mode_title">Modalità tastiera</string>
+    <string name="software_keyboard_mode_description">Indipendente da Pastierina. Controlla tastiera hardware vs virtuale.</string>
+    <string name="software_keyboard_mode_auto_current">Auto (attuale: %1$s)</string>
+    <string name="software_keyboard_mode_always_virtual">Sempre tastiera virtuale</string>
+    <string name="software_keyboard_mode_always_hardware">Sempre tastiera hardware</string>
+    <string name="software_keyboard_mode_auto_short">Auto (PKB: hardware, altrimenti virtuale)</string>
 </resources>

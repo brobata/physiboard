@@ -12,6 +12,7 @@ import android.text.style.UnderlineSpan
 import android.util.Log
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.HapticFeedbackConstants
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.view.inputmethod.InputMethodSubtype
@@ -53,6 +54,7 @@ class LanguageButtonFactory : StatusBarButtonFactory {
                     return@setOnClickListener
                 }
                 lastSwitchTime = now
+                button.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                 
                 // Disable button during switch to prevent multiple simultaneous switches
                 button.isEnabled = false

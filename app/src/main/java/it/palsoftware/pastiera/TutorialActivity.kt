@@ -104,6 +104,13 @@ sealed class TutorialPageType {
         val title: String,
         val description: String
     ) : TutorialPageType()
+
+    data class SoftwareKeyboard(
+        val title: String,
+        val description: String,
+        val icon: ImageVector,
+        val iconTint: Color
+    ) : TutorialPageType()
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -125,6 +132,12 @@ fun TutorialScreen(
         TutorialPageType.SelectPastiera(
             title = stringResource(R.string.tutorial_page_select_title),
             description = stringResource(R.string.tutorial_page_select_description)
+        ),
+        TutorialPageType.SoftwareKeyboard(
+            title = stringResource(R.string.tutorial_page_software_keyboard_title),
+            description = stringResource(R.string.tutorial_page_software_keyboard_description),
+            icon = Icons.Filled.Keyboard,
+            iconTint = MaterialTheme.colorScheme.primary
         ),
         TutorialPageType.Standard(
             title = stringResource(R.string.tutorial_page_led_title),
@@ -263,6 +276,12 @@ fun TutorialScreen(
                             modifier = Modifier.fillMaxSize()
                         )
                     }
+                    is TutorialPageType.SoftwareKeyboard -> {
+                        TutorialSoftwareKeyboardPageContent(
+                            page = pageType,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
             }
             
@@ -372,6 +391,73 @@ fun TutorialScreen(
                             modifier = Modifier.size(16.dp)
                         )
                     }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TutorialSoftwareKeyboardPageContent(
+    page: TutorialPageType.SoftwareKeyboard,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    var expanded by remember { mutableStateOf(false) }
+    var selectedMode by remember { mutableStateOf(SettingsManager.getSoftwareKeyboardMode(context)) }
+
+    val label = when (selectedMode) {
+        SettingsManager.SoftwareKeyboardMode.AUTO -> stringResource(R.string.software_keyboard_mode_auto_short)
+        SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL -> stringResource(R.string.software_keyboard_mode_always_virtual)
+        SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE -> stringResource(R.string.software_keyboard_mode_always_hardware)
+    }
+
+    TutorialPageLayout(
+        title = page.title,
+        description = page.description,
+        modifier = modifier,
+        centered = false,
+        descriptionLeftAligned = true,
+        iconContent = {
+            TutorialIconSurface(
+                icon = page.icon,
+                tint = page.iconTint
+            )
+        }
+    ) {
+        Spacer(modifier = Modifier.height(16.dp))
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = it }
+        ) {
+            OutlinedTextField(
+                value = label,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text(stringResource(R.string.software_keyboard_mode_title)) },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor()
+            )
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                listOf(
+                    SettingsManager.SoftwareKeyboardMode.AUTO to stringResource(R.string.software_keyboard_mode_auto_short),
+                    SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL to stringResource(R.string.software_keyboard_mode_always_virtual),
+                    SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE to stringResource(R.string.software_keyboard_mode_always_hardware)
+                ).forEach { (mode, title) ->
+                    DropdownMenuItem(
+                        text = { Text(title) },
+                        onClick = {
+                            SettingsManager.setSoftwareKeyboardMode(context, mode)
+                            selectedMode = mode
+                            expanded = false
+                        }
+                    )
                 }
             }
         }

@@ -2,6 +2,7 @@ package it.palsoftware.pastiera.inputmethod.ui
 
 import android.content.Context
 import android.graphics.Color
+import android.view.HapticFeedbackConstants
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -139,7 +140,6 @@ class HamburgerMenuView(
                 callbacks.onEmojiPickerRequested?.invoke()
             },
             onLanguageSwitchRequested = {
-                callbacks.onHapticFeedback?.invoke()
                 callbacks.onLanguageSwitchRequested?.invoke()
             },
             onHamburgerMenuRequested = null,
@@ -157,7 +157,7 @@ class HamburgerMenuView(
 
         applyDynamicPadding(rowView)
         val buttonHeight = resolveButtonHeight(rowView)
-        val closeButton = createCloseButton(menuCallbacks.onHapticFeedback, onClose, buttonHeight)
+        val closeButton = createCloseButton(onClose, buttonHeight)
         rowView.addView(closeButton)
         val fallbackWidth = buttonHeight
         val hostedButtons = mutableListOf<StatusBarButtonHost.HostedButton>()
@@ -240,7 +240,6 @@ class HamburgerMenuView(
     }
 
     private fun createCloseButton(
-        onHapticFeedback: (() -> Unit)?,
         onClose: () -> Unit,
         heightPx: Int
     ): ImageView {
@@ -253,7 +252,7 @@ class HamburgerMenuView(
             isClickable = true
             isFocusable = true
             setOnClickListener {
-                onHapticFeedback?.invoke()
+                performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                 onClose()
             }
         }

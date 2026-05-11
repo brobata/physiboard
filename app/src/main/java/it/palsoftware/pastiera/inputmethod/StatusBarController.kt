@@ -25,12 +25,11 @@ import it.palsoftware.pastiera.MainActivity
 import it.palsoftware.pastiera.SymCustomizationActivity
 import it.palsoftware.pastiera.SettingsManager
 import it.palsoftware.pastiera.data.layout.LayoutFileStore
+import it.palsoftware.pastiera.data.mappings.KeyMappingLoader
+import it.palsoftware.pastiera.data.variation.VariationRepository
 import kotlin.math.max
-import android.view.MotionEvent
 import android.view.KeyEvent
-import android.view.InputDevice
 import android.view.inputmethod.InputMethodManager
-import kotlin.math.abs
 import it.palsoftware.pastiera.inputmethod.ui.ClipboardHistoryView
 import it.palsoftware.pastiera.inputmethod.ui.EmojiPickerView
 import it.palsoftware.pastiera.inputmethod.ui.HamburgerMenuView
@@ -41,6 +40,7 @@ import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonRegistry
 import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarCallbacks
 import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils
 import it.palsoftware.pastiera.inputmethod.NotificationHelper
+import it.palsoftware.pastiera.inputmethod.aospkeyboard.AospKeyboardView
 import android.content.res.AssetManager
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -113,6 +113,8 @@ class StatusBarController(
             field = value
             variationBarView?.onSymbolsPageRequested = value
         }
+
+    var onSoftwareKeyboardTextInput: ((String, android.view.inputmethod.InputConnection?, StatusSnapshot) -> Boolean)? = null
 
     var onHamburgerMenuRequested: (() -> Unit)? = null
         set(value) {
@@ -214,6 +216,7 @@ class StatusBarController(
         // UI latch flags for static variation bar layers.
         val shiftLayerLatched: Boolean = false,
         val altLayerLatched: Boolean = false,
+        val activeKeyboardLayoutName: String = "qwerty",
         // Legacy flag for backward compatibility
         val shouldDisableSmartFeatures: Boolean = false
     ) {
@@ -253,6 +256,10 @@ class StatusBarController(
     private var baseBottomPadding: Int = 0
     private var lastHamburgerInputConnection: android.view.inputmethod.InputConnection? = null
     private var lastInsetsLogSignature: String? = null
+    private var softwareKeyboardShown: Boolean = false
+    private var softwareKeyboardShiftOverride: Boolean? = null
+    private var lastSoftwareKeyboardHeight: Int = 0
+    private var lastSoftwareKeyboardSymPageRendered: Int = 0
     
     init {
         onHamburgerMenuRequested = { toggleHamburgerMenu() }
@@ -647,7 +654,10 @@ class StatusBarController(
     /**
      * Updates the emoji picker view inline in the keyboard container.
      */
-    private fun updateEmojiPickerView(inputConnection: android.view.inputmethod.InputConnection? = null) {
+    private fun updateEmojiPickerView(
+        inputConnection: android.view.inputmethod.InputConnection? = null,
+        softwareKeyboardHeight: Int? = null
+    ) {
         val container = emojiKeyboardContainer ?: return
         // Emoji picker page should be edge-to-edge; remove the SYM container side padding.
         container.setPadding(0, 0, 0, emojiKeyboardBottomPaddingPx)
@@ -660,6 +670,10 @@ class StatusBarController(
             emojiKeyButtons.clear()
             container.addView(view)
         }
+        view.configureSoftwareKeyboardMode(
+            heightPx = softwareKeyboardHeight,
+            onKeyboardLayoutRequested = if (softwareKeyboardHeight != null) onEmojiPickerRequested else null
+        )
         view.setInputConnection(inputConnection)
 
         // Only scroll to top when view is just added (first open or switching pages)
@@ -884,7 +898,313 @@ class StatusBarController(
         lastSymMappingsRendered = HashMap(symMappings)
         lastInputConnectionUsed = inputConnection
     }
-    
+
+    private fun updateSoftwareKeyboard(
+        snapshot: StatusSnapshot,
+        inputConnection: android.view.inputmethod.InputConnection? = null
+    ) {
+        val container = emojiKeyboardContainer ?: return
+        container.setPadding(0, 0, 0, emojiKeyboardBottomPaddingPx)
+        val uppercase = softwareKeyboardShiftOverride
+            ?: (snapshot.capsLockEnabled || snapshot.shiftPhysicallyPressed || snapshot.shiftOneShot)
+        val layoutName = resolveSoftwareKeyboardLayoutName(snapshot)
+            val keyboardView = container.getChildAt(0) as? AospKeyboardView ?: AospKeyboardView(context).also { view ->
+            var parent: ViewGroup? = container
+            while (parent != null) {
+                parent.clipChildren = false
+                parent.clipToPadding = false
+                parent = parent.parent as? ViewGroup
+            }
+            container.removeAllViews()
+            emojiKeyButtons.clear()
+            container.addView(
+                view,
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+            )
+        }
+        keyboardView.listener = object : AospKeyboardView.Listener {
+            override fun onText(text: String) {
+                val handled = onSoftwareKeyboardTextInput?.invoke(text, inputConnection, snapshot) == true
+                if (!handled) {
+                    inputConnection?.commitText(text, 1)
+                }
+                if (softwareKeyboardShiftOverride != null) {
+                    softwareKeyboardShiftOverride = null
+                    keyboardView.shifted = snapshot.capsLockEnabled || snapshot.shiftPhysicallyPressed || snapshot.shiftOneShot
+                }
+            }
+
+            override fun onBackspace() {
+                inputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
+                inputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DEL))
+            }
+
+            override fun onEnter() {
+                inputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
+                inputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
+            }
+
+            override fun onShift() {
+                val currentlyUppercase = keyboardView.shifted
+                softwareKeyboardShiftOverride = !currentlyUppercase
+                keyboardView.shifted = !currentlyUppercase
+            }
+
+            override fun onSymbols() {
+                onSymbolsPageRequested?.invoke()
+            }
+
+            override fun onLanguageSwitch() {
+                onLanguageSwitchRequested?.invoke()
+            }
+
+            override fun onCursorMove(delta: Int) {
+                val connection = inputConnection ?: return
+                val moved = if (delta < 0) {
+                    TextSelectionHelper.moveCursorLeft(connection)
+                } else {
+                    TextSelectionHelper.moveCursorRight(connection)
+                }
+                if (moved) {
+                    onCursorMovedListener?.invoke()
+                }
+            }
+        }
+        keyboardView.layoutName = layoutName
+        keyboardView.shifted = uppercase
+        keyboardView.spacebarLabel = buildSoftwareKeyboardSpacebarLabel(snapshot)
+        keyboardView.longPressTimeoutMs = SettingsManager.getLongPressThreshold(context)
+        keyboardView.longPressAlternatesProvider = { output ->
+            resolveSoftwareKeyboardLongPressAlternates(output, snapshot)
+        }
+        softwareKeyboardShown = true
+        lastSymPageRendered = 0
+        lastInputConnectionUsed = inputConnection
+    }
+
+    private fun resolveSoftwareKeyboardLongPressAlternates(output: String, snapshot: StatusSnapshot): List<String> {
+        if (output.isEmpty()) return emptyList()
+        val baseChar = output.first()
+        val keyCode = keyCodeForSoftwareKeyboardChar(baseChar) ?: return emptyList()
+        return when (SettingsManager.getLongPressModifier(context)) {
+            "alt" -> KeyMappingLoader.loadAltKeyMappings(context.assets, context)[keyCode]?.let(::listOf).orEmpty()
+            "shift" -> listOf(output.uppercase()).filter { it != output }
+            "sym" -> {
+                val useEmojiFirst = SettingsManager.getSymPagesConfig(context).prefersEmojiLongPressLayer()
+                val map = if (useEmojiFirst) {
+                    KeyMappingLoader.loadSymKeyMappings(context.assets)
+                } else {
+                    KeyMappingLoader.loadSymKeyMappingsPage2(context.assets)
+                }
+                map[keyCode]?.let(::listOf).orEmpty()
+            }
+            "variations" -> {
+                val variations = VariationRepository.loadVariations(
+                    assets = context.assets,
+                    context = context,
+                    activeLayoutName = resolveSoftwareKeyboardLayoutName(snapshot)
+                )
+                variations[baseChar] ?: variations[baseChar.lowercaseChar()] ?: emptyList()
+            }
+            else -> emptyList()
+        }
+    }
+
+    private fun keyCodeForSoftwareKeyboardChar(char: Char): Int? = when (char.lowercaseChar()) {
+        'q' -> KeyEvent.KEYCODE_Q
+        'w' -> KeyEvent.KEYCODE_W
+        'e' -> KeyEvent.KEYCODE_E
+        'r' -> KeyEvent.KEYCODE_R
+        't' -> KeyEvent.KEYCODE_T
+        'y' -> KeyEvent.KEYCODE_Y
+        'u', 'ü' -> KeyEvent.KEYCODE_U
+        'i' -> KeyEvent.KEYCODE_I
+        'o', 'ö' -> KeyEvent.KEYCODE_O
+        'p' -> KeyEvent.KEYCODE_P
+        'a', 'ä' -> KeyEvent.KEYCODE_A
+        's' -> KeyEvent.KEYCODE_S
+        'd' -> KeyEvent.KEYCODE_D
+        'f' -> KeyEvent.KEYCODE_F
+        'g' -> KeyEvent.KEYCODE_G
+        'h' -> KeyEvent.KEYCODE_H
+        'j' -> KeyEvent.KEYCODE_J
+        'k' -> KeyEvent.KEYCODE_K
+        'l' -> KeyEvent.KEYCODE_L
+        'z' -> KeyEvent.KEYCODE_Z
+        'x' -> KeyEvent.KEYCODE_X
+        'c' -> KeyEvent.KEYCODE_C
+        'v' -> KeyEvent.KEYCODE_V
+        'b' -> KeyEvent.KEYCODE_B
+        'n' -> KeyEvent.KEYCODE_N
+        'm' -> KeyEvent.KEYCODE_M
+        ',' -> KeyEvent.KEYCODE_COMMA
+        '.' -> KeyEvent.KEYCODE_PERIOD
+        else -> null
+    }
+
+    private fun updateSoftwareSymbolKeyboard(
+        symMappings: Map<Int, String>,
+        page: Int,
+        inputConnection: android.view.inputmethod.InputConnection? = null
+    ) {
+        val container = emojiKeyboardContainer ?: return
+        container.setPadding(0, 0, 0, emojiKeyboardBottomPaddingPx)
+        val inputConnectionChanged = lastInputConnectionUsed != inputConnection
+        if (
+            lastSymPageRendered == page &&
+            lastSoftwareKeyboardSymPageRendered == page &&
+            lastSymMappingsRendered == symMappings &&
+            !inputConnectionChanged
+        ) {
+            return
+        }
+
+        container.removeAllViews()
+        emojiKeyButtons.clear()
+
+        val rows = listOf(
+            listOf(KeyEvent.KEYCODE_Q, KeyEvent.KEYCODE_W, KeyEvent.KEYCODE_E, KeyEvent.KEYCODE_R, KeyEvent.KEYCODE_T, KeyEvent.KEYCODE_Y, KeyEvent.KEYCODE_U, KeyEvent.KEYCODE_I, KeyEvent.KEYCODE_O, KeyEvent.KEYCODE_P),
+            listOf(KeyEvent.KEYCODE_A, KeyEvent.KEYCODE_S, KeyEvent.KEYCODE_D, KeyEvent.KEYCODE_F, KeyEvent.KEYCODE_G, KeyEvent.KEYCODE_H, KeyEvent.KEYCODE_J, KeyEvent.KEYCODE_K, KeyEvent.KEYCODE_L),
+            listOf(KeyEvent.KEYCODE_Z, KeyEvent.KEYCODE_X, KeyEvent.KEYCODE_C, KeyEvent.KEYCODE_V, KeyEvent.KEYCODE_B, KeyEvent.KEYCODE_N, KeyEvent.KEYCODE_M)
+        )
+        val labels = mapOf(
+            KeyEvent.KEYCODE_Q to "Q", KeyEvent.KEYCODE_W to "W", KeyEvent.KEYCODE_E to "E",
+            KeyEvent.KEYCODE_R to "R", KeyEvent.KEYCODE_T to "T", KeyEvent.KEYCODE_Y to "Y",
+            KeyEvent.KEYCODE_U to "U", KeyEvent.KEYCODE_I to "I", KeyEvent.KEYCODE_O to "O",
+            KeyEvent.KEYCODE_P to "P", KeyEvent.KEYCODE_A to "A", KeyEvent.KEYCODE_S to "S",
+            KeyEvent.KEYCODE_D to "D", KeyEvent.KEYCODE_F to "F", KeyEvent.KEYCODE_G to "G",
+            KeyEvent.KEYCODE_H to "H", KeyEvent.KEYCODE_J to "J", KeyEvent.KEYCODE_K to "K",
+            KeyEvent.KEYCODE_L to "L", KeyEvent.KEYCODE_Z to "Z", KeyEvent.KEYCODE_X to "X",
+            KeyEvent.KEYCODE_C to "C", KeyEvent.KEYCODE_V to "V", KeyEvent.KEYCODE_B to "B",
+            KeyEvent.KEYCODE_N to "N", KeyEvent.KEYCODE_M to "M"
+        )
+        val keySpacing = dpToPx(2f)
+        val keyHeight = ((lastSoftwareKeyboardHeight.takeIf { it > 0 } ?: dpToPx(200f)) - emojiKeyboardBottomPaddingPx) / 4
+        val screenWidth = context.resources.displayMetrics.widthPixels
+        val fixedKeyWidth = ((screenWidth - keySpacing * 9) / 10).coerceAtLeast(1)
+
+        rows.forEachIndexed { rowIndex, row ->
+            val rowLayout = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    keyHeight
+                )
+            }
+            if (rowIndex == 2) {
+                rowLayout.addView(createSoftwareSymbolControl("⇧", keyHeight, fixedKeyWidth) {
+                    // Keep page stable; shifted symbol layers can be added later without touching PKB SYM.
+                }, LinearLayout.LayoutParams(fixedKeyWidth, keyHeight).apply { marginEnd = keySpacing })
+            }
+            row.forEachIndexed { index, keyCode ->
+                val content = symMappings[keyCode].orEmpty()
+                val keyButton = createEmojiKeyButton(labels[keyCode].orEmpty(), content, keyHeight, page)
+                if (content.isNotEmpty() && inputConnection != null) {
+                    keyButton.isClickable = true
+                    keyButton.isFocusable = true
+                    keyButton.setOnClickListener {
+                        inputConnection.commitText(content, 1)
+                    }
+                }
+                rowLayout.addView(keyButton, LinearLayout.LayoutParams(fixedKeyWidth, keyHeight).apply {
+                    if (index < row.size - 1) marginEnd = keySpacing
+                })
+            }
+            if (rowIndex == 2) {
+                rowLayout.addView(createSoftwareSymbolControl("⌫", keyHeight, fixedKeyWidth) {
+                    inputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
+                    inputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DEL))
+                }, LinearLayout.LayoutParams(fixedKeyWidth, keyHeight).apply { marginStart = keySpacing })
+            }
+            container.addView(rowLayout)
+        }
+
+        val row4 = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, keyHeight)
+        }
+        row4.addView(createSoftwareSymbolControl("ABC", keyHeight, fixedKeyWidth) {
+            onSymbolsPageRequested?.invoke()
+        }, LinearLayout.LayoutParams(fixedKeyWidth * 2, keyHeight).apply { marginEnd = keySpacing })
+        row4.addView(createSoftwareSymbolControl("☺", keyHeight, fixedKeyWidth) {
+            onEmojiPickerRequested?.invoke()
+        }, LinearLayout.LayoutParams(fixedKeyWidth, keyHeight).apply { marginEnd = keySpacing })
+        row4.addView(createSoftwareSymbolControl("", keyHeight, fixedKeyWidth) {
+            inputConnection?.commitText(" ", 1)
+        }, LinearLayout.LayoutParams(fixedKeyWidth * 4, keyHeight).apply { marginEnd = keySpacing })
+        row4.addView(createSoftwareSymbolControl(".", keyHeight, fixedKeyWidth) {
+            inputConnection?.commitText(".", 1)
+        }, LinearLayout.LayoutParams(fixedKeyWidth, keyHeight).apply { marginEnd = keySpacing })
+        row4.addView(createSoftwareSymbolControl("↵", keyHeight, fixedKeyWidth) {
+            inputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
+            inputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
+        }, LinearLayout.LayoutParams(fixedKeyWidth * 2, keyHeight))
+        container.addView(row4)
+
+        lastSymPageRendered = page
+        lastSoftwareKeyboardSymPageRendered = page
+        lastSymMappingsRendered = HashMap(symMappings)
+        lastInputConnectionUsed = inputConnection
+    }
+
+    private fun createSoftwareSymbolControl(
+        label: String,
+        height: Int,
+        width: Int,
+        onClick: () -> Unit
+    ): TextView {
+        return TextView(context).apply {
+            text = label
+            setTextColor(Color.WHITE)
+            textSize = if (label.length <= 1) 22f else 15f
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            background = GradientDrawable().apply {
+                setColor(Color.argb(40, 255, 255, 255))
+                cornerRadius = dpToPx(6f).toFloat()
+            }
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { onClick() }
+            layoutParams = LinearLayout.LayoutParams(width, height)
+        }
+    }
+
+    private fun buildSoftwareKeyboardSpacebarLabel(snapshot: StatusSnapshot): String {
+        val language = try {
+            val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+            imm?.currentInputMethodSubtype?.locale
+                ?.split("_")
+                ?.firstOrNull()
+                ?.uppercase()
+                ?.takeIf { it.isNotBlank() }
+        } catch (e: Exception) {
+            null
+        } ?: "??"
+        val layout = when (resolveSoftwareKeyboardLayoutName(snapshot)) {
+            "german_multitap_qwertz" -> "QWERTZ DE"
+            "qwertz" -> "QWERTZ"
+            "azerty" -> "AZERTY"
+            else -> "QWERTY"
+        }
+        return "$language · $layout"
+    }
+
+    private fun resolveSoftwareKeyboardLayoutName(snapshot: StatusSnapshot): String {
+        return try {
+            val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+            val subtype = imm?.currentInputMethodSubtype
+            AdditionalSubtypeUtils.resolveActiveLayout(context.assets, context, subtype)
+        } catch (e: Exception) {
+            snapshot.activeKeyboardLayoutName
+        }
+    }
+
     /**
      * Crea un placeholder trasparente per allineare le righe.
      */
@@ -1544,10 +1864,15 @@ class StatusBarController(
 
     fun update(snapshot: StatusSnapshot, emojiMapText: String = "", inputConnection: android.view.inputmethod.InputConnection? = null, symMappings: Map<Int, String>? = null) {
         isTitan2Layout = SettingsManager.isTitan2LayoutEnabled(context)
+        val isFullSoftwareKeyboardMode =
+            SettingsManager.resolveEffectiveSoftwareKeyboardMode(context) == SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL
+        val isSoftwareKeyboardEmojiPage = isFullSoftwareKeyboardMode && snapshot.symPage == 4
+        val isSoftwareKeyboardSymbolPage = isFullSoftwareKeyboardMode && snapshot.symPage in 1..2
+        val isSoftwareKeyboardOverlayPage = isSoftwareKeyboardEmojiPage || isSoftwareKeyboardSymbolPage
         variationBarView?.onVariationSelectedListener = onVariationSelectedListener
         variationBarView?.onCursorMovedListener = onCursorMovedListener
         variationBarView?.updateInputConnection(inputConnection)
-        variationBarView?.setSymModeActive(snapshot.symPage > 0 || snapshot.clipboardOverlay)
+        variationBarView?.setSymModeActive((snapshot.symPage > 0 && !isSoftwareKeyboardOverlayPage) || snapshot.clipboardOverlay)
         variationBarView?.updateLanguageButtonText()
         updateClipboardCount(snapshot.clipboardCount)
         hamburgerMenuView?.refreshLanguageText()
@@ -1557,7 +1882,7 @@ class StatusBarController(
             hideHamburgerMenu()
             lastHamburgerInputConnection = inputConnection
         }
-        if (snapshot.symPage > 0 || snapshot.clipboardOverlay || forceMinimalUi) {
+        if ((snapshot.symPage > 0 && !isFullSoftwareKeyboardMode) || snapshot.clipboardOverlay || forceMinimalUi) {
             hideHamburgerMenu()
         }
         
@@ -1582,7 +1907,10 @@ class StatusBarController(
         }
         
         modifiersContainerView.visibility = View.GONE
-        ledStatusView.update(snapshot)
+        ledStatusView.getView()?.visibility = if (isFullSoftwareKeyboardMode) View.GONE else View.VISIBLE
+        if (!isFullSoftwareKeyboardMode) {
+            ledStatusView.update(snapshot)
+        }
         val variationsBar = if (!forceMinimalUi) variationBarView else null
         val variationsWrapperView = if (!forceMinimalUi) variationsWrapper else null
         val experimentalEnabled = SettingsManager.isExperimentalSuggestionsEnabled(context)
@@ -1591,8 +1919,9 @@ class StatusBarController(
         val showFullBar =
             experimentalEnabled &&
             suggestionsEnabledSetting &&
+            !forceMinimalUi &&
             !snapshot.shouldDisableSuggestions &&
-            snapshot.symPage == 0 &&
+            (snapshot.symPage == 0 || isSoftwareKeyboardOverlayPage) &&
             !snapshot.clipboardOverlay
         fullSuggestionsBar?.setAccessibilityAnnouncementConfig(
             liveAnnouncementsEnabled = isAccessibilityLiveAnnouncementsEnabled(),
@@ -1654,6 +1983,36 @@ class StatusBarController(
             return
         }
 
+        val shouldShowSoftwareKeyboard =
+            isFullSoftwareKeyboardMode &&
+                !snapshot.clipboardOverlay
+
+        if (shouldShowSoftwareKeyboard && snapshot.symPage == 0) {
+            updateSoftwareKeyboard(snapshot, inputConnection)
+            variationsWrapperView?.apply {
+                visibility = View.VISIBLE
+                isEnabled = true
+                isClickable = true
+            }
+            val snapshotForVariations = if (snapshot.suggestions.isNotEmpty()) {
+                snapshot.copy(suggestions = emptyList(), addWordCandidate = null)
+            } else snapshot
+            variationsBar?.showVariations(snapshotForVariations, inputConnection)
+            val measured = ensureEmojiKeyboardMeasuredHeight(emojiKeyboardView, layout, forceReMeasure = true)
+            val keyboardHeight = if (measured > 0) measured else defaultSymHeightPx
+            lastSoftwareKeyboardHeight = keyboardHeight
+            emojiKeyboardView.setBackgroundColor(DEFAULT_BACKGROUND)
+            emojiKeyboardView.visibility = View.VISIBLE
+            emojiKeyboardView.layoutParams = (emojiKeyboardView.layoutParams ?: LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                keyboardHeight
+            )).apply { height = keyboardHeight }
+            return
+        } else {
+            softwareKeyboardShown = false
+            softwareKeyboardShiftOverride = null
+        }
+
         if (snapshot.symPage > 0) {
             // Handle page 3 (clipboard), page 4 (emoji picker) vs pages 1-2 (emoji/symbols)
             if (snapshot.symPage == 3) {
@@ -1661,7 +2020,9 @@ class StatusBarController(
                 updateClipboardView(inputConnection)
             } else if (snapshot.symPage == 4) {
                 // Show emoji picker view
-                updateEmojiPickerView(inputConnection)
+                updateEmojiPickerView(inputConnection, softwareKeyboardHeight = lastSoftwareKeyboardHeight.takeIf { isFullSoftwareKeyboardMode && it > 0 })
+            } else if (isSoftwareKeyboardSymbolPage && symMappings != null) {
+                updateSoftwareSymbolKeyboard(symMappings, snapshot.symPage, inputConnection)
             } else if (symMappings != null) {
                 updateEmojiKeyboard(symMappings, snapshot.symPage, inputConnection)
             }
@@ -1672,15 +2033,29 @@ class StatusBarController(
                 layout.background = ColorDrawable(DEFAULT_BACKGROUND)
             }
             (layout.background as? ColorDrawable)?.alpha = 255
-            variationsWrapperView?.apply {
-                visibility = View.INVISIBLE // keep space to avoid shrink/flash
-                isEnabled = false
-                isClickable = false
+            if (isSoftwareKeyboardOverlayPage) {
+                variationsWrapperView?.apply {
+                    visibility = View.VISIBLE
+                    isEnabled = true
+                    isClickable = true
+                }
+                val snapshotForVariations = if (snapshot.suggestions.isNotEmpty()) {
+                    snapshot.copy(suggestions = emptyList(), addWordCandidate = null)
+                } else snapshot
+                variationsBar?.showVariations(snapshotForVariations, inputConnection)
+            } else {
+                variationsWrapperView?.apply {
+                    visibility = View.INVISIBLE // keep space to avoid shrink/flash
+                    isEnabled = false
+                    isClickable = false
+                }
+                variationsBar?.hideImmediate()
             }
-            variationsBar?.hideImmediate()
 
             val measured = ensureEmojiKeyboardMeasuredHeight(emojiKeyboardView, layout, forceReMeasure = true)
-            val symHeight = if (measured > 0) measured else defaultSymHeightPx
+            val symHeight = if (isFullSoftwareKeyboardMode && lastSoftwareKeyboardHeight > 0) {
+                lastSoftwareKeyboardHeight
+            } else if (measured > 0) measured else defaultSymHeightPx
             lastSymHeight = symHeight
             emojiKeyboardView.setBackgroundColor(DEFAULT_BACKGROUND)
             emojiKeyboardView.visibility = View.VISIBLE
