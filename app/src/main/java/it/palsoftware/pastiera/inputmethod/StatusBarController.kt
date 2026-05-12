@@ -1919,7 +1919,6 @@ class StatusBarController(
         val showFullBar =
             experimentalEnabled &&
             suggestionsEnabledSetting &&
-            !forceMinimalUi &&
             !snapshot.shouldDisableSuggestions &&
             (snapshot.symPage == 0 || isSoftwareKeyboardOverlayPage) &&
             !snapshot.clipboardOverlay

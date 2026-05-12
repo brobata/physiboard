@@ -20,6 +20,7 @@ APK_PATH="$ROOT_DIR/app/build/outputs/apk/nightly/release/app-nightly-release.ap
 SHA_PATH="${APK_PATH}.sha256"
 NOTES_PATH="$ROOT_DIR/.github/release-templates/debug-prerelease.md"
 TMP_NOTES_PATH="$(mktemp)"
+EXPECTED_NIGHTLY_CERT_SHA256="${EXPECTED_NIGHTLY_CERT_SHA256:-8c5dce860a65a7a3c3befcb7f7f35a1f3523c1d01462271d6ae03f4df402e685}"
 GRADLE_ARGS=(
   -PPASTIERA_VERSION_NAME="$BASE_VERSION"
   -PPASTIERA_NIGHTLY_VERSION_CODE="$VERSION_CODE"
@@ -66,6 +67,41 @@ sha256sum "$APK_PATH" | tee "$SHA_PATH"
 
 build_nightly_notes
 
+verify_nightly_signing_cert() {
+  local apksigner_bin="${APKSIGNER_BIN:-apksigner}"
+  if ! command -v "$apksigner_bin" >/dev/null 2>&1; then
+    local sdk_root="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-$HOME/Android/Sdk}}"
+    local latest_build_tools
+    latest_build_tools="$(ls -1d "$sdk_root"/build-tools/* 2>/dev/null | sort -V | tail -n 1 || true)"
+    if [ -n "$latest_build_tools" ] && [ -x "$latest_build_tools/apksigner" ]; then
+      apksigner_bin="$latest_build_tools/apksigner"
+    else
+      echo "apksigner not found. Install Android build-tools or set APKSIGNER_BIN." >&2
+      exit 1
+    fi
+  fi
+
+  local actual_sha
+  actual_sha="$(
+    "$apksigner_bin" verify --print-certs "$APK_PATH" |
+      awk -F': ' '/certificate SHA-256 digest/ { print tolower($2); exit }'
+  )"
+
+  if [ -z "$actual_sha" ]; then
+    echo "Could not read signing certificate digest from APK." >&2
+    exit 1
+  fi
+
+  if [ "$actual_sha" != "$EXPECTED_NIGHTLY_CERT_SHA256" ]; then
+    echo "Nightly signing certificate mismatch." >&2
+    echo "Expected: $EXPECTED_NIGHTLY_CERT_SHA256" >&2
+    echo "Actual:   $actual_sha" >&2
+    exit 1
+  fi
+}
+
+verify_nightly_signing_cert
+
 if [ "$PUBLISH" = "--publish" ]; then
   gh release create "$TAG_NAME" "$APK_PATH" "$SHA_PATH" \
     --prerelease \
@@ -78,4 +114,3 @@ printf 'tag_name=%s\n' "$TAG_NAME"
 printf 'version_code=%s\n' "$VERSION_CODE"
 printf 'apk=%s\n' "$APK_PATH"
 printf 'sha256=%s\n' "$SHA_PATH"
-printf 'notes=%s\n' "$TMP_NOTES_PATH"
