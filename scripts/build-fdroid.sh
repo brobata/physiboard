@@ -10,7 +10,7 @@ if [ -z "$VERSION_NAME" ] || [ -z "$VERSION_CODE" ]; then
 fi
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-APK_PATH="$ROOT_DIR/app/build/outputs/apk/stable/release/app-stable-release.apk"
+APK_PATH="$ROOT_DIR/app/build/outputs/apk/stable/release/app-stable-release-unsigned.apk"
 SHA_PATH="${APK_PATH}.sha256"
 
 cd "$ROOT_DIR"

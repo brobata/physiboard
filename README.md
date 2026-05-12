@@ -85,8 +85,10 @@ Input method for physical keyboards android devices (e.g. Unihertz Titan 2), des
   - `./gradlew :app:testDebugUnitTest --tests it.palsoftware.pastiera.inputmethod.InputEventRouterModifierE2ETest`
 - Core modifier state machine tests:
   - `./gradlew :app:testDebugUnitTest --tests it.palsoftware.pastiera.core.ModifierStateControllerTest`
-- Build debug APK:
-  - `./gradlew :app:assembleDebug`
+- Build nightly debug APK with dynamic nightly version code:
+  - `./scripts/build-nightly-debug.sh 0.85`
+  - `./scripts/build-nightly-debug.sh 0.85 --install`
+  - `./scripts/build-nightly-debug.sh 0.85 --install --device <adb-serial>`
 
 ## Continuous Integration
 - Pushes to `main` and pull requests run `.github/workflows/ci.yml`.
@@ -119,6 +121,17 @@ Input method for physical keyboards android devices (e.g. Unihertz Titan 2), des
   - `./scripts/build-release.sh 0.85 85`
   - `./scripts/build-fdroid.sh 0.85 85`
 
+### Local signing config (`release/keystore.properties`)
+- Local wrapper scripts read signing config from `release/keystore.properties` (gitignored).
+- You can provide file paths, embedded Base64, or both (path + B64 for parity with CI secrets storage).
+- CI-style variable names are supported directly:
+  - Stable:
+    - `PASTIERA_KEYSTORE_FILE`, `PASTIERA_KEYSTORE_PASSWORD`, `PASTIERA_KEY_ALIAS`, `PASTIERA_KEY_PASSWORD`, optional `PASTIERA_KEYSTORE_B64`
+  - Nightly:
+    - `NIGHTLY_KEYSTORE_FILE`, `PASTIERA_NIGHTLY_KEYSTORE_PASSWORD`, `PASTIERA_NIGHTLY_KEY_ALIAS`, `PASTIERA_NIGHTLY_KEY_PASSWORD`, optional `PASTIERA_NIGHTLY_KEYSTORE_B64`
+- Legacy Gradle property names are still supported (`storeFile`, `storePassword`, `keyAlias`, `keyPassword`, `nightlyStoreFile`, `nightlyStorePassword`, `nightlyKeyAlias`, `nightlyKeyPassword`).
+- When `PASTIERA_KEYSTORE_B64` or `PASTIERA_NIGHTLY_KEYSTORE_B64` is present, local scripts materialize the corresponding `.jks` only if the target file is missing.
+
 ## Manual nightly CI
 - The repository includes a manually triggered nightly workflow at `.github/workflows/debug.yml`.
 - Required GitHub Actions secrets:
@@ -144,6 +157,9 @@ Input method for physical keyboards android devices (e.g. Unihertz Titan 2), des
 - Local wrappers are available:
   - `./scripts/build-nightly.sh 0.85`
   - `./scripts/build-nightly.sh 0.85 --publish`
+  - `./scripts/build-nightly-debug.sh 0.85`
+  - `./scripts/build-nightly-debug.sh 0.85 --install`
+  - `./scripts/build-nightly-debug.sh 0.85 --install --device <adb-serial>`
   - `./scripts/publish-private-fdroid-nightly.sh 0.85`
   - `./scripts/publish-private-fdroid-nightly.sh 0.85 ../palsoftware-web/apps/docs/public https://pastiera.eu/fdroid/nightly/repo`
   - `./scripts/publish-private-fdroid-nightly.sh 0.85 ../palsoftware-web/apps/docs/public https://pastiera.eu/fdroid/nightly/repo --no-push-pages`

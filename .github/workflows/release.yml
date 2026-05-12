@@ -109,7 +109,7 @@ jobs:
       - name: Archive unsigned F-Droid outputs
         if: ${{ inputs.build_fdroid_artifact }}
         run: |
-          cp app/build/outputs/apk/stable/release/app-stable-release.apk /tmp/pastiera-release-artifacts/pastiera-${{ inputs.version_name }}-fdroid-unsigned.apk
+          cp app/build/outputs/apk/stable/release/app-stable-release-unsigned.apk /tmp/pastiera-release-artifacts/pastiera-${{ inputs.version_name }}-fdroid-unsigned.apk
           sha256sum /tmp/pastiera-release-artifacts/pastiera-${{ inputs.version_name }}-fdroid-unsigned.apk \
             | tee /tmp/pastiera-release-artifacts/pastiera-${{ inputs.version_name }}-fdroid-unsigned.apk.sha256
 

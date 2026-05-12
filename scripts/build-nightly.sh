@@ -11,6 +11,8 @@ if [ -z "$BASE_VERSION" ]; then
 fi
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+NIGHTLY_SECRETS_FILE="${NIGHTLY_SECRETS_FILE:-$ROOT_DIR/release/nightly-secrets.env}"
+KEYSTORE_PROPS_FILE="$ROOT_DIR/release/keystore.properties"
 VERSION_INFO="$("$ROOT_DIR/scripts/nightly-version.sh" "$BASE_VERSION")"
 TIMESTAMP="$(printf '%s\n' "$VERSION_INFO" | awk -F= '/^timestamp=/{print $2}')"
 FULL_VERSION="$(printf '%s\n' "$VERSION_INFO" | awk -F= '/^full_version=/{print $2}')"
@@ -37,6 +39,68 @@ cleanup() {
 
 trap cleanup EXIT
 
+read_prop() {
+  local key="$1"
+  local file="$2"
+  awk -v target="$key" '
+    $0 ~ "^[[:space:]]*"target"=" {
+      line = $0
+      sub(/^[[:space:]]*/, "", line)
+      sub("^[^=]*=", "", line)
+      print line
+      exit
+    }
+  ' "$file"
+}
+
+first_non_empty_prop() {
+  local key
+  local value=""
+  for key in "$@"; do
+    value="$(read_prop "$key" "$KEYSTORE_PROPS_FILE")"
+    if [ -n "$value" ]; then
+      printf '%s\n' "$value"
+      return 0
+    fi
+  done
+  return 1
+}
+
+configure_nightly_signing_env() {
+  if [ -n "${PASTIERA_NIGHTLY_KEYSTORE_PATH:-}" ] &&
+    [ -n "${PASTIERA_NIGHTLY_KEYSTORE_PASSWORD:-}" ] &&
+    [ -n "${PASTIERA_NIGHTLY_KEY_ALIAS:-}" ] &&
+    [ -n "${PASTIERA_NIGHTLY_KEY_PASSWORD:-}" ]; then
+    return
+  fi
+
+  if [ -f "$NIGHTLY_SECRETS_FILE" ]; then
+    set -a
+    # shellcheck disable=SC1090
+    source "$NIGHTLY_SECRETS_FILE"
+    set +a
+  fi
+
+  bash "$ROOT_DIR/scripts/materialize-signing-keystores.sh" "$KEYSTORE_PROPS_FILE" >/dev/null || true
+
+  if [ -f "$KEYSTORE_PROPS_FILE" ]; then
+    if [ -z "${PASTIERA_NIGHTLY_KEYSTORE_PATH:-}" ]; then
+      local nightly_store_file
+      nightly_store_file="$(first_non_empty_prop "nightlyStoreFile" "NIGHTLY_KEYSTORE_FILE" || true)"
+      if [ -n "$nightly_store_file" ]; then
+        if [ "${nightly_store_file#/}" != "$nightly_store_file" ]; then
+          export PASTIERA_NIGHTLY_KEYSTORE_PATH="$nightly_store_file"
+        else
+          export PASTIERA_NIGHTLY_KEYSTORE_PATH="$ROOT_DIR/release/$nightly_store_file"
+        fi
+      fi
+    fi
+    [ -n "${PASTIERA_NIGHTLY_KEYSTORE_PASSWORD:-}" ] || export PASTIERA_NIGHTLY_KEYSTORE_PASSWORD="$(first_non_empty_prop "nightlyStorePassword" "PASTIERA_NIGHTLY_KEYSTORE_PASSWORD" || true)"
+    [ -n "${PASTIERA_NIGHTLY_KEY_ALIAS:-}" ] || export PASTIERA_NIGHTLY_KEY_ALIAS="$(first_non_empty_prop "nightlyKeyAlias" "PASTIERA_NIGHTLY_KEY_ALIAS" || true)"
+    [ -n "${PASTIERA_NIGHTLY_KEY_PASSWORD:-}" ] || export PASTIERA_NIGHTLY_KEY_PASSWORD="$(first_non_empty_prop "nightlyKeyPassword" "PASTIERA_NIGHTLY_KEY_PASSWORD" || true)"
+  fi
+}
+
 build_nightly_notes() {
   local previous_tag
   previous_tag="$(git tag --list 'nightly/*' --sort=-creatordate | head -n 1)"
@@ -58,6 +122,7 @@ build_nightly_notes() {
 }
 
 cd "$ROOT_DIR"
+configure_nightly_signing_env
 
 ./gradlew :app:testNightlyReleaseUnitTest "${GRADLE_ARGS[@]}"
 

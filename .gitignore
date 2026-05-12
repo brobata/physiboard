@@ -20,6 +20,7 @@ local.properties
 *.jks
 *.keystore
 keystore.properties
+release/keystore.properties
 
 # Cursor rules (workspace-specific)
 .cursor/
@@ -33,3 +34,4 @@ app/build.properties
 
 # Local F-Droid repo workspace
 .fdroid/
+debug-logs/
