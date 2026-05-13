@@ -1013,9 +1013,11 @@ fun TutorialCustomizationPageContent(
     var appLanguageExpanded by remember { mutableStateOf(false) }
     var modifierExpanded by remember { mutableStateOf(false) }
     var typingSoundExpanded by remember { mutableStateOf(false) }
+    var typingSoundOutputExpanded by remember { mutableStateOf(false) }
     var selectedLanguageTag by remember { mutableStateOf(SettingsManager.getAppLanguageTag(context)) }
     var selectedLongPressModifier by remember { mutableStateOf(SettingsManager.getLongPressModifier(context)) }
     var typingSoundMode by remember { mutableStateOf(SettingsManager.getTypingSoundMode(context)) }
+    var typingSoundOutputMode by remember { mutableStateOf(SettingsManager.getTypingSoundOutputMode(context)) }
     var demoText by remember { mutableStateOf("") }
     val typingSoundPlayer = remember { TypingSoundPlayer(context).apply { reload() } }
 
@@ -1200,6 +1202,41 @@ fun TutorialCustomizationPageContent(
                         }
                     }
                 }
+                ExposedDropdownMenuBox(
+                    expanded = typingSoundOutputExpanded,
+                    onExpandedChange = { typingSoundOutputExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = tutorialTypingSoundOutputModeLabel(typingSoundOutputMode),
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text(stringResource(R.string.typing_sound_output_title)) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typingSoundOutputExpanded) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = typingSoundOutputExpanded,
+                        onDismissRequest = { typingSoundOutputExpanded = false }
+                    ) {
+                        listOf(
+                            SettingsManager.TYPING_SOUND_OUTPUT_MEDIA to stringResource(R.string.typing_sound_output_media),
+                            SettingsManager.TYPING_SOUND_OUTPUT_SYSTEM to stringResource(R.string.typing_sound_output_system),
+                            SettingsManager.TYPING_SOUND_OUTPUT_NOTIFICATION to stringResource(R.string.typing_sound_output_notification)
+                        ).forEach { (value, label) ->
+                            DropdownMenuItem(
+                                text = { Text(label) },
+                                onClick = {
+                                    SettingsManager.setTypingSoundOutputMode(context, value)
+                                    typingSoundOutputMode = value
+                                    typingSoundPlayer.reload()
+                                    typingSoundOutputExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
                 OutlinedTextField(
                     value = demoText,
                     onValueChange = { newValue ->
@@ -1224,6 +1261,15 @@ private fun tutorialTypingSoundModeLabel(mode: String): String {
         SettingsManager.TYPING_SOUND_MODE_CLICK -> stringResource(R.string.typing_sound_click)
         SettingsManager.TYPING_SOUND_MODE_TYPEWRITER -> stringResource(R.string.typing_sound_typewriter)
         else -> stringResource(R.string.typing_sound_off)
+    }
+}
+
+@Composable
+private fun tutorialTypingSoundOutputModeLabel(mode: String): String {
+    return when (mode) {
+        SettingsManager.TYPING_SOUND_OUTPUT_SYSTEM -> stringResource(R.string.typing_sound_output_system)
+        SettingsManager.TYPING_SOUND_OUTPUT_NOTIFICATION -> stringResource(R.string.typing_sound_output_notification)
+        else -> stringResource(R.string.typing_sound_output_media)
     }
 }
 
