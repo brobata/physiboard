@@ -69,12 +69,14 @@ jobs:
         run: |
           ./gradlew :app:testNightlyDebugUnitTest \
             -PPASTIERA_VERSION_NAME=${{ inputs.version_name }} \
+            -PPASTIERA_NIGHTLY_VERSION_CODE=${{ steps.nightly_meta.outputs.version_code }} \
             -PPASTIERA_NIGHTLY_VERSION_SUFFIX=-nightly.${{ steps.nightly_meta.outputs.timestamp }}
 
       - name: Build nightly APK
         run: |
           ./gradlew :app:assembleNightlyRelease \
             -PPASTIERA_VERSION_NAME=${{ inputs.version_name }} \
+            -PPASTIERA_NIGHTLY_VERSION_CODE=${{ steps.nightly_meta.outputs.version_code }} \
             -PPASTIERA_NIGHTLY_VERSION_SUFFIX=-nightly.${{ steps.nightly_meta.outputs.timestamp }}
 
       - name: Compute checksums
