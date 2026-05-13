@@ -539,6 +539,10 @@
 • Auto: hardware-keyboard mode on known PKB devices; virtual keyboard mode on Pixel, Samsung, and most touch devices.
 • Always Virtual Keyboard: always show the full on-screen keyboard.
 • Always Hardware Keyboard: use the compact hardware-keyboard surface and do not force the full on-screen keyboard.</string>
+    <string name="tutorial_android16_ime_caption_title">Android 16 Titan 2 setting</string>
+    <string name="tutorial_android16_ime_caption_description">If Android shows an extra IME caption bar above Pastiera, enable “Hide IME caption bar” in the system gesture settings. This keeps Pastiera’s hardware-keyboard surface compact.</string>
+    <string name="tutorial_android16_ime_caption_button">Open Gesture Settings</string>
+    <string name="tutorial_android16_ime_caption_fallback">Could not open the Titan 2 gesture setting. Opening Android Settings instead.</string>
     <string name="tutorial_page_led_title">LED Indicator</string>
     <string name="tutorial_page_led_description">To get the most out of Pastiera, set the Fn key to act as Ctrl from Android system settings. The IME bar shows four LEDs: they turn blue when the modifier is active one-shot and orange when it is locked. The SYM layout LED is blue on the emoji page and orange on the symbols page.</string>
     <string name="tutorial_page_nav_mode_title">Nav Mode</string>

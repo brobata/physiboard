@@ -6,6 +6,7 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.view.inputmethod.InputMethodManager
+import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.DrawableRes
@@ -46,7 +47,12 @@ import it.palsoftware.pastiera.BuildConfig
 import it.palsoftware.pastiera.update.checkForUpdate
 import it.palsoftware.pastiera.update.showUpdateDialog
 import it.palsoftware.pastiera.update.shouldUseGithubUpdateChecks
+import it.palsoftware.pastiera.inputmethod.DeviceSpecific
 import java.util.Locale
+
+private const val ACTION_UNIHERTZ_GESTURE_NAVIGATION_SETTINGS = "com.android.settings.GESTURE_NAVIGATION_SETTINGS"
+private const val SETTINGS_FRAGMENT_ARGS_KEY = ":settings:fragment_args_key"
+private const val UNIHERTZ_HIDE_IME_CAPTION_BAR_KEY = "agui_hide_ime_caption_bar"
 
 class TutorialActivity : LocalizedComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -406,6 +412,7 @@ fun TutorialSoftwareKeyboardPageContent(
     val context = LocalContext.current
     var expanded by remember { mutableStateOf(false) }
     var selectedMode by remember { mutableStateOf(SettingsManager.getSoftwareKeyboardMode(context)) }
+    val showImeCaptionBarShortcut = remember { shouldShowImeCaptionBarShortcut(context) }
 
     val label = when (selectedMode) {
         SettingsManager.SoftwareKeyboardMode.AUTO -> stringResource(R.string.software_keyboard_mode_auto_short)
@@ -461,6 +468,83 @@ fun TutorialSoftwareKeyboardPageContent(
                 }
             }
         }
+
+        if (showImeCaptionBarShortcut) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Info,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text(
+                            text = stringResource(R.string.tutorial_android16_ime_caption_title),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
+                    Text(
+                        text = stringResource(R.string.tutorial_android16_ime_caption_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                    OutlinedButton(
+                        onClick = { openImeCaptionBarSettings(context) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(stringResource(R.string.tutorial_android16_ime_caption_button))
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun shouldShowImeCaptionBarShortcut(context: Context): Boolean {
+    if (Build.VERSION.SDK_INT < 36 || !DeviceSpecific.isTitan2Device()) {
+        return false
+    }
+    return buildImeCaptionBarSettingsIntent().resolveActivity(context.packageManager) != null
+}
+
+private fun openImeCaptionBarSettings(context: Context) {
+    val intent = buildImeCaptionBarSettingsIntent()
+    try {
+        context.startActivity(intent)
+    } catch (_: Exception) {
+        Toast.makeText(
+            context,
+            R.string.tutorial_android16_ime_caption_fallback,
+            Toast.LENGTH_LONG
+        ).show()
+        context.startActivity(Intent(Settings.ACTION_SETTINGS))
+    }
+}
+
+private fun buildImeCaptionBarSettingsIntent(): Intent {
+    return Intent(ACTION_UNIHERTZ_GESTURE_NAVIGATION_SETTINGS).apply {
+        addCategory(Intent.CATEGORY_DEFAULT)
+        putExtra(SETTINGS_FRAGMENT_ARGS_KEY, UNIHERTZ_HIDE_IME_CAPTION_BAR_KEY)
     }
 }
 

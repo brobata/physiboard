@@ -586,6 +586,10 @@
 • Auto: Hardware-Tastaturmodus auf bekannten PKB-Geräten; virtuelle Tastatur auf Pixel, Samsung und den meisten Touch-Geräten.
 • Immer virtuelle Tastatur: zeigt immer die vollständige Bildschirmtastatur.
 • Immer Hardware-Tastatur: nutzt die kompakte Hardware-Tastatur-Oberfläche und erzwingt keine vollständige Bildschirmtastatur.</string>
+    <string name="tutorial_android16_ime_caption_title">Android-16-Einstellung auf dem Titan 2</string>
+    <string name="tutorial_android16_ime_caption_description">Wenn Android über Pastiera eine zusätzliche IME-Beschriftungsleiste zeigt, aktiviere in den System-Gesteneinstellungen „IME-Beschriftungsleiste ausblenden“. So bleibt Pastieras Hardware-Tastatur-Oberfläche kompakt.</string>
+    <string name="tutorial_android16_ime_caption_button">Gesteneinstellungen öffnen</string>
+    <string name="tutorial_android16_ime_caption_fallback">Die Titan-2-Gesteneinstellung konnte nicht geöffnet werden. Öffne stattdessen die Android-Einstellungen.</string>
     <string name="software_keyboard_mode_title">Tastaturmodus</string>
     <string name="software_keyboard_mode_description">Unabhängig von Pastierina. Steuert Hardware- vs. virtuelle Tastatur.</string>
     <string name="software_keyboard_mode_auto_current">Auto (aktuell: %1$s)</string>
