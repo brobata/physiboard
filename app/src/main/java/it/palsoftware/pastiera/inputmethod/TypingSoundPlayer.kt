@@ -61,10 +61,11 @@ class TypingSoundPlayer(private val context: Context) {
 
     fun play(keyCode: Int) {
         val pool = soundPool ?: return
+        val group = groupForKeyCode(keyCode)
         val candidateIds = if (activeMode == SettingsManager.TYPING_SOUND_MODE_CUSTOM) {
-            customSoundsForGroup(groupForKeyCode(keyCode))
+            customSoundsForGroup(group)
         } else {
-            soundIdsByGroup[groupForKeyCode(keyCode)].orEmpty()
+            soundIdsByGroup[group].orEmpty()
         }
         val availableIds = candidateIds.filter { it in loadedSoundIds }
         if (availableIds.isEmpty()) {
@@ -73,7 +74,11 @@ class TypingSoundPlayer(private val context: Context) {
 
         val soundId = availableIds.random(Random.Default)
         val volume = Random.nextDouble(0.82, 1.0).toFloat()
-        val rate = Random.nextDouble(0.965, 1.035).toFloat()
+        val rate = if (activeMode == SettingsManager.TYPING_SOUND_MODE_TYPEWRITER && group == KeySoundGroup.Normal) {
+            Random.nextDouble(0.945, 1.005).toFloat()
+        } else {
+            Random.nextDouble(0.965, 1.035).toFloat()
+        }
         pool.play(soundId, volume, volume, 1, 0, rate)
     }
 
