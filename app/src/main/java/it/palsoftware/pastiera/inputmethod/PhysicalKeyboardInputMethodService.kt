@@ -45,6 +45,7 @@ import it.palsoftware.pastiera.data.variation.VariationRepository
 import it.palsoftware.pastiera.inputmethod.SpeechRecognitionActivity
 import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils
 import it.palsoftware.pastiera.inputmethod.telex.VietnameseTelexProcessor
+import it.palsoftware.pastiera.inputmethod.trackpad.TrackpadEventDeviceResolver
 import it.palsoftware.pastiera.inputmethod.trackpad.TrackpadGestureDetector
 import java.util.Locale
 import android.view.inputmethod.InputMethodManager
@@ -1311,12 +1312,24 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private fun buildTrackpadGestureDetector(): TrackpadGestureDetector {
         val gesturesEnabled = SettingsManager.getTrackpadGesturesEnabled(this)
         val swipeThreshold = SettingsManager.getTrackpadSwipeThreshold(this).toInt()
-        Log.d(TRACKPAD_DEBUG_TAG, "buildTrackpadGestureDetector() - gesturesEnabled=$gesturesEnabled, swipeThreshold=$swipeThreshold")
+        val eventDevice = resolveTrackpadEventDevice()
+        Log.d(
+            TRACKPAD_DEBUG_TAG,
+            "buildTrackpadGestureDetector() - gesturesEnabled=$gesturesEnabled, swipeThreshold=$swipeThreshold, eventDevice=$eventDevice"
+        )
         return TrackpadGestureDetector(
             isEnabled = { SettingsManager.getTrackpadGesturesEnabled(this) },
             onSwipeUp = { third -> acceptSuggestionAtIndex(third) },
             scope = trackpadScope,
-            swipeUpThreshold = swipeThreshold
+            swipeUpThreshold = swipeThreshold,
+            eventDevice = eventDevice
+        )
+    }
+
+    private fun resolveTrackpadEventDevice(): String {
+        return TrackpadEventDeviceResolver.resolve(
+            physicalKeyboardName = DeviceSpecific.physicalKeyboardName(),
+            firmwareIncremental = Build.VERSION.INCREMENTAL.orEmpty()
         )
     }
     
