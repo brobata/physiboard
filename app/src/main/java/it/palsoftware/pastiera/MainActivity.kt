@@ -491,7 +491,7 @@ fun KeyboardSetupScreen(
             .fillMaxWidth()
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         // Custom top bar with personalized graphics
         CustomTopBar(
@@ -514,130 +514,88 @@ fun KeyboardSetupScreen(
             modifier = Modifier.fillMaxWidth()
         )
         
-        // Enable Pastiera button
-        Surface(
+        // Enable/select IME actions
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable {
-                    val intent = Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)
-                    context.startActivity(intent)
-                }
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Column(
+            Surface(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                    .weight(1f)
+                    .heightIn(min = 44.dp)
+                    .clickable {
+                        val intent = Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)
+                        context.startActivity(intent)
+                    }
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    Icon(
+                        imageVector = Icons.Filled.Keyboard,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(
+                        text = stringResource(R.string.enable_pastiera),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Keyboard,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = stringResource(R.string.enable_pastiera),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                    if (!isPastieraEnabled) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Warning,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Text(
-                                text = stringResource(R.string.pastiera_not_enabled),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    } else {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    )
+                    Icon(
+                        imageVector = if (!isPastieraEnabled) Icons.Filled.Warning else Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = if (!isPastieraEnabled) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp)
+                    )
                 }
             }
-        }
-        
-        // Choose input method button
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable {
-                    val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-                    imm.showInputMethodPicker()
-                }
-        ) {
-            Column(
+
+            Surface(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                    .weight(1f)
+                    .heightIn(min = 44.dp)
+                    .clickable {
+                        val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                        imm.showInputMethodPicker()
+                    }
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    Icon(
+                        imageVector = Icons.Filled.Keyboard,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(
+                        text = stringResource(R.string.choose_input_method),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Keyboard,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = stringResource(R.string.choose_input_method),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                    if (isPastieraEnabled && !isPastieraSelected) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Warning,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Text(
-                                text = stringResource(R.string.pastiera_not_selected),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    } else {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    )
+                    Icon(
+                        imageVector = if (isPastieraEnabled && !isPastieraSelected) Icons.Filled.Warning else Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = if (isPastieraEnabled && !isPastieraSelected) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp)
+                    )
                 }
             }
         }
@@ -657,7 +615,106 @@ fun KeyboardSetupScreen(
             )
         )
 
-        // Last keyboard event + recorder controls (always visible)
+        // Recorder controls (always visible)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedButton(
+                    onClick = {
+                        if (isRecording) {
+                            isRecording = false
+                        } else {
+                            recordedEvents.clear()
+                            val startTime = System.currentTimeMillis()
+                            recordStartedAtMs = startTime
+                            lastRecordedAtMs = null
+                            isRecording = true
+                        }
+                    }
+                ) {
+                    Text(
+                        if (isRecording) {
+                            stringResource(R.string.debug_recorder_stop)
+                        } else {
+                            stringResource(R.string.debug_recorder_record)
+                        }
+                    )
+                }
+                OutlinedButton(
+                    onClick = {
+                        recordedEvents.clear()
+                        DebugCaptureStore.clearAll()
+                        recordStartedAtMs = null
+                        lastRecordedAtMs = null
+                        isRecording = false
+                        showDebugReportViewer = false
+                        latestDebugReport = ""
+                        displayedLastKeyEvent = null
+                    }
+                ) {
+                    Text(stringResource(R.string.debug_recorder_clear))
+                }
+                OutlinedButton(
+                    onClick = {
+                        latestDebugReport = buildCurrentReport()
+                        showDebugReportViewer = true
+                    }
+                ) {
+                    Text(stringResource(R.string.debug_recorder_view))
+                }
+                OutlinedButton(
+                    onClick = {
+                        val report = buildCurrentReport()
+                        shareReport(report)
+                    }
+                ) {
+                    Text(stringResource(R.string.debug_recorder_share))
+                }
+                FilterChip(
+                    selected = includeSuggestionsInExport,
+                    onClick = {
+                        includeSuggestionsInExport = !includeSuggestionsInExport
+                    },
+                    label = {
+                        Text(
+                            text = stringResource(R.string.debug_recorder_include_suggestions),
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
+                )
+            }
+            Text(
+                text = context.getString(
+                    R.string.debug_recorder_status,
+                    if (isRecording) context.getString(R.string.debug_recorder_status_recording)
+                    else context.getString(R.string.debug_recorder_status_stopped),
+                    recordedEvents.size
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                fontFamily = FontFamily.Monospace,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "${stringResource(R.string.debug_recorder_started_at)}${
+                    recordStartedAtMs?.let { formatDebugTimestamp(it) } ?: "n/a"
+                }",
+                style = MaterialTheme.typography.bodySmall,
+                fontFamily = FontFamily.Monospace,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        // Last keyboard event (always visible)
         val event = displayedLastKeyEvent
         Surface(
             modifier = Modifier
@@ -670,28 +727,6 @@ fun KeyboardSetupScreen(
                     .padding(12.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = stringResource(R.string.last_keyboard_event_title),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    FilterChip(
-                        selected = ignoreKeyboardCloseBackEvent,
-                        onClick = { ignoreKeyboardCloseBackEvent = !ignoreKeyboardCloseBackEvent },
-                        label = {
-                            Text(
-                                text = stringResource(R.string.ignore_back_short),
-                                style = MaterialTheme.typography.labelSmall
-                            )
-                        }
-                    )
-                }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -760,95 +795,27 @@ fun KeyboardSetupScreen(
                 }
 
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    OutlinedButton(
-                        onClick = {
-                            if (isRecording) {
-                                isRecording = false
-                            } else {
-                                recordedEvents.clear()
-                                val startTime = System.currentTimeMillis()
-                                recordStartedAtMs = startTime
-                                lastRecordedAtMs = null
-                                isRecording = true
-                            }
-                        }
-                    ) {
-                        Text(
-                            if (isRecording) {
-                                stringResource(R.string.debug_recorder_stop)
-                            } else {
-                                stringResource(R.string.debug_recorder_record)
-                            }
-                        )
-                    }
-                    OutlinedButton(
-                        onClick = {
-                            recordedEvents.clear()
-                            DebugCaptureStore.clearAll()
-                            recordStartedAtMs = null
-                            lastRecordedAtMs = null
-                            isRecording = false
-                            showDebugReportViewer = false
-                            latestDebugReport = ""
-                            displayedLastKeyEvent = null
-                        }
-                    ) {
-                        Text(stringResource(R.string.debug_recorder_clear))
-                    }
-                    OutlinedButton(
-                        onClick = {
-                            latestDebugReport = buildCurrentReport()
-                            showDebugReportViewer = true
-                        }
-                    ) {
-                        Text(stringResource(R.string.debug_recorder_view))
-                    }
-                    OutlinedButton(
-                        onClick = {
-                            val report = buildCurrentReport()
-                            shareReport(report)
-                        }
-                    ) {
-                        Text(stringResource(R.string.debug_recorder_share))
-                    }
+                    Text(
+                        text = stringResource(R.string.last_keyboard_event_title),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     FilterChip(
-                        selected = includeSuggestionsInExport,
-                        onClick = {
-                            includeSuggestionsInExport = !includeSuggestionsInExport
-                        },
+                        selected = ignoreKeyboardCloseBackEvent,
+                        onClick = { ignoreKeyboardCloseBackEvent = !ignoreKeyboardCloseBackEvent },
                         label = {
                             Text(
-                                text = stringResource(R.string.debug_recorder_include_suggestions),
+                                text = stringResource(R.string.ignore_back_short),
                                 style = MaterialTheme.typography.labelSmall
                             )
                         }
                     )
                 }
-                Text(
-                    text = context.getString(
-                        R.string.debug_recorder_status,
-                        if (isRecording) context.getString(R.string.debug_recorder_status_recording)
-                        else context.getString(R.string.debug_recorder_status_stopped),
-                        recordedEvents.size
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
-                    fontFamily = FontFamily.Monospace,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = "${stringResource(R.string.debug_recorder_started_at)}${
-                        recordStartedAtMs?.let { formatDebugTimestamp(it) } ?: "n/a"
-                    }",
-                    style = MaterialTheme.typography.bodySmall,
-                    fontFamily = FontFamily.Monospace,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
 
                 if (event?.let { it.isShiftPressed || it.isCtrlPressed || it.isAltPressed } == true) {
                     Row(
