@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.view.KeyEvent
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.activity.compose.setContent
@@ -49,6 +50,7 @@ import it.palsoftware.pastiera.update.showUpdateDialog
 import it.palsoftware.pastiera.update.shouldUseGithubUpdateChecks
 import it.palsoftware.pastiera.inputmethod.DeviceSpecific
 import it.palsoftware.pastiera.inputmethod.SoftwareKeyboardAutoDetector
+import it.palsoftware.pastiera.inputmethod.TypingSoundPlayer
 import java.util.Locale
 
 private const val ACTION_UNIHERTZ_GESTURE_NAVIGATION_SETTINGS = "com.android.settings.GESTURE_NAVIGATION_SETTINGS"
@@ -1010,11 +1012,19 @@ fun TutorialCustomizationPageContent(
     val context = LocalContext.current
     var appLanguageExpanded by remember { mutableStateOf(false) }
     var modifierExpanded by remember { mutableStateOf(false) }
+    var typingSoundExpanded by remember { mutableStateOf(false) }
     var selectedLanguageTag by remember { mutableStateOf(SettingsManager.getAppLanguageTag(context)) }
     var selectedLongPressModifier by remember { mutableStateOf(SettingsManager.getLongPressModifier(context)) }
+    var typingSoundMode by remember { mutableStateOf(SettingsManager.getTypingSoundMode(context)) }
+    var demoText by remember { mutableStateOf("") }
+    val typingSoundPlayer = remember { TypingSoundPlayer(context).apply { reload() } }
 
     val languageOptions = remember {
         listOf(null, "en", "it", "de", "es", "fr", "pl", "ru", "uk", "vi", "hy")
+    }
+
+    DisposableEffect(typingSoundPlayer) {
+        onDispose { typingSoundPlayer.release() }
     }
 
     val selectedLanguageLabel = if (selectedLanguageTag == null) {
@@ -1121,6 +1131,113 @@ fun TutorialCustomizationPageContent(
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.GraphicEq,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Text(
+                        text = stringResource(R.string.tutorial_typing_sound_demo_title),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                }
+                Text(
+                    text = stringResource(R.string.tutorial_typing_sound_demo_description),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+                ExposedDropdownMenuBox(
+                    expanded = typingSoundExpanded,
+                    onExpandedChange = { typingSoundExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = tutorialTypingSoundModeLabel(typingSoundMode),
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text(stringResource(R.string.typing_sound_title)) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typingSoundExpanded) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = typingSoundExpanded,
+                        onDismissRequest = { typingSoundExpanded = false }
+                    ) {
+                        listOf(
+                            SettingsManager.TYPING_SOUND_MODE_OFF to stringResource(R.string.typing_sound_off),
+                            SettingsManager.TYPING_SOUND_MODE_CLICK to stringResource(R.string.typing_sound_click),
+                            SettingsManager.TYPING_SOUND_MODE_TYPEWRITER to stringResource(R.string.typing_sound_typewriter)
+                        ).forEach { (value, label) ->
+                            DropdownMenuItem(
+                                text = { Text(label) },
+                                onClick = {
+                                    SettingsManager.setTypingSoundMode(context, value)
+                                    typingSoundMode = value
+                                    typingSoundPlayer.reload()
+                                    typingSoundExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+                OutlinedTextField(
+                    value = demoText,
+                    onValueChange = { newValue ->
+                        val keyCode = tutorialTypingSoundKeyCode(demoText, newValue)
+                        demoText = newValue
+                        if (keyCode != null) {
+                            typingSoundPlayer.play(keyCode)
+                        }
+                    },
+                    label = { Text(stringResource(R.string.tutorial_typing_sound_demo_input_label)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun tutorialTypingSoundModeLabel(mode: String): String {
+    return when (mode) {
+        SettingsManager.TYPING_SOUND_MODE_CLICK -> stringResource(R.string.typing_sound_click)
+        SettingsManager.TYPING_SOUND_MODE_TYPEWRITER -> stringResource(R.string.typing_sound_typewriter)
+        else -> stringResource(R.string.typing_sound_off)
+    }
+}
+
+private fun tutorialTypingSoundKeyCode(oldValue: String, newValue: String): Int? {
+    if (newValue.length < oldValue.length) {
+        return KeyEvent.KEYCODE_DEL
+    }
+    val inserted = newValue.drop(oldValue.length).lastOrNull() ?: return null
+    return when {
+        inserted == ' ' -> KeyEvent.KEYCODE_SPACE
+        inserted == '\n' -> KeyEvent.KEYCODE_ENTER
+        inserted.lowercaseChar() in 'a'..'z' -> KeyEvent.KEYCODE_A + (inserted.lowercaseChar() - 'a')
+        inserted in '0'..'9' -> KeyEvent.KEYCODE_0 + (inserted - '0')
+        else -> KeyEvent.KEYCODE_UNKNOWN
     }
 }
 

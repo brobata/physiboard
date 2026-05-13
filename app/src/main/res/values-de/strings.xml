@@ -352,6 +352,9 @@
     <string name="tutorial_page_nav_mode_description">Der Nav-Modus lässt dich mit Kürzeln wie IJKL oder ESDF durch die Geräteoberfläche navigieren.\nSo aktivierst du ihn:\n• Drücke Ctrl zweimal schnell\n• Buchstabentasten werden zu Navigationstasten\n• Drücke Ctrl erneut, um zu beenden\nJede Zuordnung kann in den erweiterten Einstellungen angepasst werden.</string>
     <string name="tutorial_page_customization_title">Anpassung</string>
     <string name="tutorial_page_customization_description">Pastiera bietet viele Anpassungsmöglichkeiten:\n• Anpassbare Tastaturlayouts\n• Launcher-Verknüpfungen &amp; Power Shortcuts\n• Die IME-Leiste kann als Swipe-Bar zum Bewegen des Cursors dienen\n• Benutzerdefinierte Zuordnungen für den Nav-Modus\nDurchsuchen Sie die Einstellungen, um die perfekte Konfiguration für Sie zu finden!</string>
+    <string name="tutorial_typing_sound_demo_title">Tastentöne</string>
+    <string name="tutorial_typing_sound_demo_description">Wähle einen Klangstil und tippe unten, um ihn direkt zu hören.</string>
+    <string name="tutorial_typing_sound_demo_input_label">Hier ausprobieren</string>
     <string name="tutorial_page_ready_title">Bereit zum Starten</string>
     <string name="tutorial_page_ready_description">Sie sind jetzt bereit, Pastiera zu verwenden! Denken Sie daran, dass Sie jederzeit zu den Einstellungen zurückkehren können, um die Tastatur weiter an Ihre Bedürfnisse anzupassen.</string>
     <string name="tutorial_enable_button">Pastiera aktivieren</string>
