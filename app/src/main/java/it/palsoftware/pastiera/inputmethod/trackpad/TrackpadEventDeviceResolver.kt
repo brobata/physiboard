@@ -3,7 +3,7 @@ package it.palsoftware.pastiera.inputmethod.trackpad
 object TrackpadEventDeviceResolver {
     const val LEGACY_EVENT_DEVICE = "/dev/input/event7"
     const val UPDATED_TITAN2_EVENT_DEVICE = "/dev/input/event6"
-    const val UPDATED_TITAN2_MIN_FIRMWARE = "V01.00.12"
+    const val UPDATED_TITAN2_MIN_FIRMWARE = "V01.00.14"
 
     fun resolve(
         physicalKeyboardName: String,

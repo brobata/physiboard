@@ -18,22 +18,29 @@ class TrackpadEventDeviceResolverTest {
     }
 
     @Test
-    fun `Titan 2 firmware before V01_00_12 uses legacy event device`() {
-        assertEquals(
-            TrackpadEventDeviceResolver.LEGACY_EVENT_DEVICE,
-            TrackpadEventDeviceResolver.resolve(
-                physicalKeyboardName = "titan2",
-                firmwareIncremental = "V01.00.11"
+    fun `Titan 2 firmware before V01_00_14 uses legacy event device`() {
+        listOf(
+            "V01.00.11",
+            "V01.00.12",
+            "Titan 2_EEA_V01.00.12-20260206"
+        ).forEach { firmware ->
+            assertEquals(
+                firmware,
+                TrackpadEventDeviceResolver.LEGACY_EVENT_DEVICE,
+                TrackpadEventDeviceResolver.resolve(
+                    physicalKeyboardName = "titan2",
+                    firmwareIncremental = firmware
+                )
             )
-        )
+        }
     }
 
     @Test
-    fun `Titan 2 firmware V01_00_12 and newer uses updated event device`() {
+    fun `Titan 2 firmware V01_00_14 and newer uses updated event device`() {
         listOf(
-            "V01.00.12",
-            "Titan 2_EEA_V01.00.12-20260413",
-            "V01.00.14"
+            "V01.00.14",
+            "Titan 2_EEA_V01.00.14-20260413",
+            "Titan 2_TEE_V01.00.14-20260422"
         ).forEach { firmware ->
             assertEquals(
                 firmware,
@@ -48,10 +55,9 @@ class TrackpadEventDeviceResolverTest {
 
     @Test
     fun `firmware parsing compares semantic version parts`() {
-        assertFalse(TrackpadEventDeviceResolver.isFirmwareAtLeast("V01.00.11", "V01.00.12"))
-        assertTrue(TrackpadEventDeviceResolver.isFirmwareAtLeast("V01.00.12", "V01.00.12"))
-        assertTrue(TrackpadEventDeviceResolver.isFirmwareAtLeast("V01.00.14", "V01.00.12"))
-        assertTrue(TrackpadEventDeviceResolver.isFirmwareAtLeast("V01.01.00", "V01.00.12"))
+        assertFalse(TrackpadEventDeviceResolver.isFirmwareAtLeast("V01.00.12", "V01.00.14"))
+        assertTrue(TrackpadEventDeviceResolver.isFirmwareAtLeast("V01.00.14", "V01.00.14"))
+        assertTrue(TrackpadEventDeviceResolver.isFirmwareAtLeast("V01.01.00", "V01.00.14"))
     }
 
     @Test
