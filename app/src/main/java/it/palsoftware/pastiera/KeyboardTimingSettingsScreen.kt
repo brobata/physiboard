@@ -11,6 +11,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -43,6 +44,10 @@ fun KeyboardTimingSettingsScreen(
     
     var longPressModifier by remember { 
         mutableStateOf(SettingsManager.getLongPressModifier(context))
+    }
+
+    var softwareKeyboardMode by remember {
+        mutableStateOf(SettingsManager.getSoftwareKeyboardMode(context))
     }
     
     
@@ -142,6 +147,7 @@ fun KeyboardTimingSettingsScreen(
         
             // Long Press Modifier (Alt/Shift/Variations/Sym) - Dropdown Style
             var showModifierMenu by remember { mutableStateOf(false) }
+            var showSoftwareKeyboardModeMenu by remember { mutableStateOf(false) }
 
             Surface(
                 modifier = Modifier
@@ -245,6 +251,86 @@ fun KeyboardTimingSettingsScreen(
                             }
                         }
                     )
+                }
+            }
+
+            val effectiveSoftwareMode = SettingsManager.resolveEffectiveSoftwareKeyboardMode(context)
+            val softwareKeyboardModeLabel = when (softwareKeyboardMode) {
+                SettingsManager.SoftwareKeyboardMode.AUTO -> {
+                    val currentLabel = if (effectiveSoftwareMode == SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL) {
+                        stringResource(R.string.software_keyboard_mode_always_virtual)
+                    } else {
+                        stringResource(R.string.software_keyboard_mode_always_hardware)
+                    }
+                    stringResource(R.string.software_keyboard_mode_auto_current, currentLabel)
+                }
+                SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL -> stringResource(R.string.software_keyboard_mode_always_virtual)
+                SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE -> stringResource(R.string.software_keyboard_mode_always_hardware)
+            }
+
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(82.dp)
+                    .clickable { showSoftwareKeyboardModeMenu = true }
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Language,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.software_keyboard_mode_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1
+                        )
+                        Text(
+                            text = softwareKeyboardModeLabel,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.Default.ArrowDropDown,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                DropdownMenu(
+                    expanded = showSoftwareKeyboardModeMenu,
+                    onDismissRequest = { showSoftwareKeyboardModeMenu = false }
+                ) {
+                    listOf(
+                        SettingsManager.SoftwareKeyboardMode.AUTO to stringResource(R.string.software_keyboard_mode_auto_short),
+                        SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL to stringResource(R.string.software_keyboard_mode_always_virtual),
+                        SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE to stringResource(R.string.software_keyboard_mode_always_hardware)
+                    ).forEach { (mode, title) ->
+                        DropdownMenuItem(
+                            text = { Text(title) },
+                            onClick = {
+                                softwareKeyboardMode = mode
+                                SettingsManager.setSoftwareKeyboardMode(context, mode)
+                                showSoftwareKeyboardModeMenu = false
+                            },
+                            leadingIcon = {
+                                if (softwareKeyboardMode == mode) {
+                                    Icon(Icons.Default.Check, contentDescription = null)
+                                }
+                            }
+                        )
+                    }
                 }
             }
 

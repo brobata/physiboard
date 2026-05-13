@@ -279,6 +279,8 @@
     <string name="settings_category_accessibility">Barrierefreiheit</string>
     <string name="settings_category_auto_correction">Autokorrektur</string>
     <string name="settings_category_customization">Anpassung</string>
+    <string name="settings_category_sounds">Töne</string>
+    <string name="settings_sounds_description">Tastentöne und Soundpack-Import</string>
     <string name="settings_category_advanced">Erweitert</string>
     <string name="settings_accessibility_live_read_title">Live-Vorlesen bei Statusleisten-Änderungen</string>
     <string name="settings_accessibility_live_read_description">Wenn aktiviert, kann TalkBack Sprache/Layout und Statusleisten-Änderungen automatisch ansagen.</string>

@@ -10,8 +10,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Keyboard
-import androidx.compose.material.icons.filled.Language
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.activity.compose.BackHandler
@@ -43,10 +43,6 @@ fun CustomizationSettingsScreen(
     var pastierinaModeEnabled by remember {
         mutableStateOf(SettingsManager.getPastierinaModeActive(context))
     }
-    var softwareKeyboardMode by remember {
-        mutableStateOf(SettingsManager.getSoftwareKeyboardMode(context))
-    }
-    var softwareKeyboardModeExpanded by remember { mutableStateOf(false) }
     var navigationDirection by remember { mutableStateOf(CustomizationNavigationDirection.Push) }
     val navigationStack = remember {
         mutableStateListOf<CustomizationDestination>(CustomizationDestination.Main)
@@ -59,9 +55,6 @@ fun CustomizationSettingsScreen(
         val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
             if (key == "pastierina_mode_active") {
                 pastierinaModeEnabled = SettingsManager.getPastierinaModeActive(context)
-            }
-            if (key == "software_keyboard_mode") {
-                softwareKeyboardMode = SettingsManager.getSoftwareKeyboardMode(context)
             }
         }
         prefs.registerOnSharedPreferenceChangeListener(listener)
@@ -324,7 +317,47 @@ fun CustomizationSettingsScreen(
                             }
                         }
 
-                        TypingSoundSettingsRow()
+                        // Sound Settings
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(64.dp)
+                                .clickable { navigateTo(CustomizationDestination.Sounds) }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = stringResource(R.string.settings_category_sounds),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.settings_sounds_description),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1
+                                    )
+                                }
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
 
                         // Pastierina Mode toggle
                         Surface(
@@ -374,88 +407,6 @@ fun CustomizationSettingsScreen(
                             }
                         }
 
-                        val effectiveSoftwareMode = SettingsManager.resolveEffectiveSoftwareKeyboardMode(context)
-                        val modeLabel = when (softwareKeyboardMode) {
-                            SettingsManager.SoftwareKeyboardMode.AUTO -> {
-                                val currentLabel = if (effectiveSoftwareMode == SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL) {
-                                    stringResource(R.string.software_keyboard_mode_always_virtual)
-                                } else {
-                                    stringResource(R.string.software_keyboard_mode_always_hardware)
-                                }
-                                stringResource(R.string.software_keyboard_mode_auto_current, currentLabel)
-                            }
-                            SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL -> stringResource(R.string.software_keyboard_mode_always_virtual)
-                            SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE -> stringResource(R.string.software_keyboard_mode_always_hardware)
-                        }
-
-                        ExposedDropdownMenuBox(
-                            expanded = softwareKeyboardModeExpanded,
-                            onExpandedChange = { softwareKeyboardModeExpanded = it }
-                        ) {
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(82.dp)
-                                .clickable {
-                                    softwareKeyboardModeExpanded = true
-                                }
-                                .menuAnchor()
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.Language,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = stringResource(R.string.software_keyboard_mode_title),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Medium,
-                                        maxLines = 1
-                                    )
-                                    Text(
-                                        text = modeLabel,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 2
-                                    )
-                                }
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                            ExposedDropdownMenu(
-                                expanded = softwareKeyboardModeExpanded,
-                                onDismissRequest = { softwareKeyboardModeExpanded = false }
-                            ) {
-                                listOf(
-                                    SettingsManager.SoftwareKeyboardMode.AUTO to stringResource(R.string.software_keyboard_mode_auto_short),
-                                    SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL to stringResource(R.string.software_keyboard_mode_always_virtual),
-                                    SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE to stringResource(R.string.software_keyboard_mode_always_hardware)
-                                ).forEach { (mode, title) ->
-                                    DropdownMenuItem(
-                                        text = { Text(title) },
-                                        onClick = {
-                                            softwareKeyboardMode = mode
-                                            SettingsManager.setSoftwareKeyboardMode(context, mode)
-                                            softwareKeyboardModeExpanded = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    
                     }
                 }
             }
@@ -480,6 +431,59 @@ fun CustomizationSettingsScreen(
                     onBack = { navigateBack() }
                 )
             }
+
+            CustomizationDestination.Sounds -> {
+                SoundSettingsScreen(
+                    modifier = modifier,
+                    onBack = { navigateBack() }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SoundSettingsScreen(
+    modifier: Modifier = Modifier,
+    onBack: () -> Unit
+) {
+    Scaffold(
+        topBar = {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.statusBars),
+                tonalElevation = 1.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.settings_back_content_description)
+                        )
+                    }
+                    Text(
+                        text = stringResource(R.string.settings_category_sounds),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
+            }
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(paddingValues)
+                .verticalScroll(rememberScrollState())
+        ) {
+            TypingSoundSettingsRow()
         }
     }
 }
@@ -489,6 +493,7 @@ private sealed class CustomizationDestination {
     object Variations : CustomizationDestination()
     object NavMode : CustomizationDestination()
     object StatusBarButtons : CustomizationDestination()
+    object Sounds : CustomizationDestination()
 }
 
 private enum class CustomizationNavigationDirection {

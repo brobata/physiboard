@@ -435,6 +435,8 @@
     <string name="settings_category_accessibility">Accessibility</string>
     <string name="settings_category_auto_correction">Auto-correction</string>
     <string name="settings_category_customization">Customization</string>
+    <string name="settings_category_sounds">Sounds</string>
+    <string name="settings_sounds_description">Typing sounds and sound pack import</string>
     <string name="settings_category_advanced">Advanced</string>
     <string name="settings_accessibility_live_read_title">Live reading for status bar changes</string>
     <string name="settings_accessibility_live_read_description">When enabled, TalkBack can announce language/layout and status bar changes automatically.</string>
