@@ -9,6 +9,99 @@ import android.util.Log
  */
 object TextSelectionHelper {
     private const val TAG = "TextSelectionHelper"
+
+    private data class SelectionAnchorState(
+        val anchor: Int,
+        val selectionStart: Int,
+        val selectionEnd: Int
+    )
+
+    private enum class SelectionDirection {
+        Left,
+        Right
+    }
+
+    private var selectionAnchorState: SelectionAnchorState? = null
+
+    private fun clearSelectionAnchor() {
+        selectionAnchorState = null
+    }
+
+    private fun selectionAnchor(
+        selectionStart: Int,
+        selectionEnd: Int,
+        direction: SelectionDirection
+    ): Int {
+        val matchingAnchor = selectionAnchorState
+            ?.takeIf { it.selectionStart == selectionStart && it.selectionEnd == selectionEnd }
+            ?.anchor
+        if (matchingAnchor != null) {
+            return matchingAnchor
+        }
+        return when (direction) {
+            SelectionDirection.Left -> selectionEnd
+            SelectionDirection.Right -> selectionStart
+        }
+    }
+
+    private fun movingSelectionEdge(selectionStart: Int, selectionEnd: Int, anchor: Int): Int {
+        return if (anchor == selectionStart) selectionEnd else selectionStart
+    }
+
+    private fun applySelectionMove(
+        inputConnection: InputConnection,
+        anchor: Int,
+        newMovingEdge: Int
+    ): Boolean {
+        if (newMovingEdge == anchor) {
+            inputConnection.setSelection(anchor, anchor)
+            clearSelectionAnchor()
+            return true
+        }
+
+        val newStart = minOf(anchor, newMovingEdge)
+        val newEnd = maxOf(anchor, newMovingEdge)
+        inputConnection.setSelection(newStart, newEnd)
+        selectionAnchorState = SelectionAnchorState(
+            anchor = anchor,
+            selectionStart = newStart,
+            selectionEnd = newEnd
+        )
+        return true
+    }
+
+    private fun previousWordStart(text: String, cursorPosition: Int): Int {
+        var position = cursorPosition.coerceIn(0, text.length)
+        while (position > 0 && text[position - 1].isWhitespace()) {
+            position--
+        }
+        while (position > 0 && !text[position - 1].isWhitespace()) {
+            position--
+        }
+        return position
+    }
+
+    private fun nextWordStart(text: String, cursorPosition: Int): Int {
+        var position = cursorPosition.coerceIn(0, text.length)
+        while (position < text.length && !text[position].isWhitespace()) {
+            position++
+        }
+        while (position < text.length && text[position].isWhitespace()) {
+            position++
+        }
+        return position
+    }
+
+    private fun nextWordEnd(text: String, cursorPosition: Int): Int {
+        var position = cursorPosition.coerceIn(0, text.length)
+        while (position < text.length && text[position].isWhitespace()) {
+            position++
+        }
+        while (position < text.length && !text[position].isWhitespace()) {
+            position++
+        }
+        return position
+    }
     
     /**
      * Expands selection one character to the left.
@@ -38,6 +131,7 @@ object TextSelectionHelper {
                     if (newStart >= 0) {
                         // Create or expand selection one character to the left
                         inputConnection.setSelection(newStart, currentPos)
+                        selectionAnchorState = SelectionAnchorState(currentPos, newStart, currentPos)
                         Log.d(TAG, "expandSelectionLeft: selection created/expanded to [$newStart, $currentPos]")
                         return true
                     }
@@ -53,37 +147,17 @@ object TextSelectionHelper {
                 return false
             }
             
-            // Verify if we can expand left
-            // If selectionStart is already 0, we can't expand further
-            if (selectionStart <= 0) {
-                Log.d(TAG, "expandSelectionLeft: selection already at start of text, can't expand")
+            val anchor = selectionAnchor(selectionStart, selectionEnd, SelectionDirection.Left)
+            val movingEdge = movingSelectionEdge(selectionStart, selectionEnd, anchor)
+            val newMovingEdge = movingEdge - 1
+            if (newMovingEdge < 0) {
+                Log.d(TAG, "expandSelectionLeft: selection already at start of text, can't move edge left")
                 return false
             }
-            
-            // Get text before cursor to verify there's text
-            val textBefore = inputConnection.getTextBeforeCursor(1, 0)
-            
-            if (textBefore != null && textBefore.isNotEmpty()) {
-                val newStart: Int
-                
-                if (selectionStart == selectionEnd) {
-                    // No selection: create selection of one character to the left
-                    newStart = selectionStart - 1
-                } else {
-                    // There's already a selection: expand it one character to the left
-                    newStart = selectionStart - 1
-                }
-                
-                // Ensure newStart is not negative and is different from selectionStart
-                if (newStart >= 0 && newStart < selectionStart) {
-                    inputConnection.setSelection(newStart, selectionEnd)
-                    Log.d(TAG, "expandSelectionLeft: selection expanded from [$selectionStart, $selectionEnd] to [$newStart, $selectionEnd]")
-                    return true
-                } else {
-                    Log.d(TAG, "expandSelectionLeft: unable to expand (newStart: $newStart, selectionStart: $selectionStart)")
-                    return false
-                }
-            }
+
+            val handled = applySelectionMove(inputConnection, anchor, newMovingEdge)
+            Log.d(TAG, "expandSelectionLeft: selection moved from [$selectionStart, $selectionEnd] to edge $newMovingEdge with anchor $anchor")
+            return handled
         } catch (e: Exception) {
             Log.e(TAG, "Error in expandSelectionLeft", e)
         }
@@ -116,6 +190,7 @@ object TextSelectionHelper {
                     
                     // Create or expand selection one character to the right
                     inputConnection.setSelection(currentPos, newEnd)
+                    selectionAnchorState = SelectionAnchorState(currentPos, currentPos, newEnd)
                     Log.d(TAG, "expandSelectionRight: selection created/expanded to [$currentPos, $newEnd]")
                     return true
                 }
@@ -134,36 +209,17 @@ object TextSelectionHelper {
             val fullText = extractedText.text?.toString() ?: ""
             val textLength = fullText.length
             
-            // If selectionEnd is already at end of text, we can't expand further
-            if (selectionEnd >= textLength) {
-                Log.d(TAG, "expandSelectionRight: selection already at end of text (selectionEnd: $selectionEnd, textLength: $textLength), can't expand")
+            val anchor = selectionAnchor(selectionStart, selectionEnd, SelectionDirection.Right)
+            val movingEdge = movingSelectionEdge(selectionStart, selectionEnd, anchor)
+            val newMovingEdge = movingEdge + 1
+            if (newMovingEdge > textLength) {
+                Log.d(TAG, "expandSelectionRight: selection already at end of text (movingEdge: $movingEdge, textLength: $textLength), can't move edge right")
                 return false
             }
-            
-            // Get text after cursor to verify there's text
-            val textAfter = inputConnection.getTextAfterCursor(1, 0)
-            
-            if (textAfter != null && textAfter.isNotEmpty()) {
-                val newEnd: Int
-                
-                if (selectionStart == selectionEnd) {
-                    // No selection: create selection of one character to the right
-                    newEnd = selectionEnd + 1
-                } else {
-                    // There's already a selection: expand it one character to the right
-                    newEnd = selectionEnd + 1
-                }
-                
-                // Verify newEnd doesn't exceed text length and is different from selectionEnd
-                if (newEnd <= textLength && newEnd > selectionEnd) {
-                    inputConnection.setSelection(selectionStart, newEnd)
-                    Log.d(TAG, "expandSelectionRight: selection expanded from [$selectionStart, $selectionEnd] to [$selectionStart, $newEnd]")
-                    return true
-                } else {
-                    Log.d(TAG, "expandSelectionRight: unable to expand (newEnd: $newEnd, selectionEnd: $selectionEnd, textLength: $textLength)")
-                    return false
-                }
-            }
+
+            val handled = applySelectionMove(inputConnection, anchor, newMovingEdge)
+            Log.d(TAG, "expandSelectionRight: selection moved from [$selectionStart, $selectionEnd] to edge $newMovingEdge with anchor $anchor")
+            return handled
         } catch (e: Exception) {
             Log.e(TAG, "Error in expandSelectionRight", e)
         }
@@ -197,6 +253,7 @@ object TextSelectionHelper {
                     if (newPos >= 0) {
                         // Move cursor without creating selection (same start and end)
                         inputConnection.setSelection(newPos, newPos)
+                        clearSelectionAnchor()
                         Log.d(TAG, "moveCursorLeft: cursor moved from $currentPos to $newPos")
                         return true
                     }
@@ -229,6 +286,7 @@ object TextSelectionHelper {
             
             // Move cursor without creating selection (same start and end)
             inputConnection.setSelection(newPos, newPos)
+            clearSelectionAnchor()
             Log.d(TAG, "moveCursorLeft: cursor moved from $currentPos to $newPos")
             return true
         } catch (e: Exception) {
@@ -264,6 +322,7 @@ object TextSelectionHelper {
                     
                     // Move cursor without creating selection (same start and end)
                     inputConnection.setSelection(newPos, newPos)
+                    clearSelectionAnchor()
                     Log.d(TAG, "moveCursorRight: cursor moved from $currentPos to $newPos")
                     return true
                 }
@@ -299,10 +358,140 @@ object TextSelectionHelper {
             
             // Move cursor without creating selection (same start and end)
             inputConnection.setSelection(newPos, newPos)
+            clearSelectionAnchor()
             Log.d(TAG, "moveCursorRight: cursor moved from $currentPos to $newPos")
             return true
         } catch (e: Exception) {
             Log.e(TAG, "Error in moveCursorRight", e)
+        }
+        return false
+    }
+
+    fun moveCursorWordLeft(inputConnection: InputConnection): Boolean {
+        try {
+            val extractedText = inputConnection.getExtractedText(
+                ExtractedTextRequest().apply {
+                    flags = android.view.inputmethod.ExtractedText.FLAG_SELECTING
+                },
+                0
+            )
+
+            if (extractedText == null) {
+                val textBefore = inputConnection.getTextBeforeCursor(1000, 0)?.toString() ?: return false
+                val newPosition = previousWordStart(textBefore, textBefore.length)
+                if (newPosition == textBefore.length) return false
+                inputConnection.setSelection(newPosition, newPosition)
+                clearSelectionAnchor()
+                return true
+            }
+
+            val selectionStart = extractedText.selectionStart
+            val selectionEnd = extractedText.selectionEnd
+            if (selectionStart < 0 || selectionEnd < 0) return false
+
+            val text = extractedText.text?.toString() ?: return false
+            val currentPosition = if (selectionStart != selectionEnd) selectionStart else selectionStart
+            val newPosition = previousWordStart(text, currentPosition)
+            if (newPosition == currentPosition) return false
+            inputConnection.setSelection(newPosition, newPosition)
+            clearSelectionAnchor()
+            Log.d(TAG, "moveCursorWordLeft: cursor moved from $currentPosition to $newPosition")
+            return true
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in moveCursorWordLeft", e)
+        }
+        return false
+    }
+
+    fun moveCursorWordRight(inputConnection: InputConnection): Boolean {
+        try {
+            val extractedText = inputConnection.getExtractedText(
+                ExtractedTextRequest().apply {
+                    flags = android.view.inputmethod.ExtractedText.FLAG_SELECTING
+                },
+                0
+            )
+
+            if (extractedText == null) {
+                val textBefore = inputConnection.getTextBeforeCursor(1000, 0)?.toString() ?: ""
+                val textAfter = inputConnection.getTextAfterCursor(1000, 0)?.toString() ?: return false
+                val combinedText = textBefore + textAfter
+                val currentPosition = textBefore.length
+                val newPosition = nextWordStart(combinedText, currentPosition)
+                if (newPosition == currentPosition) return false
+                inputConnection.setSelection(newPosition, newPosition)
+                clearSelectionAnchor()
+                return true
+            }
+
+            val selectionStart = extractedText.selectionStart
+            val selectionEnd = extractedText.selectionEnd
+            if (selectionStart < 0 || selectionEnd < 0) return false
+
+            val text = extractedText.text?.toString() ?: return false
+            val currentPosition = if (selectionStart != selectionEnd) selectionEnd else selectionEnd
+            val newPosition = nextWordStart(text, currentPosition)
+            if (newPosition == currentPosition) return false
+            inputConnection.setSelection(newPosition, newPosition)
+            clearSelectionAnchor()
+            Log.d(TAG, "moveCursorWordRight: cursor moved from $currentPosition to $newPosition")
+            return true
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in moveCursorWordRight", e)
+        }
+        return false
+    }
+
+    fun expandSelectionWordLeft(inputConnection: InputConnection): Boolean {
+        try {
+            val extractedText = inputConnection.getExtractedText(
+                ExtractedTextRequest().apply {
+                    flags = android.view.inputmethod.ExtractedText.FLAG_SELECTING
+                },
+                0
+            ) ?: return false
+
+            val selectionStart = extractedText.selectionStart
+            val selectionEnd = extractedText.selectionEnd
+            if (selectionStart < 0 || selectionEnd < 0) return false
+
+            val text = extractedText.text?.toString() ?: return false
+            val anchor = selectionAnchor(selectionStart, selectionEnd, SelectionDirection.Left)
+            val movingEdge = movingSelectionEdge(selectionStart, selectionEnd, anchor)
+            val newMovingEdge = previousWordStart(text, movingEdge)
+            if (newMovingEdge == movingEdge) return false
+            val handled = applySelectionMove(inputConnection, anchor, newMovingEdge)
+            Log.d(TAG, "expandSelectionWordLeft: selection moved from [$selectionStart, $selectionEnd] to edge $newMovingEdge with anchor $anchor")
+            return handled
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in expandSelectionWordLeft", e)
+        }
+        return false
+    }
+
+    fun expandSelectionWordRight(inputConnection: InputConnection): Boolean {
+        try {
+            val extractedText = inputConnection.getExtractedText(
+                ExtractedTextRequest().apply {
+                    flags = android.view.inputmethod.ExtractedText.FLAG_SELECTING
+                },
+                0
+            ) ?: return false
+
+            val selectionStart = extractedText.selectionStart
+            val selectionEnd = extractedText.selectionEnd
+            if (selectionStart < 0 || selectionEnd < 0) return false
+
+            val text = extractedText.text?.toString() ?: return false
+            val anchor = selectionAnchor(selectionStart, selectionEnd, SelectionDirection.Right)
+            val movingEdge = movingSelectionEdge(selectionStart, selectionEnd, anchor)
+            val newMovingEdge = nextWordEnd(text, movingEdge)
+            if (newMovingEdge == movingEdge) return false
+            val handled = applySelectionMove(inputConnection, anchor, newMovingEdge)
+            Log.d(TAG, "expandSelectionWordRight: selection moved from [$selectionStart, $selectionEnd] to edge $newMovingEdge with anchor $anchor")
+            return handled
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in expandSelectionWordRight", e)
         }
         return false
     }
@@ -346,4 +535,3 @@ object TextSelectionHelper {
         return false
     }
 }
-

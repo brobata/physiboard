@@ -25,10 +25,12 @@
       "keycode": "PAGE_UP"
     },
     "KEYCODE_U": {
-      "type": "none"
+      "type": "action",
+      "action": "expand_selection_word_left"
     },
     "KEYCODE_I": {
-      "type": "none"
+      "type": "action",
+      "action": "expand_selection_word_right"
     },
     "KEYCODE_O": {
       "type": "keycode",
@@ -93,10 +95,12 @@
       "type": "none"
     },
     "KEYCODE_N": {
-      "type": "none"
+      "type": "action",
+      "action": "move_word_left"
     },
     "KEYCODE_M": {
-      "type": "none"
+      "type": "action",
+      "action": "move_word_right"
     }
   }
 }

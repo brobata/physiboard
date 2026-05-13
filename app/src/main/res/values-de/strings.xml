@@ -324,6 +324,10 @@
     <string name="nav_mode_action_select_all">AllesAusw</string>
     <string name="nav_mode_action_expand_selection_left">←Ausw</string>
     <string name="nav_mode_action_expand_selection_right">→Ausw</string>
+    <string name="nav_mode_action_move_word_left">←Wort</string>
+    <string name="nav_mode_action_move_word_right">Wort→</string>
+    <string name="nav_mode_action_expand_selection_word_left">←WortAusw</string>
+    <string name="nav_mode_action_expand_selection_word_right">WortAusw→</string>
     <string name="nav_mode_action_toggle_pastierina">Pastierina</string>
     <string name="nav_mode_keycode_up">↑</string>
     <string name="nav_mode_keycode_down">↓</string>

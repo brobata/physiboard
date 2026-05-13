@@ -351,6 +351,10 @@ object KeyMappingLoader {
             ctrlKeyMap[KeyEvent.KEYCODE_S] = CtrlMapping("keycode", "DPAD_DOWN")
             ctrlKeyMap[KeyEvent.KEYCODE_D] = CtrlMapping("keycode", "DPAD_LEFT")
             ctrlKeyMap[KeyEvent.KEYCODE_F] = CtrlMapping("keycode", "DPAD_RIGHT")
+            ctrlKeyMap[KeyEvent.KEYCODE_N] = CtrlMapping("action", "move_word_left")
+            ctrlKeyMap[KeyEvent.KEYCODE_M] = CtrlMapping("action", "move_word_right")
+            ctrlKeyMap[KeyEvent.KEYCODE_U] = CtrlMapping("action", "expand_selection_word_left")
+            ctrlKeyMap[KeyEvent.KEYCODE_I] = CtrlMapping("action", "expand_selection_word_right")
         }
         return ctrlKeyMap
     }

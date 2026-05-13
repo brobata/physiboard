@@ -573,6 +573,8 @@ private fun KeyMappingDialog(
                         val actions = listOf(
                             "copy", "paste", "cut", "undo",
                             "select_all", "expand_selection_left", "expand_selection_right",
+                            "move_word_left", "move_word_right",
+                            "expand_selection_word_left", "expand_selection_word_right",
                             "toggle_minimal_ui"
                         )
                         LazyVerticalGrid(
@@ -683,6 +685,10 @@ private fun getActionLabel(action: String): String {
         "select_all" -> stringResource(R.string.nav_mode_action_select_all)
         "expand_selection_left" -> stringResource(R.string.nav_mode_action_expand_selection_left)
         "expand_selection_right" -> stringResource(R.string.nav_mode_action_expand_selection_right)
+        "move_word_left" -> stringResource(R.string.nav_mode_action_move_word_left)
+        "move_word_right" -> stringResource(R.string.nav_mode_action_move_word_right)
+        "expand_selection_word_left" -> stringResource(R.string.nav_mode_action_expand_selection_word_left)
+        "expand_selection_word_right" -> stringResource(R.string.nav_mode_action_expand_selection_word_right)
         "toggle_minimal_ui" -> stringResource(R.string.nav_mode_action_toggle_pastierina)
         else -> action
     }
@@ -712,6 +718,10 @@ private fun getMappingLabelShort(mapping: KeyMappingLoader.CtrlMapping): String?
             "select_all" -> stringResource(R.string.nav_mode_action_select_all)
             "expand_selection_left" -> stringResource(R.string.nav_mode_action_expand_selection_left)
             "expand_selection_right" -> stringResource(R.string.nav_mode_action_expand_selection_right)
+            "move_word_left" -> stringResource(R.string.nav_mode_action_move_word_left)
+            "move_word_right" -> stringResource(R.string.nav_mode_action_move_word_right)
+            "expand_selection_word_left" -> stringResource(R.string.nav_mode_action_expand_selection_word_left)
+            "expand_selection_word_right" -> stringResource(R.string.nav_mode_action_expand_selection_word_right)
             "toggle_minimal_ui" -> stringResource(R.string.nav_mode_action_toggle_pastierina)
             else -> mapping.value
         }

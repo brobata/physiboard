@@ -1481,6 +1481,8 @@ object SettingsManager {
     private const val DEFAULT_NAV_MODE_ENABLED = true
     private const val KEY_NAV_MODE_CTRL_HOLD_ENABLED = "nav_mode_ctrl_hold_enabled"
     private const val DEFAULT_NAV_MODE_CTRL_HOLD_ENABLED = false
+    private const val KEY_NAV_MODE_DEFAULT_MAPPINGS_VERSION = "nav_mode_default_mappings_version"
+    private const val CURRENT_NAV_MODE_DEFAULT_MAPPINGS_VERSION = 2
     private const val NAV_MODE_MAPPINGS_FILE_NAME = "ctrl_key_mappings.json"
     private const val KEY_NAV_MODE_MAPPINGS_UPDATED = "nav_mode_mappings_updated"
     
@@ -1689,6 +1691,7 @@ object SettingsManager {
     fun initializeNavModeMappingsFile(context: Context) {
         val mappingsFile = getNavModeMappingsFile(context)
         if (mappingsFile.exists()) {
+            migrateNavModeMappingsFileIfNeeded(context)
             return // File already exists, don't overwrite
         }
         
@@ -1698,9 +1701,55 @@ object SettingsManager {
             inputStream.copyTo(outputStream)
             inputStream.close()
             outputStream.close()
+            migrateNavModeMappingsFileIfNeeded(context)
             Log.d(TAG, "Nav mode mappings file initialized from assets")
         } catch (e: Exception) {
             Log.e(TAG, "Error initializing nav mode mappings file", e)
+        }
+    }
+
+    private fun migrateNavModeMappingsFileIfNeeded(context: Context) {
+        val prefs = getPreferences(context)
+        if (prefs.getInt(KEY_NAV_MODE_DEFAULT_MAPPINGS_VERSION, 1) >= CURRENT_NAV_MODE_DEFAULT_MAPPINGS_VERSION) {
+            return
+        }
+
+        try {
+            val mappingsFile = getNavModeMappingsFile(context)
+            if (!mappingsFile.exists()) {
+                return
+            }
+
+            val jsonObject = JSONObject(mappingsFile.readText())
+            val mappingsObject = jsonObject.getJSONObject("mappings")
+            val defaultWordMappings = mapOf(
+                "KEYCODE_N" to "move_word_left",
+                "KEYCODE_M" to "move_word_right",
+                "KEYCODE_U" to "expand_selection_word_left",
+                "KEYCODE_I" to "expand_selection_word_right"
+            )
+
+            defaultWordMappings.forEach { (keyName, action) ->
+                val existing = mappingsObject.optJSONObject(keyName)
+                if (existing == null || existing.optString("type") == "none") {
+                    mappingsObject.put(
+                        keyName,
+                        JSONObject().apply {
+                            put("type", "action")
+                            put("action", action)
+                        }
+                    )
+                }
+            }
+
+            mappingsFile.writeText(jsonObject.toString())
+            prefs.edit()
+                .putInt(KEY_NAV_MODE_DEFAULT_MAPPINGS_VERSION, CURRENT_NAV_MODE_DEFAULT_MAPPINGS_VERSION)
+                .putLong(KEY_NAV_MODE_MAPPINGS_UPDATED, System.currentTimeMillis())
+                .apply()
+            Log.d(TAG, "Nav mode mappings migrated to version $CURRENT_NAV_MODE_DEFAULT_MAPPINGS_VERSION")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error migrating nav mode mappings file", e)
         }
     }
     

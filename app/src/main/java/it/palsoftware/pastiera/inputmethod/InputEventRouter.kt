@@ -1048,6 +1048,54 @@ class InputEventRouter(
                             TextSelectionHelper.expandSelectionRight(ic)
                             return true
                         }
+                        "move_word_left" -> {
+                            KeyboardEventTracker.notifyKeyEvent(
+                                keyCode,
+                                event,
+                                "KEY_DOWN",
+                                origin = "ime_router",
+                                outputKeyCode = null,
+                                outputKeyCodeName = "move_word_left"
+                            )
+                            TextSelectionHelper.moveCursorWordLeft(ic)
+                            return true
+                        }
+                        "move_word_right" -> {
+                            KeyboardEventTracker.notifyKeyEvent(
+                                keyCode,
+                                event,
+                                "KEY_DOWN",
+                                origin = "ime_router",
+                                outputKeyCode = null,
+                                outputKeyCodeName = "move_word_right"
+                            )
+                            TextSelectionHelper.moveCursorWordRight(ic)
+                            return true
+                        }
+                        "expand_selection_word_left" -> {
+                            KeyboardEventTracker.notifyKeyEvent(
+                                keyCode,
+                                event,
+                                "KEY_DOWN",
+                                origin = "ime_router",
+                                outputKeyCode = null,
+                                outputKeyCodeName = "expand_selection_word_left"
+                            )
+                            TextSelectionHelper.expandSelectionWordLeft(ic)
+                            return true
+                        }
+                        "expand_selection_word_right" -> {
+                            KeyboardEventTracker.notifyKeyEvent(
+                                keyCode,
+                                event,
+                                "KEY_DOWN",
+                                origin = "ime_router",
+                                outputKeyCode = null,
+                                outputKeyCodeName = "expand_selection_word_right"
+                            )
+                            TextSelectionHelper.expandSelectionWordRight(ic)
+                            return true
+                        }
                         "toggle_minimal_ui" -> {
                             KeyboardEventTracker.notifyKeyEvent(
                                 keyCode,

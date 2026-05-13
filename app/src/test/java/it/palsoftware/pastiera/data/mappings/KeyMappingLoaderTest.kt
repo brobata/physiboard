@@ -70,4 +70,16 @@ class KeyMappingLoaderTest {
         assertEquals("»", mappings[KeyEvent.KEYCODE_Z])
         assertEquals("«", mappings[KeyEvent.KEYCODE_X])
     }
+
+    @Test
+    fun loadCtrlMappings_exposesWordNavigationDefaults() {
+        val context = RuntimeEnvironment.getApplication()
+
+        val mappings = KeyMappingLoader.loadCtrlKeyMappings(context.assets, null)
+
+        assertEquals(KeyMappingLoader.CtrlMapping("action", "move_word_left"), mappings[KeyEvent.KEYCODE_N])
+        assertEquals(KeyMappingLoader.CtrlMapping("action", "move_word_right"), mappings[KeyEvent.KEYCODE_M])
+        assertEquals(KeyMappingLoader.CtrlMapping("action", "expand_selection_word_left"), mappings[KeyEvent.KEYCODE_U])
+        assertEquals(KeyMappingLoader.CtrlMapping("action", "expand_selection_word_right"), mappings[KeyEvent.KEYCODE_I])
+    }
 }
