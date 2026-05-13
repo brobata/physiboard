@@ -8,7 +8,7 @@ Andrea Palumbo (PalSoftware)
 Andrea Palumbo, Patrick Zauner
 
 #### Additional Contributors
-Justin Mitchell, NeoTheFox, Oleksii Ilienko, Nikola Vukobrat, Mircea Horea IONICĂ, Nikita Tseykovets, Ivan Bulanov, Ratmir Karabut, Troidem, Vasu Bhatia, Zsolt Sz. Sz. Raven
+Justin Mitchell, NeoTheFox, Oleksii Ilienko, Nikola Vukobrat, Mircea Horea IONICĂ, Nikita Tseykovets, Ivan Bulanov, Ratmir Karabut, Troidem, Vasu Bhatia, Zsolt Sz. Sz. Raven, Burekmaster (SVG logo assets)
 ---
 #### Pastiera Beta Testing Team
 Laggy Luke, Vittorio, Emmanuel, Sadako, NotTeganQuinn, DrumSyBeat, [Shane Craig (ShaneCraig.Tech)](https://shanecraig.tech/)
