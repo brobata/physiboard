@@ -67,6 +67,19 @@ class ModifierStateControllerTest {
     }
 
     @Test
+    fun testNonModifierBetweenShiftTapsPreventsCapsLock() {
+        val controller = ModifierStateController(doubleTapThreshold)
+
+        controller.handleShiftKeyDown(KeyEvent.KEYCODE_SHIFT_LEFT)
+        controller.handleShiftKeyUp(KeyEvent.KEYCODE_SHIFT_LEFT)
+        controller.registerNonModifierKey()
+        controller.handleShiftKeyDown(KeyEvent.KEYCODE_SHIFT_LEFT)
+
+        assertEquals(ShiftState.OFF, controller.shiftState)
+        assertFalse(controller.capsLockEnabled)
+    }
+
+    @Test
     fun testConsumeOneShot() {
         val controller = ModifierStateController(doubleTapThreshold)
         

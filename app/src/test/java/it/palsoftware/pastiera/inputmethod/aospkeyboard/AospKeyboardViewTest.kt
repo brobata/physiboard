@@ -88,6 +88,20 @@ class AospKeyboardViewTest {
     }
 
     @Test
+    fun shiftKeyTap_notifiesListener() {
+        val listener = RecordingListener()
+        val view = measuredKeyboard().apply {
+            this.listener = listener
+        }
+        val (x, y) = centerOfLabel(view, "⇧")
+
+        view.dispatchTouchEvent(motion(MotionEvent.ACTION_DOWN, x, y, 0L))
+        view.dispatchTouchEvent(motion(MotionEvent.ACTION_UP, x, y, 20L))
+
+        assertEquals(1, listener.shiftCount)
+    }
+
+    @Test
     fun displayHint_usesCurrentLongPressProvider_evenWhenShiftedHintMatchesLabel() {
         val view = measuredKeyboard().apply {
             shifted = true

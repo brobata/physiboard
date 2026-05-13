@@ -950,10 +950,26 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         candidatesBarController.onSoftwareKeyboardKeyPressed = { keyCode ->
             typingSoundPlayer.play(keyCode)
         }
+        candidatesBarController.onSoftwareKeyboardShiftTapped = {
+            val downResult = modifierStateController.handleShiftKeyDown(KeyEvent.KEYCODE_SHIFT_LEFT)
+            val upResult = modifierStateController.handleShiftKeyUp(KeyEvent.KEYCODE_SHIFT_LEFT)
+            if (
+                downResult.shouldUpdateStatusBar ||
+                downResult.shouldRefreshStatusBar ||
+                upResult.shouldUpdateStatusBar ||
+                upResult.shouldRefreshStatusBar
+            ) {
+                updateStatusBarText()
+            }
+        }
+        candidatesBarController.onSoftwareKeyboardNonShiftInteraction = {
+            modifierStateController.registerNonModifierKey()
+        }
         candidatesBarController.onSoftwareKeyboardTextInput = { text, inputConnection, snapshot ->
-            if (text != " ") {
-                false
-            } else {
+            val consumedShiftOneShot = text.length == 1 &&
+                text[0].isLetter() &&
+                modifierStateController.consumeShiftOneShot()
+            val handled = if (text == " ") {
                 textInputController.handleDoubleSpaceToPeriod(
                     keyCode = KeyEvent.KEYCODE_SPACE,
                     inputConnection = inputConnection,
@@ -961,7 +977,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                     shouldDisableAutoCapitalize = snapshot.shouldDisableAutoCapitalize,
                     onStatusBarUpdate = { updateStatusBarText() }
                 )
+            } else {
+                false
             }
+            if (consumedShiftOneShot) {
+                updateStatusBarText()
+            }
+            handled
         }
         candidatesBarController.onMinimalUiToggleRequested = {
             keyboardVisibilityController.toggleUserMinimalUi()

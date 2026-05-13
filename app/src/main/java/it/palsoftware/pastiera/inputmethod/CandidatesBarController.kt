@@ -83,6 +83,20 @@ class CandidatesBarController(
             candidatesStatusBar.onSoftwareKeyboardKeyPressed = value
         }
 
+    var onSoftwareKeyboardShiftTapped: (() -> Unit)? = null
+        set(value) {
+            field = value
+            inputStatusBar.onSoftwareKeyboardShiftTapped = value
+            candidatesStatusBar.onSoftwareKeyboardShiftTapped = value
+        }
+
+    var onSoftwareKeyboardNonShiftInteraction: (() -> Unit)? = null
+        set(value) {
+            field = value
+            inputStatusBar.onSoftwareKeyboardNonShiftInteraction = value
+            candidatesStatusBar.onSoftwareKeyboardNonShiftInteraction = value
+        }
+
     var onSoftwareKeyboardTextInput: ((String, InputConnection?, StatusBarController.StatusSnapshot) -> Boolean)? = null
         set(value) {
             field = value

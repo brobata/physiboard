@@ -116,6 +116,10 @@ class StatusBarController(
 
     var onSoftwareKeyboardKeyPressed: ((Int) -> Unit)? = null
 
+    var onSoftwareKeyboardShiftTapped: (() -> Unit)? = null
+
+    var onSoftwareKeyboardNonShiftInteraction: (() -> Unit)? = null
+
     var onSoftwareKeyboardTextInput: ((String, android.view.inputmethod.InputConnection?, StatusSnapshot) -> Boolean)? = null
 
     var onHamburgerMenuRequested: (() -> Unit)? = null
@@ -259,7 +263,6 @@ class StatusBarController(
     private var lastHamburgerInputConnection: android.view.inputmethod.InputConnection? = null
     private var lastInsetsLogSignature: String? = null
     private var softwareKeyboardShown: Boolean = false
-    private var softwareKeyboardShiftOverride: Boolean? = null
     private var lastSoftwareKeyboardHeight: Int = 0
     private var lastSoftwareKeyboardSymPageRendered: Int = 0
     
@@ -907,8 +910,7 @@ class StatusBarController(
     ) {
         val container = emojiKeyboardContainer ?: return
         container.setPadding(0, 0, 0, emojiKeyboardBottomPaddingPx)
-        val uppercase = softwareKeyboardShiftOverride
-            ?: (snapshot.capsLockEnabled || snapshot.shiftPhysicallyPressed || snapshot.shiftOneShot)
+        val uppercase = snapshot.capsLockEnabled || snapshot.shiftPhysicallyPressed || snapshot.shiftOneShot
         val layoutName = resolveSoftwareKeyboardLayoutName(snapshot)
             val keyboardView = container.getChildAt(0) as? AospKeyboardView ?: AospKeyboardView(context).also { view ->
             var parent: ViewGroup? = container
@@ -929,41 +931,41 @@ class StatusBarController(
         }
         keyboardView.listener = object : AospKeyboardView.Listener {
             override fun onText(text: String) {
+                onSoftwareKeyboardNonShiftInteraction?.invoke()
                 val handled = onSoftwareKeyboardTextInput?.invoke(text, inputConnection, snapshot) == true
                 if (!handled) {
                     inputConnection?.commitText(text, 1)
                 }
-                if (softwareKeyboardShiftOverride != null) {
-                    softwareKeyboardShiftOverride = null
-                    keyboardView.shifted = snapshot.capsLockEnabled || snapshot.shiftPhysicallyPressed || snapshot.shiftOneShot
-                }
             }
 
             override fun onBackspace() {
+                onSoftwareKeyboardNonShiftInteraction?.invoke()
                 inputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
                 inputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DEL))
             }
 
             override fun onEnter() {
+                onSoftwareKeyboardNonShiftInteraction?.invoke()
                 inputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
                 inputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
             }
 
             override fun onShift() {
-                val currentlyUppercase = keyboardView.shifted
-                softwareKeyboardShiftOverride = !currentlyUppercase
-                keyboardView.shifted = !currentlyUppercase
+                onSoftwareKeyboardShiftTapped?.invoke()
             }
 
             override fun onSymbols() {
+                onSoftwareKeyboardNonShiftInteraction?.invoke()
                 onSymbolsPageRequested?.invoke()
             }
 
             override fun onLanguageSwitch() {
+                onSoftwareKeyboardNonShiftInteraction?.invoke()
                 onLanguageSwitchRequested?.invoke()
             }
 
             override fun onCursorMove(delta: Int) {
+                onSoftwareKeyboardNonShiftInteraction?.invoke()
                 val connection = inputConnection ?: return
                 val moved = if (delta < 0) {
                     TextSelectionHelper.moveCursorLeft(connection)
@@ -2015,7 +2017,6 @@ class StatusBarController(
             return
         } else {
             softwareKeyboardShown = false
-            softwareKeyboardShiftOverride = null
         }
 
         if (snapshot.symPage > 0) {
