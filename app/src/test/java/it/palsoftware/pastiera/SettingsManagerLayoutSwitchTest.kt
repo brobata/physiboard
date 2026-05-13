@@ -73,4 +73,15 @@ class SettingsManagerLayoutSwitchTest {
         assertEquals("force_virtual", SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL.storageValue)
         assertEquals("force_hardware", SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE.storageValue)
     }
+
+    @Test
+    fun navModeCtrlHold_defaultsDisabled_andPersistsEnabledState() {
+        val context = RuntimeEnvironment.getApplication()
+
+        assertFalse(SettingsManager.getNavModeCtrlHoldEnabled(context))
+
+        SettingsManager.setNavModeCtrlHoldEnabled(context, true)
+
+        assertTrue(SettingsManager.getNavModeCtrlHoldEnabled(context))
+    }
 }

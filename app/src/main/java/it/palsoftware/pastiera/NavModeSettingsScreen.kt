@@ -59,6 +59,9 @@ fun NavModeSettingsScreen(
     var navModeEnabled by remember {
         mutableStateOf(SettingsManager.getNavModeEnabled(context))
     }
+    var navModeCtrlHoldEnabled by remember {
+        mutableStateOf(SettingsManager.getNavModeCtrlHoldEnabled(context))
+    }
     
     // Load current mappings (all alphabetic keys)
     var keyMappings by remember {
@@ -139,6 +142,40 @@ fun NavModeSettingsScreen(
                         SettingsManager.setNavModeEnabled(context, enabled)
                     }
                 )
+            }
+        }
+
+        if (navModeEnabled) {
+            Surface(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.nav_mode_ctrl_hold_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = stringResource(R.string.nav_mode_ctrl_hold_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = navModeCtrlHoldEnabled,
+                        onCheckedChange = { enabled ->
+                            navModeCtrlHoldEnabled = enabled
+                            SettingsManager.setNavModeCtrlHoldEnabled(context, enabled)
+                        }
+                    )
+                }
             }
         }
         

@@ -996,6 +996,7 @@ class InputEventRouter(
     ): Boolean {
         val ic = inputConnection ?: return false
         val isPhysicalCtrlCombo = event?.isCtrlPressed == true || ctrlPhysicallyPressed
+        val useNavModeForHeldCtrl = SettingsManager.getNavModeCtrlHoldEnabled(context)
         fun passThroughCtrlCombo(): Boolean {
             if (event != null) {
                 ic.sendKeyEvent(event)
@@ -1009,7 +1010,7 @@ class InputEventRouter(
 
         // When Ctrl is physically held, prefer native app shortcuts (rich-text editors, IDEs, etc.).
         // This must take precedence over one-shot, because a physical press sets one-shot internally.
-        if (isPhysicalCtrlCombo && !ctrlLatchFromNavMode) {
+        if (isPhysicalCtrlCombo && !ctrlLatchFromNavMode && !useNavModeForHeldCtrl) {
             return passThroughCtrlCombo()
         }
 
@@ -1174,6 +1175,9 @@ class InputEventRouter(
             }
 
             // No explicit Pastiera mapping: preserve app-native Ctrl shortcuts (e.g. Ctrl+B/Ctrl+I).
+            if (isPhysicalCtrlCombo && !ctrlLatchFromNavMode) {
+                return passThroughCtrlCombo()
+            }
             return callSuper()
         }
 

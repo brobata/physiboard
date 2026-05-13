@@ -988,6 +988,11 @@ fun TutorialNavModePageContent(
     page: TutorialPageType.NavMode,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    var navModeCtrlHoldEnabled by remember {
+        mutableStateOf(SettingsManager.getNavModeCtrlHoldEnabled(context))
+    }
+
     TutorialPageLayout(
         title = page.title,
         description = page.description,
@@ -1000,7 +1005,47 @@ fun TutorialNavModePageContent(
                 tint = page.iconTint
             )
         }
-    )
+    ) {
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.nav_mode_ctrl_hold_title),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                    Text(
+                        text = stringResource(R.string.nav_mode_ctrl_hold_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                }
+                Switch(
+                    checked = navModeCtrlHoldEnabled,
+                    onCheckedChange = { enabled ->
+                        navModeCtrlHoldEnabled = enabled
+                        SettingsManager.setNavModeCtrlHoldEnabled(context, enabled)
+                    }
+                )
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

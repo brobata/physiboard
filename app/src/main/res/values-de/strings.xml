@@ -209,6 +209,8 @@
     <string name="nav_mode_title">Nav-Modus</string>
     <string name="nav_mode_enable_title">Nav-Modus aktivieren</string>
     <string name="nav_mode_enable_description">Doppeltippen auf Ctrl, um den Navigationsmodus zu aktivieren</string>
+    <string name="nav_mode_ctrl_hold_title">Navigation mit gehaltenem Ctrl</string>
+    <string name="nav_mode_ctrl_hold_description">Verwendet Nav-Modus-Zuordnungen, während Ctrl in Textfeldern physisch gehalten wird. Ausgeschaltet werden Ctrl-Shortcuts an die App weitergegeben.</string>
     <string name="nav_mode_key_mappings">Tastenzuordnungen</string>
     <string name="nav_mode_revert_to_default">Auf Standard zurücksetzen</string>
     <string name="nav_mode_note">Hinweis: Das Ändern der Nav-Modus-Tasten wirkt sich auch auf Ctrl+Taste-Kombinationen in Textfeldern aus.</string>

@@ -343,6 +343,8 @@
     <string name="nav_mode_title">Nav Mode</string>
     <string name="nav_mode_enable_title">Enable Nav Mode</string>
     <string name="nav_mode_enable_description">Double-tap Ctrl to activate navigation mode</string>
+    <string name="nav_mode_ctrl_hold_title">Ctrl-hold navigation</string>
+    <string name="nav_mode_ctrl_hold_description">Use Nav Mode mappings while physically holding Ctrl in text fields. When off, Ctrl shortcuts are passed to the app.</string>
     <string name="nav_mode_key_mappings">Key Mappings</string>
     <string name="nav_mode_revert_to_default">Revert to Default</string>
     <string name="nav_mode_note">Note: Modifying nav mode keys also affects Ctrl+key combinations in text fields.</string>

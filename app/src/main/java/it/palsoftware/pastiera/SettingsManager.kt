@@ -1479,6 +1479,8 @@ object SettingsManager {
     // Nav mode settings
     private const val KEY_NAV_MODE_ENABLED = "nav_mode_enabled"
     private const val DEFAULT_NAV_MODE_ENABLED = true
+    private const val KEY_NAV_MODE_CTRL_HOLD_ENABLED = "nav_mode_ctrl_hold_enabled"
+    private const val DEFAULT_NAV_MODE_CTRL_HOLD_ENABLED = false
     private const val NAV_MODE_MAPPINGS_FILE_NAME = "ctrl_key_mappings.json"
     private const val KEY_NAV_MODE_MAPPINGS_UPDATED = "nav_mode_mappings_updated"
     
@@ -1655,6 +1657,22 @@ object SettingsManager {
     fun setNavModeEnabled(context: Context, enabled: Boolean) {
         getPreferences(context).edit()
             .putBoolean(KEY_NAV_MODE_ENABLED, enabled)
+            .apply()
+    }
+
+    /**
+     * Returns whether holding Ctrl should use Nav Mode mappings in text fields.
+     */
+    fun getNavModeCtrlHoldEnabled(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_NAV_MODE_CTRL_HOLD_ENABLED, DEFAULT_NAV_MODE_CTRL_HOLD_ENABLED)
+    }
+
+    /**
+     * Sets whether holding Ctrl should use Nav Mode mappings in text fields.
+     */
+    fun setNavModeCtrlHoldEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_NAV_MODE_CTRL_HOLD_ENABLED, enabled)
             .apply()
     }
     
