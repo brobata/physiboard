@@ -177,6 +177,7 @@ object SettingsManager {
     private const val MAX_ACCESSIBILITY_SUGGESTIONS_ANNOUNCEMENT_DELAY_MS = 2000L
     private val STATIC_VARIATION_BASE_PRESET_DEFAULT = listOf("@", "\"", ":", "!", "?", ",", ".")
     private val STATIC_VARIATION_BASE_PRESET_ALTERNATIVE = listOf("[", "]", "$", "%", "^", "&", "\\")
+    private val STATIC_VARIATION_BASE_PRESET_DEV_CHOICE = listOf("»", "«", ";", "!", "?", ",", ".")
     private val STATIC_VARIATION_SHIFT_PRESET_DEFAULT = listOf("{", "}", "€", "=", "~", ";", "¿")
     private val STATIC_VARIATION_ALT_PRESET_DEFAULT = listOf("<", ">", "¥", "|", "`", "´", "°")
 
@@ -845,6 +846,8 @@ object SettingsManager {
     fun getDefaultStaticVariationShiftPreset(): List<String> = STATIC_VARIATION_SHIFT_PRESET_DEFAULT
 
     fun getDefaultStaticVariationAltPreset(): List<String> = STATIC_VARIATION_ALT_PRESET_DEFAULT
+
+    fun getDevChoiceStaticVariationBasePreset(): List<String> = STATIC_VARIATION_BASE_PRESET_DEV_CHOICE
 
     /**
      * Returns true if the static variation layer should remain latched after modifier hold.
@@ -2419,6 +2422,24 @@ object SettingsManager {
             Log.d(TAG, "Variations saved to ${getVariationsFile(context).absolutePath}")
         } catch (e: Exception) {
             Log.e(TAG, "Error saving variations", e)
+        }
+    }
+
+    fun saveStaticVariationBasePreset(context: Context, staticVariations: List<String>) {
+        try {
+            val jsonObject = loadCurrentJson(context) ?: JSONObject()
+            val staticArray = org.json.JSONArray()
+            staticVariations.take(7).forEach { staticArray.put(it) }
+            jsonObject.put("staticVariations", staticArray)
+
+            FileOutputStream(getVariationsFile(context)).use { outputStream ->
+                outputStream.write(jsonObject.toString(2).toByteArray(Charsets.UTF_8))
+            }
+
+            notifyVariationsUpdated(context)
+            Log.d(TAG, "Static variation base preset saved to ${getVariationsFile(context).absolutePath}")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error saving static variation base preset", e)
         }
     }
     

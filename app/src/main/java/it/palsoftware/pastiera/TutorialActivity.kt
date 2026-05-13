@@ -956,6 +956,11 @@ private fun applyDevsChoiceSettings(context: Context) {
     SettingsManager.setKeyboardLayoutAutoByLocale(context, false)
     SettingsManager.setKeyboardLayout(context, "qwertz")
     SettingsManager.setKeyboardLayoutList(context, listOf("qwertz"))
+    SettingsManager.setStaticVariationBarModeEnabled(context, true)
+    SettingsManager.saveStaticVariationBasePreset(
+        context = context,
+        staticVariations = SettingsManager.getDevChoiceStaticVariationBasePreset()
+    )
 }
 
 @Composable
