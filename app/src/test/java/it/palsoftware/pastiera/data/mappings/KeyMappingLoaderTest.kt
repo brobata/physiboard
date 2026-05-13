@@ -55,4 +55,19 @@ class KeyMappingLoaderTest {
         assertEquals("0", mappings[KeyEvent.KEYCODE_Q])
         assertEquals("?", mappings[KeyEvent.KEYCODE_M])
     }
+
+    @Test
+    fun loadSymPage2Mappings_exposesExpandedTypographyDefaults() {
+        val context = RuntimeEnvironment.getApplication()
+
+        val mappings = KeyMappingLoader.loadSymKeyMappingsPage2(context.assets)
+
+        assertEquals(";", mappings[KeyEvent.KEYCODE_S])
+        assertEquals("–", mappings[KeyEvent.KEYCODE_F])
+        assertEquals("„", mappings[KeyEvent.KEYCODE_J])
+        assertEquals("“", mappings[KeyEvent.KEYCODE_K])
+        assertEquals("&", mappings[KeyEvent.KEYCODE_C])
+        assertEquals("»", mappings[KeyEvent.KEYCODE_Z])
+        assertEquals("«", mappings[KeyEvent.KEYCODE_X])
+    }
 }
