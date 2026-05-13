@@ -1107,6 +1107,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 Handler(Looper.getMainLooper()).post {
                     updateStatusBarText()
                 }
+            } else if (key == "physical_keyboard_currency_symbol") {
+                Log.d(TAG, "Physical keyboard currency symbol changed, reloading Alt mappings...")
+                altSymManager.reloadAltMappings()
             } else if (key != null && (key.startsWith("auto_correct_custom_") || key == "auto_correct_enabled_languages")) {
                 Log.d(TAG, "Auto-correction rules changed, reloading...")
                 // Reload auto-corrections (including new custom languages)

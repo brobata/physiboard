@@ -103,6 +103,7 @@ object KeyMappingLoader {
                         altKeyMap[keyCode] = character
                     }
                 }
+                applyCurrencySymbolOverride(altKeyMap, context)
                 Log.d(TAG, "Loaded Alt mappings for device: $candidateDeviceName")
                 return altKeyMap
             } catch (e: Exception) {
@@ -126,6 +127,7 @@ object KeyMappingLoader {
                     altKeyMap[keyCode] = character
                 }
             }
+            applyCurrencySymbolOverride(altKeyMap, context)
             Log.d(TAG, "Loaded fallback Alt mappings for device: titan2")
         } catch (e: Exception) {
             Log.e(TAG, "Error loading Alt mappings", e)
@@ -133,6 +135,13 @@ object KeyMappingLoader {
             altKeyMap[KeyEvent.KEYCODE_Y] = ")"
         }
         return altKeyMap
+    }
+
+    private fun applyCurrencySymbolOverride(altKeyMap: MutableMap<Int, String>, context: Context?) {
+        if (context == null || !altKeyMap.containsKey(KeyEvent.KEYCODE_GRAVE)) {
+            return
+        }
+        altKeyMap[KeyEvent.KEYCODE_GRAVE] = SettingsManager.getPhysicalKeyboardCurrencySymbol(context)
     }
 
     fun loadSymKeyMappings(assets: AssetManager): Map<Int, String> {

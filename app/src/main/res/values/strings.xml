@@ -255,6 +255,8 @@
     <string name="keyboard_profile_option_titan2">Unihertz Titan / Titan 2</string>
     <string name="keyboard_profile_option_titan2elite_qwerty">Titan 2 Elite (QWERTY)</string>
     <string name="keyboard_profile_option_mp01">Minimal Phone (MP01)</string>
+    <string name="keyboard_currency_symbol_title">Currency Symbol</string>
+    <string name="keyboard_currency_symbol_description">Symbol inserted by dedicated hardware currency keys.</string>
     
     <!-- About Section -->
     <string name="about_github">GitHub</string>

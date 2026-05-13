@@ -64,6 +64,9 @@ fun KeyboardLayoutSettingsScreen(
     var physicalKeyboardProfileOverride by remember {
         mutableStateOf(SettingsManager.getPhysicalKeyboardProfileOverride(context))
     }
+    var physicalKeyboardCurrencySymbol by remember {
+        mutableStateOf(SettingsManager.getPhysicalKeyboardCurrencySymbol(context))
+    }
     var altShiftLayoutSwitch by remember {
         mutableStateOf(SettingsManager.isAltShiftLayoutSwitchEnabled(context))
     }
@@ -72,6 +75,7 @@ fun KeyboardLayoutSettingsScreen(
     }
     val detectedPhysicalProfile = remember { DeviceSpecific.physicalKeyboardName() }
     var showPhysicalProfileMenu by remember { mutableStateOf(false) }
+    var showCurrencySymbolMenu by remember { mutableStateOf(false) }
     var selectedLayout by remember(locale, automaticLayoutMode) {
         mutableStateOf(
             if (automaticLayoutMode) {
@@ -238,6 +242,7 @@ fun KeyboardLayoutSettingsScreen(
                         onClick = {
                             SettingsManager.setKeyboardLayoutAutoByLocale(context, automaticLayoutMode)
                             SettingsManager.setPhysicalKeyboardProfileOverride(context, physicalKeyboardProfileOverride)
+                            SettingsManager.setPhysicalKeyboardCurrencySymbol(context, physicalKeyboardCurrencySymbol)
                             SettingsManager.setAltShiftLayoutSwitchEnabled(context, altShiftLayoutSwitch)
                             SettingsManager.setToastOnLayoutSwitchEnabled(context, toastOnLayoutSwitch)
                             if (automaticLayoutMode) {
@@ -389,6 +394,56 @@ fun KeyboardLayoutSettingsScreen(
                                         onClick = {
                                             physicalKeyboardProfileOverride = profile
                                             showPhysicalProfileMenu = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.keyboard_currency_symbol_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = stringResource(R.string.keyboard_currency_symbol_description),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Box {
+                            TextButton(onClick = { showCurrencySymbolMenu = true }) {
+                                Text(text = physicalKeyboardCurrencySymbol)
+                                Icon(
+                                    imageVector = Icons.Filled.ArrowDropDown,
+                                    contentDescription = null
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = showCurrencySymbolMenu,
+                                onDismissRequest = { showCurrencySymbolMenu = false }
+                            ) {
+                                SettingsManager.physicalKeyboardCurrencySymbols().forEach { symbol ->
+                                    DropdownMenuItem(
+                                        text = { Text(symbol) },
+                                        onClick = {
+                                            physicalKeyboardCurrencySymbol = symbol
+                                            showCurrencySymbolMenu = false
                                         }
                                     )
                                 }

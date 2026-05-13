@@ -48,6 +48,7 @@ class InputEventRouterModifierE2ETest {
         SettingsManager.resetSymMappingsPage2(context)
         SettingsManager.resetVariationsToDefault(context)
         SettingsManager.setLongPressModifier(context, "alt")
+        SettingsManager.setPhysicalKeyboardCurrencySymbol(context, "€")
         prefs = context.getSharedPreferences("router_e2e_modifier_tests", Context.MODE_PRIVATE)
         prefs.edit().clear().commit()
 
@@ -71,6 +72,7 @@ class InputEventRouterModifierE2ETest {
         DeviceSpecific.clearTestOverrides()
         SettingsManager.resetVariationsToDefault(context)
         SettingsManager.setLongPressModifier(context, "alt")
+        SettingsManager.setPhysicalKeyboardCurrencySymbol(context, "€")
     }
 
     @Test
@@ -360,6 +362,31 @@ class InputEventRouterModifierE2ETest {
 
         assertTrue(currencyResult is InputEventRouter.EditableFieldRoutingResult.Consume)
         assertEquals("€", inputConnectionRecorder.committedTexts.last())
+    }
+
+    @Test
+    fun altMapping_q25Profile_usesConfiguredCurrencySymbol() {
+        DeviceSpecific.setBuildFingerprintForTests(
+            brand = "zinwa",
+            manufacturer = "zinwa",
+            model = "Q25",
+            device = "Q25",
+            product = "q25"
+        )
+        SettingsManager.setPhysicalKeyboardCurrencySymbol(context, "$")
+        rebuildAltSymControllers()
+
+        val callbacks = TestCallbacks(modifierStateController)
+        primeAltOneShot(callbacks)
+
+        val result = routeKeyDown(
+            keyCode = KeyEvent.KEYCODE_GRAVE,
+            event = keyDown(KeyEvent.KEYCODE_GRAVE),
+            callbacks = callbacks
+        )
+
+        assertTrue(result is InputEventRouter.EditableFieldRoutingResult.Consume)
+        assertEquals("$", inputConnectionRecorder.committedTexts.last())
     }
 
     @Test

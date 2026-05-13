@@ -249,7 +249,10 @@
     <string name="keyboard_profile_option_key2">BlackBerry Key2</string>
     <string name="keyboard_profile_option_q25">BlackBerry Q25</string>
     <string name="keyboard_profile_option_titan2">Unihertz Titan / Titan 2</string>
+    <string name="keyboard_profile_option_titan2elite_qwerty">Titan 2 Elite (QWERTY)</string>
     <string name="keyboard_profile_option_mp01">Minimal Phone (MP01)</string>
+    <string name="keyboard_currency_symbol_title">Währungssymbol</string>
+    <string name="keyboard_currency_symbol_description">Symbol für dedizierte Währungstasten auf der Hardware-Tastatur.</string>
     <string name="app_picker_title">App auswählen</string>
     <string name="app_picker_cancel">Abbrechen</string>
     <string name="app_picker_search_placeholder">Apps suchen…</string>

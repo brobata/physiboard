@@ -41,6 +41,7 @@ object SettingsManager {
     private const val KEY_KEYBOARD_LAYOUT_LIST = "keyboard_layout_list" // JSON array of layout ids for cycling
     private const val KEY_ALT_SHIFT_LAYOUT_SWITCH = "alt_shift_layout_switch" // Enable Alt+Shift shortcut for layout cycling
     private const val KEY_PHYSICAL_KEYBOARD_PROFILE_OVERRIDE = "physical_keyboard_profile_override" // auto | key2 | Q25 | titan2 | titan2elite_qwerty | mp01
+    private const val KEY_PHYSICAL_KEYBOARD_CURRENCY_SYMBOL = "physical_keyboard_currency_symbol" // Currency symbol for dedicated hardware keys
     private const val KEY_RESTORE_SYM_PAGE = "restore_sym_page" // SYM page to restore when returning from settings
     private const val KEY_PENDING_RESTORE_SYM_PAGE = "pending_restore_sym_page" // Temporary SYM page state saved when opening settings
     private const val KEY_SYM_PAGES_CONFIG = "sym_pages_config" // Order/enabled pages for SYM
@@ -118,6 +119,7 @@ object SettingsManager {
     private const val KEY_TOAST_ON_LAYOUT_SWITCH = "toast_on_layout_switch"
     private const val DEFAULT_TOAST_ON_LAYOUT_SWITCH = true
     private const val DEFAULT_PHYSICAL_KEYBOARD_PROFILE_OVERRIDE = "auto"
+    private const val DEFAULT_PHYSICAL_KEYBOARD_CURRENCY_SYMBOL = "€"
     private const val DEFAULT_SYM_AUTO_CLOSE = true
     private val DEFAULT_SYM_PAGES_CONFIG = SymPagesConfig()
     private const val DEFAULT_STATIC_VARIATION_BAR_MODE = false
@@ -1630,6 +1632,26 @@ object SettingsManager {
     }
 
     /**
+     * Returns the symbol used for dedicated hardware currency keys.
+     */
+    fun getPhysicalKeyboardCurrencySymbol(context: Context): String {
+        val value = getPreferences(context).getString(
+            KEY_PHYSICAL_KEYBOARD_CURRENCY_SYMBOL,
+            DEFAULT_PHYSICAL_KEYBOARD_CURRENCY_SYMBOL
+        ) ?: DEFAULT_PHYSICAL_KEYBOARD_CURRENCY_SYMBOL
+        return normalizePhysicalKeyboardCurrencySymbol(value)
+    }
+
+    /**
+     * Sets the symbol used for dedicated hardware currency keys.
+     */
+    fun setPhysicalKeyboardCurrencySymbol(context: Context, symbol: String) {
+        getPreferences(context).edit()
+            .putString(KEY_PHYSICAL_KEYBOARD_CURRENCY_SYMBOL, normalizePhysicalKeyboardCurrencySymbol(symbol))
+            .apply()
+    }
+
+    /**
      * Returns whether Alt+Shift shortcut for keyboard layout cycling is enabled.
      */
     fun isAltShiftLayoutSwitchEnabled(context: Context): Boolean {
@@ -1679,6 +1701,17 @@ object SettingsManager {
             else -> DEFAULT_PHYSICAL_KEYBOARD_PROFILE_OVERRIDE
         }
     }
+
+    private fun normalizePhysicalKeyboardCurrencySymbol(symbol: String?): String {
+        val normalized = symbol?.trim().orEmpty()
+        return if (normalized in physicalKeyboardCurrencySymbols()) {
+            normalized
+        } else {
+            DEFAULT_PHYSICAL_KEYBOARD_CURRENCY_SYMBOL
+        }
+    }
+
+    fun physicalKeyboardCurrencySymbols(): List<String> = listOf("€", "$", "£", "¥", "₹", "₽", "₿", "¤")
 
     private fun isLayoutAvailable(context: Context, layoutName: String): Boolean {
         if (it.palsoftware.pastiera.data.layout.LayoutFileStore.layoutExists(context, layoutName)) {
