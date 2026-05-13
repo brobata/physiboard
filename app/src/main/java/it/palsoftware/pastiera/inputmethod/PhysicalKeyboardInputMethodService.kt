@@ -2457,9 +2457,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             event.repeatCount == 0 &&
             SettingsManager.isAltShiftLayoutSwitchEnabled(this) &&
             (((keyCode == KeyEvent.KEYCODE_SHIFT_LEFT || keyCode == KeyEvent.KEYCODE_SHIFT_RIGHT) &&
-                (event.isAltPressed || altPressed || altLatchActive || altOneShot)) ||
+                (event.isAltPressed || altPhysicallyPressed)) ||
                 ((keyCode == KeyEvent.KEYCODE_ALT_LEFT || keyCode == KeyEvent.KEYCODE_ALT_RIGHT) &&
-                    (event.isShiftPressed || shiftPressed || shiftLayerLatched || shiftOneShot)))
+                    (event.isShiftPressed || shiftPhysicallyPressed)))
         ) {
             modifierStateController.clearAltState(resetPressedState = true)
             modifierStateController.clearShiftState(resetPressedState = true)

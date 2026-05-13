@@ -276,6 +276,34 @@ class PhysicalKeyboardInputMethodServiceDeviceBehaviorTest {
     }
 
     @Test
+    fun altShiftLayoutSwitch_ignoresAltOneShot_whenShiftPressedLater() {
+        val context = RuntimeEnvironment.getApplication()
+        SettingsManager.setAltShiftLayoutSwitchEnabled(context, true)
+        val t0 = 3_950L
+
+        service.onKeyDown(
+            KeyEvent.KEYCODE_ALT_LEFT,
+            keyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ALT_LEFT, t0, t0)
+        )
+        service.onKeyUp(
+            KeyEvent.KEYCODE_ALT_LEFT,
+            keyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ALT_LEFT, t0, t0 + 40L)
+        )
+        assertTrue(modifierController().altOneShot)
+
+        val handled = service.onKeyDown(
+            KeyEvent.KEYCODE_SHIFT_LEFT,
+            keyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_SHIFT_LEFT, t0 + 120L, t0 + 120L)
+        )
+
+        val modifier = modifierController()
+        assertFalse(handled)
+        assertTrue(modifier.altOneShot)
+        assertTrue(modifier.shiftOneShot)
+        assertFalse(modifier.altPhysicallyPressed)
+    }
+
+    @Test
     fun deviceSanity_symATogglesEmojiThenSymbols_exactMappings() {
         val t0 = 4_000L
 
