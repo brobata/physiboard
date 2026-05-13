@@ -529,6 +529,8 @@
     <string name="tutorial_finish">Finish</string>
     <string name="tutorial_page_welcome_title">Welcome to Pastiera</string>
     <string name="tutorial_page_welcome_description">Pastiera is an advanced input method for PKB Android devices with support for Nav Mode, shortcuts, custom keyboard mappings, and more.</string>
+    <string name="tutorial_devs_choice_button">Dev\'s Choice</string>
+    <string name="tutorial_devs_choice_applied">Dev\'s Choice settings applied.</string>
     <string name="tutorial_page_enable_title">Enable Pastiera</string>
     <string name="tutorial_page_enable_description">To get started, you need to enable Pastiera as an input method in Android Settings. Tap the button below to open settings.</string>
     <string name="tutorial_page_select_title">Select Pastiera</string>
@@ -539,10 +541,22 @@
 • Auto: hardware-keyboard mode on known PKB devices; virtual keyboard mode on Pixel, Samsung, and most touch devices.
 • Always Virtual Keyboard: always show the full on-screen keyboard.
 • Always Hardware Keyboard: use the compact hardware-keyboard surface and do not force the full on-screen keyboard.</string>
-    <string name="tutorial_android16_ime_caption_title">Android 16 Titan 2 setting</string>
-    <string name="tutorial_android16_ime_caption_description">If Android shows an extra IME caption bar above Pastiera, enable “Hide IME caption bar” in the system gesture settings. This keeps Pastiera’s hardware-keyboard surface compact.</string>
-    <string name="tutorial_android16_ime_caption_button">Open Gesture Settings</string>
+    <string name="tutorial_android16_ime_caption_title">Hide IME caption bar</string>
+    <string name="tutorial_android16_ime_caption_description">Titan 2 and Titan 2 Elite can show an extra IME caption bar above Pastiera. On Android 16 or newer, use this OEM gesture setting to hide that bar and keep Pastiera compact.</string>
+    <string name="tutorial_android16_ime_caption_before">Before: wasted IME caption bar space</string>
+    <string name="tutorial_android16_ime_caption_after">After: compact Pastiera hardware-keyboard surface</string>
+    <string name="tutorial_android16_ime_caption_check_android16">Android 16 or newer</string>
+    <string name="tutorial_android16_ime_caption_check_titan2">Unihertz Titan 2 or Titan 2 Elite</string>
+    <string name="tutorial_android16_ime_caption_check_setting">OEM gesture setting available</string>
+    <string name="tutorial_android16_ime_caption_button">Open “Hide IME caption bar”</string>
+    <string name="tutorial_android16_ime_caption_unavailable">The direct link is shown only when all requirements are met.</string>
     <string name="tutorial_android16_ime_caption_fallback">Could not open the Titan 2 gesture setting. Opening Android Settings instead.</string>
+    <string name="tutorial_software_keyboard_auto_checker_title">Auto detection</string>
+    <string name="tutorial_software_keyboard_auto_selected">Auto currently selects: %1$s</string>
+    <string name="tutorial_software_keyboard_auto_overridden">Current override: %1$s. Auto would select: %2$s</string>
+    <string name="tutorial_software_keyboard_auto_profile">Detected profile: %1$s / %2$s</string>
+    <string name="tutorial_software_keyboard_auto_reason_physical">Reason: this profile is treated as a physical-keyboard device, so Auto uses hardware-keyboard mode.</string>
+    <string name="tutorial_software_keyboard_auto_reason_touch">Reason: this profile is not recognized as a physical-keyboard device, so Auto uses virtual-keyboard mode.</string>
     <string name="tutorial_page_led_title">LED Indicator</string>
     <string name="tutorial_page_led_description">To get the most out of Pastiera, set the Fn key to act as Ctrl from Android system settings. The IME bar shows four LEDs: they turn blue when the modifier is active one-shot and orange when it is locked. The SYM layout LED is blue on the emoji page and orange on the symbols page.</string>
     <string name="tutorial_page_nav_mode_title">Nav Mode</string>
@@ -591,6 +605,7 @@
     <string name="app_language_description">Choose the language used for app interface texts.</string>
     <string name="app_language_label">Language</string>
     <string name="app_language_system_default">System default</string>
+    <string name="app_language_system_default_with_detected">System default (%1$s)</string>
     <string name="custom_input_styles_add">Add Input Style</string>
     <string name="custom_input_styles_empty">No custom input styles added yet. Tap the + button to add one.</string>
     <string name="custom_input_styles_delete">Delete</string>

@@ -320,6 +320,8 @@
     <string name="tutorial_finish">Fertig</string>
     <string name="tutorial_page_welcome_title">Willkommen bei Pastiera</string>
     <string name="tutorial_page_welcome_description">Pastiera ist eine fortschrittliche Eingabemethode für Android-Geräte mit physischer Tastatur (PKB) und unterstützt Nav-Modus, Shortcuts, benutzerdefinierte Tastenbelegungen und mehr.</string>
+    <string name="tutorial_devs_choice_button">Dev\'s Choice</string>
+    <string name="tutorial_devs_choice_applied">Dev\'s Choice übernommen.</string>
     <string name="tutorial_page_enable_title">Pastiera aktivieren</string>
     <string name="tutorial_page_enable_description">Um zu beginnen, müssen Sie Pastiera als Eingabemethode in den Android-Einstellungen aktivieren. Tippen Sie auf die Schaltfläche unten, um die Einstellungen zu öffnen.</string>
     <string name="tutorial_page_select_title">Pastiera auswählen</string>
@@ -373,6 +375,7 @@
     <string name="app_language_description">Wähle die Sprache für die Oberflächentexte der App.</string>
     <string name="app_language_label">Sprache</string>
     <string name="app_language_system_default">Systemstandard</string>
+    <string name="app_language_system_default_with_detected">Systemstandard (%1$s)</string>
     <string name="custom_input_styles_language_label">Sprache</string>
     <string name="custom_input_styles_locale_display">%1$s (%2$s)</string>
     <string name="custom_input_styles_system_locale_hint">Systemsprache – kann nicht geändert werden</string>
@@ -586,10 +589,22 @@
 • Auto: Hardware-Tastaturmodus auf bekannten PKB-Geräten; virtuelle Tastatur auf Pixel, Samsung und den meisten Touch-Geräten.
 • Immer virtuelle Tastatur: zeigt immer die vollständige Bildschirmtastatur.
 • Immer Hardware-Tastatur: nutzt die kompakte Hardware-Tastatur-Oberfläche und erzwingt keine vollständige Bildschirmtastatur.</string>
-    <string name="tutorial_android16_ime_caption_title">Android-16-Einstellung auf dem Titan 2</string>
-    <string name="tutorial_android16_ime_caption_description">Wenn Android über Pastiera eine zusätzliche IME-Beschriftungsleiste zeigt, aktiviere in den System-Gesteneinstellungen „IME-Beschriftungsleiste ausblenden“. So bleibt Pastieras Hardware-Tastatur-Oberfläche kompakt.</string>
-    <string name="tutorial_android16_ime_caption_button">Gesteneinstellungen öffnen</string>
+    <string name="tutorial_android16_ime_caption_title">IME-Beschriftungsleiste ausblenden</string>
+    <string name="tutorial_android16_ime_caption_description">Titan 2 und Titan 2 Elite können über Pastiera eine zusätzliche IME-Beschriftungsleiste anzeigen. Unter Android 16 oder neuer kannst du diese OEM-Gesteneinstellung nutzen, um die Leiste auszublenden und Pastiera kompakt zu halten.</string>
+    <string name="tutorial_android16_ime_caption_before">Vorher: verschwendeter Platz durch die IME-Beschriftungsleiste</string>
+    <string name="tutorial_android16_ime_caption_after">Nachher: kompakte Pastiera-Oberfläche für Hardware-Tastaturen</string>
+    <string name="tutorial_android16_ime_caption_check_android16">Android 16 oder neuer</string>
+    <string name="tutorial_android16_ime_caption_check_titan2">Unihertz Titan 2 oder Titan 2 Elite</string>
+    <string name="tutorial_android16_ime_caption_check_setting">OEM-Gesteneinstellung verfügbar</string>
+    <string name="tutorial_android16_ime_caption_button">„IME-Beschriftungsleiste ausblenden“ öffnen</string>
+    <string name="tutorial_android16_ime_caption_unavailable">Der Direktlink wird nur angezeigt, wenn alle Voraussetzungen erfüllt sind.</string>
     <string name="tutorial_android16_ime_caption_fallback">Die Titan-2-Gesteneinstellung konnte nicht geöffnet werden. Öffne stattdessen die Android-Einstellungen.</string>
+    <string name="tutorial_software_keyboard_auto_checker_title">Auto-Erkennung</string>
+    <string name="tutorial_software_keyboard_auto_selected">Auto wählt aktuell: %1$s</string>
+    <string name="tutorial_software_keyboard_auto_overridden">Aktuelle Übersteuerung: %1$s. Auto würde wählen: %2$s</string>
+    <string name="tutorial_software_keyboard_auto_profile">Erkanntes Profil: %1$s / %2$s</string>
+    <string name="tutorial_software_keyboard_auto_reason_physical">Grund: Dieses Profil gilt als Gerät mit physischer Tastatur, daher nutzt Auto den Hardware-Tastaturmodus.</string>
+    <string name="tutorial_software_keyboard_auto_reason_touch">Grund: Dieses Profil wird nicht als Gerät mit physischer Tastatur erkannt, daher nutzt Auto den virtuellen Tastaturmodus.</string>
     <string name="software_keyboard_mode_title">Tastaturmodus</string>
     <string name="software_keyboard_mode_description">Unabhängig von Pastierina. Steuert Hardware- vs. virtuelle Tastatur.</string>
     <string name="software_keyboard_mode_auto_current">Auto (aktuell: %1$s)</string>

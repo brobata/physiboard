@@ -48,6 +48,7 @@ import it.palsoftware.pastiera.update.checkForUpdate
 import it.palsoftware.pastiera.update.showUpdateDialog
 import it.palsoftware.pastiera.update.shouldUseGithubUpdateChecks
 import it.palsoftware.pastiera.inputmethod.DeviceSpecific
+import it.palsoftware.pastiera.inputmethod.SoftwareKeyboardAutoDetector
 import java.util.Locale
 
 private const val ACTION_UNIHERTZ_GESTURE_NAVIGATION_SETTINGS = "com.android.settings.GESTURE_NAVIGATION_SETTINGS"
@@ -111,6 +112,11 @@ sealed class TutorialPageType {
         val description: String
     ) : TutorialPageType()
 
+    data class ImeCaptionBar(
+        val title: String,
+        val description: String
+    ) : TutorialPageType()
+
     data class SoftwareKeyboard(
         val title: String,
         val description: String,
@@ -125,51 +131,75 @@ fun TutorialScreen(
     onComplete: () -> Unit
 ) {
     val context = LocalContext.current
-    val pages = listOf(
-        TutorialPageType.Welcome(
-            title = stringResource(R.string.tutorial_page_welcome_title),
-            description = stringResource(R.string.tutorial_page_welcome_description),
-            imageRes = R.drawable.tutorial_welcome
-        ),
-        TutorialPageType.EnablePastiera(
-            title = stringResource(R.string.tutorial_page_enable_title),
-            description = stringResource(R.string.tutorial_page_enable_description)
-        ),
-        TutorialPageType.SelectPastiera(
-            title = stringResource(R.string.tutorial_page_select_title),
-            description = stringResource(R.string.tutorial_page_select_description)
-        ),
-        TutorialPageType.SoftwareKeyboard(
-            title = stringResource(R.string.tutorial_page_software_keyboard_title),
-            description = stringResource(R.string.tutorial_page_software_keyboard_description),
-            icon = Icons.Filled.Keyboard,
-            iconTint = MaterialTheme.colorScheme.primary
-        ),
-        TutorialPageType.Standard(
-            title = stringResource(R.string.tutorial_page_led_title),
-            description = stringResource(R.string.tutorial_page_led_description),
-            icon = Icons.Filled.Lightbulb,
-            iconTint = MaterialTheme.colorScheme.secondary
-        ),
-        TutorialPageType.NavMode(
-            title = stringResource(R.string.tutorial_page_nav_mode_title),
-            description = stringResource(R.string.tutorial_page_nav_mode_description),
-            icon = Icons.Filled.Navigation,
-            iconTint = MaterialTheme.colorScheme.tertiary
-        ),
-        TutorialPageType.Customization(
-            title = stringResource(R.string.tutorial_page_customization_title),
-            description = stringResource(R.string.tutorial_page_customization_description),
-            icon = Icons.Filled.Settings,
-            iconTint = MaterialTheme.colorScheme.primary
-        ),
-        TutorialPageType.Standard(
-            title = stringResource(R.string.tutorial_page_ready_title),
-            description = stringResource(R.string.tutorial_page_ready_description),
-            icon = Icons.Filled.CheckCircle,
-            iconTint = MaterialTheme.colorScheme.primary
+    val pages = buildList {
+        add(
+            TutorialPageType.Welcome(
+                title = stringResource(R.string.tutorial_page_welcome_title),
+                description = stringResource(R.string.tutorial_page_welcome_description),
+                imageRes = R.drawable.tutorial_welcome
+            )
         )
-    )
+        add(
+            TutorialPageType.EnablePastiera(
+                title = stringResource(R.string.tutorial_page_enable_title),
+                description = stringResource(R.string.tutorial_page_enable_description)
+            )
+        )
+        add(
+            TutorialPageType.SelectPastiera(
+                title = stringResource(R.string.tutorial_page_select_title),
+                description = stringResource(R.string.tutorial_page_select_description)
+            )
+        )
+        add(
+            TutorialPageType.Customization(
+                title = stringResource(R.string.tutorial_page_customization_title),
+                description = stringResource(R.string.tutorial_page_customization_description),
+                icon = Icons.Filled.Settings,
+                iconTint = MaterialTheme.colorScheme.primary
+            )
+        )
+        if (shouldShowImeCaptionBarGuidance(context)) {
+            add(
+                TutorialPageType.ImeCaptionBar(
+                    title = stringResource(R.string.tutorial_android16_ime_caption_title),
+                    description = stringResource(R.string.tutorial_android16_ime_caption_description)
+                )
+            )
+        }
+        add(
+            TutorialPageType.SoftwareKeyboard(
+                title = stringResource(R.string.tutorial_page_software_keyboard_title),
+                description = stringResource(R.string.tutorial_page_software_keyboard_description),
+                icon = Icons.Filled.Keyboard,
+                iconTint = MaterialTheme.colorScheme.primary
+            )
+        )
+        add(
+            TutorialPageType.Standard(
+                title = stringResource(R.string.tutorial_page_led_title),
+                description = stringResource(R.string.tutorial_page_led_description),
+                icon = Icons.Filled.Lightbulb,
+                iconTint = MaterialTheme.colorScheme.secondary
+            )
+        )
+        add(
+            TutorialPageType.NavMode(
+                title = stringResource(R.string.tutorial_page_nav_mode_title),
+                description = stringResource(R.string.tutorial_page_nav_mode_description),
+                icon = Icons.Filled.Navigation,
+                iconTint = MaterialTheme.colorScheme.tertiary
+            )
+        )
+        add(
+            TutorialPageType.Standard(
+                title = stringResource(R.string.tutorial_page_ready_title),
+                description = stringResource(R.string.tutorial_page_ready_description),
+                icon = Icons.Filled.CheckCircle,
+                iconTint = MaterialTheme.colorScheme.primary
+            )
+        )
+    }
     
     val pagerState = rememberPagerState(pageCount = { pages.size })
     val coroutineScope = rememberCoroutineScope()
@@ -220,18 +250,45 @@ fun TutorialScreen(
                 .padding(paddingValues)
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            // Skip button in top left
+            // Top actions
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.Start
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 TextButton(
                     onClick = onComplete,
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                 ) {
                     Text(stringResource(R.string.tutorial_skip), style = MaterialTheme.typography.bodyMedium)
+                }
+
+                if (pagerState.currentPage == 0) {
+                    Button(
+                        onClick = {
+                            applyDevsChoiceSettings(context)
+                            Toast.makeText(
+                                context,
+                                R.string.tutorial_devs_choice_applied,
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                        ),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.tutorial_devs_choice_button),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                } else {
+                    Spacer(modifier = Modifier.width(1.dp))
                 }
             }
             
@@ -279,6 +336,12 @@ fun TutorialScreen(
                             page = pageType,
                             isPastieraEnabled = isPastieraEnabled,
                             isPastieraSelected = isPastieraSelected,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                    is TutorialPageType.ImeCaptionBar -> {
+                        TutorialImeCaptionBarPageContent(
+                            page = pageType,
                             modifier = Modifier.fillMaxSize()
                         )
                     }
@@ -412,7 +475,7 @@ fun TutorialSoftwareKeyboardPageContent(
     val context = LocalContext.current
     var expanded by remember { mutableStateOf(false) }
     var selectedMode by remember { mutableStateOf(SettingsManager.getSoftwareKeyboardMode(context)) }
-    val showImeCaptionBarShortcut = remember { shouldShowImeCaptionBarShortcut(context) }
+    val autoDetection = remember(selectedMode) { resolveSoftwareKeyboardAutoDetection(context, selectedMode) }
 
     val label = when (selectedMode) {
         SettingsManager.SoftwareKeyboardMode.AUTO -> stringResource(R.string.software_keyboard_mode_auto_short)
@@ -424,7 +487,7 @@ fun TutorialSoftwareKeyboardPageContent(
         title = page.title,
         description = page.description,
         modifier = modifier,
-        centered = false,
+        centered = true,
         descriptionLeftAligned = true,
         iconContent = {
             TutorialIconSurface(
@@ -469,40 +532,59 @@ fun TutorialSoftwareKeyboardPageContent(
             }
         }
 
-        if (showImeCaptionBarShortcut) {
-            Spacer(modifier = Modifier.height(16.dp))
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+        Spacer(modifier = Modifier.height(16.dp))
+        SoftwareKeyboardAutoDetectionCard(autoDetection)
+    }
+}
+
+@Composable
+fun TutorialImeCaptionBarPageContent(
+    page: TutorialPageType.ImeCaptionBar,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val imeCaptionBarChecks = remember { resolveImeCaptionBarChecks(context) }
+
+    TutorialPageLayout(
+        title = page.title,
+        description = page.description,
+        modifier = modifier,
+        centered = true,
+        descriptionLeftAligned = true,
+        iconContent = null
+    ) {
+        Spacer(modifier = Modifier.height(12.dp))
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Info,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.secondary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Text(
-                            text = stringResource(R.string.tutorial_android16_ime_caption_title),
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ImeCaptionBarPreviewImage(
+                        imageRes = R.drawable.tutorial_titan2_ime_caption_bar_with,
+                        label = stringResource(R.string.tutorial_android16_ime_caption_before)
+                    )
+                    ImeCaptionBarPreviewImage(
+                        imageRes = R.drawable.tutorial_titan2_ime_caption_bar_without,
+                        label = stringResource(R.string.tutorial_android16_ime_caption_after)
+                    )
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    imeCaptionBarChecks.forEach { check ->
+                        RequirementRow(
+                            label = stringResource(check.labelRes),
+                            isMet = check.isMet
                         )
                     }
-                    Text(
-                        text = stringResource(R.string.tutorial_android16_ime_caption_description),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                    OutlinedButton(
+                }
+
+                if (imeCaptionBarChecks.all { it.isMet }) {
+                    Button(
                         onClick = { openImeCaptionBarSettings(context) },
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -514,17 +596,197 @@ fun TutorialSoftwareKeyboardPageContent(
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(stringResource(R.string.tutorial_android16_ime_caption_button))
                     }
+                } else {
+                    Text(
+                        text = stringResource(R.string.tutorial_android16_ime_caption_unavailable),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.75f)
+                    )
                 }
             }
         }
     }
 }
 
-private fun shouldShowImeCaptionBarShortcut(context: Context): Boolean {
-    if (Build.VERSION.SDK_INT < 36 || !DeviceSpecific.isTitan2Device()) {
-        return false
+@Composable
+private fun SoftwareKeyboardAutoDetectionCard(
+    detection: SoftwareKeyboardAutoDetection
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Rule,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = stringResource(R.string.tutorial_software_keyboard_auto_checker_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+            RequirementRow(
+                label = detection.modeLabel,
+                isMet = true
+            )
+            RequirementRow(
+                label = detection.profileLabel,
+                isMet = detection.isPhysicalKeyboardProfile
+            )
+            Text(
+                text = detection.reason,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        }
     }
-    return buildImeCaptionBarSettingsIntent().resolveActivity(context.packageManager) != null
+}
+
+@Composable
+private fun ImeCaptionBarPreviewImage(
+    @DrawableRes imageRes: Int,
+    label: String
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSecondaryContainer
+        )
+        Image(
+            painter = painterResource(id = imageRes),
+            contentDescription = label,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp)),
+            contentScale = ContentScale.FillWidth
+        )
+    }
+}
+
+@Composable
+private fun RequirementRow(
+    label: String,
+    isMet: Boolean
+) {
+    val tint = if (isMet) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+    val icon = if (isMet) Icons.Filled.CheckCircle else Icons.Filled.Cancel
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier.size(18.dp)
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = tint,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+private data class ImeCaptionBarRequirement(
+    val labelRes: Int,
+    val isMet: Boolean
+)
+
+private data class SoftwareKeyboardAutoDetection(
+    val modeLabel: String,
+    val profileLabel: String,
+    val reason: String,
+    val isPhysicalKeyboardProfile: Boolean
+)
+
+private fun resolveSoftwareKeyboardAutoDetection(
+    context: Context,
+    configuredMode: SettingsManager.SoftwareKeyboardMode
+): SoftwareKeyboardAutoDetection {
+    val profileOverride = SettingsManager.getPhysicalKeyboardProfileOverride(context)
+    val physicalProfile = DeviceSpecific.physicalKeyboardName()
+    val keyboardFamily = DeviceSpecific.keyboardName()
+    val isPhysicalKeyboardProfile = DeviceSpecific.isPhysicalKeyboardDevice(profileOverride)
+    val autoMode = SoftwareKeyboardAutoDetector.resolve(context)
+    val effectiveMode = if (configuredMode == SettingsManager.SoftwareKeyboardMode.AUTO) {
+        autoMode
+    } else {
+        configuredMode
+    }
+    val effectiveLabel = context.softwareKeyboardModeLabel(effectiveMode)
+    val autoLabel = context.softwareKeyboardModeLabel(autoMode)
+    val modeLabel = if (configuredMode == SettingsManager.SoftwareKeyboardMode.AUTO) {
+        context.getString(R.string.tutorial_software_keyboard_auto_selected, autoLabel)
+    } else {
+        context.getString(
+            R.string.tutorial_software_keyboard_auto_overridden,
+            effectiveLabel,
+            autoLabel
+        )
+    }
+    val profileLabel = context.getString(
+        R.string.tutorial_software_keyboard_auto_profile,
+        keyboardFamily,
+        physicalProfile
+    )
+    val reason = if (isPhysicalKeyboardProfile) {
+        context.getString(R.string.tutorial_software_keyboard_auto_reason_physical)
+    } else {
+        context.getString(R.string.tutorial_software_keyboard_auto_reason_touch)
+    }
+    return SoftwareKeyboardAutoDetection(
+        modeLabel = modeLabel,
+        profileLabel = profileLabel,
+        reason = reason,
+        isPhysicalKeyboardProfile = isPhysicalKeyboardProfile
+    )
+}
+
+private fun Context.softwareKeyboardModeLabel(mode: SettingsManager.SoftwareKeyboardMode): String {
+    return when (mode) {
+        SettingsManager.SoftwareKeyboardMode.AUTO -> getString(R.string.software_keyboard_mode_auto_short)
+        SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL -> getString(R.string.software_keyboard_mode_always_virtual)
+        SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE -> getString(R.string.software_keyboard_mode_always_hardware)
+    }
+}
+
+private fun resolveImeCaptionBarChecks(context: Context): List<ImeCaptionBarRequirement> {
+    return listOf(
+        ImeCaptionBarRequirement(
+            labelRes = R.string.tutorial_android16_ime_caption_check_android16,
+            isMet = Build.VERSION.SDK_INT >= 36
+        ),
+        ImeCaptionBarRequirement(
+            labelRes = R.string.tutorial_android16_ime_caption_check_titan2,
+            isMet = DeviceSpecific.isTitan2Device()
+        ),
+        ImeCaptionBarRequirement(
+            labelRes = R.string.tutorial_android16_ime_caption_check_setting,
+            isMet = buildImeCaptionBarSettingsIntent().resolveActivity(context.packageManager) != null
+        )
+    )
+}
+
+private fun shouldShowImeCaptionBarGuidance(context: Context): Boolean {
+    return Build.VERSION.SDK_INT >= 36 ||
+        DeviceSpecific.isTitan2Device() ||
+        buildImeCaptionBarSettingsIntent().resolveActivity(context.packageManager) != null
 }
 
 private fun openImeCaptionBarSettings(context: Context) {
@@ -560,7 +822,7 @@ private fun TutorialPageLayout(
     modifier: Modifier = Modifier,
     centered: Boolean = true,
     descriptionLeftAligned: Boolean = false,
-    iconContent: @Composable () -> Unit,
+    iconContent: (@Composable () -> Unit)?,
     content: @Composable ColumnScope.() -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
@@ -572,17 +834,19 @@ private fun TutorialPageLayout(
             .padding(horizontal = 20.dp, vertical = 16.dp),
         horizontalAlignment = if (centered) Alignment.CenterHorizontally else Alignment.Start
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(TutorialIconAreaHeight),
-            contentAlignment = if (centered) Alignment.Center else Alignment.CenterStart
-        ) {
-            iconContent()
+        if (iconContent != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(TutorialIconAreaHeight),
+                contentAlignment = if (centered) Alignment.Center else Alignment.CenterStart
+            ) {
+                iconContent()
+            }
+
+            Spacer(modifier = Modifier.height(1.dp))
         }
-        
-        Spacer(modifier = Modifier.height(1.dp))
-        
+
         Text(
             text = title,
             style = MaterialTheme.typography.titleLarge,
@@ -683,6 +947,17 @@ fun TutorialWelcomePageContent(
     }
 }
 
+private fun applyDevsChoiceSettings(context: Context) {
+    SettingsManager.setAppLanguageTag(context, null)
+    SettingsManager.setPhysicalKeyboardProfileOverride(context, "auto")
+    SettingsManager.setSoftwareKeyboardMode(context, SettingsManager.SoftwareKeyboardMode.AUTO)
+    SettingsManager.setLongPressModifier(context, "variations")
+    SettingsManager.setTrackpadGesturesEnabled(context, true)
+    SettingsManager.setKeyboardLayoutAutoByLocale(context, false)
+    SettingsManager.setKeyboardLayout(context, "qwertz")
+    SettingsManager.setKeyboardLayoutList(context, listOf("qwertz"))
+}
+
 @Composable
 fun TutorialStandardPageContent(
     page: TutorialPageType.Standard,
@@ -738,7 +1013,7 @@ fun TutorialCustomizationPageContent(
     }
 
     val selectedLanguageLabel = if (selectedLanguageTag == null) {
-        stringResource(R.string.app_language_system_default)
+        getTutorialSystemDefaultLanguageLabel(context)
     } else {
         getTutorialLanguageOptionLabel(context, selectedLanguageTag!!)
     }
@@ -786,7 +1061,7 @@ fun TutorialCustomizationPageContent(
             ) {
                 languageOptions.forEach { tag ->
                     val label = if (tag == null) {
-                        context.getString(R.string.app_language_system_default)
+                        getTutorialSystemDefaultLanguageLabel(context)
                     } else {
                         getTutorialLanguageOptionLabel(context, tag)
                     }
@@ -1062,4 +1337,15 @@ private fun getTutorialLanguageOptionLabel(context: Context, languageTag: String
     } catch (_: Exception) {
         languageTag
     }
+}
+
+private fun getTutorialSystemDefaultLanguageLabel(context: Context): String {
+    val systemLocale = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+        android.content.res.Resources.getSystem().configuration.locales[0]
+    } else {
+        @Suppress("DEPRECATION")
+        android.content.res.Resources.getSystem().configuration.locale
+    }
+    val detected = getTutorialLanguageOptionLabel(context, systemLocale.toLanguageTag())
+    return context.getString(R.string.app_language_system_default_with_detected, detected)
 }
