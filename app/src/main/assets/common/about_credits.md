@@ -32,3 +32,10 @@ Unihertz Titan 2 Discord, Unihertz Titan 2 FB page and all the people for the ou
 Pastiera's full virtual keyboard mode uses AOSP LatinIME as a reference for keyboard geometry and includes AOSP-derived keyboard visual assets.
 
 License: Apache License, Version 2.0. Source: [platform/packages/inputmethods/LatinIME](https://android.googlesource.com/platform/packages/inputmethods/LatinIME) at commit `127336e9f29d69607eab55982324b210279ae8c5`.
+
+#### OpenGameArt Typing Sounds
+Pastiera includes short typing sound samples derived from CC0 sound effects:
+
+- [Keyboard Soundpack #1 [Typing and Single Keystrokes]](https://opengameart.org/content/keyboard-soundpack-1-typing-and-single-keystrokes) by unicaegames, CC0 1.0.
+- [Typewriter sounds](https://opengameart.org/content/typewriter-sounds) by Cassie-OrbitGames, CC0 1.0.
+- [Mechanical Sounds](https://opengameart.org/content/mechanical-sounds) by BMacZero, CC0 1.0.

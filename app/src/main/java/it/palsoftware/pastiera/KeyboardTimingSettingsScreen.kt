@@ -247,7 +247,7 @@ fun KeyboardTimingSettingsScreen(
                     )
                 }
             }
-        
+
         }
     }
 }

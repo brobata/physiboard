@@ -187,6 +187,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private lateinit var suggestionController: SuggestionController
     private lateinit var variationStateController: VariationStateController
     private lateinit var inputEventRouter: InputEventRouter
+    private lateinit var typingSoundPlayer: TypingSoundPlayer
     private var skipNextSelectionUpdateAfterCommit: Boolean = false
     private lateinit var keyboardVisibilityController: KeyboardVisibilityController
     private lateinit var launcherShortcutController: LauncherShortcutController
@@ -813,6 +814,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         inputEventRouter = InputEventRouter(this, navModeController).apply {
             onCommitText = { markSelectionUpdateSkipAfterCommit() }
         }
+        typingSoundPlayer = TypingSoundPlayer(this).apply { reload() }
         textInputController = TextInputController(
             context = this,
             modifierStateController = modifierStateController,
@@ -944,6 +946,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             // Toggle symbols as SYM page 2
             symLayoutController.openSymbolsPage()
             updateStatusBarText()
+        }
+        candidatesBarController.onSoftwareKeyboardKeyPressed = { keyCode ->
+            typingSoundPlayer.play(keyCode)
         }
         candidatesBarController.onSoftwareKeyboardTextInput = { text, inputConnection, snapshot ->
             if (text != " ") {
@@ -1175,6 +1180,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 keyboardVisibilityController.syncMinimalUiOverrideFromSettings()
             } else if (key == "software_keyboard_mode") {
                 keyboardVisibilityController.syncMinimalUiOverrideFromSettings()
+            } else if (
+                key == SettingsManager.KEY_TYPING_SOUND_MODE ||
+                key == SettingsManager.KEY_TYPING_SOUND_OUTPUT_MODE ||
+                key == SettingsManager.KEY_TYPING_SOUND_CUSTOM_FILE_NAME ||
+                key == SettingsManager.KEY_TYPING_SOUND_UPDATED_AT
+            ) {
+                typingSoundPlayer.reload()
             }
         }
         prefs.registerOnSharedPreferenceChangeListener(prefsListener)
@@ -1351,6 +1363,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // Cleanup ClipboardHistoryManager
         clipboardHistoryManager.setHistoryChangeListener(null)
         clipboardHistoryManager.onDestroy()
+        typingSoundPlayer.release()
 
         // Unregister broadcast receiver (deprecated, but kept for backwards compatibility)
         speechResultReceiver?.let {
@@ -2234,6 +2247,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
         val (keyCode, event) = remapHardwareEvent(keyCode_, event_)
 
+        if (shouldPlayTypingSound(hasEditableField, keyCode, event)) {
+            typingSoundPlayer.play(keyCode)
+        }
+
         // When the inline emoji picker (SYM page 4) is open, route printable hardware input
         // to the picker search field instead of the target app text field.
         if (
@@ -2617,6 +2634,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             InputEventRouter.EditableFieldRoutingResult.CallSuper -> super.onKeyDown(keyCode, event)
             InputEventRouter.EditableFieldRoutingResult.Continue -> super.onKeyDown(keyCode, event)
         }
+    }
+
+    private fun shouldPlayTypingSound(hasEditableField: Boolean, keyCode: Int, event: KeyEvent?): Boolean {
+        if (!hasEditableField || event?.repeatCount != 0) {
+            return false
+        }
+        return keyCode != KeyEvent.KEYCODE_BACK
     }
 
     override fun onKeyUp(keyCode_: Int, event_: KeyEvent?): Boolean {

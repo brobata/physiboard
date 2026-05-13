@@ -324,6 +324,8 @@ fun CustomizationSettingsScreen(
                             }
                         }
 
+                        TypingSoundSettingsRow()
+
                         // Pastierina Mode toggle
                         Surface(
                             modifier = Modifier

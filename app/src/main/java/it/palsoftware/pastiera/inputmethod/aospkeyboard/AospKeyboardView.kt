@@ -24,6 +24,7 @@ import android.os.Looper
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.HapticFeedbackConstants
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.InputMethodManager
@@ -50,6 +51,7 @@ class AospKeyboardView @JvmOverloads constructor(
         fun onSymbols()
         fun onLanguageSwitch()
         fun onCursorMove(delta: Int)
+        fun onKeyPressSound(keyCode: Int)
     }
 
     private enum class KeyType { CHAR, SHIFT, BACKSPACE, SYMBOLS, COMMA, PERIOD, SPACE, ENTER, LANGUAGE }
@@ -204,6 +206,7 @@ class AospKeyboardView @JvmOverloads constructor(
                 invalidate()
                 key?.let {
                     performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                    listener?.onKeyPressSound(soundKeyCodeFor(it))
                     showPreview(it)
                     handler.postDelayed(longPressRunnable, longPressTimeoutMs)
                 }
@@ -237,7 +240,10 @@ class AospKeyboardView @JvmOverloads constructor(
                     dismissPopup()
                     pressedKey = key
                     invalidate()
-                    key?.let { showPreview(it) }
+                    key?.let {
+                        listener?.onKeyPressSound(soundKeyCodeFor(it))
+                        showPreview(it)
+                    }
                 }
                 return true
             }
@@ -389,6 +395,7 @@ class AospKeyboardView @JvmOverloads constructor(
         val key = pressedKey ?: return
         if (key.spec.type == KeyType.BACKSPACE) {
             longPressTriggered = true
+            listener?.onKeyPressSound(KeyEvent.KEYCODE_DEL)
             listener?.onBackspace()
             handler.postDelayed(longPressRunnable, 55L)
             return
@@ -474,6 +481,28 @@ class AospKeyboardView @JvmOverloads constructor(
     }
 
     private fun findKey(x: Float, y: Float): Key? = keys.firstOrNull { it.hitRect.contains(x, y) }
+
+    private fun soundKeyCodeFor(key: Key): Int {
+        return when (key.spec.type) {
+            KeyType.SPACE -> KeyEvent.KEYCODE_SPACE
+            KeyType.BACKSPACE -> KeyEvent.KEYCODE_DEL
+            KeyType.ENTER -> KeyEvent.KEYCODE_ENTER
+            KeyType.SHIFT -> KeyEvent.KEYCODE_SHIFT_LEFT
+            KeyType.SYMBOLS, KeyType.LANGUAGE -> KeyEvent.KEYCODE_SYM
+            KeyType.COMMA -> KeyEvent.KEYCODE_COMMA
+            KeyType.PERIOD -> KeyEvent.KEYCODE_PERIOD
+            KeyType.CHAR -> keyCodeForText(key.spec.output)
+        }
+    }
+
+    private fun keyCodeForText(text: String): Int {
+        val char = text.firstOrNull()?.lowercaseChar() ?: return KeyEvent.KEYCODE_UNKNOWN
+        return when (char) {
+            in 'a'..'z' -> KeyEvent.KEYCODE_A + (char - 'a')
+            in '0'..'9' -> KeyEvent.KEYCODE_0 + (char - '0')
+            else -> KeyEvent.KEYCODE_UNKNOWN
+        }
+    }
 
     private fun longPressAlternatesFor(key: Key): List<String> {
         val providerAlternates = longPressAlternatesProvider

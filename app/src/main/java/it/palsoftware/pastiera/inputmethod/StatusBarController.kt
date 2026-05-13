@@ -114,6 +114,8 @@ class StatusBarController(
             variationBarView?.onSymbolsPageRequested = value
         }
 
+    var onSoftwareKeyboardKeyPressed: ((Int) -> Unit)? = null
+
     var onSoftwareKeyboardTextInput: ((String, android.view.inputmethod.InputConnection?, StatusSnapshot) -> Boolean)? = null
 
     var onHamburgerMenuRequested: (() -> Unit)? = null
@@ -971,6 +973,10 @@ class StatusBarController(
                 if (moved) {
                     onCursorMovedListener?.invoke()
                 }
+            }
+
+            override fun onKeyPressSound(keyCode: Int) {
+                onSoftwareKeyboardKeyPressed?.invoke(keyCode)
             }
         }
         keyboardView.layoutName = layoutName

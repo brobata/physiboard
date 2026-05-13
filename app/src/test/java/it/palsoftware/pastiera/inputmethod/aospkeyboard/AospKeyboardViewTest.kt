@@ -2,6 +2,7 @@ package it.palsoftware.pastiera.inputmethod.aospkeyboard
 
 import android.graphics.RectF
 import android.os.Looper
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
@@ -28,6 +29,7 @@ class AospKeyboardViewTest {
         var cursorDelta = 0
         var backspaceCount = 0
         var enterCount = 0
+        val soundKeyCodes = mutableListOf<Int>()
 
         override fun onText(text: String) { texts += text }
         override fun onBackspace() { backspaceCount++ }
@@ -36,6 +38,7 @@ class AospKeyboardViewTest {
         override fun onSymbols() { symbolCount++ }
         override fun onLanguageSwitch() { languageSwitchCount++ }
         override fun onCursorMove(delta: Int) { cursorDelta += delta }
+        override fun onKeyPressSound(keyCode: Int) { soundKeyCodes += keyCode }
     }
 
     @Test
@@ -69,6 +72,19 @@ class AospKeyboardViewTest {
         view.dispatchTouchEvent(motion(MotionEvent.ACTION_UP, x, y, 80L))
 
         assertEquals(listOf("ü"), listener.texts)
+    }
+
+    @Test
+    fun touchDown_emitsKeyPressSoundImmediately() {
+        val listener = RecordingListener()
+        val view = measuredKeyboard().apply {
+            this.listener = listener
+        }
+        val (x, y) = centerOfLabel(view, "a")
+
+        view.dispatchTouchEvent(motion(MotionEvent.ACTION_DOWN, x, y, 0L))
+
+        assertEquals(listOf(KeyEvent.KEYCODE_A), listener.soundKeyCodes)
     }
 
     @Test
