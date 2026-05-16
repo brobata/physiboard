@@ -53,7 +53,7 @@ class KeyboardVisibilityController(
 
     fun onEvaluateInputViewShown(shouldShowInputView: Boolean): Boolean {
         systemRequestsMinimalUi = !shouldShowInputView
-        applyMinimalUiState()
+        applyMinimalUiState(requestFullInputView = false)
         setCandidatesViewShown(false)
         return true
     }
@@ -95,13 +95,13 @@ class KeyboardVisibilityController(
             }
         }
         persistOverride(minimalUiOverride)
-        applyMinimalUiState()
+        applyMinimalUiState(requestFullInputView = true)
     }
 
-    private fun applyMinimalUiState() {
+    private fun applyMinimalUiState(requestFullInputView: Boolean) {
         candidatesBarController.setForceMinimalUi(isMinimalUiActive())
         SettingsManager.setPastierinaModeActive(context, isMinimalUiActive())
-        if (!isMinimalUiActive()) {
+        if (requestFullInputView && !isMinimalUiActive()) {
             try {
                 requestShowInputView()
             } catch (_: Exception) {
@@ -113,7 +113,7 @@ class KeyboardVisibilityController(
 
     fun syncMinimalUiOverrideFromSettings() {
         minimalUiOverride = resolveOverrideFromSettings()
-        applyMinimalUiState()
+        applyMinimalUiState(requestFullInputView = true)
     }
 
     private fun isMinimalUiActive(): Boolean {
