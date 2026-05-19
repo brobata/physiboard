@@ -1006,7 +1006,7 @@ class InputEventRouter(
 
         fun passThroughCtrlCombo(): Boolean {
             if (event != null) {
-                ic.sendKeyEvent(event.withKeyCode(shortcutKeyCode))
+                ic.sendKeyEvent(event.withKeyCodeAndCtrl(shortcutKeyCode))
             } else {
                 val meta = KeyEvent.META_CTRL_ON or KeyEvent.META_CTRL_LEFT_ON or KeyEvent.META_CTRL_RIGHT_ON
                 val down = KeyEvent(0L, 0L, KeyEvent.ACTION_DOWN, shortcutKeyCode, 0, meta)
@@ -1141,6 +1141,7 @@ class InputEventRouter(
                         }
                     }
                 }
+                "native_ctrl" -> return passThroughCtrlCombo()
                 "keycode" -> {
                     val mappedKeyCode = when (ctrlMapping.value) {
                         "DPAD_UP" -> KeyEvent.KEYCODE_DPAD_UP
@@ -1260,6 +1261,23 @@ class InputEventRouter(
             newKeyCode,
             repeatCount,
             metaState,
+            deviceId,
+            scanCode,
+            flags,
+            source
+        )
+    }
+
+    private fun KeyEvent.withKeyCodeAndCtrl(newKeyCode: Int): KeyEvent {
+        val ctrlMetaState = metaState or KeyEvent.META_CTRL_ON or KeyEvent.META_CTRL_LEFT_ON
+        if (keyCode == newKeyCode && metaState == ctrlMetaState) return this
+        return KeyEvent(
+            downTime,
+            eventTime,
+            action,
+            newKeyCode,
+            repeatCount,
+            ctrlMetaState,
             deviceId,
             scanCode,
             flags,

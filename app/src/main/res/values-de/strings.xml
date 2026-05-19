@@ -207,10 +207,35 @@
     <string name="auto_correct_clear_search">Suche löschen</string>
     <string name="auto_correct_no_corrections_found">Keine Korrekturen gefunden</string>
     <string name="nav_mode_title">Nav-Modus</string>
+    <string name="nav_mode_guide_title">Anleitung zum Nav-Modus</string>
+    <string name="nav_mode_guide_description">Wie Ctrl, Zuordnungen, App-Shortcuts und Layout-Hinweise zusammenspielen.</string>
+    <string name="nav_mode_guide_text">Der Nav-Modus macht Buchstabentasten zeitweise zu Navigations- und Shortcut-Tasten. Das Ergebnis kann je nach App unterschiedlich sein, weil manche Apps Android-Editor-Aktionen verstehen und andere nur auf echte Ctrl-Shortcuts reagieren.
+
+Navigation mit gehaltenem Ctrl
+Wenn Navigation mit gehaltenem Ctrl ausgeschaltet ist, wird physisch gehaltenes Ctrl möglichst an die App weitergegeben. Shortcuts wie Ctrl+B, Ctrl+I oder Ctrl+Z können dann direkt in Editoren funktionieren.
+
+Wenn Navigation mit gehaltenem Ctrl eingeschaltet ist, nutzt physisch gehaltenes Ctrl zuerst die unten sichtbaren Nav-Modus-Zuordnungen. Eine belegte Taste führt dann den konfigurierten Nav-Modus-Befehl aus.
+
+Doppelt Ctrl
+Doppeltippen auf Ctrl rastet den Nav-Modus ein. Danach löst ein Buchstabe die Nav-Modus-Zuordnung aus, bis der Nav-Modus wieder verlassen wird. Das ist praktisch für Pfeile, Bild hoch/runter, Escape, Tab und Auswahlbefehle, ohne Ctrl gedrückt zu halten.
+
+Aktion vs. Native Ctrl
+Aktionen wie Kopieren, Einfügen, Ausschneiden, Alles auswählen und Rückgängig werden als Android-Editor-Aktionen gesendet. Das funktioniert in vielen Textfeldern, aber nicht jede App unterstützt jede Aktion.
+
+Verwende Native Ctrl, wenn eine App einen echten Shortcut erwartet. Wenn I auf Native Ctrl gesetzt ist, wird zum Beispiel Ctrl+I gesendet, sodass Editoren wie Google Docs Kursiv erkennen können. Rückgängig kann ebenfalls als Native Ctrl konfiguriert werden, wenn eine App Ctrl+Z besser unterstützt als Android-Rückgängig.
+
+QWERTZ auf physischem QWERTY
+Der Nav-Modus nutzt die physische Tastenposition, damit Navigation stabil bleibt. Layout-Hinweise auf den Tasten zeigen, wenn das aktive Textlayout diese physische Taste als anderen Buchstaben behandeln würde, zum Beispiel Y/Z bei QWERTZ.
+
+App-Ctrl-Shortcuts mit aktivem Layout
+Wenn gehaltenes Ctrl an Apps weitergegeben wird, kann diese optionale Einstellung Ctrl+Buchstabe vorher über das aktive Pastiera-Layout übersetzen. Das betrifft App-Shortcuts, nicht das physische Nav-Modus-Raster.
+
+Overrides
+Jede Taste kann als Keycode, Aktion, Native Ctrl oder Keine konfiguriert werden. Nutze Overrides, um App-spezifische Konflikte zu lösen, ohne den ganzen Modus umzubauen.</string>
     <string name="nav_mode_enable_title">Nav-Modus aktivieren</string>
     <string name="nav_mode_enable_description">Doppeltippen auf Ctrl, um den Navigationsmodus zu aktivieren</string>
-    <string name="nav_mode_ctrl_hold_title">Navigation mit gehaltenem Ctrl</string>
-    <string name="nav_mode_ctrl_hold_description">Verwendet Nav-Modus-Zuordnungen, während Ctrl in Textfeldern physisch gehalten wird. Ausgeschaltet werden Ctrl-Shortcuts an die App weitergegeben.</string>
+    <string name="nav_mode_ctrl_hold_title">Nav-Modus bei gehaltenem Ctrl</string>
+    <string name="nav_mode_ctrl_hold_description">Wenn aktiv, verwenden Textfelder beim Halten von Ctrl die Nav-Modus-Zuordnungen. Wenn aus, werden Ctrl-Shortcuts an die App weitergegeben. Tasten mit Native Ctrl werden immer als echte Ctrl-Shortcuts durchgereicht.</string>
     <string name="layout_aware_ctrl_shortcuts_title">App-Ctrl-Shortcuts mit aktivem Layout</string>
     <string name="layout_aware_ctrl_shortcuts_description">Wenn gehaltenes Ctrl an Apps weitergegeben wird, Ctrl+Buchstabe vorher über das aktive Pastiera-Layout übersetzen.</string>
     <string name="layout_aware_ctrl_shortcuts_disabled_description">Deaktiviert, solange Navigation mit gehaltenem Ctrl aktiv ist, weil gehaltenes Ctrl dann vom Nav-Modus statt von der App behandelt wird.</string>
@@ -223,6 +248,7 @@
     <string name="nav_mode_type">Typ</string>
     <string name="nav_mode_keycode">Keycode</string>
     <string name="nav_mode_action">Aktion</string>
+    <string name="nav_mode_native_ctrl">Native Ctrl</string>
     <string name="nav_mode_none">Keine</string>
     <string name="nav_mode_use_default">Standard verwenden: %1$s</string>
     <string name="nav_mode_save">Speichern</string>

@@ -121,6 +121,7 @@ class NavModeController(
                 sendMappedKey(mappedKeyCode, event, inputConnection)
             }
             "action" -> performMappedAction(ctrlMapping.value, inputConnection)
+            "native_ctrl" -> sendNativeCtrlKey(keyCode, event, inputConnection)
             else -> false
         }
     }
@@ -281,6 +282,24 @@ class NavModeController(
 
         inputConnection.performContextMenuAction(actionId)
         Log.d(TAG, "Nav mode: performed action $action")
+        return true
+    }
+
+    private fun sendNativeCtrlKey(
+        keyCode: Int,
+        event: KeyEvent?,
+        inputConnection: InputConnection
+    ): Boolean {
+        val downTime = event?.downTime ?: System.currentTimeMillis()
+        val eventTime = event?.eventTime ?: System.currentTimeMillis()
+        val metaState = (event?.metaState ?: 0) or KeyEvent.META_CTRL_ON or KeyEvent.META_CTRL_LEFT_ON
+        inputConnection.sendKeyEvent(
+            KeyEvent(downTime, eventTime, KeyEvent.ACTION_DOWN, keyCode, 0, metaState)
+        )
+        inputConnection.sendKeyEvent(
+            KeyEvent(downTime, eventTime, KeyEvent.ACTION_UP, keyCode, 0, metaState)
+        )
+        Log.d(TAG, "Nav mode: passed native Ctrl combo for keycode $keyCode")
         return true
     }
 

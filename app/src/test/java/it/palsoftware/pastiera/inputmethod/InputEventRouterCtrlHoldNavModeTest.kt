@@ -248,6 +248,69 @@ class InputEventRouterCtrlHoldNavModeTest {
         assertEquals(KeyEvent.KEYCODE_B, sentEvent.keyCode)
     }
 
+    @Test
+    fun heldCtrl_whenMappingIsNativeCtrl_passesShortcutToApp() {
+        SettingsManager.setNavModeCtrlHoldEnabled(context, true)
+        val inputConnection = mockInputConnection()
+        val mapping = mapOf(
+            KeyEvent.KEYCODE_I to KeyMappingLoader.CtrlMapping("native_ctrl", "")
+        )
+
+        val handled = router.handleCtrlModifiedKey(
+            keyCode = KeyEvent.KEYCODE_I,
+            event = ctrlKeyDown(KeyEvent.KEYCODE_I),
+            inputConnection = inputConnection,
+            ctrlKeyMap = mapping,
+            ctrlLatchFromNavMode = false,
+            ctrlOneShot = false,
+            ctrlPhysicallyPressed = true,
+            clearCtrlOneShot = {},
+            updateStatusBar = {},
+            callSuper = { false },
+            toggleMinimalUi = {}
+        )
+
+        assertTrue(handled)
+        val sentEvent = captureSentKeyEvents(inputConnection, expectedCount = 1).single()
+        assertEquals(KeyEvent.KEYCODE_I, sentEvent.keyCode)
+        assertTrue(sentEvent.isCtrlPressed)
+    }
+
+    @Test
+    fun latchedNavMode_whenMappingIsNativeCtrl_sendsCtrlCombo() {
+        modifierStateController.ctrlLatchActive = true
+        modifierStateController.ctrlLatchFromNavMode = true
+        val inputConnection = mockInputConnection()
+        val mapping = mapOf(
+            KeyEvent.KEYCODE_I to KeyMappingLoader.CtrlMapping("native_ctrl", "")
+        )
+
+        val handled = router.handleKeyDownWithNoEditableField(
+            keyCode = KeyEvent.KEYCODE_I,
+            event = keyDown(KeyEvent.KEYCODE_I),
+            ctrlKeyMap = mapping,
+            callbacks = InputEventRouter.NoEditableFieldCallbacks(
+                isShortcutKey = { false },
+                isLauncherPackage = { false },
+                handleLauncherShortcut = { false },
+                handlePowerShortcut = { false },
+                togglePowerShortcutMode = { _, _ -> },
+                callSuper = { false },
+                currentInputConnection = { inputConnection }
+            ),
+            ctrlLatchActive = true,
+            editorInfo = null,
+            currentPackageName = null,
+            powerShortcutsEnabled = false
+        )
+
+        assertTrue(handled)
+        val sentEvents = captureSentKeyEvents(inputConnection, expectedCount = 2)
+        assertEquals(listOf(KeyEvent.ACTION_DOWN, KeyEvent.ACTION_UP), sentEvents.map { it.action })
+        assertEquals(listOf(KeyEvent.KEYCODE_I, KeyEvent.KEYCODE_I), sentEvents.map { it.keyCode })
+        assertTrue(sentEvents.all { it.isCtrlPressed })
+    }
+
     private fun mockInputConnection(): InputConnection {
         val inputConnection = mock(InputConnection::class.java)
         `when`(inputConnection.sendKeyEvent(any(KeyEvent::class.java))).thenReturn(true)

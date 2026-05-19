@@ -337,6 +337,7 @@ object KeyMappingLoader {
                                 ctrlKeyMap[keyCode] = CtrlMapping("keycode", keycodeName)
                             }
                         }
+                        "native_ctrl" -> ctrlKeyMap[keyCode] = CtrlMapping("native_ctrl", "")
                         "none" -> Unit
                     }
                 }

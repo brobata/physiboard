@@ -67,6 +67,7 @@ fun NavModeSettingsScreen(
     var layoutAwareCtrlShortcutsEnabled by remember {
         mutableStateOf(SettingsManager.getLayoutAwareCtrlShortcutsEnabled(context))
     }
+    var showNavModeGuide by remember { mutableStateOf(false) }
     var showLayoutAwareCtrlInfo by remember { mutableStateOf(false) }
     
     // Load current mappings (all alphabetic keys)
@@ -118,6 +119,42 @@ fun NavModeSettingsScreen(
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(start = 8.dp)
                 )
+            }
+        }
+
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { showNavModeGuide = true }
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Info,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(22.dp)
+                )
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(start = 12.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.nav_mode_guide_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = stringResource(R.string.nav_mode_guide_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
         
@@ -260,6 +297,30 @@ fun NavModeSettingsScreen(
                 },
                 text = {
                     Text(stringResource(R.string.layout_aware_ctrl_shortcuts_info_text))
+                }
+            )
+        }
+
+        if (showNavModeGuide) {
+            AlertDialog(
+                onDismissRequest = { showNavModeGuide = false },
+                modifier = Modifier.fillMaxWidth(0.9f),
+                confirmButton = {
+                    TextButton(onClick = { showNavModeGuide = false }) {
+                        Text(stringResource(R.string.close))
+                    }
+                },
+                title = {
+                    Text(stringResource(R.string.nav_mode_guide_title))
+                },
+                text = {
+                    Text(
+                        text = stringResource(R.string.nav_mode_guide_text),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = LocalConfiguration.current.screenHeightDp.dp * 0.65f)
+                            .verticalScroll(rememberScrollState())
+                    )
                 }
             )
         }
@@ -616,6 +677,14 @@ private fun KeyMappingDialog(
                             label = { Text(stringResource(R.string.nav_mode_action)) }
                         )
                         FilterChip(
+                            selected = selectedType == "native_ctrl",
+                            onClick = {
+                                selectedType = "native_ctrl"
+                                selectedValue = null
+                            },
+                            label = { Text(stringResource(R.string.nav_mode_native_ctrl)) }
+                        )
+                        FilterChip(
                             selected = selectedType == "none",
                             onClick = {
                                 selectedType = "none"
@@ -715,6 +784,7 @@ private fun KeyMappingDialog(
                                 "action" -> selectedValue?.let {
                                     KeyMappingLoader.CtrlMapping("action", it)
                                 }
+                                "native_ctrl" -> KeyMappingLoader.CtrlMapping("native_ctrl", "")
                                 "none" -> KeyMappingLoader.CtrlMapping("none", "")
                                 else -> null
                             }
@@ -767,6 +837,7 @@ private fun getMappingLabel(mapping: KeyMappingLoader.CtrlMapping): String? {
     return when (mapping.type) {
         "keycode" -> mapping.value
         "action" -> mapping.value
+        "native_ctrl" -> "Ctrl"
         "none" -> null // Don't show label for "none"
         else -> null
     }
@@ -822,6 +893,7 @@ private fun getMappingLabelShort(mapping: KeyMappingLoader.CtrlMapping): String?
             "toggle_minimal_ui" -> stringResource(R.string.nav_mode_action_toggle_pastierina)
             else -> mapping.value
         }
+        "native_ctrl" -> "Ctrl"
         "none" -> null // Don't show label for "none"
         else -> null
     }

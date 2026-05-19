@@ -341,10 +341,35 @@
     
     <!-- Nav Mode Settings -->
     <string name="nav_mode_title">Nav Mode</string>
+    <string name="nav_mode_guide_title">Nav Mode guide</string>
+    <string name="nav_mode_guide_description">How Ctrl, mappings, app shortcuts, and layout hints work together.</string>
+    <string name="nav_mode_guide_text">Nav Mode turns letter keys into navigation and shortcut keys. The result can differ by app because some apps understand Android editor actions, while others only react to real Ctrl shortcuts.
+
+Ctrl-hold navigation
+When Ctrl-hold navigation is off, physically held Ctrl is passed to the app whenever possible. Shortcuts such as Ctrl+B, Ctrl+I, or Ctrl+Z can then work directly in editors.
+
+When Ctrl-hold navigation is on, physically held Ctrl first uses the Nav Mode mappings below. A mapped key performs its configured Nav Mode command.
+
+Double-tap Ctrl
+Double-tapping Ctrl latches Nav Mode. After that, pressing a letter triggers the Nav Mode mapping until Nav Mode is left again. This is useful for arrows, Page Up/Down, Escape, Tab, and selection commands without holding Ctrl.
+
+Action vs. Native Ctrl
+Actions such as Copy, Paste, Cut, Select All, and Undo are sent as Android editor actions. They work in many text fields, but not every app supports every action.
+
+Use Native Ctrl when an app expects a real shortcut. For example, mapping I to Native Ctrl sends Ctrl+I, so editors such as Google Docs can use it for italic text. Undo can also be mapped as Native Ctrl if an app handles Ctrl+Z better than Android Undo.
+
+QWERTZ on physical QWERTY
+Nav Mode uses the physical key position so navigation remains stable. Layout hints on keys show when the active text layout would treat that physical key as a different letter, such as Y/Z on QWERTZ.
+
+Layout-aware app Ctrl shortcuts
+When held Ctrl is passed to apps, this optional setting can translate Ctrl+letter through the active Pastiera layout first. It affects app shortcuts, not the physical Nav Mode grid.
+
+Overrides
+Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrides to solve app-specific conflicts without changing the whole mode.</string>
     <string name="nav_mode_enable_title">Enable Nav Mode</string>
     <string name="nav_mode_enable_description">Double-tap Ctrl to activate navigation mode</string>
     <string name="nav_mode_ctrl_hold_title">Ctrl-hold navigation</string>
-    <string name="nav_mode_ctrl_hold_description">Use Nav Mode mappings while physically holding Ctrl in text fields. When off, Ctrl shortcuts are passed to the app.</string>
+    <string name="nav_mode_ctrl_hold_description">When enabled, text fields use Nav Mode mappings while Ctrl is held. When off, Ctrl shortcuts are passed to the app. Keys set to Native Ctrl are always passed through as real Ctrl shortcuts.</string>
     <string name="layout_aware_ctrl_shortcuts_title">Layout-aware app Ctrl shortcuts</string>
     <string name="layout_aware_ctrl_shortcuts_description">When held Ctrl is passed to apps, translate Ctrl+letter through the active Pastiera layout first.</string>
     <string name="layout_aware_ctrl_shortcuts_disabled_description">Disabled while Ctrl-hold navigation is active, because held Ctrl is handled by Nav Mode instead of the app.</string>
@@ -358,6 +383,7 @@
     <string name="nav_mode_type">Type</string>
     <string name="nav_mode_keycode">Keycode</string>
     <string name="nav_mode_action">Action</string>
+    <string name="nav_mode_native_ctrl">Native Ctrl</string>
     <string name="nav_mode_none">None</string>
     <string name="nav_mode_use_default">Use Default: %1$s</string>
     <string name="nav_mode_save">Save</string>
