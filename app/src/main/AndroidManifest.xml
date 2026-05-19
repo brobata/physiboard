@@ -143,6 +143,16 @@
             android:noHistory="true"
             android:finishOnTaskLaunch="true" />
 
+        <activity
+            android:name=".inputmethod.QuickLauncherActivity"
+            android:theme="@style/Theme.Pastiera.QuickLauncherOverlay"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:noHistory="true"
+            android:finishOnTaskLaunch="true" />
+
         <!-- Shizuku provider -->
         <provider
             android:name="rikka.shizuku.ShizukuProvider"

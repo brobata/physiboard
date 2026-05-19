@@ -28,13 +28,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Backup
-import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material3.Icon
@@ -44,7 +42,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -97,12 +94,6 @@ fun AdvancedSettingsScreen(
     val scope = rememberCoroutineScope()
     val prefs = remember { SettingsManager.getPreferences(context) }
     
-    var launcherShortcutsEnabled by remember { 
-        mutableStateOf(SettingsManager.getLauncherShortcutsEnabled(context))
-    }
-    var powerShortcutsEnabled by remember { 
-        mutableStateOf(SettingsManager.getPowerShortcutsEnabled(context))
-    }
     // Store the actual value (3 to 25), but display it inverted in the slider (25 to 3)
     var swipeIncrementalThreshold by remember {
         mutableStateOf(SettingsManager.getSwipeIncrementalThreshold(context))
@@ -123,12 +114,6 @@ fun AdvancedSettingsScreen(
     DisposableEffect(prefs) {
         val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
             when (key) {
-                "launcher_shortcuts_enabled" -> {
-                    launcherShortcutsEnabled = SettingsManager.getLauncherShortcutsEnabled(context)
-                }
-                "power_shortcuts_enabled" -> {
-                    powerShortcutsEnabled = SettingsManager.getPowerShortcutsEnabled(context)
-                }
                 "swipe_incremental_threshold" -> {
                     swipeIncrementalThreshold = SettingsManager.getSwipeIncrementalThreshold(context)
                 }
@@ -207,8 +192,6 @@ fun AdvancedSettingsScreen(
                 kotlinx.coroutines.delay(100)
                 
                 // Explicitly reload values after restore to ensure UI is updated
-                launcherShortcutsEnabled = SettingsManager.getLauncherShortcutsEnabled(context)
-                powerShortcutsEnabled = SettingsManager.getPowerShortcutsEnabled(context)
                 swipeIncrementalThreshold = SettingsManager.getSwipeIncrementalThreshold(context)
                 clipboardRetentionTime = SettingsManager.getClipboardRetentionTime(context).toString()
             }
@@ -280,134 +263,6 @@ fun AdvancedSettingsScreen(
                             .padding(paddingValues)
                             .verticalScroll(rememberScrollState())
                     ) {
-                        // Launcher Shortcuts Enabled Toggle
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(64.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.Keyboard,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = stringResource(R.string.launcher_shortcuts_title),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Medium,
-                                        maxLines = 1
-                                    )
-                                    Text(
-                                        text = stringResource(R.string.launcher_shortcuts_description),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1
-                                    )
-                                }
-                                Switch(
-                                    checked = launcherShortcutsEnabled,
-                                    onCheckedChange = { enabled ->
-                                        launcherShortcutsEnabled = enabled
-                                        SettingsManager.setLauncherShortcutsEnabled(context, enabled)
-                                    }
-                                )
-                            }
-                        }
-                    
-                        // Power Shortcuts Toggle
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(64.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.Bolt,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = stringResource(R.string.power_shortcuts_title),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Medium,
-                                        maxLines = 1
-                                    )
-                                    Text(
-                                        text = stringResource(R.string.power_shortcuts_description),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 2
-                                    )
-                                }
-                                Switch(
-                                    checked = powerShortcutsEnabled,
-                                    onCheckedChange = { enabled ->
-                                        powerShortcutsEnabled = enabled
-                                        SettingsManager.setPowerShortcutsEnabled(context, enabled)
-                                    }
-                                )
-                            }
-                        }
-                    
-                        // Launcher Shortcuts Settings (always visible)
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(64.dp)
-                                .clickable { navigateTo(AdvancedDestination.LauncherShortcuts) }
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.Keyboard,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = stringResource(R.string.launcher_shortcuts_configure),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Medium,
-                                        maxLines = 1
-                                    )
-                                    Text(
-                                        text = stringResource(R.string.launcher_shortcuts_configure_description),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1
-                                    )
-                                }
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-
                         // Trackpad Gesture Settings
                         Surface(
                             modifier = Modifier
@@ -788,13 +643,6 @@ fun AdvancedSettingsScreen(
                 }
             }
 
-            AdvancedDestination.LauncherShortcuts -> {
-                LauncherShortcutsScreen(
-                    modifier = modifier,
-                    onBack = { navigateBack() }
-                )
-            }
-            
             AdvancedDestination.ImeTest -> {
                 ImeTestScreen(
                     modifier = modifier,
@@ -815,7 +663,6 @@ fun AdvancedSettingsScreen(
 
 private sealed class AdvancedDestination {
     object Main : AdvancedDestination()
-    object LauncherShortcuts : AdvancedDestination()
     object ImeTest : AdvancedDestination()
     object TrackpadGestures : AdvancedDestination()
 }

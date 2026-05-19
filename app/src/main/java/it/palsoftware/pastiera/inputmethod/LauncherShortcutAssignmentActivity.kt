@@ -27,6 +27,7 @@ import android.view.KeyEvent
 import android.widget.ImageView
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.ui.res.stringResource
 import it.palsoftware.pastiera.R
@@ -51,6 +52,7 @@ class LauncherShortcutAssignmentActivity : LocalizedComponentActivity() {
         const val EXTRA_KEY_CODE = "key_code"
         const val EXTRA_SKIP_LAUNCH = "skip_launch"
         const val RESULT_ASSIGNED = 1
+        const val RESULT_REMOVED = 2
     }
     
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -76,6 +78,7 @@ class LauncherShortcutAssignmentActivity : LocalizedComponentActivity() {
         }
         
         val skipLaunch = intent.getBooleanExtra(EXTRA_SKIP_LAUNCH, false)
+        val hasExistingShortcut = SettingsManager.getLauncherShortcut(this, keyCode) != null
         
         // Usa un tema trasparente per mostrare il bottom sheet sopra il launcher
         setContent {
@@ -105,6 +108,20 @@ class LauncherShortcutAssignmentActivity : LocalizedComponentActivity() {
                             
                             setResult(RESULT_ASSIGNED)
                             finish()
+                        },
+                        onQuickLauncherSelected = {
+                            SettingsManager.setQuickLauncherShortcut(this@LauncherShortcutAssignmentActivity, keyCode)
+                            setResult(RESULT_ASSIGNED)
+                            finish()
+                        },
+                        onRemoveShortcut = if (hasExistingShortcut) {
+                            {
+                                SettingsManager.removeLauncherShortcut(this@LauncherShortcutAssignmentActivity, keyCode)
+                                setResult(RESULT_REMOVED)
+                                finish()
+                            }
+                        } else {
+                            null
                         },
                         onDismiss = {
                             finish()
@@ -155,6 +172,8 @@ private fun LauncherShortcutAssignmentBottomSheet(
     keyCode: Int,
     skipLaunch: Boolean = false,
     onAppSelected: (InstalledApp) -> Unit,
+    onQuickLauncherSelected: () -> Unit,
+    onRemoveShortcut: (() -> Unit)? = null,
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
@@ -343,6 +362,41 @@ private fun LauncherShortcutAssignmentBottomSheet(
             }
             
             Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedButton(
+                onClick = onQuickLauncherSelected,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(stringResource(R.string.quick_launcher_assign_action))
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (onRemoveShortcut != null) {
+                OutlinedButton(
+                    onClick = onRemoveShortcut,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(stringResource(R.string.launcher_shortcuts_remove))
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+            }
             
             // Campo di ricerca
             TextField(
@@ -479,4 +533,3 @@ private fun AppGridItem(
         }
     }
 }
-

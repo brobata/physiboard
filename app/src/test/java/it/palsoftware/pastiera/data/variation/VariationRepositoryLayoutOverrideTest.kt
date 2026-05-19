@@ -82,7 +82,7 @@ class VariationRepositoryLayoutOverrideTest {
         )
 
         assertEquals(
-            listOf("»", "«", ";", "!", "?", ",", "."),
+            listOf("»", "«", ";", "!", "?", ",", ".", "–", "%"),
             VariationRepository.loadStaticVariations(context.assets, context)
         )
         assertEquals(listOf("{"), VariationRepository.loadStaticVariationsShift(context.assets, context))

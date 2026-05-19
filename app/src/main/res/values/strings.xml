@@ -294,14 +294,19 @@
     <string name="about_credits_error">Unable to load credits information.</string>
     
     <!-- Launcher Shortcuts Section -->
-    <string name="launcher_shortcuts_title">Shortcuts</string>
+    <string name="starter_launcher_shortcuts_title">Pastiera-QuickLauncher</string>
+    <string name="starter_launcher_shortcuts_description">Quick launching, SYM shortcuts, and app key assignments</string>
+    <string name="starter_launcher_shortcuts_intro">These settings share one app-to-key assignment list. Choose where Pastiera should listen for those assigned keys.</string>
+    <string name="launcher_shortcuts_title">Homescreen shortcuts</string>
     <string name="launcher_shortcuts_experimental">Experimental</string>
-    <string name="launcher_shortcuts_description">Enable keyboard shortcuts</string>
-    <string name="launcher_shortcuts_configure">Configure Shortcuts</string>
-    <string name="launcher_shortcuts_configure_description">Assign keys to open apps</string>
+    <string name="launcher_shortcuts_description">Use assigned app keys directly on the Android launcher or home screen.</string>
+    <string name="launcher_shortcuts_configure">Assigned app keys</string>
+    <string name="launcher_shortcuts_configure_description">Tap a key to assign or replace an app. Assigned keys are shared by both trigger modes.</string>
+    <string name="launcher_shortcuts_configure_description_with_quick_launcher">Tap a key to assign or replace an app. Quick launcher is currently assigned to %1$s.</string>
+    <string name="quick_launcher_default_blocked_hint">New: SYM can open the quick launcher. Pastiera would normally assign it to Space, but Space already has a shortcut. Open the assignments page and choose “Open quick launcher” on any key to try it.</string>
     
     <!-- Launcher Shortcuts Screen -->
-    <string name="launcher_shortcuts_screen_title">Shortcuts</string>
+    <string name="launcher_shortcuts_screen_title">Pastiera-QuickLauncher</string>
     <string name="launcher_shortcuts_not_assigned">Not assigned</string>
     <string name="launcher_shortcuts_remove">Remove</string>
     <string name="launcher_shortcuts_app_name_unavailable">App (name unavailable)</string>
@@ -319,10 +324,35 @@
     <string name="launcher_shortcut_assignment_no_apps">No apps found</string>
     <string name="launcher_shortcut_assignment_no_results">No results for \"%1$s\"</string>
     <string name="launcher_shortcut_assignment_key_name">Key %1$d</string>
+    <string name="quick_launcher_title">Pastiera-QuickLauncher</string>
+    <string name="quick_launcher_subtitle">Type to search. Enter opens the top result.</string>
+    <string name="quick_launcher_close">Close</string>
+    <string name="quick_launcher_search_placeholder">Start typing...</string>
+    <string name="quick_launcher_auto_start_single">Launch automatically when only one result remains</string>
+    <string name="quick_launcher_auto_start_single_title">Open unique match automatically</string>
+    <string name="quick_launcher_auto_start_single_description">When the quick launcher search leaves only one app, launch it without pressing Enter.</string>
+    <string name="quick_launcher_limit_results_title">Show only top search results</string>
+    <string name="quick_launcher_limit_results_description">Do not render the full alphabetical app list. The quick launcher stays empty until you type and then shows only the top three matches.</string>
+    <string name="quick_launcher_text_field_shortcuts_title">Allow SYM+Space in text fields</string>
+    <string name="quick_launcher_text_field_shortcuts_description">When enabled, the QuickLauncher can also open while the cursor is inside an app text field.</string>
+    <string name="quick_launcher_text_field_shortcuts_hint">In text fields, hold SYM and press Space. SYM latch cannot trigger this because tapping SYM cycles the SYM pages.</string>
+    <string name="quick_launcher_behavior_title">Behaviour</string>
+    <string name="quick_launcher_behavior_description">Launch rules, result rendering, and SYM+Space from text fields.</string>
+    <string name="quick_launcher_cosmetic_title">Appearance</string>
+    <string name="quick_launcher_cosmetic_description">Width and compact pill presentation.</string>
+    <string name="quick_launcher_width_title">Launcher width</string>
+    <string name="quick_launcher_width_value">%1$d%% screen width</string>
+    <string name="quick_launcher_pill_mode_title">Pill mode</string>
+    <string name="quick_launcher_pill_mode_description">Open as a compact search pill and expand only after typing.</string>
+    <string name="quick_launcher_type_to_search">Start typing to search apps</string>
+    <string name="quick_launcher_assign_action">Open quick launcher</string>
+    <string name="quick_launcher_no_apps">No apps found</string>
+    <string name="quick_launcher_no_results">No results for \"%1$s\"</string>
+    <string name="quick_launcher_enter_hint">Enter</string>
     
     <!-- Power Shortcuts Section -->
-    <string name="power_shortcuts_title">Power Shortcuts</string>
-    <string name="power_shortcuts_description">Press SYM then a key to launch shortcuts when not in a text field</string>
+    <string name="power_shortcuts_title">SYM key shortcuts</string>
+    <string name="power_shortcuts_description">Press SYM and then an assigned key to launch apps or actions.</string>
     <string name="power_shortcuts_press_key">Press shortcut key to launch</string>
     
     <!-- Notification Helper -->
@@ -432,9 +462,9 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     
     <!-- Variation Customization -->
     <string name="variation_customize_title">Customize Variations</string>
-    <string name="app_enter_behavior_title">Enter key behavior</string>
+    <string name="app_enter_behavior_title">Enter key behaviour</string>
     <string name="app_enter_behavior_description">Configure app-specific Enter and newline handling</string>
-    <string name="app_enter_behavior_enable_title">App-specific Enter behavior</string>
+    <string name="app_enter_behavior_enable_title">App-specific Enter behaviour</string>
     <string name="app_enter_behavior_enable_description">Use Pastiera overrides for selected messaging apps. Tested apps show the strategy Pastiera actually uses.</string>
     <string name="app_enter_behavior_preset_title">Messaging preset</string>
     <string name="app_enter_behavior_preset_description">Apply a consistent default to installed known messaging apps.</string>
@@ -475,7 +505,7 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="app_enter_behavior_strategy_discord_partial_detail">Tested: Newlines are inserted directly. Ctrl+Enter sends a plain Enter without Ctrl meta because Discord\'s app action only hides the keyboard.</string>
     <string name="app_enter_behavior_strategy_experimental_detail">Not confirmed: Pastiera is trying the app\'s send action and direct newline insertion.</string>
     <string name="app_enter_behavior_strategy_not_tested_detail">The technical strategy still needs to be tested for this app.</string>
-    <string name="app_enter_behavior_desired_label">Wanted behavior</string>
+    <string name="app_enter_behavior_desired_label">Wanted behaviour</string>
     <string name="app_enter_behavior_strategy_label">Send strategy</string>
     <string name="app_enter_behavior_strategy_auto">Auto / not tested</string>
     <string name="app_enter_behavior_strategy_editor_action">Editor action</string>
@@ -700,7 +730,7 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="pastierina_mode_title">Pastierina Mode</string>
     <string name="pastierina_mode_description">Toggle minimal ui</string>
     <string name="software_keyboard_mode_title">Keyboard Mode</string>
-    <string name="software_keyboard_mode_description">Separate from Pastierina. Controls hardware vs virtual keyboard behavior.</string>
+    <string name="software_keyboard_mode_description">Separate from Pastierina. Controls hardware vs virtual keyboard behaviour.</string>
     <string name="software_keyboard_mode_auto_current">Auto (current: %1$s)</string>
     <string name="software_keyboard_mode_always_virtual">Always Virtual Keyboard</string>
     <string name="software_keyboard_mode_always_hardware">Always Hardware Keyboard</string>

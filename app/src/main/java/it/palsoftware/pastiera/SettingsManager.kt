@@ -1604,13 +1604,25 @@ object SettingsManager {
         companion object {
             const val TYPE_APP = "app"
             const val TYPE_SHORTCUT = "shortcut"
+            const val TYPE_QUICK_LAUNCHER = "quick_launcher"
             // Aggiungi altri tipi in futuro qui
         }
     }
     
     private const val KEY_LAUNCHER_SHORTCUTS = "launcher_shortcuts"
     private const val KEY_LAUNCHER_SHORTCUTS_ENABLED = "launcher_shortcuts_enabled"
+    private const val KEY_QUICK_LAUNCHER_DEFAULT_ASSIGNED = "quick_launcher_default_assigned"
+    private const val KEY_QUICK_LAUNCHER_AUTO_START_SINGLE = "quick_launcher_auto_start_single"
+    private const val KEY_QUICK_LAUNCHER_LIMIT_RESULTS = "quick_launcher_limit_results"
+    private const val KEY_QUICK_LAUNCHER_TEXT_FIELD_SHORTCUTS = "quick_launcher_text_field_shortcuts"
+    private const val KEY_QUICK_LAUNCHER_WIDTH_PERCENT = "quick_launcher_width_percent"
+    private const val KEY_QUICK_LAUNCHER_PILL_MODE = "quick_launcher_pill_mode"
     private const val DEFAULT_LAUNCHER_SHORTCUTS_ENABLED = false
+    private const val DEFAULT_QUICK_LAUNCHER_AUTO_START_SINGLE = false
+    private const val DEFAULT_QUICK_LAUNCHER_LIMIT_RESULTS = false
+    private const val DEFAULT_QUICK_LAUNCHER_TEXT_FIELD_SHORTCUTS = true
+    private const val DEFAULT_QUICK_LAUNCHER_WIDTH_PERCENT = 100
+    private const val DEFAULT_QUICK_LAUNCHER_PILL_MODE = false
     
     // Nav mode settings
     private const val KEY_NAV_MODE_ENABLED = "nav_mode_enabled"
@@ -1632,6 +1644,13 @@ object SettingsManager {
             appName = appName
         ))
     }
+
+    fun setQuickLauncherShortcut(context: Context, keyCode: Int) {
+        setLauncherAction(context, keyCode, LauncherShortcut(type = LauncherShortcut.TYPE_QUICK_LAUNCHER))
+        getPreferences(context).edit()
+            .putBoolean(KEY_QUICK_LAUNCHER_DEFAULT_ASSIGNED, true)
+            .apply()
+    }
     
     /**
      * Imposta un'azione del launcher per un tasto (generico, estendibile).
@@ -1642,6 +1661,18 @@ object SettingsManager {
         
         try {
             val shortcuts = JSONObject(shortcutsJson)
+            if (action.type == LauncherShortcut.TYPE_QUICK_LAUNCHER) {
+                val keys = shortcuts.keys()
+                val keysToRemove = mutableListOf<String>()
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    val shortcutObj = shortcuts.optJSONObject(key)
+                    if (shortcutObj?.optString("type") == LauncherShortcut.TYPE_QUICK_LAUNCHER) {
+                        keysToRemove.add(key)
+                    }
+                }
+                keysToRemove.forEach { shortcuts.remove(it) }
+            }
             shortcuts.put(keyCode.toString(), JSONObject().apply {
                 put("type", action.type)
                 if (action.packageName != null) put("packageName", action.packageName)
@@ -1709,6 +1740,11 @@ object SettingsManager {
      * Ottiene tutte le scorciatoie del launcher salvate.
      */
     fun getLauncherShortcuts(context: Context): Map<Int, LauncherShortcut> {
+        ensureQuickLauncherDefaultShortcut(context)
+        return getLauncherShortcutsRaw(context)
+    }
+
+    private fun getLauncherShortcutsRaw(context: Context): Map<Int, LauncherShortcut> {
         val prefs = getPreferences(context)
         val shortcutsJson = prefs.getString(KEY_LAUNCHER_SHORTCUTS, "{}") ?: "{}"
         val shortcuts = mutableMapOf<Int, LauncherShortcut>()
@@ -1745,6 +1781,47 @@ object SettingsManager {
     fun getLauncherShortcut(context: Context, keyCode: Int): LauncherShortcut? {
         return getLauncherShortcuts(context)[keyCode]
     }
+
+    fun ensureQuickLauncherDefaultShortcut(context: Context) {
+        val prefs = getPreferences(context)
+        if (prefs.getBoolean(KEY_QUICK_LAUNCHER_DEFAULT_ASSIGNED, false)) {
+            return
+        }
+        val shortcuts = getLauncherShortcutsRaw(context)
+        if (shortcuts.values.any { it.type == LauncherShortcut.TYPE_QUICK_LAUNCHER }) {
+            prefs.edit()
+                .putBoolean(KEY_QUICK_LAUNCHER_DEFAULT_ASSIGNED, true)
+                .apply()
+            return
+        }
+        if (shortcuts[KeyEvent.KEYCODE_SPACE] != null) {
+            return
+        }
+        setQuickLauncherShortcut(context, KeyEvent.KEYCODE_SPACE)
+        prefs.edit()
+            .putBoolean(KEY_QUICK_LAUNCHER_DEFAULT_ASSIGNED, true)
+            .apply()
+    }
+
+    fun isQuickLauncherDefaultBlockedByExistingSpaceShortcut(context: Context): Boolean {
+        val prefs = getPreferences(context)
+        if (prefs.getBoolean(KEY_QUICK_LAUNCHER_DEFAULT_ASSIGNED, false)) {
+            return false
+        }
+        val shortcuts = getLauncherShortcutsRaw(context)
+        if (shortcuts.values.any { it.type == LauncherShortcut.TYPE_QUICK_LAUNCHER }) {
+            return false
+        }
+        val spaceShortcut = shortcuts[KeyEvent.KEYCODE_SPACE]
+        return spaceShortcut != null && spaceShortcut.type != LauncherShortcut.TYPE_QUICK_LAUNCHER
+    }
+
+    fun getQuickLauncherShortcutKey(context: Context): Int? {
+        return getLauncherShortcuts(context)
+            .entries
+            .firstOrNull { it.value.type == LauncherShortcut.TYPE_QUICK_LAUNCHER }
+            ?.key
+    }
     
     /**
      * Restituisce se le scorciatoie del launcher sono abilitate.
@@ -1759,6 +1836,70 @@ object SettingsManager {
     fun setLauncherShortcutsEnabled(context: Context, enabled: Boolean) {
         getPreferences(context).edit()
             .putBoolean(KEY_LAUNCHER_SHORTCUTS_ENABLED, enabled)
+            .apply()
+    }
+
+    fun getQuickLauncherAutoStartSingle(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_QUICK_LAUNCHER_AUTO_START_SINGLE,
+            DEFAULT_QUICK_LAUNCHER_AUTO_START_SINGLE
+        )
+    }
+
+    fun setQuickLauncherAutoStartSingle(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_QUICK_LAUNCHER_AUTO_START_SINGLE, enabled)
+            .apply()
+    }
+
+    fun getQuickLauncherLimitResults(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_QUICK_LAUNCHER_LIMIT_RESULTS,
+            DEFAULT_QUICK_LAUNCHER_LIMIT_RESULTS
+        )
+    }
+
+    fun setQuickLauncherLimitResults(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_QUICK_LAUNCHER_LIMIT_RESULTS, enabled)
+            .apply()
+    }
+
+    fun getQuickLauncherTextFieldShortcuts(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_QUICK_LAUNCHER_TEXT_FIELD_SHORTCUTS,
+            DEFAULT_QUICK_LAUNCHER_TEXT_FIELD_SHORTCUTS
+        )
+    }
+
+    fun setQuickLauncherTextFieldShortcuts(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_QUICK_LAUNCHER_TEXT_FIELD_SHORTCUTS, enabled)
+            .apply()
+    }
+
+    fun getQuickLauncherWidthPercent(context: Context): Int {
+        return getPreferences(context)
+            .getInt(KEY_QUICK_LAUNCHER_WIDTH_PERCENT, DEFAULT_QUICK_LAUNCHER_WIDTH_PERCENT)
+            .coerceIn(50, 100)
+    }
+
+    fun setQuickLauncherWidthPercent(context: Context, percent: Int) {
+        getPreferences(context).edit()
+            .putInt(KEY_QUICK_LAUNCHER_WIDTH_PERCENT, percent.coerceIn(50, 100))
+            .apply()
+    }
+
+    fun getQuickLauncherPillMode(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_QUICK_LAUNCHER_PILL_MODE,
+            DEFAULT_QUICK_LAUNCHER_PILL_MODE
+        )
+    }
+
+    fun setQuickLauncherPillMode(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_QUICK_LAUNCHER_PILL_MODE, enabled)
             .apply()
     }
     

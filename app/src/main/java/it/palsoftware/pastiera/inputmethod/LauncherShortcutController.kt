@@ -27,6 +27,7 @@ class LauncherShortcutController(
     private var powerShortcutSymPressed: Boolean = false
     private var powerShortcutTimeoutHandler: android.os.Handler? = null
     private var powerShortcutTimeoutRunnable: Runnable? = null
+    private var powerShortcutToastRunnable: Runnable? = null
     
     // Stato per gestire nav mode durante power shortcuts
     private var navModeWasActive: Boolean = false
@@ -104,6 +105,12 @@ class LauncherShortcutController(
                     // TODO: Gestire scorciatoie in futuro
                     Log.d(TAG, "Tipo scorciatoia non ancora implementato: ${shortcut.type}")
                 }
+                SettingsManager.LauncherShortcut.TYPE_QUICK_LAUNCHER -> {
+                    if (openQuickLauncher()) {
+                        Log.d(TAG, "Quick launcher shortcut executed: key $keyCode")
+                        return true
+                    }
+                }
                 else -> {
                     Log.d(TAG, "Tipo azione sconosciuto: ${shortcut.type}")
                 }
@@ -114,6 +121,22 @@ class LauncherShortcutController(
             return true // Consumiamo l'evento per evitare che venga gestito altrove
         }
         return false // Non consumiamo l'evento
+    }
+
+    private fun openQuickLauncher(): Boolean {
+        return try {
+            val intent = Intent(context, QuickLauncherActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
+                addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY)
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            }
+            context.startActivity(intent)
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Errore nell'apertura del quick launcher", e)
+            false
+        }
     }
     
     /**
@@ -174,15 +197,18 @@ class LauncherShortcutController(
         powerShortcutSymPressed = true
         Log.d(TAG, "Power Shortcut mode attivato")
         
-        // Mostra toast
-        val message = context.getString(R.string.power_shortcuts_press_key)
-        showToast(message)
-        
         // Cancella timeout precedente se esiste
         cancelPowerShortcutTimeout()
         
-        // Imposta timeout per resettare automaticamente
+        // Imposta timeout per resettare automaticamente e mostra il toast solo se il chord non prosegue subito.
         val handler = android.os.Handler(android.os.Looper.getMainLooper())
+        val message = context.getString(R.string.power_shortcuts_press_key)
+        powerShortcutToastRunnable = Runnable {
+            if (powerShortcutSymPressed) {
+                showToast(message)
+            }
+        }
+        handler.postDelayed(powerShortcutToastRunnable!!, 500L)
         powerShortcutTimeoutRunnable = Runnable {
             resetPowerShortcutMode()
         }
@@ -222,9 +248,13 @@ class LauncherShortcutController(
      * Cancella il timeout del Power Shortcut mode.
      */
     private fun cancelPowerShortcutTimeout() {
+        powerShortcutToastRunnable?.let { runnable ->
+            powerShortcutTimeoutHandler?.removeCallbacks(runnable)
+        }
         powerShortcutTimeoutRunnable?.let { runnable ->
             powerShortcutTimeoutHandler?.removeCallbacks(runnable)
         }
+        powerShortcutToastRunnable = null
         powerShortcutTimeoutRunnable = null
         powerShortcutTimeoutHandler = null
     }
@@ -246,4 +276,3 @@ class LauncherShortcutController(
         return handleLauncherShortcut(keyCode)
     }
 }
-

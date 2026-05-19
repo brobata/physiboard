@@ -20,8 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.Icons.Filled
+import androidx.compose.material.icons.filled.Search
 import androidx.activity.compose.BackHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.WindowInsets
@@ -38,7 +37,6 @@ import androidx.compose.runtime.key
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.zIndex
@@ -96,7 +94,10 @@ fun LauncherShortcutsScreen(
     val launcherShortcutAssignmentLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        if (result.resultCode == LauncherShortcutAssignmentActivity.RESULT_ASSIGNED) {
+        if (
+            result.resultCode == LauncherShortcutAssignmentActivity.RESULT_ASSIGNED ||
+            result.resultCode == LauncherShortcutAssignmentActivity.RESULT_REMOVED
+        ) {
             // Aggiorna le scorciatoie dopo l'assegnazione
             shortcuts = SettingsManager.getLauncherShortcuts(context)
         }
@@ -117,7 +118,6 @@ fun LauncherShortcutsScreen(
     var dragCurrentPosition by remember { mutableStateOf<Offset?>(null) }
     var draggedIcon by remember { mutableStateOf<android.graphics.drawable.Drawable?>(null) }
     var keyPositions by remember { mutableStateOf<Map<Int, androidx.compose.ui.geometry.Rect>>(emptyMap()) }
-            var trashPosition by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
             var currentDropTarget by remember { mutableStateOf<Int?>(null) } // Track which key is currently under drag
             var containerPosition by remember { mutableStateOf<androidx.compose.ui.geometry.Offset?>(null) }
     
@@ -168,7 +168,7 @@ fun LauncherShortcutsScreen(
         }
         
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         // Griglia QWERTY con larghezza fissa (come SYM layers)
         val qwertyRows = listOf(
             listOf("Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"),
@@ -263,6 +263,7 @@ fun LauncherShortcutsScreen(
                             
                             if (keyCode != null) {
                                 val shortcut = shortcuts[keyCode]
+                                val isQuickLauncher = shortcut?.type == SettingsManager.LauncherShortcut.TYPE_QUICK_LAUNCHER
                                 // Verify that shortcut exists, is an app type, has a package name, AND the app is still installed
                                 val hasApp = shortcut != null && 
                                     shortcut.type == SettingsManager.LauncherShortcut.TYPE_APP && 
@@ -285,7 +286,7 @@ fun LauncherShortcutsScreen(
                                 
                                 // Use key() to force recomposition when shortcut changes
                                 // When packageName changes, the entire Surface is recomposed
-                                key(shortcut?.packageName ?: "none_$keyCode") {
+                                key("${shortcut?.type}_${shortcut?.packageName ?: "none"}_$keyCode") {
                                     var keyPosition by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
                                     
                                     Surface(
@@ -331,24 +332,9 @@ fun LauncherShortcutsScreen(
                                                                     currentDropTarget = null
                                                                 },
                                                                 onDragEnd = {
-                                                                    // Perform swap or delete only on release
+                                                                    // Perform swap only on release. Removing is handled from the key assignment sheet.
                                                                     if (draggedKeyCode == keyCode) {
-                                                                        // Check trash first
-                                                                        val dropPos = dragCurrentPosition
-                                                                        val overTrash = dropPos?.let { pos ->
-                                                                            trashPosition?.let { rect ->
-                                                                                pos.x >= rect.left &&
-                                                                                pos.x <= rect.right &&
-                                                                                pos.y >= rect.top &&
-                                                                                pos.y <= rect.bottom
-                                                                            } ?: false
-                                                                        } ?: false
-                                                                        
-                                                                        if (overTrash) {
-                                                                            // Delete shortcut
-                                                                            SettingsManager.removeLauncherShortcut(context, keyCode)
-                                                                            shortcuts = SettingsManager.getLauncherShortcuts(context)
-                                                                        } else if (currentDropTarget != null && currentDropTarget != keyCode) {
+                                                                        if (currentDropTarget != null && currentDropTarget != keyCode) {
                                                                             // Swap shortcuts with the drop target
                                                                             swapShortcuts(keyCode, currentDropTarget!!)
                                                                         }
@@ -375,32 +361,19 @@ fun LauncherShortcutsScreen(
                                                                     } ?: (dragStartPosition ?: change.position)
                                                                     dragCurrentPosition = newPosition
                                                                     
-                                                                    // Check if over trash - just track, don't do anything yet
-                                                                    val overTrash = trashPosition?.let { rect ->
-                                                                        newPosition.x >= rect.left &&
-                                                                        newPosition.x <= rect.right &&
-                                                                        newPosition.y >= rect.top &&
-                                                                        newPosition.y <= rect.bottom
-                                                                    } ?: false
-                                                                    
-                                                                    if (overTrash) {
-                                                                        // Not over a key, clear drop target
-                                                                        currentDropTarget = null
-                                                                    } else {
-                                                                        // Check if over another key - just track, don't swap yet
-                                                                        var foundTarget: Int? = null
-                                                                        keyPositions.forEach { (targetKeyCode, targetRect) ->
-                                                                            if (targetKeyCode != keyCode &&
-                                                                                newPosition.x >= targetRect.left &&
-                                                                                newPosition.x <= targetRect.right &&
-                                                                                newPosition.y >= targetRect.top &&
-                                                                                newPosition.y <= targetRect.bottom) {
-                                                                                foundTarget = targetKeyCode
-                                                                            }
+                                                                    // Check if over another key - just track, don't swap yet
+                                                                    var foundTarget: Int? = null
+                                                                    keyPositions.forEach { (targetKeyCode, targetRect) ->
+                                                                        if (targetKeyCode != keyCode &&
+                                                                            newPosition.x >= targetRect.left &&
+                                                                            newPosition.x <= targetRect.right &&
+                                                                            newPosition.y >= targetRect.top &&
+                                                                            newPosition.y <= targetRect.bottom) {
+                                                                            foundTarget = targetKeyCode
                                                                         }
-                                                                        // Just update the target tracking, no swap until release
-                                                                        currentDropTarget = foundTarget
                                                                     }
+                                                                    // Just update the target tracking, no swap until release
+                                                                    currentDropTarget = foundTarget
                                                                 }
                                                             )
                                                         }
@@ -431,10 +404,10 @@ fun LauncherShortcutsScreen(
                                                 if (isDragOver) {
                                                     MaterialTheme.colorScheme.tertiaryContainer
                                                 } else {
-                                                    if (hasApp) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+                                                    if (hasApp || isQuickLauncher) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
                                                 }
                                             }
-                                            hasApp -> MaterialTheme.colorScheme.primaryContainer
+                                            hasApp || isQuickLauncher -> MaterialTheme.colorScheme.primaryContainer
                                             else -> MaterialTheme.colorScheme.surfaceVariant
                                         },
                                         tonalElevation = when {
@@ -448,16 +421,34 @@ fun LauncherShortcutsScreen(
                                                         pos.y <= rect.bottom
                                                     } ?: false
                                                 } ?: false
-                                                if (isDragOver) 3.dp else if (hasApp) 2.dp else 1.dp
+                                                if (isDragOver) 3.dp else if (hasApp || isQuickLauncher) 2.dp else 1.dp
                                             }
-                                            else -> if (hasApp) 2.dp else 1.dp
+                                            else -> if (hasApp || isQuickLauncher) 2.dp else 1.dp
                                         }
                                     ) {
                                         Box(
                                             modifier = Modifier.fillMaxSize(),
                                             contentAlignment = Alignment.Center
                                         ) {
-                                            if (hasApp && appIcon != null) {
+                                            if (isQuickLauncher) {
+                                                Column(
+                                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                                    verticalArrangement = Arrangement.Center
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Filled.Search,
+                                                        contentDescription = stringResource(R.string.quick_launcher_title),
+                                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                        modifier = Modifier.size(24.dp)
+                                                    )
+                                                    Text(
+                                                        text = keyName,
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                                    )
+                                                }
+                                            } else if (hasApp && appIcon != null) {
                                                 // Mostra solo l'icona dell'app (riempie tutto il tasto)
                                                 AndroidView(
                                                     factory = { ctx ->
@@ -502,66 +493,6 @@ fun LauncherShortcutsScreen(
                     }
                 }
             }
-            
-            // Trash icon positioned absolutely: center aligned, positioned under keys
-            val trashX = (maxWidth - keySize) / 2
-            // Calculate vertical position: moved down third row
-            val rowsCount = 3
-            val trashY = keySize * rowsCount + keySpacing * rowsCount
-            
-            Box(
-                modifier = Modifier.fillMaxSize()
-            ) {
-                
-                // Check if drag is over trash
-                val isTrashHighlighted = dragCurrentPosition?.let { pos ->
-                    trashPosition?.let { rect ->
-                        pos.x >= rect.left &&
-                        pos.x <= rect.right &&
-                        pos.y >= rect.top &&
-                        pos.y <= rect.bottom
-                    } ?: false
-                } ?: false
-
-                Surface(
-                    modifier = Modifier
-                        .width(keySize)
-                        .aspectRatio(1f)
-                        .offset(x = trashX, y = trashY)
-                        .onGloballyPositioned { coordinates ->
-                            val position = coordinates.positionInRoot()
-                            val size = coordinates.size
-                            trashPosition = androidx.compose.ui.geometry.Rect(
-                                offset = position,
-                                size = androidx.compose.ui.geometry.Size(size.width.toFloat(), size.height.toFloat())
-                            )
-                        },
-                    shape = MaterialTheme.shapes.medium,
-                    color = if (isTrashHighlighted) {
-                        MaterialTheme.colorScheme.errorContainer
-                    } else {
-                        Color.Red.copy(alpha = 0.3f)
-                    },
-                    tonalElevation = if (isTrashHighlighted) 4.dp else 2.dp
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Delete,
-                            contentDescription = stringResource(R.string.launcher_shortcuts_remove),
-                            tint = if (isTrashHighlighted) {
-                                Color.White
-                            } else {
-                                Color.Red
-                            },
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                }
-            }
-            
             // Overlay for dragged icon
             if (draggedKeyCode != null && dragCurrentPosition != null && draggedIcon != null && containerPosition != null) {
                 Box(

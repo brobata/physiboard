@@ -304,6 +304,22 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private fun isMinimalPhoneHardwareActive(): Boolean {
         return DeviceSpecific.isMinimalPhoneDevice(physicalKeyboardProfileOverride)
     }
+
+    private fun openQuickLauncher(): Boolean {
+        return try {
+            val intent = Intent(this, QuickLauncherActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
+                addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY)
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            }
+            startActivity(intent)
+            true
+        } catch (error: Exception) {
+            Log.e(TAG, "Error opening quick launcher", error)
+            false
+        }
+    }
     
     /**
      * Starts voice input using SpeechRecognizer via SpeechRecognitionManager.
@@ -2690,6 +2706,19 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         ) {
             startSpeechRecognition()
             return true
+        }
+
+        if (
+            hasEditableField &&
+            symTogglePendingOnKeyUp &&
+            SettingsManager.getQuickLauncherTextFieldShortcuts(this) &&
+            SettingsManager.getLauncherShortcut(this, keyCode)?.type == SettingsManager.LauncherShortcut.TYPE_QUICK_LAUNCHER &&
+            event?.repeatCount == 0
+        ) {
+            symChordUsedSinceKeyDown = true
+            if (openQuickLauncher()) {
+                return true
+            }
         }
 
         if (
