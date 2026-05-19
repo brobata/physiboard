@@ -22,11 +22,21 @@ data class InstalledApp(
  */
 object AppListHelper {
     private const val TAG = "AppListHelper"
+    @Volatile
+    private var cachedInstalledApps: List<InstalledApp>? = null
+
+    fun getCachedInstalledApps(): List<InstalledApp>? {
+        return cachedInstalledApps
+    }
     
     /**
      * Ottiene tutte le app installate che possono essere avviate.
      */
-    fun getInstalledApps(context: Context): List<InstalledApp> {
+    fun getInstalledApps(context: Context, forceRefresh: Boolean = false): List<InstalledApp> {
+        if (!forceRefresh) {
+            cachedInstalledApps?.let { return it }
+        }
+
         val pm = context.packageManager
         val apps = mutableListOf<InstalledApp>()
         
@@ -69,6 +79,7 @@ object AppListHelper {
             
             // Ordina alfabeticamente per nome
             apps.sortBy { it.appName.lowercase() }
+            cachedInstalledApps = apps.toList()
             
             Log.d(TAG, "Caricate ${apps.size} app installate")
         } catch (e: Exception) {
@@ -78,4 +89,3 @@ object AppListHelper {
         return apps
     }
 }
-

@@ -223,6 +223,7 @@
     <string name="quick_launcher_pill_mode_title">Pillenmodus</string>
     <string name="quick_launcher_pill_mode_description">Als kompakte Suchpille öffnen und erst nach dem Tippen vergrößern.</string>
     <string name="quick_launcher_type_to_search">Tippen, um Apps zu suchen</string>
+    <string name="quick_launcher_loading_apps">Apps werden geladen...</string>
     <string name="quick_launcher_assign_action">Schnellstarter öffnen</string>
     <string name="quick_launcher_no_apps">Keine Apps gefunden</string>
     <string name="quick_launcher_no_results">Keine Ergebnisse für \"%1$s\"</string>

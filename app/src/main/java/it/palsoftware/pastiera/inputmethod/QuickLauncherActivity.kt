@@ -8,6 +8,7 @@ import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.ImageView
 import androidx.activity.compose.setContent
+import androidx.lifecycle.lifecycleScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -56,6 +57,9 @@ import it.palsoftware.pastiera.LocalizedComponentActivity
 import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.SettingsManager
 import it.palsoftware.pastiera.ui.theme.PastieraTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class QuickLauncherActivity : LocalizedComponentActivity() {
     private var apps: List<InstalledApp> = emptyList()
@@ -65,6 +69,7 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
     private var widthPercent by mutableStateOf(100)
     private var pillMode by mutableStateOf(false)
     private var filteredApps by mutableStateOf(emptyList<InstalledApp>())
+    private var loadingApps by mutableStateOf(false)
     private var launchedAutomatically = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -79,11 +84,12 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
         window.setBackgroundDrawableResource(android.R.color.transparent)
         window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
 
-        apps = AppListHelper.getInstalledApps(this)
         autoStartSingle = SettingsManager.getQuickLauncherAutoStartSingle(this)
         limitResults = SettingsManager.getQuickLauncherLimitResults(this)
         widthPercent = SettingsManager.getQuickLauncherWidthPercent(this)
         pillMode = SettingsManager.getQuickLauncherPillMode(this)
+        apps = AppListHelper.getCachedInstalledApps().orEmpty()
+        loadingApps = apps.isEmpty()
         refreshFilteredApps()
 
         setContent {
@@ -97,6 +103,7 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
                     QuickLauncherSheet(
                         query = query,
                         apps = filteredApps,
+                        loadingApps = loadingApps,
                         limitResults = limitResults,
                         widthPercent = widthPercent,
                         pillMode = pillMode,
@@ -104,6 +111,17 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
                         onDismiss = { finish() }
                     )
                 }
+            }
+        }
+
+        if (loadingApps) {
+            lifecycleScope.launch {
+                val loadedApps = withContext(Dispatchers.IO) {
+                    AppListHelper.getInstalledApps(this@QuickLauncherActivity)
+                }
+                apps = loadedApps
+                loadingApps = false
+                refreshFilteredApps()
             }
         }
     }
@@ -196,6 +214,7 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
 private fun QuickLauncherSheet(
     query: String,
     apps: List<InstalledApp>,
+    loadingApps: Boolean,
     limitResults: Boolean,
     widthPercent: Int,
     pillMode: Boolean,
@@ -316,7 +335,7 @@ private fun QuickLauncherSheet(
                     Spacer(modifier = Modifier.height(8.dp))
                 }
 
-                if (!isCollapsedPill && apps.isEmpty()) {
+                if (!isCollapsedPill && (apps.isEmpty() || loadingApps)) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -325,7 +344,9 @@ private fun QuickLauncherSheet(
                     ) {
                         Text(
                             text = if (query.isBlank()) {
-                                if (limitResults) {
+                                if (loadingApps) {
+                                    stringResource(R.string.quick_launcher_loading_apps)
+                                } else if (limitResults) {
                                     stringResource(R.string.quick_launcher_type_to_search)
                                 } else {
                                     stringResource(R.string.quick_launcher_no_apps)

@@ -345,6 +345,7 @@
     <string name="quick_launcher_pill_mode_title">Pill mode</string>
     <string name="quick_launcher_pill_mode_description">Open as a compact search pill and expand only after typing.</string>
     <string name="quick_launcher_type_to_search">Start typing to search apps</string>
+    <string name="quick_launcher_loading_apps">Loading apps...</string>
     <string name="quick_launcher_assign_action">Open quick launcher</string>
     <string name="quick_launcher_no_apps">No apps found</string>
     <string name="quick_launcher_no_results">No results for \"%1$s\"</string>
