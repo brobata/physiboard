@@ -1,6 +1,7 @@
 package it.palsoftware.pastiera.core
 
 import android.content.Context
+import android.media.AudioManager
 import android.os.SystemClock
 import android.util.Log
 import android.view.KeyEvent
@@ -271,6 +272,16 @@ class NavModeController(
         action: String,
         inputConnection: InputConnection
     ): Boolean {
+        val mediaKeyCode = when (action) {
+            "media_play_pause" -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
+            "media_previous" -> KeyEvent.KEYCODE_MEDIA_PREVIOUS
+            "media_next" -> KeyEvent.KEYCODE_MEDIA_NEXT
+            else -> null
+        }
+        if (mediaKeyCode != null) {
+            return dispatchMediaKey(mediaKeyCode)
+        }
+
         val actionId = when (action) {
             "copy" -> android.R.id.copy
             "paste" -> android.R.id.paste
@@ -282,6 +293,17 @@ class NavModeController(
 
         inputConnection.performContextMenuAction(actionId)
         Log.d(TAG, "Nav mode: performed action $action")
+        return true
+    }
+
+    private fun dispatchMediaKey(keyCode: Int): Boolean {
+        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return false
+        val eventTime = SystemClock.uptimeMillis()
+        val downEvent = KeyEvent(eventTime, eventTime, KeyEvent.ACTION_DOWN, keyCode, 0)
+        val upEvent = KeyEvent(eventTime, eventTime, KeyEvent.ACTION_UP, keyCode, 0)
+        audioManager.dispatchMediaKeyEvent(downEvent)
+        audioManager.dispatchMediaKeyEvent(upEvent)
+        Log.d(TAG, "Nav mode: dispatched media keycode $keyCode")
         return true
     }
 

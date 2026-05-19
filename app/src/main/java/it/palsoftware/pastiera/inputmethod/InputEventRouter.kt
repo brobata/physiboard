@@ -1,6 +1,8 @@
 package it.palsoftware.pastiera.inputmethod
 
 import android.content.Context
+import android.media.AudioManager
+import android.os.SystemClock
 import android.view.KeyEvent
 import android.view.inputmethod.EditorInfo
 import android.text.InputType
@@ -1115,6 +1117,24 @@ class InputEventRouter(
                             toggleMinimalUi()
                             return true
                         }
+                        "media_play_pause", "media_previous", "media_next" -> {
+                            val mediaKeyCode = when (ctrlMapping.value) {
+                                "media_play_pause" -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
+                                "media_previous" -> KeyEvent.KEYCODE_MEDIA_PREVIOUS
+                                "media_next" -> KeyEvent.KEYCODE_MEDIA_NEXT
+                                else -> null
+                            } ?: return callSuper()
+                            KeyboardEventTracker.notifyKeyEvent(
+                                keyCode,
+                                event,
+                                "KEY_DOWN",
+                                origin = "ime_router",
+                                outputKeyCode = mediaKeyCode,
+                                outputKeyCodeName = KeyboardEventTracker.getOutputKeyCodeName(mediaKeyCode)
+                            )
+                            dispatchMediaKey(mediaKeyCode)
+                            return true
+                        }
                         else -> {
                             val actionId = when (ctrlMapping.value) {
                                 "copy" -> android.R.id.copy
@@ -1238,6 +1258,14 @@ class InputEventRouter(
         }
 
         return false
+    }
+
+    private fun dispatchMediaKey(keyCode: Int): Boolean {
+        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return false
+        val eventTime = SystemClock.uptimeMillis()
+        audioManager.dispatchMediaKeyEvent(KeyEvent(eventTime, eventTime, KeyEvent.ACTION_DOWN, keyCode, 0))
+        audioManager.dispatchMediaKeyEvent(KeyEvent(eventTime, eventTime, KeyEvent.ACTION_UP, keyCode, 0))
+        return true
     }
 
     private fun resolveLayoutShortcutKeyCode(keyCode: Int): Int {

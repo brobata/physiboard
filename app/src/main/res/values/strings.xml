@@ -579,6 +579,9 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="nav_mode_action_expand_selection_word_left">←WordSel</string>
     <string name="nav_mode_action_expand_selection_word_right">WordSel→</string>
     <string name="nav_mode_action_toggle_pastierina">Pastierina</string>
+    <string name="nav_mode_action_media_play_pause">Play/Pause</string>
+    <string name="nav_mode_action_media_previous">Media Previous</string>
+    <string name="nav_mode_action_media_next">Media Next</string>
     <string name="nav_mode_keycode_up">↑</string>
     <string name="nav_mode_keycode_down">↓</string>
     <string name="nav_mode_keycode_left">←</string>

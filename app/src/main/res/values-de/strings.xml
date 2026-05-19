@@ -371,6 +371,9 @@ Jede Taste kann als Keycode, Aktion, Native Ctrl oder Keine konfiguriert werden.
     <string name="nav_mode_action_expand_selection_word_left">←WortAusw</string>
     <string name="nav_mode_action_expand_selection_word_right">WortAusw→</string>
     <string name="nav_mode_action_toggle_pastierina">Pastierina</string>
+    <string name="nav_mode_action_media_play_pause">Play/Pause</string>
+    <string name="nav_mode_action_media_previous">Medien zurück</string>
+    <string name="nav_mode_action_media_next">Medien weiter</string>
     <string name="nav_mode_keycode_up">↑</string>
     <string name="nav_mode_keycode_down">↓</string>
     <string name="nav_mode_keycode_left">←</string>
