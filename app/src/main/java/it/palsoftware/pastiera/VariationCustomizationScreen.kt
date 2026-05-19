@@ -37,6 +37,40 @@ import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils
 import android.view.inputmethod.InputMethodManager
 import org.json.JSONObject
 
+private fun staticVariationPresetOptions(): List<String> {
+    return listOf(
+        SettingsManager.STATIC_VARIATION_PRESET_OFF,
+        SettingsManager.STATIC_VARIATION_PRESET_SYMBOLS,
+        SettingsManager.STATIC_VARIATION_PRESET_NUMBERS,
+        SettingsManager.STATIC_VARIATION_PRESET_ALTERNATIVE,
+        SettingsManager.STATIC_VARIATION_PRESET_DEV_CHOICE
+    )
+}
+
+@Composable
+private fun getStaticVariationPresetLabel(preset: String): String {
+    return when (preset) {
+        SettingsManager.STATIC_VARIATION_PRESET_OFF -> stringResource(R.string.static_variation_preset_off)
+        SettingsManager.STATIC_VARIATION_PRESET_SYMBOLS -> stringResource(R.string.static_variation_preset_symbols)
+        SettingsManager.STATIC_VARIATION_PRESET_NUMBERS -> stringResource(R.string.static_variation_preset_numbers)
+        SettingsManager.STATIC_VARIATION_PRESET_ALTERNATIVE -> stringResource(R.string.static_variation_preset_alternative)
+        SettingsManager.STATIC_VARIATION_PRESET_DEV_CHOICE -> stringResource(R.string.static_variation_preset_dev_choice)
+        else -> preset
+    }
+}
+
+@Composable
+private fun getStaticVariationPresetDescription(preset: String): String {
+    return when (preset) {
+        SettingsManager.STATIC_VARIATION_PRESET_OFF -> stringResource(R.string.static_variation_preset_off_description)
+        SettingsManager.STATIC_VARIATION_PRESET_SYMBOLS -> stringResource(R.string.static_variation_preset_symbols_description)
+        SettingsManager.STATIC_VARIATION_PRESET_NUMBERS -> stringResource(R.string.static_variation_preset_numbers_description)
+        SettingsManager.STATIC_VARIATION_PRESET_ALTERNATIVE -> stringResource(R.string.static_variation_preset_alternative_description)
+        SettingsManager.STATIC_VARIATION_PRESET_DEV_CHOICE -> stringResource(R.string.static_variation_preset_dev_choice_description)
+        else -> ""
+    }
+}
+
 /**
  * Screen for customizing letter variations.
  */
@@ -107,13 +141,10 @@ fun VariationCustomizationScreen(
     // State for reset confirmation dialog
     var showResetConfirmDialog by remember { mutableStateOf(false) }
     
-    // State for static variation bar mode
-    var staticVariationBarMode by remember {
-        mutableStateOf(SettingsManager.isStaticVariationBarModeEnabled(context))
+    var staticVariationPreset by remember {
+        mutableStateOf(SettingsManager.getStaticVariationBarPreset(context))
     }
-    var staticVariationBaseLayerEnabled by remember {
-        mutableStateOf(SettingsManager.isStaticVariationBarBaseLayerEnabled(context))
-    }
+    var staticVariationPresetExpanded by remember { mutableStateOf(false) }
 
     // State for sticky layer behavior after modifier hold.
     var staticVariationLayerSticky by remember {
@@ -177,17 +208,16 @@ fun VariationCustomizationScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Static Variation Bar Mode toggle
+            // Static Variation Bar preset selector
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(64.dp)
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.Top,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Icon(
@@ -198,7 +228,7 @@ fun VariationCustomizationScreen(
                     )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = stringResource(R.string.static_variation_bar_mode_title),
+                            text = stringResource(R.string.static_variation_preset_title),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Medium,
                             maxLines = 1
@@ -209,65 +239,61 @@ fun VariationCustomizationScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 2
                         )
-                    }
-                    Switch(
-                        checked = staticVariationBarMode,
-                        onCheckedChange = { enabled ->
-                            staticVariationBarMode = enabled
-                            SettingsManager.setStaticVariationBarModeEnabled(context, enabled)
-                        }
-                    )
-                }
-            }
 
-            // Base static row toggle
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(64.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.TextFields,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.static_variation_base_layer_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1
-                        )
-                        Text(
-                            text = stringResource(R.string.static_variation_base_layer_description),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2
-                        )
-                    }
-                    Switch(
-                        checked = staticVariationBaseLayerEnabled,
-                        onCheckedChange = { enabled ->
-                            staticVariationBaseLayerEnabled = enabled
-                            SettingsManager.setStaticVariationBarBaseLayerEnabled(context, enabled)
-                            staticVariations = SettingsManager.getStaticVariationBasePreset(context)
-                            SettingsManager.saveVariations(
-                                context = context,
-                                variations = variations,
-                                staticVariations = staticVariations,
-                                staticVariationsShift = staticVariationsShift,
-                                staticVariationsAlt = staticVariationsAlt
+                        ExposedDropdownMenuBox(
+                            expanded = staticVariationPresetExpanded,
+                            onExpandedChange = { staticVariationPresetExpanded = it },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = getStaticVariationPresetLabel(staticVariationPreset),
+                                onValueChange = {},
+                                readOnly = true,
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(staticVariationPresetExpanded)
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor()
                             )
+                            ExposedDropdownMenu(
+                                expanded = staticVariationPresetExpanded,
+                                onDismissRequest = { staticVariationPresetExpanded = false }
+                            ) {
+                                staticVariationPresetOptions().forEach { preset ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Column {
+                                                Text(getStaticVariationPresetLabel(preset))
+                                                Text(
+                                                    text = getStaticVariationPresetDescription(preset),
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        },
+                                        onClick = {
+                                            staticVariationPreset = preset
+                                            staticVariationPresetExpanded = false
+                                            SettingsManager.setStaticVariationBarPreset(context, preset)
+                                            if (preset != SettingsManager.STATIC_VARIATION_PRESET_OFF) {
+                                                staticVariations = SettingsManager.getStaticVariationBasePreset(context)
+                                                SettingsManager.saveVariations(
+                                                    context = context,
+                                                    variations = variations,
+                                                    staticVariations = staticVariations,
+                                                    staticVariationsShift = staticVariationsShift,
+                                                    staticVariationsAlt = staticVariationsAlt
+                                                )
+                                            }
+                                        }
+                                    )
+                                }
+                            }
                         }
-                    )
+                    }
                 }
             }
 
@@ -667,7 +693,7 @@ fun VariationCustomizationScreen(
                             activeLayoutName = activeLayoutName
                         )
                         variations = repoVariations.mapKeys { it.key.toString() }
-                        staticVariationBaseLayerEnabled = SettingsManager.isStaticVariationBarBaseLayerEnabled(context)
+                        staticVariationPreset = SettingsManager.getStaticVariationBarPreset(context)
                         staticVariations = SettingsManager.getStaticVariationBasePreset(context)
                         val loadedShift = VariationRepository.loadStaticVariationsShift(context.assets, context).take(7)
                         staticVariationsShift = if (loadedShift.isNotEmpty()) {

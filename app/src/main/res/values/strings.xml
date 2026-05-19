@@ -67,6 +67,17 @@
     <!-- Static Variation Bar Mode -->
     <string name="static_variation_bar_mode_title">Static Variation Bar</string>
     <string name="static_variation_bar_mode_description">Always show a fixed set of utility keys in the variation row instead of context-based variations.</string>
+    <string name="static_variation_preset_title">Static variation preset</string>
+    <string name="static_variation_preset_off">Off</string>
+    <string name="static_variation_preset_off_description">Use dynamic variations and suggestions only.</string>
+    <string name="static_variation_preset_symbols">Symbols</string>
+    <string name="static_variation_preset_symbols_description">Default punctuation row.</string>
+    <string name="static_variation_preset_numbers">Numbers</string>
+    <string name="static_variation_preset_numbers_description">Quick number row.</string>
+    <string name="static_variation_preset_alternative">Alternative symbols</string>
+    <string name="static_variation_preset_alternative_description">Brackets and special characters.</string>
+    <string name="static_variation_preset_dev_choice">Dev’s Choice</string>
+    <string name="static_variation_preset_dev_choice_description">Curated punctuation row.</string>
     <string name="static_variation_base_layer_title">Alternative Top Row Preset</string>
     <string name="static_variation_base_layer_description">Switch the top static row between default symbols and an alternative bracket/special-character set. Shift and Alt layers stay independent.</string>
     <string name="static_variation_layer_sticky_title">Sticky Layer</string>
@@ -783,6 +794,10 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="status_bar_slot_left">Left Slot</string>
     <string name="status_bar_slot_right_1">Right Slot 1</string>
     <string name="status_bar_slot_right_2">Right Slot 2</string>
+    <string name="status_bar_slots_left">Left buttons</string>
+    <string name="status_bar_slots_right">Right buttons</string>
+    <string name="status_bar_slot_add">Add status bar button</string>
+    <string name="status_bar_slot_remove">Remove status bar button</string>
     <string name="status_bar_button_none">None</string>
     <string name="status_bar_button_none_description">Empty</string>
     <string name="status_bar_button_clipboard">Clipboard</string>
@@ -801,6 +816,12 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="status_bar_button_settings_description">Open settings</string>
     <string name="status_bar_button_symbols">Symbols</string>
     <string name="status_bar_button_symbols_description">Symbols keyboard</string>
+    <string name="status_bar_button_undo">Undo</string>
+    <string name="status_bar_button_undo_description">Send Ctrl+Z</string>
+    <string name="status_bar_button_redo">Redo</string>
+    <string name="status_bar_button_redo_description">Send Ctrl+Y</string>
+    <string name="status_bar_variations_visible_title">Show variation area</string>
+    <string name="status_bar_variations_visible_description">Reserve space for variations and suggestions between the status bar buttons.</string>
     <string name="status_bar_state_on">On</string>
     <string name="status_bar_state_off">Off</string>
     <string name="status_bar_button_clipboard_state_empty">Empty</string>

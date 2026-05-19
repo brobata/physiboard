@@ -33,6 +33,8 @@ class HamburgerMenuView(
         StatusBarButtonId.Emoji,
         StatusBarButtonId.Microphone,
         StatusBarButtonId.Clipboard,
+        StatusBarButtonId.Undo,
+        StatusBarButtonId.Redo,
         StatusBarButtonId.Language,
         StatusBarButtonId.MinimalUi,
         StatusBarButtonId.Settings
@@ -151,6 +153,12 @@ class HamburgerMenuView(
             },
             onSymbolsPageRequested = {
                 callbacks.onSymbolsPageRequested?.invoke()
+            },
+            onUndoRequested = {
+                callbacks.onUndoRequested?.invoke()
+            },
+            onRedoRequested = {
+                callbacks.onRedoRequested?.invoke()
             },
             onHapticFeedback = callbacks.onHapticFeedback
         )

@@ -7,6 +7,7 @@ import android.provider.OpenableColumns
 import android.util.Log
 import android.view.KeyEvent
 import it.palsoftware.pastiera.inputmethod.DeviceSpecific
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
@@ -60,6 +61,7 @@ object SettingsManager {
     private const val KEY_TUTORIAL_COMPLETED = "tutorial_completed" // Whether the first-run tutorial has been completed
     private const val KEY_SWIPE_INCREMENTAL_THRESHOLD = "swipe_incremental_threshold" // Distance in DIP for cursor movement
     private const val KEY_STATIC_VARIATION_BAR_MODE = "static_variation_bar_mode" // Use static variation bar instead of dynamic cursor-based variations
+    private const val KEY_STATIC_VARIATION_BAR_PRESET = "static_variation_bar_preset"
     private const val KEY_STATIC_VARIATION_BAR_BASE_LAYER_ENABLED = "static_variation_bar_base_layer_enabled" // Toggle top-row preset
     private const val KEY_STATIC_VARIATION_BAR_MODIFIER_HOLD_RESTORATION = "static_variation_bar_modifier_hold_restoration"
     private const val KEY_VARIATIONS_UPDATED = "variations_updated" // Trigger for reloading variations in input method service
@@ -85,6 +87,9 @@ object SettingsManager {
     private const val KEY_STATUS_BAR_SLOT_LEFT = "status_bar_slot_left"
     private const val KEY_STATUS_BAR_SLOT_RIGHT_1 = "status_bar_slot_right_1"
     private const val KEY_STATUS_BAR_SLOT_RIGHT_2 = "status_bar_slot_right_2"
+    private const val KEY_STATUS_BAR_SLOTS_LEFT = "status_bar_slots_left"
+    private const val KEY_STATUS_BAR_SLOTS_RIGHT = "status_bar_slots_right"
+    private const val KEY_STATUS_BAR_VARIATIONS_VISIBLE = "status_bar_variations_visible"
     
     // Public constants for button IDs
     const val STATUS_BAR_BUTTON_NONE = "none"
@@ -95,11 +100,20 @@ object SettingsManager {
     const val STATUS_BAR_BUTTON_HAMBURGER = "hamburger"
     const val STATUS_BAR_BUTTON_SETTINGS = "settings"
     const val STATUS_BAR_BUTTON_SYMBOLS = "symbols"
+    const val STATUS_BAR_BUTTON_UNDO = "undo"
+    const val STATUS_BAR_BUTTON_REDO = "redo"
+
+    const val STATIC_VARIATION_PRESET_OFF = "off"
+    const val STATIC_VARIATION_PRESET_SYMBOLS = "symbols"
+    const val STATIC_VARIATION_PRESET_NUMBERS = "numbers"
+    const val STATIC_VARIATION_PRESET_ALTERNATIVE = "alternative"
+    const val STATIC_VARIATION_PRESET_DEV_CHOICE = "dev_choice"
     
     // Default slot assignments
     private const val DEFAULT_SLOT_LEFT = STATUS_BAR_BUTTON_HAMBURGER
     private const val DEFAULT_SLOT_RIGHT_1 = STATUS_BAR_BUTTON_EMOJI
     private const val DEFAULT_SLOT_RIGHT_2 = STATUS_BAR_BUTTON_MICROPHONE
+    private const val DEFAULT_STATUS_BAR_VARIATIONS_VISIBLE = true
 
     private const val VARIATIONS_FILE_NAME = "variations.json"
     
@@ -178,6 +192,7 @@ object SettingsManager {
     private const val MIN_ACCESSIBILITY_SUGGESTIONS_ANNOUNCEMENT_DELAY_MS = 100L
     private const val MAX_ACCESSIBILITY_SUGGESTIONS_ANNOUNCEMENT_DELAY_MS = 2000L
     private val STATIC_VARIATION_BASE_PRESET_DEFAULT = listOf("@", "\"", ":", "!", "?", ",", ".")
+    private val STATIC_VARIATION_BASE_PRESET_NUMBERS = listOf("0", "1", "2", "3", "4", "5", "6", "7", "8", "9")
     private val STATIC_VARIATION_BASE_PRESET_ALTERNATIVE = listOf("[", "]", "$", "%", "^", "&", "\\")
     private val STATIC_VARIATION_BASE_PRESET_DEV_CHOICE = listOf("»", "«", ";", "!", "?", ",", ".")
     private val STATIC_VARIATION_SHIFT_PRESET_DEFAULT = listOf("{", "}", "€", "=", "~", ";", "¿")
@@ -822,7 +837,7 @@ object SettingsManager {
      * instead of dynamic cursor-based character variations.
      */
     fun isStaticVariationBarModeEnabled(context: Context): Boolean {
-        return getPreferences(context).getBoolean(KEY_STATIC_VARIATION_BAR_MODE, DEFAULT_STATIC_VARIATION_BAR_MODE)
+        return getStaticVariationBarPreset(context) != STATIC_VARIATION_PRESET_OFF
     }
 
     /**
@@ -831,6 +846,52 @@ object SettingsManager {
     fun setStaticVariationBarModeEnabled(context: Context, enabled: Boolean) {
         getPreferences(context).edit()
             .putBoolean(KEY_STATIC_VARIATION_BAR_MODE, enabled)
+            .putString(
+                KEY_STATIC_VARIATION_BAR_PRESET,
+                if (enabled) STATIC_VARIATION_PRESET_SYMBOLS else STATIC_VARIATION_PRESET_OFF
+            )
+            .apply()
+    }
+
+    fun getStaticVariationBarPreset(context: Context): String {
+        val prefs = getPreferences(context)
+        val stored = prefs.getString(KEY_STATIC_VARIATION_BAR_PRESET, null)
+        val fallback = if (prefs.getBoolean(KEY_STATIC_VARIATION_BAR_MODE, DEFAULT_STATIC_VARIATION_BAR_MODE)) {
+            if (prefs.getBoolean(
+                    KEY_STATIC_VARIATION_BAR_BASE_LAYER_ENABLED,
+                    DEFAULT_STATIC_VARIATION_BAR_BASE_LAYER_ENABLED
+                )
+            ) {
+                STATIC_VARIATION_PRESET_ALTERNATIVE
+            } else {
+                STATIC_VARIATION_PRESET_SYMBOLS
+            }
+        } else {
+            STATIC_VARIATION_PRESET_OFF
+        }
+        return when (stored ?: fallback) {
+            STATIC_VARIATION_PRESET_OFF,
+            STATIC_VARIATION_PRESET_SYMBOLS,
+            STATIC_VARIATION_PRESET_NUMBERS,
+            STATIC_VARIATION_PRESET_ALTERNATIVE,
+            STATIC_VARIATION_PRESET_DEV_CHOICE -> stored ?: fallback
+            else -> fallback
+        }
+    }
+
+    fun setStaticVariationBarPreset(context: Context, preset: String) {
+        val normalized = when (preset) {
+            STATIC_VARIATION_PRESET_OFF,
+            STATIC_VARIATION_PRESET_SYMBOLS,
+            STATIC_VARIATION_PRESET_NUMBERS,
+            STATIC_VARIATION_PRESET_ALTERNATIVE,
+            STATIC_VARIATION_PRESET_DEV_CHOICE -> preset
+            else -> STATIC_VARIATION_PRESET_OFF
+        }
+        getPreferences(context).edit()
+            .putString(KEY_STATIC_VARIATION_BAR_PRESET, normalized)
+            .putBoolean(KEY_STATIC_VARIATION_BAR_MODE, normalized != STATIC_VARIATION_PRESET_OFF)
+            .putBoolean(KEY_STATIC_VARIATION_BAR_BASE_LAYER_ENABLED, normalized == STATIC_VARIATION_PRESET_ALTERNATIVE)
             .apply()
     }
 
@@ -858,10 +919,11 @@ object SettingsManager {
      * Returns the top-row preset for the static variation bar based on toggle state.
      */
     fun getStaticVariationBasePreset(context: Context): List<String> {
-        return if (isStaticVariationBarBaseLayerEnabled(context)) {
-            STATIC_VARIATION_BASE_PRESET_ALTERNATIVE
-        } else {
-            STATIC_VARIATION_BASE_PRESET_DEFAULT
+        return when (getStaticVariationBarPreset(context)) {
+            STATIC_VARIATION_PRESET_NUMBERS -> STATIC_VARIATION_BASE_PRESET_NUMBERS
+            STATIC_VARIATION_PRESET_ALTERNATIVE -> STATIC_VARIATION_BASE_PRESET_ALTERNATIVE
+            STATIC_VARIATION_PRESET_DEV_CHOICE -> STATIC_VARIATION_BASE_PRESET_DEV_CHOICE
+            else -> STATIC_VARIATION_BASE_PRESET_DEFAULT
         }
     }
 
@@ -2639,6 +2701,10 @@ object SettingsManager {
         )
     }
 
+    fun getDefaultStatusBarSlotsLeft(): List<String> = listOf(DEFAULT_SLOT_LEFT)
+
+    fun getDefaultStatusBarSlotsRight(): List<String> = listOf(DEFAULT_SLOT_RIGHT_1, DEFAULT_SLOT_RIGHT_2)
+
     /**
      * Resets status bar slots to the defaults and returns the applied values.
      */
@@ -2647,7 +2713,43 @@ object SettingsManager {
         setStatusBarSlotLeft(context, defaults.left)
         setStatusBarSlotRight1(context, defaults.right1)
         setStatusBarSlotRight2(context, defaults.right2)
+        setStatusBarSlotsLeft(context, getDefaultStatusBarSlotsLeft())
+        setStatusBarSlotsRight(context, getDefaultStatusBarSlotsRight())
+        setStatusBarVariationsVisible(context, DEFAULT_STATUS_BAR_VARIATIONS_VISIBLE)
         return defaults
+    }
+
+    fun getStatusBarSlotsLeft(context: Context): List<String> {
+        return getStatusBarSlotsList(
+            context = context,
+            key = KEY_STATUS_BAR_SLOTS_LEFT,
+            fallback = listOf(getStatusBarSlotLeft(context))
+        )
+    }
+
+    fun setStatusBarSlotsLeft(context: Context, buttonIds: List<String>) {
+        val normalized = normalizeStatusBarSlots(buttonIds)
+        getPreferences(context).edit()
+            .putString(KEY_STATUS_BAR_SLOTS_LEFT, statusBarSlotsToJson(normalized))
+            .putString(KEY_STATUS_BAR_SLOT_LEFT, normalized.firstOrNull() ?: STATUS_BAR_BUTTON_NONE)
+            .apply()
+    }
+
+    fun getStatusBarSlotsRight(context: Context): List<String> {
+        return getStatusBarSlotsList(
+            context = context,
+            key = KEY_STATUS_BAR_SLOTS_RIGHT,
+            fallback = listOf(getStatusBarSlotRight1(context), getStatusBarSlotRight2(context))
+        )
+    }
+
+    fun setStatusBarSlotsRight(context: Context, buttonIds: List<String>) {
+        val normalized = normalizeStatusBarSlots(buttonIds)
+        getPreferences(context).edit()
+            .putString(KEY_STATUS_BAR_SLOTS_RIGHT, statusBarSlotsToJson(normalized))
+            .putString(KEY_STATUS_BAR_SLOT_RIGHT_1, normalized.getOrNull(0) ?: STATUS_BAR_BUTTON_NONE)
+            .putString(KEY_STATUS_BAR_SLOT_RIGHT_2, normalized.getOrNull(1) ?: STATUS_BAR_BUTTON_NONE)
+            .apply()
     }
     
     /**
@@ -2692,6 +2794,52 @@ object SettingsManager {
             .putString(KEY_STATUS_BAR_SLOT_RIGHT_2, buttonId)
             .apply()
     }
+
+    private fun getStatusBarSlotsList(
+        context: Context,
+        key: String,
+        fallback: List<String>
+    ): List<String> {
+        val stored = getPreferences(context).getString(key, null)
+        if (!stored.isNullOrBlank()) {
+            runCatching {
+                val array = JSONArray(stored)
+                val parsed = buildList {
+                    for (index in 0 until array.length()) {
+                        add(array.optString(index, STATUS_BAR_BUTTON_NONE))
+                    }
+                }
+                return normalizeStatusBarSlots(parsed)
+            }
+        }
+        return normalizeStatusBarSlots(fallback)
+    }
+
+    private fun normalizeStatusBarSlots(buttonIds: List<String>): List<String> {
+        val available = getAvailableStatusBarButtons().toSet()
+        return buttonIds.map { buttonId ->
+            if (buttonId in available) buttonId else STATUS_BAR_BUTTON_NONE
+        }
+    }
+
+    private fun statusBarSlotsToJson(buttonIds: List<String>): String {
+        val array = JSONArray()
+        buttonIds.forEach { array.put(it) }
+        return array.toString()
+    }
+
+    fun getStatusBarVariationsVisible(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_STATUS_BAR_VARIATIONS_VISIBLE,
+            DEFAULT_STATUS_BAR_VARIATIONS_VISIBLE
+        )
+    }
+
+    fun setStatusBarVariationsVisible(context: Context, visible: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_STATUS_BAR_VARIATIONS_VISIBLE, visible)
+            .apply()
+    }
     
     /**
      * Returns all available button options for dropdown selection.
@@ -2705,7 +2853,9 @@ object SettingsManager {
             STATUS_BAR_BUTTON_LANGUAGE,
             STATUS_BAR_BUTTON_HAMBURGER,
             STATUS_BAR_BUTTON_SETTINGS,
-            STATUS_BAR_BUTTON_SYMBOLS
+            STATUS_BAR_BUTTON_SYMBOLS,
+            STATUS_BAR_BUTTON_UNDO,
+            STATUS_BAR_BUTTON_REDO
         )
     }
 }

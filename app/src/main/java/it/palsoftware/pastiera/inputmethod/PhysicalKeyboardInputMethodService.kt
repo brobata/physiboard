@@ -381,6 +381,20 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         updateStatusBar()
     }
 
+    private fun sendCtrlShortcut(keyCode: Int, shift: Boolean = false): Boolean {
+        val ic = currentInputConnection ?: return false
+        val now = System.currentTimeMillis()
+        val metaState = KeyEvent.META_CTRL_ON or KeyEvent.META_CTRL_LEFT_ON or
+            if (shift) {
+                KeyEvent.META_SHIFT_ON or KeyEvent.META_SHIFT_LEFT_ON
+            } else {
+                0
+            }
+        ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, keyCode, 0, metaState))
+        ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, keyCode, 0, metaState))
+        return true
+    }
+
     /**
      * Resolves a meaningful editor action for Enter. Returns null for unspecified fields
      * or when actions are explicitly disabled. Works for both single-line and multiline fields.
@@ -946,6 +960,14 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             // Toggle symbols as SYM page 2
             symLayoutController.openSymbolsPage()
             updateStatusBarText()
+        }
+        candidatesBarController.onUndoRequested = {
+            variationInteractedDuringHold = true
+            sendCtrlShortcut(KeyEvent.KEYCODE_Z)
+        }
+        candidatesBarController.onRedoRequested = {
+            variationInteractedDuringHold = true
+            sendCtrlShortcut(KeyEvent.KEYCODE_Y)
         }
         candidatesBarController.onSoftwareKeyboardKeyPressed = { keyCode ->
             typingSoundPlayer.play(keyCode)

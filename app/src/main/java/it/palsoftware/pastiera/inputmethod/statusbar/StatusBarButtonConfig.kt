@@ -15,6 +15,8 @@ sealed class StatusBarButtonId(val key: String) {
     object MinimalUi : StatusBarButtonId("minimal_ui")
     object Settings : StatusBarButtonId("settings")
     object Symbols : StatusBarButtonId("symbols")
+    object Undo : StatusBarButtonId("undo")
+    object Redo : StatusBarButtonId("redo")
     data class Custom(val customKey: String) : StatusBarButtonId(customKey)
 
     override fun equals(other: Any?): Boolean {
@@ -88,6 +90,12 @@ data class StatusBarCallbacks(
     
     /** Called when symbols button is clicked */
     val onSymbolsPageRequested: (() -> Unit)? = null,
+
+    /** Called when undo button is clicked */
+    val onUndoRequested: (() -> Unit)? = null,
+
+    /** Called when redo button is clicked */
+    val onRedoRequested: (() -> Unit)? = null,
     
     /** Called to trigger haptic feedback */
     val onHapticFeedback: (() -> Unit)? = null

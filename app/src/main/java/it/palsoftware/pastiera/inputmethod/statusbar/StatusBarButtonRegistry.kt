@@ -12,6 +12,7 @@ import it.palsoftware.pastiera.inputmethod.statusbar.button.MicrophoneButtonFact
 import it.palsoftware.pastiera.inputmethod.statusbar.button.SettingsButtonFactory
 import it.palsoftware.pastiera.inputmethod.statusbar.button.SymbolsButtonFactory
 import it.palsoftware.pastiera.inputmethod.statusbar.button.StatusBarButtonFactory
+import it.palsoftware.pastiera.inputmethod.statusbar.button.UndoButtonFactory
 
 /**
  * Central registry for status bar button factories.
@@ -44,6 +45,8 @@ class StatusBarButtonRegistry {
     private val minimalUiFactory = MinimalUiButtonFactory()
     private val settingsFactory = SettingsButtonFactory()
     private val symbolsFactory = SymbolsButtonFactory()
+    private val undoFactory = UndoButtonFactory(isRedo = false)
+    private val redoFactory = UndoButtonFactory(isRedo = true)
     
     init {
         // Register built-in button factories
@@ -55,6 +58,8 @@ class StatusBarButtonRegistry {
         factories[StatusBarButtonId.MinimalUi] = minimalUiFactory
         factories[StatusBarButtonId.Settings] = settingsFactory
         factories[StatusBarButtonId.Symbols] = symbolsFactory
+        factories[StatusBarButtonId.Undo] = undoFactory
+        factories[StatusBarButtonId.Redo] = redoFactory
     }
     
     /**
@@ -76,7 +81,7 @@ class StatusBarButtonRegistry {
      * @return true if the factory was removed, false if it wasn't registered or is built-in
      */
     fun unregister(id: StatusBarButtonId): Boolean {
-        if (id in listOf(StatusBarButtonId.Clipboard, StatusBarButtonId.Microphone, StatusBarButtonId.Language, StatusBarButtonId.Emoji, StatusBarButtonId.Hamburger, StatusBarButtonId.MinimalUi, StatusBarButtonId.Settings, StatusBarButtonId.Symbols)) {
+        if (id in listOf(StatusBarButtonId.Clipboard, StatusBarButtonId.Microphone, StatusBarButtonId.Language, StatusBarButtonId.Emoji, StatusBarButtonId.Hamburger, StatusBarButtonId.MinimalUi, StatusBarButtonId.Settings, StatusBarButtonId.Symbols, StatusBarButtonId.Undo, StatusBarButtonId.Redo)) {
             return false // Cannot unregister built-in buttons
         }
         return factories.remove(id) != null
@@ -139,7 +144,7 @@ class StatusBarButtonRegistry {
      * Gets the list of enabled buttons based on slot configuration.
      * 
      * Reads from SettingsManager to determine which buttons are in each slot.
-     * Layout: [Left Slot] [---variations---] [Right Slot 1] [Right Slot 2]
+     * Layout: [Left Slots] [---variations---] [Right Slots]
      * 
      * @param context Android context (for reading settings)
      * @return List of enabled button configurations, sorted for display
@@ -147,37 +152,26 @@ class StatusBarButtonRegistry {
     fun getEnabledButtons(context: Context): List<StatusBarButtonConfig> {
         val enabledButtons = mutableListOf<StatusBarButtonConfig>()
         
-        // Left slot
-        val leftButton = SettingsManager.getStatusBarSlotLeft(context)
-        buttonIdFromString(leftButton)?.let { id ->
-            enabledButtons.add(StatusBarButtonConfig(
-                id = id,
-                position = StatusBarButtonPosition.LEFT,
-                enabled = true,
-                order = 0
-            ))
+        SettingsManager.getStatusBarSlotsLeft(context).forEachIndexed { index, button ->
+            buttonIdFromString(button)?.let { id ->
+                enabledButtons.add(StatusBarButtonConfig(
+                    id = id,
+                    position = StatusBarButtonPosition.LEFT,
+                    enabled = true,
+                    order = index
+                ))
+            }
         }
         
-        // Right slot 1
-        val rightButton1 = SettingsManager.getStatusBarSlotRight1(context)
-        buttonIdFromString(rightButton1)?.let { id ->
-            enabledButtons.add(StatusBarButtonConfig(
-                id = id,
-                position = StatusBarButtonPosition.RIGHT,
-                enabled = true,
-                order = 0
-            ))
-        }
-        
-        // Right slot 2
-        val rightButton2 = SettingsManager.getStatusBarSlotRight2(context)
-        buttonIdFromString(rightButton2)?.let { id ->
-            enabledButtons.add(StatusBarButtonConfig(
-                id = id,
-                position = StatusBarButtonPosition.RIGHT,
-                enabled = true,
-                order = 1
-            ))
+        SettingsManager.getStatusBarSlotsRight(context).forEachIndexed { index, button ->
+            buttonIdFromString(button)?.let { id ->
+                enabledButtons.add(StatusBarButtonConfig(
+                    id = id,
+                    position = StatusBarButtonPosition.RIGHT,
+                    enabled = true,
+                    order = index
+                ))
+            }
         }
         
         return enabledButtons
@@ -196,6 +190,8 @@ class StatusBarButtonRegistry {
             SettingsManager.STATUS_BAR_BUTTON_HAMBURGER -> StatusBarButtonId.Hamburger
             SettingsManager.STATUS_BAR_BUTTON_SETTINGS -> StatusBarButtonId.Settings
             SettingsManager.STATUS_BAR_BUTTON_SYMBOLS -> StatusBarButtonId.Symbols
+            SettingsManager.STATUS_BAR_BUTTON_UNDO -> StatusBarButtonId.Undo
+            SettingsManager.STATUS_BAR_BUTTON_REDO -> StatusBarButtonId.Redo
             SettingsManager.STATUS_BAR_BUTTON_NONE -> null
             else -> null
         }

@@ -39,6 +39,38 @@ class RestoreManagerAndBackupContractTest {
     }
 
     @Test
+    fun statusBarAndVariationPreferences_areRecognizedForRestore() {
+        assertEquals(
+            PreferenceValueType.STRING,
+            PreferenceSchemas.expectedType("pastiera_prefs", "static_variation_bar_preset")
+        )
+        assertEquals(
+            PreferenceValueType.BOOLEAN,
+            PreferenceSchemas.expectedType("pastiera_prefs", "status_bar_variations_visible")
+        )
+        assertEquals(
+            PreferenceValueType.STRING,
+            PreferenceSchemas.expectedType("pastiera_prefs", "status_bar_slot_left")
+        )
+        assertEquals(
+            PreferenceValueType.STRING,
+            PreferenceSchemas.expectedType("pastiera_prefs", "status_bar_slot_right_1")
+        )
+        assertEquals(
+            PreferenceValueType.STRING,
+            PreferenceSchemas.expectedType("pastiera_prefs", "status_bar_slot_right_2")
+        )
+        assertEquals(
+            PreferenceValueType.STRING,
+            PreferenceSchemas.expectedType("pastiera_prefs", "status_bar_slots_left")
+        )
+        assertEquals(
+            PreferenceValueType.STRING,
+            PreferenceSchemas.expectedType("pastiera_prefs", "status_bar_slots_right")
+        )
+    }
+
+    @Test
     fun shouldNotifyUserDictionaryRefresh_whenUserDictionaryPrefsRestored() {
         val prefs = PreferencesRestoreSummary(
             appliedKeys = listOf("pastiera_prefs:user_dictionary_entries"),

@@ -76,6 +76,20 @@ class CandidatesBarController(
             candidatesStatusBar.onSymbolsPageRequested = value
         }
 
+    var onUndoRequested: (() -> Unit)? = null
+        set(value) {
+            field = value
+            inputStatusBar.onUndoRequested = value
+            candidatesStatusBar.onUndoRequested = value
+        }
+
+    var onRedoRequested: (() -> Unit)? = null
+        set(value) {
+            field = value
+            inputStatusBar.onRedoRequested = value
+            candidatesStatusBar.onRedoRequested = value
+        }
+
     var onSoftwareKeyboardKeyPressed: ((Int) -> Unit)? = null
         set(value) {
             field = value

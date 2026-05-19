@@ -114,6 +114,18 @@ class StatusBarController(
             variationBarView?.onSymbolsPageRequested = value
         }
 
+    var onUndoRequested: (() -> Unit)? = null
+        set(value) {
+            field = value
+            variationBarView?.onUndoRequested = value
+        }
+
+    var onRedoRequested: (() -> Unit)? = null
+        set(value) {
+            field = value
+            variationBarView?.onRedoRequested = value
+        }
+
     var onSoftwareKeyboardKeyPressed: ((Int) -> Unit)? = null
 
     var onSoftwareKeyboardShiftTapped: (() -> Unit)? = null
@@ -425,6 +437,8 @@ class StatusBarController(
                         onMinimalUiToggleRequested = { handleMinimalUiToggleFromMenu() },
                         onOpenSettings = { openSettings() },
                         onSymbolsPageRequested = onSymbolsPageRequested,
+                        onUndoRequested = onUndoRequested,
+                        onRedoRequested = onRedoRequested,
                         onHapticFeedback = { NotificationHelper.triggerHapticFeedback(context) }
                     )
                 }
@@ -467,6 +481,8 @@ class StatusBarController(
             onMinimalUiToggleRequested = { handleMinimalUiToggleFromMenu() },
             onOpenSettings = { openSettings() },
             onSymbolsPageRequested = onSymbolsPageRequested,
+            onUndoRequested = onUndoRequested,
+            onRedoRequested = onRedoRequested,
             onHapticFeedback = { NotificationHelper.triggerHapticFeedback(context) }
         )
         menu.show(callbacks) { hideHamburgerMenu() }

@@ -71,6 +71,8 @@ class VariationBarView(
     var onClipboardRequested: (() -> Unit)? = null
     var onEmojiPickerRequested: (() -> Unit)? = null
     var onSymbolsPageRequested: (() -> Unit)? = null
+    var onUndoRequested: (() -> Unit)? = null
+    var onRedoRequested: (() -> Unit)? = null
     var onHamburgerMenuRequested: (() -> Unit)? = null
     var onMinimalUiToggleRequested: (() -> Unit)? = null
     
@@ -120,6 +122,7 @@ class VariationBarView(
     private var emailVariations: List<String> = emptyList()
     private var lastInputConnectionUsed: android.view.inputmethod.InputConnection? = null
     private var lastIsStaticContent: Boolean? = null
+    private var lastVariationAreaVisible: Boolean? = null
     private var pressedView: View? = null
     private var longPressHandler: Handler? = null
     private var longPressRunnable: Runnable? = null
@@ -347,11 +350,12 @@ class VariationBarView(
                     }
                     staticVariationsAlt
                 } else {
-                    if (staticVariations.isEmpty()) {
+                    val staticPreset = SettingsManager.getStaticVariationBarPreset(context)
+                    if (staticPreset != SettingsManager.STATIC_VARIATION_PRESET_SYMBOLS) {
+                        staticVariations = SettingsManager.getStaticVariationBasePreset(context)
+                    } else if (staticVariations.isEmpty()) {
                         val loaded = VariationRepository.loadStaticVariations(context.assets, context)
-                        staticVariations = if (loaded.isNotEmpty()) {
-                            loaded
-                        } else {
+                        staticVariations = loaded.ifEmpty {
                             SettingsManager.getStaticVariationBasePreset(context)
                         }
                     }
@@ -367,7 +371,6 @@ class VariationBarView(
             }
         }
 
-        val limitedVariations = effectiveVariations.take(7)
         val showSwipeHint = effectiveVariations.isEmpty() && !allowStaticFallback
         shouldShowSwipeHint = showSwipeHint
 
@@ -376,14 +379,17 @@ class VariationBarView(
         overlayView.visibility = if (isSymModeActive) View.GONE else View.VISIBLE
         updateSwipeHintVisibility(animate = true)
 
-        val variationsChanged = limitedVariations != lastDisplayedVariations
+        val variationAreaVisible = SettingsManager.getStatusBarVariationsVisible(context)
+        val displayedVariations = if (variationAreaVisible) effectiveVariations else emptyList()
+        val variationsChanged = displayedVariations != lastDisplayedVariations
         val inputConnectionChanged = lastInputConnectionUsed !== inputConnection
         val contentModeChanged = lastIsStaticContent != isStaticContent
+        val variationAreaVisibilityChanged = lastVariationAreaVisible != variationAreaVisible
         val hasExistingRow = currentVariationsRow != null &&
             currentVariationsRow?.parent == containerView &&
             currentVariationsRow?.visibility == View.VISIBLE
 
-        if (!variationsChanged && !inputConnectionChanged && !contentModeChanged && hasExistingRow) {
+        if (!variationsChanged && !inputConnectionChanged && !contentModeChanged && !variationAreaVisibilityChanged && (hasExistingRow || !variationAreaVisible)) {
             return
         }
 
@@ -413,10 +419,11 @@ class VariationBarView(
         val hasLeftButtons = leftButtonCount > 0
         val hasRightButtons = rightButtonCount > 0
         
-        // Calculate fixed button size based on actual number of buttons
-        // Formula: total elements = buttons + 7 variations (max)
-        val totalElements = totalButtonCount + 7
-        val rawFixedButtonSize = max(1, (availableWidth - spacingBetweenButtons * totalElements) / totalElements)
+        // Calculate fixed button size from the actual amount of visible content.
+        // If variations are hidden, buttons divide the whole bar width.
+        val variationSlots = if (variationAreaVisible) displayedVariations.size else 0
+        val totalElements = (totalButtonCount + variationSlots).coerceAtLeast(1)
+        val rawFixedButtonSize = max(1, (availableWidth - spacingBetweenButtons * (totalElements - 1)) / totalElements)
         val maxButtonHeight = (
             TypedValue.applyDimension(
                 TypedValue.COMPLEX_UNIT_DIP,
@@ -437,12 +444,14 @@ class VariationBarView(
             (leftButtonCount - 1).coerceAtLeast(0) + (rightButtonCount - 1).coerceAtLeast(0)
         )
 
-        val variationCount = limitedVariations.size
-        val variationToLeftGap = if (hasLeftButtons && variationCount > 0) spacingBetweenButtons else 0
-        val variationToRightGap = if (hasRightButtons && variationCount > 0) spacingBetweenButtons else 0
+        val variationCount = displayedVariations.size
+        val variationToLeftGap = if (variationAreaVisible && hasLeftButtons && variationCount > 0) spacingBetweenButtons else 0
+        val variationToRightGap = if (variationAreaVisible && hasRightButtons && variationCount > 0) spacingBetweenButtons else 0
         val variationsAvailableWidth = availableWidth -
             fixedButtonsTotalWidth -
-            fixedButtonsSpacing
+            fixedButtonsSpacing -
+            variationToLeftGap -
+            variationToRightGap
 
         val baseButtonWidth = if (variationCount > 0) {
             max(1, (variationsAvailableWidth - spacingBetweenButtons * (variationCount - 1)) / variationCount)
@@ -457,7 +466,7 @@ class VariationBarView(
             maxButtonWidth = baseButtonWidth
         } else {
             buttonWidth = baseButtonWidth
-            maxButtonWidth = baseButtonWidth * 3 // Cap at 3x when we have 7 variations
+            maxButtonWidth = baseButtonWidth * 3
         }
         val variationButtonHeight = min(buttonWidth, maxButtonHeight)
 
@@ -465,7 +474,7 @@ class VariationBarView(
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.START or Gravity.CENTER_VERTICAL
         }
-        currentVariationsRow = variationsRow
+        currentVariationsRow = if (variationAreaVisible) variationsRow else null
 
         // Variations row takes available space (weight=1)
         val rowLayoutParams = LinearLayout.LayoutParams(
@@ -482,11 +491,14 @@ class VariationBarView(
             }
             1
         } ?: 0
-        containerView.addView(variationsRow, insertionIndex, rowLayoutParams)
+        if (variationAreaVisible) {
+            containerView.addView(variationsRow, insertionIndex, rowLayoutParams)
+        }
 
-        lastDisplayedVariations = limitedVariations
+        lastDisplayedVariations = displayedVariations
         lastInputConnectionUsed = inputConnection
         lastIsStaticContent = isStaticContent
+        lastVariationAreaVisible = variationAreaVisible
         
         // Create a single callbacks object with all available callbacks.
         // Each button factory will extract only the callbacks it needs.
@@ -499,6 +511,8 @@ class VariationBarView(
             onMinimalUiToggleRequested = onMinimalUiToggleRequested,
             onOpenSettings = { openSettings() },
             onSymbolsPageRequested = onSymbolsPageRequested,
+            onUndoRequested = onUndoRequested,
+            onRedoRequested = onRedoRequested,
             onHapticFeedback = { NotificationHelper.triggerHapticFeedback(context) }
         )
         
@@ -537,9 +551,9 @@ class VariationBarView(
         }
 
         val addCandidate = snapshot.addWordCandidate
-        for ((index, variation) in limitedVariations.withIndex()) {
+        for ((index, variation) in displayedVariations.withIndex()) {
             val isAddCandidate = addCandidate != null && variation.equals(addCandidate, ignoreCase = true)
-            val isLast = index == limitedVariations.lastIndex
+            val isLast = index == displayedVariations.lastIndex
             val button = createVariationButton(
                 variation,
                 inputConnection,
@@ -565,11 +579,13 @@ class VariationBarView(
             createAndAddButton(config.id, buttonsContainerView, isLast)
         }
 
-        if (variationsChanged) {
+        if (variationAreaVisible && variationsChanged) {
             animateVariationsIn(variationsRow)
-        } else {
+        } else if (variationAreaVisible) {
             variationsRow.alpha = 1f
             variationsRow.visibility = View.VISIBLE
+            buttonHost?.refreshLanguageText()
+        } else {
             buttonHost?.refreshLanguageText()
         }
     }

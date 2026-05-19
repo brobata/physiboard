@@ -5,6 +5,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.*
@@ -34,14 +36,10 @@ fun StatusBarButtonsScreen(
     val context = LocalContext.current
     
     // Load slot assignments from settings
-    var leftSlot by remember {
-        mutableStateOf(SettingsManager.getStatusBarSlotLeft(context))
-    }
-    var rightSlot1 by remember {
-        mutableStateOf(SettingsManager.getStatusBarSlotRight1(context))
-    }
-    var rightSlot2 by remember {
-        mutableStateOf(SettingsManager.getStatusBarSlotRight2(context))
+    var leftSlots by remember { mutableStateOf(SettingsManager.getStatusBarSlotsLeft(context)) }
+    var rightSlots by remember { mutableStateOf(SettingsManager.getStatusBarSlotsRight(context)) }
+    var variationsVisible by remember {
+        mutableStateOf(SettingsManager.getStatusBarVariationsVisible(context))
     }
     
     BackHandler { onBack() }
@@ -82,9 +80,9 @@ fun StatusBarButtonsScreen(
                 IconButton(
                     onClick = {
                         val defaults = SettingsManager.resetStatusBarSlotsToDefault(context)
-                        leftSlot = defaults.left
-                        rightSlot1 = defaults.right1
-                        rightSlot2 = defaults.right2
+                        leftSlots = listOf(defaults.left)
+                        rightSlots = listOf(defaults.right1, defaults.right2)
+                        variationsVisible = SettingsManager.getStatusBarVariationsVisible(context)
                     }
                 ) {
                     Icon(
@@ -124,40 +122,39 @@ fun StatusBarButtonsScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Left slot preview
-                SlotPreview(
-                    buttonId = leftSlot,
-                    label = "1"
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    leftSlots.forEachIndexed { index, buttonId ->
+                        SlotPreview(buttonId = buttonId, label = "L${index + 1}")
+                    }
+                }
                 
                 // Variations area (center)
-                Surface(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(32.dp)
-                        .padding(horizontal = 8.dp),
-                    color = MaterialTheme.colorScheme.surface,
-                    shape = MaterialTheme.shapes.small
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "· · ·",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                if (variationsVisible) {
+                    Surface(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(32.dp)
+                            .padding(horizontal = 8.dp),
+                        color = MaterialTheme.colorScheme.surface,
+                        shape = MaterialTheme.shapes.small
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                text = "· · ·",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
+                } else {
+                    Spacer(modifier = Modifier.width(8.dp))
                 }
                 
                 // Right slots preview
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    SlotPreview(
-                        buttonId = rightSlot1,
-                        label = "2"
-                    )
-                    SlotPreview(
-                        buttonId = rightSlot2,
-                        label = "3"
-                    )
+                    rightSlots.forEachIndexed { index, buttonId ->
+                        SlotPreview(buttonId = buttonId, label = "R${index + 1}")
+                    }
                 }
             }
         }
@@ -165,11 +162,42 @@ fun StatusBarButtonsScreen(
         HorizontalDivider()
         
         Spacer(modifier = Modifier.height(8.dp))
+
+        Surface(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.status_bar_variations_visible_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = stringResource(R.string.status_bar_variations_visible_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = variationsVisible,
+                    onCheckedChange = { visible ->
+                        variationsVisible = visible
+                        SettingsManager.setStatusBarVariationsVisible(context, visible)
+                    }
+                )
+            }
+        }
         
         // Helper function to clear a button from other slots when it's selected
         fun selectButtonForSlot(
             buttonId: String,
-            targetSlot: String,
+            targetSide: String,
+            targetIndex: Int,
             updateState: (String) -> Unit
         ) {
             // If selecting "none", just update the target slot
@@ -179,66 +207,134 @@ fun StatusBarButtonsScreen(
             }
             
             // Clear this button from other slots if it's already used
-            if (buttonId == leftSlot && targetSlot != "left") {
-                leftSlot = SettingsManager.STATUS_BAR_BUTTON_NONE
-                SettingsManager.setStatusBarSlotLeft(context, SettingsManager.STATUS_BAR_BUTTON_NONE)
+            leftSlots = leftSlots.mapIndexed { index, current ->
+                if (current == buttonId && !(targetSide == "left" && targetIndex == index)) {
+                    SettingsManager.STATUS_BAR_BUTTON_NONE
+                } else {
+                    current
+                }
             }
-            if (buttonId == rightSlot1 && targetSlot != "right1") {
-                rightSlot1 = SettingsManager.STATUS_BAR_BUTTON_NONE
-                SettingsManager.setStatusBarSlotRight1(context, SettingsManager.STATUS_BAR_BUTTON_NONE)
+            rightSlots = rightSlots.mapIndexed { index, current ->
+                if (current == buttonId && !(targetSide == "right" && targetIndex == index)) {
+                    SettingsManager.STATUS_BAR_BUTTON_NONE
+                } else {
+                    current
+                }
             }
-            if (buttonId == rightSlot2 && targetSlot != "right2") {
-                rightSlot2 = SettingsManager.STATUS_BAR_BUTTON_NONE
-                SettingsManager.setStatusBarSlotRight2(context, SettingsManager.STATUS_BAR_BUTTON_NONE)
-            }
+            SettingsManager.setStatusBarSlotsLeft(context, leftSlots)
+            SettingsManager.setStatusBarSlotsRight(context, rightSlots)
             
             // Update the target slot
             updateState(buttonId)
         }
         
-        // Left Slot Configuration
-        SlotDropdown(
-            slotLabel = stringResource(R.string.status_bar_slot_left),
-            slotNumber = "1",
-            selectedButton = leftSlot,
-            excludedButtons = emptyList(), // Allow all buttons
-            onButtonSelected = { buttonId ->
-                selectButtonForSlot(buttonId, "left") {
-                    leftSlot = it
-                    SettingsManager.setStatusBarSlotLeft(context, it)
+        SlotGroup(
+            title = stringResource(R.string.status_bar_slots_left),
+            slots = leftSlots,
+            slotPrefix = "L",
+            onSlotSelected = { index, buttonId ->
+                selectButtonForSlot(buttonId, "left", index) {
+                    leftSlots = leftSlots.toMutableList().also { it[index] = buttonId }
+                    SettingsManager.setStatusBarSlotsLeft(context, leftSlots)
                 }
+            },
+            onAddSlot = {
+                leftSlots = leftSlots + SettingsManager.STATUS_BAR_BUTTON_NONE
+                SettingsManager.setStatusBarSlotsLeft(context, leftSlots)
+            },
+            onRemoveSlot = { index ->
+                leftSlots = leftSlots.toMutableList().also { it.removeAt(index) }
+                SettingsManager.setStatusBarSlotsLeft(context, leftSlots)
             }
         )
         
-        // Right Slot 1 Configuration
-        SlotDropdown(
-            slotLabel = stringResource(R.string.status_bar_slot_right_1),
-            slotNumber = "2",
-            selectedButton = rightSlot1,
-            excludedButtons = emptyList(), // Allow all buttons
-            onButtonSelected = { buttonId ->
-                selectButtonForSlot(buttonId, "right1") {
-                    rightSlot1 = it
-                    SettingsManager.setStatusBarSlotRight1(context, it)
+        SlotGroup(
+            title = stringResource(R.string.status_bar_slots_right),
+            slots = rightSlots,
+            slotPrefix = "R",
+            onSlotSelected = { index, buttonId ->
+                selectButtonForSlot(buttonId, "right", index) {
+                    rightSlots = rightSlots.toMutableList().also { it[index] = buttonId }
+                    SettingsManager.setStatusBarSlotsRight(context, rightSlots)
                 }
-            }
-        )
-        
-        // Right Slot 2 Configuration
-        SlotDropdown(
-            slotLabel = stringResource(R.string.status_bar_slot_right_2),
-            slotNumber = "3",
-            selectedButton = rightSlot2,
-            excludedButtons = emptyList(), // Allow all buttons
-            onButtonSelected = { buttonId ->
-                selectButtonForSlot(buttonId, "right2") {
-                    rightSlot2 = it
-                    SettingsManager.setStatusBarSlotRight2(context, it)
-                }
+            },
+            onAddSlot = {
+                rightSlots = rightSlots + SettingsManager.STATUS_BAR_BUTTON_NONE
+                SettingsManager.setStatusBarSlotsRight(context, rightSlots)
+            },
+            onRemoveSlot = { index ->
+                rightSlots = rightSlots.toMutableList().also { it.removeAt(index) }
+                SettingsManager.setStatusBarSlotsRight(context, rightSlots)
             }
         )
         
         Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+
+@Composable
+private fun SlotGroup(
+    title: String,
+    slots: List<String>,
+    slotPrefix: String,
+    onSlotSelected: (Int, String) -> Unit,
+    onAddSlot: () -> Unit,
+    onRemoveSlot: (Int) -> Unit
+) {
+    Surface(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                IconButton(onClick = onAddSlot) {
+                    Icon(
+                        imageVector = Icons.Filled.Add,
+                        contentDescription = stringResource(R.string.status_bar_slot_add)
+                    )
+                }
+            }
+
+            slots.forEachIndexed { index, buttonId ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    SlotDropdown(
+                        slotLabel = title,
+                        slotNumber = "$slotPrefix${index + 1}",
+                        selectedButton = buttonId,
+                        excludedButtons = emptyList(),
+                        modifier = Modifier.weight(1f),
+                        onButtonSelected = { selected -> onSlotSelected(index, selected) }
+                    )
+                    IconButton(
+                        onClick = { onRemoveSlot(index) },
+                        enabled = slots.size > 1
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Delete,
+                            contentDescription = stringResource(R.string.status_bar_slot_remove),
+                            tint = if (slots.size > 1) {
+                                MaterialTheme.colorScheme.error
+                            } else {
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                            }
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -281,6 +377,7 @@ private fun SlotDropdown(
     slotNumber: String,
     selectedButton: String,
     excludedButtons: List<String> = emptyList(),
+    modifier: Modifier = Modifier,
     onButtonSelected: (String) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -289,7 +386,7 @@ private fun SlotDropdown(
         .filter { it == SettingsManager.STATUS_BAR_BUTTON_NONE || it !in excludedButtons }
     
     Surface(
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth()
     ) {
         Column(
             modifier = Modifier
@@ -405,6 +502,8 @@ private fun getButtonDisplayName(buttonId: String): String {
         SettingsManager.STATUS_BAR_BUTTON_HAMBURGER -> stringResource(R.string.status_bar_button_hamburger)
         SettingsManager.STATUS_BAR_BUTTON_SETTINGS -> stringResource(R.string.status_bar_button_settings)
         SettingsManager.STATUS_BAR_BUTTON_SYMBOLS -> stringResource(R.string.status_bar_button_symbols)
+        SettingsManager.STATUS_BAR_BUTTON_UNDO -> stringResource(R.string.status_bar_button_undo)
+        SettingsManager.STATUS_BAR_BUTTON_REDO -> stringResource(R.string.status_bar_button_redo)
         else -> buttonId
     }
 }
@@ -420,6 +519,8 @@ private fun getButtonDescription(buttonId: String): String {
         SettingsManager.STATUS_BAR_BUTTON_HAMBURGER -> stringResource(R.string.status_bar_button_hamburger_description)
         SettingsManager.STATUS_BAR_BUTTON_SETTINGS -> stringResource(R.string.status_bar_button_settings_description)
         SettingsManager.STATUS_BAR_BUTTON_SYMBOLS -> stringResource(R.string.status_bar_button_symbols_description)
+        SettingsManager.STATUS_BAR_BUTTON_UNDO -> stringResource(R.string.status_bar_button_undo_description)
+        SettingsManager.STATUS_BAR_BUTTON_REDO -> stringResource(R.string.status_bar_button_redo_description)
         else -> ""
     }
 }
@@ -437,6 +538,8 @@ private fun getButtonIconRes(buttonId: String): Int {
         SettingsManager.STATUS_BAR_BUTTON_HAMBURGER -> R.drawable.ic_menu_24
         SettingsManager.STATUS_BAR_BUTTON_SETTINGS -> R.drawable.ic_settings_24
         SettingsManager.STATUS_BAR_BUTTON_SYMBOLS -> R.drawable.ic_emoji_symbols_24
+        SettingsManager.STATUS_BAR_BUTTON_UNDO -> R.drawable.ic_undo_24
+        SettingsManager.STATUS_BAR_BUTTON_REDO -> R.drawable.ic_redo_24
         else -> R.drawable.ic_settings_24 // Fallback
     }
 }
