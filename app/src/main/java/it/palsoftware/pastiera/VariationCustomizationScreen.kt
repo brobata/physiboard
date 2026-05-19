@@ -3,6 +3,7 @@ package it.palsoftware.pastiera
 import android.content.Context
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -12,6 +13,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.TextFields
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -46,6 +49,8 @@ private fun staticVariationPresetOptions(): List<String> {
         SettingsManager.STATIC_VARIATION_PRESET_DEV_CHOICE
     )
 }
+
+private const val MAX_STATIC_VARIATION_SLOTS = 10
 
 @Composable
 private fun getStaticVariationPresetLabel(preset: String): String {
@@ -107,19 +112,19 @@ fun VariationCustomizationScreen(
     
     // Load static variations to preserve them when saving
     var staticVariations by remember {
-        val loaded = VariationRepository.loadStaticVariations(context.assets, context).take(7)
+        val loaded = VariationRepository.loadStaticVariations(context.assets, context)
         val initial = if (loaded.isNotEmpty()) loaded else SettingsManager.getStaticVariationBasePreset(context)
-        mutableStateOf(initial)
+        mutableStateOf(initial.take(MAX_STATIC_VARIATION_SLOTS))
     }
     var staticVariationsShift by remember {
-        val loaded = VariationRepository.loadStaticVariationsShift(context.assets, context).take(7)
+        val loaded = VariationRepository.loadStaticVariationsShift(context.assets, context)
         val initial = if (loaded.isNotEmpty()) loaded else SettingsManager.getDefaultStaticVariationShiftPreset()
-        mutableStateOf(initial)
+        mutableStateOf(initial.take(MAX_STATIC_VARIATION_SLOTS))
     }
     var staticVariationsAlt by remember {
-        val loaded = VariationRepository.loadStaticVariationsAlt(context.assets, context).take(7)
+        val loaded = VariationRepository.loadStaticVariationsAlt(context.assets, context)
         val initial = if (loaded.isNotEmpty()) loaded else SettingsManager.getDefaultStaticVariationAltPreset()
-        mutableStateOf(initial)
+        mutableStateOf(initial.take(MAX_STATIC_VARIATION_SLOTS))
     }
     
     // Generate alphabet list with uppercase followed by lowercase for each letter (A, a, B, b, ...)
@@ -279,7 +284,17 @@ fun VariationCustomizationScreen(
                                             staticVariationPresetExpanded = false
                                             SettingsManager.setStaticVariationBarPreset(context, preset)
                                             if (preset != SettingsManager.STATIC_VARIATION_PRESET_OFF) {
-                                                staticVariations = SettingsManager.getStaticVariationBasePreset(context)
+                                                staticVariations = SettingsManager.getStaticVariationBasePreset(context).take(MAX_STATIC_VARIATION_SLOTS)
+                                                if (preset == SettingsManager.STATIC_VARIATION_PRESET_NUMBERS) {
+                                                    staticVariationsShift = SettingsManager.getStaticVariationNumbersPreset().take(MAX_STATIC_VARIATION_SLOTS)
+                                                    staticVariationsAlt = SettingsManager.getStaticVariationNumbersPreset().take(MAX_STATIC_VARIATION_SLOTS)
+                                                } else if (preset == SettingsManager.STATIC_VARIATION_PRESET_DEV_CHOICE) {
+                                                    staticVariationsShift = SettingsManager.getDevChoiceStaticVariationBasePreset().take(MAX_STATIC_VARIATION_SLOTS)
+                                                    staticVariationsAlt = SettingsManager.getDevChoiceStaticVariationBasePreset().take(MAX_STATIC_VARIATION_SLOTS)
+                                                } else {
+                                                    staticVariationsShift = SettingsManager.getDefaultStaticVariationShiftPreset().take(MAX_STATIC_VARIATION_SLOTS)
+                                                    staticVariationsAlt = SettingsManager.getDefaultStaticVariationAltPreset().take(MAX_STATIC_VARIATION_SLOTS)
+                                                }
                                                 SettingsManager.saveVariations(
                                                     context = context,
                                                     variations = variations,
@@ -451,6 +466,18 @@ fun VariationCustomizationScreen(
                             staticVariationsAlt = staticVariationsAlt
                         )
                     }
+                },
+                onAddSlot = {
+                    if (staticVariations.size < MAX_STATIC_VARIATION_SLOTS) {
+                        staticVariations = staticVariations + ""
+                        saveStaticRows(context, variations, staticVariations, staticVariationsShift, staticVariationsAlt)
+                    }
+                },
+                onRemoveSlot = {
+                    if (staticVariations.isNotEmpty()) {
+                        staticVariations = staticVariations.dropLast(1)
+                        saveStaticRows(context, variations, staticVariations, staticVariationsShift, staticVariationsAlt)
+                    }
                 }
             )
 
@@ -476,6 +503,18 @@ fun VariationCustomizationScreen(
                             staticVariationsAlt = staticVariationsAlt
                         )
                     }
+                },
+                onAddSlot = {
+                    if (staticVariationsShift.size < MAX_STATIC_VARIATION_SLOTS) {
+                        staticVariationsShift = staticVariationsShift + ""
+                        saveStaticRows(context, variations, staticVariations, staticVariationsShift, staticVariationsAlt)
+                    }
+                },
+                onRemoveSlot = {
+                    if (staticVariationsShift.isNotEmpty()) {
+                        staticVariationsShift = staticVariationsShift.dropLast(1)
+                        saveStaticRows(context, variations, staticVariations, staticVariationsShift, staticVariationsAlt)
+                    }
                 }
             )
 
@@ -500,6 +539,18 @@ fun VariationCustomizationScreen(
                             staticVariationsShift = staticVariationsShift,
                             staticVariationsAlt = reordered
                         )
+                    }
+                },
+                onAddSlot = {
+                    if (staticVariationsAlt.size < MAX_STATIC_VARIATION_SLOTS) {
+                        staticVariationsAlt = staticVariationsAlt + ""
+                        saveStaticRows(context, variations, staticVariations, staticVariationsShift, staticVariationsAlt)
+                    }
+                },
+                onRemoveSlot = {
+                    if (staticVariationsAlt.isNotEmpty()) {
+                        staticVariationsAlt = staticVariationsAlt.dropLast(1)
+                        saveStaticRows(context, variations, staticVariations, staticVariationsShift, staticVariationsAlt)
                     }
                 }
             )
@@ -626,7 +677,7 @@ fun VariationCustomizationScreen(
                     onClick = {
                         val index = staticInputIndex
                         if (index != null) {
-                            val trimmedStatic = updateVariationEntries(
+                            val trimmedStatic = updateStaticVariationEntries(
                                 currentEntries = when (staticInputLayer) {
                                     StaticLayer.Default -> staticVariations
                                     StaticLayer.Shift -> staticVariationsShift
@@ -694,18 +745,18 @@ fun VariationCustomizationScreen(
                         )
                         variations = repoVariations.mapKeys { it.key.toString() }
                         staticVariationPreset = SettingsManager.getStaticVariationBarPreset(context)
-                        staticVariations = SettingsManager.getStaticVariationBasePreset(context)
-                        val loadedShift = VariationRepository.loadStaticVariationsShift(context.assets, context).take(7)
+                        staticVariations = SettingsManager.getStaticVariationBasePreset(context).take(MAX_STATIC_VARIATION_SLOTS)
+                        val loadedShift = VariationRepository.loadStaticVariationsShift(context.assets, context)
                         staticVariationsShift = if (loadedShift.isNotEmpty()) {
-                            loadedShift
+                            loadedShift.take(MAX_STATIC_VARIATION_SLOTS)
                         } else {
-                            SettingsManager.getDefaultStaticVariationShiftPreset()
+                            SettingsManager.getDefaultStaticVariationShiftPreset().take(MAX_STATIC_VARIATION_SLOTS)
                         }
-                        val loadedAlt = VariationRepository.loadStaticVariationsAlt(context.assets, context).take(7)
+                        val loadedAlt = VariationRepository.loadStaticVariationsAlt(context.assets, context)
                         staticVariationsAlt = if (loadedAlt.isNotEmpty()) {
-                            loadedAlt
+                            loadedAlt.take(MAX_STATIC_VARIATION_SLOTS)
                         } else {
-                            SettingsManager.getDefaultStaticVariationAltPreset()
+                            SettingsManager.getDefaultStaticVariationAltPreset().take(MAX_STATIC_VARIATION_SLOTS)
                         }
                         SettingsManager.saveVariations(
                             context = context,
@@ -745,14 +796,16 @@ private fun VariationRow(
     onBoxClick: (Int) -> Unit,
     onReorder: (fromIndex: Int, toIndex: Int) -> Unit,
     labelWidth: Dp = 40.dp,
-    labelColor: androidx.compose.ui.graphics.Color? = null
+    labelColor: androidx.compose.ui.graphics.Color? = null,
+    onAddSlot: (() -> Unit)? = null,
+    onRemoveSlot: (() -> Unit)? = null
 ) {
     val density = LocalDensity.current
     val boxSize = 48.dp
     val boxSpacing = 8.dp
     val boxSizePx = with(density) { boxSize.toPx() }
     val boxSpacingPx = with(density) { boxSpacing.toPx() }
-    val totalSlots = 7
+    val totalSlots = maxOf(7, variations.size)
     
     // Track which index is being dragged and the eventual drop slot for highlighting.
     var draggingIndex by remember { mutableStateOf<Int?>(null) }
@@ -811,11 +864,13 @@ private fun VariationRow(
             // 7 variation boxes
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .weight(1f)
+                    .horizontalScroll(rememberScrollState())
             ) {
-                repeat(7) { index ->
+                repeat(totalSlots) { index ->
                     val character = variations.getOrNull(index) ?: ""
-                    val isEmpty = index >= variations.size
+                    val isEmpty = character.isEmpty()
                     val isDragging = draggingIndex == index
                     val isDropTarget = dropTargetIndex == index && draggingIndex != null
                     
@@ -841,6 +896,34 @@ private fun VariationRow(
                         isDropTarget = isDropTarget,
                         dragOffset = if (isDragging) dragOffsetDp else 0.dp
                     )
+                }
+            }
+
+            if (onAddSlot != null && onRemoveSlot != null) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = onAddSlot,
+                        enabled = variations.size < MAX_STATIC_VARIATION_SLOTS,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Add,
+                            contentDescription = "Add slot"
+                        )
+                    }
+                    IconButton(
+                        onClick = onRemoveSlot,
+                        enabled = variations.isNotEmpty(),
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.DeleteOutline,
+                            contentDescription = "Remove rightmost slot"
+                        )
+                    }
                 }
             }
         }
@@ -930,7 +1013,7 @@ private fun reorderEntries(
     val target = toIndex.coerceIn(0, mutable.size)
     mutable.add(target, movedItem)
     
-    return mutable.take(7)
+    return mutable
 }
 
 /**
@@ -963,8 +1046,44 @@ private fun updateVariationEntries(
     while (updatedEntries.isNotEmpty() && updatedEntries.last().isEmpty()) {
         updatedEntries.removeAt(updatedEntries.lastIndex)
     }
-    
+
     return updatedEntries.take(7)
+}
+
+/**
+ * Applies picker changes for static bar slots. Static rows preserve explicit trailing blanks
+ * because those blanks are user-added slots.
+ */
+private fun updateStaticVariationEntries(
+    currentEntries: List<String>,
+    index: Int?,
+    newValue: String
+): List<String> {
+    val targetIndex = index ?: return currentEntries
+    val updatedEntries = currentEntries.toMutableList()
+
+    while (updatedEntries.size <= targetIndex) {
+        updatedEntries.add("")
+    }
+
+    updatedEntries[targetIndex] = newValue
+    return updatedEntries.take(MAX_STATIC_VARIATION_SLOTS)
+}
+
+private fun saveStaticRows(
+    context: Context,
+    variations: Map<String, List<String>>,
+    staticVariations: List<String>,
+    staticVariationsShift: List<String>,
+    staticVariationsAlt: List<String>
+) {
+    SettingsManager.saveVariations(
+        context = context,
+        variations = variations,
+        staticVariations = staticVariations.take(MAX_STATIC_VARIATION_SLOTS),
+        staticVariationsShift = staticVariationsShift.take(MAX_STATIC_VARIATION_SLOTS),
+        staticVariationsAlt = staticVariationsAlt.take(MAX_STATIC_VARIATION_SLOTS)
+    )
 }
 
 private enum class StaticLayer {

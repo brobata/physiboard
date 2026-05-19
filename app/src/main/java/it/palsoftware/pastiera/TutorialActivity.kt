@@ -51,6 +51,7 @@ import it.palsoftware.pastiera.update.shouldUseGithubUpdateChecks
 import it.palsoftware.pastiera.inputmethod.DeviceSpecific
 import it.palsoftware.pastiera.inputmethod.SoftwareKeyboardAutoDetector
 import it.palsoftware.pastiera.inputmethod.TypingSoundPlayer
+import it.palsoftware.pastiera.data.variation.VariationRepository
 import java.util.Locale
 
 private const val ACTION_UNIHERTZ_GESTURE_NAVIGATION_SETTINGS = "com.android.settings.GESTURE_NAVIGATION_SETTINGS"
@@ -958,10 +959,17 @@ private fun applyDevsChoiceSettings(context: Context) {
     SettingsManager.setKeyboardLayoutAutoByLocale(context, false)
     SettingsManager.setKeyboardLayout(context, "qwertz")
     SettingsManager.setKeyboardLayoutList(context, listOf("qwertz"))
-    SettingsManager.setStaticVariationBarModeEnabled(context, true)
-    SettingsManager.saveStaticVariationBasePreset(
+    SettingsManager.setStaticVariationBarPreset(context, SettingsManager.STATIC_VARIATION_PRESET_DEV_CHOICE)
+    val activeVariations = VariationRepository.loadVariations(
+        assets = context.assets,
+        context = context
+    ).mapKeys { it.key.toString() }
+    SettingsManager.saveVariations(
         context = context,
-        staticVariations = SettingsManager.getDevChoiceStaticVariationBasePreset()
+        variations = activeVariations,
+        staticVariations = SettingsManager.getDevChoiceStaticVariationBasePreset(),
+        staticVariationsShift = SettingsManager.getDevChoiceStaticVariationBasePreset(),
+        staticVariationsAlt = SettingsManager.getDevChoiceStaticVariationBasePreset()
     )
 }
 

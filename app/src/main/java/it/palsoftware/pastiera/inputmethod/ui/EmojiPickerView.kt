@@ -125,9 +125,9 @@ class EmojiPickerView(
             textSize = 14f
             setSingleLine(true)
             inputType = InputType.TYPE_CLASS_TEXT
-            setBackgroundColor(Color.argb(30, 255, 255, 255))
-            val padH = dpToPx(10f)
-            val padV = dpToPx(6f)
+            background = createSearchFieldBackground()
+            val padH = dpToPx(8f)
+            val padV = dpToPx(5f)
             setPadding(padH, padV, padH, padV)
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -157,7 +157,8 @@ class EmojiPickerView(
         searchPanel = FrameLayout(context).apply {
             visibility = View.GONE
             setBackgroundColor(Color.rgb(24, 24, 24))
-            setPadding(smallPadding, 0, smallPadding, smallPadding)
+            val panelPadding = dpToPx(6f)
+            setPadding(panelPadding, panelPadding, panelPadding, panelPadding)
             layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -956,6 +957,14 @@ class EmojiPickerView(
             shape = GradientDrawable.RECTANGLE
             setColor(Color.argb(95, 220, 38, 38))
             cornerRadius = dpToPx(6f).toFloat()
+        }
+    }
+
+    private fun createSearchFieldBackground(): GradientDrawable {
+        return GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            setColor(Color.argb(36, 255, 255, 255))
+            cornerRadius = dpToPx(7f).toFloat()
         }
     }
 

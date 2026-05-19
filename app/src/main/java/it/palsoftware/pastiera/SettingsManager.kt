@@ -196,7 +196,7 @@ object SettingsManager {
     private val STATIC_VARIATION_BASE_PRESET_DEFAULT = listOf("@", "\"", ":", "!", "?", ",", ".")
     private val STATIC_VARIATION_BASE_PRESET_NUMBERS = listOf("0", "1", "2", "3", "4", "5", "6", "7", "8", "9")
     private val STATIC_VARIATION_BASE_PRESET_ALTERNATIVE = listOf("[", "]", "$", "%", "^", "&", "\\")
-    private val STATIC_VARIATION_BASE_PRESET_DEV_CHOICE = listOf("»", "«", ";", "!", "?", ",", ".")
+    private val STATIC_VARIATION_BASE_PRESET_DEV_CHOICE = listOf("»", "«", ";", "!", "?", ",", ".", "–", "%")
     private val STATIC_VARIATION_SHIFT_PRESET_DEFAULT = listOf("{", "}", "€", "=", "~", ";", "¿")
     private val STATIC_VARIATION_ALT_PRESET_DEFAULT = listOf("<", ">", "¥", "|", "`", "´", "°")
 
@@ -895,6 +895,15 @@ object SettingsManager {
             .putBoolean(KEY_STATIC_VARIATION_BAR_MODE, normalized != STATIC_VARIATION_PRESET_OFF)
             .putBoolean(KEY_STATIC_VARIATION_BAR_BASE_LAYER_ENABLED, normalized == STATIC_VARIATION_PRESET_ALTERNATIVE)
             .apply()
+
+        if (normalized != STATIC_VARIATION_PRESET_OFF) {
+            saveStaticVariationRows(
+                context = context,
+                staticVariations = getStaticVariationBasePreset(normalized),
+                staticVariationsShift = getStaticVariationShiftPreset(normalized),
+                staticVariationsAlt = getStaticVariationAltPreset(normalized)
+            )
+        }
     }
 
     /**
@@ -921,7 +930,11 @@ object SettingsManager {
      * Returns the top-row preset for the static variation bar based on toggle state.
      */
     fun getStaticVariationBasePreset(context: Context): List<String> {
-        return when (getStaticVariationBarPreset(context)) {
+        return getStaticVariationBasePreset(getStaticVariationBarPreset(context))
+    }
+
+    private fun getStaticVariationBasePreset(preset: String): List<String> {
+        return when (preset) {
             STATIC_VARIATION_PRESET_NUMBERS -> STATIC_VARIATION_BASE_PRESET_NUMBERS
             STATIC_VARIATION_PRESET_ALTERNATIVE -> STATIC_VARIATION_BASE_PRESET_ALTERNATIVE
             STATIC_VARIATION_PRESET_DEV_CHOICE -> STATIC_VARIATION_BASE_PRESET_DEV_CHOICE
@@ -932,6 +945,24 @@ object SettingsManager {
     fun getDefaultStaticVariationShiftPreset(): List<String> = STATIC_VARIATION_SHIFT_PRESET_DEFAULT
 
     fun getDefaultStaticVariationAltPreset(): List<String> = STATIC_VARIATION_ALT_PRESET_DEFAULT
+
+    private fun getStaticVariationShiftPreset(preset: String): List<String> {
+        return when (preset) {
+            STATIC_VARIATION_PRESET_NUMBERS -> STATIC_VARIATION_BASE_PRESET_NUMBERS
+            STATIC_VARIATION_PRESET_DEV_CHOICE -> STATIC_VARIATION_BASE_PRESET_DEV_CHOICE
+            else -> STATIC_VARIATION_SHIFT_PRESET_DEFAULT
+        }
+    }
+
+    private fun getStaticVariationAltPreset(preset: String): List<String> {
+        return when (preset) {
+            STATIC_VARIATION_PRESET_NUMBERS -> STATIC_VARIATION_BASE_PRESET_NUMBERS
+            STATIC_VARIATION_PRESET_DEV_CHOICE -> STATIC_VARIATION_BASE_PRESET_DEV_CHOICE
+            else -> STATIC_VARIATION_ALT_PRESET_DEFAULT
+        }
+    }
+
+    fun getStaticVariationNumbersPreset(): List<String> = STATIC_VARIATION_BASE_PRESET_NUMBERS
 
     fun getDevChoiceStaticVariationBasePreset(): List<String> = STATIC_VARIATION_BASE_PRESET_DEV_CHOICE
 
@@ -2530,6 +2561,40 @@ object SettingsManager {
             null
         }
     }
+
+    private fun saveStaticVariationRows(
+        context: Context,
+        staticVariations: List<String>,
+        staticVariationsShift: List<String>,
+        staticVariationsAlt: List<String>
+    ) {
+        try {
+            val currentJson = loadCurrentJson(context)
+            val jsonObject = if (currentJson != null) {
+                JSONObject(currentJson.toString())
+            } else {
+                JSONObject()
+            }
+
+            val baseArray = org.json.JSONArray()
+            staticVariations.forEach { baseArray.put(it) }
+            jsonObject.put("staticVariations", baseArray)
+
+            val shiftArray = org.json.JSONArray()
+            staticVariationsShift.forEach { shiftArray.put(it) }
+            jsonObject.put("staticVariationsShift", shiftArray)
+
+            val altArray = org.json.JSONArray()
+            staticVariationsAlt.forEach { altArray.put(it) }
+            jsonObject.put("staticVariationsAlt", altArray)
+
+            FileOutputStream(getVariationsFile(context)).use { outputStream ->
+                outputStream.write(jsonObject.toString(2).toByteArray())
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error saving static variation rows", e)
+        }
+    }
     
     /**
      * Saves variations to variations.json file in filesDir.
@@ -2596,7 +2661,7 @@ object SettingsManager {
         try {
             val jsonObject = loadCurrentJson(context) ?: JSONObject()
             val staticArray = org.json.JSONArray()
-            staticVariations.take(7).forEach { staticArray.put(it) }
+            staticVariations.forEach { staticArray.put(it) }
             jsonObject.put("staticVariations", staticArray)
 
             FileOutputStream(getVariationsFile(context)).use { outputStream ->
