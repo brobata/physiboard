@@ -31,6 +31,13 @@ class LedStatusView(
             context.resources.displayMetrics
         ).toInt()
     }
+    private val topPadding: Int by lazy {
+        TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            1f,
+            context.resources.displayMetrics
+        ).toInt()
+    }
     private val ledGap: Int by lazy {
         TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP,
@@ -60,7 +67,7 @@ class LedStatusView(
         container = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = android.view.Gravity.BOTTOM
-            setPadding(0, 0, 0, 0)
+            setPadding(0, topPadding, 0, 0)
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
@@ -137,6 +144,8 @@ class LedStatusView(
         val targetColor = when (symPage) {
             1 -> LED_COLOR_BLUE_ACTIVE
             2 -> LED_COLOR_RED_LOCKED
+            3 -> LED_COLOR_BLUE_ACTIVE
+            4 -> LED_COLOR_BLUE_ACTIVE
             else -> LED_COLOR_GRAY_OFF
         }
         animateLedColor(led, targetColor)
@@ -162,4 +171,3 @@ class LedStatusView(
         }.start()
     }
 }
-

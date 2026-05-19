@@ -11,6 +11,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputConnection
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.PopupMenu
 import android.widget.TextView
@@ -28,7 +29,8 @@ import it.palsoftware.pastiera.clipboard.ClipboardHistoryManager
  */
 class ClipboardHistoryView(
     context: Context,
-    private val clipboardHistoryManager: ClipboardHistoryManager
+    private val clipboardHistoryManager: ClipboardHistoryManager,
+    private val onCloseRequested: (() -> Unit)? = null
 ) : FrameLayout(context) {
 
     private val adapter = ClipboardHistoryAdapter()
@@ -154,6 +156,7 @@ class ClipboardHistoryView(
         scrollContainer.addView(emptyStateView)
         scrollContainer.addView(recyclerView)
         addView(scrollContainer)
+        addView(createCloseButton())
 
         // After layout, place the scroll container below the real header height
         header.post {
@@ -217,6 +220,36 @@ class ClipboardHistoryView(
             clipboardHistoryManager.getHistoryEntry(index)?.let { entries.add(it.copy()) }
         }
         return entries
+    }
+
+    private fun createCloseButton(): View {
+        val width = dpToPx(36f)
+        val height = dpToPx(32f)
+        val padding = dpToPx(4f)
+        return ImageView(context).apply {
+            setImageResource(R.drawable.ic_close_24)
+            setColorFilter(Color.WHITE)
+            contentDescription = context.getString(R.string.close)
+            background = createCloseButtonBackground()
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            setPadding(padding, padding, padding, padding)
+            isClickable = true
+            isFocusable = true
+            layoutParams = FrameLayout.LayoutParams(width, height).apply {
+                gravity = Gravity.BOTTOM or Gravity.END
+            }
+            setOnClickListener {
+                onCloseRequested?.invoke()
+            }
+        }
+    }
+
+    private fun createCloseButtonBackground(): GradientDrawable {
+        return GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            setColor(Color.argb(95, 220, 38, 38))
+            cornerRadius = dpToPx(6f).toFloat()
+        }
     }
 
     private fun showClipboardContextMenu(view: View, entry: ClipboardHistoryEntry) {
@@ -354,4 +387,3 @@ class ClipboardHistoryView(
         }
     }
 }
-

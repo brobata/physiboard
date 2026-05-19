@@ -68,12 +68,26 @@ class CandidatesBarController(
             inputStatusBar.onEmojiPickerRequested = value
             candidatesStatusBar.onEmojiPickerRequested = value
         }
+
+    var onEmojiPageRequested: (() -> Unit)? = null
+        set(value) {
+            field = value
+            inputStatusBar.onEmojiPageRequested = value
+            candidatesStatusBar.onEmojiPageRequested = value
+        }
     
     var onSymbolsPageRequested: (() -> Unit)? = null
         set(value) {
             field = value
             inputStatusBar.onSymbolsPageRequested = value
             candidatesStatusBar.onSymbolsPageRequested = value
+        }
+
+    var onSymCloseRequested: (() -> Unit)? = null
+        set(value) {
+            field = value
+            inputStatusBar.onSymCloseRequested = value
+            candidatesStatusBar.onSymCloseRequested = value
         }
 
     var onUndoRequested: (() -> Unit)? = null
@@ -142,19 +156,29 @@ class CandidatesBarController(
         return inputStatusBar.handleBackPressed() || candidatesStatusBar.handleBackPressed()
     }
 
-    fun handleEmojiPickerSearchKeyDown(event: KeyEvent?): Boolean {
-        return inputStatusBar.handleEmojiPickerSearchKeyDown(event) ||
-            candidatesStatusBar.handleEmojiPickerSearchKeyDown(event)
+    fun handleEmojiPickerSearchKeyDown(event: KeyEvent?, ctrlActive: Boolean): Boolean {
+        return inputStatusBar.handleEmojiPickerSearchKeyDown(event, ctrlActive) ||
+            candidatesStatusBar.handleEmojiPickerSearchKeyDown(event, ctrlActive)
     }
 
-    fun shouldConsumeEmojiPickerSearchKeyUp(event: KeyEvent?): Boolean {
-        return inputStatusBar.shouldConsumeEmojiPickerSearchKeyUp(event) ||
-            candidatesStatusBar.shouldConsumeEmojiPickerSearchKeyUp(event)
+    fun shouldConsumeEmojiPickerSearchKeyUp(event: KeyEvent?, ctrlActive: Boolean): Boolean {
+        return inputStatusBar.shouldConsumeEmojiPickerSearchKeyUp(event, ctrlActive) ||
+            candidatesStatusBar.shouldConsumeEmojiPickerSearchKeyUp(event, ctrlActive)
     }
 
     fun disableEmojiPickerSearchInputCapture() {
         inputStatusBar.disableEmojiPickerSearchInputCapture()
         candidatesStatusBar.disableEmojiPickerSearchInputCapture()
+    }
+
+    fun isEmojiPickerSearchInputActive(): Boolean {
+        return inputStatusBar.isEmojiPickerSearchInputActive() ||
+            candidatesStatusBar.isEmojiPickerSearchInputActive()
+    }
+
+    fun createEmojiPickerSearchInputConnection(): InputConnection? {
+        return inputStatusBar.createEmojiPickerSearchInputConnection()
+            ?: candidatesStatusBar.createEmojiPickerSearchInputConnection()
     }
 
     fun isMinimalUiActive(): Boolean = inputStatusBar.isMinimalUiActive()

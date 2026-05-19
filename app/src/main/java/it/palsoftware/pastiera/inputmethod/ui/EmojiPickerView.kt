@@ -8,6 +8,7 @@ import android.graphics.drawable.ColorDrawable
 import android.os.Build
 import android.text.Editable
 import android.text.InputType
+import android.text.Selection
 import android.text.TextWatcher
 import android.util.TypedValue
 import android.view.KeyEvent
@@ -15,7 +16,9 @@ import android.view.Gravity
 import android.view.View
 import android.view.View.MeasureSpec
 import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
+import android.view.inputmethod.InputConnectionWrapper
 import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
 import android.widget.ImageView
@@ -48,7 +51,8 @@ import kotlinx.coroutines.withContext
  * Emoji picker view: single vertical list with section headers and bottom tabs.
  */
 class EmojiPickerView(
-    context: Context
+    context: Context,
+    private val onCloseRequested: (() -> Unit)? = null
 ) : FrameLayout(context) {
 
     private var currentInputConnection: InputConnection? = null
@@ -60,6 +64,9 @@ class EmojiPickerView(
     private val tabRow: LinearLayout
     private val vertical: LinearLayout
     private val keyboardSwitcherButton: ImageView
+    private val searchPanel: FrameLayout
+    private val searchToggleButton: ImageView
+    private val closeButton: ImageView
 
     private var coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var loadingJob: Job? = null
@@ -90,6 +97,7 @@ class EmojiPickerView(
     private var searchQuery: String = ""
     private var searchJob: Job? = null
     private var isSearchMode: Boolean = false
+    private var isSearchPanelVisible: Boolean = false
     private var searchInputCaptureEnabled: Boolean = true
     private val selectedTabBackground = createTabBackground(true)
     private val unselectedTabBackground = createTabBackground(false)
@@ -144,18 +152,49 @@ class EmojiPickerView(
                 setSearchInputCaptureEnabled(!searchInputCaptureEnabled)
             }
         }
-        setSearchInputCaptureEnabled(true)
+        setSearchInputCaptureEnabled(false)
+
+        searchPanel = FrameLayout(context).apply {
+            visibility = View.GONE
+            setBackgroundColor(Color.rgb(24, 24, 24))
+            setPadding(smallPadding, 0, smallPadding, smallPadding)
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM
+            )
+            addView(searchField, FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM
+            ))
+        }
+
+        closeButton = ImageView(context).apply {
+            setImageResource(R.drawable.ic_close_24)
+            contentDescription = context.getString(R.string.close)
+            setColorFilter(Color.WHITE)
+            background = createCloseButtonBackground()
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            val pad = dpToPx(4f)
+            setPadding(pad, pad, pad, pad)
+            isClickable = true
+            isFocusable = true
+            layoutParams = LinearLayout.LayoutParams(dpToPx(36f), dpToPx(32f))
+            setOnClickListener {
+                onCloseRequested?.invoke()
+            }
+        }
 
         // RecyclerView with headers and emoji grid
         recyclerView = RecyclerView(context).apply {
             overScrollMode = View.OVER_SCROLL_ALWAYS
             setHasFixedSize(false)
             clipToPadding = false
-            setPadding(smallPadding, smallPadding, smallPadding, smallPadding)
-            layoutParams = LinearLayout.LayoutParams(
+            setPadding(smallPadding, smallPadding, smallPadding, smallPadding + dpToPx(44f))
+            layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                0,
-                1f
+                ViewGroup.LayoutParams.MATCH_PARENT
             )
         }
 
@@ -233,6 +272,23 @@ class EmojiPickerView(
 
         // Tabs at bottom (above LEDs) - full width, no scroll
         val tabHeight = dpToPx(32f) // Height cap
+        searchToggleButton = ImageView(context).apply {
+            setImageResource(R.drawable.ic_search_24)
+            contentDescription = context.getString(R.string.emoji_picker_search_label)
+            setColorFilter(Color.WHITE)
+            background = createTabBackground(false)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            val pad = dpToPx(4f)
+            setPadding(pad, pad, pad, pad)
+            isClickable = true
+            isFocusable = true
+            layoutParams = LinearLayout.LayoutParams(tabHeight, tabHeight).apply {
+                marginEnd = spacing
+            }
+            setOnClickListener {
+                setSearchPanelVisible(!isSearchPanelVisible)
+            }
+        }
         tabRow = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             layoutParams = LinearLayout.LayoutParams(
@@ -265,8 +321,17 @@ class EmojiPickerView(
             }
         }
 
-        vertical.addView(searchField)
-        vertical.addView(recyclerView)
+        vertical.addView(
+            FrameLayout(context).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    0,
+                    1f
+                )
+                addView(recyclerView)
+                addView(searchPanel)
+            }
+        )
         vertical.addView(
             LinearLayout(context).apply {
                 orientation = LinearLayout.HORIZONTAL
@@ -274,8 +339,10 @@ class EmojiPickerView(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     tabHeight
                 )
+                addView(searchToggleButton)
                 addView(keyboardSwitcherButton)
                 addView(tabScrollView, LinearLayout.LayoutParams(0, tabHeight, 1f))
+                addView(closeButton)
             }
         )
 
@@ -296,7 +363,12 @@ class EmojiPickerView(
     }
 
     fun configureSoftwareKeyboardMode(heightPx: Int?, onKeyboardLayoutRequested: (() -> Unit)?) {
-        val targetHeight = heightPx?.takeIf { it > 0 } ?: compactHeight
+        val configuredHeight = if (it.palsoftware.pastiera.SettingsManager.getEmojiPickerExpandedHeight(context)) {
+            (compactHeight * 1.5f).toInt()
+        } else {
+            compactHeight
+        }
+        val targetHeight = heightPx?.takeIf { it > 0 } ?: configuredHeight
         updateHeight(targetHeight)
         keyboardSwitcherButton.visibility = if (onKeyboardLayoutRequested != null) View.VISIBLE else View.GONE
         keyboardSwitcherButton.setOnClickListener {
@@ -319,13 +391,43 @@ class EmojiPickerView(
         loadCategories()
     }
 
+    fun isSearchInputActive(): Boolean {
+        return isSearchPanelVisible && searchInputCaptureEnabled
+    }
+
+    fun createSearchInputConnection(): InputConnection? {
+        if (!isSearchInputActive()) return null
+        focusSearchField()
+        val baseConnection = searchField.onCreateInputConnection(EditorInfo()) ?: return null
+        return object : InputConnectionWrapper(baseConnection, true) {
+            override fun sendKeyEvent(event: KeyEvent): Boolean {
+                return handleSearchInputConnectionKeyEvent(event) || super.sendKeyEvent(event)
+            }
+
+            override fun performContextMenuAction(id: Int): Boolean {
+                return searchField.onTextContextMenuItem(id) || super.performContextMenuAction(id)
+            }
+        }
+    }
+
     /**
      * IME hardware keys do not automatically target this EditText.
      * Handle printable keys manually while emoji picker page is open.
      */
-    fun handleSearchKeyDown(event: KeyEvent): Boolean {
+    fun handleSearchKeyDown(event: KeyEvent, ctrlActive: Boolean = event.isCtrlPressed): Boolean {
+        if (!isSearchPanelVisible) return false
         if (!searchInputCaptureEnabled) return false
-        if (event.isCtrlPressed || event.isAltPressed || event.isMetaPressed) return false
+        if (event.isAltPressed || event.isMetaPressed) return false
+        if (ctrlActive) {
+            focusSearchField()
+            val ctrlEvent = event.withCtrlMeta()
+            return searchField.onKeyShortcut(ctrlEvent.keyCode, ctrlEvent) ||
+                searchField.dispatchKeyEvent(ctrlEvent)
+        }
+        focusSearchField()
+        if (searchField.dispatchKeyEvent(event)) {
+            return true
+        }
 
         return when (event.keyCode) {
             KeyEvent.KEYCODE_DEL -> {
@@ -352,8 +454,15 @@ class EmojiPickerView(
     }
 
     fun shouldConsumeSearchKeyUp(event: KeyEvent): Boolean {
+        if (!isSearchPanelVisible) return false
         if (!searchInputCaptureEnabled) return false
-        if (event.isCtrlPressed || event.isAltPressed || event.isMetaPressed) return false
+        if (event.isAltPressed || event.isMetaPressed) return false
+        if (event.isCtrlPressed) {
+            focusSearchField()
+            return searchField.onKeyShortcut(event.keyCode, event) ||
+                searchField.dispatchKeyEvent(event) ||
+                isTextEditingCtrlShortcut(event.keyCode)
+        }
         return when (event.keyCode) {
             KeyEvent.KEYCODE_DEL,
             KeyEvent.KEYCODE_SPACE,
@@ -364,6 +473,98 @@ class EmojiPickerView(
                 unicode > 0 && !Character.isISOControl(unicode.toChar())
             }
         }
+    }
+
+    fun shouldConsumeSearchKeyUp(event: KeyEvent, ctrlActive: Boolean): Boolean {
+        if (!isSearchPanelVisible) return false
+        if (!searchInputCaptureEnabled) return false
+        if (ctrlActive) {
+            return true
+        }
+        return shouldConsumeSearchKeyUp(event)
+    }
+
+    private fun handleSearchInputConnectionKeyEvent(event: KeyEvent): Boolean {
+        if (event.action != KeyEvent.ACTION_DOWN) {
+            return event.keyCode == KeyEvent.KEYCODE_DPAD_LEFT ||
+                event.keyCode == KeyEvent.KEYCODE_DPAD_RIGHT ||
+                event.keyCode == KeyEvent.KEYCODE_DPAD_UP ||
+                event.keyCode == KeyEvent.KEYCODE_DPAD_DOWN ||
+                event.keyCode == KeyEvent.KEYCODE_PAGE_UP ||
+                event.keyCode == KeyEvent.KEYCODE_PAGE_DOWN
+        }
+
+        return when (event.keyCode) {
+            KeyEvent.KEYCODE_DPAD_LEFT -> {
+                moveSearchCursorBy(-1)
+                true
+            }
+            KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                moveSearchCursorBy(1)
+                true
+            }
+            KeyEvent.KEYCODE_DPAD_UP,
+            KeyEvent.KEYCODE_PAGE_UP -> {
+                setSearchSelection(0)
+                true
+            }
+            KeyEvent.KEYCODE_DPAD_DOWN,
+            KeyEvent.KEYCODE_PAGE_DOWN -> {
+                setSearchSelection(searchField.text?.length ?: 0)
+                true
+            }
+            else -> false
+        }
+    }
+
+    private fun moveSearchCursorBy(delta: Int) {
+        val text = searchField.text ?: return
+        if (text.isEmpty()) {
+            setSearchSelection(0)
+            return
+        }
+        val anchor = if (delta < 0) {
+            minOf(searchField.selectionStart, searchField.selectionEnd)
+        } else {
+            maxOf(searchField.selectionStart, searchField.selectionEnd)
+        }.coerceIn(0, text.length)
+        setSearchSelection((anchor + delta).coerceIn(0, text.length))
+    }
+
+    private fun setSearchSelection(index: Int) {
+        val text = searchField.text ?: return
+        Selection.setSelection(text, index.coerceIn(0, text.length))
+    }
+
+    private fun isTextEditingCtrlShortcut(keyCode: Int): Boolean {
+        return keyCode == KeyEvent.KEYCODE_A ||
+            keyCode == KeyEvent.KEYCODE_C ||
+            keyCode == KeyEvent.KEYCODE_X ||
+            keyCode == KeyEvent.KEYCODE_V
+    }
+
+    private fun focusSearchField() {
+        if (!searchField.hasFocus()) {
+            searchField.requestFocus()
+        }
+    }
+
+    private fun KeyEvent.withCtrlMeta(): KeyEvent {
+        if (isCtrlPressed) {
+            return this
+        }
+        return KeyEvent(
+            downTime,
+            eventTime,
+            action,
+            keyCode,
+            repeatCount,
+            metaState or KeyEvent.META_CTRL_ON or KeyEvent.META_CTRL_LEFT_ON,
+            deviceId,
+            scanCode,
+            flags,
+            source
+        )
     }
     
     /**
@@ -459,6 +660,16 @@ class EmojiPickerView(
             }
         } else {
             searchField.clearFocus()
+        }
+    }
+
+    private fun setSearchPanelVisible(visible: Boolean) {
+        isSearchPanelVisible = visible
+        searchPanel.visibility = if (visible) View.VISIBLE else View.GONE
+        searchToggleButton.background = if (visible) selectedTabBackground else unselectedTabBackground
+        setSearchInputCaptureEnabled(visible)
+        if (visible) {
+            searchField.requestFocus()
         }
     }
 
@@ -736,6 +947,14 @@ class EmojiPickerView(
             // Selected: visible background, not selected: transparent
             val color = if (isSelected) Color.argb(100, 255, 255, 255) else Color.argb(0, 255, 255, 255)
             setColor(color)
+            cornerRadius = dpToPx(6f).toFloat()
+        }
+    }
+
+    private fun createCloseButtonBackground(): GradientDrawable {
+        return GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            setColor(Color.argb(95, 220, 38, 38))
             cornerRadius = dpToPx(6f).toFloat()
         }
     }

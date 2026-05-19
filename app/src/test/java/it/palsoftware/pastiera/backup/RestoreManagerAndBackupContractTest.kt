@@ -71,6 +71,14 @@ class RestoreManagerAndBackupContractTest {
     }
 
     @Test
+    fun symPreferences_areRecognizedForRestore() {
+        assertEquals(
+            PreferenceValueType.BOOLEAN,
+            PreferenceSchemas.expectedType("pastiera_prefs", "emoji_picker_expanded_height")
+        )
+    }
+
+    @Test
     fun shouldNotifyUserDictionaryRefresh_whenUserDictionaryPrefsRestored() {
         val prefs = PreferencesRestoreSummary(
             appliedKeys = listOf("pastiera_prefs:user_dictionary_entries"),

@@ -107,12 +107,16 @@ class StatusBarController(
             field = value
             variationBarView?.onEmojiPickerRequested = value
         }
+
+    var onEmojiPageRequested: (() -> Unit)? = null
     
     var onSymbolsPageRequested: (() -> Unit)? = null
         set(value) {
             field = value
             variationBarView?.onSymbolsPageRequested = value
         }
+
+    var onSymCloseRequested: (() -> Unit)? = null
 
     var onUndoRequested: (() -> Unit)? = null
         set(value) {
@@ -245,6 +249,9 @@ class StatusBarController(
     private var statusBarLayout: LinearLayout? = null
     private var modifiersContainer: LinearLayout? = null
     private var emojiMapTextView: TextView? = null
+    private var symSurfaceContainer: FrameLayout? = null
+    private var symSurfaceStack: LinearLayout? = null
+    private var symSurfaceCloseButton: View? = null
     private var emojiKeyboardContainer: LinearLayout? = null
     private var emojiKeyboardHorizontalPaddingPx: Int = 0
     private var emojiKeyboardBottomPaddingPx: Int = 0
@@ -327,6 +334,8 @@ class StatusBarController(
         if (statusBarLayout == null) {
             statusBarLayout = LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
+                clipChildren = true
+                clipToPadding = true
                 layoutParams = ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT
@@ -422,6 +431,31 @@ class StatusBarController(
             val ledStrip = ledStatusView.ensureView()
             ledStatusView.onLongPressListener = { handleMinimalUiToggleFromMenu() }
 
+            symSurfaceStack = LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
+                clipChildren = true
+                clipToPadding = true
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+                setBackgroundColor(DEFAULT_BACKGROUND)
+                addView(emojiKeyboardContainer)
+                addView(ledStrip)
+            }
+            symSurfaceCloseButton = createSurfaceCloseButton()
+            symSurfaceContainer = FrameLayout(context).apply {
+                clipChildren = true
+                clipToPadding = true
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+                setBackgroundColor(DEFAULT_BACKGROUND)
+                addView(symSurfaceStack)
+                addView(symSurfaceCloseButton)
+            }
+
             statusBarLayout?.apply {
                 // Full-width suggestions bar above the rest
                 fullSuggestionsBar = FullSuggestionsBar(
@@ -450,8 +484,7 @@ class StatusBarController(
                 addView(fullSuggestionsBar?.ensureView())
                 addView(modifiersContainer)
                 variationsWrapper?.let { addView(it) }
-                addView(emojiKeyboardContainer) // Griglia emoji prima dei LED
-                addView(ledStrip) // LED sempre in fondo
+                addView(symSurfaceContainer)
             }
             applyAccessibilitySecondRowReadPreference()
             statusBarLayout?.let { ViewCompat.requestApplyInsets(it) }
@@ -521,18 +554,26 @@ class StatusBarController(
         return false
     }
 
-    fun handleEmojiPickerSearchKeyDown(event: KeyEvent?): Boolean {
+    fun handleEmojiPickerSearchKeyDown(event: KeyEvent?, ctrlActive: Boolean): Boolean {
         if (event == null) return false
-        return emojiPickerView?.handleSearchKeyDown(event) == true
+        return emojiPickerView?.handleSearchKeyDown(event, ctrlActive) == true
     }
 
-    fun shouldConsumeEmojiPickerSearchKeyUp(event: KeyEvent?): Boolean {
+    fun shouldConsumeEmojiPickerSearchKeyUp(event: KeyEvent?, ctrlActive: Boolean): Boolean {
         if (event == null) return false
-        return emojiPickerView?.shouldConsumeSearchKeyUp(event) == true
+        return emojiPickerView?.shouldConsumeSearchKeyUp(event, ctrlActive) == true
     }
 
     fun disableEmojiPickerSearchInputCapture() {
         emojiPickerView?.disableSearchInputCapture()
+    }
+
+    fun isEmojiPickerSearchInputActive(): Boolean {
+        return emojiPickerView?.isSearchInputActive() == true
+    }
+
+    fun createEmojiPickerSearchInputConnection(): android.view.inputmethod.InputConnection? {
+        return emojiPickerView?.createSearchInputConnection()
     }
 
     private fun openSettings() {
@@ -651,10 +692,12 @@ class StatusBarController(
         val manager = clipboardHistoryManager ?: return
         val container = emojiKeyboardContainer ?: return
         // Clipboard page should be edge-to-edge; remove the SYM container side padding.
-        container.setPadding(0, 0, 0, emojiKeyboardBottomPaddingPx)
+        container.setPadding(0, 0, 0, 0)
 
         // Reuse the same view to avoid flicker caused by removeAllViews()/recreate on each status update.
-        val view = clipboardHistoryView ?: ClipboardHistoryView(context, manager).also { clipboardHistoryView = it }
+        val view = clipboardHistoryView ?: ClipboardHistoryView(context, manager) {
+            onSymCloseRequested?.invoke()
+        }.also { clipboardHistoryView = it }
         if (view.parent !== container) {
             container.removeAllViews()
             emojiKeyButtons.clear()
@@ -681,10 +724,12 @@ class StatusBarController(
     ) {
         val container = emojiKeyboardContainer ?: return
         // Emoji picker page should be edge-to-edge; remove the SYM container side padding.
-        container.setPadding(0, 0, 0, emojiKeyboardBottomPaddingPx)
+        container.setPadding(0, 0, 0, 0)
 
         // Reuse the same view to avoid flicker caused by removeAllViews()/recreate on each status update.
-        val view = emojiPickerView ?: EmojiPickerView(context).also { emojiPickerView = it }
+        val view = emojiPickerView ?: EmojiPickerView(context) {
+            onSymCloseRequested?.invoke()
+        }.also { emojiPickerView = it }
         val wasJustAdded = view.parent !== container
         if (wasJustAdded) {
             container.removeAllViews()
@@ -716,7 +761,7 @@ class StatusBarController(
     private fun updateEmojiKeyboard(symMappings: Map<Int, String>, page: Int, inputConnection: android.view.inputmethod.InputConnection? = null) {
         val container = emojiKeyboardContainer ?: return
         // Restore default padding for emoji/symbols pages.
-        container.setPadding(emojiKeyboardHorizontalPaddingPx, 0, emojiKeyboardHorizontalPaddingPx, emojiKeyboardBottomPaddingPx)
+        container.setPadding(emojiKeyboardHorizontalPaddingPx, 0, emojiKeyboardHorizontalPaddingPx, 0)
         val inputConnectionChanged = lastInputConnectionUsed != inputConnection
         val inputConnectionBecameAvailable = lastInputConnectionUsed == null && inputConnection != null
         if (lastSymPageRendered == page && lastSymMappingsRendered == symMappings && !inputConnectionChanged && !inputConnectionBecameAvailable) {
@@ -806,15 +851,15 @@ class StatusBarController(
                         }
                         rowLayout.addView(View(context), LinearLayout.LayoutParams(fixedKeyWidth, keyHeight))
                     }
-                    2 -> { // Row 3: Z X C V [Close] [Globe] B N M [Gap]
+                    2 -> { // Row 3: Z X C V [Editor] [Globe] B N M [Close]
                         // Z X C V (4 keys)
                         for (i in 0..3) {
                             addKeyToRow(rowLayout, row[i], symMappings, fixedKeyWidth, keyHeight, keySpacing, page, inputConnection, false)
                         }
                         
-                        // Close Button (left part of spacebar area)
-                        val hideKeyboardButton = createHideKeyboardButton(keyHeight, fixedKeyWidth)
-                        rowLayout.addView(hideKeyboardButton)
+                        // Editor button (left part of spacebar area)
+                        val editorButton = createSymEditorButton(keyHeight, fixedKeyWidth, page)
+                        rowLayout.addView(editorButton)
                         rowLayout.addView(View(context), LinearLayout.LayoutParams(keySpacing, keyHeight))
                         
                         // Globe Button (right part of spacebar area)
@@ -827,7 +872,6 @@ class StatusBarController(
                             addKeyToRow(rowLayout, row[i], symMappings, fixedKeyWidth, keyHeight, keySpacing, page, inputConnection, false)
                         }
 
-                        // Right Gap (placeholder for the physical cutout/space at the end of row 3)
                         rowLayout.addView(View(context), LinearLayout.LayoutParams(fixedKeyWidth, keyHeight))
                     }
                 }
@@ -840,7 +884,7 @@ class StatusBarController(
             
             // Per la terza riga, aggiungi placeholder con emoji picker button a sinistra
             if (rowIndex == 2) {
-                val leftPlaceholder = createPlaceholderWithEmojiPickerButton(keyHeight)
+                val leftPlaceholder = createPlaceholderWithEmojiPickerButton(keyHeight, page)
                 rowLayout.addView(leftPlaceholder, LinearLayout.LayoutParams(fixedKeyWidth, keyHeight).apply {
                     marginEnd = keySpacing
                 })
@@ -852,45 +896,18 @@ class StatusBarController(
                 
                 val keyButton = createEmojiKeyButton(label, content, keyHeight, page)
                 emojiKeyButtons.add(keyButton)
+                keyButton.isLongClickable = true
+                keyButton.setOnLongClickListener {
+                    openSymCustomization(page = page, keyCode = keyCode, openPicker = true)
+                    true
+                }
                 
                 // Aggiungi click listener per rendere il pulsante touchabile
                 if (content.isNotEmpty() && inputConnection != null) {
                     keyButton.isClickable = true
                     keyButton.isFocusable = true
-                    
-                    // Usa solo OnTouchListener per feedback + click (più efficiente)
-                    val originalBackground = keyButton.background as? GradientDrawable
-                    if (originalBackground != null) {
-                        val normalColor = Color.argb(40, 255, 255, 255)
-                        val pressedColor = Color.argb(80, 255, 255, 255)
-                        
-                        keyButton.setOnTouchListener { view, motionEvent ->
-                            when (motionEvent.action) {
-                                android.view.MotionEvent.ACTION_DOWN -> {
-                                    originalBackground.setColor(pressedColor)
-                                    view.postInvalidate()
-                                    true // Consuma per feedback immediato
-                                }
-                                android.view.MotionEvent.ACTION_UP -> {
-                                    originalBackground.setColor(normalColor)
-                                    view.postInvalidate()
-                                    // Esegui commitText direttamente hier (più veloce)
-                                    inputConnection.commitText(content, 1)
-                                    true
-                                }
-                                android.view.MotionEvent.ACTION_CANCEL -> {
-                                    originalBackground.setColor(normalColor)
-                                    view.postInvalidate()
-                                    true
-                                }
-                                else -> false
-                            }
-                        }
-                    } else {
-                        // Fallback: solo click listener se non c'è background
-                        keyButton.setOnClickListener {
-                            inputConnection.commitText(content, 1)
-                        }
+                    keyButton.setOnClickListener {
+                        inputConnection.commitText(content, 1)
                     }
                 }
                 
@@ -905,8 +922,11 @@ class StatusBarController(
             
             // Per la terza riga, aggiungi placeholder con icona matita a destra
             if (rowIndex == 2) {
-                val rightPlaceholder = createPlaceholderWithPencilButton(keyHeight)
+                val rightPlaceholder = createPlaceholderWithPencilButton(keyHeight, page)
                 rowLayout.addView(rightPlaceholder, LinearLayout.LayoutParams(fixedKeyWidth, keyHeight).apply {
+                    marginStart = keySpacing
+                })
+                rowLayout.addView(View(context), LinearLayout.LayoutParams(fixedKeyWidth, keyHeight).apply {
                     marginStart = keySpacing
                 })
             }
@@ -1247,7 +1267,7 @@ class StatusBarController(
     /**
      * Crea un placeholder con icona emoji per aprire l'emoji picker (symPage 4).
      */
-    private fun createPlaceholderWithEmojiPickerButton(height: Int): View {
+    private fun createPlaceholderWithEmojiPickerButton(height: Int, page: Int): View {
         val placeholder = FrameLayout(context).apply {
             setPadding(0, 0, 0, 0)
             layoutParams = FrameLayout.LayoutParams(
@@ -1266,7 +1286,7 @@ class StatusBarController(
         
         val button = ImageView(context).apply {
             background = null
-            setImageResource(R.drawable.ic_sentiment_satisfied_24)
+            setImageResource(if (page == 1) R.drawable.ic_emoji_symbols_24 else R.drawable.ic_sentiment_satisfied_24)
             setColorFilter(Color.WHITE)
             contentDescription = context.getString(R.string.status_bar_button_emoji_description)
             scaleType = ImageView.ScaleType.FIT_CENTER
@@ -1284,7 +1304,11 @@ class StatusBarController(
         }
         
         button.setOnClickListener {
-            onEmojiPickerRequested?.invoke()
+            if (page == 1) {
+                onSymbolsPageRequested?.invoke()
+            } else {
+                onEmojiPageRequested?.invoke()
+            }
         }
         
         placeholder.addView(button)
@@ -1294,7 +1318,7 @@ class StatusBarController(
     /**
      * Crea un placeholder con icona matita per aprire la schermata di personalizzazione SYM.
      */
-    private fun createPlaceholderWithPencilButton(height: Int): View {
+    private fun createPlaceholderWithPencilButton(height: Int, page: Int): View {
         val placeholder = FrameLayout(context).apply {
             setPadding(0, 0, 0, 0)
             layoutParams = FrameLayout.LayoutParams(
@@ -1333,27 +1357,60 @@ class StatusBarController(
         }
         
         button.setOnClickListener {
-            // Save current SYM page state temporarily (will be confirmed only if user presses back)
-            val prefs = context.getSharedPreferences("pastiera_prefs", Context.MODE_PRIVATE)
-            val currentSymPage = prefs.getInt("current_sym_page", 0)
-            if (currentSymPage > 0) {
-                // Save as pending - will be converted to restore only if user presses back
-                SettingsManager.setPendingRestoreSymPage(context, currentSymPage)
-            }
-            
-            // Apri SymCustomizationActivity direttamente
-            val intent = Intent(context, SymCustomizationActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            }
-            try {
-                context.startActivity(intent)
-            } catch (e: Exception) {
-                Log.e(TAG, "Errore nell'apertura della schermata di personalizzazione SYM", e)
-            }
+            openSymCustomization(page = page, keyCode = null, openPicker = false)
         }
         
         placeholder.addView(button)
         return placeholder
+    }
+
+    private fun createSymEditorButton(height: Int, width: Int, page: Int): View {
+        val button = FrameLayout(context).apply {
+            layoutParams = LinearLayout.LayoutParams(width, height)
+            isClickable = true
+            isFocusable = true
+            contentDescription = context.getString(R.string.sym_customization_button)
+        }
+        val icon = ImageView(context).apply {
+            setImageResource(R.drawable.ic_edit_24)
+            setColorFilter(Color.WHITE)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            val padding = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP,
+                12f,
+                context.resources.displayMetrics
+            ).toInt()
+            setPadding(padding, padding, padding, padding)
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        }
+        button.addView(icon)
+        button.setOnClickListener {
+            openSymCustomization(page = page, keyCode = null, openPicker = false)
+        }
+        return button
+    }
+
+    private fun openSymCustomization(page: Int, keyCode: Int?, openPicker: Boolean) {
+        val prefs = context.getSharedPreferences("pastiera_prefs", Context.MODE_PRIVATE)
+        val currentSymPage = prefs.getInt("current_sym_page", 0)
+        if (currentSymPage > 0) {
+            SettingsManager.setPendingRestoreSymPage(context, currentSymPage)
+        }
+
+        val intent = Intent(context, SymCustomizationActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(SymCustomizationActivity.EXTRA_INITIAL_PAGE, page)
+            keyCode?.let { putExtra(SymCustomizationActivity.EXTRA_INITIAL_KEY_CODE, it) }
+            putExtra(SymCustomizationActivity.EXTRA_OPEN_PICKER, openPicker)
+        }
+        try {
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            Log.e(TAG, "Errore nell'apertura della schermata di personalizzazione SYM", e)
+        }
     }
     
     /**
@@ -1462,17 +1519,74 @@ class StatusBarController(
             setImageResource(R.drawable.ic_close_24)
             setColorFilter(Color.WHITE)
             scaleType = ImageView.ScaleType.CENTER_INSIDE
+            background = createCloseButtonBackground()
+            val padding = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP,
+                4f,
+                context.resources.displayMetrics
+            ).toInt()
+            setPadding(padding, padding, padding, padding)
             layoutParams = FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
+                TypedValue.applyDimension(
+                    TypedValue.COMPLEX_UNIT_DIP,
+                    36f,
+                    context.resources.displayMetrics
+                ).toInt(),
+                TypedValue.applyDimension(
+                    TypedValue.COMPLEX_UNIT_DIP,
+                    32f,
+                    context.resources.displayMetrics
+                ).toInt(),
+                Gravity.BOTTOM or Gravity.END
             )
         }
         button.addView(icon)
         button.setOnClickListener {
-            val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
-            imm?.hideSoftInputFromWindow(button.windowToken, 0)
+            if (onSymCloseRequested != null) {
+                onSymCloseRequested?.invoke()
+            } else {
+                val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+                imm?.hideSoftInputFromWindow(button.windowToken, 0)
+            }
         }
         return button
+    }
+
+    private fun createSurfaceCloseButton(): View {
+        val buttonSize = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            36f,
+            context.resources.displayMetrics
+        ).toInt()
+        val buttonHeight = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            32f,
+            context.resources.displayMetrics
+        ).toInt()
+        val padding = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            4f,
+            context.resources.displayMetrics
+        ).toInt()
+        return ImageView(context).apply {
+            setImageResource(R.drawable.ic_close_24)
+            setColorFilter(Color.WHITE)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            background = createCloseButtonBackground()
+            contentDescription = context.getString(R.string.close)
+            setPadding(padding, padding, padding, padding)
+            isClickable = true
+            isFocusable = true
+            visibility = View.GONE
+            layoutParams = FrameLayout.LayoutParams(
+                buttonSize,
+                buttonHeight,
+                Gravity.BOTTOM or Gravity.END
+            )
+            setOnClickListener {
+                onSymCloseRequested?.invoke()
+            }
+        }
     }
 
     private fun createKeyboardSelectionButton(height: Int, width: Int): View {
@@ -1497,6 +1611,18 @@ class StatusBarController(
             imm?.showInputMethodPicker()
         }
         return button
+    }
+
+    private fun createCloseButtonBackground(): GradientDrawable {
+        return GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            setColor(Color.argb(95, 220, 38, 38))
+            cornerRadius = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP,
+                6f,
+                context.resources.displayMetrics
+            )
+        }
     }
 
     private fun addKeyToRow(
@@ -1524,35 +1650,17 @@ class StatusBarController(
         val label = keyLabels[keyCode] ?: ""
         val content = symMappings[keyCode] ?: ""
         val keyButton = createEmojiKeyButton(label, content, height, page)
+        keyButton.isLongClickable = true
+        keyButton.setOnLongClickListener {
+            openSymCustomization(page = page, keyCode = keyCode, openPicker = true)
+            true
+        }
         
         if (content.isNotEmpty() && inputConnection != null) {
             keyButton.isClickable = true
             keyButton.isFocusable = true
-            val originalBackground = keyButton.background as? GradientDrawable
-            if (originalBackground != null) {
-                val normalColor = Color.argb(40, 255, 255, 255)
-                val pressedColor = Color.argb(80, 255, 255, 255)
-                keyButton.setOnTouchListener { view, motionEvent ->
-                    when (motionEvent.action) {
-                        android.view.MotionEvent.ACTION_DOWN -> {
-                            originalBackground.setColor(pressedColor)
-                            view.postInvalidate()
-                            true
-                        }
-                        android.view.MotionEvent.ACTION_UP -> {
-                            originalBackground.setColor(normalColor)
-                            view.postInvalidate()
-                            inputConnection.commitText(content, 1)
-                            true
-                        }
-                        android.view.MotionEvent.ACTION_CANCEL -> {
-                            originalBackground.setColor(normalColor)
-                            view.postInvalidate()
-                            true
-                        }
-                        else -> false
-                    }
-                }
+            keyButton.setOnClickListener {
+                inputConnection.commitText(content, 1)
             }
         }
         
@@ -1915,6 +2023,8 @@ class StatusBarController(
         val modifiersContainerView = modifiersContainer ?: return
         val emojiView = emojiMapTextView ?: return
         val emojiKeyboardView = emojiKeyboardContainer ?: return
+        val symSurfaceView = symSurfaceContainer ?: return
+        val symSurfaceStackView = symSurfaceStack ?: return
         emojiView.visibility = View.GONE
         
         if (snapshot.navModeActive) {
@@ -1931,8 +2041,9 @@ class StatusBarController(
         }
         
         modifiersContainerView.visibility = View.GONE
-        ledStatusView.getView()?.visibility = if (isFullSoftwareKeyboardMode) View.GONE else View.VISIBLE
-        if (!isFullSoftwareKeyboardMode) {
+        val showLedStrip = !isFullSoftwareKeyboardMode || snapshot.symPage == 4
+        ledStatusView.getView()?.visibility = if (showLedStrip) View.VISIBLE else View.GONE
+        if (showLedStrip) {
             ledStatusView.update(snapshot)
         }
         val variationsBar = if (!forceMinimalUi) variationBarView else null
@@ -1981,20 +2092,12 @@ class StatusBarController(
             val animationHeight = if (measured > 0) measured else defaultSymHeightPx
             emojiKeyboardView.setBackgroundColor(DEFAULT_BACKGROUND)
             emojiKeyboardView.visibility = View.VISIBLE
-            // Use weight so the clipboard grid scrolls and leaves room for LED strip
-            emojiKeyboardView.layoutParams = (emojiKeyboardView.layoutParams as? LinearLayout.LayoutParams
-                ?: LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    0,
-                    1f
-                )).apply {
-                width = ViewGroup.LayoutParams.MATCH_PARENT
-                height = 0
-                weight = 1f
-            }
+            val surfaceHeight = resolveSurfaceHeightWithOptionalLed(animationHeight, showLedStrip)
+            setSurfaceCloseVisible(false)
+            applySymSurfaceLayout(symSurfaceView, symSurfaceStackView, emojiKeyboardView, surfaceHeight, reserveLedSpace = showLedStrip)
             if (!symShown && !wasSymActive) {
                 emojiKeyboardView.alpha = 1f
-                emojiKeyboardView.translationY = animationHeight.toFloat()
+                emojiKeyboardView.translationY = surfaceHeight.toFloat()
                 animateEmojiKeyboardIn(emojiKeyboardView, layout)
                 symShown = true
                 wasSymActive = true
@@ -2026,10 +2129,14 @@ class StatusBarController(
             lastSoftwareKeyboardHeight = keyboardHeight
             emojiKeyboardView.setBackgroundColor(DEFAULT_BACKGROUND)
             emojiKeyboardView.visibility = View.VISIBLE
-            emojiKeyboardView.layoutParams = (emojiKeyboardView.layoutParams ?: LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                keyboardHeight
-            )).apply { height = keyboardHeight }
+            applySymSurfaceLayout(
+                symSurfaceView,
+                symSurfaceStackView,
+                emojiKeyboardView,
+                resolveSurfaceHeightWithOptionalLed(keyboardHeight, showLedStrip),
+                reserveLedSpace = showLedStrip
+            )
+            setSurfaceCloseVisible(false)
             return
         } else {
             softwareKeyboardShown = false
@@ -2075,19 +2182,20 @@ class StatusBarController(
             }
 
             val measured = ensureEmojiKeyboardMeasuredHeight(emojiKeyboardView, layout, forceReMeasure = true)
-            val symHeight = if (isFullSoftwareKeyboardMode && lastSoftwareKeyboardHeight > 0) {
-                lastSoftwareKeyboardHeight
-            } else if (measured > 0) measured else defaultSymHeightPx
-            lastSymHeight = symHeight
+            val symHeight = resolveSymSurfaceHeight(
+                snapshot = snapshot,
+                measuredHeight = measured,
+                isFullSoftwareKeyboardMode = isFullSoftwareKeyboardMode
+            )
+            val surfaceHeight = resolveSurfaceHeightWithOptionalLed(symHeight, showLedStrip)
+            lastSymHeight = surfaceHeight
             emojiKeyboardView.setBackgroundColor(DEFAULT_BACKGROUND)
             emojiKeyboardView.visibility = View.VISIBLE
-            emojiKeyboardView.layoutParams = (emojiKeyboardView.layoutParams ?: LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                symHeight
-            )).apply { height = symHeight }
+            applySymSurfaceLayout(symSurfaceView, symSurfaceStackView, emojiKeyboardView, surfaceHeight, reserveLedSpace = showLedStrip)
+            setSurfaceCloseVisible(snapshot.symPage in 1..2)
             if (!symShown && !wasSymActive) {
                 emojiKeyboardView.alpha = 1f // keep black visible immediately
-                emojiKeyboardView.translationY = symHeight.toFloat()
+                emojiKeyboardView.translationY = surfaceHeight.toFloat()
                 animateEmojiKeyboardIn(emojiKeyboardView, layout)
                 symShown = true
                 wasSymActive = true
@@ -2110,6 +2218,8 @@ class StatusBarController(
                     snapshot.copy(suggestions = emptyList(), addWordCandidate = null)
                 } else snapshot
                 variationsBar?.showVariations(snapshotForVariations, inputConnection)
+                setSurfaceCloseVisible(false)
+                resetSymSurfaceToLedOnly(symSurfaceView)
             }
             symShown = false
             wasSymActive = false
@@ -2125,6 +2235,8 @@ class StatusBarController(
                 snapshot.copy(suggestions = emptyList(), addWordCandidate = null)
             } else snapshot
             variationsBar?.showVariations(snapshotForVariations, inputConnection)
+            setSurfaceCloseVisible(false)
+            resetSymSurfaceToLedOnly(symSurfaceView)
             symShown = false
             wasSymActive = false
             lastSymPageRendered = 0 // Reset when closing SYM page
@@ -2220,6 +2332,104 @@ class StatusBarController(
         val heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
         view.measure(widthSpec, heightSpec)
         return view.measuredHeight
+    }
+
+    private fun applySymSurfaceLayout(
+        surface: FrameLayout,
+        stack: LinearLayout,
+        content: View,
+        surfaceHeight: Int,
+        reserveLedSpace: Boolean
+    ) {
+        surface.visibility = View.VISIBLE
+        surface.layoutParams = (surface.layoutParams as? LinearLayout.LayoutParams
+            ?: LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                surfaceHeight
+            )).apply {
+            width = ViewGroup.LayoutParams.MATCH_PARENT
+            height = surfaceHeight
+            weight = 0f
+        }
+        stack.layoutParams = FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT
+        )
+        updateSurfaceCloseBottomMargin(if (reserveLedSpace) measureLedStripHeight() else 0)
+
+        content.layoutParams = if (reserveLedSpace) {
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                0,
+                1f
+            )
+        } else {
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                surfaceHeight
+            )
+        }
+    }
+
+    private fun setSurfaceCloseVisible(visible: Boolean) {
+        symSurfaceCloseButton?.visibility = if (visible) View.VISIBLE else View.GONE
+    }
+
+    private fun updateSurfaceCloseBottomMargin(bottomMargin: Int) {
+        val button = symSurfaceCloseButton ?: return
+        val params = button.layoutParams as? FrameLayout.LayoutParams ?: return
+        if (params.bottomMargin == bottomMargin) {
+            return
+        }
+        params.bottomMargin = bottomMargin
+        button.layoutParams = params
+    }
+
+    private fun resolveSurfaceHeightWithOptionalLed(contentHeight: Int, reserveLedSpace: Boolean): Int {
+        if (!reserveLedSpace) {
+            return contentHeight
+        }
+        val ledHeight = measureLedStripHeight()
+        return contentHeight + ledHeight
+    }
+
+    private fun measureLedStripHeight(): Int {
+        val ledStrip = ledStatusView.getView() ?: return 0
+        if (ledStrip.measuredHeight > 0) {
+            return ledStrip.measuredHeight
+        }
+        val width = statusBarLayout?.width?.takeIf { it > 0 } ?: context.resources.displayMetrics.widthPixels
+        ledStrip.measure(
+            View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+        return ledStrip.measuredHeight
+    }
+
+    private fun resetSymSurfaceToLedOnly(surface: FrameLayout) {
+        surface.layoutParams = (surface.layoutParams as? LinearLayout.LayoutParams
+            ?: LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )).apply {
+            width = ViewGroup.LayoutParams.MATCH_PARENT
+            height = ViewGroup.LayoutParams.WRAP_CONTENT
+            weight = 0f
+        }
+    }
+
+    private fun resolveSymSurfaceHeight(
+        snapshot: StatusSnapshot,
+        measuredHeight: Int,
+        isFullSoftwareKeyboardMode: Boolean
+    ): Int {
+        if (snapshot.symPage == 4 && measuredHeight > 0) {
+            return measuredHeight
+        }
+        if (isFullSoftwareKeyboardMode && lastSoftwareKeyboardHeight > 0) {
+            return lastSoftwareKeyboardHeight
+        }
+        return if (measuredHeight > 0) measuredHeight else defaultSymHeightPx
     }
 
     private fun dpToPx(dp: Float): Int {

@@ -39,6 +39,9 @@ import it.palsoftware.pastiera.inputmethod.StatusBarController
 @Composable
 fun SymCustomizationScreen(
     modifier: Modifier = Modifier,
+    initialPage: Int = 0,
+    initialKeyCode: Int? = null,
+    openInitialPicker: Boolean = false,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -46,6 +49,9 @@ fun SymCustomizationScreen(
     // Load saved auto-close SYM value
     var symAutoClose by remember { 
         mutableStateOf(SettingsManager.getSymAutoClose(context))
+    }
+    var emojiPickerExpandedHeight by remember {
+        mutableStateOf(SettingsManager.getEmojiPickerExpandedHeight(context))
     }
 
     var titan2LayoutEnabled by remember {
@@ -96,7 +102,9 @@ fun SymCustomizationScreen(
     }
     
     // Selected tab (0 = Emoji, 1 = Characters)
-    var selectedTab by remember { mutableStateOf(0) }
+    var selectedTab by remember {
+        mutableStateOf(if (initialPage == 2) 1 else 0)
+    }
     
     // Helper to load mappings from JSON
     fun loadMappingsFromJson(filePath: String): Map<Int, String> {
@@ -166,6 +174,7 @@ fun SymCustomizationScreen(
     var showEmojiPicker by remember { mutableStateOf(false) }
     var showCharacterPicker by remember { mutableStateOf(false) }
     var selectedKeyCode by remember { mutableStateOf<Int?>(null) }
+    var initialPickerHandled by remember { mutableStateOf(false) }
     
     // State for reset confirmation dialog
     var showResetConfirmDialog by remember { mutableStateOf(false) }
@@ -204,6 +213,23 @@ fun SymCustomizationScreen(
             KeyEvent.KEYCODE_N -> "N"
             KeyEvent.KEYCODE_M -> "M"
             else -> "?"
+        }
+    }
+
+    LaunchedEffect(initialPage, initialKeyCode, openInitialPicker) {
+        if (initialPickerHandled) return@LaunchedEffect
+        initialPickerHandled = true
+        when (initialPage) {
+            1 -> selectedTab = 0
+            2 -> selectedTab = 1
+        }
+        val keyCode = initialKeyCode ?: return@LaunchedEffect
+        if (!openInitialPicker) return@LaunchedEffect
+        selectedKeyCode = keyCode
+        if (initialPage == 2) {
+            showCharacterPicker = true
+        } else {
+            showEmojiPicker = true
         }
     }
     
@@ -411,6 +437,48 @@ fun SymCustomizationScreen(
         }
         
         HorizontalDivider()
+
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(64.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Keyboard,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.emoji_picker_expanded_height_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1
+                    )
+                    Text(
+                        text = stringResource(R.string.emoji_picker_expanded_height_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2
+                    )
+                }
+                Switch(
+                    checked = emojiPickerExpandedHeight,
+                    onCheckedChange = { enabled ->
+                        emojiPickerExpandedHeight = enabled
+                        SettingsManager.setEmojiPickerExpandedHeight(context, enabled)
+                    }
+                )
+            }
+        }
         
         // Emoji page toggle
         Surface(

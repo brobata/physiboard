@@ -15,7 +15,9 @@ import android.util.Log
 import androidx.core.content.ContextCompat
 import android.view.KeyEvent
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
+import android.view.inputmethod.CursorAnchorInfo
 import it.palsoftware.pastiera.clipboard.ClipboardDao
 import it.palsoftware.pastiera.inputmethod.KeyboardEventTracker
 import kotlinx.coroutines.CoroutineScope
@@ -160,6 +162,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     
     // Flag to track whether we are in a valid input context
     private var isInputViewActive = false
+    private var emojiSearchExternalSelectionStart: Int? = null
+    private var emojiSearchExternalSelectionEnd: Int? = null
+    private var emojiSearchCursorAnchorMonitoringRequested: Boolean = false
+    private var ignoreNextEmojiSearchCursorAnchorUpdate: Boolean = false
     
     // Snapshot of the current input context (numeric/password/restricted fields, etc.)
     private var inputContextState: InputContextState = InputContextState.EMPTY
@@ -954,12 +960,22 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             symLayoutController.openEmojiPickerPage()
             updateStatusBarText()
         }
+        candidatesBarController.onEmojiPageRequested = {
+            ensureInputViewCreated()
+            symLayoutController.openEmojiPage()
+            updateStatusBarText()
+        }
         // Register listener for symbols page
         candidatesBarController.onSymbolsPageRequested = {
             ensureInputViewCreated()
             // Toggle symbols as SYM page 2
             symLayoutController.openSymbolsPage()
             updateStatusBarText()
+        }
+        candidatesBarController.onSymCloseRequested = {
+            if (symLayoutController.closeSymPage()) {
+                updateStatusBarText()
+            }
         }
         candidatesBarController.onUndoRequested = {
             variationInteractedDuringHold = true
@@ -1493,6 +1509,29 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         return false
     }
 
+    override fun onViewClicked(focusChanged: Boolean) {
+        super.onViewClicked(focusChanged)
+        if (symPage == 4 && ::candidatesBarController.isInitialized) {
+            disableEmojiSearchInputCapture()
+        }
+    }
+
+    override fun onUpdateCursorAnchorInfo(cursorAnchorInfo: CursorAnchorInfo?) {
+        super.onUpdateCursorAnchorInfo(cursorAnchorInfo)
+        if (
+            symPage != 4 ||
+            !::candidatesBarController.isInitialized ||
+            !candidatesBarController.isEmojiPickerSearchInputActive()
+        ) {
+            return
+        }
+        if (ignoreNextEmojiSearchCursorAnchorUpdate) {
+            ignoreNextEmojiSearchCursorAnchorUpdate = false
+            return
+        }
+        disableEmojiSearchInputCapture()
+    }
+
     /**
      * Resets all modifier key states.
      * Called when leaving a field or closing/reopening the keyboard.
@@ -1515,6 +1554,48 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         deactivateVariations()
         refreshStatusBar()
         navModeController.refreshNavModeState()
+    }
+
+    private fun disableEmojiSearchInputCapture() {
+        if (::candidatesBarController.isInitialized) {
+            candidatesBarController.disableEmojiPickerSearchInputCapture()
+        }
+        emojiSearchExternalSelectionStart = null
+        emojiSearchExternalSelectionEnd = null
+        emojiSearchCursorAnchorMonitoringRequested = false
+        ignoreNextEmojiSearchCursorAnchorUpdate = false
+        currentInputConnection?.requestCursorUpdates(0)
+    }
+
+    private fun updateEmojiSearchExternalSelectionSnapshot(inputConnection: InputConnection?) {
+        val extracted = inputConnection?.getExtractedText(ExtractedTextRequest(), 0)
+        emojiSearchExternalSelectionStart = extracted?.selectionStart
+        emojiSearchExternalSelectionEnd = extracted?.selectionEnd
+    }
+
+    private fun shouldReturnEmojiSearchFocusToApp(inputConnection: InputConnection?): Boolean {
+        val extracted = inputConnection?.getExtractedText(ExtractedTextRequest(), 0) ?: return false
+        val previousStart = emojiSearchExternalSelectionStart
+        val previousEnd = emojiSearchExternalSelectionEnd
+        emojiSearchExternalSelectionStart = extracted.selectionStart
+        emojiSearchExternalSelectionEnd = extracted.selectionEnd
+        if (previousStart == null || previousEnd == null) {
+            return false
+        }
+        return previousStart != extracted.selectionStart || previousEnd != extracted.selectionEnd
+    }
+
+    private fun ensureEmojiSearchCursorAnchorMonitoring(inputConnection: InputConnection?) {
+        if (emojiSearchCursorAnchorMonitoringRequested) {
+            return
+        }
+        val requested = inputConnection?.requestCursorUpdates(
+            InputConnection.CURSOR_UPDATE_IMMEDIATE or InputConnection.CURSOR_UPDATE_MONITOR
+        ) == true
+        if (requested) {
+            emojiSearchCursorAnchorMonitoringRequested = true
+            ignoreNextEmojiSearchCursorAnchorUpdate = true
+        }
     }
     
     /**
@@ -1746,6 +1827,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         isInputViewActive = false
         inputContextState = InputContextState.EMPTY
         multiTapController.cancelAll()
+        disableEmojiSearchInputCapture()
         resetModifierStates(preserveNavMode = true)
         // Se nav mode era attivo prima di entrare nel campo di testo, riattivalo ora
         if (navModeWasActiveBeforeEditableField) {
@@ -2205,12 +2287,20 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         if (skipNextSelectionUpdateAfterCommit) {
             skipNextSelectionUpdateAfterCommit = false
         }
+
+        if (
+            symPage == 4 &&
+            ::candidatesBarController.isInitialized &&
+            candidatesBarController.isEmojiPickerSearchInputActive() &&
+            !shouldSkipForCommit
+        ) {
+            // This callback comes from the app editor, not from the internal emoji search EditText.
+            // Any external selection/cursor update means hardware typing should return to the app
+            // until the user explicitly focuses the emoji search field again.
+            disableEmojiSearchInputCapture()
+        }
         
         if (cursorPositionChanged && collapsedSelection && !shouldSkipForCommit) {
-            if (symPage == 4 && ::candidatesBarController.isInitialized) {
-                // User likely tapped/moved cursor in the target app text field: return hardware typing to app.
-                candidatesBarController.disableEmojiPickerSearchInputCapture()
-            }
             // Update suggestions on cursor movement (if suggestions enabled)
             if (!state.shouldDisableSuggestions) {
                 suggestionController.onCursorMoved(currentInputConnection)
@@ -2295,6 +2385,53 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             typingSoundPlayer.play(keyCode)
         }
 
+        val emojiSearchCtrlActive = event?.isCtrlPressed == true ||
+            ctrlPressed ||
+            ctrlPhysicallyPressed ||
+            ctrlLatchActive ||
+            ctrlOneShot ||
+            ctrlLatchFromNavMode
+        val emojiSearchCandidateActive =
+            hasEditableField &&
+                symPage == 4 &&
+                keyCode != KeyEvent.KEYCODE_BACK &&
+                keyCode != KEYCODE_SYM &&
+                !isPureModifierKey(keyCode) &&
+                ::candidatesBarController.isInitialized &&
+                candidatesBarController.isEmojiPickerSearchInputActive()
+        if (emojiSearchCandidateActive) {
+            ensureEmojiSearchCursorAnchorMonitoring(initialInputConnection)
+            if (shouldReturnEmojiSearchFocusToApp(initialInputConnection)) {
+                disableEmojiSearchInputCapture()
+            }
+        }
+        val emojiSearchInputConnection =
+            if (emojiSearchCandidateActive && candidatesBarController.isEmojiPickerSearchInputActive()) {
+                candidatesBarController.createEmojiPickerSearchInputConnection()
+            } else {
+                null
+            }
+        if (emojiSearchInputConnection != null && emojiSearchCtrlActive) {
+            val handled = inputEventRouter.handleCtrlModifiedKey(
+                keyCode = keyCode,
+                event = event,
+                inputConnection = emojiSearchInputConnection,
+                ctrlKeyMap = ctrlKeyMap,
+                ctrlLatchFromNavMode = ctrlLatchFromNavMode,
+                ctrlOneShot = ctrlOneShot,
+                ctrlPhysicallyPressed = ctrlPhysicallyPressed || ctrlPressed,
+                clearCtrlOneShot = { ctrlOneShot = false },
+                updateStatusBar = { updateStatusBarText() },
+                callSuper = { false },
+                toggleMinimalUi = { keyboardVisibilityController.toggleUserMinimalUi() }
+            )
+            if (handled) {
+                updateEmojiSearchExternalSelectionSnapshot(initialInputConnection)
+                ensureEmojiSearchCursorAnchorMonitoring(initialInputConnection)
+                return true
+            }
+        }
+
         // When the inline emoji picker (SYM page 4) is open, route printable hardware input
         // to the picker search field instead of the target app text field.
         if (
@@ -2302,9 +2439,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             symPage == 4 &&
             keyCode != KeyEvent.KEYCODE_BACK &&
             keyCode != KEYCODE_SYM &&
+            !isPureModifierKey(keyCode) &&
             ::candidatesBarController.isInitialized &&
-            candidatesBarController.handleEmojiPickerSearchKeyDown(event)
+            candidatesBarController.isEmojiPickerSearchInputActive() &&
+            candidatesBarController.handleEmojiPickerSearchKeyDown(event, emojiSearchCtrlActive)
         ) {
+            updateEmojiSearchExternalSelectionSnapshot(initialInputConnection)
+            ensureEmojiSearchCursorAnchorMonitoring(initialInputConnection)
             return true
         }
 
@@ -2700,8 +2841,18 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             symPage == 4 &&
             keyCode != KeyEvent.KEYCODE_BACK &&
             keyCode != KEYCODE_SYM &&
+            !isPureModifierKey(keyCode) &&
             ::candidatesBarController.isInitialized &&
-            candidatesBarController.shouldConsumeEmojiPickerSearchKeyUp(event)
+            candidatesBarController.isEmojiPickerSearchInputActive() &&
+            candidatesBarController.shouldConsumeEmojiPickerSearchKeyUp(
+                event,
+                event?.isCtrlPressed == true ||
+                    ctrlPressed ||
+                    ctrlPhysicallyPressed ||
+                    ctrlLatchActive ||
+                    ctrlOneShot ||
+                    ctrlLatchFromNavMode
+            )
         ) {
             return true
         }

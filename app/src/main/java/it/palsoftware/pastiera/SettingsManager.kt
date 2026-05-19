@@ -57,6 +57,7 @@ object SettingsManager {
     private const val KEY_PENDING_RESTORE_SYM_PAGE = "pending_restore_sym_page" // Temporary SYM page state saved when opening settings
     private const val KEY_SYM_PAGES_CONFIG = "sym_pages_config" // Order/enabled pages for SYM
     private const val KEY_SYM_AUTO_CLOSE = "sym_auto_close" // Auto-close SYM layout after key press
+    private const val KEY_EMOJI_PICKER_EXPANDED_HEIGHT = "emoji_picker_expanded_height"
     private const val KEY_DISMISSED_RELEASES = "dismissed_releases" // Set of release tag_names that were dismissed
     private const val KEY_TUTORIAL_COMPLETED = "tutorial_completed" // Whether the first-run tutorial has been completed
     private const val KEY_SWIPE_INCREMENTAL_THRESHOLD = "swipe_incremental_threshold" // Distance in DIP for cursor movement
@@ -162,6 +163,7 @@ object SettingsManager {
     private const val DEFAULT_PHYSICAL_KEYBOARD_PROFILE_OVERRIDE = "auto"
     private const val DEFAULT_PHYSICAL_KEYBOARD_CURRENCY_SYMBOL = "€"
     private const val DEFAULT_SYM_AUTO_CLOSE = true
+    private const val DEFAULT_EMOJI_PICKER_EXPANDED_HEIGHT = true
     private val DEFAULT_SYM_PAGES_CONFIG = SymPagesConfig()
     private const val DEFAULT_STATIC_VARIATION_BAR_MODE = false
     private const val DEFAULT_STATIC_VARIATION_BAR_BASE_LAYER_ENABLED = false
@@ -2336,6 +2338,19 @@ object SettingsManager {
     fun setSymAutoClose(context: Context, enabled: Boolean) {
         getPreferences(context).edit()
             .putBoolean(KEY_SYM_AUTO_CLOSE, enabled)
+            .apply()
+    }
+
+    fun getEmojiPickerExpandedHeight(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_EMOJI_PICKER_EXPANDED_HEIGHT,
+            DEFAULT_EMOJI_PICKER_EXPANDED_HEIGHT
+        )
+    }
+
+    fun setEmojiPickerExpandedHeight(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_EMOJI_PICKER_EXPANDED_HEIGHT, enabled)
             .apply()
     }
 

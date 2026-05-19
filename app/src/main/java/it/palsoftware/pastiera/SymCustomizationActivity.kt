@@ -9,6 +9,12 @@ import androidx.compose.ui.Modifier
 import it.palsoftware.pastiera.ui.theme.PastieraTheme
 
 class SymCustomizationActivity : LocalizedComponentActivity() {
+    companion object {
+        const val EXTRA_INITIAL_PAGE = "it.palsoftware.pastiera.extra.INITIAL_SYM_PAGE"
+        const val EXTRA_INITIAL_KEY_CODE = "it.palsoftware.pastiera.extra.INITIAL_SYM_KEY_CODE"
+        const val EXTRA_OPEN_PICKER = "it.palsoftware.pastiera.extra.OPEN_SYM_PICKER"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (savedInstanceState == null) {
@@ -19,6 +25,9 @@ class SymCustomizationActivity : LocalizedComponentActivity() {
             PastieraTheme {
                 SymCustomizationScreen(
                     modifier = Modifier.fillMaxSize(),
+                    initialPage = intent.getIntExtra(EXTRA_INITIAL_PAGE, 0),
+                    initialKeyCode = intent.getIntExtra(EXTRA_INITIAL_KEY_CODE, 0).takeIf { it > 0 },
+                    openInitialPicker = intent.getBooleanExtra(EXTRA_OPEN_PICKER, false),
                     onBack = {
                         // This is only called from the UI back button (arrow icon)
                         SettingsManager.confirmPendingRestoreSymPage(this@SymCustomizationActivity)

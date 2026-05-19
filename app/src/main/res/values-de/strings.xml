@@ -596,6 +596,8 @@ Jede Taste kann als Keycode, Aktion, Native Ctrl oder Keine konfiguriert werden.
     <string name="save">Speichern</string>
     <string name="sym_enable_emoji_picker_page_title">Emoji-Picker-Seite aktivieren</string>
     <string name="sym_enable_emoji_picker_page_description">Zeigt beim Durchschalten den vollständigen Emoji-Picker an.</string>
+    <string name="emoji_picker_expanded_height_title">Emoji-Picker größer anzeigen</string>
+    <string name="emoji_picker_expanded_height_description">Nutzt für die Emoji-Suche etwa 1,5-fache Höhe; die anderen SYM-Seiten bleiben normal hoch.</string>
     <string name="sym_order_clipboard_first">Zwischenablage zuerst</string>
     <string name="cancel">Abbrechen</string>
     <string name="keyboard_layout_title">Tastaturlayout</string>

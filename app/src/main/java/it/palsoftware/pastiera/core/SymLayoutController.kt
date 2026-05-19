@@ -100,6 +100,18 @@ class SymLayoutController(
         return true
     }
 
+    fun openEmojiPage(): Boolean {
+        val emojiPageValue = SymPage.EMOJI.toPrefValue()
+
+        if (symPage == emojiPageValue) {
+            closeSymPage()
+            return false
+        }
+        symPage = emojiPageValue
+        persistSymPage()
+        return true
+    }
+
     fun openSymbolsPage(): Boolean {
         val symbolsPageValue = SymPage.SYMBOLS.toPrefValue()
         
