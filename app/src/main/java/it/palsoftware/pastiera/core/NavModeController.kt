@@ -98,14 +98,14 @@ class NavModeController(
 
         val inputConnection = inputConnectionProvider() ?: return false
 
-        val mappedKeyCode = when {
-            keyCode == KeyEvent.KEYCODE_ENTER -> KeyEvent.KEYCODE_DPAD_CENTER
-            else -> {
-                val ctrlMapping = ctrlKeyMap[keyCode] ?: return false
-                if (ctrlMapping.type != "keycode") {
-                    return false
-                }
-                when (ctrlMapping.value) {
+        if (keyCode == KeyEvent.KEYCODE_ENTER) {
+            return sendMappedKey(KeyEvent.KEYCODE_DPAD_CENTER, event, inputConnection)
+        }
+
+        val ctrlMapping = ctrlKeyMap[keyCode] ?: return false
+        return when (ctrlMapping.type) {
+            "keycode" -> {
+                val mappedKeyCode = when (ctrlMapping.value) {
                     "DPAD_UP" -> KeyEvent.KEYCODE_DPAD_UP
                     "DPAD_DOWN" -> KeyEvent.KEYCODE_DPAD_DOWN
                     "DPAD_LEFT" -> KeyEvent.KEYCODE_DPAD_LEFT
@@ -115,12 +115,14 @@ class NavModeController(
                     "PAGE_UP" -> KeyEvent.KEYCODE_PAGE_UP
                     "PAGE_DOWN" -> KeyEvent.KEYCODE_PAGE_DOWN
                     "ESCAPE" -> KeyEvent.KEYCODE_ESCAPE
+                    "FORWARD_DEL" -> KeyEvent.KEYCODE_FORWARD_DEL
                     else -> null
-                }
+                } ?: return false
+                sendMappedKey(mappedKeyCode, event, inputConnection)
             }
-        } ?: return false
-
-        return sendMappedKey(mappedKeyCode, event, inputConnection)
+            "action" -> performMappedAction(ctrlMapping.value, inputConnection)
+            else -> false
+        }
     }
 
     fun cancelNotification() {
@@ -261,6 +263,24 @@ class NavModeController(
         inputConnection.sendKeyEvent(downEvent)
         inputConnection.sendKeyEvent(upEvent)
         Log.d(TAG, "Nav mode: dispatched keycode $mappedKeyCode")
+        return true
+    }
+
+    private fun performMappedAction(
+        action: String,
+        inputConnection: InputConnection
+    ): Boolean {
+        val actionId = when (action) {
+            "copy" -> android.R.id.copy
+            "paste" -> android.R.id.paste
+            "cut" -> android.R.id.cut
+            "undo" -> android.R.id.undo
+            "select_all" -> android.R.id.selectAll
+            else -> null
+        } ?: return false
+
+        inputConnection.performContextMenuAction(actionId)
+        Log.d(TAG, "Nav mode: performed action $action")
         return true
     }
 

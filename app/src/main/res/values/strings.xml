@@ -345,6 +345,11 @@
     <string name="nav_mode_enable_description">Double-tap Ctrl to activate navigation mode</string>
     <string name="nav_mode_ctrl_hold_title">Ctrl-hold navigation</string>
     <string name="nav_mode_ctrl_hold_description">Use Nav Mode mappings while physically holding Ctrl in text fields. When off, Ctrl shortcuts are passed to the app.</string>
+    <string name="layout_aware_ctrl_shortcuts_title">Layout-aware app Ctrl shortcuts</string>
+    <string name="layout_aware_ctrl_shortcuts_description">When held Ctrl is passed to apps, translate Ctrl+letter through the active Pastiera layout first.</string>
+    <string name="layout_aware_ctrl_shortcuts_disabled_description">Disabled while Ctrl-hold navigation is active, because held Ctrl is handled by Nav Mode instead of the app.</string>
+    <string name="layout_aware_ctrl_shortcuts_info_title">Ctrl shortcuts and Nav Mode</string>
+    <string name="layout_aware_ctrl_shortcuts_info_text">There are two paths for held Ctrl. If Ctrl-hold navigation is on, Pastiera handles Ctrl+key with the Nav Mode mappings shown below. If Ctrl-hold navigation is off, Pastiera passes Ctrl+key to the app. This option only affects that app path: when enabled, Ctrl+letter is translated through the active Pastiera layout first, so shortcuts can follow the letters you type. When disabled, apps receive the original physical key positions.</string>
     <string name="nav_mode_key_mappings">Key Mappings</string>
     <string name="nav_mode_revert_to_default">Revert to Default</string>
     <string name="nav_mode_note">Note: Modifying nav mode keys also affects Ctrl+key combinations in text fields.</string>

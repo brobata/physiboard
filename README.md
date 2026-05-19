@@ -74,18 +74,18 @@ Input method for physical keyboards android devices (e.g. Unihertz Titan 2), des
 
 ## Development / Tests
 - Run core + routing + service modifier regression tests:
-  - `./gradlew :app:testDebugUnitTest --tests it.palsoftware.pastiera.core.ModifierStateControllerTest --tests it.palsoftware.pastiera.inputmethod.InputEventRouterModifierE2ETest --tests it.palsoftware.pastiera.inputmethod.PhysicalKeyboardInputMethodServiceDeviceBehaviorTest`
+  - `./gradlew :app:testStableDebugUnitTest --tests it.palsoftware.pastiera.core.ModifierStateControllerTest --tests it.palsoftware.pastiera.inputmethod.InputEventRouterModifierE2ETest --tests it.palsoftware.pastiera.inputmethod.PhysicalKeyboardInputMethodServiceDeviceBehaviorTest`
 - Run release/update flavor coverage tests:
   - `./gradlew :app:testStableDebugUnitTest --tests it.palsoftware.pastiera.FlavorBuildConfigTest --tests it.palsoftware.pastiera.update.UpdateCheckerFlavorLogicTest`
   - `./gradlew :app:testNightlyDebugUnitTest --tests it.palsoftware.pastiera.FlavorBuildConfigTest --tests it.palsoftware.pastiera.update.UpdateCheckerFlavorLogicTest`
 - Run the stable F-Droid-path tests:
   - `./gradlew :app:testStableDebugUnitTest -PPASTIERA_FDROID_BUILD=true`
 - Service-level (device-near) modifier behavior regressions:
-  - `./gradlew :app:testDebugUnitTest --tests it.palsoftware.pastiera.inputmethod.PhysicalKeyboardInputMethodServiceDeviceBehaviorTest`
+  - `./gradlew :app:testStableDebugUnitTest --tests it.palsoftware.pastiera.inputmethod.PhysicalKeyboardInputMethodServiceDeviceBehaviorTest`
 - Router-level input pipeline modifier/SYM tests:
-  - `./gradlew :app:testDebugUnitTest --tests it.palsoftware.pastiera.inputmethod.InputEventRouterModifierE2ETest`
+  - `./gradlew :app:testStableDebugUnitTest --tests it.palsoftware.pastiera.inputmethod.InputEventRouterModifierE2ETest`
 - Core modifier state machine tests:
-  - `./gradlew :app:testDebugUnitTest --tests it.palsoftware.pastiera.core.ModifierStateControllerTest`
+  - `./gradlew :app:testStableDebugUnitTest --tests it.palsoftware.pastiera.core.ModifierStateControllerTest`
 - Build nightly debug APK with dynamic nightly version code:
   - `./scripts/build-nightly-debug.sh 0.85`
   - `./scripts/build-nightly-debug.sh 0.85 --install`

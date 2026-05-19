@@ -997,12 +997,19 @@ class InputEventRouter(
         val ic = inputConnection ?: return false
         val isPhysicalCtrlCombo = event?.isCtrlPressed == true || ctrlPhysicallyPressed
         val useNavModeForHeldCtrl = SettingsManager.getNavModeCtrlHoldEnabled(context)
+        val useLayoutAwareCtrlShortcuts = SettingsManager.getLayoutAwareCtrlShortcutsEnabled(context)
+        val shortcutKeyCode = if (useLayoutAwareCtrlShortcuts) {
+            resolveLayoutShortcutKeyCode(keyCode)
+        } else {
+            keyCode
+        }
+
         fun passThroughCtrlCombo(): Boolean {
             if (event != null) {
-                ic.sendKeyEvent(event)
+                ic.sendKeyEvent(event.withKeyCode(shortcutKeyCode))
             } else {
                 val meta = KeyEvent.META_CTRL_ON or KeyEvent.META_CTRL_LEFT_ON or KeyEvent.META_CTRL_RIGHT_ON
-                val down = KeyEvent(0L, 0L, KeyEvent.ACTION_DOWN, keyCode, 0, meta)
+                val down = KeyEvent(0L, 0L, KeyEvent.ACTION_DOWN, shortcutKeyCode, 0, meta)
                 ic.sendKeyEvent(down)
             }
             return true
@@ -1019,7 +1026,7 @@ class InputEventRouter(
             updateStatusBar()
         }
 
-        val ctrlMapping = ctrlKeyMap[keyCode]
+        val ctrlMapping = ctrlKeyMap[shortcutKeyCode]
         if (ctrlMapping != null) {
             when (ctrlMapping.type) {
                 "action" -> {
@@ -1230,5 +1237,33 @@ class InputEventRouter(
         }
 
         return false
+    }
+
+    private fun resolveLayoutShortcutKeyCode(keyCode: Int): Int {
+        val mappedChar = LayoutMappingRepository.getCharacter(keyCode, isShift = false)
+            ?.lowercaseChar()
+            ?: return keyCode
+
+        return if (mappedChar in 'a'..'z') {
+            KeyEvent.KEYCODE_A + (mappedChar - 'a')
+        } else {
+            keyCode
+        }
+    }
+
+    private fun KeyEvent.withKeyCode(newKeyCode: Int): KeyEvent {
+        if (keyCode == newKeyCode) return this
+        return KeyEvent(
+            downTime,
+            eventTime,
+            action,
+            newKeyCode,
+            repeatCount,
+            metaState,
+            deviceId,
+            scanCode,
+            flags,
+            source
+        )
     }
 }

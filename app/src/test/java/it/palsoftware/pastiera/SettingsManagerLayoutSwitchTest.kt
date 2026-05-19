@@ -84,4 +84,15 @@ class SettingsManagerLayoutSwitchTest {
 
         assertTrue(SettingsManager.getNavModeCtrlHoldEnabled(context))
     }
+
+    @Test
+    fun layoutAwareCtrlShortcuts_defaultsDisabled_andPersistsEnabledState() {
+        val context = RuntimeEnvironment.getApplication()
+
+        assertFalse(SettingsManager.getLayoutAwareCtrlShortcutsEnabled(context))
+
+        SettingsManager.setLayoutAwareCtrlShortcutsEnabled(context, true)
+
+        assertTrue(SettingsManager.getLayoutAwareCtrlShortcutsEnabled(context))
+    }
 }

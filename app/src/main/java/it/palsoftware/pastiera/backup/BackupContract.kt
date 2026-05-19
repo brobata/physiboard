@@ -188,6 +188,7 @@ object PreferenceSchemas {
             "auto_show_keyboard" to PreferenceValueType.BOOLEAN,
             "clear_alt_on_space" to PreferenceValueType.BOOLEAN,
             "alt_ctrl_speech_shortcut" to PreferenceValueType.BOOLEAN,
+            "layout_aware_ctrl_shortcuts" to PreferenceValueType.BOOLEAN,
             "sym_mappings_custom" to PreferenceValueType.STRING,
             "sym_mappings_page2_custom" to PreferenceValueType.STRING,
             "user_dictionary_entries" to PreferenceValueType.STRING,

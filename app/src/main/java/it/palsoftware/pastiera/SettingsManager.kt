@@ -35,6 +35,7 @@ object SettingsManager {
     private const val KEY_AUTO_SHOW_KEYBOARD = "auto_show_keyboard"
     private const val KEY_CLEAR_ALT_ON_SPACE = "clear_alt_on_space"
     private const val KEY_ALT_CTRL_SPEECH_SHORTCUT = "alt_ctrl_speech_shortcut"
+    private const val KEY_LAYOUT_AWARE_CTRL_SHORTCUTS = "layout_aware_ctrl_shortcuts"
     private const val KEY_SYM_MAPPINGS_CUSTOM = "sym_mappings_custom"
     private const val KEY_SYM_MAPPINGS_PAGE2_CUSTOM = "sym_mappings_page2_custom"
     private const val KEY_AUTO_CORRECT_ENABLED = "auto_correct_enabled"
@@ -131,6 +132,7 @@ object SettingsManager {
     private const val DEFAULT_AUTO_SHOW_KEYBOARD = true
     private const val DEFAULT_CLEAR_ALT_ON_SPACE = true
     private const val DEFAULT_ALT_CTRL_SPEECH_SHORTCUT = true
+    private const val DEFAULT_LAYOUT_AWARE_CTRL_SHORTCUTS = false
     private const val DEFAULT_AUTO_CORRECT_ENABLED = true
     private const val DEFAULT_SUGGESTIONS_ENABLED = true
     private const val DEFAULT_ACCENT_MATCHING_ENABLED = true
@@ -646,6 +648,26 @@ object SettingsManager {
     fun setAltCtrlSpeechShortcutEnabled(context: Context, enabled: Boolean) {
         getPreferences(context).edit()
             .putBoolean(KEY_ALT_CTRL_SPEECH_SHORTCUT, enabled)
+            .apply()
+    }
+
+    /**
+     * Returns whether Ctrl+letter app shortcuts should be resolved through
+     * the active Pastiera layout before being passed to the target app.
+     */
+    fun getLayoutAwareCtrlShortcutsEnabled(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_LAYOUT_AWARE_CTRL_SHORTCUTS,
+            DEFAULT_LAYOUT_AWARE_CTRL_SHORTCUTS
+        )
+    }
+
+    /**
+     * Sets whether Ctrl+letter app shortcuts should use the active Pastiera layout.
+     */
+    fun setLayoutAwareCtrlShortcutsEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_LAYOUT_AWARE_CTRL_SHORTCUTS, enabled)
             .apply()
     }
 
