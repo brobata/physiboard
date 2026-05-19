@@ -65,6 +65,20 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     companion object {
         private const val TAG = "PastieraInputMethod"
         private const val TRACKPAD_DEBUG_TAG = "TrackpadDebug"
+        private const val DISCORD_PACKAGE_NAME = "com.discord"
+        private val MESSENGER_ENTER_BEHAVIOR_PACKAGES = setOf(
+            "com.whatsapp",
+            "org.telegram.messenger",
+            "org.thoughtcrime.securesms",
+            DISCORD_PACKAGE_NAME,
+            "im.vector.app",
+            "com.google.android.apps.messaging",
+            "ch.threema.app",
+            "ch.threema.app.libre",
+            "com.instagram.android"
+        )
+        private val ENTER_BEHAVIOR_SEND_ACTION_PACKAGES = MESSENGER_ENTER_BEHAVIOR_PACKAGES -
+            DISCORD_PACKAGE_NAME
     }
 
     // SharedPreferences for settings
@@ -428,34 +442,165 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
     }
 
-    /**
-     * Executes the field's editor action on Enter (e.g., Search/Go/Done) instead of inserting
-     * a newline. Works for both single-line and multiline fields if they have an IME action configured.
-     * Nav mode keeps its own Enter remapping, so we skip it here.
-     */
-    private fun handleEnterAsEditorAction(
-        keyCode: Int,
-        info: EditorInfo?,
-        inputConnection: InputConnection?,
-        event: KeyEvent?,
-        isAutoCorrectEnabled: Boolean
-    ): Boolean {
-        if (keyCode != KeyEvent.KEYCODE_ENTER || navModeController.isNavModeActive()) {
-            return false
+    private fun resolveAppEnterBehavior(info: EditorInfo?): String? {
+        val packageName = info?.packageName ?: return null
+        if (packageName !in MESSENGER_ENTER_BEHAVIOR_PACKAGES) return null
+        if (!SettingsManager.getAppEnterBehaviorEnabled(this)) return null
+
+        val override = SettingsManager.getAppEnterBehaviorOverrides(this)
+            .firstOrNull { it.packageName == packageName }
+            ?.behavior
+        if (override != null && override != SettingsManager.ENTER_BEHAVIOR_APP_DEFAULT) {
+            return override
         }
 
-        val actionId = resolveEditorAction(info) ?: return false
-        val ic = inputConnection ?: return false
+        return when (SettingsManager.getAppEnterBehaviorPreset(this)) {
+            SettingsManager.ENTER_BEHAVIOR_PRESET_ENTER_SEND_SHIFT_NEWLINE ->
+                if (packageName == DISCORD_PACKAGE_NAME) {
+                    null
+                } else {
+                    SettingsManager.ENTER_BEHAVIOR_ENTER_SEND_SHIFT_NEWLINE
+                }
+            SettingsManager.ENTER_BEHAVIOR_PRESET_ENTER_NEWLINE_CTRL_SEND ->
+                SettingsManager.ENTER_BEHAVIOR_ENTER_NEWLINE_CTRL_SEND
+            SettingsManager.ENTER_BEHAVIOR_PRESET_ENTER_NEWLINE_ONLY ->
+                SettingsManager.ENTER_BEHAVIOR_ENTER_NEWLINE
+            else -> null
+        }
+    }
 
-        ic.finishComposingText()
+    private fun resolveTestedAppSendAction(info: EditorInfo?): Int? {
+        if (info?.packageName !in ENTER_BEHAVIOR_SEND_ACTION_PACKAGES) return null
+        return resolveEditorAction(info) ?: EditorInfo.IME_ACTION_SEND
+    }
+
+    private fun consumeUnsupportedEnterSend(
+        keyCode: Int,
+        event: KeyEvent?,
+        outputKeyCodeName: String
+    ): Boolean {
+        val hadCtrl = ctrlLatchFromNavMode ||
+            ctrlLatchActive ||
+            ctrlOneShot ||
+            ctrlPressed ||
+            ctrlPhysicallyPressed ||
+            navModeController.isNavModeActive()
+        if (hadCtrl) {
+            val wasNavModeLatched = ctrlLatchFromNavMode || navModeController.isNavModeActive()
+            modifierStateController.clearCtrlState(resetPressedState = false)
+            if (wasNavModeLatched) {
+                navModeController.cancelNotification()
+                navModeController.refreshNavModeState()
+            }
+            updateStatusBarText()
+        }
+        notifyDebugKeyEvent(
+            keyCode,
+            event,
+            "KEY_DOWN",
+            origin = "ime_service",
+            outputKeyCode = null,
+            outputKeyCodeName = outputKeyCodeName
+        )
+        return true
+    }
+
+    private fun performPlainEnterSend(
+        keyCode: Int,
+        inputConnection: InputConnection,
+        event: KeyEvent?,
+        outputKeyCodeName: String
+    ): Boolean {
+        inputConnection.finishComposingText()
+        val now = System.currentTimeMillis()
+        val down = KeyEvent(now, now, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER, 0, 0)
+        val up = KeyEvent(now, now, KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER, 0, 0)
+        val performed = inputConnection.sendKeyEvent(down) && inputConnection.sendKeyEvent(up)
+        if (performed) {
+            val wasNavModeLatched = ctrlLatchFromNavMode || navModeController.isNavModeActive()
+            modifierStateController.clearCtrlState(resetPressedState = false)
+            if (wasNavModeLatched) {
+                navModeController.cancelNotification()
+                navModeController.refreshNavModeState()
+            }
+            updateStatusBarText()
+            suggestionController.onContextReset()
+            notifyDebugKeyEvent(
+                keyCode,
+                event,
+                "KEY_DOWN",
+                origin = "ime_service",
+                outputKeyCode = KeyEvent.KEYCODE_ENTER,
+                outputKeyCodeName = outputKeyCodeName
+            )
+        }
+        return performed
+    }
+
+    private fun isShiftModifierActive(event: KeyEvent?): Boolean {
+        return event?.isShiftPressed == true || shiftPressed || shiftOneShot || shiftLayerLatched
+    }
+
+    private fun isCtrlModifierActive(event: KeyEvent?): Boolean {
+        return event?.isCtrlPressed == true ||
+            ctrlPressed ||
+            ctrlPhysicallyPressed ||
+            ctrlLatchActive ||
+            ctrlOneShot ||
+            ctrlLatchFromNavMode
+    }
+
+    private fun commitEnterNewline(
+        keyCode: Int,
+        inputConnection: InputConnection,
+        event: KeyEvent?,
+        outputKeyCodeName: String
+    ): Boolean {
+        inputConnection.finishComposingText()
+        inputConnection.commitText("\n", 1)
+        textInputController.handleAutoCapAfterEnter(
+            keyCode,
+            inputConnection,
+            inputContextState.shouldDisableAutoCapitalize
+        ) { updateStatusBarText() }
+        suggestionController.onContextReset()
+        notifyDebugKeyEvent(
+            keyCode,
+            event,
+            "KEY_DOWN",
+            origin = "ime_service",
+            unicodeCharOverride = '\n'.code,
+            outputKeyCode = null,
+            outputKeyCodeName = outputKeyCodeName
+        )
+        return true
+    }
+
+    private fun performEnterEditorAction(
+        keyCode: Int,
+        actionId: Int,
+        inputConnection: InputConnection,
+        event: KeyEvent?,
+        consumeCtrlState: Boolean = false
+    ): Boolean {
+        inputConnection.finishComposingText()
         // Skip autocorrection when Enter is mapped to an IME action.
         textInputController.handleAutoCapAfterEnter(
             keyCode,
-            ic,
+            inputConnection,
             inputContextState.shouldDisableAutoCapitalize
         ) { updateStatusBarText() }
-        val performed = ic.performEditorAction(actionId)
+        val performed = inputConnection.performEditorAction(actionId)
         if (performed) {
+            if (consumeCtrlState) {
+                val wasNavModeLatched = ctrlLatchFromNavMode || navModeController.isNavModeActive()
+                modifierStateController.clearCtrlState(resetPressedState = false)
+                if (wasNavModeLatched) {
+                    navModeController.cancelNotification()
+                    navModeController.refreshNavModeState()
+                }
+                updateStatusBarText()
+            }
             suggestionController.onContextReset()
             notifyDebugKeyEvent(
                 keyCode,
@@ -467,6 +612,68 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             )
         }
         return performed
+    }
+
+    /**
+     * Executes the field's editor action on Enter (e.g., Search/Go/Done) instead of inserting
+     * a newline. Works for both single-line and multiline fields if they have an IME action configured.
+     * Nav mode keeps its own Enter remapping, so we skip it here.
+     */
+    private fun handleEnterAsEditorAction(
+        keyCode: Int,
+        info: EditorInfo?,
+        inputConnection: InputConnection?,
+        event: KeyEvent?,
+        isAutoCorrectEnabled: Boolean,
+        ctrlActiveBeforePrelude: Boolean = false
+    ): Boolean {
+        if (keyCode != KeyEvent.KEYCODE_ENTER) {
+            return false
+        }
+
+        val ic = inputConnection ?: return false
+        val actionId = resolveEditorAction(info)
+        val ctrlActiveForEnter = ctrlActiveBeforePrelude || isCtrlModifierActive(event)
+
+        when (resolveAppEnterBehavior(info)) {
+            SettingsManager.ENTER_BEHAVIOR_ENTER_NEWLINE -> {
+                if (navModeController.isNavModeActive() && ctrlActiveForEnter) {
+                    return resolveTestedAppSendAction(info)
+                        ?.let { performEnterEditorAction(keyCode, it, ic, event, consumeCtrlState = true) }
+                        ?: false
+                }
+                return commitEnterNewline(keyCode, ic, event, "app_enter_newline")
+            }
+            SettingsManager.ENTER_BEHAVIOR_ENTER_NEWLINE_CTRL_SEND -> {
+                if (!ctrlActiveForEnter) {
+                    return commitEnterNewline(keyCode, ic, event, "app_enter_newline")
+                }
+                if (info?.packageName == DISCORD_PACKAGE_NAME) {
+                    return performPlainEnterSend(keyCode, ic, event, "discord_plain_enter_send")
+                }
+                return resolveTestedAppSendAction(info)
+                    ?.let { performEnterEditorAction(keyCode, it, ic, event, consumeCtrlState = true) }
+                    ?: consumeUnsupportedEnterSend(keyCode, event, "app_enter_send_unsupported")
+            }
+            SettingsManager.ENTER_BEHAVIOR_ENTER_SEND_SHIFT_NEWLINE -> {
+                if (ctrlActiveForEnter) {
+                    return resolveTestedAppSendAction(info)
+                        ?.let { performEnterEditorAction(keyCode, it, ic, event, consumeCtrlState = true) }
+                        ?: consumeUnsupportedEnterSend(keyCode, event, "app_enter_send_unsupported")
+                }
+                if (isShiftModifierActive(event)) {
+                    return commitEnterNewline(keyCode, ic, event, "app_shift_enter_newline")
+                }
+                return resolveTestedAppSendAction(info)
+                    ?.let { performEnterEditorAction(keyCode, it, ic, event) }
+                    ?: consumeUnsupportedEnterSend(keyCode, event, "app_enter_send_unsupported")
+            }
+        }
+
+        if (navModeController.isNavModeActive()) {
+            return false
+        }
+        return actionId?.let { performEnterEditorAction(keyCode, it, ic, event) } ?: false
     }
 
     private fun notifyDebugKeyEvent(
@@ -2518,6 +2725,12 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
 
         val navModeBefore = navModeController.isNavModeActive()
+        val ctrlActiveBeforePrelude = event?.isCtrlPressed == true ||
+            ctrlPressed ||
+            ctrlPhysicallyPressed ||
+            ctrlLatchActive ||
+            ctrlOneShot ||
+            ctrlLatchFromNavMode
 
         val isModifierKey = keyCode == KeyEvent.KEYCODE_SHIFT_LEFT ||
             keyCode == KeyEvent.KEYCODE_SHIFT_RIGHT ||
@@ -2688,7 +2901,15 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
 
         clearAltOnBoundaryIfNeeded(keyCode) { updateStatusBarText() }
 
-        if (handleEnterAsEditorAction(keyCode, info, ic, event, isAutoCorrectEnabled)) {
+        if (handleEnterAsEditorAction(
+                keyCode,
+                info,
+                ic,
+                event,
+                isAutoCorrectEnabled,
+                ctrlActiveBeforePrelude
+            )
+        ) {
             return true
         }
         

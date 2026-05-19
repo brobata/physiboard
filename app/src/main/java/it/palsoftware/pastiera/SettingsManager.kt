@@ -83,6 +83,9 @@ object SettingsManager {
     private const val KEY_ACCESSIBILITY_SUGGESTIONS_ANNOUNCEMENT_DELAY_MS = "accessibility_suggestions_announcement_delay_ms" // Delay before suggestions become accessible again while typing
     private const val KEY_GLOBAL_VARIATION_LAYOUT_OVERRIDE = "global_variation_layout_override" // Optional layout id used for variation ordering across all layouts
     private const val KEY_APP_LANGUAGE_TAG = "app_language_tag" // BCP-47 language tag for app UI (null/blank = system)
+    private const val KEY_APP_ENTER_BEHAVIOR_ENABLED = "app_enter_behavior_enabled"
+    private const val KEY_APP_ENTER_BEHAVIOR_PRESET = "app_enter_behavior_preset"
+    private const val KEY_APP_ENTER_BEHAVIOR_OVERRIDES = "app_enter_behavior_overrides"
     
     // Status bar button slot configuration keys
     private const val KEY_STATUS_BAR_SLOT_LEFT = "status_bar_slot_left"
@@ -109,6 +112,22 @@ object SettingsManager {
     const val STATIC_VARIATION_PRESET_NUMBERS = "numbers"
     const val STATIC_VARIATION_PRESET_ALTERNATIVE = "alternative"
     const val STATIC_VARIATION_PRESET_DEV_CHOICE = "dev_choice"
+
+    const val ENTER_BEHAVIOR_PRESET_APP_DEFAULT = "app_default"
+    const val ENTER_BEHAVIOR_PRESET_ENTER_SEND_SHIFT_NEWLINE = "enter_send_shift_newline"
+    const val ENTER_BEHAVIOR_PRESET_ENTER_NEWLINE_CTRL_SEND = "enter_newline_ctrl_send"
+    const val ENTER_BEHAVIOR_PRESET_ENTER_NEWLINE_ONLY = "enter_newline_only"
+    const val ENTER_BEHAVIOR_PRESET_CUSTOM = "custom"
+
+    const val ENTER_BEHAVIOR_APP_DEFAULT = "app_default"
+    const val ENTER_BEHAVIOR_ENTER_NEWLINE = "enter_newline"
+    const val ENTER_BEHAVIOR_ENTER_SEND_SHIFT_NEWLINE = "enter_send_shift_newline"
+    const val ENTER_BEHAVIOR_ENTER_NEWLINE_CTRL_SEND = "enter_newline_ctrl_send"
+
+    const val ENTER_SEND_STRATEGY_AUTO = "auto"
+    const val ENTER_SEND_STRATEGY_EDITOR_ACTION = "editor_action"
+    const val ENTER_SEND_STRATEGY_CTRL_ENTER = "ctrl_enter"
+    const val ENTER_SEND_STRATEGY_PLAIN_ENTER = "plain_enter"
     
     // Default slot assignments
     private const val DEFAULT_SLOT_LEFT = STATUS_BAR_BUTTON_HAMBURGER
@@ -2937,5 +2956,126 @@ object SettingsManager {
             STATUS_BAR_BUTTON_UNDO,
             STATUS_BAR_BUTTON_REDO
         )
+    }
+
+    data class AppEnterBehaviorOverride(
+        val packageName: String,
+        val behavior: String,
+        val sendStrategy: String = ENTER_SEND_STRATEGY_AUTO
+    )
+
+    fun getAppEnterBehaviorEnabled(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_APP_ENTER_BEHAVIOR_ENABLED, false)
+    }
+
+    fun setAppEnterBehaviorEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_APP_ENTER_BEHAVIOR_ENABLED, enabled)
+            .apply()
+    }
+
+    fun getAppEnterBehaviorPreset(context: Context): String {
+        val stored = getPreferences(context).getString(
+            KEY_APP_ENTER_BEHAVIOR_PRESET,
+            ENTER_BEHAVIOR_PRESET_APP_DEFAULT
+        ) ?: ENTER_BEHAVIOR_PRESET_APP_DEFAULT
+        return normalizeEnterBehaviorPreset(stored)
+    }
+
+    fun setAppEnterBehaviorPreset(context: Context, preset: String) {
+        getPreferences(context).edit()
+            .putString(KEY_APP_ENTER_BEHAVIOR_PRESET, normalizeEnterBehaviorPreset(preset))
+            .apply()
+    }
+
+    fun getAppEnterBehaviorOverrides(context: Context): List<AppEnterBehaviorOverride> {
+        val stored = getPreferences(context).getString(KEY_APP_ENTER_BEHAVIOR_OVERRIDES, null)
+            ?: return emptyList()
+        return runCatching {
+            val array = JSONArray(stored)
+            buildList {
+                val seen = mutableSetOf<String>()
+                for (index in 0 until array.length()) {
+                    val item = array.optJSONObject(index) ?: continue
+                    val packageName = item.optString("packageName", "")
+                    if (packageName.isBlank() || !seen.add(packageName)) continue
+                    add(
+                        AppEnterBehaviorOverride(
+                            packageName = packageName,
+                            behavior = normalizeEnterBehavior(item.optString("behavior", ENTER_BEHAVIOR_APP_DEFAULT)),
+                            sendStrategy = normalizeEnterSendStrategy(
+                                item.optString("sendStrategy", ENTER_SEND_STRATEGY_AUTO)
+                            )
+                        )
+                    )
+                }
+            }
+        }.getOrElse {
+            Log.e(TAG, "Error loading app enter behavior overrides", it)
+            emptyList()
+        }
+    }
+
+    fun setAppEnterBehaviorOverrides(context: Context, overrides: List<AppEnterBehaviorOverride>) {
+        val array = JSONArray()
+        overrides
+            .filter { it.packageName.isNotBlank() }
+            .distinctBy { it.packageName }
+            .forEach { override ->
+                array.put(
+                    JSONObject().apply {
+                        put("packageName", override.packageName)
+                        put("behavior", normalizeEnterBehavior(override.behavior))
+                        put("sendStrategy", normalizeEnterSendStrategy(override.sendStrategy))
+                    }
+                )
+            }
+        getPreferences(context).edit()
+            .putString(KEY_APP_ENTER_BEHAVIOR_OVERRIDES, array.toString())
+            .apply()
+    }
+
+    fun setAppEnterBehaviorOverride(context: Context, packageName: String, behavior: String) {
+        val updated = getAppEnterBehaviorOverrides(context)
+            .filterNot { it.packageName == packageName } +
+            AppEnterBehaviorOverride(packageName, normalizeEnterBehavior(behavior))
+        setAppEnterBehaviorOverrides(context, updated)
+    }
+
+    fun removeAppEnterBehaviorOverride(context: Context, packageName: String) {
+        setAppEnterBehaviorOverrides(
+            context,
+            getAppEnterBehaviorOverrides(context).filterNot { it.packageName == packageName }
+        )
+    }
+
+    private fun normalizeEnterBehaviorPreset(preset: String): String {
+        return when (preset) {
+            ENTER_BEHAVIOR_PRESET_APP_DEFAULT,
+            ENTER_BEHAVIOR_PRESET_ENTER_SEND_SHIFT_NEWLINE,
+            ENTER_BEHAVIOR_PRESET_ENTER_NEWLINE_CTRL_SEND,
+            ENTER_BEHAVIOR_PRESET_CUSTOM -> preset
+            else -> ENTER_BEHAVIOR_PRESET_APP_DEFAULT
+        }
+    }
+
+    private fun normalizeEnterBehavior(behavior: String): String {
+        return when (behavior) {
+            ENTER_BEHAVIOR_APP_DEFAULT,
+            ENTER_BEHAVIOR_ENTER_NEWLINE,
+            ENTER_BEHAVIOR_ENTER_SEND_SHIFT_NEWLINE,
+            ENTER_BEHAVIOR_ENTER_NEWLINE_CTRL_SEND -> behavior
+            else -> ENTER_BEHAVIOR_APP_DEFAULT
+        }
+    }
+
+    private fun normalizeEnterSendStrategy(strategy: String): String {
+        return when (strategy) {
+            ENTER_SEND_STRATEGY_AUTO,
+            ENTER_SEND_STRATEGY_EDITOR_ACTION,
+            ENTER_SEND_STRATEGY_CTRL_ENTER,
+            ENTER_SEND_STRATEGY_PLAIN_ENTER -> strategy
+            else -> ENTER_SEND_STRATEGY_AUTO
+        }
     }
 }

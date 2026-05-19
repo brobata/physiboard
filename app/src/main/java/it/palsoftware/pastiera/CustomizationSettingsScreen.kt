@@ -233,6 +233,48 @@ fun CustomizationSettingsScreen(
                             }
                         }
                     
+                        // App-specific Enter behavior
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(64.dp)
+                                .clickable { navigateTo(CustomizationDestination.AppEnterBehavior) }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Keyboard,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = stringResource(R.string.app_enter_behavior_title),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.app_enter_behavior_description),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1
+                                    )
+                                }
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
                         // Nav Mode Settings
                         Surface(
                             modifier = Modifier
@@ -417,6 +459,13 @@ fun CustomizationSettingsScreen(
                     onBack = { navigateBack() }
                 )
             }
+
+            CustomizationDestination.AppEnterBehavior -> {
+                AppEnterBehaviorScreen(
+                    modifier = modifier,
+                    onBack = { navigateBack() }
+                )
+            }
             
             CustomizationDestination.NavMode -> {
                 NavModeSettingsScreen(
@@ -491,6 +540,7 @@ private fun SoundSettingsScreen(
 private sealed class CustomizationDestination {
     object Main : CustomizationDestination()
     object Variations : CustomizationDestination()
+    object AppEnterBehavior : CustomizationDestination()
     object NavMode : CustomizationDestination()
     object StatusBarButtons : CustomizationDestination()
     object Sounds : CustomizationDestination()
