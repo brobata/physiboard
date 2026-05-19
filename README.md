@@ -32,6 +32,7 @@ Input method for physical keyboards android devices (e.g. Unihertz Titan 2), des
 - Multi-tap support and mapping for complex characters.
 - JSON import/export directly from the app, with visual preview and list management (enable/disable, delete).
 - Layout maps are stored in `files/keyboard_layouts` and can also be edited manually. A web frontend for editing layouts is available at https://pastierakeyedit.vercel.app/
+- Device/firmware behavior snapshots for physical keyboards are archived under [docs/device-archives](docs/device-archives/).
 
 ## Symbols, emoji, and variations
 - Two touch-based SYM pages (emoji + symbols): reorderable/enableable, auto-close after input, customizable keycaps.
