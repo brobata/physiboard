@@ -74,6 +74,7 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
     private var widthPercent by mutableStateOf(100)
     private var pillMode by mutableStateOf(false)
     private var respectKeyboardLayout by mutableStateOf(true)
+    private var typoTolerantRanking by mutableStateOf(false)
     private var filteredApps by mutableStateOf(emptyList<InstalledApp>())
     private var loadingApps by mutableStateOf(false)
     private var launchedAutomatically = false
@@ -96,6 +97,7 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
         widthPercent = SettingsManager.getQuickLauncherWidthPercent(this)
         pillMode = SettingsManager.getQuickLauncherPillMode(this)
         respectKeyboardLayout = SettingsManager.getQuickLauncherRespectKeyboardLayout(this)
+        typoTolerantRanking = SettingsManager.getQuickLauncherTypoTolerantRanking(this)
         keyboardLayout = if (respectKeyboardLayout) loadActiveKeyboardLayout() else emptyMap()
         apps = AppListHelper.getCachedInstalledApps().orEmpty()
         loadingApps = apps.isEmpty()
@@ -178,7 +180,7 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
     }
 
     private fun refreshFilteredApps() {
-        filteredApps = fuzzyFilterApps(apps, query, limitResults)
+        filteredApps = fuzzyFilterApps(apps, query, limitResults, typoTolerantRanking)
         maybeAutoLaunch()
     }
 
@@ -493,7 +495,12 @@ private fun QuickLauncherAppRow(
     }
 }
 
-private fun fuzzyFilterApps(apps: List<InstalledApp>, query: String, limitResults: Boolean): List<InstalledApp> {
+private fun fuzzyFilterApps(
+    apps: List<InstalledApp>,
+    query: String,
+    limitResults: Boolean,
+    typoTolerantRanking: Boolean
+): List<InstalledApp> {
     val normalizedQuery = normalizeForQuickLauncher(query)
     if (normalizedQuery.isBlank()) {
         return if (limitResults) {
@@ -505,7 +512,7 @@ private fun fuzzyFilterApps(apps: List<InstalledApp>, query: String, limitResult
 
     val matches = apps
         .mapNotNull { app ->
-            val score = fuzzyScore(app, normalizedQuery) ?: return@mapNotNull null
+            val score = fuzzyScore(app, normalizedQuery, typoTolerantRanking) ?: return@mapNotNull null
             app to score
         }
         .sortedWith(compareBy<Pair<InstalledApp, Int>> { it.second }.thenBy { it.first.appName.lowercase() })
@@ -513,7 +520,7 @@ private fun fuzzyFilterApps(apps: List<InstalledApp>, query: String, limitResult
     return if (limitResults) matches.take(3) else matches
 }
 
-private fun fuzzyScore(app: InstalledApp, normalizedQuery: String): Int? {
+private fun fuzzyScore(app: InstalledApp, normalizedQuery: String, typoTolerantRanking: Boolean): Int? {
     val name = normalizeForQuickLauncher(app.appName)
     val packageName = normalizeForQuickLauncher(app.packageName)
     if (name == normalizedQuery) return 0
@@ -522,8 +529,9 @@ private fun fuzzyScore(app: InstalledApp, normalizedQuery: String): Int? {
     if (packageName.contains(normalizedQuery)) return 200 + packageName.indexOf(normalizedQuery)
 
     val fuzzyNameScore = subsequenceScore(name, normalizedQuery)
+    val typoScore = if (typoTolerantRanking) typoTolerantScore(name, normalizedQuery) else null
     val fuzzyPackageScore = subsequenceScore(packageName, normalizedQuery)?.plus(240)
-    return listOfNotNull(fuzzyNameScore, fuzzyPackageScore).minOrNull()
+    return listOfNotNull(fuzzyNameScore, typoScore, fuzzyPackageScore).minOrNull()
 }
 
 private fun subsequenceScore(candidate: String, query: String): Int? {
@@ -536,6 +544,74 @@ private fun subsequenceScore(candidate: String, query: String): Int? {
         lastIndex = nextIndex
     }
     return score + candidate.length
+}
+
+private fun typoTolerantScore(name: String, query: String): Int? {
+    val maxDistance = when (query.length) {
+        0, 1, 2 -> return null
+        in 3..5 -> 1
+        else -> 2
+    }
+    val candidates = name.split(' ')
+        .filter { it.isNotBlank() } +
+        listOf(name.filterNot { it.isWhitespace() })
+
+    return candidates
+        .flatMap { candidate -> typoCandidateWindows(candidate, query, maxDistance) }
+        .mapNotNull { window ->
+            val distance = boundedDamerauLevenshtein(window, query, maxDistance) ?: return@mapNotNull null
+            180 + distance * 25 + kotlin.math.abs(window.length - query.length)
+        }
+        .minOrNull()
+}
+
+private fun typoCandidateWindows(candidate: String, query: String, maxDistance: Int): List<String> {
+    if (candidate.isBlank()) return emptyList()
+    val windows = linkedSetOf<String>()
+    val minLength = (query.length - maxDistance).coerceAtLeast(1)
+    val maxLength = (query.length + maxDistance).coerceAtMost(candidate.length)
+    for (length in minLength..maxLength) {
+        windows.add(candidate.take(length))
+    }
+    if (candidate.length <= query.length + maxDistance) {
+        windows.add(candidate)
+    }
+    return windows.toList()
+}
+
+private fun boundedDamerauLevenshtein(source: String, target: String, maxDistance: Int): Int? {
+    if (kotlin.math.abs(source.length - target.length) > maxDistance) {
+        return null
+    }
+
+    val matrix = Array(source.length + 1) { IntArray(target.length + 1) }
+    for (i in 0..source.length) matrix[i][0] = i
+    for (j in 0..target.length) matrix[0][j] = j
+
+    for (i in 1..source.length) {
+        var rowMin = Int.MAX_VALUE
+        for (j in 1..target.length) {
+            val substitutionCost = if (source[i - 1] == target[j - 1]) 0 else 1
+            var value = minOf(
+                matrix[i - 1][j] + 1,
+                matrix[i][j - 1] + 1,
+                matrix[i - 1][j - 1] + substitutionCost
+            )
+            if (
+                i > 1 &&
+                j > 1 &&
+                source[i - 1] == target[j - 2] &&
+                source[i - 2] == target[j - 1]
+            ) {
+                value = minOf(value, matrix[i - 2][j - 2] + 1)
+            }
+            matrix[i][j] = value
+            rowMin = minOf(rowMin, value)
+        }
+        if (rowMin > maxDistance) return null
+    }
+
+    return matrix[source.length][target.length].takeIf { it <= maxDistance }
 }
 
 private fun normalizeForQuickLauncher(value: String): String {

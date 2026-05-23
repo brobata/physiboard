@@ -227,6 +227,7 @@ object PreferenceSchemas {
             "quick_launcher_limit_results" to PreferenceValueType.BOOLEAN,
             "quick_launcher_text_field_shortcuts" to PreferenceValueType.BOOLEAN,
             "quick_launcher_respect_keyboard_layout" to PreferenceValueType.BOOLEAN,
+            "quick_launcher_typo_tolerant_ranking" to PreferenceValueType.BOOLEAN,
             "quick_launcher_width_percent" to PreferenceValueType.INT,
             "quick_launcher_pill_mode" to PreferenceValueType.BOOLEAN,
             "nav_mode_enabled" to PreferenceValueType.BOOLEAN,

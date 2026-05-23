@@ -16,6 +16,7 @@ import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.KeyboardCommandKey
 import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LineWeight
 import androidx.compose.material.icons.filled.ManageSearch
 import androidx.compose.material.icons.filled.SmartButton
@@ -74,6 +75,9 @@ fun CustomizationSettingsScreen(
     var quickLauncherRespectKeyboardLayout by remember {
         mutableStateOf(SettingsManager.getQuickLauncherRespectKeyboardLayout(context))
     }
+    var quickLauncherTypoTolerantRanking by remember {
+        mutableStateOf(SettingsManager.getQuickLauncherTypoTolerantRanking(context))
+    }
     var quickLauncherWidthPercent by remember {
         mutableStateOf(SettingsManager.getQuickLauncherWidthPercent(context))
     }
@@ -125,6 +129,9 @@ fun CustomizationSettingsScreen(
                 }
                 "quick_launcher_respect_keyboard_layout" -> {
                     quickLauncherRespectKeyboardLayout = SettingsManager.getQuickLauncherRespectKeyboardLayout(context)
+                }
+                "quick_launcher_typo_tolerant_ranking" -> {
+                    quickLauncherTypoTolerantRanking = SettingsManager.getQuickLauncherTypoTolerantRanking(context)
                 }
                 "quick_launcher_width_percent" -> {
                     quickLauncherWidthPercent = SettingsManager.getQuickLauncherWidthPercent(context)
@@ -656,6 +663,11 @@ fun CustomizationSettingsScreen(
                     onQuickLauncherRespectKeyboardLayoutChanged = { enabled ->
                         quickLauncherRespectKeyboardLayout = enabled
                         SettingsManager.setQuickLauncherRespectKeyboardLayout(context, enabled)
+                    },
+                    quickLauncherTypoTolerantRanking = quickLauncherTypoTolerantRanking,
+                    onQuickLauncherTypoTolerantRankingChanged = { enabled ->
+                        quickLauncherTypoTolerantRanking = enabled
+                        SettingsManager.setQuickLauncherTypoTolerantRanking(context, enabled)
                     }
                 )
             }
@@ -872,8 +884,12 @@ private fun StarterLauncherBehaviorScreen(
     quickLauncherTextFieldShortcuts: Boolean,
     onQuickLauncherTextFieldShortcutsChanged: (Boolean) -> Unit,
     quickLauncherRespectKeyboardLayout: Boolean,
-    onQuickLauncherRespectKeyboardLayoutChanged: (Boolean) -> Unit
+    onQuickLauncherRespectKeyboardLayoutChanged: (Boolean) -> Unit,
+    quickLauncherTypoTolerantRanking: Boolean,
+    onQuickLauncherTypoTolerantRankingChanged: (Boolean) -> Unit
 ) {
+    var showRankingInfo by remember { mutableStateOf(false) }
+
     StarterLauncherSubScreen(
         modifier = modifier,
         title = stringResource(R.string.quick_launcher_behavior_title),
@@ -907,6 +923,25 @@ private fun StarterLauncherBehaviorScreen(
             checked = quickLauncherRespectKeyboardLayout,
             onCheckedChange = onQuickLauncherRespectKeyboardLayoutChanged
         )
+        LauncherShortcutTriggerRow(
+            icon = { SettingsRowKeyboardIcon() },
+            title = stringResource(R.string.quick_launcher_typo_tolerant_ranking_title),
+            description = stringResource(R.string.quick_launcher_typo_tolerant_ranking_description),
+            checked = quickLauncherTypoTolerantRanking,
+            onCheckedChange = onQuickLauncherTypoTolerantRankingChanged
+        )
+        TextButton(
+            onClick = { showRankingInfo = true },
+            modifier = Modifier.align(Alignment.End)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Info,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(stringResource(R.string.quick_launcher_ranking_info_button))
+        }
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = MaterialTheme.colorScheme.secondaryContainer,
@@ -919,6 +954,19 @@ private fun StarterLauncherBehaviorScreen(
                 modifier = Modifier.padding(12.dp)
             )
         }
+    }
+
+    if (showRankingInfo) {
+        AlertDialog(
+            onDismissRequest = { showRankingInfo = false },
+            title = { Text(stringResource(R.string.quick_launcher_ranking_info_title)) },
+            text = { Text(stringResource(R.string.quick_launcher_ranking_info_body)) },
+            confirmButton = {
+                TextButton(onClick = { showRankingInfo = false }) {
+                    Text(stringResource(R.string.close))
+                }
+            }
+        )
     }
 }
 
