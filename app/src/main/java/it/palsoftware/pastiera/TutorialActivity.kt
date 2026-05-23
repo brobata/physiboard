@@ -166,15 +166,17 @@ fun TutorialScreen(
     onComplete: () -> Unit
 ) {
     val context = LocalContext.current
+    val releaseNotesLanguageTag = context.resources.configuration.locales[0]?.toLanguageTag()
+        ?: Locale.getDefault().toLanguageTag()
     var releaseNotes by remember {
-        mutableStateOf(ReleaseNotesSummary.fallback(BuildConfig.VERSION_NAME))
+        mutableStateOf(ReleaseNotesSummary.fallback(BuildConfig.VERSION_NAME, releaseNotesLanguageTag))
     }
 
     LaunchedEffect(updateTutorial) {
-        if (updateTutorial && shouldUseGithubUpdateChecks(context)) {
+        if (updateTutorial) {
             fetchReleaseNotesForVersion(
                 version = BuildConfig.VERSION_NAME,
-                releaseChannel = BuildConfig.RELEASE_CHANNEL
+                languageTag = releaseNotesLanguageTag
             ) { summary ->
                 if (summary != null && summary.highlights.isNotEmpty()) {
                     releaseNotes = summary
