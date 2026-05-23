@@ -543,6 +543,13 @@ fun TextInputSettingsScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                     )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = stringResource(R.string.delete_alternatives_selection_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                    )
                 }
             }
 

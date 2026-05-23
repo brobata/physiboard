@@ -1173,7 +1173,7 @@ private fun updateLocaleLayoutMapping(context: Context, locale: String, layout: 
             if (currentLocale == locale && SettingsManager.isKeyboardLayoutAutoByLocale(context)) {
                 // The locale being updated is currently active, immediately apply the layout change
                 android.util.Log.d("CustomInputStyles", "Locale $locale is currently active, applying layout change immediately")
-                SettingsManager.setKeyboardLayout(context, layout)
+                SettingsManager.notifyKeyboardLayoutAutoMappingUpdated(context)
             }
         } catch (e: Exception) {
             android.util.Log.w("CustomInputStyles", "Error checking current IME locale", e)

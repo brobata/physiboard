@@ -62,7 +62,11 @@ object SubtypeCycler {
             Log.d(TAG, "Found IME: $imeId")
             
             // Get all enabled subtypes
-            val enabledSubtypes = imm.getEnabledInputMethodSubtypeList(inputMethodInfo, true)
+            val enabledSubtypes = dedupeSubtypesByLocaleAndLayout(
+                context = context,
+                assets = assets,
+                subtypes = imm.getEnabledInputMethodSubtypeList(inputMethodInfo, true)
+            )
             if (enabledSubtypes.isEmpty()) {
                 Log.w(TAG, "No subtypes available for cycling")
                 return false
@@ -184,6 +188,19 @@ object SubtypeCycler {
                 unifiedSubtypeToast?.show()
                 Log.e(TAG, "Error showing unified subtype toast, using locale fallback", e)
             }
+        }
+    }
+
+    private fun dedupeSubtypesByLocaleAndLayout(
+        context: Context,
+        assets: AssetManager,
+        subtypes: List<InputMethodSubtype>
+    ): List<InputMethodSubtype> {
+        val seen = mutableSetOf<String>()
+        return subtypes.filter { subtype ->
+            val locale = subtype.locale ?: ""
+            val layout = AdditionalSubtypeUtils.resolveActiveLayout(assets, context, subtype)
+            seen.add("$locale:$layout")
         }
     }
     

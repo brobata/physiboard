@@ -49,6 +49,7 @@ object SettingsManager {
     private const val KEY_LONG_PRESS_MODIFIER = "long_press_modifier" // "alt", "shift", "variations", or "sym"
     private const val KEY_KEYBOARD_LAYOUT = "keyboard_layout" // "qwerty", "azerty", etc.
     private const val KEY_KEYBOARD_LAYOUT_AUTO_BY_LOCALE = "keyboard_layout_auto_by_locale" // If true, resolve layout from subtype/locale mapping
+    const val KEY_KEYBOARD_LAYOUT_AUTO_MAPPING_UPDATED = "keyboard_layout_auto_mapping_updated"
     private const val KEY_KEYBOARD_LAYOUT_LIST = "keyboard_layout_list" // JSON array of layout ids for cycling
     private const val KEY_ALT_SHIFT_LAYOUT_SWITCH = "alt_shift_layout_switch" // Enable Alt+Shift shortcut for layout cycling
     private const val KEY_PHYSICAL_KEYBOARD_PROFILE_OVERRIDE = "physical_keyboard_profile_override" // auto | key2 | Q25 | titan2 | titan2elite_qwerty | mp01
@@ -2175,6 +2176,12 @@ object SettingsManager {
     fun setKeyboardLayoutAutoByLocale(context: Context, enabled: Boolean) {
         getPreferences(context).edit()
             .putBoolean(KEY_KEYBOARD_LAYOUT_AUTO_BY_LOCALE, enabled)
+            .apply()
+    }
+
+    fun notifyKeyboardLayoutAutoMappingUpdated(context: Context) {
+        getPreferences(context).edit()
+            .putLong(KEY_KEYBOARD_LAYOUT_AUTO_MAPPING_UPDATED, System.currentTimeMillis())
             .apply()
     }
 

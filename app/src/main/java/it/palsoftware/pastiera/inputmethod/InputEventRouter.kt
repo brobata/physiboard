@@ -638,6 +638,11 @@ class InputEventRouter(
             return false
         }
 
+        val selectedText = inputConnection.getSelectedText(0)
+        if (!selectedText.isNullOrEmpty()) {
+            return false
+        }
+
         val shiftTrigger =
             SettingsManager.getShiftBackspaceDelete(context) &&
             event?.isShiftPressed == true

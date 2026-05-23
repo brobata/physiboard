@@ -52,6 +52,7 @@
     <string name="alt_backspace_delete_title">Alt + Backspace</string>
     <string name="backspace_at_start_delete_title">Backspace at line start</string>
     <string name="delete_alternatives_hint">Hint: Ctrl + key can be configured in Nav Mode settings</string>
+    <string name="delete_alternatives_selection_hint">When text is selected, these alternatives are disabled and Backspace deletes the selection.</string>
 
     <!-- Swipe Incremental Threshold Section -->
     <string name="swipe_incremental_threshold_title">Swipe Bar Sensitivity</string>

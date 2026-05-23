@@ -28,6 +28,10 @@ object AdditionalSubtypeUtils {
     private const val EXTRA_KEY_ASCII_CAPABLE = "AsciiCapable"
     private const val EXTRA_KEY_EMOJI_CAPABLE = "EmojiCapable"
     private const val EXTRA_KEY_IS_ADDITIONAL_SUBTYPE = "isAdditionalSubtype"
+    private val BASE_SUBTYPE_LOCALES = setOf(
+        "en_US", "it_IT", "fr_FR", "de_DE", "pl_PL", "da_DK",
+        "no_NO", "es_ES", "pt_PT", "ru_RU", "sr_RS", "uk_UA"
+    )
     
     /**
      * Parses a preference string and creates an array of InputMethodSubtype objects.
@@ -73,6 +77,11 @@ object AdditionalSubtypeUtils {
                 // Validate layout exists
                 if (!availableLayouts.contains(layoutName)) {
                     Log.w(TAG, "Layout not available, skipping: $layoutName")
+                    continue
+                }
+
+                if (isRedundantWithBaseSubtype(assets, context, localeStr, layoutName)) {
+                    Log.d(TAG, "Skipping redundant custom subtype: $localeStr:$layoutName")
                     continue
                 }
                 
@@ -271,6 +280,27 @@ object AdditionalSubtypeUtils {
         return extractLayoutFromExtraValue(subtype.extraValue ?: "")
     }
 
+    fun matchesLocaleAndKeyboardLayoutSet(
+        subtype: InputMethodSubtype,
+        locale: String,
+        layoutName: String
+    ): Boolean {
+        return subtype.locale == locale &&
+            getKeyboardLayoutFromSubtype(subtype) == layoutName
+    }
+
+    private fun isRedundantWithBaseSubtype(
+        assets: AssetManager,
+        context: Context,
+        locale: String,
+        layoutName: String
+    ): Boolean {
+        if (locale !in BASE_SUBTYPE_LOCALES) {
+            return false
+        }
+        return getLayoutForLocale(assets, locale, context) == layoutName
+    }
+
     /**
      * Resolves the active keyboard layout based on the central layout mode:
      * - Auto mode: subtype layout -> locale mapping
@@ -427,7 +457,7 @@ object AdditionalSubtypeUtils {
         try {
             val systemLocales = getSystemEnabledLocales(context)
             val localesWithDict = getLocalesWithDictionary(context)
-            val baseSubtypesInMethodXml = setOf("en_US", "it_IT", "fr_FR", "de_DE", "pl_PL", "da_DK", "no_NO", "es_ES", "pt_PT", "ru_RU")
+            val baseSubtypesInMethodXml = BASE_SUBTYPE_LOCALES
             
             // Get current custom input styles
             val currentStyles = SettingsManager.getCustomInputStyles(context)
@@ -665,9 +695,15 @@ object AdditionalSubtypeUtils {
                             // Add hash codes of additional subtypes to enabled set
                             subtypes.forEach { additionalSubtype ->
                                 // Find matching subtype in allSubtypes by locale and extraValue
+                                val additionalLayout = getKeyboardLayoutFromSubtype(additionalSubtype)
                                 val matchingSubtype = allSubtypes.firstOrNull { subtype ->
-                                    subtype.locale == additionalSubtype.locale &&
-                                    isAdditionalSubtype(subtype)
+                                    additionalLayout != null &&
+                                        isAdditionalSubtype(subtype) &&
+                                        matchesLocaleAndKeyboardLayoutSet(
+                                            subtype,
+                                            additionalSubtype.locale ?: "",
+                                            additionalLayout
+                                        )
                                 }
                                 if (matchingSubtype != null) {
                                     enabledHashCodes.add(matchingSubtype.hashCode())

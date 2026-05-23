@@ -549,6 +549,7 @@
     <string name="alt_backspace_delete_title">Alt + Retour arrière</string>
     <string name="backspace_at_start_delete_title">Retour arrière en début de ligne</string>
     <string name="delete_alternatives_hint">Astuce : Ctrl + touche peut être configuré dans les paramètres du mode Nav</string>
+    <string name="delete_alternatives_selection_hint">Quand du texte est sélectionné, ces alternatives sont désactivées et Retour arrière supprime la sélection.</string>
     <string name="ignore_back_short">Ignore BACK</string>
     <string name="sym_enable_emoji_picker_page_title">Activer la page du sélecteur d’emoji</string>
     <string name="sym_enable_emoji_picker_page_description">Afficher le sélecteur complet d’emoji lors du défilement.</string>

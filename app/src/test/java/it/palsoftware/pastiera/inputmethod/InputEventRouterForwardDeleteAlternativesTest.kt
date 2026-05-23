@@ -73,6 +73,23 @@ class InputEventRouterForwardDeleteAlternativesTest {
     }
 
     @Test
+    fun shiftBackspace_whenTextSelected_doesNotInterceptBackspace() {
+        SettingsManager.setShiftBackspaceDelete(context, true)
+        val ic = mockInputConnection(selectedText = "selected")
+
+        val handled = router.handleConfiguredForwardDeleteAlternatives(
+            context = context,
+            keyCode = KeyEvent.KEYCODE_DEL,
+            event = keyDown(KeyEvent.KEYCODE_DEL, KeyEvent.META_SHIFT_ON),
+            inputConnection = ic,
+            altActive = false
+        )
+
+        assertFalse(handled)
+        verify(ic, never()).deleteSurroundingText(0, 1)
+    }
+
+    @Test
     fun altBackspace_whenEnabled_andAltLatched_performsForwardDelete() {
         SettingsManager.setAltBackspaceDelete(context, true)
         val ic = mockInputConnection()
@@ -195,10 +212,14 @@ class InputEventRouterForwardDeleteAlternativesTest {
         verify(ic, times(1)).deleteSurroundingText(0, 1)
     }
 
-    private fun mockInputConnection(textBeforeCursor: CharSequence? = null): InputConnection {
+    private fun mockInputConnection(
+        textBeforeCursor: CharSequence? = null,
+        selectedText: CharSequence? = null
+    ): InputConnection {
         val ic = mock(InputConnection::class.java)
         `when`(ic.deleteSurroundingText(0, 1)).thenReturn(true)
         `when`(ic.getTextBeforeCursor(1, 0)).thenReturn(textBeforeCursor)
+        `when`(ic.getSelectedText(0)).thenReturn(selectedText)
         return ic
     }
 

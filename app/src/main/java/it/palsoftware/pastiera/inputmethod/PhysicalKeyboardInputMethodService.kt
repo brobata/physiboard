@@ -1426,6 +1426,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                     val layoutName = SettingsManager.getKeyboardLayout(this)
                     switchToLayout(layoutName, showToast = false)
                 }
+            } else if (key == "keyboard_layout_auto_by_locale" || key == SettingsManager.KEY_KEYBOARD_LAYOUT_AUTO_MAPPING_UPDATED) {
+                Log.d(TAG, "Keyboard layout auto mode/mapping changed, resolving active layout...")
+                loadKeyboardLayout()
+                switchToLayout(activeKeyboardLayoutName, showToast = false)
             } else if (key == AdditionalSubtypeUtils.PREF_CUSTOM_INPUT_STYLES) {
                 Log.d(TAG, "Custom input styles changed, re-registering subtypes...")
                 registerAdditionalSubtypes()
@@ -2456,7 +2460,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         val currentLayout = SettingsManager.getKeyboardLayout(this)
         if (layoutToUse != currentLayout) {
             Log.d(TAG, "Switching layout for locale ${newSubtype.locale}: $layoutToUse (was: $currentLayout)")
-            SettingsManager.setKeyboardLayout(this, layoutToUse)
             switchToLayout(layoutToUse, showToast = false)
         } else {
             switchToLayout(layoutToUse, showToast = false)
