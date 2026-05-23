@@ -5,9 +5,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -31,7 +35,8 @@ import it.palsoftware.pastiera.R
 @Composable
 fun StatusBarButtonsScreen(
     modifier: Modifier = Modifier,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onCustomizeVariations: () -> Unit
 ) {
     val context = LocalContext.current
     
@@ -39,7 +44,13 @@ fun StatusBarButtonsScreen(
     var leftSlots by remember { mutableStateOf(SettingsManager.getStatusBarSlotsLeft(context)) }
     var rightSlots by remember { mutableStateOf(SettingsManager.getStatusBarSlotsRight(context)) }
     var variationsVisible by remember {
-        mutableStateOf(SettingsManager.getStatusBarVariationsVisible(context))
+        mutableStateOf(SettingsManager.areStatusBarVariationsEnabled(context))
+    }
+    var dynamicVariationSlotCount by remember {
+        mutableStateOf(SettingsManager.getDynamicVariationBarSlotCount(context))
+    }
+    var dynamicVariationsResizeToContent by remember {
+        mutableStateOf(SettingsManager.getDynamicVariationBarResizeToContent(context))
     }
     
     BackHandler { onBack() }
@@ -82,7 +93,9 @@ fun StatusBarButtonsScreen(
                         val defaults = SettingsManager.resetStatusBarSlotsToDefault(context)
                         leftSlots = listOf(defaults.left)
                         rightSlots = listOf(defaults.right1, defaults.right2)
-                        variationsVisible = SettingsManager.getStatusBarVariationsVisible(context)
+                        variationsVisible = SettingsManager.areStatusBarVariationsEnabled(context)
+                        dynamicVariationSlotCount = SettingsManager.getDynamicVariationBarSlotCount(context)
+                        dynamicVariationsResizeToContent = SettingsManager.getDynamicVariationBarResizeToContent(context)
                     }
                 ) {
                     Icon(
@@ -187,8 +200,143 @@ fun StatusBarButtonsScreen(
                     checked = variationsVisible,
                     onCheckedChange = { visible ->
                         variationsVisible = visible
-                        SettingsManager.setStatusBarVariationsVisible(context, visible)
+                        SettingsManager.setStatusBarVariationsEnabled(context, visible)
                     }
+                )
+            }
+        }
+
+        if (variationsVisible) {
+            Surface(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Info,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Text(
+                        text = stringResource(R.string.status_bar_swipe_cursor_info),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+
+            Surface(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.dynamic_variation_slot_count_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = stringResource(
+                                    R.string.dynamic_variation_slot_count_description,
+                                    dynamicVariationSlotCount
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    Slider(
+                        value = dynamicVariationSlotCount.toFloat(),
+                        onValueChange = { value ->
+                            dynamicVariationSlotCount = value.toInt().coerceIn(
+                                SettingsManager.MIN_DYNAMIC_VARIATION_BAR_SLOT_COUNT,
+                                SettingsManager.MAX_DYNAMIC_VARIATION_BAR_SLOT_COUNT
+                            )
+                        },
+                        onValueChangeFinished = {
+                            SettingsManager.setDynamicVariationBarSlotCount(context, dynamicVariationSlotCount)
+                        },
+                        valueRange = SettingsManager.MIN_DYNAMIC_VARIATION_BAR_SLOT_COUNT.toFloat()..
+                            SettingsManager.MAX_DYNAMIC_VARIATION_BAR_SLOT_COUNT.toFloat(),
+                        steps = SettingsManager.MAX_DYNAMIC_VARIATION_BAR_SLOT_COUNT -
+                            SettingsManager.MIN_DYNAMIC_VARIATION_BAR_SLOT_COUNT - 1
+                    )
+                }
+            }
+
+            Surface(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.dynamic_variation_resize_to_content_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = stringResource(R.string.dynamic_variation_resize_to_content_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = dynamicVariationsResizeToContent,
+                        onCheckedChange = { enabled ->
+                            dynamicVariationsResizeToContent = enabled
+                            SettingsManager.setDynamicVariationBarResizeToContent(context, enabled)
+                        }
+                    )
+                }
+            }
+        }
+
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(64.dp)
+                .clickable { onCustomizeVariations() }
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Tune,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Text(
+                    text = stringResource(R.string.variation_customize_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1
+                )
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }

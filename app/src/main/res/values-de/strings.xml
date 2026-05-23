@@ -632,8 +632,13 @@ Jede Taste kann als Keycode, Aktion, Native Ctrl oder Keine konfiguriert werden.
     <string name="status_bar_button_undo_description">Sendet Ctrl+Z</string>
     <string name="status_bar_button_redo">Wiederholen</string>
     <string name="status_bar_button_redo_description">Sendet Ctrl+Y</string>
-    <string name="status_bar_variations_visible_title">Variationsbereich anzeigen</string>
-    <string name="status_bar_variations_visible_description">Reserviert Platz für Variationen und Vorschläge zwischen den Statusleisten-Buttons.</string>
+    <string name="status_bar_variations_visible_title">Variationen anzeigen</string>
+    <string name="status_bar_variations_visible_description">Zeigt die konfigurierte Variationsleiste zwischen den Statusleisten-Buttons. Wenn deaktiviert, nutzen die Buttons die volle Statusleiste; Wischen zur Cursorsteuerung funktioniert weiterhin.</string>
+    <string name="status_bar_swipe_cursor_info">Über die Statusleiste wischen, um den Cursor zu bewegen.</string>
+    <string name="dynamic_variation_slot_count_title">Dynamische Variationsplätze</string>
+    <string name="dynamic_variation_slot_count_description">Versucht, %1$d dynamische Einträge zwischen den Statusleisten-Buttons anzuzeigen.</string>
+    <string name="dynamic_variation_resize_to_content_title">Dynamische Variationen skalieren</string>
+    <string name="dynamic_variation_resize_to_content_description">Wenn aktiviert, füllen dynamische Einträge die verfügbare Zeile anhand der aktuell angezeigten Anzahl. Wenn deaktiviert, behalten Einträge die Slotgröße des Sliders und bleiben linksbündig.</string>
     <string name="status_bar_button_close_menu_description">Schnellaktionen schließen</string>
     <string name="status_bar_state_on">Ein</string>
     <string name="status_bar_state_off">Aus</string>

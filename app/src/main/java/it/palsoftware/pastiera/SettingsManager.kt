@@ -94,6 +94,8 @@ object SettingsManager {
     private const val KEY_STATUS_BAR_SLOTS_LEFT = "status_bar_slots_left"
     private const val KEY_STATUS_BAR_SLOTS_RIGHT = "status_bar_slots_right"
     private const val KEY_STATUS_BAR_VARIATIONS_VISIBLE = "status_bar_variations_visible"
+    private const val KEY_DYNAMIC_VARIATION_BAR_SLOT_COUNT = "dynamic_variation_bar_slot_count"
+    private const val KEY_DYNAMIC_VARIATION_BAR_RESIZE_TO_CONTENT = "dynamic_variation_bar_resize_to_content"
     
     // Public constants for button IDs
     const val STATUS_BAR_BUTTON_NONE = "none"
@@ -134,6 +136,10 @@ object SettingsManager {
     private const val DEFAULT_SLOT_RIGHT_1 = STATUS_BAR_BUTTON_EMOJI
     private const val DEFAULT_SLOT_RIGHT_2 = STATUS_BAR_BUTTON_MICROPHONE
     private const val DEFAULT_STATUS_BAR_VARIATIONS_VISIBLE = true
+    private const val DEFAULT_DYNAMIC_VARIATION_BAR_SLOT_COUNT = 7
+    private const val DEFAULT_DYNAMIC_VARIATION_BAR_RESIZE_TO_CONTENT = false
+    const val MIN_DYNAMIC_VARIATION_BAR_SLOT_COUNT = 1
+    const val MAX_DYNAMIC_VARIATION_BAR_SLOT_COUNT = 9
 
     private const val VARIATIONS_FILE_NAME = "variations.json"
     
@@ -2956,6 +2962,8 @@ object SettingsManager {
         setStatusBarSlotsLeft(context, getDefaultStatusBarSlotsLeft())
         setStatusBarSlotsRight(context, getDefaultStatusBarSlotsRight())
         setStatusBarVariationsVisible(context, DEFAULT_STATUS_BAR_VARIATIONS_VISIBLE)
+        setDynamicVariationBarSlotCount(context, DEFAULT_DYNAMIC_VARIATION_BAR_SLOT_COUNT)
+        setDynamicVariationBarResizeToContent(context, DEFAULT_DYNAMIC_VARIATION_BAR_RESIZE_TO_CONTENT)
         return defaults
     }
 
@@ -3078,6 +3086,43 @@ object SettingsManager {
     fun setStatusBarVariationsVisible(context: Context, visible: Boolean) {
         getPreferences(context).edit()
             .putBoolean(KEY_STATUS_BAR_VARIATIONS_VISIBLE, visible)
+            .apply()
+    }
+
+    fun areStatusBarVariationsEnabled(context: Context): Boolean {
+        return getStatusBarVariationsVisible(context)
+    }
+
+    fun setStatusBarVariationsEnabled(context: Context, enabled: Boolean) {
+        setStatusBarVariationsVisible(context, enabled)
+    }
+
+    fun getDynamicVariationBarSlotCount(context: Context): Int {
+        return getPreferences(context).getInt(
+            KEY_DYNAMIC_VARIATION_BAR_SLOT_COUNT,
+            DEFAULT_DYNAMIC_VARIATION_BAR_SLOT_COUNT
+        ).coerceIn(MIN_DYNAMIC_VARIATION_BAR_SLOT_COUNT, MAX_DYNAMIC_VARIATION_BAR_SLOT_COUNT)
+    }
+
+    fun setDynamicVariationBarSlotCount(context: Context, count: Int) {
+        getPreferences(context).edit()
+            .putInt(
+                KEY_DYNAMIC_VARIATION_BAR_SLOT_COUNT,
+                count.coerceIn(MIN_DYNAMIC_VARIATION_BAR_SLOT_COUNT, MAX_DYNAMIC_VARIATION_BAR_SLOT_COUNT)
+            )
+            .apply()
+    }
+
+    fun getDynamicVariationBarResizeToContent(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_DYNAMIC_VARIATION_BAR_RESIZE_TO_CONTENT,
+            DEFAULT_DYNAMIC_VARIATION_BAR_RESIZE_TO_CONTENT
+        )
+    }
+
+    fun setDynamicVariationBarResizeToContent(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_DYNAMIC_VARIATION_BAR_RESIZE_TO_CONTENT, enabled)
             .apply()
     }
     

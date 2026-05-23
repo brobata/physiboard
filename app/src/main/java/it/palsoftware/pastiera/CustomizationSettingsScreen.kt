@@ -51,7 +51,10 @@ fun CustomizationSettingsScreen(
     val context = LocalContext.current
     val prefs = remember { SettingsManager.getPreferences(context) }
     var pastierinaModeEnabled by remember {
-        mutableStateOf(SettingsManager.getPastierinaModeActive(context))
+        mutableStateOf(
+            SettingsManager.getPastierinaModeOverride(context) ==
+                SettingsManager.PastierinaModeOverride.FORCE_MINIMAL
+        )
     }
     var launcherShortcutsEnabled by remember {
         mutableStateOf(SettingsManager.getLauncherShortcutsEnabled(context))
@@ -97,8 +100,10 @@ fun CustomizationSettingsScreen(
     DisposableEffect(prefs) {
         val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
             when (key) {
-                "pastierina_mode_active" -> {
-                    pastierinaModeEnabled = SettingsManager.getPastierinaModeActive(context)
+                "pastierina_mode_override" -> {
+                    pastierinaModeEnabled =
+                        SettingsManager.getPastierinaModeOverride(context) ==
+                            SettingsManager.PastierinaModeOverride.FORCE_MINIMAL
                 }
                 "launcher_shortcuts_enabled" -> {
                     launcherShortcutsEnabled = SettingsManager.getLauncherShortcutsEnabled(context)
@@ -671,7 +676,8 @@ fun CustomizationSettingsScreen(
             CustomizationDestination.StatusBarButtons -> {
                 StatusBarButtonsScreen(
                     modifier = modifier,
-                    onBack = { navigateBack() }
+                    onBack = { navigateBack() },
+                    onCustomizeVariations = { navigateTo(CustomizationDestination.Variations) }
                 )
             }
 

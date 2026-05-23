@@ -37,6 +37,7 @@ import it.palsoftware.pastiera.inputmethod.VariationButtonHandler
 import it.palsoftware.pastiera.inputmethod.SpeechRecognitionActivity
 import it.palsoftware.pastiera.data.variation.VariationRepository
 import android.graphics.Paint
+import android.text.TextUtils
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -302,14 +303,15 @@ class VariationBarView(
 
         // Decide whether to use suggestions, dynamic variations (from cursor) or static utility keys.
         val staticModeEnabled = SettingsManager.isStaticVariationBarModeEnabled(context)
+        val statusBarVariationsEnabled = SettingsManager.areStatusBarVariationsEnabled(context)
         // Variations are controlled separately from suggestions
         val canShowVariations = !snapshot.shouldDisableVariations
         val canShowSuggestions = !snapshot.shouldDisableSuggestions
         // Legacy variations: always honor them when present, independent of suggestions.
         val hasDynamicVariations = canShowVariations && snapshot.variations.isNotEmpty()
         val hasSuggestions = canShowSuggestions && snapshot.suggestions.isNotEmpty()
-        val useDynamicVariations = !staticModeEnabled && hasDynamicVariations
-        val allowStaticFallback = staticModeEnabled || snapshot.shouldDisableVariations
+        val useDynamicVariations = statusBarVariationsEnabled && !staticModeEnabled && hasDynamicVariations
+        val allowStaticFallback = statusBarVariationsEnabled && (staticModeEnabled || snapshot.shouldDisableVariations)
 
         val effectiveVariations: List<String>
         val isStaticContent: Boolean
@@ -319,7 +321,7 @@ class VariationBarView(
                 effectiveVariations = snapshot.variations
                 isStaticContent = false
             }
-            hasSuggestions -> {
+            statusBarVariationsEnabled && hasSuggestions -> {
                 effectiveVariations = snapshot.suggestions
                 isStaticContent = false
             }
@@ -371,17 +373,15 @@ class VariationBarView(
             }
         }
 
-        val showSwipeHint = effectiveVariations.isEmpty() && !allowStaticFallback
-        shouldShowSwipeHint = showSwipeHint
-
         containerView.visibility = View.VISIBLE
         wrapperView.visibility = View.VISIBLE
         overlayView.visibility = if (isSymModeActive) View.GONE else View.VISIBLE
-        updateSwipeHintVisibility(animate = true)
 
-        val variationAreaVisible = SettingsManager.getStatusBarVariationsVisible(context)
-        val displayedVariations = if (variationAreaVisible) effectiveVariations else emptyList()
-        val variationsChanged = displayedVariations != lastDisplayedVariations
+        val variationAreaVisible = statusBarVariationsEnabled
+        val rawDisplayedVariations = if (variationAreaVisible) effectiveVariations else emptyList()
+        shouldShowSwipeHint = variationAreaVisible && !staticModeEnabled && rawDisplayedVariations.isEmpty()
+        updateSwipeHintVisibility(animate = true)
+        val variationsChanged = rawDisplayedVariations != lastDisplayedVariations
         val inputConnectionChanged = lastInputConnectionUsed !== inputConnection
         val contentModeChanged = lastIsStaticContent != isStaticContent
         val variationAreaVisibilityChanged = lastVariationAreaVisible != variationAreaVisible
@@ -421,9 +421,9 @@ class VariationBarView(
         
         // Calculate fixed button size from the actual amount of visible content.
         // If variations are hidden, buttons divide the whole bar width.
-        val variationSlots = if (variationAreaVisible) displayedVariations.size else 0
-        val totalElements = (totalButtonCount + variationSlots).coerceAtLeast(1)
-        val rawFixedButtonSize = max(1, (availableWidth - spacingBetweenButtons * (totalElements - 1)) / totalElements)
+        val reservesVariationArea = variationAreaVisible
+        val dynamicSlotCount = SettingsManager.getDynamicVariationBarSlotCount(context)
+        val resizeDynamicVariationsToContent = SettingsManager.getDynamicVariationBarResizeToContent(context)
         val maxButtonHeight = (
             TypedValue.applyDimension(
                 TypedValue.COMPLEX_UNIT_DIP,
@@ -436,7 +436,21 @@ class VariationBarView(
                 context.resources.displayMetrics
             ).toInt()
         ).coerceAtLeast(1)
-        val fixedButtonWidth = rawFixedButtonSize
+
+        val variationSlotsForSizing = when {
+            !reservesVariationArea -> 0
+            isStaticContent -> rawDisplayedVariations.size
+            resizeDynamicVariationsToContent -> rawDisplayedVariations.size.coerceAtMost(dynamicSlotCount)
+            else -> dynamicSlotCount
+        }
+        val variationSlots = if (reservesVariationArea) variationSlotsForSizing else 0
+        val totalElements = (totalButtonCount + variationSlots).coerceAtLeast(1)
+        val rawFixedButtonSize = max(1, (availableWidth - spacingBetweenButtons * (totalElements - 1)) / totalElements)
+        val fixedButtonWidth = if (reservesVariationArea) {
+            min(rawFixedButtonSize, maxButtonHeight)
+        } else {
+            rawFixedButtonSize
+        }
         val fixedButtonHeight = min(rawFixedButtonSize, maxButtonHeight)
         val fixedButtonsTotalWidth = fixedButtonWidth * totalButtonCount
         // Space only between buttons within each group (no trailing margin).
@@ -444,7 +458,7 @@ class VariationBarView(
             (leftButtonCount - 1).coerceAtLeast(0) + (rightButtonCount - 1).coerceAtLeast(0)
         )
 
-        val variationCount = displayedVariations.size
+        val variationCount = rawDisplayedVariations.size
         val variationToLeftGap = if (variationAreaVisible && hasLeftButtons && variationCount > 0) spacingBetweenButtons else 0
         val variationToRightGap = if (variationAreaVisible && hasRightButtons && variationCount > 0) spacingBetweenButtons else 0
         val variationsAvailableWidth = availableWidth -
@@ -453,22 +467,23 @@ class VariationBarView(
             variationToLeftGap -
             variationToRightGap
 
-        val baseButtonWidth = if (variationCount > 0) {
+        val baseButtonWidth = if (reservesVariationArea && variationSlotsForSizing > 0) {
+            max(1, (variationsAvailableWidth - spacingBetweenButtons * (variationSlotsForSizing - 1)) / variationSlotsForSizing)
+        } else if (variationCount > 0) {
             max(1, (variationsAvailableWidth - spacingBetweenButtons * (variationCount - 1)) / variationCount)
         } else {
             // If no variations, fall back to fixed button size to avoid division by zero
             fixedButtonWidth
         }
-        val buttonWidth: Int
-        val maxButtonWidth: Int
-        if (variationCount < 7 && variationCount > 0) {
-            buttonWidth = baseButtonWidth
-            maxButtonWidth = baseButtonWidth
-        } else {
-            buttonWidth = baseButtonWidth
-            maxButtonWidth = baseButtonWidth * 3
-        }
+        val buttonWidth = baseButtonWidth
+        val maxButtonWidth = baseButtonWidth
         val variationButtonHeight = min(buttonWidth, maxButtonHeight)
+        val maxVisibleVariationCount = if (reservesVariationArea && variationsAvailableWidth > 0) {
+            ((variationsAvailableWidth + spacingBetweenButtons) / (buttonWidth + spacingBetweenButtons)).coerceAtLeast(0)
+        } else {
+            rawDisplayedVariations.size
+        }
+        val displayedVariations = rawDisplayedVariations.take(maxVisibleVariationCount)
 
         val variationsRow = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -495,7 +510,7 @@ class VariationBarView(
             containerView.addView(variationsRow, insertionIndex, rowLayoutParams)
         }
 
-        lastDisplayedVariations = displayedVariations
+        lastDisplayedVariations = rawDisplayedVariations
         lastInputConnectionUsed = inputConnection
         lastIsStaticContent = isStaticContent
         lastVariationAreaVisible = variationAreaVisible
@@ -974,8 +989,8 @@ class VariationBarView(
         val horizontalPadding = 0 // Testing with 0 padding
         val requiredWidth = textWidth + horizontalPadding
         
-        // Use max of minimum width (buttonWidth) and required width, but cap at maxButtonWidth
-        val calculatedWidth = max(buttonWidth, min(requiredWidth, maxButtonWidth))
+        // Keep status bar layout stable; long labels are clipped instead of resizing the row.
+        val calculatedWidth = buttonWidth
         
         val stateListDrawable = VariationButtonStyles.createButtonDrawable(buttonHeight)
 
@@ -986,6 +1001,7 @@ class VariationBarView(
             setTypeface(null, android.graphics.Typeface.BOLD)
             gravity = Gravity.CENTER
             maxLines = 1
+            ellipsize = TextUtils.TruncateAt.END
             setPadding(0, 0, 0, 0) // Testing with 0 padding
             if (isAddCandidate) {
                 val addDrawable = ContextCompat.getDrawable(context, android.R.drawable.ic_input_add)?.mutate()

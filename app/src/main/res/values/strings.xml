@@ -905,8 +905,13 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="status_bar_button_undo_description">Send Ctrl+Z</string>
     <string name="status_bar_button_redo">Redo</string>
     <string name="status_bar_button_redo_description">Send Ctrl+Y</string>
-    <string name="status_bar_variations_visible_title">Show variation area</string>
-    <string name="status_bar_variations_visible_description">Reserve space for variations and suggestions between the status bar buttons.</string>
+    <string name="status_bar_variations_visible_title">Show variations</string>
+    <string name="status_bar_variations_visible_description">Show the configured variation row between the status bar buttons. When off, buttons use the full status bar; swipe cursor control still works.</string>
+    <string name="status_bar_swipe_cursor_info">Swipe across the status bar to move the cursor.</string>
+    <string name="dynamic_variation_slot_count_title">Dynamic variation slots</string>
+    <string name="dynamic_variation_slot_count_description">Aim to show %1$d dynamic entries between the status bar buttons.</string>
+    <string name="dynamic_variation_resize_to_content_title">Resize dynamic variations</string>
+    <string name="dynamic_variation_resize_to_content_description">When enabled, dynamic entries fill the available row based on how many are shown. When off, entries keep the slot size from the slider and stay left-aligned.</string>
     <string name="status_bar_state_on">On</string>
     <string name="status_bar_state_off">Off</string>
     <string name="status_bar_button_clipboard_state_empty">Empty</string>
