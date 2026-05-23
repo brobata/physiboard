@@ -337,6 +337,8 @@
     <string name="quick_launcher_text_field_shortcuts_title">Allow SYM+Space in text fields</string>
     <string name="quick_launcher_text_field_shortcuts_description">When enabled, the QuickLauncher can also open while the cursor is inside an app text field.</string>
     <string name="quick_launcher_text_field_shortcuts_hint">In text fields, hold SYM and press Space. SYM latch cannot trigger this because tapping SYM cycles the SYM pages.</string>
+    <string name="quick_launcher_respect_keyboard_layout_title">Use active keyboard layout</string>
+    <string name="quick_launcher_respect_keyboard_layout_description">When enabled, search input follows the current Pastiera layout instead of Android’s raw QWERTY key output.</string>
     <string name="quick_launcher_behavior_title">Behaviour</string>
     <string name="quick_launcher_behavior_description">Launch rules, result rendering, and SYM+Space from text fields.</string>
     <string name="quick_launcher_cosmetic_title">Appearance</string>

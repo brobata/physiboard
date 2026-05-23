@@ -71,6 +71,9 @@ fun CustomizationSettingsScreen(
     var quickLauncherTextFieldShortcuts by remember {
         mutableStateOf(SettingsManager.getQuickLauncherTextFieldShortcuts(context))
     }
+    var quickLauncherRespectKeyboardLayout by remember {
+        mutableStateOf(SettingsManager.getQuickLauncherRespectKeyboardLayout(context))
+    }
     var quickLauncherWidthPercent by remember {
         mutableStateOf(SettingsManager.getQuickLauncherWidthPercent(context))
     }
@@ -119,6 +122,9 @@ fun CustomizationSettingsScreen(
                 }
                 "quick_launcher_text_field_shortcuts" -> {
                     quickLauncherTextFieldShortcuts = SettingsManager.getQuickLauncherTextFieldShortcuts(context)
+                }
+                "quick_launcher_respect_keyboard_layout" -> {
+                    quickLauncherRespectKeyboardLayout = SettingsManager.getQuickLauncherRespectKeyboardLayout(context)
                 }
                 "quick_launcher_width_percent" -> {
                     quickLauncherWidthPercent = SettingsManager.getQuickLauncherWidthPercent(context)
@@ -645,6 +651,11 @@ fun CustomizationSettingsScreen(
                     onQuickLauncherTextFieldShortcutsChanged = { enabled ->
                         quickLauncherTextFieldShortcuts = enabled
                         SettingsManager.setQuickLauncherTextFieldShortcuts(context, enabled)
+                    },
+                    quickLauncherRespectKeyboardLayout = quickLauncherRespectKeyboardLayout,
+                    onQuickLauncherRespectKeyboardLayoutChanged = { enabled ->
+                        quickLauncherRespectKeyboardLayout = enabled
+                        SettingsManager.setQuickLauncherRespectKeyboardLayout(context, enabled)
                     }
                 )
             }
@@ -859,7 +870,9 @@ private fun StarterLauncherBehaviorScreen(
     quickLauncherLimitResults: Boolean,
     onQuickLauncherLimitResultsChanged: (Boolean) -> Unit,
     quickLauncherTextFieldShortcuts: Boolean,
-    onQuickLauncherTextFieldShortcutsChanged: (Boolean) -> Unit
+    onQuickLauncherTextFieldShortcutsChanged: (Boolean) -> Unit,
+    quickLauncherRespectKeyboardLayout: Boolean,
+    onQuickLauncherRespectKeyboardLayoutChanged: (Boolean) -> Unit
 ) {
     StarterLauncherSubScreen(
         modifier = modifier,
@@ -886,6 +899,13 @@ private fun StarterLauncherBehaviorScreen(
             description = stringResource(R.string.quick_launcher_text_field_shortcuts_description),
             checked = quickLauncherTextFieldShortcuts,
             onCheckedChange = onQuickLauncherTextFieldShortcutsChanged
+        )
+        LauncherShortcutTriggerRow(
+            icon = { SettingsRowKeyboardIcon() },
+            title = stringResource(R.string.quick_launcher_respect_keyboard_layout_title),
+            description = stringResource(R.string.quick_launcher_respect_keyboard_layout_description),
+            checked = quickLauncherRespectKeyboardLayout,
+            onCheckedChange = onQuickLauncherRespectKeyboardLayoutChanged
         )
         Surface(
             modifier = Modifier.fillMaxWidth(),

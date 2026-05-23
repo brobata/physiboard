@@ -6,6 +6,7 @@ import android.util.Log
 import android.view.KeyEvent
 import android.view.ViewGroup
 import android.view.WindowManager
+import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
 import androidx.activity.compose.setContent
 import androidx.lifecycle.lifecycleScope
@@ -56,6 +57,10 @@ import it.palsoftware.pastiera.InstalledApp
 import it.palsoftware.pastiera.LocalizedComponentActivity
 import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.SettingsManager
+import it.palsoftware.pastiera.data.layout.JsonLayoutLoader
+import it.palsoftware.pastiera.data.layout.LayoutMapping
+import it.palsoftware.pastiera.data.layout.LayoutMappingRepository
+import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils
 import it.palsoftware.pastiera.ui.theme.PastieraTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -68,9 +73,11 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
     private var limitResults by mutableStateOf(false)
     private var widthPercent by mutableStateOf(100)
     private var pillMode by mutableStateOf(false)
+    private var respectKeyboardLayout by mutableStateOf(true)
     private var filteredApps by mutableStateOf(emptyList<InstalledApp>())
     private var loadingApps by mutableStateOf(false)
     private var launchedAutomatically = false
+    private var keyboardLayout: Map<Int, LayoutMapping> = emptyMap()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -88,6 +95,8 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
         limitResults = SettingsManager.getQuickLauncherLimitResults(this)
         widthPercent = SettingsManager.getQuickLauncherWidthPercent(this)
         pillMode = SettingsManager.getQuickLauncherPillMode(this)
+        respectKeyboardLayout = SettingsManager.getQuickLauncherRespectKeyboardLayout(this)
+        keyboardLayout = if (respectKeyboardLayout) loadActiveKeyboardLayout() else emptyMap()
         apps = AppListHelper.getCachedInstalledApps().orEmpty()
         loadingApps = apps.isEmpty()
         refreshFilteredApps()
@@ -150,11 +159,10 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
             }
         }
 
-        val unicode = event?.unicodeChar ?: 0
-        if (unicode > 0 && event?.isCtrlPressed != true && event?.isAltPressed != true) {
-            val char = unicode.toChar()
-            if (!char.isISOControl()) {
-                query += char
+        if (event?.isCtrlPressed != true && event?.isAltPressed != true) {
+            val text = resolveTypedText(keyCode, event)
+            if (!text.isNullOrEmpty()) {
+                query += text
                 launchedAutomatically = false
                 refreshFilteredApps()
                 return true
@@ -198,6 +206,39 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
         } catch (error: Exception) {
             Log.e(TAG, "Error launching $packageName", error)
         }
+    }
+
+    private fun loadActiveKeyboardLayout(): Map<Int, LayoutMapping> {
+        val layoutName = try {
+            val imm = getSystemService(InputMethodManager::class.java)
+            AdditionalSubtypeUtils.resolveActiveLayout(
+                assets,
+                this,
+                imm.currentInputMethodSubtype
+            )
+        } catch (error: Exception) {
+            SettingsManager.getKeyboardLayout(this)
+        }
+        return JsonLayoutLoader.loadLayout(assets, layoutName, this).orEmpty()
+    }
+
+    private fun resolveTypedText(keyCode: Int, event: KeyEvent?): String? {
+        if (respectKeyboardLayout) {
+            keyboardLayout[keyCode]
+                ?.let { mapping ->
+                    val mappedText = LayoutMappingRepository.resolveText(mapping, event?.isShiftPressed == true)
+                    if (!mappedText.isNullOrEmpty()) {
+                        return mappedText
+                    }
+                }
+        }
+
+        val unicode = event?.unicodeChar ?: 0
+        if (unicode <= 0) {
+            return null
+        }
+        val char = unicode.toChar()
+        return if (char.isISOControl()) null else char.toString()
     }
 
     private fun disableActivityAnimations() {

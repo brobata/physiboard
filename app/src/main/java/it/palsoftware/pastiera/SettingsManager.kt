@@ -1622,12 +1622,14 @@ object SettingsManager {
     private const val KEY_QUICK_LAUNCHER_AUTO_START_SINGLE = "quick_launcher_auto_start_single"
     private const val KEY_QUICK_LAUNCHER_LIMIT_RESULTS = "quick_launcher_limit_results"
     private const val KEY_QUICK_LAUNCHER_TEXT_FIELD_SHORTCUTS = "quick_launcher_text_field_shortcuts"
+    private const val KEY_QUICK_LAUNCHER_RESPECT_KEYBOARD_LAYOUT = "quick_launcher_respect_keyboard_layout"
     private const val KEY_QUICK_LAUNCHER_WIDTH_PERCENT = "quick_launcher_width_percent"
     private const val KEY_QUICK_LAUNCHER_PILL_MODE = "quick_launcher_pill_mode"
     private const val DEFAULT_LAUNCHER_SHORTCUTS_ENABLED = false
     private const val DEFAULT_QUICK_LAUNCHER_AUTO_START_SINGLE = false
     private const val DEFAULT_QUICK_LAUNCHER_LIMIT_RESULTS = false
     private const val DEFAULT_QUICK_LAUNCHER_TEXT_FIELD_SHORTCUTS = true
+    private const val DEFAULT_QUICK_LAUNCHER_RESPECT_KEYBOARD_LAYOUT = true
     private const val DEFAULT_QUICK_LAUNCHER_WIDTH_PERCENT = 100
     private const val DEFAULT_QUICK_LAUNCHER_PILL_MODE = false
     
@@ -1882,6 +1884,19 @@ object SettingsManager {
     fun setQuickLauncherTextFieldShortcuts(context: Context, enabled: Boolean) {
         getPreferences(context).edit()
             .putBoolean(KEY_QUICK_LAUNCHER_TEXT_FIELD_SHORTCUTS, enabled)
+            .apply()
+    }
+
+    fun getQuickLauncherRespectKeyboardLayout(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_QUICK_LAUNCHER_RESPECT_KEYBOARD_LAYOUT,
+            DEFAULT_QUICK_LAUNCHER_RESPECT_KEYBOARD_LAYOUT
+        )
+    }
+
+    fun setQuickLauncherRespectKeyboardLayout(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_QUICK_LAUNCHER_RESPECT_KEYBOARD_LAYOUT, enabled)
             .apply()
     }
 
