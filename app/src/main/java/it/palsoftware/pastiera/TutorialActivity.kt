@@ -427,22 +427,24 @@ fun TutorialScreen(
                     }
                 }
 
-                FilledTonalButton(
-                    onClick = onComplete,
-                    colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    ),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(start = 8.dp, top = 12.dp)
-                        .height(32.dp)
-                ) {
-                    Text(
-                        text = stringResource(R.string.tutorial_skip),
-                        style = MaterialTheme.typography.bodySmall
-                    )
+                if (pagerState.currentPage < pages.lastIndex) {
+                    FilledTonalButton(
+                        onClick = onComplete,
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(start = 8.dp, top = 12.dp)
+                            .height(32.dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.tutorial_skip),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
 
                 if (
