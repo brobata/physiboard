@@ -760,15 +760,18 @@ Jede Taste kann als Keycode, Aktion, Native Ctrl oder Keine konfiguriert werden.
 • Auto: Hardware-Tastaturmodus auf bekannten PKB-Geräten; virtuelle Tastatur auf Pixel, Samsung und den meisten Touch-Geräten.
 • Immer virtuelle Tastatur: zeigt immer die vollständige Bildschirmtastatur.
 • Immer Hardware-Tastatur: nutzt die kompakte Hardware-Tastatur-Oberfläche und erzwingt keine vollständige Bildschirmtastatur.</string>
+    <string name="tutorial_software_keyboard_alpha_warning">Alpha-Funktion: Die virtuelle Tastatur ist noch stark im Umbau und aktuell nicht für den täglichen Gebrauch empfohlen.</string>
     <string name="tutorial_android16_ime_caption_title">IME-Beschriftungsleiste ausblenden</string>
-    <string name="tutorial_android16_ime_caption_description">Titan 2 und Titan 2 Elite können über Pastiera eine zusätzliche IME-Beschriftungsleiste anzeigen. Unter Android 16 oder neuer kannst du diese OEM-Gesteneinstellung nutzen, um die Leiste auszublenden und Pastiera kompakt zu halten.</string>
-    <string name="tutorial_android16_ime_caption_before">Vorher: verschwendeter Platz durch die IME-Beschriftungsleiste</string>
-    <string name="tutorial_android16_ime_caption_after">Nachher: kompakte Pastiera-Oberfläche für Hardware-Tastaturen</string>
+    <string name="tutorial_android16_ime_caption_description">Titan 2-Geräte können unter Pastiera eine zusätzliche IME-Beschriftungsleiste anzeigen. Diese OEM-Einstellung blendet sie aus und hält Pastiera kompakt.</string>
+    <string name="tutorial_android16_ime_caption_before">Vorher: zusätzliche Leiste</string>
+    <string name="tutorial_android16_ime_caption_after">Nachher: kompakte Pastiera</string>
     <string name="tutorial_android16_ime_caption_check_android16">Android 16 oder neuer</string>
     <string name="tutorial_android16_ime_caption_check_titan2">Unihertz Titan 2 oder Titan 2 Elite</string>
     <string name="tutorial_android16_ime_caption_check_setting">OEM-Gesteneinstellung verfügbar</string>
     <string name="tutorial_android16_ime_caption_button">„IME-Beschriftungsleiste ausblenden“ öffnen</string>
-    <string name="tutorial_android16_ime_caption_unavailable">Der Direktlink wird nur angezeigt, wenn alle Voraussetzungen erfüllt sind.</string>
+    <string name="tutorial_android16_ime_caption_unavailable_button">Warum das hier fehlt</string>
+    <string name="tutorial_android16_ime_caption_missing_requirement">Fehlt: %1$s.</string>
+    <string name="tutorial_android16_ime_caption_vendor_toast">Das ist ein herstellerspezifisches Unihertz-Verhalten. Die Verknüpfung funktioniert nur auf unterstützter Titan-2-Firmware, wenn Android die OEM-Gesteneinstellung bereitstellt.</string>
     <string name="tutorial_android16_ime_caption_fallback">Die Titan-2-Gesteneinstellung konnte nicht geöffnet werden. Öffne stattdessen die Android-Einstellungen.</string>
     <string name="tutorial_software_keyboard_auto_checker_title">Auto-Erkennung</string>
     <string name="tutorial_software_keyboard_auto_selected">Auto wählt aktuell: %1$s</string>

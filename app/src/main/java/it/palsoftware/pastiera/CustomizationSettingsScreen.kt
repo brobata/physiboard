@@ -47,7 +47,8 @@ import it.palsoftware.pastiera.R
 @Composable
 fun CustomizationSettingsScreen(
     modifier: Modifier = Modifier,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    initialDestination: String? = null
 ) {
     val context = LocalContext.current
     val prefs = remember { SettingsManager.getPreferences(context) }
@@ -98,7 +99,18 @@ fun CustomizationSettingsScreen(
     }
     var navigationDirection by remember { mutableStateOf(CustomizationNavigationDirection.Push) }
     val navigationStack = remember {
-        mutableStateListOf<CustomizationDestination>(CustomizationDestination.Main)
+        mutableStateListOf<CustomizationDestination>().apply {
+            val deepLinkedDestination = when (initialDestination) {
+                SettingsActivity.CUSTOMIZATION_DESTINATION_VARIATIONS ->
+                    CustomizationDestination.Variations
+                SettingsActivity.CUSTOMIZATION_DESTINATION_LAUNCHER_SHORTCUTS ->
+                    CustomizationDestination.LauncherShortcuts
+                SettingsActivity.CUSTOMIZATION_DESTINATION_APP_ENTER_BEHAVIOR ->
+                    CustomizationDestination.AppEnterBehavior
+                else -> null
+            }
+            add(deepLinkedDestination ?: CustomizationDestination.Main)
+        }
     }
     val currentDestination by remember {
         derivedStateOf { navigationStack.last() }

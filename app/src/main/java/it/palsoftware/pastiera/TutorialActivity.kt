@@ -12,10 +12,13 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -31,9 +34,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -46,6 +52,8 @@ import androidx.compose.ui.unit.dp
 import it.palsoftware.pastiera.ui.theme.PastieraTheme
 import it.palsoftware.pastiera.BuildConfig
 import it.palsoftware.pastiera.update.checkForUpdate
+import it.palsoftware.pastiera.update.fetchReleaseNotesForVersion
+import it.palsoftware.pastiera.update.ReleaseNotesSummary
 import it.palsoftware.pastiera.update.showUpdateDialog
 import it.palsoftware.pastiera.update.shouldUseGithubUpdateChecks
 import it.palsoftware.pastiera.inputmethod.DeviceSpecific
@@ -59,14 +67,23 @@ private const val SETTINGS_FRAGMENT_ARGS_KEY = ":settings:fragment_args_key"
 private const val UNIHERTZ_HIDE_IME_CAPTION_BAR_KEY = "agui_hide_ime_caption_bar"
 
 class TutorialActivity : LocalizedComponentActivity() {
+    companion object {
+        const val EXTRA_UPDATE_TUTORIAL = "it.palsoftware.pastiera.UPDATE_TUTORIAL"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        val updateTutorial = intent.getBooleanExtra(EXTRA_UPDATE_TUTORIAL, false)
         setContent {
             PastieraTheme {
                 TutorialScreen(
+                    updateTutorial = updateTutorial,
                     onComplete = {
                         SettingsManager.setTutorialCompleted(this@TutorialActivity)
+                        if (updateTutorial) {
+                            SettingsManager.markWhatsNewSeen(this@TutorialActivity, BuildConfig.VERSION_NAME)
+                        }
                         val intent = Intent(this@TutorialActivity, MainActivity::class.java)
                         startActivity(intent)
                         finish()
@@ -78,6 +95,10 @@ class TutorialActivity : LocalizedComponentActivity() {
 }
 
 sealed class TutorialPageType {
+    data class WhatsNew(
+        val summary: ReleaseNotesSummary
+    ) : TutorialPageType()
+
     data class Welcome(
         val title: String,
         val description: String,
@@ -104,6 +125,10 @@ sealed class TutorialPageType {
         val icon: ImageVector,
         val iconTint: Color
     ) : TutorialPageType()
+
+    object QuickLauncher : TutorialPageType()
+
+    object MessengerPresets : TutorialPageType()
     
     data class EnablePastiera(
         val title: String,
@@ -126,15 +151,63 @@ sealed class TutorialPageType {
         val icon: ImageVector,
         val iconTint: Color
     ) : TutorialPageType()
+
+    data class LedIndicator(
+        val title: String,
+        val description: String,
+        val iconTint: Color
+    ) : TutorialPageType()
 }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TutorialScreen(
+    updateTutorial: Boolean = false,
     onComplete: () -> Unit
 ) {
     val context = LocalContext.current
+    var releaseNotes by remember {
+        mutableStateOf(ReleaseNotesSummary.fallback(BuildConfig.VERSION_NAME))
+    }
+
+    LaunchedEffect(updateTutorial) {
+        if (updateTutorial && shouldUseGithubUpdateChecks(context)) {
+            fetchReleaseNotesForVersion(
+                version = BuildConfig.VERSION_NAME,
+                releaseChannel = BuildConfig.RELEASE_CHANNEL
+            ) { summary ->
+                if (summary != null && summary.highlights.isNotEmpty()) {
+                    releaseNotes = summary
+                }
+            }
+        }
+    }
+
+    // Check IME status
+    var isPastieraEnabled by remember { mutableStateOf(false) }
+    var isPastieraSelected by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        checkImeStatus(context) { enabled, selected ->
+            isPastieraEnabled = enabled
+            isPastieraSelected = selected
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(2000)
+            checkImeStatus(context) { enabled, selected ->
+                isPastieraEnabled = enabled
+                isPastieraSelected = selected
+            }
+        }
+    }
+
     val pages = buildList {
+        if (updateTutorial) {
+            add(TutorialPageType.WhatsNew(releaseNotes))
+        }
         add(
             TutorialPageType.Welcome(
                 title = stringResource(R.string.tutorial_page_welcome_title),
@@ -142,18 +215,22 @@ fun TutorialScreen(
                 imageRes = R.drawable.tutorial_welcome
             )
         )
-        add(
-            TutorialPageType.EnablePastiera(
-                title = stringResource(R.string.tutorial_page_enable_title),
-                description = stringResource(R.string.tutorial_page_enable_description)
+        if (!isPastieraEnabled) {
+            add(
+                TutorialPageType.EnablePastiera(
+                    title = stringResource(R.string.tutorial_page_enable_title),
+                    description = stringResource(R.string.tutorial_page_enable_description)
+                )
             )
-        )
-        add(
-            TutorialPageType.SelectPastiera(
-                title = stringResource(R.string.tutorial_page_select_title),
-                description = stringResource(R.string.tutorial_page_select_description)
+        }
+        if (!isPastieraSelected) {
+            add(
+                TutorialPageType.SelectPastiera(
+                    title = stringResource(R.string.tutorial_page_select_title),
+                    description = stringResource(R.string.tutorial_page_select_description)
+                )
             )
-        )
+        }
         add(
             TutorialPageType.Customization(
                 title = stringResource(R.string.tutorial_page_customization_title),
@@ -162,14 +239,14 @@ fun TutorialScreen(
                 iconTint = MaterialTheme.colorScheme.primary
             )
         )
-        if (shouldShowImeCaptionBarGuidance(context)) {
-            add(
-                TutorialPageType.ImeCaptionBar(
-                    title = stringResource(R.string.tutorial_android16_ime_caption_title),
-                    description = stringResource(R.string.tutorial_android16_ime_caption_description)
-                )
+        add(TutorialPageType.QuickLauncher)
+        add(TutorialPageType.MessengerPresets)
+        add(
+            TutorialPageType.ImeCaptionBar(
+                title = stringResource(R.string.tutorial_android16_ime_caption_title),
+                description = stringResource(R.string.tutorial_android16_ime_caption_description)
             )
-        }
+        )
         add(
             TutorialPageType.SoftwareKeyboard(
                 title = stringResource(R.string.tutorial_page_software_keyboard_title),
@@ -179,10 +256,9 @@ fun TutorialScreen(
             )
         )
         add(
-            TutorialPageType.Standard(
+            TutorialPageType.LedIndicator(
                 title = stringResource(R.string.tutorial_page_led_title),
                 description = stringResource(R.string.tutorial_page_led_description),
-                icon = Icons.Filled.Lightbulb,
                 iconTint = MaterialTheme.colorScheme.secondary
             )
         )
@@ -206,27 +282,6 @@ fun TutorialScreen(
     
     val pagerState = rememberPagerState(pageCount = { pages.size })
     val coroutineScope = rememberCoroutineScope()
-    
-    // Check IME status
-    var isPastieraEnabled by remember { mutableStateOf(false) }
-    var isPastieraSelected by remember { mutableStateOf(false) }
-    
-    LaunchedEffect(Unit) {
-        checkImeStatus(context) { enabled, selected ->
-            isPastieraEnabled = enabled
-            isPastieraSelected = selected
-        }
-    }
-    
-    LaunchedEffect(Unit) {
-        while (true) {
-            kotlinx.coroutines.delay(2000)
-            checkImeStatus(context) { enabled, selected ->
-                isPastieraEnabled = enabled
-                isPastieraSelected = selected
-            }
-        }
-    }
     
     // Automatic update check at tutorial start (only once, respecting dismissed releases)
     if (shouldUseGithubUpdateChecks(context)) {
@@ -253,22 +308,132 @@ fun TutorialScreen(
                 .padding(paddingValues)
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            // Top actions
-            Row(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .height(0.dp)
+                    .padding(horizontal = 12.dp)
             ) {
-                TextButton(
-                    onClick = onComplete,
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Text(stringResource(R.string.tutorial_skip), style = MaterialTheme.typography.bodyMedium)
+            }
+            
+            // Pager content
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            ) {
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize()
+                ) { page ->
+                    when (val pageType = pages[page]) {
+                        is TutorialPageType.WhatsNew -> {
+                            TutorialWhatsNewPageContent(
+                                page = pageType,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        is TutorialPageType.Welcome -> {
+                            TutorialWelcomePageContent(
+                                page = pageType,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        is TutorialPageType.Standard -> {
+                            if (page == pages.lastIndex) {
+                                TutorialReadyPageContent(
+                                    page = pageType,
+                                    onComplete = onComplete,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            } else {
+                                TutorialStandardPageContent(
+                                    page = pageType,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                        }
+                        is TutorialPageType.NavMode -> {
+                            TutorialNavModePageContent(
+                                page = pageType,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        is TutorialPageType.Customization -> {
+                            TutorialCustomizationPageContent(
+                                page = pageType,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        TutorialPageType.QuickLauncher -> {
+                            TutorialQuickLauncherPageContent(modifier = Modifier.fillMaxSize())
+                        }
+                        TutorialPageType.MessengerPresets -> {
+                            TutorialMessengerPresetsPageContent(modifier = Modifier.fillMaxSize())
+                        }
+                        is TutorialPageType.EnablePastiera -> {
+                            TutorialEnablePastieraPageContent(
+                                page = pageType,
+                                isPastieraEnabled = isPastieraEnabled,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        is TutorialPageType.SelectPastiera -> {
+                            TutorialSelectPastieraPageContent(
+                                page = pageType,
+                                isPastieraEnabled = isPastieraEnabled,
+                                isPastieraSelected = isPastieraSelected,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        is TutorialPageType.ImeCaptionBar -> {
+                            TutorialImeCaptionBarPageContent(
+                                page = pageType,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        is TutorialPageType.SoftwareKeyboard -> {
+                            TutorialSoftwareKeyboardPageContent(
+                                page = pageType,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        is TutorialPageType.LedIndicator -> {
+                            TutorialLedIndicatorPageContent(
+                                page = pageType,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
                 }
 
-                if (pagerState.currentPage == 0) {
+                FilledTonalButton(
+                    onClick = onComplete,
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(start = 8.dp, top = 12.dp)
+                        .height(32.dp)
+                ) {
+                    Text(
+                        text = if (updateTutorial) {
+                            stringResource(R.string.tutorial_skip_update)
+                        } else {
+                            stringResource(R.string.tutorial_skip)
+                        },
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+
+                if (
+                    BuildConfig.RELEASE_CHANNEL == "nightly" &&
+                    !updateTutorial &&
+                    pagerState.currentPage == 0
+                ) {
                     Button(
                         onClick = {
                             applyDevsChoiceSettings(context)
@@ -282,116 +447,17 @@ fun TutorialScreen(
                             containerColor = MaterialTheme.colorScheme.errorContainer,
                             contentColor = MaterialTheme.colorScheme.onErrorContainer
                         ),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(end = 12.dp, top = 12.dp)
+                            .height(32.dp)
                     ) {
                         Text(
                             text = stringResource(R.string.tutorial_devs_choice_button),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold
                         )
-                    }
-                } else {
-                    Spacer(modifier = Modifier.width(1.dp))
-                }
-            }
-            
-            // Pager content
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-            ) { page ->
-                when (val pageType = pages[page]) {
-                    is TutorialPageType.Welcome -> {
-                        TutorialWelcomePageContent(
-                            page = pageType,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                    is TutorialPageType.Standard -> {
-                        TutorialStandardPageContent(
-                            page = pageType,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                    is TutorialPageType.NavMode -> {
-                        TutorialNavModePageContent(
-                            page = pageType,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                    is TutorialPageType.Customization -> {
-                        TutorialCustomizationPageContent(
-                            page = pageType,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                    is TutorialPageType.EnablePastiera -> {
-                        TutorialEnablePastieraPageContent(
-                            page = pageType,
-                            isPastieraEnabled = isPastieraEnabled,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                    is TutorialPageType.SelectPastiera -> {
-                        TutorialSelectPastieraPageContent(
-                            page = pageType,
-                            isPastieraEnabled = isPastieraEnabled,
-                            isPastieraSelected = isPastieraSelected,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                    is TutorialPageType.ImeCaptionBar -> {
-                        TutorialImeCaptionBarPageContent(
-                            page = pageType,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                    is TutorialPageType.SoftwareKeyboard -> {
-                        TutorialSoftwareKeyboardPageContent(
-                            page = pageType,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                }
-            }
-            
-            // Page indicators
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                pages.forEachIndexed { index, _ ->
-                    val isSelected = pagerState.currentPage == index
-                    Box(
-                        modifier = Modifier
-                            .size(if (isSelected) 10.dp else 6.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (isSelected) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                                }
-                            )
-                            .padding(if (isSelected) 0.dp else 1.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (isSelected) {
-                            Box(
-                                modifier = Modifier
-                                    .size(6.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.onPrimary)
-                            )
-                        }
-                    }
-                    if (index < pages.size - 1) {
-                        Spacer(modifier = Modifier.width(6.dp))
                     }
                 }
             }
@@ -401,67 +467,89 @@ fun TutorialScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Previous button
-                if (pagerState.currentPage > 0) {
-                    TextButton(
-                        onClick = {
-                            coroutineScope.launch {
-                                pagerState.animateScrollToPage(
-                                    pagerState.currentPage - 1,
-                                    animationSpec = tween(300)
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                    if (pagerState.currentPage > 0) {
+                        TextButton(
+                            onClick = {
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(
+                                        pagerState.currentPage - 1,
+                                        animationSpec = tween(300)
+                                    )
+                                }
+                            },
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = stringResource(R.string.tutorial_previous),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(stringResource(R.string.tutorial_previous), style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    pages.forEachIndexed { index, _ ->
+                        val isSelected = pagerState.currentPage == index
+                        Box(
+                            modifier = Modifier
+                                .size(if (isSelected) 10.dp else 6.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (isSelected) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                    }
+                                )
+                                .padding(if (isSelected) 0.dp else 1.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (isSelected) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(6.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.onPrimary)
                                 )
                             }
-                        },
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.tutorial_previous),
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(stringResource(R.string.tutorial_previous), style = MaterialTheme.typography.bodyMedium)
+                        }
+                        if (index < pages.size - 1) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                        }
                     }
-                } else {
-                    Spacer(modifier = Modifier.width(1.dp))
                 }
                 
-                // Next/Complete button
-                if (pagerState.currentPage < pages.size - 1) {
-                    Button(
-                        onClick = {
-                            coroutineScope.launch {
-                                pagerState.animateScrollToPage(
-                                    pagerState.currentPage + 1,
-                                    animationSpec = tween(300)
-                                )
-                            }
-                        },
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-                    ) {
-                        Text(stringResource(R.string.tutorial_next), style = MaterialTheme.typography.bodyMedium)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = stringResource(R.string.tutorial_next),
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                } else {
-                    Button(
-                        onClick = onComplete,
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-                    ) {
-                        Text(stringResource(R.string.tutorial_finish), style = MaterialTheme.typography.bodyMedium)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Icon(
-                            imageVector = Icons.Filled.Check,
-                            contentDescription = stringResource(R.string.tutorial_finish),
-                            modifier = Modifier.size(16.dp)
-                        )
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
+                    if (pagerState.currentPage < pages.size - 1) {
+                        Button(
+                            onClick = {
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(
+                                        pagerState.currentPage + 1,
+                                        animationSpec = tween(300)
+                                    )
+                                }
+                            },
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                        ) {
+                            Text(stringResource(R.string.tutorial_next), style = MaterialTheme.typography.bodyMedium)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                contentDescription = stringResource(R.string.tutorial_next),
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -499,6 +587,36 @@ fun TutorialSoftwareKeyboardPageContent(
             )
         }
     ) {
+        Spacer(modifier = Modifier.height(16.dp))
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(14.dp),
+            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.38f),
+            contentColor = MaterialTheme.colorScheme.onErrorContainer
+        ) {
+            Row(
+                modifier = Modifier.padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Science,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = stringResource(R.string.tutorial_software_keyboard_alpha_warning),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(14.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            TutorialBulletRow(stringResource(R.string.tutorial_software_keyboard_auto_bullet))
+            TutorialBulletRow(stringResource(R.string.tutorial_software_keyboard_virtual_bullet))
+            TutorialBulletRow(stringResource(R.string.tutorial_software_keyboard_hardware_bullet))
+        }
         Spacer(modifier = Modifier.height(16.dp))
         ExposedDropdownMenuBox(
             expanded = expanded,
@@ -547,6 +665,8 @@ fun TutorialImeCaptionBarPageContent(
 ) {
     val context = LocalContext.current
     val imeCaptionBarChecks = remember { resolveImeCaptionBarChecks(context) }
+    val missingRequirement = imeCaptionBarChecks.firstOrNull { !it.isMet }
+    val canOpenDirectly = missingRequirement == null
 
     TutorialPageLayout(
         title = page.title,
@@ -554,19 +674,24 @@ fun TutorialImeCaptionBarPageContent(
         modifier = modifier,
         centered = true,
         descriptionLeftAligned = true,
-        iconContent = null
+        iconContent = {
+            TutorialIconSurface(
+                icon = Icons.Filled.Keyboard,
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
     ) {
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(8.dp))
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
         ) {
             Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                modifier = Modifier.padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     ImeCaptionBarPreviewImage(
                         imageRes = R.drawable.tutorial_titan2_ime_caption_bar_with,
                         label = stringResource(R.string.tutorial_android16_ime_caption_before)
@@ -577,33 +702,60 @@ fun TutorialImeCaptionBarPageContent(
                     )
                 }
 
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    imeCaptionBarChecks.forEach { check ->
-                        RequirementRow(
-                            label = stringResource(check.labelRes),
-                            isMet = check.isMet
+                if (missingRequirement != null) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Info,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.75f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = stringResource(
+                                R.string.tutorial_android16_ime_caption_missing_requirement,
+                                stringResource(missingRequirement.labelRes)
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.78f)
                         )
                     }
                 }
 
-                if (imeCaptionBarChecks.all { it.isMet }) {
-                    Button(
-                        onClick = { openImeCaptionBarSettings(context) },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(stringResource(R.string.tutorial_android16_ime_caption_button))
-                    }
-                } else {
+                Button(
+                    onClick = {
+                        if (canOpenDirectly) {
+                            openImeCaptionBarSettings(context)
+                        } else {
+                            Toast.makeText(
+                                context,
+                                R.string.tutorial_android16_ime_caption_vendor_toast,
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = if (canOpenDirectly) {
+                            Icons.AutoMirrored.Filled.ArrowForward
+                        } else {
+                            Icons.Filled.Info
+                        },
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = stringResource(R.string.tutorial_android16_ime_caption_unavailable),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.75f)
+                        stringResource(
+                            if (canOpenDirectly) {
+                                R.string.tutorial_android16_ime_caption_button
+                            } else {
+                                R.string.tutorial_android16_ime_caption_unavailable_button
+                            }
+                        )
                     )
                 }
             }
@@ -786,12 +938,6 @@ private fun resolveImeCaptionBarChecks(context: Context): List<ImeCaptionBarRequ
     )
 }
 
-private fun shouldShowImeCaptionBarGuidance(context: Context): Boolean {
-    return Build.VERSION.SDK_INT >= 36 ||
-        DeviceSpecific.isTitan2Device() ||
-        buildImeCaptionBarSettingsIntent().resolveActivity(context.packageManager) != null
-}
-
 private fun openImeCaptionBarSettings(context: Context) {
     val intent = buildImeCaptionBarSettingsIntent()
     try {
@@ -813,9 +959,8 @@ private fun buildImeCaptionBarSettingsIntent(): Intent {
     }
 }
 
-private val TutorialIconAreaHeight = 110.dp
-private val TutorialIconSurfaceSize = 96.dp
-private val TutorialIconSize = 44.dp
+private val TutorialIconSurfaceSize = 82.dp
+private val TutorialIconSize = 38.dp
 private val TutorialWelcomeImageSize = 240.dp
 
 @Composable
@@ -838,28 +983,23 @@ private fun TutorialPageLayout(
         horizontalAlignment = if (centered) Alignment.CenterHorizontally else Alignment.Start
     ) {
         if (iconContent != null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(TutorialIconAreaHeight),
-                contentAlignment = if (centered) Alignment.Center else Alignment.CenterStart
-            ) {
-                iconContent()
-            }
+            TutorialPageHeader(
+                title = title,
+                centered = centered,
+                iconContent = iconContent
+            )
+        } else {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                textAlign = if (centered) TextAlign.Center else TextAlign.Start,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.fillMaxWidth()
+            )
 
-            Spacer(modifier = Modifier.height(1.dp))
+            Spacer(modifier = Modifier.height(8.dp))
         }
-
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            textAlign = if (centered) TextAlign.Center else TextAlign.Start,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.fillMaxWidth()
-        )
-        
-        Spacer(modifier = Modifier.height(8.dp))
         
         Text(
             text = description,
@@ -872,6 +1012,34 @@ private fun TutorialPageLayout(
         
         content()
     }
+}
+
+@Composable
+private fun TutorialPageHeader(
+    title: String,
+    centered: Boolean,
+    iconContent: @Composable () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 54.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        iconContent()
+        Spacer(modifier = Modifier.width(14.dp))
+        Text(
+            text = title,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            textAlign = if (centered) TextAlign.Center else TextAlign.Start,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.wrapContentWidth()
+        )
+    }
+
+    Spacer(modifier = Modifier.height(8.dp))
 }
 
 @Composable
@@ -895,6 +1063,84 @@ private fun TutorialIconSurface(
                 tint = tint
             )
         }
+    }
+}
+
+@Composable
+fun TutorialWhatsNewPageContent(
+    page: TutorialPageType.WhatsNew,
+    modifier: Modifier = Modifier
+) {
+    val scrollState = rememberScrollState()
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(scrollState)
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        TutorialIconSurface(
+            icon = Icons.Filled.AutoAwesome,
+            tint = MaterialTheme.colorScheme.primary
+        )
+
+        Spacer(modifier = Modifier.height(18.dp))
+
+        Text(
+            text = stringResource(R.string.tutorial_whats_new_title),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = stringResource(R.string.tutorial_whats_new_description),
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.15f
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        page.summary.highlights.forEach { highlight ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 6.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.CheckCircle,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .padding(top = 2.dp)
+                        .size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = highlight,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Text(
+            text = stringResource(R.string.tutorial_whats_new_continue_hint),
+            style = MaterialTheme.typography.bodySmall,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Medium
+        )
     }
 }
 
@@ -950,6 +1196,202 @@ fun TutorialWelcomePageContent(
     }
 }
 
+@Composable
+fun TutorialQuickLauncherPageContent(
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    var spaceShortcut by remember {
+        mutableStateOf(SettingsManager.getLauncherShortcut(context, KeyEvent.KEYCODE_SPACE))
+    }
+    val blocksSymSpace = spaceShortcut != null &&
+        spaceShortcut?.type != SettingsManager.LauncherShortcut.TYPE_QUICK_LAUNCHER
+    TutorialFeaturePageContent(
+        title = stringResource(R.string.tutorial_quick_launcher_title),
+        description = stringResource(R.string.tutorial_quick_launcher_description),
+        icon = Icons.Filled.ManageSearch,
+        tint = MaterialTheme.colorScheme.primary,
+        bullets = listOf(
+            stringResource(R.string.tutorial_quick_launcher_bullet_sym_space),
+            stringResource(R.string.tutorial_quick_launcher_bullet_text_fields),
+            stringResource(R.string.tutorial_quick_launcher_bullet_search),
+            stringResource(R.string.tutorial_quick_launcher_bullet_layout)
+        ),
+        buttonText = stringResource(R.string.tutorial_quick_launcher_button),
+        onButtonClick = { openCustomizationDestination(context, SettingsActivity.CUSTOMIZATION_DESTINATION_LAUNCHER_SHORTCUTS) },
+        modifier = modifier
+    ) {
+        if (blocksSymSpace) {
+            Spacer(modifier = Modifier.height(12.dp))
+            QuickLauncherMappingConflictCard(
+                currentMappingLabel = launcherShortcutLabel(spaceShortcut),
+                onReplaceClick = {
+                    SettingsManager.setLauncherShortcutsEnabled(context, true)
+                    SettingsManager.setQuickLauncherTextFieldShortcuts(context, true)
+                    SettingsManager.setQuickLauncherShortcut(context, KeyEvent.KEYCODE_SPACE)
+                    spaceShortcut = SettingsManager.getLauncherShortcut(context, KeyEvent.KEYCODE_SPACE)
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun TutorialMessengerPresetsPageContent(
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    TutorialFeaturePageContent(
+        title = stringResource(R.string.tutorial_messenger_presets_title),
+        description = stringResource(R.string.tutorial_messenger_presets_description),
+        icon = Icons.Filled.Send,
+        tint = MaterialTheme.colorScheme.tertiary,
+        bullets = listOf(
+            stringResource(R.string.tutorial_messenger_presets_bullet_enter),
+            stringResource(R.string.tutorial_messenger_presets_bullet_sym_enter),
+            stringResource(R.string.tutorial_messenger_presets_bullet_apps)
+        ),
+        buttonText = stringResource(R.string.tutorial_messenger_presets_button),
+        onButtonClick = { openCustomizationDestination(context, SettingsActivity.CUSTOMIZATION_DESTINATION_APP_ENTER_BEHAVIOR) },
+        modifier = modifier
+    )
+}
+
+@Composable
+private fun TutorialFeaturePageContent(
+    title: String,
+    description: String,
+    icon: ImageVector,
+    tint: Color,
+    bullets: List<String>,
+    buttonText: String,
+    onButtonClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    extraContent: @Composable ColumnScope.() -> Unit = {}
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        TutorialPageHeader(
+            title = title,
+            centered = true,
+            iconContent = {
+                TutorialIconSurface(icon = icon, tint = tint)
+            }
+        )
+        Text(
+            text = description,
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.15f,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            bullets.forEach { bullet ->
+                TutorialBulletRow(text = bullet)
+            }
+        }
+        extraContent()
+        Spacer(modifier = Modifier.weight(1f))
+        Button(
+            onClick = onButtonClick,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(buttonText)
+        }
+    }
+}
+
+@Composable
+private fun QuickLauncherMappingConflictCard(
+    currentMappingLabel: String,
+    onReplaceClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.tertiaryContainer,
+        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.tutorial_quick_launcher_mapping_conflict_title),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = stringResource(
+                    R.string.tutorial_quick_launcher_mapping_conflict_description,
+                    currentMappingLabel
+                ),
+                style = MaterialTheme.typography.bodySmall
+            )
+            Button(
+                onClick = onReplaceClick,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(stringResource(R.string.tutorial_quick_launcher_mapping_conflict_button))
+            }
+        }
+    }
+}
+
+@Composable
+private fun TutorialBulletRow(text: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top
+    ) {
+        Icon(
+            imageVector = Icons.Filled.CheckCircle,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier
+                .padding(top = 2.dp)
+                .size(18.dp)
+        )
+        Spacer(modifier = Modifier.width(10.dp))
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+private fun openCustomizationDestination(context: Context, destination: String) {
+    val intent = Intent(context, SettingsActivity::class.java).apply {
+        putExtra(SettingsActivity.EXTRA_DESTINATION, SettingsActivity.DESTINATION_CUSTOMIZATION)
+        putExtra(SettingsActivity.EXTRA_CUSTOMIZATION_DESTINATION, destination)
+    }
+    context.startActivity(intent)
+}
+
+private fun launcherShortcutLabel(shortcut: SettingsManager.LauncherShortcut?): String {
+    return when (shortcut?.type) {
+        SettingsManager.LauncherShortcut.TYPE_APP -> shortcut.appName ?: shortcut.packageName ?: "app shortcut"
+        SettingsManager.LauncherShortcut.TYPE_SHORTCUT -> shortcut.action ?: "shortcut"
+        SettingsManager.LauncherShortcut.TYPE_QUICK_LAUNCHER -> "QuickLauncher"
+        null -> "none"
+        else -> shortcut.action ?: shortcut.appName ?: shortcut.type
+    }
+}
+
 private fun applyDevsChoiceSettings(context: Context) {
     SettingsManager.setAppLanguageTag(context, null)
     SettingsManager.setPhysicalKeyboardProfileOverride(context, "auto")
@@ -992,6 +1434,170 @@ fun TutorialStandardPageContent(
 }
 
 @Composable
+fun TutorialLedIndicatorPageContent(
+    page: TutorialPageType.LedIndicator,
+    modifier: Modifier = Modifier
+) {
+    var enabled by remember { mutableStateOf(false) }
+    val backgroundAlpha by animateFloatAsState(
+        targetValue = if (enabled) 0.24f else 0.1f,
+        animationSpec = tween(220),
+        label = "ledIndicatorBackground"
+    )
+    val iconScale by animateFloatAsState(
+        targetValue = if (enabled) 1.12f else 1f,
+        animationSpec = tween(220),
+        label = "ledIndicatorScale"
+    )
+    val tint = if (enabled) MaterialTheme.colorScheme.primary else page.iconTint
+
+    TutorialPageLayout(
+        title = page.title,
+        description = page.description,
+        modifier = modifier,
+        iconContent = {
+            Surface(
+                modifier = Modifier
+                    .size(TutorialIconSurfaceSize)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { enabled = !enabled },
+                shape = CircleShape,
+                color = tint.copy(alpha = backgroundAlpha)
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Lightbulb,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(TutorialIconSize)
+                            .scale(iconScale),
+                        tint = tint
+                    )
+                }
+            }
+        }
+    )
+}
+
+@Composable
+fun TutorialReadyPageContent(
+    page: TutorialPageType.Standard,
+    onComplete: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var finishing by remember { mutableStateOf(false) }
+    val contentOffset by animateDpAsState(
+        targetValue = if (finishing) (-120).dp else 0.dp,
+        animationSpec = tween(520),
+        label = "readyContentOffset"
+    )
+    val contentAlpha by animateFloatAsState(
+        targetValue = if (finishing) 0f else 1f,
+        animationSpec = tween(520),
+        label = "readyContentAlpha"
+    )
+    val checkScale by animateFloatAsState(
+        targetValue = if (finishing) 1.22f else 1f,
+        animationSpec = tween(420),
+        label = "readyCheckScale"
+    )
+    val checkBackgroundAlpha by animateFloatAsState(
+        targetValue = if (finishing) 0.92f else 0.12f,
+        animationSpec = tween(420),
+        label = "readyCheckBackground"
+    )
+
+    LaunchedEffect(finishing) {
+        if (finishing) {
+            delay(620)
+            onComplete()
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 20.dp, vertical = 16.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .offset(y = contentOffset)
+                .alpha(contentAlpha),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = page.title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Text(
+                text = page.description,
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.15f,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.weight(1.45f))
+            Spacer(modifier = Modifier.height(52.dp))
+
+            Surface(
+                modifier = Modifier
+                    .size(156.dp)
+                    .scale(checkScale)
+                    .clickable(
+                        enabled = !finishing,
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { finishing = true },
+                shape = RoundedCornerShape(34.dp),
+                color = page.iconTint.copy(alpha = checkBackgroundAlpha),
+                contentColor = if (finishing) {
+                    MaterialTheme.colorScheme.onPrimary
+                } else {
+                    page.iconTint
+                }
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.CheckBox,
+                        contentDescription = stringResource(R.string.tutorial_finish),
+                        modifier = Modifier.size(86.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Text(
+                text = stringResource(R.string.tutorial_finish),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            Spacer(modifier = Modifier.weight(0.65f))
+        }
+    }
+}
+
+@Composable
 fun TutorialNavModePageContent(
     page: TutorialPageType.NavMode,
     modifier: Modifier = Modifier
@@ -1015,6 +1621,13 @@ fun TutorialNavModePageContent(
         }
     ) {
         Spacer(modifier = Modifier.height(16.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            TutorialBulletRow(stringResource(R.string.tutorial_nav_mode_bullet_selection))
+            TutorialBulletRow(stringResource(R.string.tutorial_nav_mode_bullet_words))
+            TutorialBulletRow(stringResource(R.string.tutorial_nav_mode_bullet_media))
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
 
         Surface(
             modifier = Modifier.fillMaxWidth(),
@@ -1065,6 +1678,7 @@ fun TutorialCustomizationPageContent(
     val context = LocalContext.current
     var appLanguageExpanded by remember { mutableStateOf(false) }
     var modifierExpanded by remember { mutableStateOf(false) }
+    var typingSoundsExpanded by remember { mutableStateOf(false) }
     var typingSoundExpanded by remember { mutableStateOf(false) }
     var typingSoundOutputExpanded by remember { mutableStateOf(false) }
     var selectedLanguageTag by remember { mutableStateOf(SettingsManager.getAppLanguageTag(context)) }
@@ -1189,6 +1803,26 @@ fun TutorialCustomizationPageContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedButton(
+                onClick = { context.startActivity(Intent(context, SymCustomizationActivity::class.java)) },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(stringResource(R.string.tutorial_sym_emoji_button))
+            }
+            OutlinedButton(
+                onClick = { openCustomizationDestination(context, SettingsActivity.CUSTOMIZATION_DESTINATION_VARIATIONS) },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(stringResource(R.string.tutorial_variations_button))
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -1199,6 +1833,9 @@ fun TutorialCustomizationPageContent(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { typingSoundsExpanded = !typingSoundsExpanded },
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -1212,97 +1849,105 @@ fun TutorialCustomizationPageContent(
                         text = stringResource(R.string.tutorial_typing_sound_demo_title),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Icon(
+                        imageVector = if (typingSoundsExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                }
+                if (typingSoundsExpanded) {
+                    Text(
+                        text = stringResource(R.string.tutorial_typing_sound_demo_description),
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSecondaryContainer
                     )
-                }
-                Text(
-                    text = stringResource(R.string.tutorial_typing_sound_demo_description),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
-                )
-                ExposedDropdownMenuBox(
-                    expanded = typingSoundExpanded,
-                    onExpandedChange = { typingSoundExpanded = it }
-                ) {
-                    OutlinedTextField(
-                        value = tutorialTypingSoundModeLabel(typingSoundMode),
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text(stringResource(R.string.typing_sound_title)) },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typingSoundExpanded) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor()
-                    )
-                    ExposedDropdownMenu(
+                    ExposedDropdownMenuBox(
                         expanded = typingSoundExpanded,
-                        onDismissRequest = { typingSoundExpanded = false }
+                        onExpandedChange = { typingSoundExpanded = it }
                     ) {
-                        listOf(
-                            SettingsManager.TYPING_SOUND_MODE_OFF to stringResource(R.string.typing_sound_off),
-                            SettingsManager.TYPING_SOUND_MODE_CLICK to stringResource(R.string.typing_sound_click),
-                            SettingsManager.TYPING_SOUND_MODE_TYPEWRITER to stringResource(R.string.typing_sound_typewriter)
-                        ).forEach { (value, label) ->
-                            DropdownMenuItem(
-                                text = { Text(label) },
-                                onClick = {
-                                    SettingsManager.setTypingSoundMode(context, value)
-                                    typingSoundMode = value
-                                    typingSoundPlayer.reload()
-                                    typingSoundExpanded = false
-                                }
-                            )
+                        OutlinedTextField(
+                            value = tutorialTypingSoundModeLabel(typingSoundMode),
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text(stringResource(R.string.typing_sound_title)) },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typingSoundExpanded) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = typingSoundExpanded,
+                            onDismissRequest = { typingSoundExpanded = false }
+                        ) {
+                            listOf(
+                                SettingsManager.TYPING_SOUND_MODE_OFF to stringResource(R.string.typing_sound_off),
+                                SettingsManager.TYPING_SOUND_MODE_CLICK to stringResource(R.string.typing_sound_click),
+                                SettingsManager.TYPING_SOUND_MODE_TYPEWRITER to stringResource(R.string.typing_sound_typewriter)
+                            ).forEach { (value, label) ->
+                                DropdownMenuItem(
+                                    text = { Text(label) },
+                                    onClick = {
+                                        SettingsManager.setTypingSoundMode(context, value)
+                                        typingSoundMode = value
+                                        typingSoundPlayer.reload()
+                                        typingSoundExpanded = false
+                                    }
+                                )
+                            }
                         }
                     }
-                }
-                ExposedDropdownMenuBox(
-                    expanded = typingSoundOutputExpanded,
-                    onExpandedChange = { typingSoundOutputExpanded = it }
-                ) {
-                    OutlinedTextField(
-                        value = tutorialTypingSoundOutputModeLabel(typingSoundOutputMode),
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text(stringResource(R.string.typing_sound_output_title)) },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typingSoundOutputExpanded) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor()
-                    )
-                    ExposedDropdownMenu(
+                    ExposedDropdownMenuBox(
                         expanded = typingSoundOutputExpanded,
-                        onDismissRequest = { typingSoundOutputExpanded = false }
+                        onExpandedChange = { typingSoundOutputExpanded = it }
                     ) {
-                        listOf(
-                            SettingsManager.TYPING_SOUND_OUTPUT_MEDIA to stringResource(R.string.typing_sound_output_media),
-                            SettingsManager.TYPING_SOUND_OUTPUT_SYSTEM to stringResource(R.string.typing_sound_output_system),
-                            SettingsManager.TYPING_SOUND_OUTPUT_NOTIFICATION to stringResource(R.string.typing_sound_output_notification)
-                        ).forEach { (value, label) ->
-                            DropdownMenuItem(
-                                text = { Text(label) },
-                                onClick = {
-                                    SettingsManager.setTypingSoundOutputMode(context, value)
-                                    typingSoundOutputMode = value
-                                    typingSoundPlayer.reload()
-                                    typingSoundOutputExpanded = false
-                                }
-                            )
+                        OutlinedTextField(
+                            value = tutorialTypingSoundOutputModeLabel(typingSoundOutputMode),
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text(stringResource(R.string.typing_sound_output_title)) },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typingSoundOutputExpanded) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = typingSoundOutputExpanded,
+                            onDismissRequest = { typingSoundOutputExpanded = false }
+                        ) {
+                            listOf(
+                                SettingsManager.TYPING_SOUND_OUTPUT_MEDIA to stringResource(R.string.typing_sound_output_media),
+                                SettingsManager.TYPING_SOUND_OUTPUT_SYSTEM to stringResource(R.string.typing_sound_output_system),
+                                SettingsManager.TYPING_SOUND_OUTPUT_NOTIFICATION to stringResource(R.string.typing_sound_output_notification)
+                            ).forEach { (value, label) ->
+                                DropdownMenuItem(
+                                    text = { Text(label) },
+                                    onClick = {
+                                        SettingsManager.setTypingSoundOutputMode(context, value)
+                                        typingSoundOutputMode = value
+                                        typingSoundPlayer.reload()
+                                        typingSoundOutputExpanded = false
+                                    }
+                                )
+                            }
                         }
                     }
+                    OutlinedTextField(
+                        value = demoText,
+                        onValueChange = { newValue ->
+                            val keyCode = tutorialTypingSoundKeyCode(demoText, newValue)
+                            demoText = newValue
+                            if (keyCode != null) {
+                                typingSoundPlayer.play(keyCode)
+                            }
+                        },
+                        label = { Text(stringResource(R.string.tutorial_typing_sound_demo_input_label)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
-                OutlinedTextField(
-                    value = demoText,
-                    onValueChange = { newValue ->
-                        val keyCode = tutorialTypingSoundKeyCode(demoText, newValue)
-                        demoText = newValue
-                        if (keyCode != null) {
-                            typingSoundPlayer.play(keyCode)
-                        }
-                    },
-                    label = { Text(stringResource(R.string.tutorial_typing_sound_demo_input_label)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
             }
         }
     }
@@ -1347,20 +1992,23 @@ fun TutorialEnablePastieraPageContent(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    
-    TutorialPageLayout(
+
+    TutorialActionPageLayout(
         title = page.title,
         description = page.description,
+        icon = Icons.Filled.Settings,
+        tint = MaterialTheme.colorScheme.primary,
         modifier = modifier,
-        iconContent = {
-            TutorialIconSurface(
-                icon = Icons.Filled.Settings,
-                tint = MaterialTheme.colorScheme.primary
-            )
-        }
-    ) {
-        Spacer(modifier = Modifier.height(20.dp))
-        
+        statusContent = {
+            if (isPastieraEnabled) {
+                TutorialStatusRow(
+                    text = stringResource(R.string.tutorial_enabled_message),
+                    icon = Icons.Filled.CheckCircle,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+        },
+        actionContent = {
         Button(
             onClick = {
                 val intent = Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)
@@ -1377,29 +2025,8 @@ fun TutorialEnablePastieraPageContent(
             Spacer(modifier = Modifier.width(8.dp))
             Text(stringResource(R.string.tutorial_enable_button), style = MaterialTheme.typography.bodyMedium)
         }
-        
-        if (isPastieraEnabled) {
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.CheckCircle,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(18.dp)
-                )
-                Text(
-                    text = stringResource(R.string.tutorial_enabled_message),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Medium
-                )
-            }
         }
-    }
+    )
 }
 
 @Composable
@@ -1410,20 +2037,28 @@ fun TutorialSelectPastieraPageContent(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    
-    TutorialPageLayout(
+
+    TutorialActionPageLayout(
         title = page.title,
         description = page.description,
+        icon = Icons.Filled.Keyboard,
+        tint = MaterialTheme.colorScheme.secondary,
         modifier = modifier,
-        iconContent = {
-            TutorialIconSurface(
-                icon = Icons.Filled.Keyboard,
-                tint = MaterialTheme.colorScheme.secondary
-            )
-        }
-    ) {
-        Spacer(modifier = Modifier.height(20.dp))
-        
+        statusContent = {
+            when {
+                !isPastieraEnabled -> TutorialStatusRow(
+                    text = stringResource(R.string.tutorial_enable_first_message),
+                    icon = Icons.Filled.Warning,
+                    tint = MaterialTheme.colorScheme.error
+                )
+                isPastieraSelected -> TutorialStatusRow(
+                    text = stringResource(R.string.tutorial_selected_message),
+                    icon = Icons.Filled.CheckCircle,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+        },
+        actionContent = {
         Button(
             onClick = {
                 val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
@@ -1441,48 +2076,71 @@ fun TutorialSelectPastieraPageContent(
             Spacer(modifier = Modifier.width(8.dp))
             Text(stringResource(R.string.tutorial_select_button), style = MaterialTheme.typography.bodyMedium)
         }
-        
-        if (!isPastieraEnabled) {
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Warning,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(18.dp)
-                )
-                Text(
-                    text = stringResource(R.string.tutorial_enable_first_message),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                    textAlign = TextAlign.Center
-                )
-            }
-        } else if (isPastieraSelected) {
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.CheckCircle,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(18.dp)
-                )
-                Text(
-                    text = stringResource(R.string.tutorial_selected_message),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Medium
-                )
-            }
         }
+    )
+}
+
+@Composable
+private fun TutorialActionPageLayout(
+    title: String,
+    description: String,
+    icon: ImageVector,
+    tint: Color,
+    modifier: Modifier = Modifier,
+    statusContent: @Composable ColumnScope.() -> Unit = {},
+    actionContent: @Composable ColumnScope.() -> Unit
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        TutorialPageHeader(
+            title = title,
+            centered = true,
+            iconContent = { TutorialIconSurface(icon = icon, tint = tint) }
+        )
+        Text(
+            text = description,
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.15f,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(14.dp))
+        statusContent()
+        Spacer(modifier = Modifier.weight(1f))
+        actionContent()
+    }
+}
+
+@Composable
+private fun TutorialStatusRow(
+    text: String,
+    icon: ImageVector,
+    tint: Color
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall,
+            color = tint,
+            textAlign = TextAlign.Center,
+            fontWeight = FontWeight.Medium
+        )
     }
 }
 

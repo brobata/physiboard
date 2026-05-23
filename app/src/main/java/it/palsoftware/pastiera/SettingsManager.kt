@@ -61,6 +61,7 @@ object SettingsManager {
     private const val KEY_EMOJI_PICKER_EXPANDED_HEIGHT = "emoji_picker_expanded_height"
     private const val KEY_DISMISSED_RELEASES = "dismissed_releases" // Set of release tag_names that were dismissed
     private const val KEY_TUTORIAL_COMPLETED = "tutorial_completed" // Whether the first-run tutorial has been completed
+    private const val KEY_LAST_SEEN_WHATS_NEW_VERSION = "last_seen_whats_new_version"
     private const val KEY_SWIPE_INCREMENTAL_THRESHOLD = "swipe_incremental_threshold" // Distance in DIP for cursor movement
     private const val KEY_STATIC_VARIATION_BAR_MODE = "static_variation_bar_mode" // Use static variation bar instead of dynamic cursor-based variations
     private const val KEY_STATIC_VARIATION_BAR_PRESET = "static_variation_bar_preset"
@@ -2645,6 +2646,7 @@ object SettingsManager {
     fun setTutorialCompleted(context: Context) {
         getPreferences(context).edit()
             .putBoolean(KEY_TUTORIAL_COMPLETED, true)
+            .putString(KEY_LAST_SEEN_WHATS_NEW_VERSION, BuildConfig.VERSION_NAME)
             .apply()
     }
     
@@ -2655,6 +2657,24 @@ object SettingsManager {
     fun resetTutorialCompleted(context: Context) {
         getPreferences(context).edit()
             .putBoolean(KEY_TUTORIAL_COMPLETED, false)
+            .apply()
+    }
+
+    fun shouldShowWhatsNew(context: Context, currentVersion: String): Boolean {
+        if (!isTutorialCompleted(context)) return false
+        val normalizedCurrent = currentVersion.trim()
+        if (normalizedCurrent.isBlank()) return false
+
+        val lastSeen = getPreferences(context).getString(KEY_LAST_SEEN_WHATS_NEW_VERSION, null)
+        return lastSeen != normalizedCurrent
+    }
+
+    fun markWhatsNewSeen(context: Context, version: String) {
+        val normalizedVersion = version.trim()
+        if (normalizedVersion.isBlank()) return
+
+        getPreferences(context).edit()
+            .putString(KEY_LAST_SEEN_WHATS_NEW_VERSION, normalizedVersion)
             .apply()
     }
 

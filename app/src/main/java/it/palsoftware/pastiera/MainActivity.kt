@@ -192,6 +192,18 @@ class MainActivity : LocalizedComponentActivity() {
             finish()
             return
         }
+
+        if (
+            BuildConfig.RELEASE_CHANNEL != "nightly" &&
+            SettingsManager.shouldShowWhatsNew(this, BuildConfig.VERSION_NAME)
+        ) {
+            val intent = Intent(this, TutorialActivity::class.java).apply {
+                putExtra(TutorialActivity.EXTRA_UPDATE_TUTORIAL, true)
+            }
+            startActivity(intent)
+            finish()
+            return
+        }
         
         // Register additional subtypes (custom input styles) when app starts
         // This ensures dynamic languages are available when IME is enabled

@@ -16,6 +16,44 @@ APK_PATH="$ROOT_DIR/app/build/outputs/apk/stable/release/app-stable-release.apk"
 SHA_PATH="${APK_PATH}.sha256"
 TAG_NAME="v${VERSION_NAME}"
 
+resolve_android_sdk_root() {
+  local candidate
+
+  for candidate in "${ANDROID_SDK_ROOT:-}" "${ANDROID_HOME:-}" "$HOME/Android/Sdk" "$HOME/Library/Android/sdk" "/opt/android-sdk" "/usr/lib/android-sdk"; do
+    if [ -n "$candidate" ] && [ -d "$candidate/build-tools" ]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+resolve_apksigner() {
+  if [ -n "${APKSIGNER_PATH:-}" ] && [ -x "${APKSIGNER_PATH}" ]; then
+    printf '%s\n' "${APKSIGNER_PATH}"
+    return 0
+  fi
+
+  if command -v apksigner >/dev/null 2>&1; then
+    command -v apksigner
+    return 0
+  fi
+
+  local sdk_root
+  sdk_root="$(resolve_android_sdk_root || true)"
+  if [ -n "$sdk_root" ]; then
+    local apksigner
+    apksigner="$(find "$sdk_root/build-tools" -mindepth 2 -maxdepth 2 -type f -name apksigner | sort -V | tail -n 1)"
+    if [ -n "$apksigner" ] && [ -x "$apksigner" ]; then
+      printf '%s\n' "$apksigner"
+      return 0
+    fi
+  fi
+
+  return 1
+}
+
 read_prop() {
   local key="$1"
   local file="$2"
@@ -78,6 +116,14 @@ configure_release_signing_env
   -PPASTIERA_VERSION_NAME="$VERSION_NAME"
 
 sha256sum "$APK_PATH" | tee "$SHA_PATH"
+
+APKSIGNER="$(resolve_apksigner || true)"
+if [ -n "$APKSIGNER" ]; then
+  "$APKSIGNER" verify --print-certs "$APK_PATH"
+else
+  echo "Warning: apksigner not found; skipping signing certificate verification." >&2
+  echo "Set APKSIGNER_PATH, ANDROID_SDK_ROOT, or ANDROID_HOME to enable it." >&2
+fi
 
 if [ "$PUBLISH" = "--publish" ]; then
   gh release create "$TAG_NAME" "$APK_PATH" "$SHA_PATH" \

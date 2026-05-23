@@ -691,9 +691,13 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     
     <!-- Tutorial -->
     <string name="tutorial_skip">Skip</string>
+    <string name="tutorial_skip_update">Skip anyway</string>
     <string name="tutorial_previous">Previous</string>
     <string name="tutorial_next">Next</string>
     <string name="tutorial_finish">Finish</string>
+    <string name="tutorial_whats_new_title">What’s new in this release</string>
+    <string name="tutorial_whats_new_description">This is a larger Pastiera update. The next pages are worth a quick pass because they point you directly at settings and workflows that changed.</string>
+    <string name="tutorial_whats_new_continue_hint">Continue through the tutorial to review the most useful settings for this release.</string>
     <string name="tutorial_page_welcome_title">Welcome to Pastiera</string>
     <string name="tutorial_page_welcome_description">Pastiera is an advanced input method for PKB Android devices with support for Nav Mode, shortcuts, custom keyboard mappings, and more.</string>
     <string name="tutorial_devs_choice_button">Dev\'s Choice</string>
@@ -703,20 +707,22 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="tutorial_page_select_title">Select Pastiera</string>
     <string name="tutorial_page_select_description">To use Pastiera, select it among the input methods. The next step lets you choose whether Pastiera should use a virtual keyboard or hardware-keyboard mode.</string>
     <string name="tutorial_page_software_keyboard_title">Keyboard Mode</string>
-    <string name="tutorial_page_software_keyboard_description">Choose how Pastiera should behave for this device.
-
-• Auto: hardware-keyboard mode on known PKB devices; virtual keyboard mode on Pixel, Samsung, and most touch devices.
-• Always Virtual Keyboard: always show the full on-screen keyboard.
-• Always Hardware Keyboard: use the compact hardware-keyboard surface and do not force the full on-screen keyboard.</string>
+    <string name="tutorial_page_software_keyboard_description">Choose how Pastiera should behave for this device.</string>
+    <string name="tutorial_software_keyboard_auto_bullet">Auto uses hardware-keyboard mode on known PKB devices and virtual keyboard mode on most touch devices.</string>
+    <string name="tutorial_software_keyboard_virtual_bullet">Always Virtual Keyboard shows the full on-screen keyboard.</string>
+    <string name="tutorial_software_keyboard_hardware_bullet">Always Hardware Keyboard uses the compact hardware-keyboard surface.</string>
+    <string name="tutorial_software_keyboard_alpha_warning">Alpha feature: the virtual keyboard is still heavily under construction and is not recommended for daily use yet.</string>
     <string name="tutorial_android16_ime_caption_title">Hide IME caption bar</string>
-    <string name="tutorial_android16_ime_caption_description">Titan 2 and Titan 2 Elite can show an extra IME caption bar above Pastiera. On Android 16 or newer, use this OEM gesture setting to hide that bar and keep Pastiera compact.</string>
-    <string name="tutorial_android16_ime_caption_before">Before: wasted IME caption bar space</string>
-    <string name="tutorial_android16_ime_caption_after">After: compact Pastiera hardware-keyboard surface</string>
+    <string name="tutorial_android16_ime_caption_description">Titan 2 devices can show an extra IME caption bar under Pastiera. This OEM setting hides it and keeps Pastiera compact.</string>
+    <string name="tutorial_android16_ime_caption_before">Before: extra caption bar</string>
+    <string name="tutorial_android16_ime_caption_after">After: compact Pastiera</string>
     <string name="tutorial_android16_ime_caption_check_android16">Android 16 or newer</string>
     <string name="tutorial_android16_ime_caption_check_titan2">Unihertz Titan 2 or Titan 2 Elite</string>
     <string name="tutorial_android16_ime_caption_check_setting">OEM gesture setting available</string>
     <string name="tutorial_android16_ime_caption_button">Open “Hide IME caption bar”</string>
-    <string name="tutorial_android16_ime_caption_unavailable">The direct link is shown only when all requirements are met.</string>
+    <string name="tutorial_android16_ime_caption_unavailable_button">Why this may be unavailable</string>
+    <string name="tutorial_android16_ime_caption_missing_requirement">Missing: %1$s.</string>
+    <string name="tutorial_android16_ime_caption_vendor_toast">This is vendor-specific behavior from Unihertz. The shortcut only works on supported Titan 2 firmware where Android exposes the OEM gesture setting.</string>
     <string name="tutorial_android16_ime_caption_fallback">Could not open the Titan 2 gesture setting. Opening Android Settings instead.</string>
     <string name="tutorial_software_keyboard_auto_checker_title">Auto detection</string>
     <string name="tutorial_software_keyboard_auto_selected">Auto currently selects: %1$s</string>
@@ -727,12 +733,33 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="tutorial_page_led_title">LED Indicator</string>
     <string name="tutorial_page_led_description">To get the most out of Pastiera, set the Fn key to act as Ctrl from Android system settings. The IME bar shows four LEDs: they turn blue when the modifier is active one-shot and orange when it is locked. The SYM layout LED is blue on the emoji page and orange on the symbols page.</string>
     <string name="tutorial_page_nav_mode_title">Nav Mode</string>
-    <string name="tutorial_page_nav_mode_description">Nav Mode lets you navigate the device UI with letter shortcuts such as IJKL or ESDF.\nTo activate:\n• Press Ctrl twice quickly\n• Letter keys become navigation controls\n• Press Ctrl again to exit\nEvery shortcut can be remapped in Advanced Settings.</string>
+    <string name="tutorial_page_nav_mode_description">Nav Mode turns letter keys into navigation and editing controls. Press Ctrl twice to latch it, or enable Ctrl-hold navigation below.</string>
+    <string name="tutorial_nav_mode_bullet_selection">Selection actions can extend text selection left, right, or word by word.</string>
+    <string name="tutorial_nav_mode_bullet_words">Word actions jump by whole words for faster cursor movement in text fields.</string>
+    <string name="tutorial_nav_mode_bullet_media">Mappings can also handle app shortcuts, media controls, Escape, Tab, Page Up/Down, and Pastierina.</string>
     <string name="tutorial_page_customization_title">Customization</string>
     <string name="tutorial_page_customization_description">Pastiera offers many customization options:\n• Customizable keyboard layouts\n• Launcher shortcuts &amp; Power Shortcuts\n• IME bar can act as a swipe bar to move the cursor\n• Custom mappings for Nav Mode\nExplore the settings to find the perfect configuration for you!</string>
-    <string name="tutorial_typing_sound_demo_title">Typing sounds</string>
+    <string name="tutorial_quick_launcher_title">QuickLauncher</string>
+    <string name="tutorial_quick_launcher_description">Open apps from the keyboard without leaving your typing flow.</string>
+    <string name="tutorial_quick_launcher_bullet_sym_space">Hold SYM and press Space to open QuickLauncher from anywhere.</string>
+    <string name="tutorial_quick_launcher_bullet_text_fields">It also works while the cursor is inside a text field, so you can switch apps from typing context.</string>
+    <string name="tutorial_quick_launcher_bullet_search">Type a few letters, abbreviations, or small typos to find the app you want.</string>
+    <string name="tutorial_quick_launcher_bullet_layout">Search can respect your active Pastiera layout, such as QWERTZ.</string>
+    <string name="tutorial_quick_launcher_button">Open QuickLauncher settings</string>
+    <string name="tutorial_quick_launcher_mapping_conflict_title">SYM + Space is assigned to something else</string>
+    <string name="tutorial_quick_launcher_mapping_conflict_description">Space currently opens “%1$s”. Replace that mapping with QuickLauncher and enable it in text fields to try the new feature.</string>
+    <string name="tutorial_quick_launcher_mapping_conflict_button">Use SYM + Space for QuickLauncher</string>
+    <string name="tutorial_messenger_presets_title">Messenger presets</string>
+    <string name="tutorial_messenger_presets_description">Choose how Enter should behave in chat apps, where newline and send often differ by app.</string>
+    <string name="tutorial_messenger_presets_bullet_enter">Use tested presets for common messenger apps instead of tuning each key manually.</string>
+    <string name="tutorial_messenger_presets_bullet_sym_enter">Optionally use SYM + Enter as an additional send shortcut.</string>
+    <string name="tutorial_messenger_presets_bullet_apps">Per-app overrides stay available when one app behaves differently.</string>
+    <string name="tutorial_messenger_presets_button">Open messenger presets</string>
+    <string name="tutorial_typing_sound_demo_title">Typing sounds (gimmick)</string>
     <string name="tutorial_typing_sound_demo_description">Choose a sound style and type below to hear it immediately.</string>
     <string name="tutorial_typing_sound_demo_input_label">Try typing here</string>
+    <string name="tutorial_sym_emoji_button">SYM / Emoji</string>
+    <string name="tutorial_variations_button">Variations</string>
     <string name="tutorial_page_ready_title">Ready to Start</string>
     <string name="tutorial_page_ready_description">You are now ready to use Pastiera! Remember that you can always return to settings to further customize the keyboard to your needs.</string>
     <string name="tutorial_enable_button">Enable Pastiera</string>
