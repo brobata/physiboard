@@ -597,7 +597,10 @@ fun CustomizationSettingsScreen(
             CustomizationDestination.AppEnterBehavior -> {
                 AppEnterBehaviorScreen(
                     modifier = modifier,
-                    onBack = { navigateBack() }
+                    onBack = { navigateBack() },
+                    onOpenLauncherShortcutAssignments = {
+                        navigateTo(CustomizationDestination.LauncherShortcutAssignments)
+                    }
                 )
             }
             

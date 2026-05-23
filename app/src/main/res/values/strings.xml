@@ -520,6 +520,13 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="app_enter_behavior_strategy_editor_action">Editor action</string>
     <string name="app_enter_behavior_strategy_ctrl_enter">Ctrl+Enter</string>
     <string name="app_enter_behavior_strategy_plain_enter">Plain Enter</string>
+    <string name="app_enter_behavior_additional_send_shortcut_label">Additional send shortcut</string>
+    <string name="app_enter_behavior_additional_send_shortcut_description">Apply an extra send shortcut to the rendered app list below.</string>
+    <string name="app_enter_behavior_additional_send_shortcut_none">None</string>
+    <string name="app_enter_behavior_additional_send_shortcut_sym_enter">SYM + Enter</string>
+    <string name="app_enter_behavior_sym_enter_conflict_title">SYM + Enter is already used by QuickLauncher</string>
+    <string name="app_enter_behavior_sym_enter_conflict_description">Move the QuickLauncher trigger to another key before using SYM + Enter as an additional send shortcut.</string>
+    <string name="app_enter_behavior_sym_enter_conflict_action">Change trigger</string>
     <string name="variation_instructions_title">Instructions</string>
     <string name="variation_instructions_description">Tap on any variation box to select a character. Each letter can have up to 7 variation characters.</string>
     <string name="variation_picker_title">Select variation for %1$s</string>

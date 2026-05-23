@@ -131,6 +131,8 @@ object SettingsManager {
     const val ENTER_SEND_STRATEGY_EDITOR_ACTION = "editor_action"
     const val ENTER_SEND_STRATEGY_CTRL_ENTER = "ctrl_enter"
     const val ENTER_SEND_STRATEGY_PLAIN_ENTER = "plain_enter"
+    const val ENTER_ADDITIONAL_SEND_SHORTCUT_NONE = "none"
+    const val ENTER_ADDITIONAL_SEND_SHORTCUT_SYM_ENTER = "sym_enter"
     
     // Default slot assignments
     private const val DEFAULT_SLOT_LEFT = STATUS_BAR_BUTTON_HAMBURGER
@@ -3184,7 +3186,8 @@ object SettingsManager {
     data class AppEnterBehaviorOverride(
         val packageName: String,
         val behavior: String,
-        val sendStrategy: String = ENTER_SEND_STRATEGY_AUTO
+        val sendStrategy: String = ENTER_SEND_STRATEGY_AUTO,
+        val additionalSendShortcut: String = ENTER_ADDITIONAL_SEND_SHORTCUT_NONE
     )
 
     fun getAppEnterBehaviorEnabled(context: Context): Boolean {
@@ -3228,6 +3231,9 @@ object SettingsManager {
                             behavior = normalizeEnterBehavior(item.optString("behavior", ENTER_BEHAVIOR_APP_DEFAULT)),
                             sendStrategy = normalizeEnterSendStrategy(
                                 item.optString("sendStrategy", ENTER_SEND_STRATEGY_AUTO)
+                            ),
+                            additionalSendShortcut = normalizeEnterAdditionalSendShortcut(
+                                item.optString("additionalSendShortcut", ENTER_ADDITIONAL_SEND_SHORTCUT_NONE)
                             )
                         )
                     )
@@ -3250,6 +3256,7 @@ object SettingsManager {
                         put("packageName", override.packageName)
                         put("behavior", normalizeEnterBehavior(override.behavior))
                         put("sendStrategy", normalizeEnterSendStrategy(override.sendStrategy))
+                        put("additionalSendShortcut", normalizeEnterAdditionalSendShortcut(override.additionalSendShortcut))
                     }
                 )
             }
@@ -3299,6 +3306,14 @@ object SettingsManager {
             ENTER_SEND_STRATEGY_CTRL_ENTER,
             ENTER_SEND_STRATEGY_PLAIN_ENTER -> strategy
             else -> ENTER_SEND_STRATEGY_AUTO
+        }
+    }
+
+    private fun normalizeEnterAdditionalSendShortcut(shortcut: String): String {
+        return when (shortcut) {
+            ENTER_ADDITIONAL_SEND_SHORTCUT_NONE,
+            ENTER_ADDITIONAL_SEND_SHORTCUT_SYM_ENTER -> shortcut
+            else -> ENTER_ADDITIONAL_SEND_SHORTCUT_NONE
         }
     }
 }

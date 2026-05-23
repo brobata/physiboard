@@ -485,6 +485,17 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
     }
 
+    private fun resolveAppEnterAdditionalSendShortcut(info: EditorInfo?): String {
+        val packageName = info?.packageName ?: return SettingsManager.ENTER_ADDITIONAL_SEND_SHORTCUT_NONE
+        if (packageName !in MESSENGER_ENTER_BEHAVIOR_PACKAGES) return SettingsManager.ENTER_ADDITIONAL_SEND_SHORTCUT_NONE
+        if (!SettingsManager.getAppEnterBehaviorEnabled(this)) return SettingsManager.ENTER_ADDITIONAL_SEND_SHORTCUT_NONE
+
+        return SettingsManager.getAppEnterBehaviorOverrides(this)
+            .firstOrNull { it.packageName == packageName }
+            ?.additionalSendShortcut
+            ?: SettingsManager.ENTER_ADDITIONAL_SEND_SHORTCUT_NONE
+    }
+
     private fun resolveTestedAppSendAction(info: EditorInfo?): Int? {
         if (info?.packageName !in ENTER_BEHAVIOR_SEND_ACTION_PACKAGES) return null
         return resolveEditorAction(info) ?: EditorInfo.IME_ACTION_SEND
@@ -650,6 +661,20 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         val ic = inputConnection ?: return false
         val actionId = resolveEditorAction(info)
         val ctrlActiveForEnter = ctrlActiveBeforePrelude || isCtrlModifierActive(event)
+        val symEnterSendActive =
+            symTogglePendingOnKeyUp &&
+                resolveAppEnterAdditionalSendShortcut(info) == SettingsManager.ENTER_ADDITIONAL_SEND_SHORTCUT_SYM_ENTER
+
+        if (symEnterSendActive) {
+            symChordUsedSinceKeyDown = true
+            symTogglePendingOnKeyUp = false
+            if (info?.packageName == DISCORD_PACKAGE_NAME) {
+                return performPlainEnterSend(keyCode, ic, event, "app_sym_enter_plain_enter_send")
+            }
+            return resolveTestedAppSendAction(info)
+                ?.let { performEnterEditorAction(keyCode, it, ic, event) }
+                ?: consumeUnsupportedEnterSend(keyCode, event, "app_sym_enter_send_unsupported")
+        }
 
         when (resolveAppEnterBehavior(info)) {
             SettingsManager.ENTER_BEHAVIOR_ENTER_NEWLINE -> {

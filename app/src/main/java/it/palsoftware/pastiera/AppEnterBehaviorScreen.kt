@@ -18,6 +18,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -64,13 +65,16 @@ private val favoriteEnterBehaviorApps = listOf(
 @Composable
 fun AppEnterBehaviorScreen(
     modifier: Modifier = Modifier,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onOpenLauncherShortcutAssignments: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     var enabled by remember { mutableStateOf(SettingsManager.getAppEnterBehaviorEnabled(context)) }
     var preset by remember { mutableStateOf(SettingsManager.getAppEnterBehaviorPreset(context)) }
     var overrides by remember { mutableStateOf(loadInitialEnterBehaviorOverrides(context, preset)) }
     var showAddDialog by remember { mutableStateOf(false) }
+    val quickLauncherUsesSymEnter = SettingsManager.getQuickLauncherShortcutKey(context) == android.view.KeyEvent.KEYCODE_ENTER
+    val selectedAdditionalSendShortcut = commonAdditionalSendShortcut(overrides)
 
     BackHandler { onBack() }
 
@@ -155,10 +159,58 @@ fun AppEnterBehaviorScreen(
             }
         )
 
+        EnterAdditionalSendShortcutSelector(
+            shortcut = selectedAdditionalSendShortcut,
+            onShortcutSelected = { shortcut ->
+                val updated = overrides.map { it.copy(additionalSendShortcut = shortcut) }
+                overrides = updated
+                SettingsManager.setAppEnterBehaviorOverrides(context, updated)
+            }
+        )
+
+        if (
+            selectedAdditionalSendShortcut == SettingsManager.ENTER_ADDITIONAL_SEND_SHORTCUT_SYM_ENTER &&
+            quickLauncherUsesSymEnter
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                color = MaterialTheme.colorScheme.tertiaryContainer,
+                contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                shape = MaterialTheme.shapes.medium
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Icon(Icons.Filled.WarningAmber, contentDescription = null)
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.app_enter_behavior_sym_enter_conflict_title),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = stringResource(R.string.app_enter_behavior_sym_enter_conflict_description),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                    if (onOpenLauncherShortcutAssignments != null) {
+                        TextButton(onClick = onOpenLauncherShortcutAssignments) {
+                            Text(stringResource(R.string.app_enter_behavior_sym_enter_conflict_action))
+                        }
+                    }
+                }
+            }
+        }
+
         Text(
             text = stringResource(R.string.app_enter_behavior_overrides_title),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
         )
 
@@ -170,6 +222,7 @@ fun AppEnterBehaviorScreen(
                 app = app,
                 behavior = override.behavior,
                 sendStrategy = override.sendStrategy,
+                additionalSendShortcut = override.additionalSendShortcut,
                 editable = !app.isFavorite,
                 onBehaviorChanged = { behavior ->
                     val updated = overrides.map {
@@ -183,6 +236,13 @@ fun AppEnterBehaviorScreen(
                 onSendStrategyChanged = { strategy ->
                     val updated = overrides.map {
                         if (it.packageName == override.packageName) it.copy(sendStrategy = strategy) else it
+                    }
+                    overrides = updated
+                    SettingsManager.setAppEnterBehaviorOverrides(context, updated)
+                },
+                onAdditionalSendShortcutChanged = { shortcut ->
+                    val updated = overrides.map {
+                        if (it.packageName == override.packageName) it.copy(additionalSendShortcut = shortcut) else it
                     }
                     overrides = updated
                     SettingsManager.setAppEnterBehaviorOverrides(context, updated)
@@ -202,10 +262,15 @@ fun AppEnterBehaviorScreen(
         AddEnterBehaviorAppDialog(
             existingPackages = overrides.map { it.packageName }.toSet(),
             onDismiss = { showAddDialog = false },
-            onAdd = { app, behavior, sendStrategy ->
+            onAdd = { app, behavior, sendStrategy, additionalSendShortcut ->
                 val updated = sortEnterBehaviorOverrides(
                     context,
-                    overrides + SettingsManager.AppEnterBehaviorOverride(app.packageName, behavior, sendStrategy)
+                    overrides + SettingsManager.AppEnterBehaviorOverride(
+                        app.packageName,
+                        behavior,
+                        sendStrategy,
+                        additionalSendShortcut
+                    )
                 )
                 overrides = updated
                 SettingsManager.setAppEnterBehaviorOverrides(context, updated)
@@ -271,17 +336,74 @@ private fun EnterPresetSelector(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+private fun EnterAdditionalSendShortcutSelector(
+    shortcut: String,
+    onShortcutSelected: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Surface(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Text(
+                text = stringResource(R.string.app_enter_behavior_additional_send_shortcut_label),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                text = stringResource(R.string.app_enter_behavior_additional_send_shortcut_description),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { expanded = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp)
+            ) {
+                OutlinedTextField(
+                    value = getEnterAdditionalSendShortcutLabel(shortcut),
+                    onValueChange = {},
+                    readOnly = true,
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor()
+                )
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    enterAdditionalSendShortcutOptions().forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(getEnterAdditionalSendShortcutLabel(option)) },
+                            onClick = {
+                                expanded = false
+                                onShortcutSelected(option)
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 private fun EnterBehaviorOverrideRow(
     app: EnterBehaviorApp,
     behavior: String,
     sendStrategy: String,
+    additionalSendShortcut: String,
     editable: Boolean,
     onBehaviorChanged: (String) -> Unit,
     onSendStrategyChanged: (String) -> Unit,
+    onAdditionalSendShortcutChanged: (String) -> Unit,
     onRemove: () -> Unit
 ) {
     var behaviorExpanded by remember { mutableStateOf(false) }
     var strategyExpanded by remember { mutableStateOf(false) }
+    var additionalShortcutExpanded by remember { mutableStateOf(false) }
     var showCuratedOverrideControls by remember { mutableStateOf(false) }
     val showEditableControls = editable || showCuratedOverrideControls
     Surface(modifier = Modifier.fillMaxWidth()) {
@@ -406,6 +528,37 @@ private fun EnterBehaviorOverrideRow(
                         }
                     }
                 }
+
+                ExposedDropdownMenuBox(
+                    expanded = additionalShortcutExpanded,
+                    onExpandedChange = { additionalShortcutExpanded = it },
+                    modifier = Modifier.padding(top = 8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = getEnterAdditionalSendShortcutLabel(additionalSendShortcut),
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text(stringResource(R.string.app_enter_behavior_additional_send_shortcut_label)) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(additionalShortcutExpanded) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = additionalShortcutExpanded,
+                        onDismissRequest = { additionalShortcutExpanded = false }
+                    ) {
+                        enterAdditionalSendShortcutOptions().forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(getEnterAdditionalSendShortcutLabel(option)) },
+                                onClick = {
+                                    additionalShortcutExpanded = false
+                                    onAdditionalSendShortcutChanged(option)
+                                }
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -416,7 +569,7 @@ private fun EnterBehaviorOverrideRow(
 private fun AddEnterBehaviorAppDialog(
     existingPackages: Set<String>,
     onDismiss: () -> Unit,
-    onAdd: (EnterBehaviorApp, String, String) -> Unit
+    onAdd: (EnterBehaviorApp, String, String, String) -> Unit
 ) {
     val context = LocalContext.current
     val apps = remember(existingPackages) {
@@ -429,8 +582,12 @@ private fun AddEnterBehaviorAppDialog(
     var selectedStrategy by remember {
         mutableStateOf(SettingsManager.ENTER_SEND_STRATEGY_AUTO)
     }
+    var selectedAdditionalShortcut by remember {
+        mutableStateOf(SettingsManager.ENTER_ADDITIONAL_SEND_SHORTCUT_NONE)
+    }
     var behaviorExpanded by remember { mutableStateOf(false) }
     var strategyExpanded by remember { mutableStateOf(false) }
+    var additionalShortcutExpanded by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -500,6 +657,35 @@ private fun AddEnterBehaviorAppDialog(
                         }
                     }
                 }
+                ExposedDropdownMenuBox(
+                    expanded = additionalShortcutExpanded,
+                    onExpandedChange = { additionalShortcutExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = getEnterAdditionalSendShortcutLabel(selectedAdditionalShortcut),
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text(stringResource(R.string.app_enter_behavior_additional_send_shortcut_label)) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(additionalShortcutExpanded) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = additionalShortcutExpanded,
+                        onDismissRequest = { additionalShortcutExpanded = false }
+                    ) {
+                        enterAdditionalSendShortcutOptions().forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(getEnterAdditionalSendShortcutLabel(option)) },
+                                onClick = {
+                                    selectedAdditionalShortcut = option
+                                    additionalShortcutExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
                 Text(
                     text = stringResource(R.string.app_enter_behavior_add_app_list_title),
                     style = MaterialTheme.typography.labelLarge,
@@ -510,7 +696,7 @@ private fun AddEnterBehaviorAppDialog(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onAdd(app, selectedBehavior, selectedStrategy) }
+                                .clickable { onAdd(app, selectedBehavior, selectedStrategy, selectedAdditionalShortcut) }
                                 .padding(vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -687,6 +873,32 @@ private fun enterSendStrategyOptions(): List<String> {
         SettingsManager.ENTER_SEND_STRATEGY_CTRL_ENTER,
         SettingsManager.ENTER_SEND_STRATEGY_PLAIN_ENTER
     )
+}
+
+@Composable
+private fun getEnterAdditionalSendShortcutLabel(shortcut: String): String {
+    return when (shortcut) {
+        SettingsManager.ENTER_ADDITIONAL_SEND_SHORTCUT_SYM_ENTER ->
+            stringResource(R.string.app_enter_behavior_additional_send_shortcut_sym_enter)
+        else -> stringResource(R.string.app_enter_behavior_additional_send_shortcut_none)
+    }
+}
+
+private fun enterAdditionalSendShortcutOptions(): List<String> {
+    return listOf(
+        SettingsManager.ENTER_ADDITIONAL_SEND_SHORTCUT_NONE,
+        SettingsManager.ENTER_ADDITIONAL_SEND_SHORTCUT_SYM_ENTER
+    )
+}
+
+private fun commonAdditionalSendShortcut(
+    overrides: List<SettingsManager.AppEnterBehaviorOverride>
+): String {
+    return overrides
+        .map { it.additionalSendShortcut }
+        .distinct()
+        .singleOrNull()
+        ?: SettingsManager.ENTER_ADDITIONAL_SEND_SHORTCUT_NONE
 }
 
 @Composable
