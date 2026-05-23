@@ -1,0 +1,125 @@
+name: Issue / idea
+description: Report a bug, request device support, or capture a feature idea.
+title: ""
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Pastiera.
+
+        The first part is for users. Fill in only what is useful. The maintainer triage section at the bottom can be left empty.
+
+  - type: dropdown
+    id: issue_type
+    attributes:
+      label: Type
+      description: What kind of issue is this?
+      options:
+        - Bug / regression
+        - Device support
+        - Feature request
+        - Polish / UX
+        - Security / privacy
+        - Research / idea
+        - Public TODO / maintainer note
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What concrete problem, workflow, or idea should be captured?
+      placeholder: Describe what happens, what you expected, or what should exist.
+    validations:
+      required: true
+
+  - type: textarea
+    id: device_context
+    attributes:
+      label: Device and context
+      description: Add device/app/version details if relevant.
+      placeholder: |
+        Device:
+        Android version:
+        Pastiera version/channel:
+        App/input field where it happens:
+        Physical keyboard / layout:
+
+  - type: checkboxes
+    id: affected_area
+    attributes:
+      label: Affected area
+      description: Select anything this might touch.
+      options:
+        - label: Physical keyboard input
+        - label: Virtual keyboard input
+        - label: Hybrid/sliding keyboard behavior
+        - label: Layouts / key mappings
+        - label: Modifier keys / Nav Mode / shortcuts
+        - label: Suggestions / autocorrect / dictionaries
+        - label: Clipboard
+        - label: Speech / microphone
+        - label: Launcher / app shortcuts
+        - label: Backup / restore
+        - label: Updates / releases / F-Droid
+        - label: Shizuku / overlay / accessibility
+        - label: Privacy / security
+
+  - type: textarea
+    id: sovereignty
+    attributes:
+      label: Souveränität / privacy notes
+      description: Optional. Mention offline use, export/import, F-Droid compatibility, self-hosting, or sensitive data.
+      placeholder: |
+        Works offline:
+        Can be disabled:
+        Export/import needed:
+        Sensitive data involved:
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+
+        ## Maintainer triage
+
+        The following fields are mainly for maintainers. Reporters can leave them empty.
+
+  - type: dropdown
+    id: release_shape
+    attributes:
+      label: Release shape
+      description: Maintainer triage. How should this ship?
+      options:
+        - Not triaged yet
+        - Stable default-on
+        - Stable default-off
+        - Nightly first
+        - Experimental setting
+        - Research only
+    validations:
+      required: false
+
+  - type: textarea
+    id: risk_check
+    attributes:
+      label: Risk check
+      description: Maintainer triage. Note IME, compatibility, security, privacy, or support risks.
+      placeholder: |
+        IME pipeline risk:
+        Focus/app compatibility:
+        Password fields:
+        Network/audio/clipboard/device IDs:
+        Support load:
+
+  - type: textarea
+    id: test_plan
+    attributes:
+      label: Test plan
+      description: Maintainer triage. What should be tested before this is considered done?
+      placeholder: |
+        Unit tests:
+        Manual device tests:
+        Regression checks:
+        Build flavors / F-Droid:

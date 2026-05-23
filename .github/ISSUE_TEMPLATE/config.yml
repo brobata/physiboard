@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Pastiera discussions
+    url: https://github.com/palsoftware/pastiera/discussions
+    about: Use discussions for open-ended questions, ideas, and community feedback.
