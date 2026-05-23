@@ -358,6 +358,7 @@ fun KeyboardSetupScreen(
     val rawLastKeyEventState = remember { mutableStateOf<KeyboardEventTracker.KeyEventInfo?>(null) }
     val rawLastKeyEvent by rawLastKeyEventState
     var displayedLastKeyEvent by remember { mutableStateOf<KeyboardEventTracker.KeyEventInfo?>(null) }
+    var lastNonBackKeyEvent by remember { mutableStateOf<KeyboardEventTracker.KeyEventInfo?>(null) }
     var ignoreKeyboardCloseBackEvent by rememberSaveable { mutableStateOf(true) }
     var isRecording by rememberSaveable { mutableStateOf(false) }
     var recordStartedAtMs by rememberSaveable { mutableStateOf<Long?>(null) }
@@ -416,16 +417,12 @@ fun KeyboardSetupScreen(
         KeyboardEventTracker.registerState(rawLastKeyEventState)
     }
 
-    // Keep the latest useful debug event visible when software keyboard close emits BACK/KEY_UP.
-    LaunchedEffect(rawLastKeyEvent, ignoreKeyboardCloseBackEvent) {
+    // Recording follows the raw stream; display filtering is handled separately below.
+    LaunchedEffect(rawLastKeyEvent) {
         val event = rawLastKeyEvent ?: return@LaunchedEffect
-        val isKeyboardCloseBackEvent = event.keyCode == KeyEvent.KEYCODE_BACK &&
-            event.action == "KEY_UP" &&
-            event.scanCode == 0
-        if (ignoreKeyboardCloseBackEvent && isKeyboardCloseBackEvent) {
-            return@LaunchedEffect
+        if (event.keyCode != KeyEvent.KEYCODE_BACK) {
+            lastNonBackKeyEvent = event
         }
-        displayedLastKeyEvent = event
         if (isRecording) {
             val nowWall = System.currentTimeMillis()
             val nowUptime = SystemClock.uptimeMillis()
@@ -441,6 +438,16 @@ fun KeyboardSetupScreen(
                 )
             )
             lastRecordedAtMs = wallTimestampMs
+        }
+    }
+
+    // Keep the latest useful debug event visible when keyboard close/navigation emits BACK.
+    LaunchedEffect(rawLastKeyEvent, ignoreKeyboardCloseBackEvent, lastNonBackKeyEvent) {
+        val event = rawLastKeyEvent
+        displayedLastKeyEvent = when {
+            event == null -> null
+            ignoreKeyboardCloseBackEvent && event.keyCode == KeyEvent.KEYCODE_BACK -> lastNonBackKeyEvent
+            else -> event
         }
     }
     
