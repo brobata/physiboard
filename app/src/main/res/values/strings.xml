@@ -691,12 +691,14 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     
     <!-- Tutorial -->
     <string name="tutorial_skip">Skip</string>
-    <string name="tutorial_skip_update">Skip anyway</string>
+    <string name="tutorial_skip_update">Skip</string>
     <string name="tutorial_previous">Previous</string>
     <string name="tutorial_next">Next</string>
     <string name="tutorial_finish">Finish</string>
-    <string name="tutorial_whats_new_title">What’s new in this release</string>
-    <string name="tutorial_whats_new_description">This is a larger Pastiera update. The next pages are worth a quick pass because they point you directly at settings and workflows that changed.</string>
+    <string name="tutorial_whats_new_title">New in this version: %1$s</string>
+    <string name="tutorial_whats_new_description">A few changes are worth knowing before you continue.</string>
+    <string name="tutorial_whats_new_bug_fixes_title">Bug fixes</string>
+    <string name="tutorial_whats_new_docs_button">Open Pastiera docs</string>
     <string name="tutorial_whats_new_continue_hint">Continue through the tutorial to review the most useful settings for this release.</string>
     <string name="tutorial_page_welcome_title">Welcome to Pastiera</string>
     <string name="tutorial_page_welcome_description">Pastiera is an advanced input method for PKB Android devices with support for Nav Mode, shortcuts, custom keyboard mappings, and more.</string>
@@ -707,10 +709,10 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="tutorial_page_select_title">Select Pastiera</string>
     <string name="tutorial_page_select_description">To use Pastiera, select it among the input methods. The next step lets you choose whether Pastiera should use a virtual keyboard or hardware-keyboard mode.</string>
     <string name="tutorial_page_software_keyboard_title">Keyboard Mode</string>
-    <string name="tutorial_page_software_keyboard_description">Choose how Pastiera should behave for this device.</string>
-    <string name="tutorial_software_keyboard_auto_bullet">Auto uses hardware-keyboard mode on known PKB devices and virtual keyboard mode on most touch devices.</string>
-    <string name="tutorial_software_keyboard_virtual_bullet">Always Virtual Keyboard shows the full on-screen keyboard.</string>
-    <string name="tutorial_software_keyboard_hardware_bullet">Always Hardware Keyboard uses the compact hardware-keyboard surface.</string>
+    <string name="tutorial_page_software_keyboard_description">Pick the keyboard surface Pastiera should use here.</string>
+    <string name="tutorial_software_keyboard_auto_bullet">Recommended: hardware mode on known PKB devices, virtual mode on touch devices.</string>
+    <string name="tutorial_software_keyboard_virtual_bullet">Full on-screen keyboard for touch-first use. Still alpha.</string>
+    <string name="tutorial_software_keyboard_hardware_bullet">Compact surface for devices with physical keys.</string>
     <string name="tutorial_software_keyboard_alpha_warning">Alpha feature: the virtual keyboard is still heavily under construction and is not recommended for daily use yet.</string>
     <string name="tutorial_android16_ime_caption_title">Hide IME caption bar</string>
     <string name="tutorial_android16_ime_caption_description">Titan 2 devices can show an extra IME caption bar under Pastiera. This OEM setting hides it and keeps Pastiera compact.</string>
@@ -760,6 +762,7 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="tutorial_typing_sound_demo_input_label">Try typing here</string>
     <string name="tutorial_sym_emoji_button">SYM / Emoji</string>
     <string name="tutorial_variations_button">Variations</string>
+    <string name="tutorial_status_bar_button">Status bar</string>
     <string name="tutorial_page_ready_title">Ready to Start</string>
     <string name="tutorial_page_ready_description">You are now ready to use Pastiera! Remember that you can always return to settings to further customize the keyboard to your needs.</string>
     <string name="tutorial_enable_button">Enable Pastiera</string>
@@ -769,6 +772,8 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="tutorial_selected_message">Pastiera is selected!</string>
     <string name="tutorial_show">Show Tutorial</string>
     <string name="tutorial_review_description">Review the introductory tutorial</string>
+    <string name="tutorial_show_release_notes">Show release notes tutorial</string>
+    <string name="tutorial_show_release_notes_description">Preview the update intro without installing an upgrade</string>
 
     <string name="pastierina_mode_title">Pastierina Mode</string>
     <string name="pastierina_mode_description">Toggle minimal ui</string>

@@ -78,9 +78,13 @@ fun SettingsScreen(
     var navigationDirection by remember { mutableStateOf(NavigationDirection.Push) }
     val navigationStack = remember {
         mutableStateListOf<SettingsDestination>().apply {
-            add(SettingsDestination.Main)
             if (initialDestination == SettingsActivity.DESTINATION_CUSTOMIZATION) {
+                if (initialCustomizationDestination == null) {
+                    add(SettingsDestination.Main)
+                }
                 add(SettingsDestination.Customization)
+            } else {
+                add(SettingsDestination.Main)
             }
         }
     }

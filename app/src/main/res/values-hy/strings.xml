@@ -518,6 +518,25 @@
     <string name="tutorial_page_led_description">To get the most out of Pastiera, set the Fn key to act as Ctrl from Android system settings. The IME bar shows four LEDs: they turn blue when the modifier is active one-shot and orange when it is locked. The SYM layout LED is blue on the emoji page and orange on the symbols page.</string>
     <string name="tutorial_page_nav_mode_title">Nav Mode</string>
     <string name="tutorial_page_nav_mode_description">Nav Mode lets you navigate the device UI with letter shortcuts such as IJKL or ESDF.\nTo activate:\n• Press Ctrl twice quickly\n• Letter keys become navigation controls\n• Press Ctrl again to exit\nEvery shortcut can be remapped in Advanced Settings.</string>
+    <string name="tutorial_nav_mode_bullet_selection">Ընտրության գործողությունները կարող են ընդլայնել նշված տեքստը ձախ, աջ կամ բառ առ բառ։</string>
+    <string name="tutorial_nav_mode_bullet_words">Բառային գործողությունները տեքստային դաշտերում կուրսորը արագ տեղափոխում են ամբողջական բառերով։</string>
+    <string name="tutorial_nav_mode_bullet_media">Քարտեզագրումները կարող են նաև գործարկել app shortcut-ներ, media control-ներ, Escape, Tab, Page Up/Down և Pastierina։</string>
+    <string name="tutorial_quick_launcher_title">QuickLauncher</string>
+    <string name="tutorial_quick_launcher_description">Բացեք հավելվածներ ստեղնաշարից՝ չլքելով մուտքագրման հոսքը։</string>
+    <string name="tutorial_quick_launcher_bullet_sym_space">Պահեք SYM-ը և սեղմեք Space՝ QuickLauncher-ը ցանկացած տեղից բացելու համար։</string>
+    <string name="tutorial_quick_launcher_bullet_text_fields">Սա աշխատում է նաև, երբ կուրսորը տեքստային դաշտում է, որպեսզի հավելված փոխեք մուտքագրելիս։</string>
+    <string name="tutorial_quick_launcher_bullet_search">Մուտքագրեք մի քանի տառ, կրճատում կամ փոքր տառասխալ՝ պետք եղած հավելվածը գտնելու համար։</string>
+    <string name="tutorial_quick_launcher_bullet_layout">Որոնումը կարող է հաշվի առնել Pastiera-ի ակտիվ դասավորությունը, օրինակ՝ QWERTZ։</string>
+    <string name="tutorial_quick_launcher_button">Բացել QuickLauncher-ի կարգավորումները</string>
+    <string name="tutorial_quick_launcher_mapping_conflict_title">SYM + Space-ը արդեն այլ բանի է նշանակված</string>
+    <string name="tutorial_quick_launcher_mapping_conflict_description">Space-ը հիմա բացում է «%1$s»։ Փոխարինեք այդ քարտեզագրումը QuickLauncher-ով և միացրեք այն տեքստային դաշտերում՝ նոր գործառույթը փորձելու համար։</string>
+    <string name="tutorial_quick_launcher_mapping_conflict_button">Օգտագործել SYM + Space QuickLauncher-ի համար</string>
+    <string name="tutorial_messenger_presets_title">Messenger preset-ներ</string>
+    <string name="tutorial_messenger_presets_description">Ընտրեք, թե Enter-ը ինչպես աշխատի chat հավելվածներում, որտեղ նոր տողն ու ուղարկելը հաճախ տարբեր են։</string>
+    <string name="tutorial_messenger_presets_bullet_enter">Օգտագործեք փորձարկված preset-ներ տարածված messenger-ների համար՝ ամեն ստեղն ձեռքով կարգավորելու փոխարեն։</string>
+    <string name="tutorial_messenger_presets_bullet_sym_enter">Ցանկության դեպքում օգտագործեք SYM + Enter-ը որպես լրացուցիչ ուղարկման shortcut։</string>
+    <string name="tutorial_messenger_presets_bullet_apps">Ըստ հավելվածի override-ները մնում են հասանելի, եթե որևէ հավելված այլ կերպ է աշխատում։</string>
+    <string name="tutorial_messenger_presets_button">Բացել messenger preset-ները</string>
     <string name="tutorial_page_customization_title">Customization</string>
     <string name="tutorial_page_customization_description">Pastiera offers many customization options:\n• Customizable keyboard layouts\n• Launcher shortcuts &amp; Power Shortcuts\n• IME bar can act as a swipe bar to move the cursor\n• Custom mappings for Nav Mode\nExplore the settings to find the perfect configuration for you!</string>
     <string name="tutorial_page_ready_title">Ready to Start</string>
@@ -576,11 +595,7 @@
     <string name="status_bar_button_hamburger">Մենյու</string>
     <string name="status_bar_button_hamburger_description">Արագ գործողություններ</string>
     <string name="tutorial_page_software_keyboard_title">Ստեղնաշարի ռեժիմ</string>
-    <string name="tutorial_page_software_keyboard_description">Ընտրեք, թե Pastiera-ն ինչպես պետք է աշխատի այս սարքում։
-
-• Ավտո. ապարատային ստեղնաշարի ռեժիմ հայտնի PKB սարքերում, իսկ Pixel, Samsung և մեծ մասի հպումով սարքերում՝ վիրտուալ ստեղնաշար։
-• Միշտ վիրտուալ ստեղնաշար. միշտ ցուցադրում է ամբողջական էկրանային ստեղնաշարը։
-• Միշտ ապարատային ստեղնաշար. օգտագործում է ապարատային ստեղնաշարի կոմպակտ մակերեսը և չի պարտադրում ամբողջական էկրանային ստեղնաշարը։</string>
+    <string name="tutorial_page_software_keyboard_description">Ընտրեք, թե Pastiera-ն այստեղ որ ստեղնաշարի մակերեսը օգտագործի։</string>
     <string name="software_keyboard_mode_title">Ստեղնաշարի ռեժիմ</string>
     <string name="software_keyboard_mode_description">Անկախ է Pastierina-ից։ Կառավարում է ապարատային կամ վիրտուալ ստեղնաշարը։</string>
     <string name="software_keyboard_mode_auto_current">Ավտո (այժմ՝ %1$s)</string>
@@ -774,9 +789,11 @@ Nav Mode-ը օգտագործում է ստեղնի ֆիզիկական դիրքը
     <string name="nav_mode_action_media_play_pause">Նվագարկել/Դադար</string>
     <string name="nav_mode_action_media_previous">Նախորդ մեդիա</string>
     <string name="nav_mode_action_media_next">Հաջորդ մեդիա</string>
-    <string name="tutorial_skip_update">Միևնույն է բաց թողնել</string>
-    <string name="tutorial_whats_new_title">Ինչ նոր կա այս տարբերակում</string>
-    <string name="tutorial_whats_new_description">Սա Pastiera-ի ավելի մեծ թարմացում է։ Հաջորդ էջերը արժե արագ անցնել, քանի որ դրանք ուղիղ ցույց են տալիս փոխված կարգավորումներն ու աշխատանքային հոսքերը։</string>
+    <string name="tutorial_skip_update">Skip</string>
+    <string name="tutorial_whats_new_title">Նորը այս տարբերակում՝ %1$s</string>
+    <string name="tutorial_whats_new_description">Շարունակելուց առաջ արժե իմանալ մի քանի փոփոխության մասին։</string>
+    <string name="tutorial_whats_new_bug_fixes_title">Սխալների ուղղումներ</string>
+    <string name="tutorial_whats_new_docs_button">Բացել Pastiera փաստաթղթերը</string>
     <string name="tutorial_whats_new_continue_hint">Շարունակեք ուղեցույցը՝ այս տարբերակի ամենաօգտակար կարգավորումները վերանայելու համար։</string>
     <string name="tutorial_devs_choice_button">Մշակողի ընտրություն</string>
     <string name="tutorial_devs_choice_applied">Մշակողի ընտրության կարգավորումները կիրառվեցին։</string>
@@ -802,6 +819,12 @@ Nav Mode-ը օգտագործում է ստեղնի ֆիզիկական դիրքը
     <string name="tutorial_typing_sound_demo_title">Մուտքագրման ձայներ</string>
     <string name="tutorial_typing_sound_demo_description">Ընտրեք ձայնի ոճ և մուտքագրեք ներքևում՝ այն անմիջապես լսելու համար։</string>
     <string name="tutorial_typing_sound_demo_input_label">Փորձեք մուտքագրել այստեղ</string>
+    <string name="tutorial_variations_button">Տարբերակներ</string>
+    <string name="tutorial_status_bar_button">Կարգավիճակի գոտի</string>
+    <string name="tutorial_sym_emoji_button">SYM / Emoji</string>
+    <string name="tutorial_software_keyboard_hardware_bullet">Կոմպակտ մակերես ֆիզիկական ստեղներով սարքերի համար։</string>
+    <string name="tutorial_software_keyboard_virtual_bullet">Ամբողջական էկրանային ստեղնաշար touch օգտագործման համար։ Դեռ alpha է։</string>
+    <string name="tutorial_software_keyboard_auto_bullet">Խորհուրդ է տրվում․ hardware՝ հայտնի PKB սարքերում, virtual՝ touch սարքերում։</string>
     <string name="app_language_title">Հավելվածի լեզու</string>
     <string name="app_language_description">Ընտրեք հավելվածի միջերեսի տեքստերի լեզուն։</string>
     <string name="app_language_label">Լեզու</string>

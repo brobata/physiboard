@@ -308,6 +308,25 @@
     <string name="tutorial_page_led_description">Pour tirer le meilleur parti de Pastiera, définissez la touche Fn comme Ctrl dans les paramètres système. La barre IME affiche quatre LED: elles deviennent bleues quand le modificateur est actif one-shot et orangées quand il est verrouillé. La LED du layout SYM est bleue sur la page emoji et orange sur la page symbols.</string>
     <string name="tutorial_page_nav_mode_title">Mode Nav</string>
     <string name="tutorial_page_nav_mode_description">Le mode Nav vous fait naviguer dans l\'interface de l\'appareil avec des raccourcis comme IJKL ou ESDF.\nPour l\'activer:\n• Appuyez deux fois rapidement sur Ctrl\n• Les touches de lettres deviennent des contrôles de navigation\n• Appuyez encore sur Ctrl pour quitter\nChaque raccourci est reconfigurable dans les Paramètres avancés.</string>
+    <string name="tutorial_nav_mode_bullet_selection">Les actions de sélection étendent le texte sélectionné vers la gauche, la droite ou mot par mot.</string>
+    <string name="tutorial_nav_mode_bullet_words">Les actions par mot sautent des mots entiers pour déplacer plus vite le curseur dans les champs de texte.</string>
+    <string name="tutorial_nav_mode_bullet_media">Les affectations peuvent aussi gérer raccourcis d’apps, contrôles média, Escape, Tab, Page Up/Down et Pastierina.</string>
+    <string name="tutorial_quick_launcher_title">QuickLauncher</string>
+    <string name="tutorial_quick_launcher_description">Ouvrez des apps au clavier sans quitter votre flux de saisie.</string>
+    <string name="tutorial_quick_launcher_bullet_sym_space">Maintenez SYM et appuyez sur Espace pour ouvrir QuickLauncher partout.</string>
+    <string name="tutorial_quick_launcher_bullet_text_fields">Cela fonctionne aussi avec le curseur dans un champ de texte, pour changer d’app en écrivant.</string>
+    <string name="tutorial_quick_launcher_bullet_search">Tapez quelques lettres, abréviations ou petites fautes pour trouver l’app voulue.</string>
+    <string name="tutorial_quick_launcher_bullet_layout">La recherche peut respecter votre layout Pastiera actif, par exemple QWERTZ.</string>
+    <string name="tutorial_quick_launcher_button">Ouvrir les réglages QuickLauncher</string>
+    <string name="tutorial_quick_launcher_mapping_conflict_title">SYM + Espace est affecté à autre chose</string>
+    <string name="tutorial_quick_launcher_mapping_conflict_description">Espace ouvre actuellement « %1$s ». Remplacez cette affectation par QuickLauncher et activez-le dans les champs de texte pour essayer la nouvelle fonction.</string>
+    <string name="tutorial_quick_launcher_mapping_conflict_button">Utiliser SYM + Espace pour QuickLauncher</string>
+    <string name="tutorial_messenger_presets_title">Préréglages messagerie</string>
+    <string name="tutorial_messenger_presets_description">Choisissez le comportement d’Entrée dans les apps de chat, où nouvelle ligne et envoi varient selon l’app.</string>
+    <string name="tutorial_messenger_presets_bullet_enter">Utilisez des préréglages testés pour les messageries courantes au lieu de régler chaque touche à la main.</string>
+    <string name="tutorial_messenger_presets_bullet_sym_enter">Vous pouvez utiliser SYM + Entrée comme raccourci d’envoi supplémentaire.</string>
+    <string name="tutorial_messenger_presets_bullet_apps">Les overrides par app restent disponibles quand une app se comporte différemment.</string>
+    <string name="tutorial_messenger_presets_button">Ouvrir les préréglages messagerie</string>
     <string name="tutorial_page_customization_title">Personnalisation</string>
     <string name="tutorial_page_customization_description">Pastiera offre de nombreuses options de personnalisation:\n• Dispositions de clavier personnalisables\n• Raccourcis du lanceur et Power Shortcuts\n• La barre IME peut servir de barre de swipe pour déplacer le curseur\n• Mappages personnalisés pour le mode Nav\nExplorez les paramètres pour trouver la configuration parfaite pour vous!</string>
     <string name="tutorial_page_ready_title">Prêt à Commencer</string>
@@ -578,11 +597,7 @@
     <string name="status_bar_button_hamburger">Menu</string>
     <string name="status_bar_button_hamburger_description">Actions rapides</string>
     <string name="tutorial_page_software_keyboard_title">Mode clavier</string>
-    <string name="tutorial_page_software_keyboard_description">Choisissez le comportement de Pastiera sur cet appareil.
-
-• Auto : mode clavier matériel sur les appareils PKB connus ; clavier virtuel sur Pixel, Samsung et la plupart des appareils tactiles.
-• Toujours clavier virtuel : affiche toujours le clavier complet à l’écran.
-• Toujours clavier matériel : utilise la surface compacte pour clavier matériel et ne force pas le clavier complet à l’écran.</string>
+    <string name="tutorial_page_software_keyboard_description">Choisissez la surface clavier que Pastiera doit utiliser ici.</string>
     <string name="software_keyboard_mode_title">Mode clavier</string>
     <string name="software_keyboard_mode_description">Indépendant de Pastierina. Contrôle clavier matériel vs virtuel.</string>
     <string name="software_keyboard_mode_auto_current">Auto (actuel : %1$s)</string>
@@ -774,9 +789,11 @@ Chaque touche peut être configurée comme Keycode, Action, Native Ctrl ou Aucun
     <string name="nav_mode_action_media_play_pause">Lecture/Pause</string>
     <string name="nav_mode_action_media_previous">Média précédent</string>
     <string name="nav_mode_action_media_next">Média suivant</string>
-    <string name="tutorial_skip_update">Ignorer quand même</string>
-    <string name="tutorial_whats_new_title">Nouveautés de cette version</string>
-    <string name="tutorial_whats_new_description">Il s’agit d’une mise à jour plus importante de Pastiera. Les pages suivantes valent un rapide passage, car elles pointent directement vers les paramètres et flux de travail qui ont changé.</string>
+    <string name="tutorial_skip_update">Passer</string>
+    <string name="tutorial_whats_new_title">Nouveau dans cette version : %1$s</string>
+    <string name="tutorial_whats_new_description">Quelques changements utiles méritent d’être connus avant de continuer.</string>
+    <string name="tutorial_whats_new_bug_fixes_title">Corrections de bugs</string>
+    <string name="tutorial_whats_new_docs_button">Ouvrir la documentation Pastiera</string>
     <string name="tutorial_whats_new_continue_hint">Continuez le tutoriel pour revoir les paramètres les plus utiles de cette version.</string>
     <string name="tutorial_devs_choice_button">Choix du développeur</string>
     <string name="tutorial_devs_choice_applied">Paramètres Choix du développeur appliqués.</string>
@@ -802,6 +819,12 @@ Chaque touche peut être configurée comme Keycode, Action, Native Ctrl ou Aucun
     <string name="tutorial_typing_sound_demo_title">Sons de frappe</string>
     <string name="tutorial_typing_sound_demo_description">Choisissez un style sonore et tapez ci-dessous pour l’entendre immédiatement.</string>
     <string name="tutorial_typing_sound_demo_input_label">Essayez de taper ici</string>
+    <string name="tutorial_variations_button">Variations</string>
+    <string name="tutorial_status_bar_button">Barre d’état</string>
+    <string name="tutorial_sym_emoji_button">SYM / Emoji</string>
+    <string name="tutorial_software_keyboard_hardware_bullet">Surface compacte pour les appareils à touches physiques.</string>
+    <string name="tutorial_software_keyboard_virtual_bullet">Clavier complet à l’écran pour l’usage tactile. Encore alpha.</string>
+    <string name="tutorial_software_keyboard_auto_bullet">Recommandé : matériel sur les PKB connus, virtuel sur les appareils tactiles.</string>
     <string name="app_language_title">Langue de l’app</string>
     <string name="app_language_description">Choisissez la langue utilisée pour les textes de l’interface de l’app.</string>
     <string name="app_language_label">Langue</string>

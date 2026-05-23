@@ -312,6 +312,25 @@
     <string name="tutorial_page_led_description">Para aprovechar al máximo Pastiera, configura la tecla Fn como Ctrl desde los ajustes del sistema. La barra IME muestra cuatro LED: se ponen azules cuando el modificador está activo one-shot y naranjas cuando está bloqueado. El LED del diseño SYM es azul en la página de emojis y naranja en la página de símbolos.</string>
     <string name="tutorial_page_nav_mode_title">Modo Nav</string>
     <string name="tutorial_page_nav_mode_description">El modo Nav te permite navegar por la interfaz del dispositivo con atajos como IJKL o ESDF.\nPara activarlo:\n• Presiona Ctrl dos veces rápidamente\n• Las teclas de letras se convierten en controles de navegación\n• Presiona Ctrl otra vez para salir\nCada atajo se puede reasignar en la Configuración Avanzada.</string>
+    <string name="tutorial_nav_mode_bullet_selection">Las acciones de selección amplían el texto seleccionado a la izquierda, derecha o palabra por palabra.</string>
+    <string name="tutorial_nav_mode_bullet_words">Las acciones por palabra saltan palabras completas para mover el cursor más rápido en campos de texto.</string>
+    <string name="tutorial_nav_mode_bullet_media">Las asignaciones también pueden manejar atajos de apps, controles multimedia, Escape, Tab, Page Up/Down y Pastierina.</string>
+    <string name="tutorial_quick_launcher_title">QuickLauncher</string>
+    <string name="tutorial_quick_launcher_description">Abre apps desde el teclado sin salir del flujo de escritura.</string>
+    <string name="tutorial_quick_launcher_bullet_sym_space">Mantén SYM y pulsa Espacio para abrir QuickLauncher desde cualquier lugar.</string>
+    <string name="tutorial_quick_launcher_bullet_text_fields">También funciona con el cursor dentro de un campo de texto, para cambiar de app mientras escribes.</string>
+    <string name="tutorial_quick_launcher_bullet_search">Escribe unas letras, abreviaturas o pequeños errores para encontrar la app que quieres.</string>
+    <string name="tutorial_quick_launcher_bullet_layout">La búsqueda puede respetar tu layout activo de Pastiera, como QWERTZ.</string>
+    <string name="tutorial_quick_launcher_button">Abrir ajustes de QuickLauncher</string>
+    <string name="tutorial_quick_launcher_mapping_conflict_title">SYM + Espacio está asignado a otra cosa</string>
+    <string name="tutorial_quick_launcher_mapping_conflict_description">Espacio ahora abre “%1$s”. Sustituye esa asignación por QuickLauncher y actívalo en campos de texto para probar la nueva función.</string>
+    <string name="tutorial_quick_launcher_mapping_conflict_button">Usar SYM + Espacio para QuickLauncher</string>
+    <string name="tutorial_messenger_presets_title">Presets de mensajería</string>
+    <string name="tutorial_messenger_presets_description">Elige cómo debe comportarse Intro en apps de chat, donde nueva línea y enviar suelen variar por app.</string>
+    <string name="tutorial_messenger_presets_bullet_enter">Usa presets probados para mensajeros comunes en vez de ajustar cada tecla manualmente.</string>
+    <string name="tutorial_messenger_presets_bullet_sym_enter">Opcionalmente usa SYM + Intro como atajo adicional para enviar.</string>
+    <string name="tutorial_messenger_presets_bullet_apps">Los overrides por app siguen disponibles cuando una app se comporta diferente.</string>
+    <string name="tutorial_messenger_presets_button">Abrir presets de mensajería</string>
     <string name="tutorial_page_customization_title">Personalización</string>
     <string name="tutorial_page_customization_description">Pastiera ofrece muchas opciones de personalización:\n• Diseños de teclado personalizables\n• Accesos rápidos del lanzador y Power Shortcuts\n• La barra IME puede usarse como barra de deslizamiento para mover el cursor\n• Asignaciones personalizadas para el modo Nav\n¡Explora la configuración para encontrar la configuración perfecta para ti!</string>
     <string name="tutorial_page_ready_title">Listo para Comenzar</string>
@@ -576,11 +595,7 @@
     <string name="status_bar_button_hamburger">Menú</string>
     <string name="status_bar_button_hamburger_description">Acciones rápidas</string>
     <string name="tutorial_page_software_keyboard_title">Modo de teclado</string>
-    <string name="tutorial_page_software_keyboard_description">Elige cómo debe comportarse Pastiera en este dispositivo.
-
-• Auto: modo de teclado físico en dispositivos PKB conocidos; teclado virtual en Pixel, Samsung y la mayoría de dispositivos táctiles.
-• Siempre teclado virtual: muestra siempre el teclado completo en pantalla.
-• Siempre teclado físico: usa la superficie compacta para teclado físico y no fuerza el teclado completo en pantalla.</string>
+    <string name="tutorial_page_software_keyboard_description">Elige qué superficie de teclado debe usar Pastiera aquí.</string>
     <string name="software_keyboard_mode_title">Modo de teclado</string>
     <string name="software_keyboard_mode_description">Independiente de Pastierina. Controla teclado físico vs. virtual.</string>
     <string name="software_keyboard_mode_auto_current">Auto (actual: %1$s)</string>
@@ -798,9 +813,17 @@ Cada tecla puede configurarse como Keycode, Acción, Native Ctrl o Ninguno. Usa 
     <string name="tutorial_typing_sound_demo_title">Sonidos de escritura</string>
     <string name="tutorial_typing_sound_demo_description">Elige un estilo de sonido y escribe abajo para escucharlo de inmediato.</string>
     <string name="tutorial_typing_sound_demo_input_label">Prueba a escribir aquí</string>
-    <string name="tutorial_skip_update">Omitir de todos modos</string>
-    <string name="tutorial_whats_new_title">Novedades de esta versión</string>
-    <string name="tutorial_whats_new_description">Esta es una actualización más grande de Pastiera. Vale la pena repasar rápidamente las páginas siguientes porque te llevan directamente a ajustes y flujos de trabajo que han cambiado.</string>
+    <string name="tutorial_variations_button">Variaciones</string>
+    <string name="tutorial_status_bar_button">Barra estado</string>
+    <string name="tutorial_sym_emoji_button">SYM / Emoji</string>
+    <string name="tutorial_software_keyboard_hardware_bullet">Superficie compacta para dispositivos con teclas físicas.</string>
+    <string name="tutorial_software_keyboard_virtual_bullet">Teclado completo en pantalla para uso táctil. Aún alpha.</string>
+    <string name="tutorial_software_keyboard_auto_bullet">Recomendado: hardware en PKB conocidos, virtual en dispositivos táctiles.</string>
+    <string name="tutorial_skip_update">Omitir</string>
+    <string name="tutorial_whats_new_title">Nuevo en esta versión: %1$s</string>
+    <string name="tutorial_whats_new_description">Hay algunos cambios útiles que conviene conocer antes de continuar.</string>
+    <string name="tutorial_whats_new_bug_fixes_title">Correcciones de errores</string>
+    <string name="tutorial_whats_new_docs_button">Abrir documentación de Pastiera</string>
     <string name="tutorial_whats_new_continue_hint">Continúa el tutorial para revisar los ajustes más útiles de esta versión.</string>
     <string name="app_language_title">Idioma de la app</string>
     <string name="app_language_description">Elige el idioma usado para los textos de la interfaz de la app.</string>

@@ -2,6 +2,7 @@ package it.palsoftware.pastiera
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -69,19 +70,24 @@ private const val UNIHERTZ_HIDE_IME_CAPTION_BAR_KEY = "agui_hide_ime_caption_bar
 class TutorialActivity : LocalizedComponentActivity() {
     companion object {
         const val EXTRA_UPDATE_TUTORIAL = "it.palsoftware.pastiera.UPDATE_TUTORIAL"
+        const val EXTRA_PREVIEW_UPDATE_TUTORIAL = "it.palsoftware.pastiera.PREVIEW_UPDATE_TUTORIAL"
+        const val EXTRA_PREVIOUS_VERSION = "it.palsoftware.pastiera.PREVIOUS_VERSION"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val updateTutorial = intent.getBooleanExtra(EXTRA_UPDATE_TUTORIAL, false)
+        val previewUpdateTutorial = intent.getBooleanExtra(EXTRA_PREVIEW_UPDATE_TUTORIAL, false)
+        val previousVersionOverride = intent.getStringExtra(EXTRA_PREVIOUS_VERSION)
         setContent {
             PastieraTheme {
                 TutorialScreen(
                     updateTutorial = updateTutorial,
+                    previousVersionOverride = previousVersionOverride,
                     onComplete = {
                         SettingsManager.setTutorialCompleted(this@TutorialActivity)
-                        if (updateTutorial) {
+                        if (updateTutorial && !previewUpdateTutorial) {
                             SettingsManager.markWhatsNewSeen(this@TutorialActivity, BuildConfig.VERSION_NAME)
                         }
                         val intent = Intent(this@TutorialActivity, MainActivity::class.java)
@@ -96,7 +102,9 @@ class TutorialActivity : LocalizedComponentActivity() {
 
 sealed class TutorialPageType {
     data class WhatsNew(
-        val summary: ReleaseNotesSummary
+        val summary: ReleaseNotesSummary,
+        val previousVersion: String?,
+        val currentVersion: String
     ) : TutorialPageType()
 
     data class Welcome(
@@ -163,11 +171,15 @@ sealed class TutorialPageType {
 @Composable
 fun TutorialScreen(
     updateTutorial: Boolean = false,
+    previousVersionOverride: String? = null,
     onComplete: () -> Unit
 ) {
     val context = LocalContext.current
     val releaseNotesLanguageTag = context.resources.configuration.locales[0]?.toLanguageTag()
         ?: Locale.getDefault().toLanguageTag()
+    val lastSeenWhatsNewVersion = remember {
+        SettingsManager.getLastSeenWhatsNewVersion(context)
+    }
     var releaseNotes by remember {
         mutableStateOf(ReleaseNotesSummary.fallback(BuildConfig.VERSION_NAME, releaseNotesLanguageTag))
     }
@@ -208,7 +220,13 @@ fun TutorialScreen(
 
     val pages = buildList {
         if (updateTutorial) {
-            add(TutorialPageType.WhatsNew(releaseNotes))
+            add(
+                TutorialPageType.WhatsNew(
+                    summary = releaseNotes,
+                    previousVersion = previousVersionOverride ?: lastSeenWhatsNewVersion,
+                    currentVersion = BuildConfig.VERSION_NAME
+                )
+            )
         }
         add(
             TutorialPageType.Welcome(
@@ -258,18 +276,18 @@ fun TutorialScreen(
             )
         )
         add(
-            TutorialPageType.LedIndicator(
-                title = stringResource(R.string.tutorial_page_led_title),
-                description = stringResource(R.string.tutorial_page_led_description),
-                iconTint = MaterialTheme.colorScheme.secondary
-            )
-        )
-        add(
             TutorialPageType.NavMode(
                 title = stringResource(R.string.tutorial_page_nav_mode_title),
                 description = stringResource(R.string.tutorial_page_nav_mode_description),
                 icon = Icons.Filled.Navigation,
                 iconTint = MaterialTheme.colorScheme.tertiary
+            )
+        )
+        add(
+            TutorialPageType.LedIndicator(
+                title = stringResource(R.string.tutorial_page_led_title),
+                description = stringResource(R.string.tutorial_page_led_description),
+                iconTint = MaterialTheme.colorScheme.secondary
             )
         )
         add(
@@ -422,11 +440,7 @@ fun TutorialScreen(
                         .height(32.dp)
                 ) {
                     Text(
-                        text = if (updateTutorial) {
-                            stringResource(R.string.tutorial_skip_update)
-                        } else {
-                            stringResource(R.string.tutorial_skip)
-                        },
+                        text = stringResource(R.string.tutorial_skip),
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
@@ -613,13 +627,25 @@ fun TutorialSoftwareKeyboardPageContent(
                 )
             }
         }
-        Spacer(modifier = Modifier.height(14.dp))
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            TutorialBulletRow(stringResource(R.string.tutorial_software_keyboard_auto_bullet))
-            TutorialBulletRow(stringResource(R.string.tutorial_software_keyboard_virtual_bullet))
-            TutorialBulletRow(stringResource(R.string.tutorial_software_keyboard_hardware_bullet))
+        Spacer(modifier = Modifier.height(12.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            TutorialKeyboardModeInfoRow(
+                title = stringResource(R.string.software_keyboard_mode_auto_short),
+                description = stringResource(R.string.tutorial_software_keyboard_auto_bullet),
+                icon = Icons.Filled.AutoMode
+            )
+            TutorialKeyboardModeInfoRow(
+                title = stringResource(R.string.software_keyboard_mode_always_hardware),
+                description = stringResource(R.string.tutorial_software_keyboard_hardware_bullet),
+                icon = Icons.Filled.Keyboard
+            )
+            TutorialKeyboardModeInfoRow(
+                title = stringResource(R.string.software_keyboard_mode_always_virtual),
+                description = stringResource(R.string.tutorial_software_keyboard_virtual_bullet),
+                icon = Icons.Filled.TabletAndroid
+            )
         }
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
         ExposedDropdownMenuBox(
             expanded = expanded,
             onExpandedChange = { expanded = it }
@@ -655,8 +681,50 @@ fun TutorialSoftwareKeyboardPageContent(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
         SoftwareKeyboardAutoDetectionCard(autoDetection)
+    }
+}
+
+@Composable
+private fun TutorialKeyboardModeInfoRow(
+    title: String,
+    description: String,
+    icon: ImageVector
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp)
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
     }
 }
 
@@ -1074,6 +1142,11 @@ fun TutorialWhatsNewPageContent(
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
+    val context = LocalContext.current
+    var bugFixesExpanded by remember { mutableStateOf(false) }
+    val releaseRange = remember(page.previousVersion, page.currentVersion) {
+        buildReleaseRangeLabel(page.previousVersion, page.currentVersion)
+    }
 
     Column(
         modifier = modifier
@@ -1090,7 +1163,7 @@ fun TutorialWhatsNewPageContent(
         Spacer(modifier = Modifier.height(18.dp))
 
         Text(
-            text = stringResource(R.string.tutorial_whats_new_title),
+            text = stringResource(R.string.tutorial_whats_new_title, releaseRange),
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
@@ -1110,31 +1183,92 @@ fun TutorialWhatsNewPageContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         page.summary.highlights.forEach { highlight ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 6.dp),
-                verticalAlignment = Alignment.Top
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.CheckCircle,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .padding(top = 2.dp)
-                        .size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-                Text(
-                    text = highlight,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f)
+            ReleaseNoteRow(
+                text = highlight,
+                icon = Icons.Filled.Star,
+                tint = MaterialTheme.colorScheme.primary,
+                prominent = true
+            )
+        }
+
+        if (page.summary.improvements.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(6.dp))
+            page.summary.improvements.forEach { improvement ->
+                ReleaseNoteRow(
+                    text = improvement,
+                    icon = Icons.Filled.CheckCircle,
+                    tint = MaterialTheme.colorScheme.secondary,
+                    prominent = false
                 )
             }
         }
 
+        if (page.summary.bugFixes.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { bugFixesExpanded = !bugFixesExpanded },
+                shape = RoundedCornerShape(14.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.BugReport,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.tertiary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Text(
+                        text = stringResource(R.string.tutorial_whats_new_bug_fixes_title),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Icon(
+                        imageVector = if (bugFixesExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            if (bugFixesExpanded) {
+                Spacer(modifier = Modifier.height(6.dp))
+                page.summary.bugFixes.forEach { bugFix ->
+                    ReleaseNoteRow(
+                        text = bugFix,
+                        icon = Icons.Filled.BugReport,
+                        tint = MaterialTheme.colorScheme.tertiary,
+                        prominent = false
+                    )
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(12.dp))
+
+        OutlinedButton(
+            onClick = {
+                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(page.summary.docsUrl)))
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(stringResource(R.string.tutorial_whats_new_docs_button))
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
 
         Text(
             text = stringResource(R.string.tutorial_whats_new_continue_hint),
@@ -1143,6 +1277,50 @@ fun TutorialWhatsNewPageContent(
             color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.Medium
         )
+    }
+}
+
+@Composable
+private fun ReleaseNoteRow(
+    text: String,
+    icon: ImageVector,
+    tint: Color,
+    prominent: Boolean
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = if (prominent) 6.dp else 4.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier
+                .padding(top = 2.dp)
+                .size(if (prominent) 18.dp else 16.dp)
+        )
+        Spacer(modifier = Modifier.width(10.dp))
+        Text(
+            text = text,
+            style = if (prominent) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = if (prominent) FontWeight.Medium else FontWeight.Normal,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+private fun buildReleaseRangeLabel(previousVersion: String?, currentVersion: String): String {
+    val normalizedCurrent = currentVersion.trim().ifBlank { "current" }
+    val normalizedPrevious = previousVersion
+        ?.trim()
+        ?.takeIf { it.isNotBlank() && it != normalizedCurrent }
+    return if (normalizedPrevious != null) {
+        "$normalizedPrevious → $normalizedCurrent"
+    } else {
+        normalizedCurrent
     }
 }
 
@@ -1809,18 +1987,24 @@ fun TutorialCustomizationPageContent(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            OutlinedButton(
+            TutorialCustomizationLinkButton(
+                text = stringResource(R.string.tutorial_sym_emoji_button),
+                icon = Icons.Filled.EmojiSymbols,
                 onClick = { context.startActivity(Intent(context, SymCustomizationActivity::class.java)) },
                 modifier = Modifier.weight(1f)
-            ) {
-                Text(stringResource(R.string.tutorial_sym_emoji_button))
-            }
-            OutlinedButton(
+            )
+            TutorialCustomizationLinkButton(
+                text = stringResource(R.string.tutorial_variations_button),
+                icon = Icons.Filled.Tune,
                 onClick = { openCustomizationDestination(context, SettingsActivity.CUSTOMIZATION_DESTINATION_VARIATIONS) },
                 modifier = Modifier.weight(1f)
-            ) {
-                Text(stringResource(R.string.tutorial_variations_button))
-            }
+            )
+            TutorialCustomizationLinkButton(
+                text = stringResource(R.string.tutorial_status_bar_button),
+                icon = Icons.Filled.SmartButton,
+                onClick = { openCustomizationDestination(context, SettingsActivity.CUSTOMIZATION_DESTINATION_STATUS_BAR_BUTTONS) },
+                modifier = Modifier.weight(1f)
+            )
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -1952,6 +2136,32 @@ fun TutorialCustomizationPageContent(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun TutorialCustomizationLinkButton(
+    text: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier.height(44.dp),
+        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            maxLines = 1
+        )
     }
 }
 

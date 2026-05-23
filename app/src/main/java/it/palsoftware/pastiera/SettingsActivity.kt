@@ -16,6 +16,7 @@ class SettingsActivity : LocalizedComponentActivity() {
         const val CUSTOMIZATION_DESTINATION_VARIATIONS = "variations"
         const val CUSTOMIZATION_DESTINATION_LAUNCHER_SHORTCUTS = "launcher_shortcuts"
         const val CUSTOMIZATION_DESTINATION_APP_ENTER_BEHAVIOR = "app_enter_behavior"
+        const val CUSTOMIZATION_DESTINATION_STATUS_BAR_BUTTONS = "status_bar_buttons"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

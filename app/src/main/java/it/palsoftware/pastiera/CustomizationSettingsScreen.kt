@@ -107,6 +107,8 @@ fun CustomizationSettingsScreen(
                     CustomizationDestination.LauncherShortcuts
                 SettingsActivity.CUSTOMIZATION_DESTINATION_APP_ENTER_BEHAVIOR ->
                     CustomizationDestination.AppEnterBehavior
+                SettingsActivity.CUSTOMIZATION_DESTINATION_STATUS_BAR_BUTTONS ->
+                    CustomizationDestination.StatusBarButtons
                 else -> null
             }
             add(deepLinkedDestination ?: CustomizationDestination.Main)

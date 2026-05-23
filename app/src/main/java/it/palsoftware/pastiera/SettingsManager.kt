@@ -2669,6 +2669,13 @@ object SettingsManager {
         return lastSeen != normalizedCurrent
     }
 
+    fun getLastSeenWhatsNewVersion(context: Context): String? {
+        return getPreferences(context)
+            .getString(KEY_LAST_SEEN_WHATS_NEW_VERSION, null)
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+    }
+
     fun markWhatsNewSeen(context: Context, version: String) {
         val normalizedVersion = version.trim()
         if (normalizedVersion.isBlank()) return

@@ -639,6 +639,54 @@ fun AdvancedSettingsScreen(
                                 )
                             }
                         }
+
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(64.dp)
+                                .clickable {
+                                    val intent = Intent(context, TutorialActivity::class.java).apply {
+                                        putExtra(TutorialActivity.EXTRA_UPDATE_TUTORIAL, true)
+                                        putExtra(TutorialActivity.EXTRA_PREVIEW_UPDATE_TUTORIAL, true)
+                                        putExtra(TutorialActivity.EXTRA_PREVIOUS_VERSION, "0.84beta")
+                                    }
+                                    context.startActivity(intent)
+                                }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.History,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = stringResource(R.string.tutorial_show_release_notes),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.tutorial_show_release_notes_description),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1
+                                    )
+                                }
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     }
                 }
             }
