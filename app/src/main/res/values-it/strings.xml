@@ -6,7 +6,12 @@
     <string name="input_method_name_fr">Français</string>
     <string name="input_method_name_de">Deutsch</string>
     <string name="input_method_name_pl">Polski</string>
+    <string name="input_method_name_da">Dansk</string>
+    <string name="input_method_name_no">Norsk</string>
     <string name="input_method_name_es">Español</string>
+    <string name="input_method_name_pt">Português</string>
+    <string name="input_method_name_ru">Русский</string>
+    <string name="input_method_name_sr">Српски</string>
     <string name="input_method_name_uk">Українська</string>
     
     <!-- Settings Screen -->
@@ -39,6 +44,15 @@
     
     <!-- Swipe to Delete Section -->
     <string name="swipe_to_delete_title">Abilita Swipe per Cancellare</string>
+
+    <!-- Delete Alternatives Section -->
+    <string name="delete_alternatives_title">Eliminazione</string>
+    <string name="delete_alternatives_description">Metodi alternativi per eliminare i caratteri a destra del cursore</string>
+    <string name="shift_backspace_delete_title">Shift + Backspace</string>
+    <string name="alt_backspace_delete_title">Alt + Backspace</string>
+    <string name="backspace_at_start_delete_title">Backspace a inizio riga</string>
+    <string name="delete_alternatives_hint">Suggerimento: Ctrl + tasto può essere configurato nelle impostazioni della modalità Nav</string>
+    <string name="delete_alternatives_selection_hint">Quando il testo è selezionato, queste alternative sono disattivate e Backspace elimina la selezione.</string>
     
     <!-- Swipe Incremental Threshold Section -->
     <string name="swipe_incremental_threshold_title">Sensibilità Swipe Bar</string>
@@ -46,6 +60,23 @@
     
     <!-- Auto Show Keyboard Section -->
     <string name="auto_show_keyboard_title">Mostra Automaticamente la Tastiera</string>
+
+    <!-- Alt+Ctrl Speech Recognition Shortcut Section -->
+    <string name="alt_ctrl_speech_shortcut_title">Riconoscimento vocale Alt+Ctrl</string>
+    <string name="alt_ctrl_speech_shortcut_description">Abilita la scorciatoia da tastiera Alt+Ctrl per avviare il riconoscimento vocale</string>
+
+    <!-- Static Variation Bar Mode -->
+    <string name="static_variation_preset_title">Preset variazione statica</string>
+    <string name="static_variation_preset_off">Disattivato</string>
+    <string name="static_variation_preset_off_description">Usa solo variazioni dinamiche e suggerimenti.</string>
+    <string name="static_variation_preset_symbols">Simboli</string>
+    <string name="static_variation_preset_symbols_description">Riga di punteggiatura predefinita.</string>
+    <string name="static_variation_preset_numbers">Numeri</string>
+    <string name="static_variation_preset_numbers_description">Riga numerica rapida.</string>
+    <string name="static_variation_preset_alternative">Simboli alternativi</string>
+    <string name="static_variation_preset_alternative_description">Parentesi e caratteri speciali.</string>
+    <string name="static_variation_preset_dev_choice">Scelta dello sviluppatore</string>
+    <string name="static_variation_preset_dev_choice_description">Riga di punteggiatura curata.</string>
     
     <!-- Info Section -->
     <string name="info_title">Informazioni</string>
@@ -91,6 +122,7 @@
     <!-- Buttons -->
     <string name="settings_button">Impostazioni</string>
     <string name="change_keyboard_button">Cambia Tastiera</string>
+    <string name="save">Salva</string>
     
     <!-- SYM Customization -->
     <string name="sym_customization_title">Personalizza Tastiera SYM</string>
@@ -160,10 +192,15 @@
     <string name="sym_enable_symbols_page_description">Mostra il layout SYM simboli durante il ciclo.</string>
     <string name="sym_enable_clipboard_page_title">Abilita Pagina Appunti</string>
     <string name="sym_enable_clipboard_page_description">Mostra la cronologia degli appunti durante il ciclo.</string>
+    <string name="sym_enable_emoji_picker_page_title">Abilita pagina selettore emoji</string>
+    <string name="sym_enable_emoji_picker_page_description">Mostra il selettore emoji completo durante il ciclo.</string>
+    <string name="emoji_picker_expanded_height_title">Selettore emoji più grande</string>
+    <string name="emoji_picker_expanded_height_description">Usa circa 1,5 volte l\'altezza per la pagina di ricerca emoji; le altre pagine SYM mantengono l\'altezza normale.</string>
     <string name="sym_swap_pages_title">Scambia Ordine Pagine SYM</string>
     <string name="sym_swap_pages_description">Scegli quale pagina SYM appare per prima quando si alterna.</string>
     <string name="sym_order_emoji_first">Emoji prima</string>
     <string name="sym_order_symbols_first">Simboli prima</string>
+    <string name="sym_order_clipboard_first">Appunti prima</string>
     <string name="sym_instructions_title">Istruzioni</string>
     <string name="sym_instructions_text">Tocca un tasto qui sotto per cambiare la sua emoji. Le modifiche vengono salvate automaticamente.</string>
     <string name="sym_reset_to_default">Ripristina Predefiniti</string>
@@ -192,6 +229,21 @@
     <string name="long_press_modifier_shift">Shift</string>
     <string name="long_press_modifier_variations">Variazioni</string>
     <string name="long_press_modifier_sym">Sym</string>
+    <string name="typing_sound_title">Suoni di digitazione</string>
+    <string name="typing_sound_off">Disattivato</string>
+    <string name="typing_sound_click">Clic tastiera</string>
+    <string name="typing_sound_typewriter">Macchina da scrivere</string>
+    <string name="typing_sound_custom">Pacchetto audio personalizzato…</string>
+    <string name="typing_sound_output_title">Uscita suoni di digitazione</string>
+    <string name="typing_sound_output_media">Volume media</string>
+    <string name="typing_sound_output_system">Suoni di sistema</string>
+    <string name="typing_sound_output_notification">Notifiche</string>
+    <string name="typing_sound_output_dnd_hint">I suoni di sistema e le notifiche seguono la modalità silenziosa e Non disturbare.</string>
+    <string name="typing_sound_import_success">Pacchetto suoni di digitazione importato</string>
+    <string name="typing_sound_import_failed">Impossibile importare questo pacchetto audio. Usa uno ZIP con file audio nelle cartelle normal/, space/, backspace/, enter/ e modifier/.</string>
+    <string name="typing_sound_docs_title">Formato pacchetto audio</string>
+    <string name="typing_sound_docs_description">Apri la guida all\'importazione su pastiera.eu</string>
+    <string name="typing_sound_docs_url">https://pastiera.eu/guides/typing-soundpacks/</string>
     
     <!-- Keyboard Layout Section -->
     <string name="keyboard_layout_title">Layout Tastiera</string>
@@ -202,7 +254,21 @@
     <string name="keyboard_layout_no_conversion_description">Layout QWERTY standard (nessuna conversione)</string>
     <string name="keyboard_layout_conversions_title">Conversioni Layout</string>
     <string name="keyboard_layout_conversions_description">Converti i tasti lettere per corrispondere al layout selezionato</string>
+    <string name="keyboard_layout_viewer_title">Mappa tastiera</string>
+    <string name="keyboard_layout_viewer_subtitle">Layout: %1$s</string>
+    <string name="keyboard_layout_viewer_unavailable">Impossibile caricare la mappatura di questo layout.</string>
+    <string name="keyboard_layout_viewer_empty">Nessuna mappatura tasti trovata per questo layout.</string>
+    <string name="keyboard_layout_viewer_multitap_on">multitap</string>
+    <string name="keyboard_layout_viewer_multitap_off">singolo</string>
+    <string name="keyboard_layout_viewer_open">Visualizza mappatura</string>
     <string name="keyboard_layout_settings_button">Impostazioni Layout Tastiera</string>
+    <string name="keyboard_layout_mode_title">Mappatura layout automatica</string>
+    <string name="keyboard_layout_mode_auto_description">ON: segue le mappature predefinite di subtype/locale.</string>
+    <string name="keyboard_layout_mode_manual_description">OFF: usa un layout selezionato manualmente per tutte le lingue.</string>
+    <string name="alt_shift_layout_switch_title">Cambio layout Alt+Shift</string>
+    <string name="alt_shift_layout_switch_description">Cambia lingua/layout con Alt+Shift.</string>
+    <string name="toast_on_layout_switch_title">Toast cambio layout</string>
+    <string name="toast_on_layout_switch_description">Mostra un toast quando si cambia lingua/layout.</string>
     
     <!-- About Section -->
     <string name="about_github">GitHub</string>
@@ -213,10 +279,15 @@
     
     <!-- Launcher Shortcuts Section -->
     <string name="launcher_shortcuts_title">Scorciatoie</string>
+    <string name="starter_launcher_shortcuts_title">Pastiera-QuickLauncher</string>
+    <string name="starter_launcher_shortcuts_description">Avvio rapido, scorciatoie SYM e assegnazioni dei tasti app</string>
+    <string name="starter_launcher_shortcuts_intro">Queste impostazioni condividono un unico elenco di assegnazioni app-tasto. Scegli dove Pastiera deve ascoltare i tasti assegnati.</string>
     <string name="launcher_shortcuts_experimental">Experimental</string>
     <string name="launcher_shortcuts_description">Abilita le scorciatoie da tastiera</string>
     <string name="launcher_shortcuts_configure">Configura scorciatoie</string>
     <string name="launcher_shortcuts_configure_description">Assegna tasti per aprire app</string>
+    <string name="launcher_shortcuts_configure_description_with_quick_launcher">Tocca un tasto per assegnare o sostituire un\'app. Il QuickLauncher è attualmente assegnato a %1$s.</string>
+    <string name="quick_launcher_default_blocked_hint">Novità: SYM può aprire il QuickLauncher. Pastiera normalmente lo assegnerebbe a Spazio, ma Spazio ha già una scorciatoia. Apri la pagina delle assegnazioni e scegli “Apri QuickLauncher” su un tasto qualsiasi per provarlo.</string>
     
     <!-- Launcher Shortcuts Screen -->
     <string name="launcher_shortcuts_screen_title">Scorciatoie</string>
@@ -237,6 +308,39 @@
     <string name="launcher_shortcut_assignment_no_apps">Nessuna app trovata</string>
     <string name="launcher_shortcut_assignment_no_results">Nessun risultato per \"%1$s\"</string>
     <string name="launcher_shortcut_assignment_key_name">Tasto %1$d</string>
+    <string name="quick_launcher_title">Pastiera-QuickLauncher</string>
+    <string name="quick_launcher_subtitle">Digita per cercare. Invio apre il primo risultato.</string>
+    <string name="quick_launcher_close">Chiudi</string>
+    <string name="quick_launcher_search_placeholder">Inizia a digitare...</string>
+    <string name="quick_launcher_auto_start_single">Avvia automaticamente quando resta un solo risultato</string>
+    <string name="quick_launcher_auto_start_single_title">Apri automaticamente la corrispondenza unica</string>
+    <string name="quick_launcher_auto_start_single_description">Quando la ricerca del QuickLauncher lascia una sola app, avviala senza premere Invio.</string>
+    <string name="quick_launcher_limit_results_title">Mostra solo i risultati migliori</string>
+    <string name="quick_launcher_limit_results_description">Non mostrare l\'elenco alfabetico completo delle app. Il QuickLauncher resta vuoto finché non digiti e poi mostra solo le prime tre corrispondenze.</string>
+    <string name="quick_launcher_text_field_shortcuts_title">Consenti SYM+Spazio nei campi di testo</string>
+    <string name="quick_launcher_text_field_shortcuts_description">Se attivo, il QuickLauncher può aprirsi anche quando il cursore è dentro un campo di testo di un\'app.</string>
+    <string name="quick_launcher_text_field_shortcuts_hint">Nei campi di testo, tieni premuto SYM e premi Spazio. Il blocco SYM non può attivarlo perché toccare SYM scorre le pagine SYM.</string>
+    <string name="quick_launcher_respect_keyboard_layout_title">Usa layout tastiera attivo</string>
+    <string name="quick_launcher_respect_keyboard_layout_description">Se attivo, l\'input di ricerca segue il layout Pastiera corrente invece dell\'output QWERTY grezzo di Android.</string>
+    <string name="quick_launcher_typo_tolerant_ranking_title">Ricerca tollerante agli errori</string>
+    <string name="quick_launcher_typo_tolerant_ranking_description">Trova anche nomi app con piccoli errori di battitura. Le corrispondenze per prefisso e abbreviazione restano comunque più in alto.</string>
+    <string name="quick_launcher_ranking_info_button">Come funziona il ranking</string>
+    <string name="quick_launcher_ranking_info_title">Ranking QuickLauncher</string>
+    <string name="quick_launcher_ranking_info_body">I risultati sono ordinati così: nome app esatto, prefisso del nome app, prefisso di parola, corrispondenza abbreviazione/sottosequenza, nome app tollerante agli errori, poi nome pacchetto. La tolleranza agli errori è ignorata per query molto brevi.</string>
+    <string name="quick_launcher_behavior_title">Comportamento</string>
+    <string name="quick_launcher_behavior_description">Regole di avvio, rendering dei risultati e SYM+Spazio dai campi di testo.</string>
+    <string name="quick_launcher_cosmetic_title">Aspetto</string>
+    <string name="quick_launcher_cosmetic_description">Larghezza e presentazione compatta a pillola.</string>
+    <string name="quick_launcher_width_title">Larghezza launcher</string>
+    <string name="quick_launcher_width_value">%1$d%% della larghezza schermo</string>
+    <string name="quick_launcher_pill_mode_title">Modalità pillola</string>
+    <string name="quick_launcher_pill_mode_description">Si apre come pillola di ricerca compatta e si espande solo dopo aver digitato.</string>
+    <string name="quick_launcher_type_to_search">Inizia a digitare per cercare app</string>
+    <string name="quick_launcher_loading_apps">Caricamento app...</string>
+    <string name="quick_launcher_assign_action">Apri QuickLauncher</string>
+    <string name="quick_launcher_no_apps">Nessuna app trovata</string>
+    <string name="quick_launcher_no_results">Nessun risultato per \"%1$s\"</string>
+    <string name="quick_launcher_enter_hint">Invio</string>
     
     <!-- Power Shortcuts Section -->
     <string name="power_shortcuts_title">Power Shortcuts</string>
@@ -270,7 +374,10 @@
     <string name="keyboard_profile_option_key2">BlackBerry Key2</string>
     <string name="keyboard_profile_option_q25">BlackBerry Q25</string>
     <string name="keyboard_profile_option_titan2">Unihertz Titan / Titan 2</string>
+    <string name="keyboard_profile_option_titan2elite_qwerty">Titan 2 Elite (QWERTY)</string>
     <string name="keyboard_profile_option_mp01">Minimal Phone (MP01)</string>
+    <string name="keyboard_currency_symbol_title">Simbolo valuta</string>
+    <string name="keyboard_currency_symbol_description">Simbolo inserito dai tasti valuta hardware dedicati.</string>
     <!-- Static Variation Bar Mode -->
     <string name="static_variation_bar_mode_title">Barra variazioni statica</string>
     <string name="static_variation_bar_mode_description">Mostra sempre una serie fissa di tasti di utilità nella barra variazioni invece delle variazioni contestuali.</string>
@@ -287,8 +394,40 @@
     
     <!-- Nav Mode Settings -->
     <string name="nav_mode_title">Nav Mode</string>
+    <string name="nav_mode_guide_title">Guida Nav Mode</string>
+    <string name="nav_mode_guide_description">Come Ctrl, mappature, scorciatoie app e suggerimenti layout funzionano insieme.</string>
+    <string name="nav_mode_guide_text">Nav Mode trasforma i tasti lettera in tasti di navigazione e scorciatoie. Il risultato può variare in base all\'app, perché alcune app capiscono le azioni editor di Android, mentre altre reagiscono solo a vere scorciatoie Ctrl.
+
+Navigazione con Ctrl tenuto premuto
+Quando la navigazione con Ctrl tenuto premuto è disattivata, il Ctrl fisicamente premuto viene passato all\'app quando possibile. Scorciatoie come Ctrl+B, Ctrl+I o Ctrl+Z possono quindi funzionare direttamente negli editor.
+
+Quando la navigazione con Ctrl tenuto premuto è attiva, il Ctrl fisicamente premuto usa prima le mappature Nav Mode qui sotto. Un tasto mappato esegue il comando Nav Mode configurato.
+
+Doppio tocco Ctrl
+Toccando due volte Ctrl si blocca Nav Mode. Dopo, premere una lettera attiva la mappatura Nav Mode finché non si esce di nuovo da Nav Mode. È utile per frecce, Pagina su/giù, Esc, Tab e comandi di selezione senza tenere premuto Ctrl.
+
+Azione e Native Ctrl
+Azioni come Copia, Incolla, Taglia, Seleziona tutto e Annulla vengono inviate come azioni editor di Android. Funzionano in molti campi di testo, ma non tutte le app supportano ogni azione.
+
+Usa Native Ctrl quando un\'app si aspetta una vera scorciatoia. Per esempio, mappare I su Native Ctrl invia Ctrl+I, così editor come Google Docs possono usarlo per il corsivo. Anche Annulla può essere mappato come Native Ctrl se un\'app gestisce Ctrl+Z meglio dell\'Annulla Android.
+
+QWERTZ su QWERTY fisica
+Nav Mode usa la posizione fisica del tasto, così la navigazione resta stabile. I suggerimenti layout sui tasti mostrano quando il layout di testo attivo tratterebbe quel tasto fisico come una lettera diversa, per esempio Y/Z su QWERTZ.
+
+Scorciatoie Ctrl app sensibili al layout
+Quando Ctrl tenuto premuto viene passato alle app, questa impostazione opzionale può prima tradurre Ctrl+lettera tramite il layout Pastiera attivo. Influisce sulle scorciatoie app, non sulla griglia fisica di Nav Mode.
+
+Override
+Ogni tasto può essere configurato come Keycode, Azione, Native Ctrl o Nessuno. Usa gli override per risolvere conflitti specifici di un\'app senza cambiare l\'intera modalità.</string>
     <string name="nav_mode_enable_title">Abilita Nav Mode</string>
     <string name="nav_mode_enable_description">Doppio tap su Ctrl per attivare la modalità navigazione</string>
+    <string name="nav_mode_ctrl_hold_title">Navigazione con Ctrl tenuto premuto</string>
+    <string name="nav_mode_ctrl_hold_description">Se attiva, i campi di testo usano le mappature Nav Mode mentre Ctrl è premuto. Se disattivata, le scorciatoie Ctrl vengono passate all\'app. I tasti impostati su Native Ctrl vengono sempre passati come vere scorciatoie Ctrl.</string>
+    <string name="layout_aware_ctrl_shortcuts_title">Scorciatoie Ctrl app sensibili al layout</string>
+    <string name="layout_aware_ctrl_shortcuts_description">Quando Ctrl tenuto premuto viene passato alle app, traduci prima Ctrl+lettera tramite il layout Pastiera attivo.</string>
+    <string name="layout_aware_ctrl_shortcuts_disabled_description">Disattivato mentre la navigazione con Ctrl tenuto premuto è attiva, perché Ctrl premuto viene gestito da Nav Mode invece che dall\'app.</string>
+    <string name="layout_aware_ctrl_shortcuts_info_title">Scorciatoie Ctrl e Nav Mode</string>
+    <string name="layout_aware_ctrl_shortcuts_info_text">Ci sono due percorsi per Ctrl tenuto premuto. Se la navigazione con Ctrl tenuto premuto è attiva, Pastiera gestisce Ctrl+tasto con le mappature Nav Mode mostrate sotto. Se è disattivata, Pastiera passa Ctrl+tasto all\'app. Questa opzione influisce solo su quel percorso app: se attiva, Ctrl+lettera viene prima tradotto tramite il layout Pastiera attivo, così le scorciatoie possono seguire le lettere che digiti. Se disattivata, le app ricevono le posizioni fisiche originali dei tasti.</string>
     <string name="nav_mode_key_mappings">Mappature Tasti</string>
     <string name="nav_mode_revert_to_default">Ripristina Predefiniti</string>
     <string name="nav_mode_note">Nota: Modificare i tasti del nav mode influisce anche sulle combinazioni Ctrl+tasto nei campi di testo.</string>
@@ -297,6 +436,7 @@
     <string name="nav_mode_type">Tipo</string>
     <string name="nav_mode_keycode">Keycode</string>
     <string name="nav_mode_action">Azione</string>
+    <string name="nav_mode_native_ctrl">Native Ctrl</string>
     <string name="nav_mode_none">Nessuno</string>
     <string name="nav_mode_use_default">Usa Predefinito: %1$s</string>
     <string name="nav_mode_save">Salva</string>
@@ -326,9 +466,68 @@
     <string name="emoji_category_recents">Recenti</string>
     <string name="emoji_category_emoticons">Emoticon</string>
     <string name="emoji_picker_error">Impossibile caricare le emoji</string>
+    <string name="emoji_picker_search_label">Cerca</string>
+    <string name="emoji_picker_search_placeholder">Cerca emoji...</string>
+    <string name="emoji_picker_no_results">Nessuna emoji trovata</string>
     
     <!-- Variation Customization -->
     <string name="variation_customize_title">Personalizza Variazioni</string>
+    <string name="app_enter_behavior_title">Comportamento tasto Invio</string>
+    <string name="app_enter_behavior_description">Configura la gestione di Invio e nuova riga per singole app</string>
+    <string name="app_enter_behavior_enable_title">Comportamento Invio per app</string>
+    <string name="app_enter_behavior_enable_description">Usa gli override di Pastiera per le app di messaggistica selezionate. Le app testate mostrano la strategia realmente usata da Pastiera.</string>
+    <string name="app_enter_behavior_preset_title">Preset messaggistica</string>
+    <string name="app_enter_behavior_preset_description">Applica un comportamento predefinito coerente alle app di messaggistica note installate.</string>
+    <string name="app_enter_behavior_preset_app_default">Predefinito app</string>
+    <string name="app_enter_behavior_preset_send_shift_newline">Invio invia, Shift+Invio nuova riga</string>
+    <string name="app_enter_behavior_preset_newline_ctrl_send">Invio nuova riga, Ctrl+Invio invia</string>
+    <string name="app_enter_behavior_preset_newline_only">Solo nuova riga con Invio</string>
+    <string name="app_enter_behavior_preset_custom">Personalizzato</string>
+    <string name="app_enter_behavior_overrides_title">Override app</string>
+    <string name="app_enter_behavior_add_app">Aggiungi app</string>
+    <string name="app_enter_behavior_add_app_description">Per app aggiuntive questa è prima una configurazione di destinazione. L\'elenco di messaggistica curato usa strategie testate.</string>
+    <string name="app_enter_behavior_add_app_list_title">Scegli app</string>
+    <string name="app_enter_behavior_remove_app">Rimuovi app</string>
+    <string name="app_enter_behavior_show_manual_override">Override manuale</string>
+    <string name="app_enter_behavior_hide_manual_override">Nascondi campi manuali</string>
+    <string name="app_enter_behavior_manual_override_note">La strategia curata è di solito il default migliore. Usa override solo per aggiornamenti app o casi particolari.</string>
+    <string name="app_enter_behavior_option_app_default">Predefinito app</string>
+    <string name="app_enter_behavior_option_send_shift_newline">Invio invia, Shift+Invio nuova riga</string>
+    <string name="app_enter_behavior_option_newline_ctrl_send">Invio nuova riga, Ctrl+Invio invia</string>
+    <string name="app_enter_behavior_option_enter_newline">Invio nuova riga</string>
+    <string name="app_enter_behavior_status_app_default">Pastiera non interviene.</string>
+    <string name="app_enter_behavior_status_whatsapp_active">Attivo: %1$s.</string>
+    <string name="app_enter_behavior_status_partial_active">Parzialmente attivo: %1$s.</string>
+    <string name="app_enter_behavior_status_experimental_active">Attivo sperimentalmente: %1$s.</string>
+    <string name="app_enter_behavior_status_not_active">Non ancora attivo: %1$s è pianificato.</string>
+    <string name="app_enter_behavior_status_native_result">Predefinito app: Pastiera non interviene.</string>
+    <string name="app_enter_behavior_status_strategy_result">Attivo: %1$s.</string>
+    <string name="app_enter_behavior_status_experimental_result">Attivo sperimentalmente: %1$s.</string>
+    <string name="app_enter_behavior_strategy_none_label">Nessun override</string>
+    <string name="app_enter_behavior_strategy_app_action_label">Azione app</string>
+    <string name="app_enter_behavior_strategy_plain_enter_label">Invio semplice</string>
+    <string name="app_enter_behavior_strategy_unconfigured_label">Non configurato</string>
+    <string name="app_enter_behavior_strategy_app_default_detail">L\'app decide se Invio invia o inserisce una nuova riga.</string>
+    <string name="app_enter_behavior_strategy_whatsapp_newline_ctrl_send">Pastiera inserisce direttamente le nuove righe e invia tramite l\'azione di invio dell\'app.</string>
+    <string name="app_enter_behavior_strategy_whatsapp_send_shift_newline">Pastiera invia tramite l\'azione di invio dell\'app. Shift+Invio viene inserito direttamente come nuova riga.</string>
+    <string name="app_enter_behavior_strategy_whatsapp_newline_only">Testato: Pastiera inserisce Invio direttamente come nuova riga e non attiva l\'invio.</string>
+    <string name="app_enter_behavior_strategy_discord_app_default_detail">Testato: Discord gestisce già correttamente Invio per inviare e Shift+Invio per nuova riga. Pastiera non interviene qui.</string>
+    <string name="app_enter_behavior_strategy_discord_partial_detail">Testato: le nuove righe vengono inserite direttamente. Ctrl+Invio invia un Invio semplice senza meta Ctrl perché l\'azione app di Discord nasconde solo la tastiera.</string>
+    <string name="app_enter_behavior_strategy_experimental_detail">Non confermato: Pastiera sta provando l\'azione di invio dell\'app e l\'inserimento diretto di nuove righe.</string>
+    <string name="app_enter_behavior_strategy_not_tested_detail">La strategia tecnica deve ancora essere testata per questa app.</string>
+    <string name="app_enter_behavior_desired_label">Comportamento desiderato</string>
+    <string name="app_enter_behavior_strategy_label">Strategia di invio</string>
+    <string name="app_enter_behavior_strategy_auto">Auto / non testato</string>
+    <string name="app_enter_behavior_strategy_editor_action">Azione editor</string>
+    <string name="app_enter_behavior_strategy_ctrl_enter">Ctrl+Invio</string>
+    <string name="app_enter_behavior_strategy_plain_enter">Invio semplice</string>
+    <string name="app_enter_behavior_additional_send_shortcut_label">Scorciatoia di invio aggiuntiva</string>
+    <string name="app_enter_behavior_additional_send_shortcut_description">Applica una scorciatoia di invio extra all\'elenco app mostrato sotto.</string>
+    <string name="app_enter_behavior_additional_send_shortcut_none">Nessuna</string>
+    <string name="app_enter_behavior_additional_send_shortcut_sym_enter">SYM + Invio</string>
+    <string name="app_enter_behavior_sym_enter_conflict_title">SYM + Invio è già usato dal QuickLauncher</string>
+    <string name="app_enter_behavior_sym_enter_conflict_description">Sposta l\'attivatore del QuickLauncher su un altro tasto prima di usare SYM + Invio come scorciatoia di invio aggiuntiva.</string>
+    <string name="app_enter_behavior_sym_enter_conflict_action">Cambia attivatore</string>
     <string name="variation_instructions_title">Istruzioni</string>
     <string name="variation_instructions_description">Tocca una casella di variazione per selezionare un carattere. Ogni lettera può avere fino a 7 caratteri di variazione.</string>
     <string name="variation_picker_title">Seleziona variazione per %1$s</string>
@@ -341,6 +540,9 @@
     <string name="variation_reset_confirm_button">Ripristina</string>
     <string name="static_variation_input_label">Valore</string>
     <string name="static_variation_input_hint">Lascia vuoto e salva per rimuovere lo slot.</string>
+    <string name="variation_global_layout_override_title">Mappatura variazioni globale</string>
+    <string name="variation_global_layout_override_description">Forza l\'ordine delle variazioni da un layout su tutti i layout. Il default è il layout IME corrente (%1$s).</string>
+    <string name="variation_global_layout_override_none">Nessuna (usa il layout corrente)</string>
     
     <!-- SYM Customization Screen -->
     <string name="sym_tab_emoji">Emoji</string>
@@ -357,6 +559,12 @@
     <!-- Settings Screen -->
     <string name="settings_support_ko_fi">Supporta su Ko-fi</string>
     <string name="settings_nav_mode_configure">Configura le mappature dei tasti della modalità navigazione</string>
+    <string name="settings_update_section_title">Aggiornamenti</string>
+    <string name="settings_update_section_description">Controlla l\'ultima release su GitHub.</string>
+    <string name="settings_update_button">Controlla aggiornamenti</string>
+    <string name="settings_update_checking">Controllo aggiornamenti…</string>
+    <string name="settings_update_up_to_date">L\'app è aggiornata.</string>
+    <string name="settings_update_check_failed">Impossibile raggiungere GitHub.</string>
     
     <!-- Auto Correct Settings -->
     <string name="auto_correct_ricette_pastiera_name">Ricette Pastiera</string>
@@ -367,6 +575,8 @@
     <string name="settings_category_accessibility">Accessibilità</string>
     <string name="settings_category_auto_correction">Auto-correzione</string>
     <string name="settings_category_customization">Personalizzazione</string>
+    <string name="settings_category_sounds">Suoni</string>
+    <string name="settings_sounds_description">Suoni di digitazione e importazione pacchetti audio</string>
     <string name="settings_category_advanced">Avanzate</string>
     <string name="settings_accessibility_live_read_title">Lettura live dei cambiamenti nella barra di stato</string>
     <string name="settings_accessibility_live_read_description">Se attivo, TalkBack può annunciare automaticamente lingua/layout e cambiamenti della barra di stato.</string>
@@ -377,6 +587,11 @@
     <string name="settings_accessibility_delay_decrease">Riduci ritardo di 50 millisecondi</string>
     <string name="settings_accessibility_delay_increase">Aumenta ritardo di 50 millisecondi</string>
     <string name="settings_accessibility_delay_feedback">Ritardo suggerimenti: %1$d ms</string>
+
+    <!-- Languages (Input Method Subtypes) -->
+    <string name="languages_title">Lingue</string>
+    <string name="languages_description">Aggiungi lingue al selettore dei metodi di immissione Android. Sono mostrate solo le lingue con dizionari che non sono lingue di sistema.</string>
+    <string name="languages_no_available">Tutte le lingue disponibili sono già state aggiunte o sono lingue di sistema.</string>
     
     <!-- Keyboard Layout Settings -->
     <string name="layout_save_content_description">Salva layout</string>
@@ -420,12 +635,30 @@
     <string name="layout_delete">Elimina</string>
     <string name="layout_enable_for_cycling">Abilita per il ciclo</string>
     <string name="layout_select_as_active">Seleziona come layout attivo</string>
+    <string name="delete">Elimina</string>
     
     <!-- Main Activity Event Display -->
     <string name="modifier_alt">ALT</string>
+    <string name="event_action_label">Azione: </string>
+    <string name="event_keycode_label">KeyCode: </string>
+    <string name="event_scancode_label">ScanCode: </string>
     <string name="event_unicode_label">Unicode: </string>
     <string name="event_output_label">Output: </string>
     <string name="event_not_available">N/D</string>
+    <string name="debug_recorder_record">Registra</string>
+    <string name="debug_recorder_stop">Ferma</string>
+    <string name="debug_recorder_copy">Copia</string>
+    <string name="debug_recorder_clear">Cancella</string>
+    <string name="debug_recorder_view">Visualizza</string>
+    <string name="debug_recorder_share">Condividi</string>
+    <string name="debug_recorder_share_chooser">Condividi report debug</string>
+    <string name="debug_recorder_copied">Report debug copiato (%1$d eventi)</string>
+    <string name="debug_recorder_status">Registratore: %1$s · Eventi: %2$d</string>
+    <string name="debug_recorder_status_recording">registrazione</string>
+    <string name="debug_recorder_status_stopped">fermato</string>
+    <string name="debug_recorder_started_at">Avviato alle: </string>
+    <string name="debug_recorder_include_suggestions">incl. suggerimenti</string>
+    <string name="debug_report_viewer_title">Visualizzatore report debug</string>
     
     <!-- Nav Mode Key Labels -->
     <string name="nav_mode_action_copy">Copia</string>
@@ -435,7 +668,14 @@
     <string name="nav_mode_action_select_all">SelTutto</string>
     <string name="nav_mode_action_expand_selection_left">←Sel</string>
     <string name="nav_mode_action_expand_selection_right">→Sel</string>
+    <string name="nav_mode_action_move_word_left">←Parola</string>
+    <string name="nav_mode_action_move_word_right">Parola→</string>
+    <string name="nav_mode_action_expand_selection_word_left">←SelParola</string>
+    <string name="nav_mode_action_expand_selection_word_right">SelParola→</string>
     <string name="nav_mode_action_toggle_pastierina">Pastierina</string>
+    <string name="nav_mode_action_media_play_pause">Play/Pausa</string>
+    <string name="nav_mode_action_media_previous">Media precedente</string>
+    <string name="nav_mode_action_media_next">Media successivo</string>
     <string name="nav_mode_keycode_up">↑</string>
     <string name="nav_mode_keycode_down">↓</string>
     <string name="nav_mode_keycode_left">←</string>
@@ -455,16 +695,41 @@
     <string name="tutorial_finish">Fine</string>
     <string name="tutorial_page_welcome_title">Benvenuto in Pastiera</string>
     <string name="tutorial_page_welcome_description">Pastiera è un metodo di input avanzato per dispositivi Android con tastiera fisica, con supporto per Nav Mode, scorciatoie, mappature personalizzate e altro ancora.</string>
+    <string name="tutorial_devs_choice_button">Scelta dello sviluppatore</string>
+    <string name="tutorial_devs_choice_applied">Impostazioni Scelta dello sviluppatore applicate.</string>
     <string name="tutorial_page_enable_title">Abilita Pastiera</string>
     <string name="tutorial_page_enable_description">Per iniziare, devi abilitare Pastiera come metodo di input nelle Impostazioni Android. Tocca il pulsante qui sotto per aprire le impostazioni.</string>
     <string name="tutorial_page_select_title">Seleziona Pastiera</string>
     <string name="tutorial_page_select_description">Per usare Pastiera, selezionala fra i metodi di input. Nel passaggio successivo scegli se Pastiera deve usare una tastiera virtuale o la modalità tastiera hardware.</string>
+    <string name="tutorial_android16_ime_caption_title">Nascondi barra didascalia IME</string>
+    <string name="tutorial_android16_ime_caption_description">Titan 2 e Titan 2 Elite possono mostrare una barra didascalia IME aggiuntiva sopra Pastiera. Su Android 16 o versioni successive, usa questa impostazione gesture OEM per nasconderla e mantenere Pastiera compatta.</string>
+    <string name="tutorial_android16_ime_caption_before">Prima: spazio sprecato dalla barra didascalia IME</string>
+    <string name="tutorial_android16_ime_caption_after">Dopo: superficie compatta Pastiera per tastiera hardware</string>
+    <string name="tutorial_android16_ime_caption_check_android16">Android 16 o successivo</string>
+    <string name="tutorial_android16_ime_caption_check_titan2">Unihertz Titan 2 o Titan 2 Elite</string>
+    <string name="tutorial_android16_ime_caption_check_setting">Impostazione gesture OEM disponibile</string>
+    <string name="tutorial_android16_ime_caption_button">Apri “Nascondi barra didascalia IME”</string>
+    <string name="tutorial_android16_ime_caption_unavailable">Il link diretto viene mostrato solo quando tutti i requisiti sono soddisfatti.</string>
+    <string name="tutorial_android16_ime_caption_fallback">Impossibile aprire l\'impostazione gesture del Titan 2. Apro invece le Impostazioni Android.</string>
+    <string name="tutorial_software_keyboard_auto_checker_title">Rilevamento automatico</string>
+    <string name="tutorial_software_keyboard_auto_selected">Auto seleziona ora: %1$s</string>
+    <string name="tutorial_software_keyboard_auto_overridden">Override attuale: %1$s. Auto selezionerebbe: %2$s</string>
+    <string name="tutorial_software_keyboard_auto_profile">Profilo rilevato: %1$s / %2$s</string>
+    <string name="tutorial_software_keyboard_auto_reason_physical">Motivo: questo profilo è trattato come dispositivo con tastiera fisica, quindi Auto usa la modalità tastiera hardware.</string>
+    <string name="tutorial_software_keyboard_auto_reason_touch">Motivo: questo profilo non è riconosciuto come dispositivo con tastiera fisica, quindi Auto usa la modalità tastiera virtuale.</string>
     <string name="tutorial_page_led_title">LED Indicator</string>
     <string name="tutorial_page_led_description">Per sfruttare al meglio Pastiera, imposta il tasto Fn come Ctrl dalle impostazioni di sistema. La barra IME mostra quattro LED: diventano blu quando il modificatore è attivo one-shot e arancioni quando è locked. Il LED del layout SYM è blu nella pagina emoji e arancione nella pagina symbols.</string>
     <string name="tutorial_page_nav_mode_title">Nav Mode</string>
     <string name="tutorial_page_nav_mode_description">Il Nav Mode ti fa navigare nell\'interfaccia con scorciatoie come IJKL o ESDF.\nPer attivarlo:\n• Premi Ctrl due volte rapidamente\n• I tasti alfabetici diventano controlli di navigazione\n• Premi Ctrl di nuovo per uscire\nOgni scorciatoia è rimappabile nelle impostazioni avanzate.</string>
     <string name="tutorial_page_customization_title">Personalizzazione</string>
     <string name="tutorial_page_customization_description">Pastiera offre molte opzioni di personalizzazione:\n• Layout tastiera personalizzabili\n• Scorciatoie del launcher e Power Shortcuts\n• La barra IME può funzionare come swipe bar per spostare il cursore\n• Mappature personalizzate per Nav Mode\nEsplora le impostazioni per trovare la configurazione perfetta per te!</string>
+    <string name="tutorial_typing_sound_demo_title">Suoni di digitazione</string>
+    <string name="tutorial_typing_sound_demo_description">Scegli uno stile sonoro e digita qui sotto per sentirlo subito.</string>
+    <string name="tutorial_typing_sound_demo_input_label">Prova a digitare qui</string>
+    <string name="tutorial_skip_update">Salta comunque</string>
+    <string name="tutorial_whats_new_title">Novità di questa versione</string>
+    <string name="tutorial_whats_new_description">Questo è un aggiornamento più grande di Pastiera. Vale la pena scorrere rapidamente le prossime pagine, perché puntano direttamente a impostazioni e flussi di lavoro cambiati.</string>
+    <string name="tutorial_whats_new_continue_hint">Continua il tutorial per rivedere le impostazioni più utili di questa versione.</string>
     <string name="tutorial_page_ready_title">Pronto per Iniziare</string>
     <string name="tutorial_page_ready_description">Ora sei pronto a usare Pastiera! Ricorda che puoi sempre tornare alle impostazioni per personalizzare ulteriormente la tastiera secondo le tue esigenze.</string>
     <string name="tutorial_enable_button">Abilita Pastiera</string>
@@ -511,6 +776,16 @@
     <!-- Custom Input Styles -->
     <string name="custom_input_styles_title">Lingue e mappe</string>
     <string name="custom_input_styles_description">Aggiungi lingue aggiuntive e layout tastiera che non sono legati alla locale di sistema</string>
+    <string name="app_language_title">Lingua app</string>
+    <string name="app_language_description">Scegli la lingua usata per i testi dell\'interfaccia dell\'app.</string>
+    <string name="app_language_label">Lingua</string>
+    <string name="app_language_system_default">Predefinita di sistema</string>
+    <string name="app_language_system_default_with_detected">Predefinita di sistema (%1$s)</string>
+    <string name="custom_input_styles_add">Aggiungi stile di input</string>
+    <string name="custom_input_styles_empty">Nessuno stile di input personalizzato aggiunto. Tocca il pulsante + per aggiungerne uno.</string>
+    <string name="custom_input_styles_delete">Elimina</string>
+    <string name="custom_input_styles_delete_confirm_title">Elimina stile di input</string>
+    <string name="custom_input_styles_delete_confirm_message">Vuoi davvero eliminare questo stile di input?</string>
     <string name="custom_input_styles_language_label">Lingua</string>
     <string name="custom_input_styles_locale_display">%1$s (%2$s)</string>
     <string name="custom_input_styles_system_locale_hint">Locale di sistema - non può essere modificato</string>
@@ -521,6 +796,17 @@
     <string name="custom_input_styles_select_layout">Seleziona layout tastiera</string>
     <string name="custom_input_styles_save">Salva</string>
     <string name="custom_input_styles_cancel">Annulla</string>
+    <string name="custom_input_styles_duplicate_error">Questa combinazione di lingua e layout esiste già</string>
+    <string name="custom_input_styles_open_ime_picker">Apri selettore IME</string>
+    <string name="custom_input_styles_open_ime_picker_description">Apri il selettore dei metodi di immissione di sistema per abilitare la nuova lingua</string>
+    <string name="custom_input_styles_format">%1$s - %2$s</string>
+    <string name="custom_input_styles_add_custom_locale">Aggiungi locale personalizzata…</string>
+    <string name="custom_input_styles_custom_locale_title">Inserisci codice locale personalizzato</string>
+    <string name="custom_input_styles_custom_locale_label">Codice locale</string>
+    <string name="custom_input_styles_custom_locale_hint">Inserisci un codice locale (es. en_US, it_IT, fr_FR)</string>
+    <string name="custom_input_styles_custom_locale_empty_error">Il codice locale non può essere vuoto</string>
+    <string name="custom_input_styles_custom_locale_invalid_error">Formato codice locale non valido. Usa il formato: xx_XX o xx</string>
+    <string name="custom_input_styles_no_dictionary_warning">Nessun dizionario disponibile per questa locale. Suggerimenti e correzione automatica saranno disattivati.</string>
     <string name="custom_input_styles_system_badge">Sistema</string>
     <string name="custom_input_styles_default_layout">qwerty</string>
     <string name="custom_input_styles_change_layout_hint">Tocca per cambiare layout</string>
@@ -601,6 +887,10 @@
     <string name="status_bar_slot_left">Slot Sinistro</string>
     <string name="status_bar_slot_right_1">Slot Destro 1</string>
     <string name="status_bar_slot_right_2">Slot Destro 2</string>
+    <string name="status_bar_slots_left">Pulsanti a sinistra</string>
+    <string name="status_bar_slots_right">Pulsanti a destra</string>
+    <string name="status_bar_slot_add">Aggiungi pulsante barra di stato</string>
+    <string name="status_bar_slot_remove">Rimuovi pulsante barra di stato</string>
     <string name="status_bar_button_none">Nessuno</string>
     <string name="status_bar_button_none_description">Vuoto</string>
     <string name="status_bar_button_clipboard">Appunti</string>
@@ -611,6 +901,7 @@
     <string name="status_bar_button_emoji_description">Selettore</string>
     <string name="status_bar_button_language">Lingua</string>
     <string name="status_bar_button_language_description">Cambia</string>
+    <string name="status_bar_button_language_state_description">Lingua %1$s, layout %2$s</string>
     <string name="status_bar_button_hamburger">Menu</string>
     <string name="status_bar_button_hamburger_description">Azioni rapide</string>
     <string name="status_bar_button_close_menu_description">Chiudi azioni rapide</string>
@@ -618,6 +909,17 @@
     <string name="status_bar_button_settings_description">Apri impostazioni</string>
     <string name="status_bar_button_symbols">Simboli</string>
     <string name="status_bar_button_symbols_description">Tastiera simboli</string>
+    <string name="status_bar_button_undo">Annulla</string>
+    <string name="status_bar_button_undo_description">Invia Ctrl+Z</string>
+    <string name="status_bar_button_redo">Ripeti</string>
+    <string name="status_bar_button_redo_description">Invia Ctrl+Y</string>
+    <string name="status_bar_variations_visible_title">Mostra variazioni</string>
+    <string name="status_bar_variations_visible_description">Mostra la riga variazioni configurata tra i pulsanti della barra di stato. Se disattivato, i pulsanti usano tutta la barra; il controllo cursore con swipe resta attivo.</string>
+    <string name="status_bar_swipe_cursor_info">Scorri sulla barra di stato per spostare il cursore.</string>
+    <string name="dynamic_variation_slot_count_title">Slot variazioni dinamiche</string>
+    <string name="dynamic_variation_slot_count_description">Punta a mostrare %1$d voci dinamiche tra i pulsanti della barra di stato.</string>
+    <string name="dynamic_variation_resize_to_content_title">Ridimensiona variazioni dinamiche</string>
+    <string name="dynamic_variation_resize_to_content_description">Se attivo, le voci dinamiche riempiono la riga disponibile in base a quante sono mostrate. Se disattivato, mantengono la dimensione slot dello slider e restano allineate a sinistra.</string>
     <string name="status_bar_state_on">Attivo</string>
     <string name="status_bar_state_off">Disattivo</string>
     <string name="status_bar_button_clipboard_state_empty">Vuoto</string>

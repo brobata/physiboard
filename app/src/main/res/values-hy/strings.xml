@@ -179,8 +179,8 @@
     <string name="launcher_shortcut_assignment_search_description">Փնտրել</string>
     <string name="launcher_shortcut_assignment_close">Փակել</string>
     <string name="launcher_shortcut_assignment_no_apps">Ծրագրեր չեն գտնվել</string>
-    <string name="launcher_shortcut_assignment_no_results">Արդյունք չկա՝ "%$1s"</string>
-    <string name="launcher_shortcut_assignment_key_name">Ստեղն՝ %$1s</string>
+    <string name="launcher_shortcut_assignment_no_results">«%1$s»-ի համար արդյունքներ չկան</string>
+    <string name="launcher_shortcut_assignment_key_name">Ստեղն %1$d</string>
     <string name="power_shortcuts_title">Արագ դյուրանցումներ</string>
     <string name="power_shortcuts_description">Սեղմեք SYM, ապա ստեղն՝ տեքստային դաշտից դուրս դյուրանցում գործարկելու համար</string>
     <string name="power_shortcuts_press_key">Գործարկելու համար սեղմեք դյուրանցման ստեղնը</string>
@@ -587,4 +587,236 @@
     <string name="software_keyboard_mode_always_virtual">Միշտ վիրտուալ ստեղնաշար</string>
     <string name="software_keyboard_mode_always_hardware">Միշտ ապարատային ստեղնաշար</string>
     <string name="software_keyboard_mode_auto_short">Ավտո (PKB՝ ապարատային, այլապես՝ վիրտուալ)</string>
+    <string name="delete_alternatives_selection_hint">Երբ տեքստը ընտրված է, այս այլընտրանքներն անջատվում են, իսկ Backspace-ը ջնջում է ընտրությունը։</string>
+    <string name="static_variation_preset_title">Ստատիկ տարբերակների նախադրույթ</string>
+    <string name="static_variation_preset_off">Անջատված</string>
+    <string name="static_variation_preset_off_description">Օգտագործել միայն դինամիկ տարբերակներ և առաջարկներ։</string>
+    <string name="static_variation_preset_symbols">Նշաններ</string>
+    <string name="static_variation_preset_symbols_description">Կետադրության լռելյայն շարք։</string>
+    <string name="static_variation_preset_numbers">Թվեր</string>
+    <string name="static_variation_preset_numbers_description">Արագ թվերի շարք։</string>
+    <string name="static_variation_preset_alternative">Այլընտրանքային նշաններ</string>
+    <string name="static_variation_preset_alternative_description">Փակագծեր և հատուկ նիշեր։</string>
+    <string name="static_variation_preset_dev_choice">Մշակողի ընտրություն</string>
+    <string name="static_variation_preset_dev_choice_description">Ընտրված կետադրության շարք։</string>
+    <string name="emoji_picker_expanded_height_title">Ավելի մեծ emoji ընտրիչ</string>
+    <string name="emoji_picker_expanded_height_description">Emoji որոնման էջի համար օգտագործել մոտ 1,5x բարձրություն. մյուս SYM էջերը պահպանում են սովորական բարձրությունը։</string>
+    <string name="typing_sound_title">Մուտքագրման ձայներ</string>
+    <string name="typing_sound_off">Անջատված</string>
+    <string name="typing_sound_click">Ստեղնաշարի կտտոց</string>
+    <string name="typing_sound_typewriter">Գրամեքենա</string>
+    <string name="typing_sound_custom">Հատուկ ձայնային փաթեթ…</string>
+    <string name="typing_sound_output_title">Մուտքագրման ձայների ելք</string>
+    <string name="typing_sound_output_media">Մեդիայի ձայն</string>
+    <string name="typing_sound_output_system">Համակարգային ձայներ</string>
+    <string name="typing_sound_output_notification">Ծանուցումներ</string>
+    <string name="typing_sound_output_dnd_hint">Համակարգային ձայներն ու ծանուցումները հետևում են լուռ ռեժիմին և Չանհանգստացնել ռեժիմին։</string>
+    <string name="typing_sound_import_success">Մուտքագրման ձայնային փաթեթը ներմուծվեց</string>
+    <string name="typing_sound_import_failed">Չհաջողվեց ներմուծել այս ձայնային փաթեթը։ Օգտագործեք ZIP՝ աուդիո ֆայլերով normal/, space/, backspace/, enter/ և modifier/ պանակներում։</string>
+    <string name="typing_sound_docs_title">Ձայնային փաթեթի ձևաչափ</string>
+    <string name="typing_sound_docs_description">Բացել ներմուծման ուղեցույցը pastiera.eu-ում</string>
+    <string name="typing_sound_docs_url">https://pastiera.eu/guides/typing-soundpacks/</string>
+    <string name="alt_shift_layout_switch_title">Alt+Shift դասավորության փոխում</string>
+    <string name="alt_shift_layout_switch_description">Փոխել լեզուները/դասավորությունները Alt+Shift-ով։</string>
+    <string name="toast_on_layout_switch_title">Toast դասավորությունը փոխելիս</string>
+    <string name="toast_on_layout_switch_description">Ցույց տալ toast լեզուն/դասավորությունը փոխելիս։</string>
+    <string name="keyboard_profile_option_titan2elite_qwerty">Titan 2 Elite (QWERTY)</string>
+    <string name="keyboard_profile_option_mp01">Minimal Phone (MP01)</string>
+    <string name="keyboard_currency_symbol_title">Արժույթի նշան</string>
+    <string name="keyboard_currency_symbol_description">Նշան, որը մուտքագրվում է արժույթի հատուկ ապարատային ստեղներով։</string>
+    <string name="starter_launcher_shortcuts_title">Pastiera-QuickLauncher</string>
+    <string name="starter_launcher_shortcuts_description">Արագ գործարկում, SYM դյուրանցումներ և հավելվածների ստեղների նշանակումներ</string>
+    <string name="starter_launcher_shortcuts_intro">Այս կարգավորումները կիսում են հավելված-ստեղն նշանակումների մեկ ցուցակ։ Ընտրեք, թե Pastiera-ն որտեղ պետք է լսի այդ նշանակված ստեղները։</string>
+    <string name="launcher_shortcuts_configure_description_with_quick_launcher">Հպեք ստեղնին՝ հավելված նշանակելու կամ փոխարինելու համար։ QuickLauncher-ը այժմ նշանակված է %1$s-ին։</string>
+    <string name="quick_launcher_default_blocked_hint">Նոր․ SYM-ը կարող է բացել QuickLauncher-ը։ Pastiera-ն սովորաբար այն կնշանակեր Space-ին, բայց Space-ն արդեն դյուրանցում ունի։ Բացեք նշանակումների էջը և ցանկացած ստեղնի վրա ընտրեք «Բացել QuickLauncher»-ը՝ փորձելու համար։</string>
+    <string name="quick_launcher_title">Pastiera-QuickLauncher</string>
+    <string name="quick_launcher_subtitle">Մուտքագրեք որոնելու համար։ Enter-ը բացում է առաջին արդյունքը։</string>
+    <string name="quick_launcher_close">Փակել</string>
+    <string name="quick_launcher_search_placeholder">Սկսեք մուտքագրել...</string>
+    <string name="quick_launcher_auto_start_single">Ավտոմատ գործարկել, երբ մնա միայն մեկ արդյունք</string>
+    <string name="quick_launcher_auto_start_single_title">Ավտոմատ բացել միակ համընկնումը</string>
+    <string name="quick_launcher_auto_start_single_description">Երբ QuickLauncher-ի որոնումը թողնում է միայն մեկ հավելված, գործարկել այն առանց Enter սեղմելու։</string>
+    <string name="quick_launcher_limit_results_title">Ցույց տալ միայն լավագույն արդյունքները</string>
+    <string name="quick_launcher_limit_results_description">Չցուցադրել հավելվածների ամբողջ այբբենական ցուցակը։ QuickLauncher-ը մնում է դատարկ, մինչև սկսեք մուտքագրել, ապա ցույց է տալիս միայն երեք լավագույն համընկնումները։</string>
+    <string name="quick_launcher_text_field_shortcuts_title">Թույլատրել SYM+Space տեքստային դաշտերում</string>
+    <string name="quick_launcher_text_field_shortcuts_description">Միացված լինելու դեպքում QuickLauncher-ը կարող է բացվել նաև, երբ կուրսորը հավելվածի տեքստային դաշտում է։</string>
+    <string name="quick_launcher_text_field_shortcuts_hint">Տեքստային դաշտերում պահեք SYM-ը և սեղմեք Space։ SYM-ի ամրացումը չի կարող սա գործարկել, քանի որ SYM-ին հպվելը փոխում է SYM էջերը։</string>
+    <string name="quick_launcher_respect_keyboard_layout_title">Օգտագործել ակտիվ ստեղնաշարի դասավորությունը</string>
+    <string name="quick_launcher_respect_keyboard_layout_description">Միացված լինելու դեպքում որոնման մուտքագրումը հետևում է ընթացիկ Pastiera դասավորությանը՝ Android-ի հում QWERTY ելքի փոխարեն։</string>
+    <string name="quick_launcher_typo_tolerant_ranking_title">Տառասխալներին հանդուրժող որոնում</string>
+    <string name="quick_launcher_typo_tolerant_ranking_description">Համընկեցնում է նաև հավելվածների անունները փոքր տառասխալներով։ Նախածանցի և հապավման համընկնումները դեռ ավելի բարձր են դասվում։</string>
+    <string name="quick_launcher_ranking_info_button">Ինչպես է աշխատում դասակարգումը</string>
+    <string name="quick_launcher_ranking_info_title">QuickLauncher դասակարգում</string>
+    <string name="quick_launcher_ranking_info_body">Արդյունքները դասվում են այսպես՝ ճշգրիտ հավելվածի անուն, հավելվածի անվան նախածանց, բառի նախածանց, հապավում/ենթահաջորդականություն, տառասխալներին հանդուրժող հավելվածի անուն, հետո փաթեթի անուն։ Շատ կարճ հարցումների համար տառասխալների հանդուրժումը անտեսվում է։</string>
+    <string name="quick_launcher_behavior_title">Վարքագիծ</string>
+    <string name="quick_launcher_behavior_description">Գործարկման կանոններ, արդյունքների ցուցադրում և SYM+Space տեքստային դաշտերից։</string>
+    <string name="quick_launcher_cosmetic_title">Տեսք</string>
+    <string name="quick_launcher_cosmetic_description">Լայնություն և կոմպակտ հաբաձև ներկայացում։</string>
+    <string name="quick_launcher_width_title">Launcher-ի լայնություն</string>
+    <string name="quick_launcher_width_value">Էկրանի լայնության %1$d%%</string>
+    <string name="quick_launcher_pill_mode_title">Հաբաձև ռեժիմ</string>
+    <string name="quick_launcher_pill_mode_description">Բացվում է որպես կոմպակտ որոնման հաբ և լայնանում է միայն մուտքագրելուց հետո։</string>
+    <string name="quick_launcher_type_to_search">Սկսեք մուտքագրել՝ հավելվածներ որոնելու համար</string>
+    <string name="quick_launcher_loading_apps">Հավելվածները բեռնվում են...</string>
+    <string name="quick_launcher_assign_action">Բացել QuickLauncher</string>
+    <string name="quick_launcher_no_apps">Հավելվածներ չեն գտնվել</string>
+    <string name="quick_launcher_no_results">«%1$s»-ի համար արդյունքներ չկան</string>
+    <string name="quick_launcher_enter_hint">Enter</string>
+    <string name="nav_mode_guide_title">Nav Mode ուղեցույց</string>
+    <string name="nav_mode_guide_description">Ինչպես են Ctrl-ը, նշանակումները, հավելվածների դյուրանցումները և դասավորության հուշումները աշխատում միասին։</string>
+    <string name="nav_mode_guide_text">Nav Mode-ը տառային ստեղները վերածում է նավիգացիայի և դյուրանցումների ստեղների։ Արդյունքը կարող է տարբերվել ըստ հավելվածի, քանի որ որոշ հավելվածներ հասկանում են Android խմբագրիչի գործողությունները, իսկ մյուսները արձագանքում են միայն իրական Ctrl դյուրանցումներին։
+
+Նավիգացիա պահված Ctrl-ով
+Երբ պահված Ctrl-ով նավիգացիան անջատված է, ֆիզիկապես պահված Ctrl-ը հնարավորության դեպքում փոխանցվում է հավելվածին։ Այդպես Ctrl+B, Ctrl+I կամ Ctrl+Z դյուրանցումները կարող են աշխատել անմիջապես խմբագրիչներում։
+
+Երբ պահված Ctrl-ով նավիգացիան միացված է, ֆիզիկապես պահված Ctrl-ը նախ օգտագործում է ստորև նշված Nav Mode նշանակումները։ Նշանակված ստեղնը կատարում է իր կազմաձևված Nav Mode հրամանը։
+
+Ctrl-ի կրկնակի հպում
+Ctrl-ին կրկնակի հպելը ամրացնում է Nav Mode-ը։ Դրանից հետո տառ սեղմելը գործարկում է Nav Mode նշանակումը, մինչև նորից դուրս գաք Nav Mode-ից։ Սա օգտակար է սլաքների, Page Up/Down, Escape, Tab և ընտրության հրամանների համար՝ առանց Ctrl պահելու։
+
+Action և Native Ctrl
+Copy, Paste, Cut, Select All և Undo գործողությունները ուղարկվում են որպես Android խմբագրիչի գործողություններ։ Դրանք աշխատում են շատ տեքստային դաշտերում, բայց ոչ բոլոր հավելվածներն են աջակցում բոլոր գործողություններին։
+
+Օգտագործեք Native Ctrl, երբ հավելվածը սպասում է իրական դյուրանցում։ Օրինակ՝ I-ն Native Ctrl-ին նշանակելը ուղարկում է Ctrl+I, որպեսզի Google Docs-ի նման խմբագրիչները կարողանան օգտագործել այն շեղատառի համար։ Undo-ն նույնպես կարելի է նշանակել որպես Native Ctrl, եթե հավելվածը Ctrl+Z-ն ավելի լավ է մշակում, քան Android Undo-ն։
+
+QWERTZ ֆիզիկական QWERTY-ի վրա
+Nav Mode-ը օգտագործում է ստեղնի ֆիզիկական դիրքը, որպեսզի նավիգացիան կայուն մնա։ Ստեղների վրա դասավորության հուշումները ցույց են տալիս, երբ ակտիվ տեքստային դասավորությունը այդ ֆիզիկական ստեղնը կընկալեր որպես այլ տառ, օրինակ՝ Y/Z QWERTZ-ում։
+
+Դասավորությանը զգայուն հավելվածների Ctrl դյուրանցումներ
+Երբ պահված Ctrl-ը փոխանցվում է հավելվածներին, այս ընտրովի կարգավորումը կարող է նախ Ctrl+տառը թարգմանել ակտիվ Pastiera դասավորության միջոցով։ Այն ազդում է հավելվածների դյուրանցումների վրա, ոչ թե Nav Mode-ի ֆիզիկական ցանցի։
+
+Վերասահմանումներ
+Յուրաքանչյուր ստեղն կարելի է կազմաձևել որպես Keycode, Action, Native Ctrl կամ None։ Օգտագործեք վերասահմանումներ՝ հավելվածին հատուկ կոնֆլիկտները լուծելու համար՝ առանց ամբողջ ռեժիմը փոխելու։</string>
+    <string name="nav_mode_ctrl_hold_title">Նավիգացիա պահված Ctrl-ով</string>
+    <string name="nav_mode_ctrl_hold_description">Միացված լինելու դեպքում տեքստային դաշտերը օգտագործում են Nav Mode նշանակումները, մինչ Ctrl-ը պահված է։ Անջատված լինելու դեպքում Ctrl դյուրանցումները փոխանցվում են հավելվածին։ Native Ctrl դրված ստեղները միշտ փոխանցվում են որպես իրական Ctrl դյուրանցումներ։</string>
+    <string name="layout_aware_ctrl_shortcuts_title">Դասավորությանը զգայուն հավելվածների Ctrl դյուրանցումներ</string>
+    <string name="layout_aware_ctrl_shortcuts_description">Երբ պահված Ctrl-ը փոխանցվում է հավելվածներին, նախ Ctrl+տառը թարգմանել ակտիվ Pastiera դասավորության միջոցով։</string>
+    <string name="layout_aware_ctrl_shortcuts_disabled_description">Անջատված է, քանի դեռ պահված Ctrl-ով նավիգացիան ակտիվ է, որովհետև պահված Ctrl-ը մշակվում է Nav Mode-ի, ոչ թե հավելվածի կողմից։</string>
+    <string name="layout_aware_ctrl_shortcuts_info_title">Ctrl դյուրանցումներ և Nav Mode</string>
+    <string name="layout_aware_ctrl_shortcuts_info_text">Պահված Ctrl-ի համար կա երկու ուղի։ Եթե պահված Ctrl-ով նավիգացիան միացված է, Pastiera-ն Ctrl+ստեղնը մշակում է ստորև ցուցադրված Nav Mode նշանակումներով։ Եթե այն անջատված է, Pastiera-ն Ctrl+ստեղնը փոխանցում է հավելվածին։ Այս ընտրանքը ազդում է միայն այդ հավելվածային ուղու վրա․ միացված լինելու դեպքում Ctrl+տառը նախ թարգմանվում է ակտիվ Pastiera դասավորության միջոցով, որպեսզի դյուրանցումները հետևեն ձեր մուտքագրած տառերին։ Անջատված լինելու դեպքում հավելվածները ստանում են ստեղների սկզբնական ֆիզիկական դիրքերը։</string>
+    <string name="nav_mode_native_ctrl">Native Ctrl</string>
+    <string name="app_enter_behavior_title">Enter ստեղնի վարքագիծ</string>
+    <string name="app_enter_behavior_description">Կազմաձևել հավելվածին հատուկ Enter-ը և նոր տողի մշակումը</string>
+    <string name="app_enter_behavior_enable_title">Հավելվածին հատուկ Enter վարքագիծ</string>
+    <string name="app_enter_behavior_enable_description">Օգտագործեք Pastiera վերասահմանումները ընտրված հաղորդագրությունների հավելվածների համար։ Փորձարկված հավելվածները ցույց են տալիս Pastiera-ի իրականում օգտագործվող ռազմավարությունը։</string>
+    <string name="app_enter_behavior_preset_title">Հաղորդագրությունների նախադրույթ</string>
+    <string name="app_enter_behavior_preset_description">Կիրառել համահունչ լռելյայն կարգավորում տեղադրված հայտնի հաղորդագրությունների հավելվածներին։</string>
+    <string name="app_enter_behavior_preset_app_default">Հավելվածի լռելյայնը</string>
+    <string name="app_enter_behavior_preset_send_shift_newline">Enter-ը ուղարկում է, Shift+Enter-ը նոր տող</string>
+    <string name="app_enter_behavior_preset_newline_ctrl_send">Enter-ը նոր տող, Ctrl+Enter-ը ուղարկում է</string>
+    <string name="app_enter_behavior_preset_newline_only">Enter-ը միայն նոր տող</string>
+    <string name="app_enter_behavior_preset_custom">Հատուկ</string>
+    <string name="app_enter_behavior_overrides_title">Հավելվածների վերասահմանումներ</string>
+    <string name="app_enter_behavior_add_app">Ավելացնել հավելված</string>
+    <string name="app_enter_behavior_add_app_description">Լրացուցիչ հավելվածների համար սա նախ նպատակային կազմաձև է։ Ընտրված հաղորդագրությունների ցուցակը օգտագործում է փորձարկված ռազմավարություններ։</string>
+    <string name="app_enter_behavior_add_app_list_title">Ընտրեք հավելված</string>
+    <string name="app_enter_behavior_remove_app">Հեռացնել հավելվածը</string>
+    <string name="app_enter_behavior_show_manual_override">Ձեռքով վերասահմանում</string>
+    <string name="app_enter_behavior_hide_manual_override">Թաքցնել ձեռքով դաշտերը</string>
+    <string name="app_enter_behavior_manual_override_note">Ընտրված ռազմավարությունը սովորաբար լավագույն լռելյայնն է։ Վերասահմանեք միայն հավելվածի թարմացումների կամ հատուկ դեպքերի համար։</string>
+    <string name="app_enter_behavior_option_app_default">Հավելվածի լռելյայնը</string>
+    <string name="app_enter_behavior_option_send_shift_newline">Enter-ը ուղարկում է, Shift+Enter-ը նոր տող</string>
+    <string name="app_enter_behavior_option_newline_ctrl_send">Enter-ը նոր տող, Ctrl+Enter-ը ուղարկում է</string>
+    <string name="app_enter_behavior_option_enter_newline">Enter-ը նոր տող</string>
+    <string name="app_enter_behavior_status_app_default">Pastiera-ն չի միջամտում։</string>
+    <string name="app_enter_behavior_status_whatsapp_active">Ակտիվ է՝ %1$s։</string>
+    <string name="app_enter_behavior_status_partial_active">Մասամբ ակտիվ է՝ %1$s։</string>
+    <string name="app_enter_behavior_status_experimental_active">Փորձարարական ակտիվ է՝ %1$s։</string>
+    <string name="app_enter_behavior_status_not_active">Դեռ ակտիվ չէ՝ %1$s-ը պլանավորված է։</string>
+    <string name="app_enter_behavior_status_native_result">Հավելվածի լռելյայնը․ Pastiera-ն չի միջամտում։</string>
+    <string name="app_enter_behavior_status_strategy_result">Ակտիվ է՝ %1$s։</string>
+    <string name="app_enter_behavior_status_experimental_result">Փորձարարական ակտիվ է՝ %1$s։</string>
+    <string name="app_enter_behavior_strategy_none_label">Վերասահմանում չկա</string>
+    <string name="app_enter_behavior_strategy_app_action_label">Հավելվածի գործողություն</string>
+    <string name="app_enter_behavior_strategy_plain_enter_label">Սովորական Enter</string>
+    <string name="app_enter_behavior_strategy_unconfigured_label">Կազմաձևված չէ</string>
+    <string name="app_enter_behavior_strategy_app_default_detail">Հավելվածն է որոշում՝ Enter-ը ուղարկում է, թե նոր տող է ավելացնում։</string>
+    <string name="app_enter_behavior_strategy_whatsapp_newline_ctrl_send">Pastiera-ն նոր տողերը տեղադրում է ուղղակիորեն և ուղարկում է հավելվածի ուղարկման գործողությամբ։</string>
+    <string name="app_enter_behavior_strategy_whatsapp_send_shift_newline">Pastiera-ն ուղարկում է հավելվածի ուղարկման գործողությամբ։ Shift+Enter-ը ուղղակիորեն տեղադրվում է որպես նոր տող։</string>
+    <string name="app_enter_behavior_strategy_whatsapp_newline_only">Փորձարկված է․ Pastiera-ն Enter-ը ուղղակիորեն տեղադրում է որպես նոր տող և չի գործարկում ուղարկումը։</string>
+    <string name="app_enter_behavior_strategy_discord_app_default_detail">Փորձարկված է․ Discord-ը արդեն ճիշտ է աշխատում՝ Enter-ը ուղարկում է, Shift+Enter-ը նոր տող է։ Pastiera-ն այստեղ չի միջամտում։</string>
+    <string name="app_enter_behavior_strategy_discord_partial_detail">Փորձարկված է․ նոր տողերը տեղադրվում են ուղղակիորեն։ Ctrl+Enter-ը ուղարկում է սովորական Enter առանց meta Ctrl-ի, քանի որ Discord-ի հավելվածի գործողությունը միայն թաքցնում է ստեղնաշարը։</string>
+    <string name="app_enter_behavior_strategy_experimental_detail">Չհաստատված է․ Pastiera-ն փորձում է հավելվածի ուղարկման գործողությունը և նոր տողի ուղղակի տեղադրումը։</string>
+    <string name="app_enter_behavior_strategy_not_tested_detail">Այս հավելվածի տեխնիկական ռազմավարությունը դեռ պետք է փորձարկվի։</string>
+    <string name="app_enter_behavior_desired_label">Ցանկալի վարքագիծ</string>
+    <string name="app_enter_behavior_strategy_label">Ուղարկման ռազմավարություն</string>
+    <string name="app_enter_behavior_strategy_auto">Ավտո / չփորձարկված</string>
+    <string name="app_enter_behavior_strategy_editor_action">Խմբագրիչի գործողություն</string>
+    <string name="app_enter_behavior_strategy_ctrl_enter">Ctrl+Enter</string>
+    <string name="app_enter_behavior_strategy_plain_enter">Սովորական Enter</string>
+    <string name="app_enter_behavior_additional_send_shortcut_label">Լրացուցիչ ուղարկման դյուրանցում</string>
+    <string name="app_enter_behavior_additional_send_shortcut_description">Կիրառել լրացուցիչ ուղարկման դյուրանցում ներքևում ցուցադրված հավելվածների ցուցակին։</string>
+    <string name="app_enter_behavior_additional_send_shortcut_none">Չկա</string>
+    <string name="app_enter_behavior_additional_send_shortcut_sym_enter">SYM + Enter</string>
+    <string name="app_enter_behavior_sym_enter_conflict_title">SYM + Enter-ը արդեն օգտագործվում է QuickLauncher-ի կողմից</string>
+    <string name="app_enter_behavior_sym_enter_conflict_description">QuickLauncher-ի գործարկիչը տեղափոխեք այլ ստեղնի վրա՝ նախքան SYM + Enter-ը որպես լրացուցիչ ուղարկման դյուրանցում օգտագործելը։</string>
+    <string name="app_enter_behavior_sym_enter_conflict_action">Փոխել գործարկիչը</string>
+    <string name="settings_category_sounds">Ձայներ</string>
+    <string name="settings_sounds_description">Մուտքագրման ձայներ և ձայնային փաթեթների ներմուծում</string>
+    <string name="debug_recorder_record">Գրանցել</string>
+    <string name="debug_recorder_stop">Կանգնեցնել</string>
+    <string name="debug_recorder_copy">Պատճենել</string>
+    <string name="debug_recorder_clear">Մաքրել</string>
+    <string name="debug_recorder_view">Դիտել</string>
+    <string name="debug_recorder_share">Կիսվել</string>
+    <string name="debug_recorder_share_chooser">Կիսվել debug հաշվետվությամբ</string>
+    <string name="debug_recorder_copied">Debug հաշվետվությունը պատճենվեց (%1$d իրադարձություն)</string>
+    <string name="debug_recorder_status">Գրանցիչ՝ %1$s · Իրադարձություններ՝ %2$d</string>
+    <string name="debug_recorder_status_recording">գրանցում</string>
+    <string name="debug_recorder_status_stopped">կանգնեցված</string>
+    <string name="debug_recorder_started_at">Սկսվել է՝ </string>
+    <string name="debug_recorder_include_suggestions">ներառյալ առաջարկներ</string>
+    <string name="debug_report_viewer_title">Debug հաշվետվության դիտիչ</string>
+    <string name="nav_mode_action_move_word_left">←Բառ</string>
+    <string name="nav_mode_action_move_word_right">Բառ→</string>
+    <string name="nav_mode_action_expand_selection_word_left">←ԸնտԲառ</string>
+    <string name="nav_mode_action_expand_selection_word_right">ԸնտԲառ→</string>
+    <string name="nav_mode_action_media_play_pause">Նվագարկել/Դադար</string>
+    <string name="nav_mode_action_media_previous">Նախորդ մեդիա</string>
+    <string name="nav_mode_action_media_next">Հաջորդ մեդիա</string>
+    <string name="tutorial_skip_update">Միևնույն է բաց թողնել</string>
+    <string name="tutorial_whats_new_title">Ինչ նոր կա այս տարբերակում</string>
+    <string name="tutorial_whats_new_description">Սա Pastiera-ի ավելի մեծ թարմացում է։ Հաջորդ էջերը արժե արագ անցնել, քանի որ դրանք ուղիղ ցույց են տալիս փոխված կարգավորումներն ու աշխատանքային հոսքերը։</string>
+    <string name="tutorial_whats_new_continue_hint">Շարունակեք ուղեցույցը՝ այս տարբերակի ամենաօգտակար կարգավորումները վերանայելու համար։</string>
+    <string name="tutorial_devs_choice_button">Մշակողի ընտրություն</string>
+    <string name="tutorial_devs_choice_applied">Մշակողի ընտրության կարգավորումները կիրառվեցին։</string>
+    <string name="tutorial_android16_ime_caption_title">Թաքցնել IME վերնագրի գոտին</string>
+    <string name="tutorial_android16_ime_caption_description">Titan 2-ը և Titan 2 Elite-ը կարող են Pastiera-ի վերևում ցույց տալ լրացուցիչ IME վերնագրի գոտի։ Android 16-ում կամ նորում օգտագործեք այս OEM ժեստի կարգավորումը՝ գոտին թաքցնելու և Pastiera-ն կոմպակտ պահելու համար։</string>
+    <string name="tutorial_android16_ime_caption_before">Մինչև՝ IME վերնագրի գոտին վատնում է տարածքը</string>
+    <string name="tutorial_android16_ime_caption_after">Հետո՝ կոմպակտ Pastiera մակերես ապարատային ստեղնաշարի համար</string>
+    <string name="tutorial_android16_ime_caption_check_android16">Android 16 կամ նոր</string>
+    <string name="tutorial_android16_ime_caption_check_titan2">Unihertz Titan 2 կամ Titan 2 Elite</string>
+    <string name="tutorial_android16_ime_caption_check_setting">OEM ժեստի կարգավորումը հասանելի է</string>
+    <string name="tutorial_android16_ime_caption_button">Բացել «Թաքցնել IME վերնագրի գոտին»</string>
+    <string name="tutorial_android16_ime_caption_unavailable">Ուղիղ հղումը ցուցադրվում է միայն, երբ բոլոր պահանջները կատարված են։</string>
+    <string name="tutorial_android16_ime_caption_fallback">Չհաջողվեց բացել Titan 2-ի ժեստի կարգավորումը։ Փոխարենը բացվում են Android-ի կարգավորումները։</string>
+    <string name="tutorial_software_keyboard_auto_checker_title">Ավտոմատ հայտնաբերում</string>
+    <string name="tutorial_software_keyboard_auto_selected">Ավտոն այժմ ընտրում է՝ %1$s</string>
+    <string name="tutorial_software_keyboard_auto_overridden">Ընթացիկ վերասահմանում՝ %1$s։ Ավտոն կընտրեր՝ %2$s</string>
+    <string name="tutorial_software_keyboard_auto_profile">Հայտնաբերված պրոֆիլ՝ %1$s / %2$s</string>
+    <string name="tutorial_software_keyboard_auto_reason_physical">Պատճառ․ այս պրոֆիլը համարվում է ֆիզիկական ստեղնաշարով սարք, ուստի Ավտոն օգտագործում է ապարատային ստեղնաշարի ռեժիմը։</string>
+    <string name="tutorial_software_keyboard_auto_reason_touch">Պատճառ․ այս պրոֆիլը չի ճանաչվում որպես ֆիզիկական ստեղնաշարով սարք, ուստի Ավտոն օգտագործում է վիրտուալ ստեղնաշարի ռեժիմը։</string>
+    <string name="tutorial_typing_sound_demo_title">Մուտքագրման ձայներ</string>
+    <string name="tutorial_typing_sound_demo_description">Ընտրեք ձայնի ոճ և մուտքագրեք ներքևում՝ այն անմիջապես լսելու համար։</string>
+    <string name="tutorial_typing_sound_demo_input_label">Փորձեք մուտքագրել այստեղ</string>
+    <string name="app_language_title">Հավելվածի լեզու</string>
+    <string name="app_language_description">Ընտրեք հավելվածի միջերեսի տեքստերի լեզուն։</string>
+    <string name="app_language_label">Լեզու</string>
+    <string name="app_language_system_default">Համակարգի լռելյայն</string>
+    <string name="app_language_system_default_with_detected">Համակարգի լռելյայն (%1$s)</string>
+    <string name="status_bar_slots_left">Ձախ կոճակներ</string>
+    <string name="status_bar_slots_right">Աջ կոճակներ</string>
+    <string name="status_bar_slot_add">Ավելացնել կարգավիճակի գոտու կոճակ</string>
+    <string name="status_bar_slot_remove">Հեռացնել կարգավիճակի գոտու կոճակը</string>
+    <string name="status_bar_button_undo">Հետարկել</string>
+    <string name="status_bar_button_undo_description">Ուղարկել Ctrl+Z</string>
+    <string name="status_bar_button_redo">Կրկնել</string>
+    <string name="status_bar_button_redo_description">Ուղարկել Ctrl+Y</string>
+    <string name="status_bar_variations_visible_title">Ցույց տալ տարբերակները</string>
+    <string name="status_bar_variations_visible_description">Ցույց տալ կազմաձևված տարբերակների շարքը կարգավիճակի գոտու կոճակների միջև։ Անջատված լինելու դեպքում կոճակները օգտագործում են ամբողջ գոտին, իսկ կուրսորի swipe կառավարումը շարունակում է աշխատել։</string>
+    <string name="status_bar_swipe_cursor_info">Սահեցրեք կարգավիճակի գոտու վրայով՝ կուրսորը տեղափոխելու համար։</string>
+    <string name="dynamic_variation_slot_count_title">Դինամիկ տարբերակների տեղեր</string>
+    <string name="dynamic_variation_slot_count_description">Փորձել ցույց տալ %1$d դինամիկ տարր կարգավիճակի գոտու կոճակների միջև։</string>
+    <string name="dynamic_variation_resize_to_content_title">Փոխել դինամիկ տարբերակների չափը</string>
+    <string name="dynamic_variation_resize_to_content_description">Միացված լինելու դեպքում դինամիկ տարրերը լրացնում են հասանելի շարքը՝ ըստ ցուցադրվող քանակի։ Անջատված լինելու դեպքում դրանք պահում են սահիկի տեղամասի չափը և մնում ձախից հավասարեցված։</string>
 </resources>

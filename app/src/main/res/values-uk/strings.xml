@@ -587,4 +587,236 @@
     <string name="software_keyboard_mode_always_virtual">Завжди віртуальна клавіатура</string>
     <string name="software_keyboard_mode_always_hardware">Завжди апаратна клавіатура</string>
     <string name="software_keyboard_mode_auto_short">Авто (PKB: апаратна, інакше віртуальна)</string>
+    <string name="delete_alternatives_selection_hint">Коли текст виділено, ці альтернативи вимкнено, а Backspace видаляє виділення.</string>
+    <string name="static_variation_preset_title">Пресет статичних варіацій</string>
+    <string name="static_variation_preset_off">Вимкнено</string>
+    <string name="static_variation_preset_off_description">Використовувати лише динамічні варіації та підказки.</string>
+    <string name="static_variation_preset_symbols">Символи</string>
+    <string name="static_variation_preset_symbols_description">Рядок пунктуації за замовчуванням.</string>
+    <string name="static_variation_preset_numbers">Числа</string>
+    <string name="static_variation_preset_numbers_description">Швидкий рядок цифр.</string>
+    <string name="static_variation_preset_alternative">Альтернативні символи</string>
+    <string name="static_variation_preset_alternative_description">Дужки та спеціальні символи.</string>
+    <string name="static_variation_preset_dev_choice">Вибір розробника</string>
+    <string name="static_variation_preset_dev_choice_description">Підібраний рядок пунктуації.</string>
+    <string name="emoji_picker_expanded_height_title">Більший вибір emoji</string>
+    <string name="emoji_picker_expanded_height_description">Використовувати приблизно 1,5x висоти для сторінки пошуку emoji; інші сторінки SYM зберігають звичайну висоту.</string>
+    <string name="typing_sound_title">Звуки набору</string>
+    <string name="typing_sound_off">Вимкнено</string>
+    <string name="typing_sound_click">Клацання клавіатури</string>
+    <string name="typing_sound_typewriter">Друкарська машинка</string>
+    <string name="typing_sound_custom">Власний звуковий пакет…</string>
+    <string name="typing_sound_output_title">Вивід звуків набору</string>
+    <string name="typing_sound_output_media">Гучність медіа</string>
+    <string name="typing_sound_output_system">Системні звуки</string>
+    <string name="typing_sound_output_notification">Сповіщення</string>
+    <string name="typing_sound_output_dnd_hint">Системні звуки та сповіщення підкоряються беззвучному режиму й режиму Не турбувати.</string>
+    <string name="typing_sound_import_success">Звуковий пакет набору імпортовано</string>
+    <string name="typing_sound_import_failed">Не вдалося імпортувати цей звуковий пакет. Використайте ZIP з аудіофайлами в папках normal/, space/, backspace/, enter/ і modifier/.</string>
+    <string name="typing_sound_docs_title">Формат звукового пакета</string>
+    <string name="typing_sound_docs_description">Відкрити посібник з імпорту на pastiera.eu</string>
+    <string name="typing_sound_docs_url">https://pastiera.eu/guides/typing-soundpacks/</string>
+    <string name="alt_shift_layout_switch_title">Перемикання розкладки Alt+Shift</string>
+    <string name="alt_shift_layout_switch_description">Перемикайте мови/розкладки за допомогою Alt+Shift.</string>
+    <string name="toast_on_layout_switch_title">Toast при зміні розкладки</string>
+    <string name="toast_on_layout_switch_description">Показувати toast під час перемикання мови/розкладки.</string>
+    <string name="keyboard_profile_option_titan2elite_qwerty">Titan 2 Elite (QWERTY)</string>
+    <string name="keyboard_profile_option_mp01">Minimal Phone (MP01)</string>
+    <string name="keyboard_currency_symbol_title">Символ валюти</string>
+    <string name="keyboard_currency_symbol_description">Символ, який вставляють виділені апаратні клавіші валюти.</string>
+    <string name="starter_launcher_shortcuts_title">Pastiera-QuickLauncher</string>
+    <string name="starter_launcher_shortcuts_description">Швидкий запуск, ярлики SYM і призначення клавіш застосунків</string>
+    <string name="starter_launcher_shortcuts_intro">Ці налаштування спільно використовують один список призначень застосунок-клавіша. Виберіть, де Pastiera має слухати ці призначені клавіші.</string>
+    <string name="launcher_shortcuts_configure_description_with_quick_launcher">Торкніться клавіші, щоб призначити або замінити застосунок. QuickLauncher зараз призначено на %1$s.</string>
+    <string name="quick_launcher_default_blocked_hint">Нове: SYM може відкривати QuickLauncher. Pastiera зазвичай призначила б його на Пробіл, але Пробіл уже має ярлик. Відкрийте сторінку призначень і виберіть «Відкрити QuickLauncher» на будь-якій клавіші, щоб спробувати.</string>
+    <string name="quick_launcher_title">Pastiera-QuickLauncher</string>
+    <string name="quick_launcher_subtitle">Вводьте для пошуку. Enter відкриває перший результат.</string>
+    <string name="quick_launcher_close">Закрити</string>
+    <string name="quick_launcher_search_placeholder">Почніть вводити...</string>
+    <string name="quick_launcher_auto_start_single">Запускати автоматично, коли лишається один результат</string>
+    <string name="quick_launcher_auto_start_single_title">Автоматично відкривати єдиний збіг</string>
+    <string name="quick_launcher_auto_start_single_description">Коли пошук QuickLauncher залишає лише один застосунок, запускайте його без натискання Enter.</string>
+    <string name="quick_launcher_limit_results_title">Показувати лише найкращі результати</string>
+    <string name="quick_launcher_limit_results_description">Не показувати повний алфавітний список застосунків. QuickLauncher лишається порожнім, доки ви не почнете вводити, а потім показує лише три найкращі збіги.</string>
+    <string name="quick_launcher_text_field_shortcuts_title">Дозволити SYM+Пробіл у текстових полях</string>
+    <string name="quick_launcher_text_field_shortcuts_description">Якщо ввімкнено, QuickLauncher може відкриватися також тоді, коли курсор у текстовому полі застосунку.</string>
+    <string name="quick_launcher_text_field_shortcuts_hint">У текстових полях утримуйте SYM і натисніть Пробіл. Фіксація SYM не може це запустити, бо натискання SYM перемикає сторінки SYM.</string>
+    <string name="quick_launcher_respect_keyboard_layout_title">Використовувати активну розкладку клавіатури</string>
+    <string name="quick_launcher_respect_keyboard_layout_description">Якщо ввімкнено, пошуковий ввід слідує поточній розкладці Pastiera замість сирого QWERTY-виводу Android.</string>
+    <string name="quick_launcher_typo_tolerant_ranking_title">Пошук із допуском помилок</string>
+    <string name="quick_launcher_typo_tolerant_ranking_description">Також знаходить назви застосунків із невеликими помилками набору. Збіги за префіксом і скороченням усе одно мають вищий рейтинг.</string>
+    <string name="quick_launcher_ranking_info_button">Як працює рейтинг</string>
+    <string name="quick_launcher_ranking_info_title">Рейтинг QuickLauncher</string>
+    <string name="quick_launcher_ranking_info_body">Результати сортуються так: точна назва застосунку, префікс назви застосунку, префікс слова, збіг скорочення/підпослідовності, назва застосунку з допуском помилок, потім назва пакета. Допуск помилок ігнорується для дуже коротких запитів.</string>
+    <string name="quick_launcher_behavior_title">Поведінка</string>
+    <string name="quick_launcher_behavior_description">Правила запуску, відображення результатів і SYM+Пробіл із текстових полів.</string>
+    <string name="quick_launcher_cosmetic_title">Вигляд</string>
+    <string name="quick_launcher_cosmetic_description">Ширина та компактне відображення у вигляді пігулки.</string>
+    <string name="quick_launcher_width_title">Ширина лаунчера</string>
+    <string name="quick_launcher_width_value">%1$d%% ширини екрана</string>
+    <string name="quick_launcher_pill_mode_title">Режим пігулки</string>
+    <string name="quick_launcher_pill_mode_description">Відкривається як компактна пошукова пігулка й розгортається лише після початку вводу.</string>
+    <string name="quick_launcher_type_to_search">Почніть вводити, щоб шукати застосунки</string>
+    <string name="quick_launcher_loading_apps">Завантаження застосунків...</string>
+    <string name="quick_launcher_assign_action">Відкрити QuickLauncher</string>
+    <string name="quick_launcher_no_apps">Застосунки не знайдено</string>
+    <string name="quick_launcher_no_results">Немає результатів для «%1$s»</string>
+    <string name="quick_launcher_enter_hint">Enter</string>
+    <string name="nav_mode_guide_title">Посібник Nav Mode</string>
+    <string name="nav_mode_guide_description">Як Ctrl, призначення, ярлики застосунків і підказки розкладки працюють разом.</string>
+    <string name="nav_mode_guide_text">Nav Mode перетворює клавіші літер на клавіші навігації та ярликів. Результат може відрізнятися залежно від застосунку, бо деякі застосунки розуміють дії редактора Android, а інші реагують лише на справжні скорочення Ctrl.
+
+Навігація з утриманим Ctrl
+Коли навігацію з утриманим Ctrl вимкнено, фізично утриманий Ctrl за можливості передається застосунку. Тоді скорочення на кшталт Ctrl+B, Ctrl+I або Ctrl+Z можуть працювати безпосередньо в редакторах.
+
+Коли навігацію з утриманим Ctrl увімкнено, фізично утриманий Ctrl спершу використовує призначення Nav Mode нижче. Призначена клавіша виконує налаштовану команду Nav Mode.
+
+Подвійне натискання Ctrl
+Подвійне натискання Ctrl фіксує Nav Mode. Після цього натискання літери запускає призначення Nav Mode, доки ви знову не вийдете з Nav Mode. Це корисно для стрілок, Page Up/Down, Escape, Tab і команд виділення без утримання Ctrl.
+
+Action і Native Ctrl
+Дії на кшталт Копіювати, Вставити, Вирізати, Виділити все та Скасувати надсилаються як дії редактора Android. Вони працюють у багатьох текстових полях, але не кожен застосунок підтримує кожну дію.
+
+Використовуйте Native Ctrl, коли застосунок очікує справжнє скорочення. Наприклад, призначення I на Native Ctrl надсилає Ctrl+I, тож редактори на кшталт Google Docs можуть використовувати це для курсиву. Скасувати також можна призначити як Native Ctrl, якщо застосунок краще обробляє Ctrl+Z, ніж Android Undo.
+
+QWERTZ на фізичній QWERTY
+Nav Mode використовує фізичне положення клавіші, щоб навігація залишалася стабільною. Підказки розкладки на клавішах показують, коли активна текстова розкладка трактувала б цю фізичну клавішу як іншу літеру, наприклад Y/Z на QWERTZ.
+
+Ctrl-ярлики застосунків із урахуванням розкладки
+Коли утриманий Ctrl передається застосункам, це додаткове налаштування може спершу перекладати Ctrl+літера через активну розкладку Pastiera. Воно впливає на ярлики застосунків, а не на фізичну сітку Nav Mode.
+
+Перевизначення
+Кожну клавішу можна налаштувати як Keycode, Дія, Native Ctrl або Немає. Використовуйте перевизначення, щоб вирішувати конфлікти окремих застосунків без зміни всього режиму.</string>
+    <string name="nav_mode_ctrl_hold_title">Навігація з утриманим Ctrl</string>
+    <string name="nav_mode_ctrl_hold_description">Якщо ввімкнено, текстові поля використовують призначення Nav Mode, поки Ctrl утримується. Якщо вимкнено, скорочення Ctrl передаються застосунку. Клавіші, налаштовані як Native Ctrl, завжди передаються як справжні скорочення Ctrl.</string>
+    <string name="layout_aware_ctrl_shortcuts_title">Ctrl-ярлики застосунків із урахуванням розкладки</string>
+    <string name="layout_aware_ctrl_shortcuts_description">Коли утриманий Ctrl передається застосункам, спершу перекладати Ctrl+літера через активну розкладку Pastiera.</string>
+    <string name="layout_aware_ctrl_shortcuts_disabled_description">Вимкнено, поки активна навігація з утриманим Ctrl, бо утриманий Ctrl обробляє Nav Mode замість застосунку.</string>
+    <string name="layout_aware_ctrl_shortcuts_info_title">Ctrl-ярлики та Nav Mode</string>
+    <string name="layout_aware_ctrl_shortcuts_info_text">Для утриманого Ctrl є два шляхи. Якщо навігацію з утриманим Ctrl увімкнено, Pastiera обробляє Ctrl+клавіша призначеннями Nav Mode, показаними нижче. Якщо її вимкнено, Pastiera передає Ctrl+клавіша застосунку. Цей параметр впливає лише на шлях застосунку: якщо ввімкнено, Ctrl+літера спершу перекладається через активну розкладку Pastiera, щоб ярлики могли відповідати літерам, які ви вводите. Якщо вимкнено, застосунки отримують початкові фізичні позиції клавіш.</string>
+    <string name="nav_mode_native_ctrl">Native Ctrl</string>
+    <string name="app_enter_behavior_title">Поведінка клавіші Enter</string>
+    <string name="app_enter_behavior_description">Налаштуйте Enter і новий рядок окремо для застосунків</string>
+    <string name="app_enter_behavior_enable_title">Поведінка Enter для застосунків</string>
+    <string name="app_enter_behavior_enable_description">Використовуйте перевизначення Pastiera для вибраних застосунків обміну повідомленнями. Перевірені застосунки показують стратегію, яку Pastiera фактично використовує.</string>
+    <string name="app_enter_behavior_preset_title">Пресет повідомлень</string>
+    <string name="app_enter_behavior_preset_description">Застосувати узгоджене значення за замовчуванням до встановлених відомих застосунків обміну повідомленнями.</string>
+    <string name="app_enter_behavior_preset_app_default">За замовчуванням застосунку</string>
+    <string name="app_enter_behavior_preset_send_shift_newline">Enter надсилає, Shift+Enter новий рядок</string>
+    <string name="app_enter_behavior_preset_newline_ctrl_send">Enter новий рядок, Ctrl+Enter надсилає</string>
+    <string name="app_enter_behavior_preset_newline_only">Enter лише новий рядок</string>
+    <string name="app_enter_behavior_preset_custom">Власне</string>
+    <string name="app_enter_behavior_overrides_title">Перевизначення застосунків</string>
+    <string name="app_enter_behavior_add_app">Додати застосунок</string>
+    <string name="app_enter_behavior_add_app_description">Для додаткових застосунків це спершу цільова конфігурація. Підібраний список повідомлень використовує перевірені стратегії.</string>
+    <string name="app_enter_behavior_add_app_list_title">Виберіть застосунок</string>
+    <string name="app_enter_behavior_remove_app">Вилучити застосунок</string>
+    <string name="app_enter_behavior_show_manual_override">Ручне перевизначення</string>
+    <string name="app_enter_behavior_hide_manual_override">Сховати ручні поля</string>
+    <string name="app_enter_behavior_manual_override_note">Підібрана стратегія зазвичай є кращим значенням за замовчуванням. Перевизначайте лише після оновлень застосунку або в особливих випадках.</string>
+    <string name="app_enter_behavior_option_app_default">За замовчуванням застосунку</string>
+    <string name="app_enter_behavior_option_send_shift_newline">Enter надсилає, Shift+Enter новий рядок</string>
+    <string name="app_enter_behavior_option_newline_ctrl_send">Enter новий рядок, Ctrl+Enter надсилає</string>
+    <string name="app_enter_behavior_option_enter_newline">Enter новий рядок</string>
+    <string name="app_enter_behavior_status_app_default">Pastiera не втручається.</string>
+    <string name="app_enter_behavior_status_whatsapp_active">Активно: %1$s.</string>
+    <string name="app_enter_behavior_status_partial_active">Частково активно: %1$s.</string>
+    <string name="app_enter_behavior_status_experimental_active">Експериментально активно: %1$s.</string>
+    <string name="app_enter_behavior_status_not_active">Ще не активно: %1$s заплановано.</string>
+    <string name="app_enter_behavior_status_native_result">За замовчуванням застосунку: Pastiera не втручається.</string>
+    <string name="app_enter_behavior_status_strategy_result">Активно: %1$s.</string>
+    <string name="app_enter_behavior_status_experimental_result">Експериментально активно: %1$s.</string>
+    <string name="app_enter_behavior_strategy_none_label">Без перевизначення</string>
+    <string name="app_enter_behavior_strategy_app_action_label">Дія застосунку</string>
+    <string name="app_enter_behavior_strategy_plain_enter_label">Звичайний Enter</string>
+    <string name="app_enter_behavior_strategy_unconfigured_label">Не налаштовано</string>
+    <string name="app_enter_behavior_strategy_app_default_detail">Застосунок вирішує, чи Enter надсилає, чи вставляє новий рядок.</string>
+    <string name="app_enter_behavior_strategy_whatsapp_newline_ctrl_send">Pastiera вставляє нові рядки напряму й надсилає через дію надсилання застосунку.</string>
+    <string name="app_enter_behavior_strategy_whatsapp_send_shift_newline">Pastiera надсилає через дію надсилання застосунку. Shift+Enter вставляється напряму як новий рядок.</string>
+    <string name="app_enter_behavior_strategy_whatsapp_newline_only">Перевірено: Pastiera вставляє Enter напряму як новий рядок і не запускає надсилання.</string>
+    <string name="app_enter_behavior_strategy_discord_app_default_detail">Перевірено: Discord уже правильно обробляє Enter для надсилання та Shift+Enter для нового рядка. Pastiera тут не втручається.</string>
+    <string name="app_enter_behavior_strategy_discord_partial_detail">Перевірено: нові рядки вставляються напряму. Ctrl+Enter надсилає звичайний Enter без meta Ctrl, бо дія застосунку Discord лише ховає клавіатуру.</string>
+    <string name="app_enter_behavior_strategy_experimental_detail">Не підтверджено: Pastiera пробує дію надсилання застосунку та пряме вставлення нового рядка.</string>
+    <string name="app_enter_behavior_strategy_not_tested_detail">Технічну стратегію для цього застосунку ще потрібно протестувати.</string>
+    <string name="app_enter_behavior_desired_label">Бажана поведінка</string>
+    <string name="app_enter_behavior_strategy_label">Стратегія надсилання</string>
+    <string name="app_enter_behavior_strategy_auto">Авто / не перевірено</string>
+    <string name="app_enter_behavior_strategy_editor_action">Дія редактора</string>
+    <string name="app_enter_behavior_strategy_ctrl_enter">Ctrl+Enter</string>
+    <string name="app_enter_behavior_strategy_plain_enter">Звичайний Enter</string>
+    <string name="app_enter_behavior_additional_send_shortcut_label">Додатковий ярлик надсилання</string>
+    <string name="app_enter_behavior_additional_send_shortcut_description">Застосувати додатковий ярлик надсилання до списку застосунків нижче.</string>
+    <string name="app_enter_behavior_additional_send_shortcut_none">Немає</string>
+    <string name="app_enter_behavior_additional_send_shortcut_sym_enter">SYM + Enter</string>
+    <string name="app_enter_behavior_sym_enter_conflict_title">SYM + Enter уже використовується QuickLauncher</string>
+    <string name="app_enter_behavior_sym_enter_conflict_description">Перемістіть тригер QuickLauncher на іншу клавішу, перш ніж використовувати SYM + Enter як додатковий ярлик надсилання.</string>
+    <string name="app_enter_behavior_sym_enter_conflict_action">Змінити тригер</string>
+    <string name="settings_category_sounds">Звуки</string>
+    <string name="settings_sounds_description">Звуки набору та імпорт звукових пакетів</string>
+    <string name="debug_recorder_record">Запис</string>
+    <string name="debug_recorder_stop">Стоп</string>
+    <string name="debug_recorder_copy">Копіювати</string>
+    <string name="debug_recorder_clear">Очистити</string>
+    <string name="debug_recorder_view">Перегляд</string>
+    <string name="debug_recorder_share">Поділитися</string>
+    <string name="debug_recorder_share_chooser">Поділитися звітом налагодження</string>
+    <string name="debug_recorder_copied">Звіт налагодження скопійовано (%1$d подій)</string>
+    <string name="debug_recorder_status">Реєстратор: %1$s · Подій: %2$d</string>
+    <string name="debug_recorder_status_recording">запис</string>
+    <string name="debug_recorder_status_stopped">зупинено</string>
+    <string name="debug_recorder_started_at">Запущено о: </string>
+    <string name="debug_recorder_include_suggestions">з підказками</string>
+    <string name="debug_report_viewer_title">Перегляд звіту налагодження</string>
+    <string name="nav_mode_action_move_word_left">←Слово</string>
+    <string name="nav_mode_action_move_word_right">Слово→</string>
+    <string name="nav_mode_action_expand_selection_word_left">←ВидСлово</string>
+    <string name="nav_mode_action_expand_selection_word_right">ВидСлово→</string>
+    <string name="nav_mode_action_media_play_pause">Відтворити/Пауза</string>
+    <string name="nav_mode_action_media_previous">Попереднє медіа</string>
+    <string name="nav_mode_action_media_next">Наступне медіа</string>
+    <string name="tutorial_skip_update">Усе одно пропустити</string>
+    <string name="tutorial_whats_new_title">Що нового в цій версії</string>
+    <string name="tutorial_whats_new_description">Це велике оновлення Pastiera. Варто швидко пройти наступні сторінки, бо вони ведуть прямо до налаштувань і робочих процесів, які змінилися.</string>
+    <string name="tutorial_whats_new_continue_hint">Продовжте посібник, щоб переглянути найкорисніші налаштування цієї версії.</string>
+    <string name="tutorial_devs_choice_button">Вибір розробника</string>
+    <string name="tutorial_devs_choice_applied">Налаштування Вибір розробника застосовано.</string>
+    <string name="tutorial_android16_ime_caption_title">Сховати панель підпису IME</string>
+    <string name="tutorial_android16_ime_caption_description">Titan 2 і Titan 2 Elite можуть показувати додаткову панель підпису IME над Pastiera. На Android 16 або новішому використайте це OEM-налаштування жестів, щоб сховати панель і зберегти Pastiera компактною.</string>
+    <string name="tutorial_android16_ime_caption_before">До: місце витрачається на панель підпису IME</string>
+    <string name="tutorial_android16_ime_caption_after">Після: компактна поверхня Pastiera для апаратної клавіатури</string>
+    <string name="tutorial_android16_ime_caption_check_android16">Android 16 або новіший</string>
+    <string name="tutorial_android16_ime_caption_check_titan2">Unihertz Titan 2 або Titan 2 Elite</string>
+    <string name="tutorial_android16_ime_caption_check_setting">OEM-налаштування жестів доступне</string>
+    <string name="tutorial_android16_ime_caption_button">Відкрити «Сховати панель підпису IME»</string>
+    <string name="tutorial_android16_ime_caption_unavailable">Пряме посилання показується лише коли виконано всі вимоги.</string>
+    <string name="tutorial_android16_ime_caption_fallback">Не вдалося відкрити налаштування жестів Titan 2. Натомість відкриваються Налаштування Android.</string>
+    <string name="tutorial_software_keyboard_auto_checker_title">Автовизначення</string>
+    <string name="tutorial_software_keyboard_auto_selected">Авто зараз вибирає: %1$s</string>
+    <string name="tutorial_software_keyboard_auto_overridden">Поточне перевизначення: %1$s. Авто вибрало б: %2$s</string>
+    <string name="tutorial_software_keyboard_auto_profile">Виявлений профіль: %1$s / %2$s</string>
+    <string name="tutorial_software_keyboard_auto_reason_physical">Причина: цей профіль вважається пристроєм із фізичною клавіатурою, тому Авто використовує режим апаратної клавіатури.</string>
+    <string name="tutorial_software_keyboard_auto_reason_touch">Причина: цей профіль не розпізнано як пристрій із фізичною клавіатурою, тому Авто використовує режим віртуальної клавіатури.</string>
+    <string name="tutorial_typing_sound_demo_title">Звуки набору</string>
+    <string name="tutorial_typing_sound_demo_description">Виберіть стиль звуку й вводьте нижче, щоб одразу його почути.</string>
+    <string name="tutorial_typing_sound_demo_input_label">Спробуйте вводити тут</string>
+    <string name="app_language_title">Мова застосунку</string>
+    <string name="app_language_description">Виберіть мову текстів інтерфейсу застосунку.</string>
+    <string name="app_language_label">Мова</string>
+    <string name="app_language_system_default">Системна за замовчуванням</string>
+    <string name="app_language_system_default_with_detected">Системна за замовчуванням (%1$s)</string>
+    <string name="status_bar_slots_left">Ліві кнопки</string>
+    <string name="status_bar_slots_right">Праві кнопки</string>
+    <string name="status_bar_slot_add">Додати кнопку панелі стану</string>
+    <string name="status_bar_slot_remove">Вилучити кнопку панелі стану</string>
+    <string name="status_bar_button_undo">Скасувати</string>
+    <string name="status_bar_button_undo_description">Надіслати Ctrl+Z</string>
+    <string name="status_bar_button_redo">Повторити</string>
+    <string name="status_bar_button_redo_description">Надіслати Ctrl+Y</string>
+    <string name="status_bar_variations_visible_title">Показувати варіації</string>
+    <string name="status_bar_variations_visible_description">Показувати налаштований рядок варіацій між кнопками панелі стану. Якщо вимкнено, кнопки використовують всю панель; керування курсором свайпом усе ще працює.</string>
+    <string name="status_bar_swipe_cursor_info">Проведіть по панелі стану, щоб перемістити курсор.</string>
+    <string name="dynamic_variation_slot_count_title">Слоти динамічних варіацій</string>
+    <string name="dynamic_variation_slot_count_description">Прагнути показувати %1$d динамічних елементів між кнопками панелі стану.</string>
+    <string name="dynamic_variation_resize_to_content_title">Змінювати розмір динамічних варіацій</string>
+    <string name="dynamic_variation_resize_to_content_description">Якщо ввімкнено, динамічні елементи заповнюють доступний рядок залежно від їх кількості. Якщо вимкнено, вони зберігають розмір слота зі слайдера й лишаються вирівняними ліворуч.</string>
 </resources>

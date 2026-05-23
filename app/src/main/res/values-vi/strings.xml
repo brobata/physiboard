@@ -587,4 +587,236 @@
     <string name="software_keyboard_mode_always_virtual">Luôn dùng bàn phím ảo</string>
     <string name="software_keyboard_mode_always_hardware">Luôn dùng bàn phím phần cứng</string>
     <string name="software_keyboard_mode_auto_short">Tự động (PKB: phần cứng, còn lại: ảo)</string>
+    <string name="delete_alternatives_selection_hint">Khi văn bản được chọn, các lựa chọn này bị tắt và Backspace sẽ xóa phần chọn.</string>
+    <string name="static_variation_preset_title">Cấu hình biến thể tĩnh</string>
+    <string name="static_variation_preset_off">Tắt</string>
+    <string name="static_variation_preset_off_description">Chỉ dùng biến thể động và gợi ý.</string>
+    <string name="static_variation_preset_symbols">Ký hiệu</string>
+    <string name="static_variation_preset_symbols_description">Hàng dấu câu mặc định.</string>
+    <string name="static_variation_preset_numbers">Số</string>
+    <string name="static_variation_preset_numbers_description">Hàng số nhanh.</string>
+    <string name="static_variation_preset_alternative">Ký hiệu thay thế</string>
+    <string name="static_variation_preset_alternative_description">Dấu ngoặc và ký tự đặc biệt.</string>
+    <string name="static_variation_preset_dev_choice">Lựa chọn của nhà phát triển</string>
+    <string name="static_variation_preset_dev_choice_description">Hàng dấu câu được chọn sẵn.</string>
+    <string name="emoji_picker_expanded_height_title">Bộ chọn emoji lớn hơn</string>
+    <string name="emoji_picker_expanded_height_description">Dùng chiều cao khoảng 1,5x cho trang tìm kiếm emoji; các trang SYM khác giữ chiều cao bình thường.</string>
+    <string name="typing_sound_title">Âm thanh gõ phím</string>
+    <string name="typing_sound_off">Tắt</string>
+    <string name="typing_sound_click">Tiếng nhấp bàn phím</string>
+    <string name="typing_sound_typewriter">Máy đánh chữ</string>
+    <string name="typing_sound_custom">Gói âm thanh tùy chỉnh…</string>
+    <string name="typing_sound_output_title">Đầu ra âm thanh gõ phím</string>
+    <string name="typing_sound_output_media">Âm lượng media</string>
+    <string name="typing_sound_output_system">Âm thanh hệ thống</string>
+    <string name="typing_sound_output_notification">Thông báo</string>
+    <string name="typing_sound_output_dnd_hint">Âm thanh hệ thống và thông báo tuân theo chế độ im lặng và Không làm phiền.</string>
+    <string name="typing_sound_import_success">Đã nhập gói âm thanh gõ phím</string>
+    <string name="typing_sound_import_failed">Không thể nhập gói âm thanh này. Hãy dùng tệp ZIP có tệp âm thanh trong các thư mục normal/, space/, backspace/, enter/ và modifier/.</string>
+    <string name="typing_sound_docs_title">Định dạng gói âm thanh</string>
+    <string name="typing_sound_docs_description">Mở hướng dẫn nhập trên pastiera.eu</string>
+    <string name="typing_sound_docs_url">https://pastiera.eu/guides/typing-soundpacks/</string>
+    <string name="alt_shift_layout_switch_title">Chuyển bố cục Alt+Shift</string>
+    <string name="alt_shift_layout_switch_description">Chuyển ngôn ngữ/bố cục bằng Alt+Shift.</string>
+    <string name="toast_on_layout_switch_title">Toast khi chuyển bố cục</string>
+    <string name="toast_on_layout_switch_description">Hiển thị toast khi chuyển ngôn ngữ/bố cục.</string>
+    <string name="keyboard_profile_option_titan2elite_qwerty">Titan 2 Elite (QWERTY)</string>
+    <string name="keyboard_profile_option_mp01">Minimal Phone (MP01)</string>
+    <string name="keyboard_currency_symbol_title">Ký hiệu tiền tệ</string>
+    <string name="keyboard_currency_symbol_description">Ký hiệu được chèn bởi các phím tiền tệ phần cứng chuyên dụng.</string>
+    <string name="starter_launcher_shortcuts_title">Pastiera-QuickLauncher</string>
+    <string name="starter_launcher_shortcuts_description">Mở nhanh, phím tắt SYM và gán phím ứng dụng</string>
+    <string name="starter_launcher_shortcuts_intro">Các cài đặt này dùng chung một danh sách gán ứng dụng-vào-phím. Chọn nơi Pastiera sẽ lắng nghe các phím đã gán đó.</string>
+    <string name="launcher_shortcuts_configure_description_with_quick_launcher">Chạm một phím để gán hoặc thay ứng dụng. QuickLauncher hiện được gán cho %1$s.</string>
+    <string name="quick_launcher_default_blocked_hint">Mới: SYM có thể mở QuickLauncher. Pastiera thường sẽ gán nó cho Phím cách, nhưng Phím cách đã có phím tắt. Mở trang gán phím và chọn “Mở QuickLauncher” trên bất kỳ phím nào để thử.</string>
+    <string name="quick_launcher_title">Pastiera-QuickLauncher</string>
+    <string name="quick_launcher_subtitle">Gõ để tìm. Enter mở kết quả đầu tiên.</string>
+    <string name="quick_launcher_close">Đóng</string>
+    <string name="quick_launcher_search_placeholder">Bắt đầu gõ...</string>
+    <string name="quick_launcher_auto_start_single">Tự động mở khi chỉ còn một kết quả</string>
+    <string name="quick_launcher_auto_start_single_title">Tự động mở kết quả duy nhất</string>
+    <string name="quick_launcher_auto_start_single_description">Khi tìm kiếm QuickLauncher chỉ còn một ứng dụng, hãy mở ứng dụng đó mà không cần nhấn Enter.</string>
+    <string name="quick_launcher_limit_results_title">Chỉ hiển thị kết quả hàng đầu</string>
+    <string name="quick_launcher_limit_results_description">Không hiển thị toàn bộ danh sách ứng dụng theo alphabet. QuickLauncher để trống cho đến khi bạn gõ, rồi chỉ hiển thị ba kết quả tốt nhất.</string>
+    <string name="quick_launcher_text_field_shortcuts_title">Cho phép SYM+Phím cách trong ô văn bản</string>
+    <string name="quick_launcher_text_field_shortcuts_description">Khi bật, QuickLauncher cũng có thể mở khi con trỏ nằm trong ô văn bản của ứng dụng.</string>
+    <string name="quick_launcher_text_field_shortcuts_hint">Trong ô văn bản, giữ SYM và nhấn Phím cách. Chốt SYM không thể kích hoạt vì chạm SYM sẽ chuyển qua các trang SYM.</string>
+    <string name="quick_launcher_respect_keyboard_layout_title">Dùng bố cục bàn phím đang hoạt động</string>
+    <string name="quick_launcher_respect_keyboard_layout_description">Khi bật, nội dung tìm kiếm theo bố cục Pastiera hiện tại thay vì đầu ra QWERTY thô của Android.</string>
+    <string name="quick_launcher_typo_tolerant_ranking_title">Tìm kiếm chịu lỗi gõ sai</string>
+    <string name="quick_launcher_typo_tolerant_ranking_description">Cũng khớp tên ứng dụng có lỗi gõ nhỏ. Các khớp tiền tố và viết tắt vẫn được xếp hạng cao hơn.</string>
+    <string name="quick_launcher_ranking_info_button">Cách xếp hạng hoạt động</string>
+    <string name="quick_launcher_ranking_info_title">Xếp hạng QuickLauncher</string>
+    <string name="quick_launcher_ranking_info_body">Kết quả được xếp theo thứ tự: tên ứng dụng chính xác, tiền tố tên ứng dụng, tiền tố từ, khớp viết tắt/chuỗi con, tên ứng dụng chịu lỗi gõ sai, rồi tên gói. Bỏ qua chịu lỗi gõ sai với truy vấn rất ngắn.</string>
+    <string name="quick_launcher_behavior_title">Hành vi</string>
+    <string name="quick_launcher_behavior_description">Quy tắc mở, hiển thị kết quả và SYM+Phím cách từ ô văn bản.</string>
+    <string name="quick_launcher_cosmetic_title">Giao diện</string>
+    <string name="quick_launcher_cosmetic_description">Chiều rộng và kiểu hiển thị viên thuốc gọn.</string>
+    <string name="quick_launcher_width_title">Chiều rộng launcher</string>
+    <string name="quick_launcher_width_value">%1$d%% chiều rộng màn hình</string>
+    <string name="quick_launcher_pill_mode_title">Chế độ viên thuốc</string>
+    <string name="quick_launcher_pill_mode_description">Mở dưới dạng viên tìm kiếm gọn và chỉ mở rộng sau khi bạn gõ.</string>
+    <string name="quick_launcher_type_to_search">Bắt đầu gõ để tìm ứng dụng</string>
+    <string name="quick_launcher_loading_apps">Đang tải ứng dụng...</string>
+    <string name="quick_launcher_assign_action">Mở QuickLauncher</string>
+    <string name="quick_launcher_no_apps">Không tìm thấy ứng dụng</string>
+    <string name="quick_launcher_no_results">Không có kết quả cho “%1$s”</string>
+    <string name="quick_launcher_enter_hint">Enter</string>
+    <string name="nav_mode_guide_title">Hướng dẫn Nav Mode</string>
+    <string name="nav_mode_guide_description">Cách Ctrl, ánh xạ, phím tắt ứng dụng và gợi ý bố cục hoạt động cùng nhau.</string>
+    <string name="nav_mode_guide_text">Nav Mode biến các phím chữ thành phím điều hướng và phím tắt. Kết quả có thể khác nhau theo ứng dụng, vì một số ứng dụng hiểu hành động trình soạn thảo Android, còn ứng dụng khác chỉ phản hồi phím tắt Ctrl thật.
+
+Điều hướng khi giữ Ctrl
+Khi tắt điều hướng khi giữ Ctrl, phím Ctrl đang được giữ vật lý sẽ được chuyển cho ứng dụng khi có thể. Khi đó các phím tắt như Ctrl+B, Ctrl+I hoặc Ctrl+Z có thể hoạt động trực tiếp trong trình soạn thảo.
+
+Khi bật điều hướng khi giữ Ctrl, phím Ctrl đang được giữ vật lý trước hết dùng các ánh xạ Nav Mode bên dưới. Một phím đã ánh xạ sẽ thực hiện lệnh Nav Mode đã cấu hình.
+
+Nhấn đúp Ctrl
+Nhấn đúp Ctrl sẽ chốt Nav Mode. Sau đó, nhấn một chữ sẽ kích hoạt ánh xạ Nav Mode cho đến khi bạn thoát Nav Mode. Điều này hữu ích cho phím mũi tên, Page Up/Down, Escape, Tab và lệnh chọn mà không cần giữ Ctrl.
+
+Action và Native Ctrl
+Các hành động như Copy, Paste, Cut, Select All và Undo được gửi như hành động trình soạn thảo Android. Chúng hoạt động trong nhiều ô văn bản, nhưng không phải ứng dụng nào cũng hỗ trợ mọi hành động.
+
+Dùng Native Ctrl khi ứng dụng cần phím tắt thật. Ví dụ, ánh xạ I thành Native Ctrl gửi Ctrl+I, để trình soạn thảo như Google Docs có thể dùng cho chữ nghiêng. Undo cũng có thể ánh xạ thành Native Ctrl nếu ứng dụng xử lý Ctrl+Z tốt hơn Undo của Android.
+
+QWERTZ trên QWERTY vật lý
+Nav Mode dùng vị trí vật lý của phím để điều hướng luôn ổn định. Gợi ý bố cục trên phím cho biết khi bố cục văn bản đang hoạt động sẽ xem phím vật lý đó là chữ khác, ví dụ Y/Z trên QWERTZ.
+
+Phím tắt Ctrl ứng dụng theo bố cục
+Khi Ctrl đang giữ được chuyển cho ứng dụng, tùy chọn này có thể dịch Ctrl+chữ qua bố cục Pastiera đang hoạt động trước. Nó ảnh hưởng đến phím tắt ứng dụng, không ảnh hưởng lưới Nav Mode vật lý.
+
+Ghi đè
+Mỗi phím có thể cấu hình là Keycode, Action, Native Ctrl hoặc None. Dùng ghi đè để xử lý xung đột riêng của ứng dụng mà không đổi toàn bộ chế độ.</string>
+    <string name="nav_mode_ctrl_hold_title">Điều hướng khi giữ Ctrl</string>
+    <string name="nav_mode_ctrl_hold_description">Khi bật, ô văn bản dùng ánh xạ Nav Mode trong lúc giữ Ctrl. Khi tắt, phím tắt Ctrl được chuyển cho ứng dụng. Phím đặt thành Native Ctrl luôn được chuyển qua như phím tắt Ctrl thật.</string>
+    <string name="layout_aware_ctrl_shortcuts_title">Phím tắt Ctrl ứng dụng theo bố cục</string>
+    <string name="layout_aware_ctrl_shortcuts_description">Khi Ctrl đang giữ được chuyển cho ứng dụng, dịch Ctrl+chữ qua bố cục Pastiera đang hoạt động trước.</string>
+    <string name="layout_aware_ctrl_shortcuts_disabled_description">Bị tắt khi điều hướng giữ Ctrl đang hoạt động, vì Ctrl đang giữ được Nav Mode xử lý thay vì ứng dụng.</string>
+    <string name="layout_aware_ctrl_shortcuts_info_title">Phím tắt Ctrl và Nav Mode</string>
+    <string name="layout_aware_ctrl_shortcuts_info_text">Có hai đường đi cho Ctrl đang giữ. Nếu bật điều hướng giữ Ctrl, Pastiera xử lý Ctrl+phím bằng các ánh xạ Nav Mode hiển thị bên dưới. Nếu tắt, Pastiera chuyển Ctrl+phím cho ứng dụng. Tùy chọn này chỉ ảnh hưởng đường ứng dụng đó: khi bật, Ctrl+chữ được dịch qua bố cục Pastiera đang hoạt động trước, để phím tắt có thể theo các chữ bạn gõ. Khi tắt, ứng dụng nhận vị trí phím vật lý ban đầu.</string>
+    <string name="nav_mode_native_ctrl">Native Ctrl</string>
+    <string name="app_enter_behavior_title">Hành vi phím Enter</string>
+    <string name="app_enter_behavior_description">Cấu hình Enter và xuống dòng riêng cho từng ứng dụng</string>
+    <string name="app_enter_behavior_enable_title">Hành vi Enter theo ứng dụng</string>
+    <string name="app_enter_behavior_enable_description">Dùng ghi đè Pastiera cho các ứng dụng nhắn tin đã chọn. Ứng dụng đã kiểm thử hiển thị chiến lược Pastiera thực sự dùng.</string>
+    <string name="app_enter_behavior_preset_title">Cấu hình nhắn tin</string>
+    <string name="app_enter_behavior_preset_description">Áp dụng mặc định nhất quán cho các ứng dụng nhắn tin quen thuộc đã cài.</string>
+    <string name="app_enter_behavior_preset_app_default">Mặc định ứng dụng</string>
+    <string name="app_enter_behavior_preset_send_shift_newline">Enter gửi, Shift+Enter xuống dòng</string>
+    <string name="app_enter_behavior_preset_newline_ctrl_send">Enter xuống dòng, Ctrl+Enter gửi</string>
+    <string name="app_enter_behavior_preset_newline_only">Enter chỉ xuống dòng</string>
+    <string name="app_enter_behavior_preset_custom">Tùy chỉnh</string>
+    <string name="app_enter_behavior_overrides_title">Ghi đè ứng dụng</string>
+    <string name="app_enter_behavior_add_app">Thêm ứng dụng</string>
+    <string name="app_enter_behavior_add_app_description">Với ứng dụng bổ sung, đây trước hết là cấu hình mục tiêu. Danh sách nhắn tin được chọn dùng các chiến lược đã kiểm thử.</string>
+    <string name="app_enter_behavior_add_app_list_title">Chọn ứng dụng</string>
+    <string name="app_enter_behavior_remove_app">Xóa ứng dụng</string>
+    <string name="app_enter_behavior_show_manual_override">Ghi đè thủ công</string>
+    <string name="app_enter_behavior_hide_manual_override">Ẩn trường thủ công</string>
+    <string name="app_enter_behavior_manual_override_note">Chiến lược được chọn thường là mặc định tốt hơn. Chỉ ghi đè cho bản cập nhật ứng dụng hoặc trường hợp đặc biệt.</string>
+    <string name="app_enter_behavior_option_app_default">Mặc định ứng dụng</string>
+    <string name="app_enter_behavior_option_send_shift_newline">Enter gửi, Shift+Enter xuống dòng</string>
+    <string name="app_enter_behavior_option_newline_ctrl_send">Enter xuống dòng, Ctrl+Enter gửi</string>
+    <string name="app_enter_behavior_option_enter_newline">Enter xuống dòng</string>
+    <string name="app_enter_behavior_status_app_default">Pastiera không can thiệp.</string>
+    <string name="app_enter_behavior_status_whatsapp_active">Đang hoạt động: %1$s.</string>
+    <string name="app_enter_behavior_status_partial_active">Hoạt động một phần: %1$s.</string>
+    <string name="app_enter_behavior_status_experimental_active">Hoạt động thử nghiệm: %1$s.</string>
+    <string name="app_enter_behavior_status_not_active">Chưa hoạt động: %1$s đã được lên kế hoạch.</string>
+    <string name="app_enter_behavior_status_native_result">Mặc định ứng dụng: Pastiera không can thiệp.</string>
+    <string name="app_enter_behavior_status_strategy_result">Đang hoạt động: %1$s.</string>
+    <string name="app_enter_behavior_status_experimental_result">Hoạt động thử nghiệm: %1$s.</string>
+    <string name="app_enter_behavior_strategy_none_label">Không ghi đè</string>
+    <string name="app_enter_behavior_strategy_app_action_label">Hành động ứng dụng</string>
+    <string name="app_enter_behavior_strategy_plain_enter_label">Enter thường</string>
+    <string name="app_enter_behavior_strategy_unconfigured_label">Chưa cấu hình</string>
+    <string name="app_enter_behavior_strategy_app_default_detail">Ứng dụng quyết định Enter gửi hay chèn xuống dòng.</string>
+    <string name="app_enter_behavior_strategy_whatsapp_newline_ctrl_send">Pastiera chèn xuống dòng trực tiếp và gửi qua hành động gửi của ứng dụng.</string>
+    <string name="app_enter_behavior_strategy_whatsapp_send_shift_newline">Pastiera gửi qua hành động gửi của ứng dụng. Shift+Enter được chèn trực tiếp như xuống dòng.</string>
+    <string name="app_enter_behavior_strategy_whatsapp_newline_only">Đã kiểm thử: Pastiera chèn Enter trực tiếp như xuống dòng và không kích hoạt gửi.</string>
+    <string name="app_enter_behavior_strategy_discord_app_default_detail">Đã kiểm thử: Discord đã xử lý đúng Enter để gửi và Shift+Enter để xuống dòng. Pastiera không can thiệp ở đây.</string>
+    <string name="app_enter_behavior_strategy_discord_partial_detail">Đã kiểm thử: xuống dòng được chèn trực tiếp. Ctrl+Enter gửi Enter thường không có meta Ctrl vì hành động ứng dụng Discord chỉ ẩn bàn phím.</string>
+    <string name="app_enter_behavior_strategy_experimental_detail">Chưa xác nhận: Pastiera đang thử hành động gửi của ứng dụng và chèn xuống dòng trực tiếp.</string>
+    <string name="app_enter_behavior_strategy_not_tested_detail">Chiến lược kỹ thuật cho ứng dụng này vẫn cần được kiểm thử.</string>
+    <string name="app_enter_behavior_desired_label">Hành vi mong muốn</string>
+    <string name="app_enter_behavior_strategy_label">Chiến lược gửi</string>
+    <string name="app_enter_behavior_strategy_auto">Tự động / chưa kiểm thử</string>
+    <string name="app_enter_behavior_strategy_editor_action">Hành động trình soạn thảo</string>
+    <string name="app_enter_behavior_strategy_ctrl_enter">Ctrl+Enter</string>
+    <string name="app_enter_behavior_strategy_plain_enter">Enter thường</string>
+    <string name="app_enter_behavior_additional_send_shortcut_label">Phím tắt gửi bổ sung</string>
+    <string name="app_enter_behavior_additional_send_shortcut_description">Áp dụng phím tắt gửi bổ sung cho danh sách ứng dụng hiển thị bên dưới.</string>
+    <string name="app_enter_behavior_additional_send_shortcut_none">Không có</string>
+    <string name="app_enter_behavior_additional_send_shortcut_sym_enter">SYM + Enter</string>
+    <string name="app_enter_behavior_sym_enter_conflict_title">SYM + Enter đã được QuickLauncher dùng</string>
+    <string name="app_enter_behavior_sym_enter_conflict_description">Chuyển trình kích hoạt QuickLauncher sang phím khác trước khi dùng SYM + Enter làm phím tắt gửi bổ sung.</string>
+    <string name="app_enter_behavior_sym_enter_conflict_action">Đổi trình kích hoạt</string>
+    <string name="settings_category_sounds">Âm thanh</string>
+    <string name="settings_sounds_description">Âm thanh gõ phím và nhập gói âm thanh</string>
+    <string name="debug_recorder_record">Ghi</string>
+    <string name="debug_recorder_stop">Dừng</string>
+    <string name="debug_recorder_copy">Sao chép</string>
+    <string name="debug_recorder_clear">Xóa</string>
+    <string name="debug_recorder_view">Xem</string>
+    <string name="debug_recorder_share">Chia sẻ</string>
+    <string name="debug_recorder_share_chooser">Chia sẻ báo cáo debug</string>
+    <string name="debug_recorder_copied">Đã sao chép báo cáo debug (%1$d sự kiện)</string>
+    <string name="debug_recorder_status">Trình ghi: %1$s · Sự kiện: %2$d</string>
+    <string name="debug_recorder_status_recording">đang ghi</string>
+    <string name="debug_recorder_status_stopped">đã dừng</string>
+    <string name="debug_recorder_started_at">Bắt đầu lúc: </string>
+    <string name="debug_recorder_include_suggestions">gồm gợi ý</string>
+    <string name="debug_report_viewer_title">Trình xem báo cáo debug</string>
+    <string name="nav_mode_action_move_word_left">←Từ</string>
+    <string name="nav_mode_action_move_word_right">Từ→</string>
+    <string name="nav_mode_action_expand_selection_word_left">←ChọnTừ</string>
+    <string name="nav_mode_action_expand_selection_word_right">ChọnTừ→</string>
+    <string name="nav_mode_action_media_play_pause">Phát/Tạm dừng</string>
+    <string name="nav_mode_action_media_previous">Media trước</string>
+    <string name="nav_mode_action_media_next">Media tiếp</string>
+    <string name="tutorial_skip_update">Vẫn bỏ qua</string>
+    <string name="tutorial_whats_new_title">Có gì mới trong bản này</string>
+    <string name="tutorial_whats_new_description">Đây là bản cập nhật lớn hơn của Pastiera. Các trang tiếp theo đáng xem nhanh vì chúng dẫn thẳng đến cài đặt và luồng thao tác đã thay đổi.</string>
+    <string name="tutorial_whats_new_continue_hint">Tiếp tục hướng dẫn để xem lại các cài đặt hữu ích nhất cho bản này.</string>
+    <string name="tutorial_devs_choice_button">Lựa chọn của nhà phát triển</string>
+    <string name="tutorial_devs_choice_applied">Đã áp dụng cài đặt Lựa chọn của nhà phát triển.</string>
+    <string name="tutorial_android16_ime_caption_title">Ẩn thanh tiêu đề IME</string>
+    <string name="tutorial_android16_ime_caption_description">Titan 2 và Titan 2 Elite có thể hiển thị thêm thanh tiêu đề IME phía trên Pastiera. Trên Android 16 trở lên, dùng cài đặt cử chỉ OEM này để ẩn thanh đó và giữ Pastiera gọn.</string>
+    <string name="tutorial_android16_ime_caption_before">Trước: lãng phí chỗ do thanh tiêu đề IME</string>
+    <string name="tutorial_android16_ime_caption_after">Sau: giao diện Pastiera gọn cho bàn phím phần cứng</string>
+    <string name="tutorial_android16_ime_caption_check_android16">Android 16 trở lên</string>
+    <string name="tutorial_android16_ime_caption_check_titan2">Unihertz Titan 2 hoặc Titan 2 Elite</string>
+    <string name="tutorial_android16_ime_caption_check_setting">Có cài đặt cử chỉ OEM</string>
+    <string name="tutorial_android16_ime_caption_button">Mở “Ẩn thanh tiêu đề IME”</string>
+    <string name="tutorial_android16_ime_caption_unavailable">Liên kết trực tiếp chỉ hiển thị khi đáp ứng mọi yêu cầu.</string>
+    <string name="tutorial_android16_ime_caption_fallback">Không mở được cài đặt cử chỉ Titan 2. Thay vào đó mở Cài đặt Android.</string>
+    <string name="tutorial_software_keyboard_auto_checker_title">Tự động phát hiện</string>
+    <string name="tutorial_software_keyboard_auto_selected">Tự động hiện chọn: %1$s</string>
+    <string name="tutorial_software_keyboard_auto_overridden">Ghi đè hiện tại: %1$s. Tự động sẽ chọn: %2$s</string>
+    <string name="tutorial_software_keyboard_auto_profile">Hồ sơ phát hiện: %1$s / %2$s</string>
+    <string name="tutorial_software_keyboard_auto_reason_physical">Lý do: hồ sơ này được xem là thiết bị có bàn phím vật lý, nên Tự động dùng chế độ bàn phím phần cứng.</string>
+    <string name="tutorial_software_keyboard_auto_reason_touch">Lý do: hồ sơ này không được nhận dạng là thiết bị có bàn phím vật lý, nên Tự động dùng chế độ bàn phím ảo.</string>
+    <string name="tutorial_typing_sound_demo_title">Âm thanh gõ phím</string>
+    <string name="tutorial_typing_sound_demo_description">Chọn kiểu âm thanh và gõ bên dưới để nghe ngay.</string>
+    <string name="tutorial_typing_sound_demo_input_label">Thử gõ tại đây</string>
+    <string name="app_language_title">Ngôn ngữ ứng dụng</string>
+    <string name="app_language_description">Chọn ngôn ngữ dùng cho văn bản giao diện ứng dụng.</string>
+    <string name="app_language_label">Ngôn ngữ</string>
+    <string name="app_language_system_default">Mặc định hệ thống</string>
+    <string name="app_language_system_default_with_detected">Mặc định hệ thống (%1$s)</string>
+    <string name="status_bar_slots_left">Nút bên trái</string>
+    <string name="status_bar_slots_right">Nút bên phải</string>
+    <string name="status_bar_slot_add">Thêm nút thanh trạng thái</string>
+    <string name="status_bar_slot_remove">Xóa nút thanh trạng thái</string>
+    <string name="status_bar_button_undo">Hoàn tác</string>
+    <string name="status_bar_button_undo_description">Gửi Ctrl+Z</string>
+    <string name="status_bar_button_redo">Làm lại</string>
+    <string name="status_bar_button_redo_description">Gửi Ctrl+Y</string>
+    <string name="status_bar_variations_visible_title">Hiển thị biến thể</string>
+    <string name="status_bar_variations_visible_description">Hiển thị hàng biến thể đã cấu hình giữa các nút thanh trạng thái. Khi tắt, các nút dùng toàn bộ thanh; điều khiển con trỏ bằng vuốt vẫn hoạt động.</string>
+    <string name="status_bar_swipe_cursor_info">Vuốt trên thanh trạng thái để di chuyển con trỏ.</string>
+    <string name="dynamic_variation_slot_count_title">Ô biến thể động</string>
+    <string name="dynamic_variation_slot_count_description">Cố gắng hiển thị %1$d mục động giữa các nút thanh trạng thái.</string>
+    <string name="dynamic_variation_resize_to_content_title">Đổi kích thước biến thể động</string>
+    <string name="dynamic_variation_resize_to_content_description">Khi bật, các mục động lấp đầy hàng còn trống dựa trên số mục đang hiển thị. Khi tắt, chúng giữ kích thước ô từ thanh trượt và căn trái.</string>
 </resources>

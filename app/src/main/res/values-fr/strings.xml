@@ -589,4 +589,234 @@
     <string name="software_keyboard_mode_always_virtual">Toujours clavier virtuel</string>
     <string name="software_keyboard_mode_always_hardware">Toujours clavier matériel</string>
     <string name="software_keyboard_mode_auto_short">Auto (PKB : matériel, sinon virtuel)</string>
+    <string name="static_variation_preset_title">Préréglage de variations statiques</string>
+    <string name="static_variation_preset_off">Désactivé</string>
+    <string name="static_variation_preset_off_description">Utiliser uniquement les variations dynamiques et les suggestions.</string>
+    <string name="static_variation_preset_symbols">Symboles</string>
+    <string name="static_variation_preset_symbols_description">Ligne de ponctuation par défaut.</string>
+    <string name="static_variation_preset_numbers">Chiffres</string>
+    <string name="static_variation_preset_numbers_description">Ligne de chiffres rapide.</string>
+    <string name="static_variation_preset_alternative">Symboles alternatifs</string>
+    <string name="static_variation_preset_alternative_description">Parenthèses et caractères spéciaux.</string>
+    <string name="static_variation_preset_dev_choice">Choix du développeur</string>
+    <string name="static_variation_preset_dev_choice_description">Ligne de ponctuation sélectionnée.</string>
+    <string name="emoji_picker_expanded_height_title">Sélecteur d’emoji plus grand</string>
+    <string name="emoji_picker_expanded_height_description">Utiliser environ 1,5 fois la hauteur pour la page de recherche d’emoji ; les autres pages SYM gardent leur hauteur normale.</string>
+    <string name="typing_sound_title">Sons de frappe</string>
+    <string name="typing_sound_off">Désactivé</string>
+    <string name="typing_sound_click">Clic de clavier</string>
+    <string name="typing_sound_typewriter">Machine à écrire</string>
+    <string name="typing_sound_custom">Pack de sons personnalisé…</string>
+    <string name="typing_sound_output_title">Sortie des sons de frappe</string>
+    <string name="typing_sound_output_media">Volume multimédia</string>
+    <string name="typing_sound_output_system">Sons système</string>
+    <string name="typing_sound_output_notification">Notifications</string>
+    <string name="typing_sound_output_dnd_hint">Les sons système et les notifications suivent le mode silencieux et Ne pas déranger.</string>
+    <string name="typing_sound_import_success">Pack de sons de frappe importé</string>
+    <string name="typing_sound_import_failed">Impossible d’importer ce pack de sons. Utilisez un ZIP avec des fichiers audio dans les dossiers normal/, space/, backspace/, enter/ et modifier/.</string>
+    <string name="typing_sound_docs_title">Format du pack de sons</string>
+    <string name="typing_sound_docs_description">Ouvrir le guide d’importation sur pastiera.eu</string>
+    <string name="typing_sound_docs_url">https://pastiera.eu/guides/typing-soundpacks/</string>
+    <string name="alt_shift_layout_switch_title">Changement de disposition Alt+Maj</string>
+    <string name="alt_shift_layout_switch_description">Changer de langue/disposition avec Alt+Maj.</string>
+    <string name="toast_on_layout_switch_title">Toast au changement de disposition</string>
+    <string name="toast_on_layout_switch_description">Afficher un toast lors du changement de langue/disposition.</string>
+    <string name="keyboard_profile_option_titan2elite_qwerty">Titan 2 Elite (QWERTY)</string>
+    <string name="keyboard_currency_symbol_title">Symbole monétaire</string>
+    <string name="keyboard_currency_symbol_description">Symbole inséré par les touches matérielles dédiées à la devise.</string>
+    <string name="starter_launcher_shortcuts_title">Pastiera-QuickLauncher</string>
+    <string name="starter_launcher_shortcuts_description">Lancement rapide, raccourcis SYM et affectations des touches d’apps</string>
+    <string name="starter_launcher_shortcuts_intro">Ces paramètres partagent une seule liste d’affectations app-touche. Choisissez où Pastiera doit écouter ces touches affectées.</string>
+    <string name="launcher_shortcuts_configure_description_with_quick_launcher">Touchez une touche pour affecter ou remplacer une app. QuickLauncher est actuellement affecté à %1$s.</string>
+    <string name="quick_launcher_default_blocked_hint">Nouveau : SYM peut ouvrir QuickLauncher. Pastiera l’affecterait normalement à Espace, mais Espace possède déjà un raccourci. Ouvrez la page des affectations et choisissez « Ouvrir QuickLauncher » sur n’importe quelle touche pour l’essayer.</string>
+    <string name="quick_launcher_title">Pastiera-QuickLauncher</string>
+    <string name="quick_launcher_subtitle">Tapez pour rechercher. Entrée ouvre le premier résultat.</string>
+    <string name="quick_launcher_close">Fermer</string>
+    <string name="quick_launcher_search_placeholder">Commencez à taper...</string>
+    <string name="quick_launcher_auto_start_single">Lancer automatiquement lorsqu’il ne reste qu’un résultat</string>
+    <string name="quick_launcher_auto_start_single_title">Ouvrir automatiquement la correspondance unique</string>
+    <string name="quick_launcher_auto_start_single_description">Lorsque la recherche QuickLauncher ne laisse qu’une app, lancez-la sans appuyer sur Entrée.</string>
+    <string name="quick_launcher_limit_results_title">Afficher seulement les meilleurs résultats</string>
+    <string name="quick_launcher_limit_results_description">Ne pas afficher la liste alphabétique complète des apps. QuickLauncher reste vide jusqu’à ce que vous tapiez, puis n’affiche que les trois meilleures correspondances.</string>
+    <string name="quick_launcher_text_field_shortcuts_title">Autoriser SYM+Espace dans les champs de texte</string>
+    <string name="quick_launcher_text_field_shortcuts_description">Si activé, QuickLauncher peut aussi s’ouvrir lorsque le curseur se trouve dans le champ de texte d’une app.</string>
+    <string name="quick_launcher_text_field_shortcuts_hint">Dans les champs de texte, maintenez SYM et appuyez sur Espace. Le verrouillage SYM ne peut pas le déclencher, car toucher SYM fait défiler les pages SYM.</string>
+    <string name="quick_launcher_respect_keyboard_layout_title">Utiliser la disposition active du clavier</string>
+    <string name="quick_launcher_respect_keyboard_layout_description">Si activé, la saisie de recherche suit la disposition Pastiera actuelle au lieu de la sortie QWERTY brute d’Android.</string>
+    <string name="quick_launcher_typo_tolerant_ranking_title">Recherche tolérante aux fautes</string>
+    <string name="quick_launcher_typo_tolerant_ranking_description">Trouve aussi les noms d’apps avec de petites fautes de frappe. Les correspondances par préfixe et abréviation restent mieux classées.</string>
+    <string name="quick_launcher_ranking_info_button">Fonctionnement du classement</string>
+    <string name="quick_launcher_ranking_info_title">Classement QuickLauncher</string>
+    <string name="quick_launcher_ranking_info_body">Les résultats sont classés ainsi : nom exact de l’app, préfixe du nom de l’app, préfixe de mot, correspondance abréviation/sous-séquence, nom d’app tolérant aux fautes, puis nom du package. La tolérance aux fautes est ignorée pour les requêtes très courtes.</string>
+    <string name="quick_launcher_behavior_title">Comportement</string>
+    <string name="quick_launcher_behavior_description">Règles de lancement, rendu des résultats et SYM+Espace depuis les champs de texte.</string>
+    <string name="quick_launcher_cosmetic_title">Apparence</string>
+    <string name="quick_launcher_cosmetic_description">Largeur et présentation compacte en pilule.</string>
+    <string name="quick_launcher_width_title">Largeur du lanceur</string>
+    <string name="quick_launcher_width_value">%1$d%% de la largeur de l’écran</string>
+    <string name="quick_launcher_pill_mode_title">Mode pilule</string>
+    <string name="quick_launcher_pill_mode_description">S’ouvre comme une pilule de recherche compacte et ne s’agrandit qu’après la saisie.</string>
+    <string name="quick_launcher_type_to_search">Commencez à taper pour rechercher des apps</string>
+    <string name="quick_launcher_loading_apps">Chargement des apps...</string>
+    <string name="quick_launcher_assign_action">Ouvrir QuickLauncher</string>
+    <string name="quick_launcher_no_apps">Aucune app trouvée</string>
+    <string name="quick_launcher_no_results">Aucun résultat pour \"%1$s\"</string>
+    <string name="quick_launcher_enter_hint">Entrée</string>
+    <string name="nav_mode_guide_title">Guide Nav Mode</string>
+    <string name="nav_mode_guide_description">Comment Ctrl, les affectations, les raccourcis d’apps et les indices de disposition fonctionnent ensemble.</string>
+    <string name="nav_mode_guide_text">Nav Mode transforme les touches de lettres en touches de navigation et de raccourci. Le résultat peut varier selon l’app, car certaines apps comprennent les actions d’éditeur Android, tandis que d’autres ne réagissent qu’aux vrais raccourcis Ctrl.
+
+Navigation avec Ctrl maintenu
+Lorsque la navigation avec Ctrl maintenu est désactivée, la touche Ctrl physiquement maintenue est transmise à l’app chaque fois que possible. Des raccourcis comme Ctrl+B, Ctrl+I ou Ctrl+Z peuvent alors fonctionner directement dans les éditeurs.
+
+Lorsque la navigation avec Ctrl maintenu est activée, la touche Ctrl physiquement maintenue utilise d’abord les affectations Nav Mode ci-dessous. Une touche affectée exécute sa commande Nav Mode configurée.
+
+Double appui sur Ctrl
+Un double appui sur Ctrl verrouille Nav Mode. Ensuite, appuyer sur une lettre déclenche l’affectation Nav Mode jusqu’à ce que vous quittiez à nouveau Nav Mode. C’est utile pour les flèches, Page haut/bas, Échap, Tab et les commandes de sélection sans maintenir Ctrl.
+
+Action ou Native Ctrl
+Les actions comme Copier, Coller, Couper, Tout sélectionner et Annuler sont envoyées comme actions d’éditeur Android. Elles fonctionnent dans de nombreux champs de texte, mais toutes les apps ne prennent pas en charge toutes les actions.
+
+Utilisez Native Ctrl lorsqu’une app attend un vrai raccourci. Par exemple, affecter I à Native Ctrl envoie Ctrl+I, ce qui permet aux éditeurs comme Google Docs de l’utiliser pour l’italique. Annuler peut aussi être affecté à Native Ctrl si une app gère mieux Ctrl+Z que l’annulation Android.
+
+QWERTZ sur QWERTY physique
+Nav Mode utilise la position physique de la touche afin que la navigation reste stable. Les indices de disposition sur les touches indiquent quand la disposition de texte active traiterait cette touche physique comme une autre lettre, par exemple Y/Z en QWERTZ.
+
+Raccourcis Ctrl d’app sensibles à la disposition
+Lorsque Ctrl maintenu est transmis aux apps, ce réglage facultatif peut d’abord traduire Ctrl+lettre via la disposition Pastiera active. Il affecte les raccourcis d’apps, pas la grille physique de Nav Mode.
+
+Overrides
+Chaque touche peut être configurée comme Keycode, Action, Native Ctrl ou Aucune. Utilisez les overrides pour résoudre les conflits propres à une app sans changer tout le mode.</string>
+    <string name="nav_mode_ctrl_hold_title">Navigation avec Ctrl maintenu</string>
+    <string name="nav_mode_ctrl_hold_description">Si activée, les champs de texte utilisent les affectations Nav Mode pendant que Ctrl est maintenu. Si désactivée, les raccourcis Ctrl sont transmis à l’app. Les touches définies sur Native Ctrl sont toujours transmises comme de vrais raccourcis Ctrl.</string>
+    <string name="layout_aware_ctrl_shortcuts_title">Raccourcis Ctrl d’app sensibles à la disposition</string>
+    <string name="layout_aware_ctrl_shortcuts_description">Lorsque Ctrl maintenu est transmis aux apps, traduire d’abord Ctrl+lettre via la disposition Pastiera active.</string>
+    <string name="layout_aware_ctrl_shortcuts_disabled_description">Désactivé pendant que la navigation avec Ctrl maintenu est active, car Ctrl maintenu est géré par Nav Mode au lieu de l’app.</string>
+    <string name="layout_aware_ctrl_shortcuts_info_title">Raccourcis Ctrl et Nav Mode</string>
+    <string name="layout_aware_ctrl_shortcuts_info_text">Il existe deux chemins pour Ctrl maintenu. Si la navigation avec Ctrl maintenu est activée, Pastiera gère Ctrl+touche avec les affectations Nav Mode affichées ci-dessous. Si elle est désactivée, Pastiera transmet Ctrl+touche à l’app. Cette option n’affecte que ce chemin app : si activée, Ctrl+lettre est d’abord traduit via la disposition Pastiera active, afin que les raccourcis puissent suivre les lettres que vous tapez. Si désactivée, les apps reçoivent les positions physiques d’origine des touches.</string>
+    <string name="nav_mode_native_ctrl">Native Ctrl</string>
+    <string name="app_enter_behavior_title">Comportement de la touche Entrée</string>
+    <string name="app_enter_behavior_description">Configurer la gestion d’Entrée et des retours à la ligne par app</string>
+    <string name="app_enter_behavior_enable_title">Comportement d’Entrée par app</string>
+    <string name="app_enter_behavior_enable_description">Utilisez les overrides Pastiera pour les apps de messagerie sélectionnées. Les apps testées affichent la stratégie réellement utilisée par Pastiera.</string>
+    <string name="app_enter_behavior_preset_title">Préréglage messagerie</string>
+    <string name="app_enter_behavior_preset_description">Appliquer un comportement par défaut cohérent aux apps de messagerie connues installées.</string>
+    <string name="app_enter_behavior_preset_app_default">Par défaut de l’app</string>
+    <string name="app_enter_behavior_preset_send_shift_newline">Entrée envoie, Maj+Entrée nouvelle ligne</string>
+    <string name="app_enter_behavior_preset_newline_ctrl_send">Entrée nouvelle ligne, Ctrl+Entrée envoie</string>
+    <string name="app_enter_behavior_preset_newline_only">Entrée nouvelle ligne uniquement</string>
+    <string name="app_enter_behavior_preset_custom">Personnalisé</string>
+    <string name="app_enter_behavior_overrides_title">Overrides d’apps</string>
+    <string name="app_enter_behavior_add_app">Ajouter une app</string>
+    <string name="app_enter_behavior_add_app_description">Pour les apps supplémentaires, il s’agit d’abord d’une configuration cible. La liste de messagerie sélectionnée utilise des stratégies testées.</string>
+    <string name="app_enter_behavior_add_app_list_title">Choisir une app</string>
+    <string name="app_enter_behavior_remove_app">Retirer l’app</string>
+    <string name="app_enter_behavior_show_manual_override">Override manuel</string>
+    <string name="app_enter_behavior_hide_manual_override">Masquer les champs manuels</string>
+    <string name="app_enter_behavior_manual_override_note">La stratégie sélectionnée est généralement le meilleur choix par défaut. N’utilisez un override que pour les mises à jour d’apps ou les cas particuliers.</string>
+    <string name="app_enter_behavior_option_app_default">Par défaut de l’app</string>
+    <string name="app_enter_behavior_option_send_shift_newline">Entrée envoie, Maj+Entrée nouvelle ligne</string>
+    <string name="app_enter_behavior_option_newline_ctrl_send">Entrée nouvelle ligne, Ctrl+Entrée envoie</string>
+    <string name="app_enter_behavior_option_enter_newline">Entrée nouvelle ligne</string>
+    <string name="app_enter_behavior_status_app_default">Pastiera n’intervient pas.</string>
+    <string name="app_enter_behavior_status_whatsapp_active">Actif : %1$s.</string>
+    <string name="app_enter_behavior_status_partial_active">Partiellement actif : %1$s.</string>
+    <string name="app_enter_behavior_status_experimental_active">Actif expérimentalement : %1$s.</string>
+    <string name="app_enter_behavior_status_not_active">Pas encore actif : %1$s est prévu.</string>
+    <string name="app_enter_behavior_status_native_result">Par défaut de l’app : Pastiera n’intervient pas.</string>
+    <string name="app_enter_behavior_status_strategy_result">Actif : %1$s.</string>
+    <string name="app_enter_behavior_status_experimental_result">Actif expérimentalement : %1$s.</string>
+    <string name="app_enter_behavior_strategy_none_label">Aucun override</string>
+    <string name="app_enter_behavior_strategy_app_action_label">Action d’app</string>
+    <string name="app_enter_behavior_strategy_plain_enter_label">Entrée simple</string>
+    <string name="app_enter_behavior_strategy_unconfigured_label">Non configuré</string>
+    <string name="app_enter_behavior_strategy_app_default_detail">L’app décide si Entrée envoie ou insère une nouvelle ligne.</string>
+    <string name="app_enter_behavior_strategy_whatsapp_newline_ctrl_send">Pastiera insère les nouvelles lignes directement et envoie via l’action d’envoi de l’app.</string>
+    <string name="app_enter_behavior_strategy_whatsapp_send_shift_newline">Pastiera envoie via l’action d’envoi de l’app. Maj+Entrée est inséré directement comme nouvelle ligne.</string>
+    <string name="app_enter_behavior_strategy_whatsapp_newline_only">Testé : Pastiera insère Entrée directement comme nouvelle ligne et ne déclenche pas l’envoi.</string>
+    <string name="app_enter_behavior_strategy_discord_app_default_detail">Testé : Discord se comporte déjà correctement avec Entrée pour envoyer et Maj+Entrée pour une nouvelle ligne. Pastiera n’intervient pas ici.</string>
+    <string name="app_enter_behavior_strategy_discord_partial_detail">Testé : les nouvelles lignes sont insérées directement. Ctrl+Entrée envoie une Entrée simple sans méta Ctrl, car l’action d’app de Discord ne fait que masquer le clavier.</string>
+    <string name="app_enter_behavior_strategy_experimental_detail">Non confirmé : Pastiera essaie l’action d’envoi de l’app et l’insertion directe de nouvelle ligne.</string>
+    <string name="app_enter_behavior_strategy_not_tested_detail">La stratégie technique doit encore être testée pour cette app.</string>
+    <string name="app_enter_behavior_desired_label">Comportement souhaité</string>
+    <string name="app_enter_behavior_strategy_label">Stratégie d’envoi</string>
+    <string name="app_enter_behavior_strategy_auto">Auto / non testé</string>
+    <string name="app_enter_behavior_strategy_editor_action">Action d’éditeur</string>
+    <string name="app_enter_behavior_strategy_ctrl_enter">Ctrl+Entrée</string>
+    <string name="app_enter_behavior_strategy_plain_enter">Entrée simple</string>
+    <string name="app_enter_behavior_additional_send_shortcut_label">Raccourci d’envoi supplémentaire</string>
+    <string name="app_enter_behavior_additional_send_shortcut_description">Appliquer un raccourci d’envoi supplémentaire à la liste d’apps affichée ci-dessous.</string>
+    <string name="app_enter_behavior_additional_send_shortcut_none">Aucun</string>
+    <string name="app_enter_behavior_additional_send_shortcut_sym_enter">SYM + Entrée</string>
+    <string name="app_enter_behavior_sym_enter_conflict_title">SYM + Entrée est déjà utilisé par QuickLauncher</string>
+    <string name="app_enter_behavior_sym_enter_conflict_description">Déplacez le déclencheur QuickLauncher vers une autre touche avant d’utiliser SYM + Entrée comme raccourci d’envoi supplémentaire.</string>
+    <string name="app_enter_behavior_sym_enter_conflict_action">Changer le déclencheur</string>
+    <string name="settings_category_sounds">Sons</string>
+    <string name="settings_sounds_description">Sons de frappe et importation de packs de sons</string>
+    <string name="debug_recorder_record">Enregistrer</string>
+    <string name="debug_recorder_stop">Arrêter</string>
+    <string name="debug_recorder_copy">Copier</string>
+    <string name="debug_recorder_clear">Effacer</string>
+    <string name="debug_recorder_view">Voir</string>
+    <string name="debug_recorder_share">Partager</string>
+    <string name="debug_recorder_share_chooser">Partager le rapport de debug</string>
+    <string name="debug_recorder_copied">Rapport de debug copié (%1$d événements)</string>
+    <string name="debug_recorder_status">Enregistreur : %1$s · Événements : %2$d</string>
+    <string name="debug_recorder_status_recording">enregistrement</string>
+    <string name="debug_recorder_status_stopped">arrêté</string>
+    <string name="debug_recorder_started_at">Démarré à : </string>
+    <string name="debug_recorder_include_suggestions">incl. suggestions</string>
+    <string name="debug_report_viewer_title">Visionneuse de rapport de debug</string>
+    <string name="nav_mode_action_move_word_left">←Mot</string>
+    <string name="nav_mode_action_move_word_right">Mot→</string>
+    <string name="nav_mode_action_expand_selection_word_left">←SelMot</string>
+    <string name="nav_mode_action_expand_selection_word_right">SelMot→</string>
+    <string name="nav_mode_action_media_play_pause">Lecture/Pause</string>
+    <string name="nav_mode_action_media_previous">Média précédent</string>
+    <string name="nav_mode_action_media_next">Média suivant</string>
+    <string name="tutorial_skip_update">Ignorer quand même</string>
+    <string name="tutorial_whats_new_title">Nouveautés de cette version</string>
+    <string name="tutorial_whats_new_description">Il s’agit d’une mise à jour plus importante de Pastiera. Les pages suivantes valent un rapide passage, car elles pointent directement vers les paramètres et flux de travail qui ont changé.</string>
+    <string name="tutorial_whats_new_continue_hint">Continuez le tutoriel pour revoir les paramètres les plus utiles de cette version.</string>
+    <string name="tutorial_devs_choice_button">Choix du développeur</string>
+    <string name="tutorial_devs_choice_applied">Paramètres Choix du développeur appliqués.</string>
+    <string name="tutorial_android16_ime_caption_title">Masquer la barre de légende IME</string>
+    <string name="tutorial_android16_ime_caption_description">Titan 2 et Titan 2 Elite peuvent afficher une barre de légende IME supplémentaire au-dessus de Pastiera. Sur Android 16 ou plus récent, utilisez ce réglage de geste OEM pour masquer cette barre et garder Pastiera compacte.</string>
+    <string name="tutorial_android16_ime_caption_before">Avant : espace perdu par la barre de légende IME</string>
+    <string name="tutorial_android16_ime_caption_after">Après : surface Pastiera compacte pour clavier matériel</string>
+    <string name="tutorial_android16_ime_caption_check_android16">Android 16 ou plus récent</string>
+    <string name="tutorial_android16_ime_caption_check_titan2">Unihertz Titan 2 ou Titan 2 Elite</string>
+    <string name="tutorial_android16_ime_caption_check_setting">Réglage de geste OEM disponible</string>
+    <string name="tutorial_android16_ime_caption_button">Ouvrir « Masquer la barre de légende IME »</string>
+    <string name="tutorial_android16_ime_caption_unavailable">Le lien direct n’est affiché que lorsque toutes les conditions sont remplies.</string>
+    <string name="tutorial_android16_ime_caption_fallback">Impossible d’ouvrir le réglage de geste du Titan 2. Ouverture des paramètres Android à la place.</string>
+    <string name="tutorial_software_keyboard_auto_checker_title">Détection automatique</string>
+    <string name="tutorial_software_keyboard_auto_selected">Auto sélectionne actuellement : %1$s</string>
+    <string name="tutorial_software_keyboard_auto_overridden">Override actuel : %1$s. Auto sélectionnerait : %2$s</string>
+    <string name="tutorial_software_keyboard_auto_profile">Profil détecté : %1$s / %2$s</string>
+    <string name="tutorial_software_keyboard_auto_reason_physical">Raison : ce profil est traité comme un appareil à clavier physique, donc Auto utilise le mode clavier matériel.</string>
+    <string name="tutorial_software_keyboard_auto_reason_touch">Raison : ce profil n’est pas reconnu comme appareil à clavier physique, donc Auto utilise le mode clavier virtuel.</string>
+    <string name="tutorial_typing_sound_demo_title">Sons de frappe</string>
+    <string name="tutorial_typing_sound_demo_description">Choisissez un style sonore et tapez ci-dessous pour l’entendre immédiatement.</string>
+    <string name="tutorial_typing_sound_demo_input_label">Essayez de taper ici</string>
+    <string name="app_language_title">Langue de l’app</string>
+    <string name="app_language_description">Choisissez la langue utilisée pour les textes de l’interface de l’app.</string>
+    <string name="app_language_label">Langue</string>
+    <string name="app_language_system_default">Valeur par défaut du système</string>
+    <string name="app_language_system_default_with_detected">Valeur par défaut du système (%1$s)</string>
+    <string name="status_bar_slots_left">Boutons de gauche</string>
+    <string name="status_bar_slots_right">Boutons de droite</string>
+    <string name="status_bar_slot_add">Ajouter un bouton à la barre d’état</string>
+    <string name="status_bar_slot_remove">Retirer un bouton de la barre d’état</string>
+    <string name="status_bar_button_undo">Annuler</string>
+    <string name="status_bar_button_undo_description">Envoyer Ctrl+Z</string>
+    <string name="status_bar_button_redo">Rétablir</string>
+    <string name="status_bar_button_redo_description">Envoyer Ctrl+Y</string>
+    <string name="status_bar_variations_visible_title">Afficher les variations</string>
+    <string name="status_bar_variations_visible_description">Afficher la ligne de variations configurée entre les boutons de la barre d’état. Si désactivé, les boutons utilisent toute la barre ; le contrôle du curseur par glissement fonctionne toujours.</string>
+    <string name="status_bar_swipe_cursor_info">Glissez sur la barre d’état pour déplacer le curseur.</string>
+    <string name="dynamic_variation_slot_count_title">Emplacements de variations dynamiques</string>
+    <string name="dynamic_variation_slot_count_description">Essayer d’afficher %1$d entrées dynamiques entre les boutons de la barre d’état.</string>
+    <string name="dynamic_variation_resize_to_content_title">Redimensionner les variations dynamiques</string>
+    <string name="dynamic_variation_resize_to_content_description">Si activé, les entrées dynamiques remplissent la ligne disponible selon leur nombre. Si désactivé, elles conservent la taille d’emplacement du curseur et restent alignées à gauche.</string>
 </resources>
