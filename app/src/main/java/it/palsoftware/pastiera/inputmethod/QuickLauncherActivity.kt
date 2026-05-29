@@ -79,6 +79,7 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
     private var loadingApps by mutableStateOf(false)
     private var launchedAutomatically = false
     private var keyboardLayout: Map<Int, LayoutMapping> = emptyMap()
+    private var enterHandledOnKeyDown = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -140,6 +141,7 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         when (keyCode) {
             KeyEvent.KEYCODE_ENTER -> {
+                enterHandledOnKeyDown = true
                 launchTopMatch()
                 return true
             }
@@ -172,6 +174,18 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
         }
 
         return super.onKeyDown(keyCode, event)
+    }
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_ENTER) {
+            if (!enterHandledOnKeyDown && event?.isCanceled != true) {
+                launchTopMatch()
+            }
+            enterHandledOnKeyDown = false
+            return true
+        }
+
+        return super.onKeyUp(keyCode, event)
     }
 
     override fun finish() {
