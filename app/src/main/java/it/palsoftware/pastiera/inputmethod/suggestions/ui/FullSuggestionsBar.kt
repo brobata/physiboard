@@ -30,6 +30,7 @@ import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarCallbacks
 import android.view.inputmethod.InputMethodManager
 import android.inputmethodservice.InputMethodService
 import it.palsoftware.pastiera.core.suggestions.DictionaryRepository
+import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils.languageCode
 
 /**
  * Renders the full-width suggestion bar with up to 3 items. Always occupies
@@ -64,6 +65,12 @@ class FullSuggestionsBar(
     private var liveAnnouncementsEnabled: Boolean = false
     private var suggestionsAnnouncementDelayMs: Long = 600L
     private var lastAnnouncedSlots: List<String?> = emptyList()
+
+    @Suppress("DEPRECATION")
+    private fun View.announceForAccessibilityCompat(text: CharSequence) {
+        announceForAccessibility(text)
+    }
+
     private val targetHeightPx: Int by lazy {
         // Compact row sized around three suggestion pills
         dpToPx(36f)
@@ -219,10 +226,7 @@ class FullSuggestionsBar(
         return try {
             val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
             val currentSubtype = imm?.currentInputMethodSubtype
-            val locale = currentSubtype?.locale ?: return false
-            
-            // Extract language code from locale (e.g., "it_IT" -> "it", "en_US" -> "en")
-            val langCode = locale.split("_")[0]
+            val langCode = currentSubtype?.languageCode() ?: return false
             it.palsoftware.pastiera.core.suggestions.AndroidDictionaryRepository.hasDictionaryForLocale(context, langCode)
         } catch (e: Exception) {
             false
@@ -423,7 +427,7 @@ class FullSuggestionsBar(
                     .filter { it.isNotEmpty() }
                     .joinToString(", ")
                 if (announcement.isNotBlank()) {
-                    bar.announceForAccessibility(announcement)
+                    bar.announceForAccessibilityCompat(announcement)
                     lastAnnouncedSlots = slotsSnapshot
                 }
             }

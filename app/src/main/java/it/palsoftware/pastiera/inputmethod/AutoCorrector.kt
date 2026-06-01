@@ -3,6 +3,7 @@ package it.palsoftware.pastiera.inputmethod
 import android.content.Context
 import android.content.res.AssetManager
 import android.util.Log
+import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils.localeString
 import org.json.JSONObject
 
 /**
@@ -244,7 +245,7 @@ object AutoCorrector {
     private fun getCurrentImeLanguageCode(context: Context): String? {
         return try {
             val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
-            val localeString = imm?.currentInputMethodSubtype?.locale ?: return null
+            val localeString = imm?.currentInputMethodSubtype?.localeString() ?: return null
             val locale = java.util.Locale.forLanguageTag(localeString.replace("_", "-"))
             locale.language.lowercase()
         } catch (e: Exception) {

@@ -304,11 +304,6 @@ object EmojiSearchRepository {
             val language = locale.language
             if (!language.isNullOrBlank()) out.add(language)
         }
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N && out.isEmpty()) {
-            val fallback = context.resources.configuration.locale
-            fallback?.toLanguageTag()?.takeIf { it.isNotBlank() }?.let(out::add)
-            fallback?.language?.takeIf { it.isNotBlank() }?.let(out::add)
-        }
         out.add(EN_LOCALE)
         return out.distinct()
     }

@@ -33,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils.localeString
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -408,7 +409,7 @@ private fun AppLanguageSelectorCard() {
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .menuAnchor()
+                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                 )
 
                 ExposedDropdownMenu(
@@ -580,7 +581,7 @@ private fun AddCustomInputStyleDialog(
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .then(if (!isSystemLocale) Modifier.menuAnchor() else Modifier)
+                            .then(if (!isSystemLocale) Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable) else Modifier)
                     )
                     if (!isSystemLocale) {
                         ExposedDropdownMenu(
@@ -756,7 +757,7 @@ private fun AddCustomInputStyleDialog(
                         singleLine = true,
                         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                             capitalization = KeyboardCapitalization.None,
-                            autoCorrect = false,
+                            autoCorrectEnabled = false,
                             keyboardType = KeyboardType.Uri
                         )
                     )
@@ -1004,14 +1005,7 @@ private fun removeCustomInputStyle(context: Context, locale: String, layout: Str
  */
 private fun getLocaleDisplayName(locale: String): String {
     return try {
-        val parts = locale.split("_")
-        val lang = parts[0]
-        val country = if (parts.size > 1) parts[1] else ""
-        val localeObj = if (country.isNotEmpty()) {
-            Locale(lang, country)
-        } else {
-            Locale(lang)
-        }
+        val localeObj = Locale.forLanguageTag(locale.replace('_', '-'))
         localeObj.getDisplayName(Locale.getDefault())
     } catch (e: Exception) {
         locale
@@ -1168,7 +1162,7 @@ private fun updateLocaleLayoutMapping(context: Context, locale: String, layout: 
         try {
             val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
             val currentSubtype = imm?.currentInputMethodSubtype
-            val currentLocale = currentSubtype?.locale
+            val currentLocale = currentSubtype?.localeString()
             
             if (currentLocale == locale && SettingsManager.isKeyboardLayoutAutoByLocale(context)) {
                 // The locale being updated is currently active, immediately apply the layout change

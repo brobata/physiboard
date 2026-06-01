@@ -24,13 +24,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.KeyboardReturn
+import androidx.compose.material.icons.automirrored.filled.ManageSearch
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.KeyboardCommandKey
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LineWeight
-import androidx.compose.material.icons.filled.ManageSearch
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -476,7 +476,7 @@ fun CustomizationSettingsScreen(
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Filled.ManageSearch,
+                                    imageVector = Icons.AutoMirrored.Filled.ManageSearch,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(24.dp)
@@ -975,7 +975,7 @@ private fun StarterLauncherShortcutsSettingsScreen(
             StarterLauncherNavigationRow(
                 icon = {
                     Icon(
-                        imageVector = Icons.Filled.ManageSearch,
+                        imageVector = Icons.AutoMirrored.Filled.ManageSearch,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(24.dp)
@@ -1073,7 +1073,7 @@ private fun StarterLauncherBehaviorScreen(
                         },
                         colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                         modifier = Modifier
-                            .menuAnchor()
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                             .fillMaxWidth()
                     )
                     ExposedDropdownMenu(
@@ -1219,7 +1219,7 @@ private fun QuickLauncherDisplayedEntriesSection(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Filled.ManageSearch,
+                    imageVector = Icons.AutoMirrored.Filled.ManageSearch,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(28.dp)
@@ -2198,7 +2198,7 @@ private fun StarterLauncherNavigationRow(
 @Composable
 private fun SettingsRowKeyboardIcon() {
     Icon(
-        imageVector = Icons.Filled.ManageSearch,
+        imageVector = Icons.AutoMirrored.Filled.ManageSearch,
         contentDescription = null,
         tint = MaterialTheme.colorScheme.primary,
         modifier = Modifier.size(24.dp)

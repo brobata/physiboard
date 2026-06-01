@@ -30,6 +30,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.ManageSearch
+import androidx.compose.material.icons.automirrored.filled.Rule
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -660,7 +663,7 @@ fun TutorialSoftwareKeyboardPageContent(
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .menuAnchor()
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable)
             )
             ExposedDropdownMenu(
                 expanded = expanded,
@@ -853,7 +856,7 @@ private fun SoftwareKeyboardAutoDetectionCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Filled.Rule,
+                    imageVector = Icons.AutoMirrored.Filled.Rule,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp)
@@ -1391,7 +1394,7 @@ fun TutorialQuickLauncherPageContent(
     TutorialFeaturePageContent(
         title = stringResource(R.string.tutorial_quick_launcher_title),
         description = stringResource(R.string.tutorial_quick_launcher_description),
-        icon = Icons.Filled.ManageSearch,
+        icon = Icons.AutoMirrored.Filled.ManageSearch,
         tint = MaterialTheme.colorScheme.primary,
         bullets = listOf(
             stringResource(R.string.tutorial_quick_launcher_bullet_sym_space),
@@ -1426,7 +1429,7 @@ fun TutorialMessengerPresetsPageContent(
     TutorialFeaturePageContent(
         title = stringResource(R.string.tutorial_messenger_presets_title),
         description = stringResource(R.string.tutorial_messenger_presets_description),
-        icon = Icons.Filled.Send,
+        icon = Icons.AutoMirrored.Filled.Send,
         tint = MaterialTheme.colorScheme.tertiary,
         bullets = listOf(
             stringResource(R.string.tutorial_messenger_presets_bullet_enter),
@@ -1918,7 +1921,7 @@ fun TutorialCustomizationPageContent(
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = appLanguageExpanded) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .menuAnchor()
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable)
             )
 
             ExposedDropdownMenu(
@@ -1958,7 +1961,7 @@ fun TutorialCustomizationPageContent(
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = modifierExpanded) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .menuAnchor()
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable)
             )
 
             ExposedDropdownMenu(
@@ -2064,7 +2067,7 @@ fun TutorialCustomizationPageContent(
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typingSoundExpanded) },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .menuAnchor()
+                                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                         )
                         ExposedDropdownMenu(
                             expanded = typingSoundExpanded,
@@ -2099,7 +2102,7 @@ fun TutorialCustomizationPageContent(
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typingSoundOutputExpanded) },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .menuAnchor()
+                                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                         )
                         ExposedDropdownMenu(
                             expanded = typingSoundOutputExpanded,

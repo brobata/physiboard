@@ -15,9 +15,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DeleteOutline
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -313,7 +313,7 @@ private fun EnterPresetSelector(
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .menuAnchor()
+                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                 )
                 ExposedDropdownMenu(
                     expanded = expanded,
@@ -367,7 +367,7 @@ private fun EnterAdditionalSendShortcutSelector(
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .menuAnchor()
+                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                 )
                 ExposedDropdownMenu(
                     expanded = expanded,
@@ -480,7 +480,7 @@ private fun EnterBehaviorOverrideRow(
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(behaviorExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .menuAnchor()
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                     )
                     ExposedDropdownMenu(
                         expanded = behaviorExpanded,
@@ -511,7 +511,7 @@ private fun EnterBehaviorOverrideRow(
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(strategyExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .menuAnchor()
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                     )
                     ExposedDropdownMenu(
                         expanded = strategyExpanded,
@@ -542,7 +542,7 @@ private fun EnterBehaviorOverrideRow(
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(additionalShortcutExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .menuAnchor()
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                     )
                     ExposedDropdownMenu(
                         expanded = additionalShortcutExpanded,
@@ -611,7 +611,7 @@ private fun AddEnterBehaviorAppDialog(
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(behaviorExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .menuAnchor()
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                     )
                     ExposedDropdownMenu(
                         expanded = behaviorExpanded,
@@ -640,7 +640,7 @@ private fun AddEnterBehaviorAppDialog(
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(strategyExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .menuAnchor()
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                     )
                     ExposedDropdownMenu(
                         expanded = strategyExpanded,
@@ -669,7 +669,7 @@ private fun AddEnterBehaviorAppDialog(
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(additionalShortcutExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .menuAnchor()
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                     )
                     ExposedDropdownMenu(
                         expanded = additionalShortcutExpanded,
@@ -922,7 +922,7 @@ private fun AppIcon(app: EnterBehaviorApp, modifier: Modifier = Modifier) {
         )
     } else {
         Icon(
-            imageVector = Icons.Filled.Send,
+            imageVector = Icons.AutoMirrored.Filled.Send,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = modifier

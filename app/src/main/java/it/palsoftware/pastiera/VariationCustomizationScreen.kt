@@ -37,6 +37,7 @@ import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.data.layout.LayoutMappingRepository
 import it.palsoftware.pastiera.data.variation.VariationRepository
 import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils
+import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils.localeString
 import android.view.inputmethod.InputMethodManager
 import org.json.JSONObject
 
@@ -261,7 +262,7 @@ fun VariationCustomizationScreen(
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .menuAnchor()
+                                    .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                             )
                             ExposedDropdownMenu(
                                 expanded = staticVariationPresetExpanded,
@@ -393,7 +394,7 @@ fun VariationCustomizationScreen(
                             colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .menuAnchor()
+                                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                         )
                         ExposedDropdownMenu(
                             expanded = showGlobalOverrideMenu,
@@ -1132,7 +1133,7 @@ private fun resolveActiveLayoutForVariationScreen(context: Context): String {
             return fromSubtype
         }
 
-        val locale = subtype?.locale
+        val locale = subtype?.localeString()
         if (!locale.isNullOrBlank()) {
             return AdditionalSubtypeUtils.getLayoutForLocale(context.assets, locale, context)
         }

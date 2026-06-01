@@ -32,6 +32,45 @@ object AdditionalSubtypeUtils {
         "en_US", "it_IT", "fr_FR", "de_DE", "pl_PL", "da_DK",
         "no_NO", "es_ES", "pt_PT", "ru_RU", "sr_RS", "uk_UA"
     )
+
+    fun InputMethodSubtype.localeString(): String =
+        languageTag.takeIf { it.isNotBlank() }
+            ?: legacyLocaleString()
+
+    fun InputMethodSubtype.languageCode(): String? =
+        localeString()
+            .replace('_', '-')
+            .split('-')
+            .firstOrNull()
+            ?.takeIf { it.isNotBlank() }
+
+    fun localeFromSubtypeString(localeString: String): Locale {
+        val normalized = localeString.replace('_', '-')
+        return Locale.forLanguageTag(normalized).takeIf { it.language.isNotBlank() }
+            ?: Locale.ITALIAN
+    }
+
+    @Suppress("DEPRECATION")
+    private fun InputMethodSubtype.legacyLocaleString(): String = locale.orEmpty()
+
+    @Suppress("DEPRECATION")
+    fun setAdditionalInputMethodSubtypesCompat(
+        imm: InputMethodManager,
+        imeId: String,
+        subtypes: Array<InputMethodSubtype>
+    ) {
+        imm.setAdditionalInputMethodSubtypes(imeId, subtypes)
+    }
+
+    @Suppress("DEPRECATION")
+    fun setInputMethodAndSubtypeCompat(
+        imm: InputMethodManager,
+        token: android.os.IBinder,
+        imeId: String,
+        subtype: InputMethodSubtype
+    ) {
+        imm.setInputMethodAndSubtype(token, imeId, subtype)
+    }
     
     /**
      * Parses a preference string and creates an array of InputMethodSubtype objects.
@@ -104,7 +143,7 @@ object AdditionalSubtypeUtils {
      */
     fun createPrefSubtypes(subtypeArray: Array<InputMethodSubtype>): String {
         return subtypeArray.joinToString(";") { subtype ->
-            val locale = subtype.locale ?: ""
+            val locale = subtype.localeString()
             val extraValue = subtype.extraValue ?: ""
             val layoutName = extractLayoutFromExtraValue(extraValue) ?: ""
             val otherExtras = extractOtherExtras(extraValue)
@@ -192,12 +231,8 @@ object AdditionalSubtypeUtils {
      */
     private fun parseLocale(localeStr: String): Locale? {
         return try {
-            val parts = localeStr.split("_")
-            when (parts.size) {
-                2 -> Locale(parts[0], parts[1])
-                1 -> Locale(parts[0])
-                else -> null
-            }
+            Locale.forLanguageTag(localeStr.replace('_', '-'))
+                .takeIf { it.language.isNotBlank() }
         } catch (e: Exception) {
             null
         }
@@ -256,7 +291,7 @@ object AdditionalSubtypeUtils {
         subtypes: Array<InputMethodSubtype>,
         locale: String
     ): InputMethodSubtype? {
-        return subtypes.firstOrNull { it.locale == locale }
+        return subtypes.firstOrNull { it.localeString() == locale }
     }
     
     /**
@@ -268,7 +303,7 @@ object AdditionalSubtypeUtils {
         layoutName: String
     ): InputMethodSubtype? {
         return subtypes.firstOrNull { subtype ->
-            subtype.locale == locale && 
+            subtype.localeString() == locale && 
             extractLayoutFromExtraValue(subtype.extraValue ?: "") == layoutName
         }
     }
@@ -285,7 +320,7 @@ object AdditionalSubtypeUtils {
         locale: String,
         layoutName: String
     ): Boolean {
-        return subtype.locale == locale &&
+        return subtype.localeString() == locale &&
             getKeyboardLayoutFromSubtype(subtype) == layoutName
     }
 
@@ -320,7 +355,7 @@ object AdditionalSubtypeUtils {
             if (!layoutFromSubtype.isNullOrEmpty()) {
                 return layoutFromSubtype
             }
-            val locale = subtype.locale ?: "en_US"
+            val locale = subtype.localeString().ifBlank { "en_US" }
             return getLayoutForLocale(assets, locale, context)
         }
 
@@ -441,7 +476,7 @@ object AdditionalSubtypeUtils {
         if (isAdditionalSubtype(subtype)) return true
 
         // For system subtypes (from method.xml), keep only if locale (or language root) is still in system.
-        val subtypeLocale = subtype.locale ?: ""
+        val subtypeLocale = subtype.localeString()
         val languageCode = subtypeLocale.split("_").first().lowercase()
         return currentSystemLocales.contains(subtypeLocale) || systemLanguageCodes.contains(languageCode)
     }
@@ -668,7 +703,7 @@ object AdditionalSubtypeUtils {
             Log.d(TAG, "Created ${subtypes.size} additional subtypes")
             
             // Always call setAdditionalInputMethodSubtypes, even with empty array to remove old subtypes
-            imm.setAdditionalInputMethodSubtypes(imeId, subtypes)
+            setAdditionalInputMethodSubtypesCompat(imm, imeId, subtypes)
             Log.d(TAG, "Successfully called setAdditionalInputMethodSubtypes with ${subtypes.size} subtypes")
             
             if (subtypes.isNotEmpty()) {
@@ -701,13 +736,13 @@ object AdditionalSubtypeUtils {
                                         isAdditionalSubtype(subtype) &&
                                         matchesLocaleAndKeyboardLayoutSet(
                                             subtype,
-                                            additionalSubtype.locale ?: "",
+                                            additionalSubtype.localeString(),
                                             additionalLayout
                                         )
                                 }
                                 if (matchingSubtype != null) {
                                     enabledHashCodes.add(matchingSubtype.hashCode())
-                                    Log.d(TAG, "Adding subtype to enabled list: locale=${matchingSubtype.locale}, hashCode=${matchingSubtype.hashCode()}")
+                                    Log.d(TAG, "Adding subtype to enabled list: locale=${matchingSubtype.localeString()}, hashCode=${matchingSubtype.hashCode()}")
                                 }
                             }
                             

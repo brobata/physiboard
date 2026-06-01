@@ -3,8 +3,9 @@ package it.palsoftware.pastiera
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.ClickableText
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -14,10 +15,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.*
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -111,6 +114,28 @@ fun AboutScreen(
             }
         }
     }
+}
+
+@Composable
+private fun MarkdownClickableText(
+    text: AnnotatedString,
+    style: TextStyle,
+    urlMap: Map<Int, String>,
+    context: android.content.Context,
+    modifier: Modifier = Modifier
+) {
+    var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+    BasicText(
+        text = text,
+        style = style,
+        modifier = modifier.pointerInput(urlMap) {
+            detectTapGestures { position ->
+                val offset = layoutResult?.getOffsetForPosition(position) ?: return@detectTapGestures
+                urlMap[offset]?.let { url -> openUrl(context, url) }
+            }
+        },
+        onTextLayout = { layoutResult = it }
+    )
 }
 
 /**
@@ -319,18 +344,15 @@ private fun MarkdownHeading1(
     context: android.content.Context
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    ClickableText(
+    MarkdownClickableText(
         text = text,
         style = MaterialTheme.typography.headlineMedium.copy(
             fontWeight = FontWeight.Bold,
             fontSize = 24.sp,
             color = colorScheme.onSurface
         ),
-        onClick = { offset ->
-            urlMap[offset]?.let { url ->
-                openUrl(context, url)
-            }
-        }
+        urlMap = urlMap,
+        context = context
     )
 }
 
@@ -341,18 +363,15 @@ private fun MarkdownHeading2(
     context: android.content.Context
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    ClickableText(
+    MarkdownClickableText(
         text = text,
         style = MaterialTheme.typography.titleLarge.copy(
             fontWeight = FontWeight.Bold,
             fontSize = 20.sp,
             color = colorScheme.onSurface
         ),
-        onClick = { offset ->
-            urlMap[offset]?.let { url ->
-                openUrl(context, url)
-            }
-        }
+        urlMap = urlMap,
+        context = context
     )
 }
 
@@ -363,18 +382,15 @@ private fun MarkdownHeading3(
     context: android.content.Context
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    ClickableText(
+    MarkdownClickableText(
         text = text,
         style = MaterialTheme.typography.titleMedium.copy(
             fontWeight = FontWeight.Bold,
             fontSize = 18.sp,
             color = colorScheme.onSurface
         ),
-        onClick = { offset ->
-            urlMap[offset]?.let { url ->
-                openUrl(context, url)
-            }
-        }
+        urlMap = urlMap,
+        context = context
     )
 }
 
@@ -385,18 +401,15 @@ private fun MarkdownHeading4(
     context: android.content.Context
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    ClickableText(
+    MarkdownClickableText(
         text = text,
         style = MaterialTheme.typography.titleSmall.copy(
             fontWeight = FontWeight.Bold,
             fontSize = 16.sp,
             color = colorScheme.onSurface
         ),
-        onClick = { offset ->
-            urlMap[offset]?.let { url ->
-                openUrl(context, url)
-            }
-        }
+        urlMap = urlMap,
+        context = context
     )
 }
 
@@ -407,16 +420,13 @@ private fun MarkdownParagraph(
     context: android.content.Context
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    ClickableText(
+    MarkdownClickableText(
         text = text,
         style = MaterialTheme.typography.bodyMedium.copy(
             color = colorScheme.onSurface
         ),
-        onClick = { offset ->
-            urlMap[offset]?.let { url ->
-                openUrl(context, url)
-            }
-        }
+        urlMap = urlMap,
+        context = context
     )
 }
 
@@ -438,17 +448,14 @@ private fun MarkdownListItem(
             ),
             modifier = Modifier.padding(top = 2.dp)
         )
-        ClickableText(
+        MarkdownClickableText(
             text = text,
             style = MaterialTheme.typography.bodyMedium.copy(
                 color = colorScheme.onSurface
             ),
             modifier = Modifier.weight(1f),
-            onClick = { offset ->
-                urlMap[offset]?.let { url ->
-                    openUrl(context, url)
-                }
-            }
+            urlMap = urlMap,
+            context = context
         )
     }
     Spacer(modifier = Modifier.height(4.dp))
@@ -668,4 +675,3 @@ private fun openUrl(context: android.content.Context, url: String) {
         android.util.Log.e("AboutScreen", "Error opening URL: $url", e)
     }
 }
-

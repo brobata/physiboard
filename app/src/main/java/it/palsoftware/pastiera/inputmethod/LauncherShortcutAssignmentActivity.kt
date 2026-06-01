@@ -26,6 +26,9 @@ import android.view.KeyEvent
 import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeDown
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Event
@@ -626,9 +629,9 @@ private fun commandPickerIcon(command: CommandTarget): ImageVector {
         command.id == "device.media.play_pause" -> Icons.Default.PlayArrow
         command.id == "device.media.previous" -> Icons.Default.SkipPrevious
         command.id == "device.media.next" -> Icons.Default.SkipNext
-        command.id == "device.volume.up" -> Icons.Default.VolumeUp
-        command.id == "device.volume.down" -> Icons.Default.VolumeDown
-        command.id == "device.volume.mute" -> Icons.Default.VolumeOff
+        command.id == "device.volume.up" -> Icons.AutoMirrored.Filled.VolumeUp
+        command.id == "device.volume.down" -> Icons.AutoMirrored.Filled.VolumeDown
+        command.id == "device.volume.mute" -> Icons.AutoMirrored.Filled.VolumeOff
         command.id == "device.brightness.up" -> Icons.Default.WbSunny
         command.id == "device.brightness.down" -> Icons.Default.WbSunny
         command.id.contains("input_method") -> Icons.Default.Keyboard

@@ -22,6 +22,8 @@ import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.SettingsManager
 import it.palsoftware.pastiera.data.layout.LayoutFileStore
 import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils
+import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils.languageCode
+import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils.localeString
 import it.palsoftware.pastiera.inputmethod.statusbar.ButtonCreationResult
 import it.palsoftware.pastiera.inputmethod.statusbar.ButtonState
 import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarCallbacks
@@ -129,9 +131,7 @@ class LanguageButtonFactory : StatusBarButtonFactory {
             val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
             val currentSubtype = imm.currentInputMethodSubtype
             val languageCode = if (currentSubtype != null) {
-                // Extract language code from locale (e.g., "en_US" -> "EN", "it_IT" -> "IT")
-                val locale = currentSubtype.locale
-                locale.split("_").firstOrNull()?.uppercase() ?: "??"
+                currentSubtype.languageCode()?.uppercase() ?: "??"
             } else {
                 "??"
             }
@@ -208,11 +208,10 @@ class LanguageButtonFactory : StatusBarButtonFactory {
             val appInfo = context.packageManager.getApplicationInfo(context.packageName, 0)
             subtype.getDisplayName(context, context.packageName, appInfo)?.toString()
                 ?.takeIf { it.isNotBlank() }
-                ?: subtype.locale
-                ?: "Unknown"
+                ?: subtype.localeString().ifBlank { "Unknown" }
         } catch (e: Exception) {
             Log.w(TAG, "Failed to resolve subtype display name for accessibility", e)
-            subtype.locale ?: "Unknown"
+            subtype.localeString().ifBlank { "Unknown" }
         }
     }
 

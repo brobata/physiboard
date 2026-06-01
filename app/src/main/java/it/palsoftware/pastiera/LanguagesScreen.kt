@@ -5,6 +5,7 @@ import android.content.Intent
 import android.view.inputmethod.InputMethodManager
 import android.view.inputmethod.InputMethodSubtype
 import it.palsoftware.pastiera.SettingsManager
+import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils.localeString
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -304,7 +305,7 @@ private fun getEnabledSubtypes(context: Context): Set<String> {
                 } catch (e: Exception) {
                     "Error: ${e.message}"
                 }
-                android.util.Log.d("LanguagesScreen", "  - locale: ${subtype.locale}, name: $name, mode: ${subtype.mode}, nameResId: ${subtype.nameResId}")
+                android.util.Log.d("LanguagesScreen", "  - locale: ${subtype.localeString()}, name: $name, mode: ${subtype.mode}, nameResId: ${subtype.nameResId}")
             }
         } else {
             android.util.Log.w("LanguagesScreen", "IME not found in enabled list")

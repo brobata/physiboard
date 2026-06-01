@@ -12,7 +12,7 @@ class LanguagesActivity : LocalizedComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (savedInstanceState == null) {
-            overridePendingTransition(R.anim.slide_in_from_right, 0)
+            applySlideInFromRightTransition()
         }
         enableEdgeToEdge()
         setContent {
@@ -26,7 +26,6 @@ class LanguagesActivity : LocalizedComponentActivity() {
     
     override fun finish() {
         super.finish()
-        overridePendingTransition(0, R.anim.slide_out_to_right)
+        applySlideOutToRightTransition()
     }
 }
-

@@ -25,6 +25,9 @@ class SpeechRecognitionActivity : Activity() {
     }
     
     private var pendingSpeechRecognition = false
+
+    @Suppress("DEPRECATION")
+    private fun Bundle.compatGet(key: String): Any? = get(key)
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -132,7 +135,7 @@ class SpeechRecognitionActivity : Activity() {
                     } else {
                         Log.i(TAG, "Bundle contains ${bundle.keySet().size} keys")
                         for (key in bundle.keySet()) {
-                            val value = bundle.get(key)
+                            val value = bundle.compatGet(key)
                             val valueType = value?.javaClass?.simpleName ?: "null"
                             val valueString = when (value) {
                                 is ArrayList<*> -> {
@@ -163,7 +166,7 @@ class SpeechRecognitionActivity : Activity() {
                 Log.i(TAG, "=== Checking data.extras directly ===")
                 data.extras?.let { bundle ->
                     for (key in bundle.keySet()) {
-                        Log.i(TAG, "  data.extras['$key'] = ${bundle.get(key)}")
+                        Log.i(TAG, "  data.extras['$key'] = ${bundle.compatGet(key)}")
                     }
                 }
                 
@@ -198,4 +201,3 @@ class SpeechRecognitionActivity : Activity() {
         }
     }
 }
-

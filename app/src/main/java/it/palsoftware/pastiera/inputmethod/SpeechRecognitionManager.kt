@@ -17,6 +17,7 @@ import androidx.core.content.ContextCompat
 import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.SettingsManager
 import it.palsoftware.pastiera.inputmethod.AutoCapitalizeHelper
+import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils.localeString
 import java.util.Locale
 
 /**
@@ -395,7 +396,7 @@ class SpeechRecognitionManager(
             val imeSubtypeLocale = context
                 .getSystemService(InputMethodManager::class.java)
                 ?.currentInputMethodSubtype
-                ?.locale
+                ?.localeString()
             val languageTag = buildRecognitionLanguageTag(
                 imeSubtypeLocale = imeSubtypeLocale,
                 deviceLocale = deviceLocale

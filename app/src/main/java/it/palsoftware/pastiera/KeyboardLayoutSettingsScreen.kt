@@ -13,7 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -782,14 +782,7 @@ private fun hasLayoutMultiTap(assets: AssetManager, context: Context, layoutName
  */
 private fun getLocaleDisplayNameForTitle(locale: String): String {
     return try {
-        val parts = locale.split("_")
-        val lang = parts[0]
-        val country = if (parts.size > 1) parts[1] else ""
-        val localeObj = if (country.isNotEmpty()) {
-            Locale(lang, country)
-        } else {
-            Locale(lang)
-        }
+        val localeObj = Locale.forLanguageTag(locale.replace('_', '-'))
         localeObj.getDisplayName(Locale.ENGLISH)
     } catch (e: Exception) {
         locale

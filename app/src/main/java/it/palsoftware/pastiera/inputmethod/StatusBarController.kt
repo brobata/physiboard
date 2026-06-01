@@ -39,6 +39,8 @@ import it.palsoftware.pastiera.inputmethod.suggestions.ui.FullSuggestionsBar
 import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonRegistry
 import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarCallbacks
 import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils
+import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils.languageCode
+import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils.localeString
 import it.palsoftware.pastiera.inputmethod.NotificationHelper
 import it.palsoftware.pastiera.inputmethod.aospkeyboard.AospKeyboardView
 import android.content.res.AssetManager
@@ -1222,9 +1224,7 @@ class StatusBarController(
     private fun buildSoftwareKeyboardSpacebarLabel(snapshot: StatusSnapshot): String {
         val language = try {
             val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
-            imm?.currentInputMethodSubtype?.locale
-                ?.split("_")
-                ?.firstOrNull()
+            imm?.currentInputMethodSubtype?.languageCode()
                 ?.uppercase()
                 ?.takeIf { it.isNotBlank() }
         } catch (e: Exception) {
@@ -2292,8 +2292,7 @@ class StatusBarController(
                 val appInfo = context.packageManager.getApplicationInfo(context.packageName, 0)
                 subtype.getDisplayName(context, context.packageName, appInfo)?.toString()
                     ?.takeIf { it.isNotBlank() }
-                    ?: subtype.locale
-                    ?: "Unknown"
+                    ?: subtype.localeString().ifBlank { "Unknown" }
             } else {
                 "Unknown"
             }

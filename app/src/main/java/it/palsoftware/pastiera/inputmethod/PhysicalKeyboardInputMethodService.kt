@@ -46,6 +46,8 @@ import it.palsoftware.pastiera.data.mappings.KeyMappingLoader
 import it.palsoftware.pastiera.data.variation.VariationRepository
 import it.palsoftware.pastiera.inputmethod.SpeechRecognitionActivity
 import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils
+import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils.localeString
+import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils.setAdditionalInputMethodSubtypesCompat
 import it.palsoftware.pastiera.inputmethod.telex.VietnameseTelexProcessor
 import it.palsoftware.pastiera.inputmethod.trackpad.TrackpadEventDeviceResolver
 import it.palsoftware.pastiera.inputmethod.trackpad.TrackpadGestureDetector
@@ -1747,6 +1749,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         return false
     }
 
+    @Deprecated("Deprecated Android callback; kept to clear emoji search capture when the target view is clicked.")
+    @Suppress("DEPRECATION")
     override fun onViewClicked(focusChanged: Boolean) {
         super.onViewClicked(focusChanged)
         if (symPage == 4 && ::candidatesBarController.isInitialized) {
@@ -2094,7 +2098,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         DebugCaptureStore.updateImeContext(
             packageName = info?.packageName ?: currentPackageName,
             inputType = info?.inputType,
-            subtypeLocale = subtype?.locale,
+            subtypeLocale = subtype?.localeString(),
             resolvedLayout = resolvedLayout,
             physicalProfileOverride = physicalKeyboardProfileOverride
         )
@@ -2145,13 +2149,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             
             Log.d(TAG, "Created ${subtypes.size} additional subtypes")
             subtypes.forEachIndexed { index, subtype ->
-                Log.d(TAG, "Subtype $index: locale=${subtype.locale}, nameResId=${subtype.nameResId}, extraValue=${subtype.extraValue}")
+                Log.d(TAG, "Subtype $index: locale=${subtype.localeString()}, nameResId=${subtype.nameResId}, extraValue=${subtype.extraValue}")
             }
             
             if (subtypes.isNotEmpty() && inputMethodInfo != null) {
                 // Note: setAdditionalInputMethodSubtypes is deprecated but still works on most Android versions
                 // The subtypes will appear in the IME picker but may need to be enabled manually by the user
-                imm.setAdditionalInputMethodSubtypes(imeId, subtypes)
+                setAdditionalInputMethodSubtypesCompat(imm, imeId, subtypes)
                 Log.d(TAG, "Successfully called setAdditionalInputMethodSubtypes with ${subtypes.size} subtypes")
                 
                 // Send broadcast to notify system of IME subtype changes (if supported)
@@ -2286,7 +2290,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                         Log.d(TAG, "Verification: ${allSubtypes.size} total subtypes found after registration")
                         allSubtypes.forEachIndexed { index, subtype ->
                             val isAdditional = AdditionalSubtypeUtils.isAdditionalSubtype(subtype)
-                            Log.d(TAG, "Subtype $index: locale=${subtype.locale}, isAdditional=$isAdditional, extraValue=${subtype.extraValue}")
+                            Log.d(TAG, "Subtype $index: locale=${subtype.localeString()}, isAdditional=$isAdditional, extraValue=${subtype.extraValue}")
                         }
                         
                         // Also try to get subtypes directly from InputMethodInfo
@@ -2296,7 +2300,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                             for (i in 0 until subtypeCount) {
                                 val subtype = verifyInfo.getSubtypeAt(i)
                                 val isAdditional = AdditionalSubtypeUtils.isAdditionalSubtype(subtype)
-                                Log.d(TAG, "InputMethodInfo subtype $i: locale=${subtype.locale}, isAdditional=$isAdditional, extraValue=${subtype.extraValue}")
+                                Log.d(TAG, "InputMethodInfo subtype $i: locale=${subtype.localeString()}, isAdditional=$isAdditional, extraValue=${subtype.extraValue}")
                             }
                         } catch (e: Exception) {
                             Log.w(TAG, "Error getting subtypes from InputMethodInfo", e)
@@ -2436,15 +2440,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private fun getLocaleFromSubtype(): Locale {
         val imm = getSystemService(InputMethodManager::class.java)
         val subtype = imm.currentInputMethodSubtype
-        val localeString = subtype?.locale ?: "it_IT"
+        val localeString = subtype?.localeString() ?: "it-IT"
         return try {
-            // Convert "en_US" format to Locale
-            val parts = localeString.split("_")
-            when (parts.size) {
-                2 -> Locale(parts[0], parts[1])
-                1 -> Locale(parts[0])
-                else -> Locale.ITALIAN
-            }
+            AdditionalSubtypeUtils.localeFromSubtypeString(localeString)
         } catch (e: Exception) {
             Log.w(TAG, "Failed to parse locale from subtype: $localeString", e)
             Locale.ITALIAN
@@ -2470,7 +2468,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
 
         val currentLayout = SettingsManager.getKeyboardLayout(this)
         if (layoutToUse != currentLayout) {
-            Log.d(TAG, "Switching layout for locale ${newSubtype.locale}: $layoutToUse (was: $currentLayout)")
+            Log.d(TAG, "Switching layout for locale ${newSubtype.localeString()}: $layoutToUse (was: $currentLayout)")
             switchToLayout(layoutToUse, showToast = false)
         } else {
             switchToLayout(layoutToUse, showToast = false)
@@ -3339,7 +3337,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             
             if (additionalSubtypes.isEmpty()) {
                 // Clear additional subtypes
-                imm.setAdditionalInputMethodSubtypes(imeId, emptyArray())
+                setAdditionalInputMethodSubtypesCompat(imm, imeId, emptyArray())
                 Log.d(TAG, "Cleared additional subtypes")
                 return
             }
@@ -3356,7 +3354,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                     .build()
             }
             
-            imm.setAdditionalInputMethodSubtypes(imeId, subtypes.toTypedArray())
+            setAdditionalInputMethodSubtypesCompat(imm, imeId, subtypes.toTypedArray())
             Log.d(TAG, "Updated ${subtypes.size} additional subtypes from IME service")
             
             // Verify
@@ -3372,7 +3370,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 } catch (e: Exception) {
                     "Error: ${e.message}"
                 }
-                Log.d(TAG, "  - locale: ${subtype.locale}, name: $name")
+                Log.d(TAG, "  - locale: ${subtype.localeString()}, name: $name")
             }
             
         } catch (e: Exception) {

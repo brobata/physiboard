@@ -9,6 +9,8 @@ import android.view.inputmethod.InputMethodManager
 import android.view.inputmethod.InputMethodSubtype
 import android.widget.Toast
 import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils
+import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils.localeString
+import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils.setInputMethodAndSubtypeCompat
 import it.palsoftware.pastiera.data.layout.LayoutFileStore
 
 /**
@@ -74,7 +76,7 @@ object SubtypeCycler {
             
             // Find current subtype index
             val currentIndex = enabledSubtypes.indexOfFirst { subtype ->
-                subtype.locale == currentSubtype?.locale && 
+                subtype.localeString() == currentSubtype?.localeString() && 
                 subtype.extraValue == currentSubtype?.extraValue
             }
             
@@ -95,7 +97,7 @@ object SubtypeCycler {
                 if (showToast) {
                     showUnifiedSubtypeToast(context, nextSubtype, assets)
                 }
-                Log.d(TAG, "Switched to subtype: ${nextSubtype.locale}")
+                Log.d(TAG, "Switched to subtype: ${nextSubtype.localeString()}")
             } else {
                 Log.w(TAG, "Could not switch subtype using setInputMethodAndSubtype")
                 // Note: switchToNextInputMethod requires an IBinder token and switches between IMEs,
@@ -127,7 +129,7 @@ object SubtypeCycler {
             val token = imeService?.window?.window?.attributes?.token
             
             if (token != null) {
-                imm.setInputMethodAndSubtype(token, imeId, subtype)
+                setInputMethodAndSubtypeCompat(imm, token, imeId, subtype)
                 true
             } else {
                 // Token not available
@@ -178,7 +180,7 @@ object SubtypeCycler {
                 unifiedSubtypeToast?.show()
             } catch (e: Exception) {
                 // Fallback: use locale if display name fails
-                val locale = subtype.locale ?: "Unknown"
+                val locale = subtype.localeString().ifBlank { "Unknown" }
                 unifiedSubtypeToast?.cancel()
                 unifiedSubtypeToast = Toast.makeText(
                     context.applicationContext,
@@ -198,7 +200,7 @@ object SubtypeCycler {
     ): List<InputMethodSubtype> {
         val seen = mutableSetOf<String>()
         return subtypes.filter { subtype ->
-            val locale = subtype.locale ?: ""
+            val locale = subtype.localeString()
             val layout = AdditionalSubtypeUtils.resolveActiveLayout(assets, context, subtype)
             seen.add("$locale:$layout")
         }

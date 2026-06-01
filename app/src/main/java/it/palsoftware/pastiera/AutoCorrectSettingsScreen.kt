@@ -23,6 +23,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.WindowInsets
+import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils.localeString
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import it.palsoftware.pastiera.inputmethod.AutoCorrector
@@ -46,7 +47,7 @@ private fun getImeSubtypeLanguageCodes(context: Context): Set<String> {
 
         val enabledSubtypes = imm.getEnabledInputMethodSubtypeList(imeInfo, true)
         enabledSubtypes.mapNotNull { subtype ->
-            val localeString = subtype.locale
+            val localeString = subtype.localeString()
             if (!localeString.isNullOrEmpty()) {
                 try {
                     val locale = java.util.Locale.forLanguageTag(localeString.replace("_", "-"))
