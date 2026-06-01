@@ -7,6 +7,7 @@ import android.view.inputmethod.InputConnection
 import it.palsoftware.pastiera.core.ModifierStateController
 import it.palsoftware.pastiera.core.NavModeController
 import it.palsoftware.pastiera.core.SymLayoutController
+import it.palsoftware.pastiera.core.TextInputController
 import it.palsoftware.pastiera.SettingsManager
 import it.palsoftware.pastiera.SymPagesConfig
 import it.palsoftware.pastiera.data.mappings.KeyMappingLoader
@@ -478,7 +479,8 @@ class InputEventRouterModifierE2ETest {
                 modifierStateController = modifierStateController,
                 symLayoutController = symLayoutController,
                 altSymManager = altSymManager,
-                variationStateController = variationStateController
+                variationStateController = variationStateController,
+                textInputController = TextInputController(context, modifierStateController, 500L)
             ),
             callbacks = callbacks.asRouterCallbacks()
         )

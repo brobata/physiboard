@@ -38,6 +38,11 @@
     <string name="double_space_to_period_title">Double Space to Period</string>
     <string name="double_space_to_period_description">Double tap space to insert a period followed by a space and capitalize the next letter.</string>
 
+    <!-- Smart punctuation Section -->
+    <string name="spaced_hyphen_to_en_dash_title">Spaced Hyphen to Dash</string>
+    <string name="spaced_hyphen_to_en_dash_description">Turns “word - next” into a typographic dash while leaving line-start hyphens alone.</string>
+    <string name="smart_quotes_title">Smart Quotes</string>
+
     <!-- Clear Alt on Space Section -->
     <string name="clear_alt_on_space_title">Clear Alt on Space</string>
     <string name="clear_alt_on_space_description">Automatically disable Alt or Alt-Lock when pressing Space.</string>

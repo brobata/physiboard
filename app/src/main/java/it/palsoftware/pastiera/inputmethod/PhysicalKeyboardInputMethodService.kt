@@ -3037,13 +3037,15 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 clearAltOnSpaceEnabled = clearAltOnSpaceEnabled,
                 shiftOneShot = shiftOneShot,
                 capsLockEnabled = capsLockEnabled,
-                cursorUpdateDelayMs = CURSOR_UPDATE_DELAY
+                cursorUpdateDelayMs = CURSOR_UPDATE_DELAY,
+                shouldDisableSmartFeatures = shouldDisableSmartFeatures
             ),
             controllers = InputEventRouter.EditableFieldKeyDownControllers(
                 modifierStateController = modifierStateController,
                 symLayoutController = symLayoutController,
                 altSymManager = altSymManager,
-                variationStateController = variationStateController
+                variationStateController = variationStateController,
+                textInputController = textInputController
             ),
             callbacks = InputEventRouter.EditableFieldKeyDownHandlingCallbacks(
                 updateStatusBar = { updateStatusBarText() },

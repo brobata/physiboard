@@ -227,14 +227,16 @@ class InputEventRouter(
         val clearAltOnSpaceEnabled: Boolean,
         val shiftOneShot: Boolean,
         val capsLockEnabled: Boolean,
-        val cursorUpdateDelayMs: Long
+        val cursorUpdateDelayMs: Long,
+        val shouldDisableSmartFeatures: Boolean = false
     )
 
     data class EditableFieldKeyDownControllers(
         val modifierStateController: ModifierStateController,
         val symLayoutController: SymLayoutController,
         val altSymManager: AltSymManager,
-        val variationStateController: VariationStateController
+        val variationStateController: VariationStateController,
+        val textInputController: TextInputController
     )
 
     data class EditableFieldKeyDownHandlingCallbacks(
@@ -472,6 +474,43 @@ class InputEventRouter(
                 shiftPressed = effectiveShiftForLongPress
             )
             else -> !longPressSuppressed && controllers.altSymManager.hasAltMapping(keyCode)
+        }
+
+        if (
+            controllers.textInputController.handleSpacedHyphenToEnDash(
+                keyCode = keyCode,
+                inputConnection = ic,
+                shouldDisableSmartPunctuation = params.shouldDisableSmartFeatures
+            )
+        ) {
+            Handler(Looper.getMainLooper()).postDelayed({
+                callbacks.updateStatusBar()
+            }, params.cursorUpdateDelayMs)
+            return EditableFieldRoutingResult.Consume
+        }
+
+        val smartReplacementText = when {
+            keyCode == KeyEvent.KEYCODE_SPACE -> " "
+            LayoutMappingRepository.isMapped(keyCode) -> LayoutMappingRepository.getCharacterStringWithModifiers(
+                keyCode,
+                effectiveShiftForLongPress,
+                params.capsLockEnabled,
+                shiftOneShotActive
+            ).takeIf { it.length == 1 }.orEmpty()
+            event?.unicodeChar?.takeIf { it != 0 } != null -> event.unicodeChar.toChar().toString()
+            else -> ""
+        }
+        if (
+            controllers.textInputController.handleSmartQuoteReplacement(
+                typedText = smartReplacementText,
+                inputConnection = ic,
+                shouldDisableSmartPunctuation = params.shouldDisableSmartFeatures
+            )
+        ) {
+            Handler(Looper.getMainLooper()).postDelayed({
+                callbacks.updateStatusBar()
+            }, params.cursorUpdateDelayMs)
+            return EditableFieldRoutingResult.Consume
         }
 
         // Ignore system-generated repeats on multi-tap keys so holding the key
@@ -758,6 +797,26 @@ class InputEventRouter(
                 shouldDisableDoubleSpaceToPeriod,
                 shouldDisableAutoCapitalize,
                 onStatusBarUpdate = updateStatusBar
+            )
+        ) {
+            return true
+        }
+
+        if (
+            textInputController.handleSpacedHyphenToEnDash(
+                keyCode = keyCode,
+                inputConnection = inputConnection,
+                shouldDisableSmartPunctuation = inputContextState?.shouldDisableSmartFeatures == true
+            )
+        ) {
+            return true
+        }
+
+        if (
+            textInputController.handleSmartQuoteReplacement(
+                typedText = if (isSpaceKey) " " else event?.unicodeChar?.takeIf { it != 0 }?.toChar()?.toString().orEmpty(),
+                inputConnection = inputConnection,
+                shouldDisableSmartPunctuation = inputContextState?.shouldDisableSmartFeatures == true
             )
         ) {
             return true

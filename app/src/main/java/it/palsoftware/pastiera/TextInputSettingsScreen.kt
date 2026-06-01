@@ -26,6 +26,7 @@ import it.palsoftware.pastiera.R
 /**
  * Text Input settings screen.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TextInputSettingsScreen(
     modifier: Modifier = Modifier,
@@ -44,6 +45,26 @@ fun TextInputSettingsScreen(
     var doubleSpaceToPeriod by remember {
         mutableStateOf(SettingsManager.getDoubleSpaceToPeriod(context))
     }
+
+    var spacedHyphenToEnDash by remember {
+        mutableStateOf(SettingsManager.getSpacedHyphenToEnDash(context))
+    }
+
+    var spacedHyphenDashStyle by remember {
+        mutableStateOf(SettingsManager.getSpacedHyphenDashStyle(context))
+    }
+
+    var spacedHyphenDashExpanded by remember { mutableStateOf(false) }
+
+    var smartQuotes by remember {
+        mutableStateOf(SettingsManager.getSmartQuotes(context))
+    }
+
+    var smartQuotesStyle by remember {
+        mutableStateOf(SettingsManager.getSmartQuotesStyle(context))
+    }
+
+    var smartQuotesExpanded by remember { mutableStateOf(false) }
 
     var clearAltOnSpace by remember {
         mutableStateOf(SettingsManager.getClearAltOnSpace(context))
@@ -238,6 +259,166 @@ fun TextInputSettingsScreen(
                         onCheckedChange = { enabled ->
                             doubleSpaceToPeriod = enabled
                             SettingsManager.setDoubleSpaceToPeriod(context, enabled)
+                        }
+                    )
+                }
+            }
+
+            // Spaced Hyphen to Dash
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(72.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.TextFields,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.spaced_hyphen_to_en_dash_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1
+                        )
+                        ExposedDropdownMenuBox(
+                            expanded = spacedHyphenDashExpanded,
+                            onExpandedChange = { spacedHyphenDashExpanded = !spacedHyphenDashExpanded }
+                        ) {
+                            OutlinedTextField(
+                                value = dashStyleLabel(spacedHyphenDashStyle),
+                                onValueChange = {},
+                                readOnly = true,
+                                singleLine = true,
+                                enabled = spacedHyphenToEnDash,
+                                textStyle = MaterialTheme.typography.bodySmall,
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = spacedHyphenDashExpanded)
+                                },
+                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(48.dp)
+                                    .menuAnchor(
+                                        type = MenuAnchorType.PrimaryNotEditable,
+                                        enabled = spacedHyphenToEnDash
+                                    )
+                            )
+                            ExposedDropdownMenu(
+                                expanded = spacedHyphenDashExpanded,
+                                onDismissRequest = { spacedHyphenDashExpanded = false }
+                            ) {
+                                dashStyleOptions().forEach { style ->
+                                    DropdownMenuItem(
+                                        text = { Text(dashStyleLabel(style)) },
+                                        onClick = {
+                                            spacedHyphenDashStyle = style
+                                            SettingsManager.setSpacedHyphenDashStyle(context, style)
+                                            spacedHyphenDashExpanded = false
+                                        },
+                                        enabled = spacedHyphenToEnDash
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    Switch(
+                        checked = spacedHyphenToEnDash,
+                        onCheckedChange = { enabled ->
+                            spacedHyphenToEnDash = enabled
+                            SettingsManager.setSpacedHyphenToEnDash(context, enabled)
+                            if (!enabled) {
+                                spacedHyphenDashExpanded = false
+                            }
+                        }
+                    )
+                }
+            }
+
+            // Smart Quotes
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(72.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.TextFields,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.smart_quotes_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1
+                        )
+                        ExposedDropdownMenuBox(
+                            expanded = smartQuotesExpanded,
+                            onExpandedChange = { smartQuotesExpanded = !smartQuotesExpanded }
+                        ) {
+                            OutlinedTextField(
+                                value = smartQuotesStyleLabel(smartQuotesStyle),
+                                onValueChange = {},
+                                readOnly = true,
+                                singleLine = true,
+                                enabled = smartQuotes,
+                                textStyle = MaterialTheme.typography.bodySmall,
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = smartQuotesExpanded)
+                                },
+                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(48.dp)
+                                    .menuAnchor(
+                                        type = MenuAnchorType.PrimaryNotEditable,
+                                        enabled = smartQuotes
+                                    )
+                            )
+                            ExposedDropdownMenu(
+                                expanded = smartQuotesExpanded,
+                                onDismissRequest = { smartQuotesExpanded = false }
+                            ) {
+                                smartQuoteStyleOptions().forEach { style ->
+                                    DropdownMenuItem(
+                                        text = { Text(smartQuotesStyleLabel(style)) },
+                                        onClick = {
+                                            smartQuotesStyle = style
+                                            SettingsManager.setSmartQuotesStyle(context, style)
+                                            smartQuotesExpanded = false
+                                        },
+                                        enabled = smartQuotes
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    Switch(
+                        checked = smartQuotes,
+                        onCheckedChange = { enabled ->
+                            smartQuotes = enabled
+                            SettingsManager.setSmartQuotes(context, enabled)
+                            if (!enabled) {
+                                smartQuotesExpanded = false
+                            }
                         }
                     )
                 }
@@ -555,5 +736,39 @@ fun TextInputSettingsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
         }
+    }
+}
+
+private fun dashStyleOptions(): List<String> {
+    return listOf(
+        SettingsManager.DASH_STYLE_EN,
+        SettingsManager.DASH_STYLE_EM
+    )
+}
+
+private fun dashStyleLabel(style: String): String {
+    return when (style) {
+        SettingsManager.DASH_STYLE_EM -> "—"
+        else -> "–"
+    }
+}
+
+private fun smartQuoteStyleOptions(): List<String> {
+    return listOf(
+        SettingsManager.SMART_QUOTES_STYLE_GERMAN_GUILLEMETS,
+        SettingsManager.SMART_QUOTES_STYLE_FRENCH_GUILLEMETS,
+        SettingsManager.SMART_QUOTES_STYLE_FRENCH_GUILLEMETS_NARROW_SPACED,
+        SettingsManager.SMART_QUOTES_STYLE_GERMAN_LOW_HIGH,
+        SettingsManager.SMART_QUOTES_STYLE_ENGLISH_CURLY
+    )
+}
+
+private fun smartQuotesStyleLabel(style: String): String {
+    return when (style) {
+        SettingsManager.SMART_QUOTES_STYLE_FRENCH_GUILLEMETS -> "«...»"
+        SettingsManager.SMART_QUOTES_STYLE_FRENCH_GUILLEMETS_NARROW_SPACED -> "« ... »"
+        SettingsManager.SMART_QUOTES_STYLE_GERMAN_LOW_HIGH -> "„...“"
+        SettingsManager.SMART_QUOTES_STYLE_ENGLISH_CURLY -> "“...”"
+        else -> "»...«"
     }
 }

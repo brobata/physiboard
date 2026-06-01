@@ -23,6 +23,9 @@
     <string name="auto_capitalize_after_period_description">Schreibt automatisch den nächsten Buchstaben groß, nachdem ein Punkt gefolgt von einem Leerzeichen eingegeben wurde (Satzende).</string>
     <string name="double_space_to_period_title">Doppeltes Leerzeichen zu Punkt</string>
     <string name="double_space_to_period_description">Doppeltippen auf Leerzeichen, um einen Punkt gefolgt von einem Leerzeichen einzufügen und den nächsten Buchstaben großzuschreiben.</string>
+    <string name="spaced_hyphen_to_en_dash_title">Bindestrich mit Leerzeichen zu Strich</string>
+    <string name="spaced_hyphen_to_en_dash_description">Macht aus „Wort - weiter“ automatisch einen typografischen Strich, aber nicht am Zeilenanfang.</string>
+    <string name="smart_quotes_title">Typografische Anführungszeichen</string>
     <string name="clear_alt_on_space_title">Alt bei Leerzeichen löschen</string>
     <string name="clear_alt_on_space_description">Deaktiviert automatisch Alt oder Alt-Lock beim Drücken der Leertaste.</string>
     <string name="swipe_to_delete_title">Wischen zum Löschen aktivieren</string>

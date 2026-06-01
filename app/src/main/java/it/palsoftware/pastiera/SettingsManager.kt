@@ -37,6 +37,10 @@ object SettingsManager {
     const val KEY_TYPING_SOUND_UPDATED_AT = "typing_sound_updated_at"
     private const val KEY_AUTO_CAPITALIZE_FIRST_LETTER = "auto_capitalize_first_letter"
     private const val KEY_DOUBLE_SPACE_TO_PERIOD = "double_space_to_period"
+    private const val KEY_SPACED_HYPHEN_TO_EN_DASH = "spaced_hyphen_to_en_dash"
+    private const val KEY_SPACED_HYPHEN_DASH_STYLE = "spaced_hyphen_dash_style"
+    private const val KEY_SMART_QUOTES = "smart_quotes"
+    private const val KEY_SMART_QUOTES_STYLE = "smart_quotes_style"
     private const val KEY_SWIPE_TO_DELETE = "swipe_to_delete"
     private const val KEY_AUTO_SHOW_KEYBOARD = "auto_show_keyboard"
     private const val KEY_CLEAR_ALT_ON_SPACE = "clear_alt_on_space"
@@ -177,6 +181,17 @@ object SettingsManager {
     private const val MAX_SWIPE_INCREMENTAL_THRESHOLD = 25f
     private const val DEFAULT_AUTO_CAPITALIZE_FIRST_LETTER = true
     private const val DEFAULT_DOUBLE_SPACE_TO_PERIOD = true
+    private const val DEFAULT_SPACED_HYPHEN_TO_EN_DASH = false
+    const val DASH_STYLE_EN = "en_dash"
+    const val DASH_STYLE_EM = "em_dash"
+    private const val DEFAULT_SPACED_HYPHEN_DASH_STYLE = DASH_STYLE_EN
+    private const val DEFAULT_SMART_QUOTES = false
+    const val SMART_QUOTES_STYLE_GERMAN_GUILLEMETS = "german_guillemets"
+    const val SMART_QUOTES_STYLE_FRENCH_GUILLEMETS = "french_guillemets"
+    const val SMART_QUOTES_STYLE_FRENCH_GUILLEMETS_NARROW_SPACED = "french_guillemets_narrow_spaced"
+    const val SMART_QUOTES_STYLE_GERMAN_LOW_HIGH = "german_low_high"
+    const val SMART_QUOTES_STYLE_ENGLISH_CURLY = "english_curly"
+    private const val DEFAULT_SMART_QUOTES_STYLE = SMART_QUOTES_STYLE_GERMAN_GUILLEMETS
     private const val DEFAULT_SWIPE_TO_DELETE = false
     private const val DEFAULT_AUTO_SHOW_KEYBOARD = true
     private const val DEFAULT_CLEAR_ALT_ON_SPACE = true
@@ -651,6 +666,82 @@ object SettingsManager {
     fun setDoubleSpaceToPeriod(context: Context, enabled: Boolean) {
         getPreferences(context).edit()
             .putBoolean(KEY_DOUBLE_SPACE_TO_PERIOD, enabled)
+            .apply()
+    }
+
+    /**
+     * Returns the state of spaced-hyphen-to-en-dash smart punctuation.
+     */
+    fun getSpacedHyphenToEnDash(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_SPACED_HYPHEN_TO_EN_DASH, DEFAULT_SPACED_HYPHEN_TO_EN_DASH)
+    }
+
+    /**
+     * Sets the state of spaced-hyphen-to-en-dash smart punctuation.
+     */
+    fun setSpacedHyphenToEnDash(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_SPACED_HYPHEN_TO_EN_DASH, enabled)
+            .apply()
+    }
+
+    fun getSpacedHyphenDashStyle(context: Context): String {
+        val stored = getPreferences(context).getString(KEY_SPACED_HYPHEN_DASH_STYLE, DEFAULT_SPACED_HYPHEN_DASH_STYLE)
+        return when (stored) {
+            DASH_STYLE_EN,
+            DASH_STYLE_EM -> stored
+            else -> DEFAULT_SPACED_HYPHEN_DASH_STYLE
+        }
+    }
+
+    fun setSpacedHyphenDashStyle(context: Context, style: String) {
+        getPreferences(context).edit()
+            .putString(
+                KEY_SPACED_HYPHEN_DASH_STYLE,
+                when (style) {
+                    DASH_STYLE_EN,
+                    DASH_STYLE_EM -> style
+                    else -> DEFAULT_SPACED_HYPHEN_DASH_STYLE
+                }
+            )
+            .apply()
+    }
+
+    fun getSmartQuotes(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_SMART_QUOTES, DEFAULT_SMART_QUOTES)
+    }
+
+    fun setSmartQuotes(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_SMART_QUOTES, enabled)
+            .apply()
+    }
+
+    fun getSmartQuotesStyle(context: Context): String {
+        val stored = getPreferences(context).getString(KEY_SMART_QUOTES_STYLE, DEFAULT_SMART_QUOTES_STYLE)
+        return when (stored) {
+            SMART_QUOTES_STYLE_GERMAN_GUILLEMETS,
+            SMART_QUOTES_STYLE_FRENCH_GUILLEMETS,
+            SMART_QUOTES_STYLE_FRENCH_GUILLEMETS_NARROW_SPACED,
+            SMART_QUOTES_STYLE_GERMAN_LOW_HIGH,
+            SMART_QUOTES_STYLE_ENGLISH_CURLY -> stored
+            else -> DEFAULT_SMART_QUOTES_STYLE
+        }
+    }
+
+    fun setSmartQuotesStyle(context: Context, style: String) {
+        getPreferences(context).edit()
+            .putString(
+                KEY_SMART_QUOTES_STYLE,
+                when (style) {
+                    SMART_QUOTES_STYLE_GERMAN_GUILLEMETS,
+                    SMART_QUOTES_STYLE_FRENCH_GUILLEMETS,
+                    SMART_QUOTES_STYLE_FRENCH_GUILLEMETS_NARROW_SPACED,
+                    SMART_QUOTES_STYLE_GERMAN_LOW_HIGH,
+                    SMART_QUOTES_STYLE_ENGLISH_CURLY -> style
+                    else -> DEFAULT_SMART_QUOTES_STYLE
+                }
+            )
             .apply()
     }
     

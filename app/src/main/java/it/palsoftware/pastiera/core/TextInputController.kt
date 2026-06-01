@@ -24,6 +24,11 @@ class TextInputController(
 
     private var lastSpacePressTime: Long = 0L
 
+    data class SmartQuotePair(
+        val opening: String,
+        val closing: String
+    )
+
     fun handleDoubleSpaceToPeriod(
         keyCode: Int,
         inputConnection: InputConnection?,
@@ -128,6 +133,92 @@ class TextInputController(
                 disableShift = { modifierStateController.consumeShiftOneShot() },
                 onUpdateStatusBar = onStatusBarUpdate
             )
+        }
+    }
+
+    fun handleSpacedHyphenToEnDash(
+        keyCode: Int,
+        inputConnection: InputConnection?,
+        shouldDisableSmartPunctuation: Boolean
+    ): Boolean {
+        if (
+            keyCode != KeyEvent.KEYCODE_SPACE ||
+            inputConnection == null ||
+            shouldDisableSmartPunctuation ||
+            !SettingsManager.getSpacedHyphenToEnDash(context)
+        ) {
+            return false
+        }
+
+        val textBeforeCursor = inputConnection.getTextBeforeCursor(100, 0)?.toString() ?: return false
+        if (!textBeforeCursor.endsWith(" -")) {
+            return false
+        }
+
+        val prefix = textBeforeCursor.dropLast(2)
+        if (prefix.isBlank()) {
+            return false
+        }
+
+        val linePrefix = prefix.substringAfterLast('\n')
+        if (linePrefix.isBlank()) {
+            return false
+        }
+
+        val dash = when (SettingsManager.getSpacedHyphenDashStyle(context)) {
+            SettingsManager.DASH_STYLE_EM -> "—"
+            else -> "–"
+        }
+        inputConnection.deleteSurroundingText(1, 0)
+        inputConnection.commitText("$dash ", 1)
+        return true
+    }
+
+    fun handleSmartQuoteReplacement(
+        typedText: String,
+        inputConnection: InputConnection?,
+        shouldDisableSmartPunctuation: Boolean
+    ): Boolean {
+        if (
+            typedText.isEmpty() ||
+            inputConnection == null ||
+            shouldDisableSmartPunctuation ||
+            !SettingsManager.getSmartQuotes(context)
+        ) {
+            return false
+        }
+        if (typedText == "\"") {
+            return false
+        }
+
+        val pair = smartQuotePair(SettingsManager.getSmartQuotesStyle(context))
+        val before = inputConnection.getTextBeforeCursor(240, 0)?.toString().orEmpty()
+        if (!before.endsWith("\"")) {
+            return false
+        }
+
+        val openingIndex = before.dropLast(1).lastIndexOf('"')
+        if (openingIndex < 0) {
+            return false
+        }
+        val quotedText = before.substring(openingIndex + 1, before.length - 1)
+        if (quotedText.isBlank() || quotedText.any { it == '\n' || it == '"' }) {
+            return false
+        }
+
+        val replacement = pair.opening + quotedText + pair.closing + typedText
+        inputConnection.deleteSurroundingText(before.length - openingIndex, 0)
+        inputConnection.commitText(replacement, 1)
+        return true
+    }
+
+    private fun smartQuotePair(style: String): SmartQuotePair {
+        return when (style) {
+            SettingsManager.SMART_QUOTES_STYLE_FRENCH_GUILLEMETS -> SmartQuotePair("«", "»")
+            SettingsManager.SMART_QUOTES_STYLE_FRENCH_GUILLEMETS_NARROW_SPACED -> SmartQuotePair("« ", " »")
+            SettingsManager.SMART_QUOTES_STYLE_GERMAN_LOW_HIGH -> SmartQuotePair("„", "“")
+            SettingsManager.SMART_QUOTES_STYLE_ENGLISH_CURLY -> SmartQuotePair("“", "”")
+            else -> SmartQuotePair("»", "«")
         }
     }
 
