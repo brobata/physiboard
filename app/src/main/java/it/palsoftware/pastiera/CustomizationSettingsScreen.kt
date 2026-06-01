@@ -2,10 +2,22 @@ package it.palsoftware.pastiera
 
 import android.app.Activity
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color as AndroidColor
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Drawable
 import android.os.Build
 import android.view.KeyEvent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -19,9 +31,17 @@ import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LineWeight
 import androidx.compose.material.icons.filled.ManageSearch
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.SmartButton
 import androidx.compose.material.icons.filled.SpaceBar
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.activity.compose.BackHandler
@@ -29,16 +49,25 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.size
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import it.palsoftware.pastiera.R
+import it.palsoftware.pastiera.commands.CommandRegistry
+import it.palsoftware.pastiera.commands.CommandIcon
+import it.palsoftware.pastiera.commands.CommandSourceId
+import it.palsoftware.pastiera.commands.CommandSurface
+import it.palsoftware.pastiera.commands.CommandTarget
 
 /**
  * Customization settings screen.
@@ -85,8 +114,29 @@ fun CustomizationSettingsScreen(
     var quickLauncherPillMode by remember {
         mutableStateOf(SettingsManager.getQuickLauncherPillMode(context))
     }
+    var quickLauncherHighlightFavorites by remember {
+        mutableStateOf(SettingsManager.getQuickLauncherHighlightFavorites(context))
+    }
+    var quickLauncherFavoriteColor by remember {
+        mutableStateOf(SettingsManager.getQuickLauncherFavoriteColor(context))
+    }
+    var quickLauncherIconColors by remember {
+        mutableStateOf(SettingsManager.getQuickLauncherIconColors(context))
+    }
+    var quickLauncherShowAliasFirst by remember {
+        mutableStateOf(SettingsManager.getQuickLauncherShowAliasFirst(context))
+    }
+    var quickLauncherStaticTopHighlight by remember {
+        mutableStateOf(SettingsManager.getQuickLauncherStaticTopHighlight(context))
+    }
+    var quickLauncherStaticTopHighlightColor by remember {
+        mutableStateOf(SettingsManager.getQuickLauncherStaticTopHighlightColor(context))
+    }
     var quickLauncherBehavior by remember {
         mutableStateOf(SettingsManager.getQuickLauncherBehavior(context))
+    }
+    var commandSourceVisibility by remember {
+        mutableStateOf(SettingsManager.getCommandSourceVisibility(context))
     }
     var quickLauncherDefaultBlocked by remember {
         mutableStateOf(SettingsManager.isQuickLauncherDefaultBlockedByExistingSpaceShortcut(context))
@@ -156,8 +206,32 @@ fun CustomizationSettingsScreen(
                 "quick_launcher_pill_mode" -> {
                     quickLauncherPillMode = SettingsManager.getQuickLauncherPillMode(context)
                 }
+                "quick_launcher_highlight_favorites" -> {
+                    quickLauncherHighlightFavorites = SettingsManager.getQuickLauncherHighlightFavorites(context)
+                }
+                "quick_launcher_favorite_color" -> {
+                    quickLauncherFavoriteColor = SettingsManager.getQuickLauncherFavoriteColor(context)
+                }
+                "quick_launcher_icon_colors" -> {
+                    quickLauncherIconColors = SettingsManager.getQuickLauncherIconColors(context)
+                }
+                "quick_launcher_show_alias_first" -> {
+                    quickLauncherShowAliasFirst = SettingsManager.getQuickLauncherShowAliasFirst(context)
+                }
+                "quick_launcher_static_top_highlight" -> {
+                    quickLauncherStaticTopHighlight = SettingsManager.getQuickLauncherStaticTopHighlight(context)
+                }
+                "quick_launcher_static_top_highlight_color" -> {
+                    quickLauncherStaticTopHighlightColor = SettingsManager.getQuickLauncherStaticTopHighlightColor(context)
+                }
                 "quick_launcher_behavior" -> {
                     quickLauncherBehavior = SettingsManager.getQuickLauncherBehavior(context)
+                }
+                "command_surface_sources" -> {
+                    commandSourceVisibility = SettingsManager.getCommandSourceVisibility(context)
+                }
+                "quick_launcher_command_customizations" -> {
+                    // Dialog content reads this lazily from SettingsManager when opened.
                 }
                 "launcher_shortcuts" -> {
                     quickLauncherDefaultBlocked = SettingsManager.isQuickLauncherDefaultBlockedByExistingSpaceShortcut(context)
@@ -713,6 +787,41 @@ fun CustomizationSettingsScreen(
                     onQuickLauncherPillModeChanged = { enabled ->
                         quickLauncherPillMode = enabled
                         SettingsManager.setQuickLauncherPillMode(context, enabled)
+                    },
+                    quickLauncherHighlightFavorites = quickLauncherHighlightFavorites,
+                    onQuickLauncherHighlightFavoritesChanged = { enabled ->
+                        quickLauncherHighlightFavorites = enabled
+                        SettingsManager.setQuickLauncherHighlightFavorites(context, enabled)
+                    },
+                    quickLauncherFavoriteColor = quickLauncherFavoriteColor,
+                    onQuickLauncherFavoriteColorChanged = { color ->
+                        quickLauncherFavoriteColor = color
+                        SettingsManager.setQuickLauncherFavoriteColor(context, color)
+                    },
+                    quickLauncherIconColors = quickLauncherIconColors,
+                    onQuickLauncherIconColorsChanged = { enabled ->
+                        quickLauncherIconColors = enabled
+                        SettingsManager.setQuickLauncherIconColors(context, enabled)
+                    },
+                    quickLauncherShowAliasFirst = quickLauncherShowAliasFirst,
+                    onQuickLauncherShowAliasFirstChanged = { enabled ->
+                        quickLauncherShowAliasFirst = enabled
+                        SettingsManager.setQuickLauncherShowAliasFirst(context, enabled)
+                    },
+                    quickLauncherStaticTopHighlight = quickLauncherStaticTopHighlight,
+                    onQuickLauncherStaticTopHighlightChanged = { enabled ->
+                        quickLauncherStaticTopHighlight = enabled
+                        SettingsManager.setQuickLauncherStaticTopHighlight(context, enabled)
+                    },
+                    quickLauncherStaticTopHighlightColor = quickLauncherStaticTopHighlightColor,
+                    onQuickLauncherStaticTopHighlightColorChanged = { color ->
+                        quickLauncherStaticTopHighlightColor = color
+                        SettingsManager.setQuickLauncherStaticTopHighlightColor(context, color)
+                    },
+                    commandSourceVisibility = commandSourceVisibility,
+                    onCommandSourceVisibilityChanged = { visibility ->
+                        commandSourceVisibility = visibility
+                        SettingsManager.setCommandSourceVisibility(context, visibility)
                     }
                 )
             }
@@ -1069,13 +1178,524 @@ private fun quickLauncherBehaviorLabel(behavior: String): String {
 }
 
 @Composable
+private fun QuickLauncherDisplayedEntriesSection(
+    visibility: List<SettingsManager.CommandSourceVisibility>,
+    onVisibilityChanged: (List<SettingsManager.CommandSourceVisibility>) -> Unit
+) {
+    val context = LocalContext.current
+    var showCustomizeDialog by remember { mutableStateOf(false) }
+    val sourceLabels = mapOf(
+        CommandSourceId.Apps.storageValue to "Apps",
+        CommandSourceId.Pastiera.storageValue to "Pastiera actions",
+        CommandSourceId.AppActions.storageValue to "App actions",
+        CommandSourceId.DeviceControl.storageValue to "Device control",
+        CommandSourceId.NavActions.storageValue to "Navigation actions"
+    )
+
+    fun update(sourceId: String, quickLauncher: Boolean) {
+        onVisibilityChanged(
+            visibility.map { item ->
+                if (item.sourceId != sourceId) {
+                    item
+                } else {
+                    item.copy(quickLauncherEnabled = quickLauncher)
+                }
+            }
+        )
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        tonalElevation = 1.dp,
+        shape = MaterialTheme.shapes.medium
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.ManageSearch,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(28.dp)
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "QuickLauncher entries",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = "Choose which sources appear in Pastiera search.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            visibility.forEach { item ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = sourceLabels[item.sourceId] ?: item.sourceId,
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Switch(
+                        checked = item.quickLauncherEnabled,
+                        onCheckedChange = { update(item.sourceId, it) }
+                    )
+                }
+            }
+            Button(
+                onClick = { showCustomizeDialog = true },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Edit,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Customize entries")
+            }
+        }
+    }
+
+    if (showCustomizeDialog) {
+        QuickLauncherCommandCustomizationDialog(
+            commands = remember(showCustomizeDialog, visibility) {
+                CommandRegistry(context).getCommands(CommandSurface.QuickLauncher)
+            },
+            customizations = remember(showCustomizeDialog) {
+                mutableStateMapOf<String, SettingsManager.QuickLauncherCommandCustomization>().apply {
+                    putAll(SettingsManager.getQuickLauncherCommandCustomizations(context))
+                }
+            },
+            onCustomizationChanged = { customization ->
+                SettingsManager.setQuickLauncherCommandCustomization(context, customization)
+            },
+            onDismiss = { showCustomizeDialog = false }
+        )
+    }
+}
+
+@Composable
+private fun QuickLauncherCommandCustomizationDialog(
+    commands: List<CommandTarget>,
+    customizations: MutableMap<String, SettingsManager.QuickLauncherCommandCustomization>,
+    onCustomizationChanged: (SettingsManager.QuickLauncherCommandCustomization) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var editingCommandId by remember { mutableStateOf<String?>(null) }
+    var query by remember { mutableStateOf("") }
+    var selectedSource by remember { mutableStateOf<CommandSourceId?>(null) }
+    var favoritesOnly by remember { mutableStateOf(false) }
+    val availableSources = remember(commands) { commands.map { it.source }.distinct() }
+    val filteredCommands = remember(commands, query, selectedSource, favoritesOnly, customizations.toMap()) {
+        val normalizedQuery = query.trim().lowercase()
+        val sourceMatches = commands.filter {
+            (selectedSource == null || it.source == selectedSource) &&
+                (!favoritesOnly || customizations[it.id]?.favorite == true)
+        }
+        val matches = if (normalizedQuery.isBlank()) {
+            sourceMatches
+        } else {
+            sourceMatches.filter { command ->
+                command.label.contains(normalizedQuery, ignoreCase = true) ||
+                    command.subtitle?.contains(normalizedQuery, ignoreCase = true) == true ||
+                    command.source.displayLabel.contains(normalizedQuery, ignoreCase = true) ||
+                    command.searchTokens.any { it.contains(normalizedQuery, ignoreCase = true) }
+            }
+        }
+        if (favoritesOnly) {
+            matches.sortedWith(
+                compareBy<CommandTarget> { customizations[it.id]?.favoriteOrder ?: Int.MAX_VALUE }
+                    .thenBy { it.label.lowercase() }
+            )
+        } else {
+            matches.sortedWith(compareBy<CommandTarget> { it.source.ordinal }.thenBy { it.label.lowercase() })
+        }
+    }
+    val entries = remember(filteredCommands, query) {
+        if (query.isBlank() && !favoritesOnly) {
+            filteredCommands
+                .groupBy { it.source }
+                .flatMap { (source, sourceCommands) ->
+                    listOf(CommandCustomizationEntry.Header(source.displayLabel)) +
+                        sourceCommands.map { CommandCustomizationEntry.Command(it) }
+                }
+        } else {
+            filteredCommands.map { CommandCustomizationEntry.Command(it) }
+        }
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.96f)
+                .fillMaxHeight(0.9f),
+            shape = MaterialTheme.shapes.large,
+            tonalElevation = 6.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Customize entries",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Favorites, hidden entries, and search aliases",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    TextButton(onClick = onDismiss) {
+                        Text(stringResource(R.string.close))
+                    }
+                }
+                TextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = MaterialTheme.shapes.extraLarge,
+                    placeholder = { Text("Search entries") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Filled.Search,
+                            contentDescription = null
+                        )
+                    },
+                    colors = TextFieldDefaults.colors(
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        disabledIndicatorColor = Color.Transparent
+                    )
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    FilterChip(
+                        selected = selectedSource == null,
+                        onClick = { selectedSource = null },
+                        label = { Text("All") }
+                    )
+                    FilterChip(
+                        selected = favoritesOnly,
+                        onClick = { favoritesOnly = !favoritesOnly },
+                        label = { Text("Favorites") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Filled.Star,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    )
+                    availableSources.forEach { source ->
+                        FilterChip(
+                            selected = selectedSource == source,
+                            onClick = { selectedSource = source },
+                            label = { Text(source.displayLabel) }
+                        )
+                    }
+                }
+                if (commands.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("No commands available for the selected sources.")
+                    }
+                } else if (entries.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("No entries match \"$query\".")
+                    }
+                } else {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(1),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentPadding = PaddingValues(bottom = 6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(
+                            items = entries,
+                            key = { entry ->
+                                when (entry) {
+                                    is CommandCustomizationEntry.Header -> "header:${entry.label}"
+                                    is CommandCustomizationEntry.Command -> entry.command.id
+                                }
+                            },
+                            span = { entry ->
+                                when (entry) {
+                                    is CommandCustomizationEntry.Header -> GridItemSpan(maxLineSpan)
+                                    is CommandCustomizationEntry.Command -> GridItemSpan(1)
+                                }
+                            }
+                        ) { entry ->
+                            when (entry) {
+                                is CommandCustomizationEntry.Header -> CommandCustomizationHeader(entry.label)
+                                is CommandCustomizationEntry.Command -> {
+                                    val command = entry.command
+                                    val current = customizations[command.id]
+                                        ?: SettingsManager.QuickLauncherCommandCustomization(command.id)
+                                    CommandCustomizationRow(
+                                        command = command,
+                                        customization = current,
+                                        editing = editingCommandId == command.id,
+                                        onToggleFavorite = {
+                                            val nextOrder = customizations.values
+                                                .filter { it.favorite }
+                                                .map { it.favoriteOrder }
+                                                .filter { it != Int.MAX_VALUE }
+                                                .maxOrNull()
+                                                ?.plus(1)
+                                                ?: 0
+                                            val updated = current.copy(
+                                                favorite = !current.favorite,
+                                                favoriteOrder = if (!current.favorite) nextOrder else Int.MAX_VALUE
+                                            )
+                                            customizations[command.id] = updated
+                                            onCustomizationChanged(updated)
+                                        },
+                                        onToggleHidden = {
+                                            val updated = current.copy(hidden = !current.hidden)
+                                            customizations[command.id] = updated
+                                            onCustomizationChanged(updated)
+                                        },
+                                        onToggleEdit = {
+                                            editingCommandId = if (editingCommandId == command.id) null else command.id
+                                        },
+                                        onCustomSearchChanged = { value ->
+                                            val updated = current.copy(customSearch = value)
+                                            if (!updated.favorite && !updated.hidden && updated.customSearch.isBlank()) {
+                                                customizations.remove(command.id)
+                                            } else {
+                                                customizations[command.id] = updated
+                                            }
+                                            onCustomizationChanged(updated)
+                                        },
+                                        onMoveFavorite = { direction ->
+                                            moveFavoriteOrder(
+                                                commandId = command.id,
+                                                direction = direction,
+                                                customizations = customizations,
+                                                onCustomizationChanged = onCustomizationChanged
+                                            )
+                                        },
+                                        onColorChanged = { color ->
+                                            val updated = current.copy(color = color)
+                                            customizations[command.id] = updated
+                                            onCustomizationChanged(updated)
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private sealed class CommandCustomizationEntry {
+    data class Header(val label: String) : CommandCustomizationEntry()
+    data class Command(val command: CommandTarget) : CommandCustomizationEntry()
+}
+
+@Composable
+private fun CommandCustomizationHeader(label: String) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.primary,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 6.dp, bottom = 2.dp)
+    )
+}
+
+private fun moveFavoriteOrder(
+    commandId: String,
+    direction: Int,
+    customizations: MutableMap<String, SettingsManager.QuickLauncherCommandCustomization>,
+    onCustomizationChanged: (SettingsManager.QuickLauncherCommandCustomization) -> Unit
+) {
+    val favorites = customizations.values
+        .filter { it.favorite }
+        .sortedWith(compareBy<SettingsManager.QuickLauncherCommandCustomization> { it.favoriteOrder }.thenBy { it.commandId })
+    val index = favorites.indexOfFirst { it.commandId == commandId }
+    val targetIndex = (index + direction).takeIf { index >= 0 && it in favorites.indices } ?: return
+    val current = favorites[index]
+    val target = favorites[targetIndex]
+    val currentOrder = current.favoriteOrder.takeIf { it != Int.MAX_VALUE } ?: index
+    val targetOrder = target.favoriteOrder.takeIf { it != Int.MAX_VALUE } ?: targetIndex
+    val updatedCurrent = current.copy(favoriteOrder = targetOrder)
+    val updatedTarget = target.copy(favoriteOrder = currentOrder)
+    customizations[updatedCurrent.commandId] = updatedCurrent
+    customizations[updatedTarget.commandId] = updatedTarget
+    onCustomizationChanged(updatedCurrent)
+    onCustomizationChanged(updatedTarget)
+}
+
+@Composable
+private fun CommandCustomizationRow(
+    command: CommandTarget,
+    customization: SettingsManager.QuickLauncherCommandCustomization,
+    editing: Boolean,
+    onToggleFavorite: () -> Unit,
+    onToggleHidden: () -> Unit,
+    onToggleEdit: () -> Unit,
+    onCustomSearchChanged: (String) -> Unit,
+    onMoveFavorite: (Int) -> Unit,
+    onColorChanged: (Int?) -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        tonalElevation = 1.dp,
+        shape = MaterialTheme.shapes.medium
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = command.label,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = command.subtitle ?: command.source.displayLabel,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                IconButton(onClick = onToggleFavorite) {
+                    Icon(
+                        imageVector = if (customization.favorite) Icons.Filled.Star else Icons.Filled.StarBorder,
+                        contentDescription = null,
+                        tint = if (customization.favorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (customization.favorite) {
+                    IconButton(onClick = { onMoveFavorite(-1) }) {
+                        Icon(
+                            imageVector = Icons.Filled.KeyboardArrowUp,
+                            contentDescription = null
+                        )
+                    }
+                    IconButton(onClick = { onMoveFavorite(1) }) {
+                        Icon(
+                            imageVector = Icons.Filled.KeyboardArrowDown,
+                            contentDescription = null
+                        )
+                    }
+                }
+                IconButton(onClick = onToggleHidden) {
+                    Icon(
+                        imageVector = if (customization.hidden) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                        contentDescription = null,
+                        tint = if (customization.hidden) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                IconButton(onClick = onToggleEdit) {
+                    Icon(
+                        imageVector = Icons.Filled.Edit,
+                        contentDescription = null,
+                        tint = if (editing || customization.customSearch.isNotBlank()) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
+                }
+                ColorSwatchButton(
+                    color = customization.color,
+                    dynamicColor = commandPickerDynamicColor(command),
+                    showDynamic = true,
+                    onColorChanged = onColorChanged
+                )
+            }
+            if (editing) {
+                OutlinedTextField(
+                    value = customization.customSearch,
+                    onValueChange = onCustomSearchChanged,
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    label = { Text("Search alias") }
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun StarterLauncherCosmeticScreen(
     modifier: Modifier = Modifier,
     onBack: () -> Unit,
     quickLauncherWidthPercent: Int,
     onQuickLauncherWidthPercentChanged: (Int) -> Unit,
     quickLauncherPillMode: Boolean,
-    onQuickLauncherPillModeChanged: (Boolean) -> Unit
+    onQuickLauncherPillModeChanged: (Boolean) -> Unit,
+    quickLauncherHighlightFavorites: Boolean,
+    onQuickLauncherHighlightFavoritesChanged: (Boolean) -> Unit,
+    quickLauncherFavoriteColor: Int,
+    onQuickLauncherFavoriteColorChanged: (Int) -> Unit,
+    quickLauncherIconColors: Boolean,
+    onQuickLauncherIconColorsChanged: (Boolean) -> Unit,
+    quickLauncherShowAliasFirst: Boolean,
+    onQuickLauncherShowAliasFirstChanged: (Boolean) -> Unit,
+    quickLauncherStaticTopHighlight: Boolean,
+    onQuickLauncherStaticTopHighlightChanged: (Boolean) -> Unit,
+    quickLauncherStaticTopHighlightColor: Int,
+    onQuickLauncherStaticTopHighlightColorChanged: (Int) -> Unit,
+    commandSourceVisibility: List<SettingsManager.CommandSourceVisibility>,
+    onCommandSourceVisibilityChanged: (List<SettingsManager.CommandSourceVisibility>) -> Unit
 ) {
     StarterLauncherSubScreen(
         modifier = modifier,
@@ -1116,6 +1736,325 @@ private fun StarterLauncherCosmeticScreen(
             checked = quickLauncherPillMode,
             onCheckedChange = onQuickLauncherPillModeChanged
         )
+        QuickLauncherFavoriteAppearanceSection(
+            highlightFavorites = quickLauncherHighlightFavorites,
+            onHighlightFavoritesChanged = onQuickLauncherHighlightFavoritesChanged,
+            favoriteColor = quickLauncherFavoriteColor,
+            onFavoriteColorChanged = onQuickLauncherFavoriteColorChanged,
+            iconColors = quickLauncherIconColors,
+            onIconColorsChanged = onQuickLauncherIconColorsChanged,
+            showAliasFirst = quickLauncherShowAliasFirst,
+            onShowAliasFirstChanged = onQuickLauncherShowAliasFirstChanged,
+            staticTopHighlight = quickLauncherStaticTopHighlight,
+            onStaticTopHighlightChanged = onQuickLauncherStaticTopHighlightChanged,
+            staticTopHighlightColor = quickLauncherStaticTopHighlightColor,
+            onStaticTopHighlightColorChanged = onQuickLauncherStaticTopHighlightColorChanged
+        )
+        QuickLauncherDisplayedEntriesSection(
+            visibility = commandSourceVisibility,
+            onVisibilityChanged = onCommandSourceVisibilityChanged
+        )
+    }
+}
+
+@Composable
+private fun QuickLauncherFavoriteAppearanceSection(
+    highlightFavorites: Boolean,
+    onHighlightFavoritesChanged: (Boolean) -> Unit,
+    favoriteColor: Int,
+    onFavoriteColorChanged: (Int) -> Unit,
+    iconColors: Boolean,
+    onIconColorsChanged: (Boolean) -> Unit,
+    showAliasFirst: Boolean,
+    onShowAliasFirstChanged: (Boolean) -> Unit,
+    staticTopHighlight: Boolean,
+    onStaticTopHighlightChanged: (Boolean) -> Unit,
+    staticTopHighlightColor: Int,
+    onStaticTopHighlightColorChanged: (Int) -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        tonalElevation = 1.dp,
+        shape = MaterialTheme.shapes.medium
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = "Entry appearance",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                val favoriteHighlightColor = favoriteColor.takeUnless {
+                    it == SettingsManager.QUICK_LAUNCHER_DYNAMIC_FAVORITE_COLOR
+                }
+                Text(
+                    text = "Highlight favorites in list",
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                ColorSwatchButton(
+                    color = favoriteHighlightColor,
+                    showDynamic = true,
+                    onColorChanged = {
+                        onFavoriteColorChanged(
+                            it ?: SettingsManager.QUICK_LAUNCHER_DYNAMIC_FAVORITE_COLOR
+                        )
+                    }
+                )
+                Switch(
+                    checked = highlightFavorites,
+                    onCheckedChange = onHighlightFavoritesChanged
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "Tint entries from app icon colors",
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Switch(
+                    checked = iconColors,
+                    onCheckedChange = onIconColorsChanged
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "Use static top-match highlight color",
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                ColorSwatchButton(
+                    color = staticTopHighlightColor,
+                    showDynamic = false,
+                    onColorChanged = { it?.let(onStaticTopHighlightColorChanged) }
+                )
+                Switch(
+                    checked = staticTopHighlight,
+                    onCheckedChange = onStaticTopHighlightChanged
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "Show search alias before entry name",
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Switch(
+                    checked = showAliasFirst,
+                    onCheckedChange = onShowAliasFirstChanged
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ColorSwatchButton(
+    color: Int?,
+    dynamicColor: Int? = null,
+    showDynamic: Boolean = false,
+    onColorChanged: (Int?) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val shape = MaterialTheme.shapes.small
+    Box {
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .background(
+                    brush = if (showDynamic && color == null) {
+                        Brush.sweepGradient(dynamicSwatchColors())
+                    } else {
+                        Brush.linearGradient(
+                            listOf(
+                                Color(color ?: dynamicColor ?: 0x66888888),
+                                Color(color ?: dynamicColor ?: 0x66888888)
+                            )
+                        )
+                    },
+                    shape = shape
+                )
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
+                    shape = shape
+                )
+                .clickable { expanded = true }
+        )
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            if (showDynamic) {
+                DropdownMenuItem(
+                    text = {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            DynamicColorWheelSwatch()
+                            Text("Dynamic")
+                        }
+                    },
+                    onClick = {
+                        expanded = false
+                        onColorChanged(null)
+                    }
+                )
+            }
+            quickLauncherSwatches().forEach { swatch ->
+                DropdownMenuItem(
+                    text = {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Surface(
+                                modifier = Modifier.size(22.dp),
+                                shape = MaterialTheme.shapes.extraSmall,
+                                color = Color(swatch)
+                            ) {}
+                            Text("#${swatch.toUInt().toString(16).uppercase().takeLast(6)}")
+                        }
+                    },
+                    onClick = {
+                        expanded = false
+                        onColorChanged(swatch)
+                    }
+                )
+            }
+        }
+    }
+}
+
+private fun quickLauncherSwatches(): List<Int> {
+    return listOf(
+        0x7A4285F4,
+        0x7A34A853,
+        0x7AFABB05,
+        0x7AEA4335,
+        0x7AA142F4,
+        0x7A00ACC1,
+        0x7AFF7043,
+        0x7A888888
+    )
+}
+
+@Composable
+private fun DynamicColorWheelSwatch() {
+    Box(
+        modifier = Modifier
+            .size(22.dp)
+            .background(
+                brush = Brush.sweepGradient(dynamicSwatchColors()),
+                shape = MaterialTheme.shapes.extraSmall
+            )
+    )
+}
+
+private fun dynamicSwatchColors(): List<Color> {
+    return listOf(
+        Color(0xFFEA4335),
+        Color(0xFFFABB05),
+        Color(0xFF34A853),
+        Color(0xFF00ACC1),
+        Color(0xFF4285F4),
+        Color(0xFFA142F4),
+        Color(0xFFEA4335)
+    )
+}
+
+private fun commandPickerDynamicColor(command: CommandTarget, alpha: Float = 0.58f): Int {
+    val drawable = (command.icon as? CommandIcon.DrawableIcon)?.drawable
+    val dominant = drawable?.dominantPickerIconColor()
+    if (dominant != null) {
+        val hsv = FloatArray(3)
+        AndroidColor.colorToHSV(dominant, hsv)
+        val saturation = hsv[1].coerceAtLeast(0.34f).coerceAtMost(0.72f)
+        val value = hsv[2].coerceAtLeast(0.58f).coerceAtMost(0.92f)
+        return AndroidColor.HSVToColor(
+            (alpha * 255).toInt().coerceIn(0, 255),
+            floatArrayOf(hsv[0], saturation, value)
+        )
+    }
+
+    val fallbackHue = when (command.source) {
+        CommandSourceId.Apps -> 214f
+        CommandSourceId.Pastiera -> 145f
+        CommandSourceId.AppActions -> 282f
+        CommandSourceId.DeviceControl -> 28f
+        CommandSourceId.NavActions -> 190f
+    }
+    return AndroidColor.HSVToColor(
+        (alpha * 255).toInt().coerceIn(0, 255),
+        floatArrayOf(fallbackHue, 0.38f, 0.92f)
+    )
+}
+
+private fun Drawable.dominantPickerIconColor(): Int? {
+    val bitmap = toPickerSmallBitmap() ?: return null
+    var redTotal = 0L
+    var greenTotal = 0L
+    var blueTotal = 0L
+    var weightTotal = 0L
+    val pixels = IntArray(bitmap.width * bitmap.height)
+    bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+    pixels.forEach { pixel ->
+        val alpha = AndroidColor.alpha(pixel)
+        if (alpha < 48) return@forEach
+        val red = AndroidColor.red(pixel)
+        val green = AndroidColor.green(pixel)
+        val blue = AndroidColor.blue(pixel)
+        val max = maxOf(red, green, blue)
+        val min = minOf(red, green, blue)
+        val saturationWeight = (max - min).coerceAtLeast(18)
+        val weight = alpha * saturationWeight
+        redTotal += red.toLong() * weight
+        greenTotal += green.toLong() * weight
+        blueTotal += blue.toLong() * weight
+        weightTotal += weight
+    }
+    if (weightTotal <= 0L) return null
+    return AndroidColor.rgb(
+        (redTotal / weightTotal).toInt().coerceIn(0, 255),
+        (greenTotal / weightTotal).toInt().coerceIn(0, 255),
+        (blueTotal / weightTotal).toInt().coerceIn(0, 255)
+    )
+}
+
+private fun Drawable.toPickerSmallBitmap(): Bitmap? {
+    if (this is BitmapDrawable && bitmap != null) {
+        return Bitmap.createScaledBitmap(bitmap, 32, 32, true)
+    }
+    val width = intrinsicWidth.takeIf { it > 0 } ?: 32
+    val height = intrinsicHeight.takeIf { it > 0 } ?: 32
+    return try {
+        Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).also { bitmap ->
+            val canvas = Canvas(bitmap)
+            setBounds(0, 0, canvas.width, canvas.height)
+            draw(canvas)
+        }
+    } catch (_: IllegalArgumentException) {
+        null
     }
 }
 

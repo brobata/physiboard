@@ -664,9 +664,9 @@
     <string name="quick_launcher_ranking_info_title">QuickLauncher դասակարգում</string>
     <string name="quick_launcher_ranking_info_body">Արդյունքները դասվում են այսպես՝ ճշգրիտ հավելվածի անուն, հավելվածի անվան նախածանց, բառի նախածանց, հապավում/ենթահաջորդականություն, տառասխալներին հանդուրժող հավելվածի անուն, հետո փաթեթի անուն։ Շատ կարճ հարցումների համար տառասխալների հանդուրժումը անտեսվում է։</string>
     <string name="quick_launcher_behavior_title">Վարքագիծ</string>
-    <string name="quick_launcher_behavior_description">Գործարկման կանոններ, արդյունքների ցուցադրում և SYM+Space տեքստային դաշտերից։</string>
+    <string name="quick_launcher_behavior_description">Գործարկման provider, որոնման/դասակարգման կանոններ և SYM+Space տեքստային դաշտերից։</string>
     <string name="quick_launcher_cosmetic_title">Տեսք</string>
-    <string name="quick_launcher_cosmetic_description">Լայնություն և կոմպակտ հաբաձև ներկայացում։</string>
+    <string name="quick_launcher_cosmetic_description">Լայնություն, հաբաձև ռեժիմ, command sources, favorites, aliases և entry colors։</string>
     <string name="quick_launcher_width_title">Launcher-ի լայնություն</string>
     <string name="quick_launcher_width_value">Էկրանի լայնության %1$d%%</string>
     <string name="quick_launcher_pill_mode_title">Հաբաձև ռեժիմ</string>

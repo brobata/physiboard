@@ -32,6 +32,8 @@
 
         <!-- Optional QuickLauncher backend: Niagara Launcher search deep link -->
         <package android:name="bitpit.launcher" />
+        <package android:name="net.dinglisch.android.taskerm" />
+        <package android:name="io.homeassistant.companion.android" />
     </queries>
 
     <application

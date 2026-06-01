@@ -1,6 +1,5 @@
 package it.palsoftware.pastiera.inputmethod
 
-import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.KeyEvent
@@ -8,13 +7,22 @@ import android.view.ViewGroup
 import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color as AndroidColor
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Drawable
 import androidx.activity.compose.setContent
 import androidx.lifecycle.lifecycleScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,17 +35,26 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -53,10 +70,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import it.palsoftware.pastiera.AppListHelper
-import it.palsoftware.pastiera.InstalledApp
 import it.palsoftware.pastiera.LocalizedComponentActivity
 import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.SettingsManager
+import it.palsoftware.pastiera.commands.CommandExecutor
+import it.palsoftware.pastiera.commands.CommandIcon
+import it.palsoftware.pastiera.commands.CommandKind
+import it.palsoftware.pastiera.commands.CommandLaunchSpec
+import it.palsoftware.pastiera.commands.CommandRegistry
+import it.palsoftware.pastiera.commands.CommandSourceId
+import it.palsoftware.pastiera.commands.CommandSurface
+import it.palsoftware.pastiera.commands.CommandTarget
 import it.palsoftware.pastiera.data.layout.JsonLayoutLoader
 import it.palsoftware.pastiera.data.layout.LayoutMapping
 import it.palsoftware.pastiera.data.layout.LayoutMappingRepository
@@ -67,7 +91,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class QuickLauncherActivity : LocalizedComponentActivity() {
-    private var apps: List<InstalledApp> = emptyList()
+    private var commands: List<CommandTarget> = emptyList()
     private var query by mutableStateOf("")
     private var autoStartSingle by mutableStateOf(false)
     private var limitResults by mutableStateOf(false)
@@ -75,7 +99,15 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
     private var pillMode by mutableStateOf(false)
     private var respectKeyboardLayout by mutableStateOf(true)
     private var typoTolerantRanking by mutableStateOf(false)
-    private var filteredApps by mutableStateOf(emptyList<InstalledApp>())
+    private var filteredCommands by mutableStateOf(emptyList<CommandTarget>())
+    private var commandCustomizations: Map<String, SettingsManager.QuickLauncherCommandCustomization> = emptyMap()
+    private var commandCustomizationRevision by mutableStateOf(0)
+    private var highlightFavorites by mutableStateOf(true)
+    private var favoriteColor by mutableStateOf(SettingsManager.QUICK_LAUNCHER_DYNAMIC_FAVORITE_COLOR)
+    private var iconColors by mutableStateOf(false)
+    private var showAliasFirst by mutableStateOf(true)
+    private var staticTopHighlight by mutableStateOf(false)
+    private var staticTopHighlightColor by mutableStateOf(0x7A4285F4)
     private var loadingApps by mutableStateOf(false)
     private var launchedAutomatically = false
     private var keyboardLayout: Map<Int, LayoutMapping> = emptyMap()
@@ -99,10 +131,17 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
         pillMode = SettingsManager.getQuickLauncherPillMode(this)
         respectKeyboardLayout = SettingsManager.getQuickLauncherRespectKeyboardLayout(this)
         typoTolerantRanking = SettingsManager.getQuickLauncherTypoTolerantRanking(this)
+        commandCustomizations = SettingsManager.getQuickLauncherCommandCustomizations(this)
+        highlightFavorites = SettingsManager.getQuickLauncherHighlightFavorites(this)
+        favoriteColor = SettingsManager.getQuickLauncherFavoriteColor(this)
+        iconColors = SettingsManager.getQuickLauncherIconColors(this)
+        showAliasFirst = SettingsManager.getQuickLauncherShowAliasFirst(this)
+        staticTopHighlight = SettingsManager.getQuickLauncherStaticTopHighlight(this)
+        staticTopHighlightColor = SettingsManager.getQuickLauncherStaticTopHighlightColor(this)
         keyboardLayout = if (respectKeyboardLayout) loadActiveKeyboardLayout() else emptyMap()
-        apps = AppListHelper.getCachedInstalledApps().orEmpty()
-        loadingApps = apps.isEmpty()
-        refreshFilteredApps()
+        commands = quickLauncherCommandsFromCachedApps()
+        loadingApps = commands.isEmpty()
+        refreshFilteredCommands()
 
         setContent {
             PastieraTheme {
@@ -114,27 +153,36 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
                 ) {
                     QuickLauncherSheet(
                         query = query,
-                        apps = filteredApps,
+                        commands = filteredCommands,
                         loadingApps = loadingApps,
                         limitResults = limitResults,
                         widthPercent = widthPercent,
                         pillMode = pillMode,
-                        onAppSelected = { launchApp(it.packageName) },
+                        customizations = commandCustomizations,
+                        customizationRevision = commandCustomizationRevision,
+                        highlightFavorites = highlightFavorites,
+                        favoriteColor = favoriteColor,
+                        iconColors = iconColors,
+                        showAliasFirst = showAliasFirst,
+                        staticTopHighlight = staticTopHighlight,
+                        staticTopHighlightColor = staticTopHighlightColor,
+                        onCommandSelected = { launchCommand(it) },
+                        onCustomizationChanged = { updateCommandCustomization(it) },
+                        onCustomizationsReloadRequested = { reloadCommandCustomizations() },
+                        onMoveFavorite = { commandId, direction -> moveFavorite(commandId, direction) },
                         onDismiss = { finish() }
                     )
                 }
             }
         }
 
-        if (loadingApps) {
-            lifecycleScope.launch {
-                val loadedApps = withContext(Dispatchers.IO) {
-                    AppListHelper.getInstalledApps(this@QuickLauncherActivity)
-                }
-                apps = loadedApps
-                loadingApps = false
-                refreshFilteredApps()
+        lifecycleScope.launch {
+            val loadedCommands = withContext(Dispatchers.IO) {
+                CommandRegistry(this@QuickLauncherActivity).getCommands(CommandSurface.QuickLauncher)
             }
+            commands = loadedCommands
+            loadingApps = false
+            refreshFilteredCommands()
         }
     }
 
@@ -153,7 +201,7 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
                 if (query.isNotEmpty()) {
                     query = query.dropLast(1)
                     launchedAutomatically = false
-                    refreshFilteredApps()
+                    refreshFilteredCommands()
                 }
                 return true
             }
@@ -168,7 +216,7 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
             if (!text.isNullOrEmpty()) {
                 query += text
                 launchedAutomatically = false
-                refreshFilteredApps()
+                refreshFilteredCommands()
                 return true
             }
         }
@@ -193,34 +241,76 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
         disableActivityAnimations()
     }
 
-    private fun refreshFilteredApps() {
-        filteredApps = fuzzyFilterApps(apps, query, limitResults, typoTolerantRanking)
+    private fun refreshFilteredCommands() {
+        filteredCommands = fuzzyFilterCommands(
+            commands = commands,
+            query = query,
+            limitResults = limitResults,
+            typoTolerantRanking = typoTolerantRanking,
+            customizations = commandCustomizations
+        )
         maybeAutoLaunch()
     }
 
     private fun maybeAutoLaunch() {
-        if (autoStartSingle && query.isNotBlank() && filteredApps.size == 1 && !launchedAutomatically) {
+        if (autoStartSingle && query.isNotBlank() && filteredCommands.size == 1 && !launchedAutomatically) {
             launchedAutomatically = true
-            launchApp(filteredApps.first().packageName)
+            launchCommand(filteredCommands.first())
         }
     }
 
     private fun launchTopMatch() {
-        filteredApps.firstOrNull()?.let { launchApp(it.packageName) }
+        filteredCommands.firstOrNull()?.let { launchCommand(it) }
     }
 
-    private fun launchApp(packageName: String) {
-        try {
-            val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
-            if (launchIntent != null) {
-                launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                startActivity(launchIntent)
-                finish()
-            } else {
-                Log.w(TAG, "No launch intent for $packageName")
-            }
-        } catch (error: Exception) {
-            Log.e(TAG, "Error launching $packageName", error)
+    private fun launchCommand(command: CommandTarget) {
+        val result = CommandExecutor(this).execute(command)
+        if (result.isSuccess) {
+            finish()
+        } else {
+            Log.w(TAG, "Command failed: ${command.id}")
+        }
+    }
+
+    private fun updateCommandCustomization(customization: SettingsManager.QuickLauncherCommandCustomization) {
+        SettingsManager.setQuickLauncherCommandCustomization(this, customization)
+        reloadCommandCustomizations()
+    }
+
+    private fun reloadCommandCustomizations() {
+        commandCustomizations = SettingsManager.getQuickLauncherCommandCustomizations(this)
+        commandCustomizationRevision += 1
+        launchedAutomatically = false
+        refreshFilteredCommands()
+    }
+
+    private fun moveFavorite(commandId: String, direction: Int) {
+        val favorites = commandCustomizations.values
+            .filter { it.favorite }
+            .sortedWith(compareBy<SettingsManager.QuickLauncherCommandCustomization> { it.favoriteOrder }.thenBy { it.commandId })
+        val index = favorites.indexOfFirst { it.commandId == commandId }
+        val targetIndex = (index + direction).takeIf { index >= 0 && it in favorites.indices } ?: return
+        val current = favorites[index]
+        val target = favorites[targetIndex]
+        val currentOrder = current.favoriteOrder.takeIf { it != Int.MAX_VALUE } ?: index
+        val targetOrder = target.favoriteOrder.takeIf { it != Int.MAX_VALUE } ?: targetIndex
+        updateCommandCustomization(current.copy(favoriteOrder = targetOrder))
+        updateCommandCustomization(target.copy(favoriteOrder = currentOrder))
+    }
+
+    private fun quickLauncherCommandsFromCachedApps(): List<CommandTarget> {
+        val cachedApps = AppListHelper.getCachedInstalledApps() ?: return emptyList()
+        return cachedApps.map { app ->
+            CommandTarget(
+                id = "app:${app.packageName}",
+                source = CommandSourceId.Apps,
+                kind = CommandKind.App,
+                label = app.appName,
+                subtitle = app.packageName,
+                icon = CommandIcon.DrawableIcon(app.icon),
+                launch = CommandLaunchSpec.AppPackage(app.packageName),
+                searchTokens = listOf(app.appName, app.packageName)
+            )
         }
     }
 
@@ -270,18 +360,41 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
 @Composable
 private fun QuickLauncherSheet(
     query: String,
-    apps: List<InstalledApp>,
+    commands: List<CommandTarget>,
     loadingApps: Boolean,
     limitResults: Boolean,
     widthPercent: Int,
     pillMode: Boolean,
-    onAppSelected: (InstalledApp) -> Unit,
+    customizations: Map<String, SettingsManager.QuickLauncherCommandCustomization>,
+    customizationRevision: Int,
+    highlightFavorites: Boolean,
+    favoriteColor: Int,
+    iconColors: Boolean,
+    showAliasFirst: Boolean,
+    staticTopHighlight: Boolean,
+    staticTopHighlightColor: Int,
+    onCommandSelected: (CommandTarget) -> Unit,
+    onCustomizationChanged: (SettingsManager.QuickLauncherCommandCustomization) -> Unit,
+    onCustomizationsReloadRequested: () -> Unit,
+    onMoveFavorite: (String, Int) -> Unit,
     onDismiss: () -> Unit
 ) {
     val maxSheetHeight = LocalConfiguration.current.screenHeightDp.dp * 0.78f
     val visible = remember { mutableStateOf(true) }
     val isCollapsedPill = pillMode && query.isBlank()
     val widthFraction = if (isCollapsedPill) 0.72f else widthPercent.coerceIn(50, 100) / 100f
+    val entries = remember(commands, customizations, customizationRevision) {
+        commands
+            .groupBy { it.source }
+            .flatMap { (source, sourceCommands) ->
+                if (commands.size <= 4) {
+                    sourceCommands.map { QuickLauncherEntry.Command(it) }
+                } else {
+                    listOf(QuickLauncherEntry.Header(source.displayLabel)) +
+                        sourceCommands.map { QuickLauncherEntry.Command(it) }
+                }
+            }
+    }
 
     AnimatedVisibility(
         visible = visible.value,
@@ -392,7 +505,7 @@ private fun QuickLauncherSheet(
                     Spacer(modifier = Modifier.height(8.dp))
                 }
 
-                if (!isCollapsedPill && (apps.isEmpty() || loadingApps)) {
+                if (!isCollapsedPill && (commands.isEmpty() || loadingApps)) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -423,12 +536,31 @@ private fun QuickLauncherSheet(
                         contentPadding = PaddingValues(vertical = 6.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        itemsIndexed(apps, key = { _, app -> app.packageName }) { index, app ->
-                            QuickLauncherAppRow(
-                                app = app,
-                                isTopMatch = index == 0,
-                                onClick = { onAppSelected(app) }
-                            )
+                        itemsIndexed(entries, key = { _, entry ->
+                            when (entry) {
+                                is QuickLauncherEntry.Header -> "header:${entry.label}"
+                                is QuickLauncherEntry.Command -> "${entry.command.id}:$customizationRevision"
+                            }
+                        }) { index, entry ->
+                            when (entry) {
+                                is QuickLauncherEntry.Header -> QuickLauncherSectionHeader(entry.label)
+                                is QuickLauncherEntry.Command -> QuickLauncherCommandRow(
+                                    command = entry.command,
+                                    customization = customizations[entry.command.id],
+                                    isTopMatch = entries.take(index).none { it is QuickLauncherEntry.Command },
+                                    highlightFavorites = highlightFavorites,
+                                    favoriteColor = favoriteColor,
+                                    iconColors = iconColors,
+                                    showAliasFirst = showAliasFirst,
+                                    staticTopHighlight = staticTopHighlight,
+                                    staticTopHighlightColor = staticTopHighlightColor,
+                                    nextFavoriteOrder = nextFavoriteOrder(customizations),
+                                    onClick = { onCommandSelected(entry.command) },
+                                    onCustomizationChanged = onCustomizationChanged,
+                                    onCustomizationsReloadRequested = onCustomizationsReloadRequested,
+                                    onMoveFavorite = onMoveFavorite
+                                )
+                            }
                         }
                     }
                 }
@@ -437,115 +569,504 @@ private fun QuickLauncherSheet(
     }
 }
 
+private sealed class QuickLauncherEntry {
+    data class Header(val label: String) : QuickLauncherEntry()
+    data class Command(val command: CommandTarget) : QuickLauncherEntry()
+}
+
 @Composable
-private fun QuickLauncherAppRow(
-    app: InstalledApp,
-    isTopMatch: Boolean,
-    onClick: () -> Unit
-) {
-    Surface(
-        color = if (isTopMatch) {
-            MaterialTheme.colorScheme.primaryContainer
-        } else {
-            MaterialTheme.colorScheme.surface
-        },
-        contentColor = if (isTopMatch) {
-            MaterialTheme.colorScheme.onPrimaryContainer
-        } else {
-            MaterialTheme.colorScheme.onSurface
-        },
-        shape = MaterialTheme.shapes.medium,
+private fun QuickLauncherSectionHeader(label: String) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelMedium,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.primary,
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
-            verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 12.dp, vertical = 4.dp)
+    )
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun QuickLauncherCommandRow(
+    command: CommandTarget,
+    customization: SettingsManager.QuickLauncherCommandCustomization?,
+    isTopMatch: Boolean,
+    highlightFavorites: Boolean,
+    favoriteColor: Int,
+    iconColors: Boolean,
+    showAliasFirst: Boolean,
+    staticTopHighlight: Boolean,
+    staticTopHighlightColor: Int,
+    nextFavoriteOrder: Int,
+    onClick: () -> Unit,
+    onCustomizationChanged: (SettingsManager.QuickLauncherCommandCustomization) -> Unit,
+    onCustomizationsReloadRequested: () -> Unit,
+    onMoveFavorite: (String, Int) -> Unit
+) {
+    val customColor = customization?.color
+    val isFavorite = customization?.favorite == true
+    var menuExpanded by remember { mutableStateOf(false) }
+    val effectiveCustomization = customization ?: SettingsManager.QuickLauncherCommandCustomization(command.id)
+    val rowTint = when {
+        customColor != null -> Color(customColor)
+        isFavorite -> commandIconDerivedColor(command)
+        iconColors -> commandIconDerivedColor(command)
+        else -> null
+    }
+    Box {
+        Surface(
+            color = if (isTopMatch) {
+                if (staticTopHighlight) {
+                    Color(staticTopHighlightColor)
+                } else {
+                    customColor?.let { Color(it) } ?: commandIconDerivedColor(command, alpha = 0.58f)
+                }
+            } else if (rowTint != null) {
+                rowTint
+            } else {
+                MaterialTheme.colorScheme.surface
+            },
+            contentColor = if (isTopMatch) {
+                MaterialTheme.colorScheme.onPrimaryContainer
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            },
+            shape = MaterialTheme.shapes.medium,
+            border = if (highlightFavorites && isFavorite) {
+                val borderColor = if (favoriteColor == SettingsManager.QUICK_LAUNCHER_DYNAMIC_FAVORITE_COLOR) {
+                    commandIconDerivedColor(command, alpha = 0.95f)
+                } else {
+                    Color(favoriteColor).copy(alpha = 0.95f)
+                }
+                BorderStroke(2.dp, borderColor)
+            } else {
+                null
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = { menuExpanded = true }
+                )
         ) {
-            AndroidView(
-                factory = { context ->
-                    ImageView(context).apply {
-                        layoutParams = ViewGroup.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                            ViewGroup.LayoutParams.MATCH_PARENT
-                        )
-                        scaleType = ImageView.ScaleType.FIT_CENTER
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                AndroidView(
+                    factory = { context ->
+                        ImageView(context).apply {
+                            layoutParams = ViewGroup.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.MATCH_PARENT
+                            )
+                            scaleType = ImageView.ScaleType.FIT_CENTER
+                        }
+                    },
+                    update = { imageView ->
+                        val drawable = (command.icon as? CommandIcon.DrawableIcon)?.drawable
+                        imageView.setImageDrawable(drawable?.constantState?.newDrawable() ?: drawable)
+                    },
+                    modifier = Modifier.size(40.dp)
+                )
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(start = 12.dp)
+                ) {
+                    Text(
+                        text = commandDisplayLabel(command, customization, showAliasFirst),
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = if (isTopMatch) FontWeight.SemiBold else FontWeight.Normal,
+                        maxLines = 1,
+                        overflow = TextOverflow.Clip,
+                        modifier = Modifier.basicMarquee()
+                    )
+                    Text(
+                        text = command.subtitle ?: command.source.displayLabel,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Clip,
+                        modifier = Modifier.basicMarquee()
+                    )
+                }
+                if (isTopMatch) {
+                    Text(
+                        text = stringResource(R.string.quick_launcher_enter_hint),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+        }
+        QuickLauncherEntryContextMenu(
+            modifier = Modifier.align(Alignment.TopEnd),
+            expanded = menuExpanded,
+            command = command,
+            customization = effectiveCustomization,
+            nextFavoriteOrder = nextFavoriteOrder,
+            onDismiss = {
+                menuExpanded = false
+                onCustomizationsReloadRequested()
+            },
+            onCustomizationChanged = {
+                menuExpanded = false
+                onCustomizationChanged(it)
+            },
+            onMoveFavorite = {
+                menuExpanded = false
+                onMoveFavorite(command.id, it)
+            }
+        )
+    }
+}
+
+@Composable
+private fun QuickLauncherEntryContextMenu(
+    modifier: Modifier = Modifier,
+    expanded: Boolean,
+    command: CommandTarget,
+    customization: SettingsManager.QuickLauncherCommandCustomization,
+    nextFavoriteOrder: Int,
+    onDismiss: () -> Unit,
+    onCustomizationChanged: (SettingsManager.QuickLauncherCommandCustomization) -> Unit,
+    onMoveFavorite: (Int) -> Unit
+) {
+    var aliasText by remember(customization.commandId, customization.customSearch, expanded) {
+        mutableStateOf(customization.customSearch)
+    }
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismiss,
+        modifier = modifier
+    ) {
+        Column(
+            modifier = Modifier
+                .widthIn(min = 260.dp)
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = command.label,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Clip,
+                modifier = Modifier.basicMarquee()
+            )
+            OutlinedTextField(
+                value = aliasText,
+                onValueChange = { aliasText = it },
+                singleLine = true,
+                label = { Text("Search alias") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                TextButton(
+                    onClick = {
+                        aliasText = ""
+                        onCustomizationChanged(customization.copy(customSearch = ""))
+                    }
+                ) {
+                    Text("Clear")
+                }
+                TextButton(
+                    onClick = {
+                        onCustomizationChanged(customization.copy(customSearch = aliasText))
+                    }
+                ) {
+                    Text("Save")
+                }
+            }
+        }
+        DropdownMenuItem(
+            text = { Text(if (customization.favorite) "Unfavorite" else "Favorite") },
+            leadingIcon = {
+                Icon(
+                    imageVector = if (customization.favorite) Icons.Filled.StarBorder else Icons.Filled.Star,
+                    contentDescription = null
+                )
+            },
+            onClick = {
+                onCustomizationChanged(
+                    customization.copy(
+                        favorite = !customization.favorite,
+                        favoriteOrder = if (customization.favorite) {
+                            Int.MAX_VALUE
+                        } else {
+                            nextFavoriteOrder
+                        }
+                    )
+                )
+            }
+        )
+        if (customization.favorite) {
+            DropdownMenuItem(
+                text = { Text("Move up") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Filled.KeyboardArrowUp,
+                        contentDescription = null
+                    )
+                },
+                onClick = { onMoveFavorite(-1) }
+            )
+            DropdownMenuItem(
+                text = { Text("Move down") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Filled.KeyboardArrowDown,
+                        contentDescription = null
+                    )
+                },
+                onClick = { onMoveFavorite(1) }
+            )
+        }
+        DropdownMenuItem(
+            text = { Text("Hide") },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Filled.VisibilityOff,
+                    contentDescription = null
+                )
+            },
+            onClick = {
+                onCustomizationChanged(customization.copy(hidden = true))
+            }
+        )
+        DropdownMenuItem(
+            text = { Text("Dynamic entry color") },
+            onClick = {
+                onCustomizationChanged(customization.copy(color = null))
+            }
+        )
+        Text(
+            text = "Entry color",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+        )
+        quickLauncherContextSwatches().forEach { swatch ->
+            DropdownMenuItem(
+                text = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Surface(
+                            modifier = Modifier.size(22.dp),
+                            shape = MaterialTheme.shapes.extraSmall,
+                            color = Color(swatch)
+                        ) {}
+                        Text("#${swatch.toUInt().toString(16).uppercase().takeLast(6)}")
                     }
                 },
-                update = { imageView ->
-                    imageView.setImageDrawable(app.icon?.constantState?.newDrawable() ?: app.icon)
-                },
-                modifier = Modifier.size(40.dp)
+                onClick = {
+                    onCustomizationChanged(customization.copy(color = swatch))
+                }
             )
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = 12.dp)
-            ) {
-                Text(
-                    text = app.appName,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = if (isTopMatch) FontWeight.SemiBold else FontWeight.Normal,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = app.packageName,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            if (isTopMatch) {
-                Text(
-                    text = stringResource(R.string.quick_launcher_enter_hint),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
         }
     }
 }
 
-private fun fuzzyFilterApps(
-    apps: List<InstalledApp>,
+private fun nextFavoriteOrder(
+    customizations: Map<String, SettingsManager.QuickLauncherCommandCustomization>
+): Int {
+    return customizations.values
+        .filter { it.favorite }
+        .map { it.favoriteOrder }
+        .filter { it != Int.MAX_VALUE }
+        .maxOrNull()
+        ?.plus(1)
+        ?: 0
+}
+
+private fun quickLauncherContextSwatches(): List<Int> {
+    return listOf(
+        0x7A4285F4,
+        0x7A34A853,
+        0x7AFABB05,
+        0x7AEA4335,
+        0x7AA142F4,
+        0x7A00ACC1,
+        0x7AFF7043,
+        0x7A888888
+    )
+}
+
+private fun fuzzyFilterCommands(
+    commands: List<CommandTarget>,
     query: String,
     limitResults: Boolean,
-    typoTolerantRanking: Boolean
-): List<InstalledApp> {
+    typoTolerantRanking: Boolean,
+    customizations: Map<String, SettingsManager.QuickLauncherCommandCustomization>
+): List<CommandTarget> {
+    val visibleCommands = commands.filter { command ->
+        customizations[command.id]?.hidden != true
+    }
     val normalizedQuery = normalizeForQuickLauncher(query)
     if (normalizedQuery.isBlank()) {
+        val favorites = visibleCommands
+            .filter { customizations[it.id]?.favorite == true }
+            .sortedWith(compareBy<CommandTarget> { customizations[it.id]?.favoriteOrder ?: Int.MAX_VALUE }.thenBy { it.label.lowercase() })
         return if (limitResults) {
-            emptyList()
+            favorites
         } else {
-            apps.sortedBy { it.appName.lowercase() }
+            favorites + visibleCommands
+                .filter { customizations[it.id]?.favorite != true }
+                .sortedBy { it.label.lowercase() }
         }
     }
 
-    val matches = apps
-        .mapNotNull { app ->
-            val score = fuzzyScore(app, normalizedQuery, typoTolerantRanking) ?: return@mapNotNull null
-            app to score
+    val matches = visibleCommands
+        .mapNotNull { command ->
+            val score = fuzzyScore(
+                command = command,
+                normalizedQuery = normalizedQuery,
+                typoTolerantRanking = typoTolerantRanking,
+                customization = customizations[command.id]
+            ) ?: return@mapNotNull null
+            command to score
         }
-        .sortedWith(compareBy<Pair<InstalledApp, Int>> { it.second }.thenBy { it.first.appName.lowercase() })
+        .sortedWith(compareBy<Pair<CommandTarget, Int>> { it.second }.thenBy { it.first.label.lowercase() })
         .map { it.first }
     return if (limitResults) matches.take(3) else matches
 }
 
-private fun fuzzyScore(app: InstalledApp, normalizedQuery: String, typoTolerantRanking: Boolean): Int? {
-    val name = normalizeForQuickLauncher(app.appName)
-    val packageName = normalizeForQuickLauncher(app.packageName)
-    if (name == normalizedQuery) return 0
-    if (name.startsWith(normalizedQuery)) return 10 + name.length
-    if (name.split(' ').any { it.startsWith(normalizedQuery) }) return 40 + name.length
-    if (packageName.contains(normalizedQuery)) return 200 + packageName.indexOf(normalizedQuery)
+private fun fuzzyScore(
+    command: CommandTarget,
+    normalizedQuery: String,
+    typoTolerantRanking: Boolean,
+    customization: SettingsManager.QuickLauncherCommandCustomization?
+): Int? {
+    val customSearch = normalizeForQuickLauncher(customization?.customSearch.orEmpty())
+    val customScore = if (customSearch.isNotBlank()) {
+        customSearchScore(customSearch, normalizedQuery)
+    } else {
+        null
+    }
+    val name = normalizeForQuickLauncher(command.label)
+    val subtitle = normalizeForQuickLauncher(command.subtitle.orEmpty())
+    val tokens = normalizeForQuickLauncher(command.searchTokens.joinToString(" "))
+    val baseScore = when {
+        name == normalizedQuery -> 0
+        name.startsWith(normalizedQuery) -> 10 + name.length
+        name.split(' ').any { it.startsWith(normalizedQuery) } -> 40 + name.length
+        subtitle.contains(normalizedQuery) -> 200 + subtitle.indexOf(normalizedQuery)
+        tokens.contains(normalizedQuery) -> 220 + tokens.indexOf(normalizedQuery)
+        else -> null
+    }
 
     val fuzzyNameScore = subsequenceScore(name, normalizedQuery)
     val typoScore = if (typoTolerantRanking) typoTolerantScore(name, normalizedQuery) else null
-    val fuzzyPackageScore = subsequenceScore(packageName, normalizedQuery)?.plus(240)
-    return listOfNotNull(fuzzyNameScore, typoScore, fuzzyPackageScore).minOrNull()
+    val fuzzySubtitleScore = subsequenceScore(subtitle, normalizedQuery)?.plus(240)
+    val normalScore = listOfNotNull(baseScore, fuzzyNameScore, typoScore, fuzzySubtitleScore).minOrNull()
+    return when {
+        customScore != null -> customScore
+        normalScore != null && customization?.favorite == true -> (normalScore - 25).coerceAtLeast(0)
+        else -> normalScore
+    }
+}
+
+private fun customSearchScore(customSearch: String, query: String): Int? {
+    return when {
+        customSearch == query -> 0
+        customSearch.startsWith(query) -> 2 + customSearch.length
+        customSearch.split(' ').any { it.startsWith(query) } -> 12 + customSearch.length
+        customSearch.contains(query) -> 30 + customSearch.indexOf(query)
+        else -> subsequenceScore(customSearch, query)?.plus(50)
+    }
+}
+
+private fun commandDisplayLabel(
+    command: CommandTarget,
+    customization: SettingsManager.QuickLauncherCommandCustomization?,
+    showAliasFirst: Boolean
+): String {
+    val alias = customization?.customSearch?.trim().orEmpty()
+    return if (showAliasFirst && alias.isNotBlank()) {
+        "$alias | ${command.label}"
+    } else {
+        command.label
+    }
+}
+
+private fun commandIconDerivedColor(command: CommandTarget, alpha: Float = 0.28f): Color {
+    val drawable = (command.icon as? CommandIcon.DrawableIcon)?.drawable
+    val dominant = drawable?.dominantIconColor()
+    if (dominant != null) {
+        val hsv = FloatArray(3)
+        AndroidColor.colorToHSV(dominant, hsv)
+        val saturation = hsv[1].coerceAtLeast(0.34f).coerceAtMost(0.72f)
+        val value = hsv[2].coerceAtLeast(0.58f).coerceAtMost(0.92f)
+        return Color.hsv(hsv[0], saturation, value, alpha = alpha)
+    }
+
+    val fallbackHue = when (command.source) {
+        CommandSourceId.Apps -> 214f
+        CommandSourceId.Pastiera -> 145f
+        CommandSourceId.AppActions -> 282f
+        CommandSourceId.DeviceControl -> 28f
+        CommandSourceId.NavActions -> 190f
+    }
+    return Color.hsv(fallbackHue, 0.28f, 0.92f, alpha = alpha)
+}
+
+private fun Drawable.dominantIconColor(): Int? {
+    val bitmap = toSmallBitmap() ?: return null
+    var redTotal = 0L
+    var greenTotal = 0L
+    var blueTotal = 0L
+    var weightTotal = 0L
+    val pixels = IntArray(bitmap.width * bitmap.height)
+    bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+    pixels.forEach { pixel ->
+        val alpha = AndroidColor.alpha(pixel)
+        if (alpha < 48) return@forEach
+        val red = AndroidColor.red(pixel)
+        val green = AndroidColor.green(pixel)
+        val blue = AndroidColor.blue(pixel)
+        val max = maxOf(red, green, blue)
+        val min = minOf(red, green, blue)
+        val saturationWeight = (max - min).coerceAtLeast(18)
+        val weight = alpha * saturationWeight
+        redTotal += red.toLong() * weight
+        greenTotal += green.toLong() * weight
+        blueTotal += blue.toLong() * weight
+        weightTotal += weight
+    }
+    if (weightTotal <= 0L) return null
+    return AndroidColor.rgb(
+        (redTotal / weightTotal).toInt().coerceIn(0, 255),
+        (greenTotal / weightTotal).toInt().coerceIn(0, 255),
+        (blueTotal / weightTotal).toInt().coerceIn(0, 255)
+    )
+}
+
+private fun Drawable.toSmallBitmap(): Bitmap? {
+    if (this is BitmapDrawable && bitmap != null) {
+        return Bitmap.createScaledBitmap(bitmap, 32, 32, true)
+    }
+    val width = intrinsicWidth.takeIf { it > 0 } ?: 32
+    val height = intrinsicHeight.takeIf { it > 0 } ?: 32
+    return try {
+        val bitmap = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val oldBounds = copyBounds()
+        setBounds(0, 0, 32, 32)
+        draw(canvas)
+        setBounds(oldBounds)
+        bitmap
+    } catch (error: Exception) {
+        Log.w("QuickLauncher", "Failed to sample icon color ${width}x$height", error)
+        null
+    }
 }
 
 private fun subsequenceScore(candidate: String, query: String): Int? {

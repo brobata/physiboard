@@ -296,14 +296,14 @@
     
     <!-- Launcher Shortcuts Section -->
     <string name="starter_launcher_shortcuts_title">Pastiera-QuickLauncher</string>
-    <string name="starter_launcher_shortcuts_description">Quick launching, SYM shortcuts, and app key assignments</string>
-    <string name="starter_launcher_shortcuts_intro">These settings share one app-to-key assignment list. Choose where Pastiera should listen for those assigned keys.</string>
+    <string name="starter_launcher_shortcuts_description">Quick launching, SYM shortcuts, and launcher key assignments</string>
+    <string name="starter_launcher_shortcuts_intro">These settings share one launcher-key assignment list. Choose where Pastiera should listen for those assigned keys.</string>
     <string name="launcher_shortcuts_title">Homescreen shortcuts</string>
     <string name="launcher_shortcuts_experimental">Experimental</string>
-    <string name="launcher_shortcuts_description">Use assigned app keys directly on the Android launcher or home screen.</string>
-    <string name="launcher_shortcuts_configure">Assigned app keys</string>
-    <string name="launcher_shortcuts_configure_description">Tap a key to assign or replace an app. Assigned keys are shared by both trigger modes.</string>
-    <string name="launcher_shortcuts_configure_description_with_quick_launcher">Tap a key to assign or replace an app. Quick launcher is currently assigned to %1$s.</string>
+    <string name="launcher_shortcuts_description">Use assigned launcher keys directly on the Android launcher or home screen.</string>
+    <string name="launcher_shortcuts_configure">Assigned launcher keys</string>
+    <string name="launcher_shortcuts_configure_description">Tap a key to assign or replace a command. Assigned keys are shared by both trigger modes.</string>
+    <string name="launcher_shortcuts_configure_description_with_quick_launcher">Tap a key to assign or replace a command. Quick launcher is currently assigned to %1$s.</string>
     <string name="quick_launcher_default_blocked_hint">New: SYM can open the quick launcher. Pastiera would normally assign it to Space, but Space already has a shortcut. Open the assignments page and choose “Open quick launcher” on any key to try it.</string>
     
     <!-- Launcher Shortcuts Screen -->
@@ -316,13 +316,13 @@
     <string name="launcher_shortcuts_action_type">Action: %1$s</string>
     
     <!-- Launcher Shortcut Assignment Activity -->
-    <string name="launcher_shortcut_assignment_title">Assign app to key</string>
+    <string name="launcher_shortcut_assignment_title">Assign command to key</string>
     <string name="launcher_shortcut_assignment_key">Key %1$s</string>
     <string name="launcher_shortcut_assignment_header">Shortcut</string>
-    <string name="launcher_shortcut_assignment_search_placeholder">Search apps...</string>
+    <string name="launcher_shortcut_assignment_search_placeholder">Search commands...</string>
     <string name="launcher_shortcut_assignment_search_description">Search</string>
     <string name="launcher_shortcut_assignment_close">Close</string>
-    <string name="launcher_shortcut_assignment_no_apps">No apps found</string>
+    <string name="launcher_shortcut_assignment_no_apps">No commands found</string>
     <string name="launcher_shortcut_assignment_no_results">No results for \"%1$s\"</string>
     <string name="launcher_shortcut_assignment_key_name">Key %1$d</string>
     <string name="quick_launcher_title">Pastiera-QuickLauncher</string>
@@ -349,9 +349,9 @@
     <string name="quick_launcher_ranking_info_title">QuickLauncher ranking</string>
     <string name="quick_launcher_ranking_info_body">Results are ranked in this order: exact app name, app name prefix, word prefix, abbreviation/subsequence match, typo-tolerant app name match, then package-name match. Typo tolerance is ignored for very short queries.</string>
     <string name="quick_launcher_behavior_title">Behaviour</string>
-    <string name="quick_launcher_behavior_description">Launch rules, result rendering, and SYM+Space from text fields.</string>
+    <string name="quick_launcher_behavior_description">Launcher provider, search/ranking rules, and SYM+Space from text fields.</string>
     <string name="quick_launcher_cosmetic_title">Appearance</string>
-    <string name="quick_launcher_cosmetic_description">Width and compact pill presentation.</string>
+    <string name="quick_launcher_cosmetic_description">Width, pill mode, shown command sources, favorites, aliases, and entry colors.</string>
     <string name="quick_launcher_width_title">Launcher width</string>
     <string name="quick_launcher_width_value">%1$d%% screen width</string>
     <string name="quick_launcher_pill_mode_title">Pill mode</string>

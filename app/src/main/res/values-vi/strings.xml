@@ -664,9 +664,9 @@
     <string name="quick_launcher_ranking_info_title">Xếp hạng QuickLauncher</string>
     <string name="quick_launcher_ranking_info_body">Kết quả được xếp theo thứ tự: tên ứng dụng chính xác, tiền tố tên ứng dụng, tiền tố từ, khớp viết tắt/chuỗi con, tên ứng dụng chịu lỗi gõ sai, rồi tên gói. Bỏ qua chịu lỗi gõ sai với truy vấn rất ngắn.</string>
     <string name="quick_launcher_behavior_title">Hành vi</string>
-    <string name="quick_launcher_behavior_description">Quy tắc mở, hiển thị kết quả và SYM+Phím cách từ ô văn bản.</string>
+    <string name="quick_launcher_behavior_description">Nhà cung cấp mở, quy tắc tìm kiếm/xếp hạng và SYM+Phím cách từ ô văn bản.</string>
     <string name="quick_launcher_cosmetic_title">Giao diện</string>
-    <string name="quick_launcher_cosmetic_description">Chiều rộng và kiểu hiển thị viên thuốc gọn.</string>
+    <string name="quick_launcher_cosmetic_description">Chiều rộng, chế độ viên thuốc, nguồn lệnh, mục yêu thích, bí danh và màu mục.</string>
     <string name="quick_launcher_width_title">Chiều rộng launcher</string>
     <string name="quick_launcher_width_value">%1$d%% chiều rộng màn hình</string>
     <string name="quick_launcher_pill_mode_title">Chế độ viên thuốc</string>

@@ -328,9 +328,9 @@
     <string name="quick_launcher_ranking_info_title">Ranking QuickLauncher</string>
     <string name="quick_launcher_ranking_info_body">I risultati sono ordinati così: nome app esatto, prefisso del nome app, prefisso di parola, corrispondenza abbreviazione/sottosequenza, nome app tollerante agli errori, poi nome pacchetto. La tolleranza agli errori è ignorata per query molto brevi.</string>
     <string name="quick_launcher_behavior_title">Comportamento</string>
-    <string name="quick_launcher_behavior_description">Regole di avvio, rendering dei risultati e SYM+Spazio dai campi di testo.</string>
+    <string name="quick_launcher_behavior_description">Provider di avvio, regole di ricerca/ranking e SYM+Spazio dai campi di testo.</string>
     <string name="quick_launcher_cosmetic_title">Aspetto</string>
-    <string name="quick_launcher_cosmetic_description">Larghezza e presentazione compatta a pillola.</string>
+    <string name="quick_launcher_cosmetic_description">Larghezza, modalità pillola, fonti dei comandi, preferiti, alias e colori delle voci.</string>
     <string name="quick_launcher_width_title">Larghezza launcher</string>
     <string name="quick_launcher_width_value">%1$d%% della larghezza schermo</string>
     <string name="quick_launcher_pill_mode_title">Modalità pillola</string>

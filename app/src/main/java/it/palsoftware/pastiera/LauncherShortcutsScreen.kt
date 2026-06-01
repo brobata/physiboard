@@ -20,7 +20,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.KeyboardCommandKey
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.activity.compose.BackHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.WindowInsets
@@ -42,6 +44,10 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.vector.ImageVector
+import it.palsoftware.pastiera.commands.CommandLaunchSpec
+import it.palsoftware.pastiera.commands.CommandSourceId
+import it.palsoftware.pastiera.commands.PastieraCommandSource
 
 /**
  * Schermata per gestire le scorciatoie del launcher.
@@ -76,9 +82,9 @@ fun LauncherShortcutsScreen(
         var needsUpdate = false
         
         currentShortcuts.forEach { (keyCode, shortcut) ->
-            if (shortcut.type == SettingsManager.LauncherShortcut.TYPE_APP && 
-                shortcut.packageName != null &&
-                !isPackageInstalled(shortcut.packageName)) {
+            val shortcutPackage = shortcut.packageName
+                ?: (shortcut.commandLaunch as? CommandLaunchSpec.AppPackage)?.packageName
+            if (shortcutPackage != null && !isPackageInstalled(shortcutPackage)) {
                 // App was uninstalled, remove the shortcut
                 SettingsManager.removeLauncherShortcut(context, keyCode)
                 needsUpdate = true
@@ -263,18 +269,20 @@ fun LauncherShortcutsScreen(
                             
                             if (keyCode != null) {
                                 val shortcut = shortcuts[keyCode]
-                                val isQuickLauncher = shortcut?.type == SettingsManager.LauncherShortcut.TYPE_QUICK_LAUNCHER
+                                val isQuickLauncher = shortcut?.type == SettingsManager.LauncherShortcut.TYPE_QUICK_LAUNCHER ||
+                                    shortcut?.commandId == PastieraCommandSource.COMMAND_QUICK_LAUNCHER
+                                val hasCommand = shortcut?.type == SettingsManager.LauncherShortcut.TYPE_COMMAND
+                                val shortcutPackage = shortcut?.packageName
+                                    ?: (shortcut?.commandLaunch as? CommandLaunchSpec.AppPackage)?.packageName
                                 // Verify that shortcut exists, is an app type, has a package name, AND the app is still installed
-                                val hasApp = shortcut != null && 
-                                    shortcut.type == SettingsManager.LauncherShortcut.TYPE_APP && 
-                                    shortcut.packageName != null &&
-                                    isPackageInstalled(shortcut.packageName)
+                                val hasApp = shortcutPackage != null && isPackageInstalled(shortcutPackage)
+                                val hasAssignedShortcut = hasApp || isQuickLauncher || hasCommand
                                 
                                 // Use remember with shortcut.packageName as dependency
                                 // This recalculates icon only when packageName changes
-                                val appIcon = remember(shortcut?.packageName) {
-                                    if (hasApp && shortcut?.packageName != null) {
-                                        getAppIcon(shortcut.packageName)
+                                val appIcon = remember(shortcutPackage) {
+                                    if (hasApp) {
+                                        getAppIcon(shortcutPackage)
                                     } else {
                                         null
                                     }
@@ -286,7 +294,7 @@ fun LauncherShortcutsScreen(
                                 
                                 // Use key() to force recomposition when shortcut changes
                                 // When packageName changes, the entire Surface is recomposed
-                                key("${shortcut?.type}_${shortcut?.packageName ?: "none"}_$keyCode") {
+                                key("${shortcut?.type}_${shortcutPackage ?: shortcut?.commandId ?: "none"}_$keyCode") {
                                     var keyPosition by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
                                     
                                     Surface(
@@ -404,10 +412,10 @@ fun LauncherShortcutsScreen(
                                                 if (isDragOver) {
                                                     MaterialTheme.colorScheme.tertiaryContainer
                                                 } else {
-                                                    if (hasApp || isQuickLauncher) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+                                                    if (hasAssignedShortcut) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
                                                 }
                                             }
-                                            hasApp || isQuickLauncher -> MaterialTheme.colorScheme.primaryContainer
+                                            hasAssignedShortcut -> MaterialTheme.colorScheme.primaryContainer
                                             else -> MaterialTheme.colorScheme.surfaceVariant
                                         },
                                         tonalElevation = when {
@@ -421,9 +429,9 @@ fun LauncherShortcutsScreen(
                                                         pos.y <= rect.bottom
                                                     } ?: false
                                                 } ?: false
-                                                if (isDragOver) 3.dp else if (hasApp || isQuickLauncher) 2.dp else 1.dp
+                                                if (isDragOver) 3.dp else if (hasAssignedShortcut) 2.dp else 1.dp
                                             }
-                                            else -> if (hasApp || isQuickLauncher) 2.dp else 1.dp
+                                            else -> if (hasAssignedShortcut) 2.dp else 1.dp
                                         }
                                     ) {
                                         Box(
@@ -467,6 +475,26 @@ fun LauncherShortcutsScreen(
                                                     },
                                                     modifier = Modifier.fillMaxSize()
                                                 )
+                                            } else if (hasCommand) {
+                                                Column(
+                                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                                    verticalArrangement = Arrangement.Center,
+                                                    modifier = Modifier.padding(3.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = commandShortcutIcon(shortcut),
+                                                        contentDescription = shortcut.commandTitle,
+                                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                        modifier = Modifier.size(22.dp)
+                                                    )
+                                                    Text(
+                                                        text = commandShortcutLabel(shortcut, keyName),
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                        maxLines = 1
+                                                    )
+                                                }
                                             } else {
                                                 // Mostra la lettera del tasto
                                                 Text(
@@ -536,4 +564,24 @@ fun LauncherShortcutsScreen(
             }
         }
     }
+}
+
+private fun commandShortcutIcon(shortcut: SettingsManager.LauncherShortcut): ImageVector {
+    return when (shortcut.commandSource) {
+        CommandSourceId.DeviceControl.storageValue -> Icons.Filled.Settings
+        CommandSourceId.AppActions.storageValue -> Icons.Filled.Search
+        else -> Icons.Filled.KeyboardCommandKey
+    }
+}
+
+private fun commandShortcutLabel(
+    shortcut: SettingsManager.LauncherShortcut,
+    fallback: String
+): String {
+    val title = shortcut.commandTitle ?: shortcut.appName
+    return title
+        ?.split(' ', '-', '_')
+        ?.firstOrNull { it.isNotBlank() }
+        ?.take(4)
+        ?: fallback
 }

@@ -8,6 +8,9 @@ import android.view.KeyEvent
 import android.view.inputmethod.InputConnection
 import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.SettingsManager
+import it.palsoftware.pastiera.commands.CommandExecutor
+import it.palsoftware.pastiera.commands.CommandRegistry
+import it.palsoftware.pastiera.commands.CommandSurface
 import it.palsoftware.pastiera.data.mappings.KeyMappingLoader
 import it.palsoftware.pastiera.inputmethod.NavModeHandler
 import it.palsoftware.pastiera.inputmethod.NotificationHelper
@@ -104,9 +107,30 @@ class NavModeController(
         }
 
         val ctrlMapping = ctrlKeyMap[keyCode] ?: return false
-        return when (ctrlMapping.type) {
+        return if (ctrlMapping.type == "command") {
+            val command = CommandRegistry(context).resolve(ctrlMapping.value) ?: return false
+            if (!command.defaultSurfaces.contains(CommandSurface.NavMode)) return false
+            CommandExecutor(
+                context = context,
+                navModeController = this,
+                inputConnectionProvider = inputConnectionProvider
+            ).execute(command).isSuccess
+        } else if (ctrlMapping.type == "native_ctrl") {
+            sendNativeCtrlKey(keyCode, event, inputConnection)
+        } else {
+            executeMapping(ctrlMapping.type, ctrlMapping.value, event, inputConnection)
+        }
+    }
+
+    fun executeMapping(
+        mappingType: String,
+        mappingValue: String,
+        event: KeyEvent?,
+        inputConnection: InputConnection
+    ): Boolean {
+        return when (mappingType) {
             "keycode" -> {
-                val mappedKeyCode = when (ctrlMapping.value) {
+                val mappedKeyCode = when (mappingValue) {
                     "DPAD_UP" -> KeyEvent.KEYCODE_DPAD_UP
                     "DPAD_DOWN" -> KeyEvent.KEYCODE_DPAD_DOWN
                     "DPAD_LEFT" -> KeyEvent.KEYCODE_DPAD_LEFT
@@ -121,8 +145,8 @@ class NavModeController(
                 } ?: return false
                 sendMappedKey(mappedKeyCode, event, inputConnection)
             }
-            "action" -> performMappedAction(ctrlMapping.value, inputConnection)
-            "native_ctrl" -> sendNativeCtrlKey(keyCode, event, inputConnection)
+            "action" -> performMappedAction(mappingValue, inputConnection)
+            "native_ctrl" -> false
             else -> false
         }
     }

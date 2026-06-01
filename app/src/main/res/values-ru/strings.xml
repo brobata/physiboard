@@ -664,9 +664,9 @@
     <string name="quick_launcher_ranking_info_title">Ранжирование QuickLauncher</string>
     <string name="quick_launcher_ranking_info_body">Результаты сортируются так: точное имя приложения, префикс имени приложения, префикс слова, совпадение сокращения/подпоследовательности, имя приложения с учетом опечаток, затем имя пакета. Учет опечаток игнорируется для очень коротких запросов.</string>
     <string name="quick_launcher_behavior_title">Поведение</string>
-    <string name="quick_launcher_behavior_description">Правила запуска, отображение результатов и SYM+Пробел из текстовых полей.</string>
+    <string name="quick_launcher_behavior_description">Провайдер запуска, правила поиска/ранжирования и SYM+Пробел из текстовых полей.</string>
     <string name="quick_launcher_cosmetic_title">Внешний вид</string>
-    <string name="quick_launcher_cosmetic_description">Ширина и компактное отображение в виде пилюли.</string>
+    <string name="quick_launcher_cosmetic_description">Ширина, режим пилюли, источники команд, избранное, псевдонимы и цвета элементов.</string>
     <string name="quick_launcher_width_title">Ширина лаунчера</string>
     <string name="quick_launcher_width_value">%1$d%% ширины экрана</string>
     <string name="quick_launcher_pill_mode_title">Режим пилюли</string>

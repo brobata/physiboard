@@ -43,6 +43,9 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.window.DialogProperties
 import androidx.activity.compose.BackHandler
 import it.palsoftware.pastiera.R
+import it.palsoftware.pastiera.commands.CommandRegistry
+import it.palsoftware.pastiera.commands.CommandSurface
+import it.palsoftware.pastiera.commands.CommandTarget
 import it.palsoftware.pastiera.data.layout.JsonLayoutLoader
 import it.palsoftware.pastiera.data.mappings.KeyMappingLoader
 import kotlin.math.min
@@ -612,8 +615,10 @@ private fun KeyMappingDialog(
     onSave: (KeyMappingLoader.CtrlMapping?) -> Unit
 ) {
     val keyLabel = getKeyLabel(keyCode)
+    val context = LocalContext.current
     var selectedType by remember { mutableStateOf<String?>(currentMapping?.type) }
     var selectedValue by remember { mutableStateOf<String?>(currentMapping?.value) }
+    val commandTargets = remember { CommandRegistry(context).getCommands(CommandSurface.NavMode) }
     val defaultLabel = defaultMapping?.let { getMappingLabel(it) }
     val dialogMaxHeight = LocalConfiguration.current.screenHeightDp.dp * 0.9f
     val gridMaxHeight = dialogMaxHeight * 0.6f
@@ -683,6 +688,14 @@ private fun KeyMappingDialog(
                                 selectedValue = null
                             },
                             label = { Text(stringResource(R.string.nav_mode_native_ctrl)) }
+                        )
+                        FilterChip(
+                            selected = selectedType == "command",
+                            onClick = {
+                                selectedType = "command"
+                                selectedValue = null
+                            },
+                            label = { Text("Command") }
                         )
                         FilterChip(
                             selected = selectedType == "none",
@@ -759,6 +772,28 @@ private fun KeyMappingDialog(
                                 )
                             }
                         }
+                    } else if (selectedType == "command") {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(2),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(1.dp),
+                            modifier = Modifier.heightIn(max = gridMaxHeight)
+                        ) {
+                            items(commandTargets, key = { it.id }) { command ->
+                                FilterChip(
+                                    selected = selectedValue == command.id,
+                                    onClick = { selectedValue = command.id },
+                                    label = {
+                                        Text(
+                                            text = commandLabel(command),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
                     }
                 }
                 
@@ -784,6 +819,9 @@ private fun KeyMappingDialog(
                                 }
                                 "action" -> selectedValue?.let {
                                     KeyMappingLoader.CtrlMapping("action", it)
+                                }
+                                "command" -> selectedValue?.let {
+                                    KeyMappingLoader.CtrlMapping("command", it)
                                 }
                                 "native_ctrl" -> KeyMappingLoader.CtrlMapping("native_ctrl", "")
                                 "none" -> KeyMappingLoader.CtrlMapping("none", "")
@@ -838,10 +876,15 @@ private fun getMappingLabel(mapping: KeyMappingLoader.CtrlMapping): String? {
     return when (mapping.type) {
         "keycode" -> mapping.value
         "action" -> mapping.value
+        "command" -> mapping.value
         "native_ctrl" -> "Ctrl"
         "none" -> null // Don't show label for "none"
         else -> null
     }
+}
+
+private fun commandLabel(command: CommandTarget): String {
+    return "${command.source.displayLabel}: ${command.label}"
 }
 
 @Composable
@@ -900,6 +943,7 @@ private fun getMappingLabelShort(mapping: KeyMappingLoader.CtrlMapping): String?
             "media_next" -> stringResource(R.string.nav_mode_action_media_next)
             else -> mapping.value
         }
+        "command" -> mapping.value.substringAfterLast('.').replace('_', ' ')
         "native_ctrl" -> "Ctrl"
         "none" -> null // Don't show label for "none"
         else -> null

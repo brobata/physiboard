@@ -9,6 +9,10 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
+import it.palsoftware.pastiera.commands.CommandLaunchSpec
+import it.palsoftware.pastiera.commands.CommandSourceId
+import it.palsoftware.pastiera.commands.CommandSurface
+import it.palsoftware.pastiera.commands.PastieraCommandSource
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -123,5 +127,44 @@ class SettingsManagerLayoutSwitchTest {
             SettingsManager.QUICK_LAUNCHER_BEHAVIOR_PASTIERA,
             SettingsManager.getQuickLauncherBehavior(context)
         )
+    }
+
+    @Test
+    fun launcherShortcut_writesCommandForm_andKeepsLegacyAppReadable() {
+        val context = RuntimeEnvironment.getApplication()
+
+        SettingsManager.setLauncherShortcut(context, android.view.KeyEvent.KEYCODE_B, "com.brave.browser", "Brave")
+
+        val shortcut = SettingsManager.getLauncherShortcut(context, android.view.KeyEvent.KEYCODE_B)
+
+        assertEquals(SettingsManager.LauncherShortcut.TYPE_COMMAND, shortcut?.type)
+        assertEquals("app:com.brave.browser", shortcut?.commandId)
+        assertEquals(CommandSourceId.Apps.storageValue, shortcut?.commandSource)
+        assertEquals(CommandLaunchSpec.AppPackage("com.brave.browser"), shortcut?.commandLaunch)
+    }
+
+    @Test
+    fun quickLauncherShortcut_isStoredAsPastieraCommandAndDetectedAsDefaultKey() {
+        val context = RuntimeEnvironment.getApplication()
+
+        SettingsManager.setQuickLauncherShortcut(context, android.view.KeyEvent.KEYCODE_SPACE)
+
+        val shortcut = SettingsManager.getLauncherShortcut(context, android.view.KeyEvent.KEYCODE_SPACE)
+
+        assertEquals(SettingsManager.LauncherShortcut.TYPE_COMMAND, shortcut?.type)
+        assertEquals(PastieraCommandSource.COMMAND_QUICK_LAUNCHER, shortcut?.commandId)
+        assertEquals(android.view.KeyEvent.KEYCODE_SPACE, SettingsManager.getQuickLauncherShortcutKey(context))
+    }
+
+    @Test
+    fun commandSourceVisibility_onlyFiltersQuickLauncherSearch() {
+        val context = RuntimeEnvironment.getApplication()
+
+        assertTrue(SettingsManager.isCommandSourceEnabled(context, CommandSourceId.Apps.storageValue, CommandSurface.AssignedKey))
+        assertTrue(SettingsManager.isCommandSourceEnabled(context, CommandSourceId.Apps.storageValue, CommandSurface.QuickLauncher))
+        assertTrue(SettingsManager.isCommandSourceEnabled(context, CommandSourceId.Apps.storageValue, CommandSurface.NavMode))
+        assertTrue(SettingsManager.isCommandSourceEnabled(context, CommandSourceId.DeviceControl.storageValue, CommandSurface.AssignedKey))
+        assertFalse(SettingsManager.isCommandSourceEnabled(context, CommandSourceId.DeviceControl.storageValue, CommandSurface.QuickLauncher))
+        assertTrue(SettingsManager.isCommandSourceEnabled(context, CommandSourceId.DeviceControl.storageValue, CommandSurface.NavMode))
     }
 }

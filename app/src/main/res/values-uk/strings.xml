@@ -664,9 +664,9 @@
     <string name="quick_launcher_ranking_info_title">Рейтинг QuickLauncher</string>
     <string name="quick_launcher_ranking_info_body">Результати сортуються так: точна назва застосунку, префікс назви застосунку, префікс слова, збіг скорочення/підпослідовності, назва застосунку з допуском помилок, потім назва пакета. Допуск помилок ігнорується для дуже коротких запитів.</string>
     <string name="quick_launcher_behavior_title">Поведінка</string>
-    <string name="quick_launcher_behavior_description">Правила запуску, відображення результатів і SYM+Пробіл із текстових полів.</string>
+    <string name="quick_launcher_behavior_description">Провайдер запуску, правила пошуку/ранжування і SYM+Пробіл із текстових полів.</string>
     <string name="quick_launcher_cosmetic_title">Вигляд</string>
-    <string name="quick_launcher_cosmetic_description">Ширина та компактне відображення у вигляді пігулки.</string>
+    <string name="quick_launcher_cosmetic_description">Ширина, режим пігулки, джерела команд, обране, псевдоніми та кольори елементів.</string>
     <string name="quick_launcher_width_title">Ширина лаунчера</string>
     <string name="quick_launcher_width_value">%1$d%% ширини екрана</string>
     <string name="quick_launcher_pill_mode_title">Режим пігулки</string>

@@ -6,6 +6,11 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import android.util.Log
 import android.view.KeyEvent
+import it.palsoftware.pastiera.commands.CommandJson
+import it.palsoftware.pastiera.commands.CommandLaunchSpec
+import it.palsoftware.pastiera.commands.CommandSourceId
+import it.palsoftware.pastiera.commands.CommandSurface
+import it.palsoftware.pastiera.commands.PastieraCommandSource
 import it.palsoftware.pastiera.inputmethod.DeviceSpecific
 import org.json.JSONArray
 import org.json.JSONObject
@@ -1609,12 +1614,19 @@ object SettingsManager {
         val packageName: String? = null, // Per tipo "app"
         val appName: String? = null, // Per tipo "app"
         val action: String? = null, // Per tipo "shortcut" o altri tipi futuri
-        val data: String? = null // Dati aggiuntivi per tipi futuri
+        val data: String? = null, // Dati aggiuntivi per tipi futuri
+        val commandId: String? = null,
+        val commandSource: String? = null,
+        val commandKind: String? = null,
+        val commandTitle: String? = null,
+        val commandSubtitle: String? = null,
+        val commandLaunch: CommandLaunchSpec? = null
     ) {
         companion object {
             const val TYPE_APP = "app"
             const val TYPE_SHORTCUT = "shortcut"
             const val TYPE_QUICK_LAUNCHER = "quick_launcher"
+            const val TYPE_COMMAND = "command"
             // Aggiungi altri tipi in futuro qui
         }
     }
@@ -1630,6 +1642,14 @@ object SettingsManager {
     private const val KEY_QUICK_LAUNCHER_WIDTH_PERCENT = "quick_launcher_width_percent"
     private const val KEY_QUICK_LAUNCHER_PILL_MODE = "quick_launcher_pill_mode"
     private const val KEY_QUICK_LAUNCHER_BEHAVIOR = "quick_launcher_behavior"
+    private const val KEY_COMMAND_SURFACE_SOURCES = "command_surface_sources"
+    private const val KEY_QUICK_LAUNCHER_COMMAND_CUSTOMIZATIONS = "quick_launcher_command_customizations"
+    private const val KEY_QUICK_LAUNCHER_HIGHLIGHT_FAVORITES = "quick_launcher_highlight_favorites"
+    private const val KEY_QUICK_LAUNCHER_FAVORITE_COLOR = "quick_launcher_favorite_color"
+    private const val KEY_QUICK_LAUNCHER_ICON_COLORS = "quick_launcher_icon_colors"
+    private const val KEY_QUICK_LAUNCHER_SHOW_ALIAS_FIRST = "quick_launcher_show_alias_first"
+    private const val KEY_QUICK_LAUNCHER_STATIC_TOP_HIGHLIGHT = "quick_launcher_static_top_highlight"
+    private const val KEY_QUICK_LAUNCHER_STATIC_TOP_HIGHLIGHT_COLOR = "quick_launcher_static_top_highlight_color"
     private const val DEFAULT_LAUNCHER_SHORTCUTS_ENABLED = false
     private const val DEFAULT_QUICK_LAUNCHER_AUTO_START_SINGLE = false
     private const val DEFAULT_QUICK_LAUNCHER_LIMIT_RESULTS = false
@@ -1638,6 +1658,9 @@ object SettingsManager {
     private const val DEFAULT_QUICK_LAUNCHER_TYPO_TOLERANT_RANKING = true
     private const val DEFAULT_QUICK_LAUNCHER_WIDTH_PERCENT = 100
     private const val DEFAULT_QUICK_LAUNCHER_PILL_MODE = false
+    const val QUICK_LAUNCHER_DYNAMIC_FAVORITE_COLOR = Int.MIN_VALUE
+    private const val DEFAULT_QUICK_LAUNCHER_FAVORITE_COLOR = QUICK_LAUNCHER_DYNAMIC_FAVORITE_COLOR
+    private const val DEFAULT_QUICK_LAUNCHER_STATIC_TOP_HIGHLIGHT_COLOR = 0x7A4285F4
     const val QUICK_LAUNCHER_BEHAVIOR_PASTIERA = "pastiera"
     const val QUICK_LAUNCHER_BEHAVIOR_NIAGARA = "niagara"
     
@@ -1655,18 +1678,59 @@ object SettingsManager {
      * Imposta una scorciatoia del launcher per un tasto (tipo app).
      */
     fun setLauncherShortcut(context: Context, keyCode: Int, packageName: String, appName: String) {
-        setLauncherAction(context, keyCode, LauncherShortcut(
-            type = LauncherShortcut.TYPE_APP,
-            packageName = packageName,
-            appName = appName
-        ))
+        setLauncherCommand(
+            context = context,
+            keyCode = keyCode,
+            commandId = "app:$packageName",
+            source = CommandSourceId.Apps.storageValue,
+            kind = "App",
+            title = appName,
+            subtitle = packageName,
+            launch = CommandLaunchSpec.AppPackage(packageName)
+        )
     }
 
     fun setQuickLauncherShortcut(context: Context, keyCode: Int) {
-        setLauncherAction(context, keyCode, LauncherShortcut(type = LauncherShortcut.TYPE_QUICK_LAUNCHER))
+        setLauncherCommand(
+            context = context,
+            keyCode = keyCode,
+            commandId = PastieraCommandSource.COMMAND_QUICK_LAUNCHER,
+            source = CommandSourceId.Pastiera.storageValue,
+            kind = "PastieraAction",
+            title = "Pastiera QuickLauncher",
+            subtitle = "Open Pastiera search",
+            launch = CommandLaunchSpec.InternalAction(PastieraCommandSource.ACTION_OPEN_QUICK_LAUNCHER)
+        )
         getPreferences(context).edit()
             .putBoolean(KEY_QUICK_LAUNCHER_DEFAULT_ASSIGNED, true)
             .apply()
+    }
+
+    fun setLauncherCommand(
+        context: Context,
+        keyCode: Int,
+        commandId: String,
+        source: String,
+        kind: String,
+        title: String,
+        subtitle: String?,
+        launch: CommandLaunchSpec
+    ) {
+        setLauncherAction(
+            context,
+            keyCode,
+            LauncherShortcut(
+                type = LauncherShortcut.TYPE_COMMAND,
+                packageName = (launch as? CommandLaunchSpec.AppPackage)?.packageName,
+                appName = title,
+                commandId = commandId,
+                commandSource = source,
+                commandKind = kind,
+                commandTitle = title,
+                commandSubtitle = subtitle,
+                commandLaunch = launch
+            )
+        )
     }
     
     /**
@@ -1678,13 +1742,16 @@ object SettingsManager {
         
         try {
             val shortcuts = JSONObject(shortcutsJson)
-            if (action.type == LauncherShortcut.TYPE_QUICK_LAUNCHER) {
+            if (action.isQuickLauncherCommand()) {
                 val keys = shortcuts.keys()
                 val keysToRemove = mutableListOf<String>()
                 while (keys.hasNext()) {
                     val key = keys.next()
                     val shortcutObj = shortcuts.optJSONObject(key)
-                    if (shortcutObj?.optString("type") == LauncherShortcut.TYPE_QUICK_LAUNCHER) {
+                    if (
+                        shortcutObj?.optString("type") == LauncherShortcut.TYPE_QUICK_LAUNCHER ||
+                        shortcutObj?.optString("commandId") == PastieraCommandSource.COMMAND_QUICK_LAUNCHER
+                    ) {
                         keysToRemove.add(key)
                     }
                 }
@@ -1696,6 +1763,12 @@ object SettingsManager {
                 if (action.appName != null) put("appName", action.appName)
                 if (action.action != null) put("action", action.action)
                 if (action.data != null) put("data", action.data)
+                if (action.commandId != null) put("commandId", action.commandId)
+                if (action.commandSource != null) put("source", action.commandSource)
+                if (action.commandKind != null) put("kind", action.commandKind)
+                if (action.commandTitle != null) put("title", action.commandTitle)
+                if (action.commandSubtitle != null) put("subtitle", action.commandSubtitle)
+                if (action.commandLaunch != null) put("launch", CommandJson.launchToJson(action.commandLaunch))
             })
             prefs.edit().putString(KEY_LAUNCHER_SHORTCUTS, shortcuts.toString()).apply()
         } catch (e: Exception) {
@@ -1781,7 +1854,14 @@ object SettingsManager {
                         packageName = shortcutObj.optString("packageName").takeIf { it.isNotEmpty() },
                         appName = shortcutObj.optString("appName").takeIf { it.isNotEmpty() },
                         action = shortcutObj.optString("action").takeIf { it.isNotEmpty() },
-                        data = shortcutObj.optString("data").takeIf { it.isNotEmpty() }
+                        data = shortcutObj.optString("data").takeIf { it.isNotEmpty() },
+                        commandId = shortcutObj.optString("commandId").takeIf { it.isNotEmpty() },
+                        commandSource = shortcutObj.optString("source").takeIf { it.isNotEmpty() },
+                        commandKind = shortcutObj.optString("kind").takeIf { it.isNotEmpty() },
+                        commandTitle = shortcutObj.optString("title").takeIf { it.isNotEmpty() },
+                        commandSubtitle = shortcutObj.optString("subtitle").takeIf { it.isNotEmpty() },
+                        commandLaunch = CommandJson.launchFromJson(shortcutObj.optJSONObject("launch"))
+                            ?: legacyLaunchSpec(type, shortcutObj)
                     )
                 }
             }
@@ -1805,7 +1885,7 @@ object SettingsManager {
             return
         }
         val shortcuts = getLauncherShortcutsRaw(context)
-        if (shortcuts.values.any { it.type == LauncherShortcut.TYPE_QUICK_LAUNCHER }) {
+        if (shortcuts.values.any { it.isQuickLauncherCommand() }) {
             prefs.edit()
                 .putBoolean(KEY_QUICK_LAUNCHER_DEFAULT_ASSIGNED, true)
                 .apply()
@@ -1826,18 +1906,221 @@ object SettingsManager {
             return false
         }
         val shortcuts = getLauncherShortcutsRaw(context)
-        if (shortcuts.values.any { it.type == LauncherShortcut.TYPE_QUICK_LAUNCHER }) {
+        if (shortcuts.values.any { it.isQuickLauncherCommand() }) {
             return false
         }
         val spaceShortcut = shortcuts[KeyEvent.KEYCODE_SPACE]
-        return spaceShortcut != null && spaceShortcut.type != LauncherShortcut.TYPE_QUICK_LAUNCHER
+        return spaceShortcut != null && !spaceShortcut.isQuickLauncherCommand()
     }
 
     fun getQuickLauncherShortcutKey(context: Context): Int? {
         return getLauncherShortcuts(context)
             .entries
-            .firstOrNull { it.value.type == LauncherShortcut.TYPE_QUICK_LAUNCHER }
+            .firstOrNull { it.value.isQuickLauncherCommand() }
             ?.key
+    }
+
+    private fun LauncherShortcut.isQuickLauncherCommand(): Boolean {
+        return type == LauncherShortcut.TYPE_QUICK_LAUNCHER ||
+            commandId == PastieraCommandSource.COMMAND_QUICK_LAUNCHER ||
+            commandLaunch == CommandLaunchSpec.InternalAction(PastieraCommandSource.ACTION_OPEN_QUICK_LAUNCHER)
+    }
+
+    private fun legacyLaunchSpec(type: String, shortcutObj: JSONObject): CommandLaunchSpec? {
+        return when (type) {
+            LauncherShortcut.TYPE_APP -> shortcutObj.optString("packageName")
+                .takeIf { it.isNotBlank() }
+                ?.let { CommandLaunchSpec.AppPackage(it) }
+            LauncherShortcut.TYPE_QUICK_LAUNCHER -> {
+                CommandLaunchSpec.InternalAction(PastieraCommandSource.ACTION_OPEN_QUICK_LAUNCHER)
+            }
+            else -> null
+        }
+    }
+
+    data class CommandSourceVisibility(
+        val sourceId: String,
+        val quickLauncherEnabled: Boolean
+    )
+
+    data class QuickLauncherCommandCustomization(
+        val commandId: String,
+        val favorite: Boolean = false,
+        val hidden: Boolean = false,
+        val customSearch: String = "",
+        val favoriteOrder: Int = Int.MAX_VALUE,
+        val color: Int? = null
+    )
+
+    fun getCommandSourceVisibility(context: Context): List<CommandSourceVisibility> {
+        val defaults = defaultCommandSourceVisibility()
+        val stored = getPreferences(context).getString(KEY_COMMAND_SURFACE_SOURCES, null) ?: return defaults
+        return try {
+            val json = JSONObject(stored)
+            defaults.map { default ->
+                val sourceJson = json.optJSONObject(default.sourceId)
+                if (sourceJson == null) {
+                    default
+                } else {
+                    CommandSourceVisibility(
+                        sourceId = default.sourceId,
+                        quickLauncherEnabled = sourceJson.optBoolean("quick_launcher", default.quickLauncherEnabled)
+                    )
+                }
+            }
+        } catch (error: Exception) {
+            Log.e(TAG, "Errore nel caricamento command source visibility", error)
+            defaults
+        }
+    }
+
+    fun setCommandSourceVisibility(context: Context, visibility: List<CommandSourceVisibility>) {
+        val json = JSONObject()
+        visibility.forEach { item ->
+            json.put(item.sourceId, JSONObject().apply {
+                put("quick_launcher", item.quickLauncherEnabled)
+            })
+        }
+        getPreferences(context).edit()
+            .putString(KEY_COMMAND_SURFACE_SOURCES, json.toString())
+            .apply()
+    }
+
+    fun isCommandSourceEnabled(context: Context, sourceId: String, surface: CommandSurface): Boolean {
+        if (surface != CommandSurface.QuickLauncher) return true
+        val visibility = getCommandSourceVisibility(context).firstOrNull { it.sourceId == sourceId }
+            ?: defaultCommandSourceVisibility().firstOrNull { it.sourceId == sourceId }
+            ?: return false
+        return visibility.quickLauncherEnabled
+    }
+
+    private fun defaultCommandSourceVisibility(): List<CommandSourceVisibility> {
+        return listOf(
+            CommandSourceVisibility(CommandSourceId.Apps.storageValue, quickLauncherEnabled = true),
+            CommandSourceVisibility(CommandSourceId.Pastiera.storageValue, quickLauncherEnabled = false),
+            CommandSourceVisibility(CommandSourceId.AppActions.storageValue, quickLauncherEnabled = false),
+            CommandSourceVisibility(CommandSourceId.DeviceControl.storageValue, quickLauncherEnabled = false)
+        )
+    }
+
+    fun getQuickLauncherCommandCustomizations(context: Context): Map<String, QuickLauncherCommandCustomization> {
+        val stored = getPreferences(context).getString(KEY_QUICK_LAUNCHER_COMMAND_CUSTOMIZATIONS, null)
+            ?: return emptyMap()
+        return try {
+            val json = JSONObject(stored)
+            val result = mutableMapOf<String, QuickLauncherCommandCustomization>()
+            val keys = json.keys()
+            while (keys.hasNext()) {
+                val commandId = keys.next()
+                val item = json.optJSONObject(commandId) ?: continue
+                result[commandId] = QuickLauncherCommandCustomization(
+                    commandId = commandId,
+                    favorite = item.optBoolean("favorite", false),
+                    hidden = item.optBoolean("hidden", false),
+                    customSearch = item.optString("custom_search", ""),
+                    favoriteOrder = item.optInt("favorite_order", Int.MAX_VALUE),
+                    color = if (item.has("color")) item.optInt("color") else null
+                )
+            }
+            result
+        } catch (error: Exception) {
+            Log.e(TAG, "Errore nel caricamento quick launcher command customizations", error)
+            emptyMap()
+        }
+    }
+
+    fun setQuickLauncherCommandCustomization(
+        context: Context,
+        customization: QuickLauncherCommandCustomization
+    ) {
+        val current = getQuickLauncherCommandCustomizations(context).toMutableMap()
+        if (
+            !customization.favorite &&
+            !customization.hidden &&
+            customization.customSearch.isBlank() &&
+            customization.favoriteOrder == Int.MAX_VALUE &&
+            customization.color == null
+        ) {
+            current.remove(customization.commandId)
+        } else {
+            current[customization.commandId] = customization.copy(customSearch = customization.customSearch.trim())
+        }
+        val json = JSONObject()
+        current.values.sortedBy { it.commandId }.forEach { item ->
+            json.put(item.commandId, JSONObject().apply {
+                if (item.favorite) put("favorite", true)
+                if (item.hidden) put("hidden", true)
+                if (item.customSearch.isNotBlank()) put("custom_search", item.customSearch)
+                if (item.favoriteOrder != Int.MAX_VALUE) put("favorite_order", item.favoriteOrder)
+                item.color?.let { put("color", it) }
+            })
+        }
+        getPreferences(context).edit()
+            .putString(KEY_QUICK_LAUNCHER_COMMAND_CUSTOMIZATIONS, json.toString())
+            .apply()
+    }
+
+    fun getQuickLauncherHighlightFavorites(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_QUICK_LAUNCHER_HIGHLIGHT_FAVORITES, true)
+    }
+
+    fun setQuickLauncherHighlightFavorites(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_QUICK_LAUNCHER_HIGHLIGHT_FAVORITES, enabled)
+            .apply()
+    }
+
+    fun getQuickLauncherFavoriteColor(context: Context): Int {
+        return getPreferences(context).getInt(KEY_QUICK_LAUNCHER_FAVORITE_COLOR, DEFAULT_QUICK_LAUNCHER_FAVORITE_COLOR)
+    }
+
+    fun setQuickLauncherFavoriteColor(context: Context, color: Int) {
+        getPreferences(context).edit()
+            .putInt(KEY_QUICK_LAUNCHER_FAVORITE_COLOR, color)
+            .apply()
+    }
+
+    fun getQuickLauncherIconColors(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_QUICK_LAUNCHER_ICON_COLORS, false)
+    }
+
+    fun setQuickLauncherIconColors(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_QUICK_LAUNCHER_ICON_COLORS, enabled)
+            .apply()
+    }
+
+    fun getQuickLauncherShowAliasFirst(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_QUICK_LAUNCHER_SHOW_ALIAS_FIRST, true)
+    }
+
+    fun setQuickLauncherShowAliasFirst(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_QUICK_LAUNCHER_SHOW_ALIAS_FIRST, enabled)
+            .apply()
+    }
+
+    fun getQuickLauncherStaticTopHighlight(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_QUICK_LAUNCHER_STATIC_TOP_HIGHLIGHT, false)
+    }
+
+    fun setQuickLauncherStaticTopHighlight(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_QUICK_LAUNCHER_STATIC_TOP_HIGHLIGHT, enabled)
+            .apply()
+    }
+
+    fun getQuickLauncherStaticTopHighlightColor(context: Context): Int {
+        return getPreferences(context).getInt(
+            KEY_QUICK_LAUNCHER_STATIC_TOP_HIGHLIGHT_COLOR,
+            DEFAULT_QUICK_LAUNCHER_STATIC_TOP_HIGHLIGHT_COLOR
+        )
+    }
+
+    fun setQuickLauncherStaticTopHighlightColor(context: Context, color: Int) {
+        getPreferences(context).edit()
+            .putInt(KEY_QUICK_LAUNCHER_STATIC_TOP_HIGHLIGHT_COLOR, color)
+            .apply()
     }
     
     /**

@@ -664,9 +664,9 @@
     <string name="quick_launcher_ranking_info_title">Classement QuickLauncher</string>
     <string name="quick_launcher_ranking_info_body">Les résultats sont classés ainsi : nom exact de l’app, préfixe du nom de l’app, préfixe de mot, correspondance abréviation/sous-séquence, nom d’app tolérant aux fautes, puis nom du package. La tolérance aux fautes est ignorée pour les requêtes très courtes.</string>
     <string name="quick_launcher_behavior_title">Comportement</string>
-    <string name="quick_launcher_behavior_description">Règles de lancement, rendu des résultats et SYM+Espace depuis les champs de texte.</string>
+    <string name="quick_launcher_behavior_description">Moteur de lancement, règles de recherche/classement et SYM+Espace depuis les champs de texte.</string>
     <string name="quick_launcher_cosmetic_title">Apparence</string>
-    <string name="quick_launcher_cosmetic_description">Largeur et présentation compacte en pilule.</string>
+    <string name="quick_launcher_cosmetic_description">Largeur, mode pilule, sources de commandes, favoris, alias et couleurs des entrées.</string>
     <string name="quick_launcher_width_title">Largeur du lanceur</string>
     <string name="quick_launcher_width_value">%1$d%% de la largeur de l’écran</string>
     <string name="quick_launcher_pill_mode_title">Mode pilule</string>

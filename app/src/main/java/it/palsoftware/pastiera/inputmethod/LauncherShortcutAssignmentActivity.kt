@@ -1,16 +1,16 @@
 package it.palsoftware.pastiera.inputmethod
 
-import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Bundle
-import android.util.Log
 import android.view.WindowManager
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,16 +19,31 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import it.palsoftware.pastiera.*
 import android.view.KeyEvent
+import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.filled.KeyboardCommandKey
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.filled.TaskAlt
+import androidx.compose.material.icons.filled.VolumeDown
+import androidx.compose.material.icons.filled.VolumeOff
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.ui.res.stringResource
 import it.palsoftware.pastiera.R
 import androidx.compose.ui.focus.FocusRequester
@@ -36,11 +51,18 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberModalBottomSheetState
+import it.palsoftware.pastiera.commands.CommandExecutor
+import it.palsoftware.pastiera.commands.CommandIcon
+import it.palsoftware.pastiera.commands.CommandRegistry
+import it.palsoftware.pastiera.commands.CommandSourceId
+import it.palsoftware.pastiera.commands.CommandSurface
+import it.palsoftware.pastiera.commands.CommandTarget
 
 /**
  * Activity per assegnare una scorciatoia del launcher a un tasto.
@@ -91,26 +113,24 @@ class LauncherShortcutAssignmentActivity : LocalizedComponentActivity() {
                 ) {
                     LauncherShortcutAssignmentBottomSheet(
                         keyCode = keyCode,
-                        skipLaunch = skipLaunch,
-                        onAppSelected = { app ->
-                            // Save the shortcut
-                            SettingsManager.setLauncherShortcut(
+                        onCommandSelected = { command ->
+                            SettingsManager.setLauncherCommand(
                                 this@LauncherShortcutAssignmentActivity,
                                 keyCode,
-                                app.packageName,
-                                app.appName
+                                command.id,
+                                command.source.storageValue,
+                                command.kind.name,
+                                command.label,
+                                command.subtitle,
+                                command.launch
                             )
                             
                             // Launch the app only if not called from settings screen
                             if (!skipLaunch) {
-                                launchApp(app.packageName)
+                                CommandExecutor(this@LauncherShortcutAssignmentActivity)
+                                    .execute(command)
                             }
                             
-                            setResult(RESULT_ASSIGNED)
-                            finish()
-                        },
-                        onQuickLauncherSelected = {
-                            SettingsManager.setQuickLauncherShortcut(this@LauncherShortcutAssignmentActivity, keyCode)
                             setResult(RESULT_ASSIGNED)
                             finish()
                         },
@@ -140,22 +160,6 @@ class LauncherShortcutAssignmentActivity : LocalizedComponentActivity() {
     /**
      * Launches an app by package name.
      */
-    private fun launchApp(packageName: String) {
-        try {
-            val pm = packageManager
-            val intent = pm.getLaunchIntentForPackage(packageName)
-            if (intent != null) {
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                startActivity(intent)
-                Log.d("LauncherShortcutAssignment", "App launched: $packageName")
-            } else {
-                Log.w("LauncherShortcutAssignment", "No launch intent found for: $packageName")
-            }
-        } catch (e: Exception) {
-            Log.e("LauncherShortcutAssignment", "Error launching app $packageName", e)
-        }
-    }
-    
     private fun disableActivityAnimations() {
         @Suppress("DEPRECATION")
         overridePendingTransition(0, 0)
@@ -170,9 +174,7 @@ class LauncherShortcutAssignmentActivity : LocalizedComponentActivity() {
 @Composable
 private fun LauncherShortcutAssignmentBottomSheet(
     keyCode: Int,
-    skipLaunch: Boolean = false,
-    onAppSelected: (InstalledApp) -> Unit,
-    onQuickLauncherSelected: () -> Unit,
+    onCommandSelected: (CommandTarget) -> Unit,
     onRemoveShortcut: (() -> Unit)? = null,
     onDismiss: () -> Unit
 ) {
@@ -182,16 +184,16 @@ private fun LauncherShortcutAssignmentBottomSheet(
     // Focus requester per il campo di ricerca
     val searchFocusRequester = remember { FocusRequester() }
     
-    // Carica le app installate
-    val installedApps by remember {
-        mutableStateOf(AppListHelper.getInstalledApps(context))
+    val commands by remember {
+        mutableStateOf(CommandRegistry(context).getCommands(CommandSurface.AssignedKey))
     }
     
     var searchQuery by remember { mutableStateOf("") }
+    var searchActive by remember { mutableStateOf(false) }
     
     // Dai il focus al campo di ricerca quando il bottom sheet è completamente aperto
-    LaunchedEffect(sheetState.targetValue) {
-        if (sheetState.targetValue == SheetValue.Expanded) {
+    LaunchedEffect(sheetState.targetValue, searchActive) {
+        if (sheetState.targetValue == SheetValue.Expanded && searchActive) {
             kotlinx.coroutines.delay(100)
             searchFocusRequester.requestFocus()
         }
@@ -230,32 +232,48 @@ private fun LauncherShortcutAssignmentBottomSheet(
         }
     }
     
-    // Filtra e ordina le app in base alla query di ricerca e alla lettera del tasto
-    val filteredApps = remember(installedApps, searchQuery, keyCode) {
-        val apps = if (searchQuery.isBlank()) {
-            installedApps
+    var selectedSource by remember { mutableStateOf<CommandSourceId?>(null) }
+
+    val filteredCommands = remember(commands, searchQuery, keyCode, selectedSource) {
+        val base = commands.filter { command -> selectedSource == null || command.source == selectedSource }
+        val matches = if (searchQuery.isBlank()) {
+            base
         } else {
-            installedApps.filter {
-                it.appName.contains(searchQuery, ignoreCase = true) ||
-                it.packageName.contains(searchQuery, ignoreCase = true)
+            base.filter {
+                it.label.contains(searchQuery, ignoreCase = true) ||
+                    it.subtitle?.contains(searchQuery, ignoreCase = true) == true ||
+                    it.searchTokens.any { token -> token.contains(searchQuery, ignoreCase = true) }
             }
         }
         
         // Ordina: prima le app che iniziano con la lettera del tasto, poi le altre
         val keyLetter = getKeyLetter(keyCode)?.lowercaseChar()
         if (keyLetter != null && searchQuery.isBlank()) {
-            val appsStartingWithLetter = apps.filter { 
-                it.appName.isNotEmpty() && it.appName[0].lowercaseChar() == keyLetter 
-            }.sortedBy { it.appName.lowercase() }
+            val commandsStartingWithLetter = matches.filter {
+                it.source == CommandSourceId.Apps &&
+                    it.label.isNotEmpty() &&
+                    it.label[0].lowercaseChar() == keyLetter
+            }.sortedBy { it.label.lowercase() }
             
-            val otherApps = apps.filter { 
-                it.appName.isEmpty() || it.appName[0].lowercaseChar() != keyLetter 
-            }.sortedBy { it.appName.lowercase() }
+            val otherCommands = matches.filter { it !in commandsStartingWithLetter }
+                .sortedWith(compareBy<CommandTarget> { it.source.ordinal }.thenBy { it.label.lowercase() })
             
-            appsStartingWithLetter + otherApps
+            commandsStartingWithLetter + otherCommands
         } else {
             // Se c'è una ricerca attiva, ordina normalmente
-            apps.sortedBy { it.appName.lowercase() }
+            matches.sortedWith(compareBy<CommandTarget> { it.source.ordinal }.thenBy { it.label.lowercase() })
+        }
+    }
+    val commandEntries = remember(filteredCommands, selectedSource) {
+        if (selectedSource != null) {
+            filteredCommands.map { CommandPickerEntry.Command(it) }
+        } else {
+            filteredCommands
+                .groupBy { it.source }
+                .flatMap { (source, sourceCommands) ->
+                    listOf(CommandPickerEntry.Header(source.displayLabel)) +
+                        sourceCommands.map { CommandPickerEntry.Command(it) }
+                }
         }
     }
     
@@ -363,69 +381,93 @@ private fun LauncherShortcutAssignmentBottomSheet(
             
             Spacer(modifier = Modifier.height(16.dp))
 
-            OutlinedButton(
-                onClick = onQuickLauncherSelected,
-                modifier = Modifier.fillMaxWidth()
+            val availableSources = commands.map { it.source }.distinct()
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(stringResource(R.string.quick_launcher_assign_action))
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            if (onRemoveShortcut != null) {
-                OutlinedButton(
-                    onClick = onRemoveShortcut,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error
-                    )
+                FilledTonalIconButton(
+                    onClick = {
+                        searchActive = !searchActive
+                        if (!searchActive) searchQuery = ""
+                    }
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(stringResource(R.string.launcher_shortcuts_remove))
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-            
-            // Campo di ricerca
-            TextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(searchFocusRequester),
-                placeholder = { Text(stringResource(R.string.launcher_shortcut_assignment_search_placeholder)) },
-                singleLine = true,
-                shape = RoundedCornerShape(28.dp),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                colors = TextFieldDefaults.colors(
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    disabledIndicatorColor = Color.Transparent
-                ),
-                leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Search,
                         contentDescription = stringResource(R.string.launcher_shortcut_assignment_search_description)
                     )
                 }
-            )
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .horizontalScroll(rememberScrollState())
+                        .padding(start = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    FilterChip(
+                        selected = selectedSource == null,
+                        onClick = { selectedSource = null },
+                        label = { Text("All") }
+                    )
+                    availableSources.forEach { source ->
+                        FilterChip(
+                            selected = selectedSource == source,
+                            onClick = { selectedSource = source },
+                            label = { Text(source.displayLabel) }
+                        )
+                    }
+                }
+                if (onRemoveShortcut != null) {
+                    Spacer(modifier = Modifier.width(12.dp))
+                    AssistChip(
+                        onClick = onRemoveShortcut,
+                        label = { Text(stringResource(R.string.launcher_shortcuts_remove)) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        },
+                        colors = AssistChipDefaults.assistChipColors(
+                            labelColor = MaterialTheme.colorScheme.error,
+                            leadingIconContentColor = MaterialTheme.colorScheme.error
+                        )
+                    )
+                }
+            }
+
+            if (searchActive) {
+                Spacer(modifier = Modifier.height(10.dp))
+                TextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(searchFocusRequester),
+                    placeholder = { Text(stringResource(R.string.launcher_shortcut_assignment_search_placeholder)) },
+                    singleLine = true,
+                    shape = RoundedCornerShape(28.dp),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    colors = TextFieldDefaults.colors(
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        disabledIndicatorColor = Color.Transparent
+                    ),
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = stringResource(R.string.launcher_shortcut_assignment_search_description)
+                        )
+                    }
+                )
+            }
             
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             
             // Griglia delle app - usa weight per espandersi e riempire lo spazio disponibile
-            if (filteredApps.isEmpty()) {
+            if (filteredCommands.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -454,15 +496,27 @@ private fun LauncherShortcutAssignmentBottomSheet(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(
-                        items = filteredApps,
-                        key = { app -> app.packageName }
-                    ) { app ->
-                        AppGridItem(
-                            app = app,
-                            onClick = {
-                                onAppSelected(app)
+                        items = commandEntries,
+                        key = { entry ->
+                            when (entry) {
+                                is CommandPickerEntry.Header -> "header:${entry.label}"
+                                is CommandPickerEntry.Command -> entry.command.id
                             }
-                        )
+                        },
+                        span = { entry ->
+                            when (entry) {
+                                is CommandPickerEntry.Header -> GridItemSpan(maxLineSpan)
+                                is CommandPickerEntry.Command -> GridItemSpan(1)
+                            }
+                        }
+                    ) { entry ->
+                        when (entry) {
+                            is CommandPickerEntry.Header -> CommandSectionHeader(entry.label)
+                            is CommandPickerEntry.Command -> CommandGridItem(
+                                command = entry.command,
+                                onClick = { onCommandSelected(entry.command) }
+                            )
+                        }
                     }
                 }
             }
@@ -472,12 +526,30 @@ private fun LauncherShortcutAssignmentBottomSheet(
     }
 }
 
+private sealed class CommandPickerEntry {
+    data class Header(val label: String) : CommandPickerEntry()
+    data class Command(val command: CommandTarget) : CommandPickerEntry()
+}
+
+@Composable
+private fun CommandSectionHeader(label: String) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.primary,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 6.dp, bottom = 2.dp)
+    )
+}
+
 /**
  * Item della griglia per un'app (versione compatta per griglia).
  */
 @Composable
-private fun AppGridItem(
-    app: InstalledApp,
+private fun CommandGridItem(
+    command: CommandTarget,
     onClick: () -> Unit
 ) {
     Surface(
@@ -496,40 +568,76 @@ private fun AppGridItem(
             verticalArrangement = Arrangement.Center
         ) {
             // Icona app usando AndroidView (ottimizzata con remember)
-            val iconDrawable = remember(app.packageName) { app.icon }
+            val iconDrawable = remember(command.id) { (command.icon as? CommandIcon.DrawableIcon)?.drawable }
             Box(
                 modifier = Modifier.size(56.dp),
                 contentAlignment = Alignment.Center
             ) {
-                androidx.compose.ui.viewinterop.AndroidView(
-                    factory = { ctx ->
-                        android.widget.ImageView(ctx).apply {
-                            layoutParams = android.view.ViewGroup.LayoutParams(
-                                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                                android.view.ViewGroup.LayoutParams.MATCH_PARENT
-                            )
-                            scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
-                            setImageDrawable(iconDrawable)
-                        }
-                    },
-                    update = { imageView ->
-                        imageView.setImageDrawable(iconDrawable)
-                    },
-                    modifier = Modifier.size(56.dp)
-                )
+                if (iconDrawable != null) {
+                    AndroidView(
+                        factory = { ctx ->
+                            ImageView(ctx).apply {
+                                layoutParams = ViewGroup.LayoutParams(
+                                    ViewGroup.LayoutParams.MATCH_PARENT,
+                                    ViewGroup.LayoutParams.MATCH_PARENT
+                                )
+                                scaleType = ImageView.ScaleType.FIT_CENTER
+                                setImageDrawable(iconDrawable)
+                            }
+                        },
+                        update = { imageView ->
+                            imageView.setImageDrawable(iconDrawable)
+                        },
+                        modifier = Modifier.size(56.dp)
+                    )
+                } else {
+                    Icon(
+                        imageVector = commandPickerIcon(command),
+                        contentDescription = null,
+                        modifier = Modifier.size(34.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
             
             Spacer(modifier = Modifier.height(8.dp))
             
             // Nome app (centrato, max 2 righe)
             Text(
-                text = app.appName,
+                text = command.label,
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Medium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center
+                maxLines = 1,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.basicMarquee()
             )
         }
+    }
+}
+
+private fun commandPickerIcon(command: CommandTarget): ImageVector {
+    return when {
+        command.source == CommandSourceId.AppActions && command.id.contains("agenda") -> Icons.Default.Event
+        command.source == CommandSourceId.AppActions && command.id.contains("tasker") -> Icons.Default.TaskAlt
+        command.source == CommandSourceId.AppActions && command.id.contains("homeassistant.assist") -> Icons.Default.Mic
+        command.source == CommandSourceId.AppActions && command.id.contains("homeassistant.voice") -> Icons.Default.Mic
+        command.source == CommandSourceId.AppActions && command.id.contains("homeassistant") -> Icons.Default.Home
+        command.source == CommandSourceId.AppActions -> Icons.Default.Search
+        command.id == "device.media.play_pause" -> Icons.Default.PlayArrow
+        command.id == "device.media.previous" -> Icons.Default.SkipPrevious
+        command.id == "device.media.next" -> Icons.Default.SkipNext
+        command.id == "device.volume.up" -> Icons.Default.VolumeUp
+        command.id == "device.volume.down" -> Icons.Default.VolumeDown
+        command.id == "device.volume.mute" -> Icons.Default.VolumeOff
+        command.id == "device.brightness.up" -> Icons.Default.WbSunny
+        command.id == "device.brightness.down" -> Icons.Default.WbSunny
+        command.id.contains("input_method") -> Icons.Default.Keyboard
+        command.id.contains("language") -> Icons.Default.Language
+        command.source == CommandSourceId.DeviceControl -> Icons.Default.Settings
+        command.source == CommandSourceId.Pastiera -> Icons.Default.KeyboardCommandKey
+        command.source == CommandSourceId.NavActions -> Icons.Default.KeyboardCommandKey
+        command.icon == CommandIcon.Settings -> Icons.Default.Settings
+        command.icon == CommandIcon.DeviceControl -> Icons.Default.Settings
+        else -> Icons.Default.Search
     }
 }

@@ -664,9 +664,9 @@
     <string name="quick_launcher_ranking_info_title">Ranking QuickLauncher</string>
     <string name="quick_launcher_ranking_info_body">Wyniki są sortowane tak: dokładna nazwa aplikacji, prefiks nazwy aplikacji, prefiks słowa, dopasowanie skrótu/podciągu, odporne na literówki dopasowanie nazwy aplikacji, a potem nazwa pakietu. Tolerancja literówek jest ignorowana dla bardzo krótkich zapytań.</string>
     <string name="quick_launcher_behavior_title">Działanie</string>
-    <string name="quick_launcher_behavior_description">Reguły uruchamiania, renderowanie wyników oraz SYM+Spacja z pól tekstowych.</string>
+    <string name="quick_launcher_behavior_description">Dostawca uruchamiania, reguły wyszukiwania/rankingu oraz SYM+Spacja z pól tekstowych.</string>
     <string name="quick_launcher_cosmetic_title">Wygląd</string>
-    <string name="quick_launcher_cosmetic_description">Szerokość i kompaktowa prezentacja w formie pigułki.</string>
+    <string name="quick_launcher_cosmetic_description">Szerokość, tryb pigułki, źródła komend, ulubione, aliasy i kolory wpisów.</string>
     <string name="quick_launcher_width_title">Szerokość launchera</string>
     <string name="quick_launcher_width_value">%1$d%% szerokości ekranu</string>
     <string name="quick_launcher_pill_mode_title">Tryb pigułki</string>
