@@ -106,7 +106,7 @@ class LauncherShortcutController(
                     Log.d(TAG, "Tipo scorciatoia non ancora implementato: ${shortcut.type}")
                 }
                 SettingsManager.LauncherShortcut.TYPE_QUICK_LAUNCHER -> {
-                    if (openQuickLauncher()) {
+                    if (QuickLauncherOpener.open(context)) {
                         Log.d(TAG, "Quick launcher shortcut executed: key $keyCode")
                         return true
                     }
@@ -123,22 +123,6 @@ class LauncherShortcutController(
         return false // Non consumiamo l'evento
     }
 
-    private fun openQuickLauncher(): Boolean {
-        return try {
-            val intent = Intent(context, QuickLauncherActivity::class.java).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
-                addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY)
-                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            }
-            context.startActivity(intent)
-            true
-        } catch (e: Exception) {
-            Log.e(TAG, "Errore nell'apertura del quick launcher", e)
-            false
-        }
-    }
-    
     /**
      * Mostra il dialog per assegnare un'app a un tasto.
      */

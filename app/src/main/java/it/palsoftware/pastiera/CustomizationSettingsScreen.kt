@@ -85,6 +85,9 @@ fun CustomizationSettingsScreen(
     var quickLauncherPillMode by remember {
         mutableStateOf(SettingsManager.getQuickLauncherPillMode(context))
     }
+    var quickLauncherBehavior by remember {
+        mutableStateOf(SettingsManager.getQuickLauncherBehavior(context))
+    }
     var quickLauncherDefaultBlocked by remember {
         mutableStateOf(SettingsManager.isQuickLauncherDefaultBlockedByExistingSpaceShortcut(context))
     }
@@ -152,6 +155,9 @@ fun CustomizationSettingsScreen(
                 }
                 "quick_launcher_pill_mode" -> {
                     quickLauncherPillMode = SettingsManager.getQuickLauncherPillMode(context)
+                }
+                "quick_launcher_behavior" -> {
+                    quickLauncherBehavior = SettingsManager.getQuickLauncherBehavior(context)
                 }
                 "launcher_shortcuts" -> {
                     quickLauncherDefaultBlocked = SettingsManager.isQuickLauncherDefaultBlockedByExistingSpaceShortcut(context)
@@ -685,6 +691,11 @@ fun CustomizationSettingsScreen(
                     onQuickLauncherTypoTolerantRankingChanged = { enabled ->
                         quickLauncherTypoTolerantRanking = enabled
                         SettingsManager.setQuickLauncherTypoTolerantRanking(context, enabled)
+                    },
+                    quickLauncherBehavior = quickLauncherBehavior,
+                    onQuickLauncherBehaviorChanged = { behavior ->
+                        quickLauncherBehavior = behavior
+                        SettingsManager.setQuickLauncherBehavior(context, behavior)
                     }
                 )
             }
@@ -890,6 +901,7 @@ private fun StarterLauncherShortcutsSettingsScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun StarterLauncherBehaviorScreen(
     modifier: Modifier = Modifier,
@@ -903,15 +915,75 @@ private fun StarterLauncherBehaviorScreen(
     quickLauncherRespectKeyboardLayout: Boolean,
     onQuickLauncherRespectKeyboardLayoutChanged: (Boolean) -> Unit,
     quickLauncherTypoTolerantRanking: Boolean,
-    onQuickLauncherTypoTolerantRankingChanged: (Boolean) -> Unit
+    onQuickLauncherTypoTolerantRankingChanged: (Boolean) -> Unit,
+    quickLauncherBehavior: String,
+    onQuickLauncherBehaviorChanged: (String) -> Unit
 ) {
     var showRankingInfo by remember { mutableStateOf(false) }
+    var behaviorMenuExpanded by remember { mutableStateOf(false) }
+    val behaviorOptions = listOf(
+        SettingsManager.QUICK_LAUNCHER_BEHAVIOR_PASTIERA,
+        SettingsManager.QUICK_LAUNCHER_BEHAVIOR_NIAGARA
+    )
 
     StarterLauncherSubScreen(
         modifier = modifier,
         title = stringResource(R.string.quick_launcher_behavior_title),
         onBack = onBack
     ) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            tonalElevation = 1.dp,
+            shape = MaterialTheme.shapes.medium
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.quick_launcher_provider_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = stringResource(R.string.quick_launcher_provider_description),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                ExposedDropdownMenuBox(
+                    expanded = behaviorMenuExpanded,
+                    onExpandedChange = { behaviorMenuExpanded = !behaviorMenuExpanded }
+                ) {
+                    OutlinedTextField(
+                        value = quickLauncherBehaviorLabel(quickLauncherBehavior),
+                        onValueChange = {},
+                        readOnly = true,
+                        singleLine = true,
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = behaviorMenuExpanded)
+                        },
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = behaviorMenuExpanded,
+                        onDismissRequest = { behaviorMenuExpanded = false }
+                    ) {
+                        behaviorOptions.forEach { behavior ->
+                            DropdownMenuItem(
+                                text = { Text(quickLauncherBehaviorLabel(behavior)) },
+                                onClick = {
+                                    behaviorMenuExpanded = false
+                                    onQuickLauncherBehaviorChanged(behavior)
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
         LauncherShortcutTriggerRow(
             icon = { SettingsRowKeyboardIcon() },
             title = stringResource(R.string.quick_launcher_auto_start_single_title),
@@ -984,6 +1056,15 @@ private fun StarterLauncherBehaviorScreen(
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun quickLauncherBehaviorLabel(behavior: String): String {
+    return when (behavior) {
+        SettingsManager.QUICK_LAUNCHER_BEHAVIOR_NIAGARA ->
+            stringResource(R.string.quick_launcher_provider_niagara)
+        else -> stringResource(R.string.quick_launcher_provider_pastiera)
     }
 }
 

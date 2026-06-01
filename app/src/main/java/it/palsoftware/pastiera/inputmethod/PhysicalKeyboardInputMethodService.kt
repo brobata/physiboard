@@ -305,21 +305,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         return DeviceSpecific.isMinimalPhoneDevice(physicalKeyboardProfileOverride)
     }
 
-    private fun openQuickLauncher(): Boolean {
-        return try {
-            val intent = Intent(this, QuickLauncherActivity::class.java).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
-                addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY)
-                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            }
-            startActivity(intent)
-            true
-        } catch (error: Exception) {
-            Log.e(TAG, "Error opening quick launcher", error)
-            false
-        }
-    }
+    private fun openQuickLauncher(): Boolean = QuickLauncherOpener.open(this)
     
     /**
      * Starts voice input using SpeechRecognizer via SpeechRecognitionManager.

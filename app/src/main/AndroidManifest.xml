@@ -29,6 +29,9 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.HOME" />
         </intent>
+
+        <!-- Optional QuickLauncher backend: Niagara Launcher search deep link -->
+        <package android:name="bitpit.launcher" />
     </queries>
 
     <application

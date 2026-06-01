@@ -230,6 +230,7 @@ object PreferenceSchemas {
             "quick_launcher_typo_tolerant_ranking" to PreferenceValueType.BOOLEAN,
             "quick_launcher_width_percent" to PreferenceValueType.INT,
             "quick_launcher_pill_mode" to PreferenceValueType.BOOLEAN,
+            "quick_launcher_behavior" to PreferenceValueType.STRING,
             "nav_mode_enabled" to PreferenceValueType.BOOLEAN,
             "nav_mode_mappings_updated" to PreferenceValueType.LONG,
             "power_shortcuts_enabled" to PreferenceValueType.BOOLEAN,

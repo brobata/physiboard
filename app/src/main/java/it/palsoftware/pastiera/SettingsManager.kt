@@ -1629,6 +1629,7 @@ object SettingsManager {
     private const val KEY_QUICK_LAUNCHER_TYPO_TOLERANT_RANKING = "quick_launcher_typo_tolerant_ranking"
     private const val KEY_QUICK_LAUNCHER_WIDTH_PERCENT = "quick_launcher_width_percent"
     private const val KEY_QUICK_LAUNCHER_PILL_MODE = "quick_launcher_pill_mode"
+    private const val KEY_QUICK_LAUNCHER_BEHAVIOR = "quick_launcher_behavior"
     private const val DEFAULT_LAUNCHER_SHORTCUTS_ENABLED = false
     private const val DEFAULT_QUICK_LAUNCHER_AUTO_START_SINGLE = false
     private const val DEFAULT_QUICK_LAUNCHER_LIMIT_RESULTS = false
@@ -1637,6 +1638,8 @@ object SettingsManager {
     private const val DEFAULT_QUICK_LAUNCHER_TYPO_TOLERANT_RANKING = true
     private const val DEFAULT_QUICK_LAUNCHER_WIDTH_PERCENT = 100
     private const val DEFAULT_QUICK_LAUNCHER_PILL_MODE = false
+    const val QUICK_LAUNCHER_BEHAVIOR_PASTIERA = "pastiera"
+    const val QUICK_LAUNCHER_BEHAVIOR_NIAGARA = "niagara"
     
     // Nav mode settings
     private const val KEY_NAV_MODE_ENABLED = "nav_mode_enabled"
@@ -1941,6 +1944,27 @@ object SettingsManager {
         getPreferences(context).edit()
             .putBoolean(KEY_QUICK_LAUNCHER_PILL_MODE, enabled)
             .apply()
+    }
+
+    fun getQuickLauncherBehavior(context: Context): String {
+        val value = getPreferences(context).getString(
+            KEY_QUICK_LAUNCHER_BEHAVIOR,
+            QUICK_LAUNCHER_BEHAVIOR_PASTIERA
+        ) ?: QUICK_LAUNCHER_BEHAVIOR_PASTIERA
+        return normalizeQuickLauncherBehavior(value)
+    }
+
+    fun setQuickLauncherBehavior(context: Context, behavior: String) {
+        getPreferences(context).edit()
+            .putString(KEY_QUICK_LAUNCHER_BEHAVIOR, normalizeQuickLauncherBehavior(behavior))
+            .apply()
+    }
+
+    private fun normalizeQuickLauncherBehavior(behavior: String): String {
+        return when (behavior.trim().lowercase()) {
+            QUICK_LAUNCHER_BEHAVIOR_NIAGARA -> QUICK_LAUNCHER_BEHAVIOR_NIAGARA
+            else -> QUICK_LAUNCHER_BEHAVIOR_PASTIERA
+        }
     }
     
     // Power Shortcuts settings

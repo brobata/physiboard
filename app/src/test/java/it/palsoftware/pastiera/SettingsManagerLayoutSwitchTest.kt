@@ -95,4 +95,33 @@ class SettingsManagerLayoutSwitchTest {
 
         assertTrue(SettingsManager.getLayoutAwareCtrlShortcutsEnabled(context))
     }
+
+    @Test
+    fun quickLauncherBehavior_defaultsPastiera_andPersistsNiagara() {
+        val context = RuntimeEnvironment.getApplication()
+
+        assertEquals(
+            SettingsManager.QUICK_LAUNCHER_BEHAVIOR_PASTIERA,
+            SettingsManager.getQuickLauncherBehavior(context)
+        )
+
+        SettingsManager.setQuickLauncherBehavior(context, SettingsManager.QUICK_LAUNCHER_BEHAVIOR_NIAGARA)
+
+        assertEquals(
+            SettingsManager.QUICK_LAUNCHER_BEHAVIOR_NIAGARA,
+            SettingsManager.getQuickLauncherBehavior(context)
+        )
+    }
+
+    @Test
+    fun quickLauncherBehavior_unknownValueFallsBackToPastiera() {
+        val context = RuntimeEnvironment.getApplication()
+
+        SettingsManager.setQuickLauncherBehavior(context, "unknown")
+
+        assertEquals(
+            SettingsManager.QUICK_LAUNCHER_BEHAVIOR_PASTIERA,
+            SettingsManager.getQuickLauncherBehavior(context)
+        )
+    }
 }

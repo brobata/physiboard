@@ -39,6 +39,14 @@ class RestoreManagerAndBackupContractTest {
     }
 
     @Test
+    fun quickLauncherPreferences_areRecognizedForRestore() {
+        assertEquals(
+            PreferenceValueType.STRING,
+            PreferenceSchemas.expectedType("pastiera_prefs", "quick_launcher_behavior")
+        )
+    }
+
+    @Test
     fun statusBarAndVariationPreferences_areRecognizedForRestore() {
         assertEquals(
             PreferenceValueType.STRING,
