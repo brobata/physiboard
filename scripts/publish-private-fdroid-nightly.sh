@@ -2,18 +2,51 @@
 set -euo pipefail
 
 BASE_VERSION="${1:-}"
-PAGES_PUBLIC_DIR="${2:-../palsoftware-web/apps/docs/public}"
-REPO_URL="${3:-https://pastiera.eu/fdroid/nightly/repo}"
-PAGES_REPO_DIR="${PAGES_REPO_DIR:-$PAGES_PUBLIC_DIR/../../..}"
+PAGES_PUBLIC_DIR="../palsoftware-web/apps/docs/public"
+REPO_URL="https://pastiera.eu/fdroid/nightly/repo"
+PAGES_REPO_DIR_OVERRIDE="${PAGES_REPO_DIR:-}"
 AUTO_PUSH_PAGES="${AUTO_PUSH_PAGES:-true}"
+NIGHTLY_TIMESTAMP="${PASTIERA_NIGHTLY_TIMESTAMP:-}"
 
 if [ -z "$BASE_VERSION" ]; then
-  echo "Usage: $0 <base-version> [pages-public-dir] [repo-url] [--no-push-pages]" >&2
+  echo "Usage: $0 <base-version> [pages-public-dir] [repo-url] [--timestamp YYYYMMDD.HHMMSS] [--no-push-pages]" >&2
   exit 1
 fi
 
-if [ "${4:-}" = "--no-push-pages" ]; then
-  AUTO_PUSH_PAGES=false
+shift
+if [ $# -gt 0 ] && [[ "$1" != --* ]]; then
+  PAGES_PUBLIC_DIR="$1"
+  shift
+fi
+if [ $# -gt 0 ] && [[ "$1" != --* ]]; then
+  REPO_URL="$1"
+  shift
+fi
+PAGES_REPO_DIR="${PAGES_REPO_DIR_OVERRIDE:-$PAGES_PUBLIC_DIR/../../..}"
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --timestamp)
+      if [ $# -lt 2 ]; then
+        echo "Missing value for --timestamp" >&2
+        exit 1
+      fi
+      NIGHTLY_TIMESTAMP="$2"
+      shift 2
+      ;;
+    --no-push-pages)
+      AUTO_PUSH_PAGES=false
+      shift
+      ;;
+    *)
+      echo "Unknown argument: $1" >&2
+      exit 1
+      ;;
+  esac
+done
+
+if [ -n "$NIGHTLY_TIMESTAMP" ]; then
+  export PASTIERA_NIGHTLY_TIMESTAMP="$NIGHTLY_TIMESTAMP"
 fi
 
 if ! command -v fdroid >/dev/null 2>&1; then
@@ -31,6 +64,7 @@ APP_ID="it.palsoftware.pastiera.nightly"
 VERSION_INFO="$("$ROOT_DIR/scripts/nightly-version.sh" "$BASE_VERSION")"
 FULL_VERSION="$(printf '%s\n' "$VERSION_INFO" | awk -F= '/^full_version=/{print $2}')"
 COMMIT_MESSAGE="${COMMIT_MESSAGE:-Publish Pastiera nightly F-Droid repo ${FULL_VERSION}}"
+FDROID_APK_PATH="$FDROID_REPO_DIR/pastiera-nightly-${FULL_VERSION}.apk"
 
 if [ ! -d "$PAGES_PUBLIC_DIR" ]; then
   echo "Pages public directory not found: $PAGES_PUBLIC_DIR" >&2
@@ -80,8 +114,7 @@ EOF
 "$ROOT_DIR/scripts/build-nightly.sh" "$BASE_VERSION" --fdroid
 
 mkdir -p "$FDROID_REPO_DIR"
-rm -f "$FDROID_REPO_DIR"/*.apk "$FDROID_REPO_DIR"/*.apk.sha256
-cp "$APK_PATH" "$FDROID_REPO_DIR/"
+cp "$APK_PATH" "$FDROID_APK_PATH"
 
 (
   cd "$FDROID_ROOT"
