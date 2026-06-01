@@ -39,3 +39,9 @@ Pastiera includes short typing sound samples derived from CC0 sound effects:
 - [Keyboard Soundpack #1 [Typing and Single Keystrokes]](https://opengameart.org/content/keyboard-soundpack-1-typing-and-single-keystrokes) by unicaegames, CC0 1.0.
 - [Typewriter sounds](https://opengameart.org/content/typewriter-sounds) by Cassie-OrbitGames, CC0 1.0.
 - [Mechanical Sounds](https://opengameart.org/content/mechanical-sounds) by BMacZero, CC0 1.0.
+
+#### Unicode CLDR
+Emoji search keywords are generated from [Unicode CLDR](https://github.com/unicode-org/cldr-json) annotation data and filtered for Pastiera's bundled emoji set.
+
+#### Leipzig Corpora Collection / Wortschatz Leipzig
+Bundled base dictionaries are frequency-list derivatives built mainly from [Leipzig Corpora Collection / Wortschatz Leipzig](https://corpora.uni-leipzig.de/) word-frequency data, with Pastiera-specific filtering, normalization, and additions. Downloadable dictionary assets are maintained in the companion [pastiera-dict](https://github.com/palsoftware/pastiera-dict) repository.

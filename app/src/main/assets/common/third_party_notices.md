@@ -38,3 +38,35 @@ Pastiera includes short typing sound samples derived from CC0 sound effects.
 - License: Creative Commons Zero 1.0 Universal (CC0 1.0)
 
 Typing sound derivatives are included under `res/raw/typing_*.ogg`.
+
+## Unicode CLDR Emoji Annotations
+
+- Project: Unicode Common Locale Data Repository (CLDR)
+- Source repository: https://github.com/unicode-org/cldr-json
+- Source path used by generator: `cldr-json/cldr-annotations-full/annotations`
+- License: Unicode Data Files and Software License / Unicode License
+
+Pastiera's local emoji search assets under `assets/common/emoji_search/*.tsv`
+are generated from Unicode CLDR annotation data by `scripts/generate_emoji_search_assets.py`.
+The generated TSV files are filtered to the emoji set bundled with Pastiera and normalized
+for compact local lookup.
+
+## Leipzig Corpora Collection / Wortschatz Leipzig
+
+- Project: Leipzig Corpora Collection / Wortschatz Leipzig
+- Project pages: https://corpora.uni-leipzig.de/ and https://wortschatz.uni-leipzig.de/
+- Companion asset repository: https://github.com/palsoftware/pastiera-dict
+- License: Creative Commons attribution terms for the downloaded corpus/frequency-list data;
+  the Leipzig frequency dictionary word lists are documented as CC-BY 3.0, while current
+  downloadable corpus data may carry corpus-specific terms.
+
+Pastiera's bundled base dictionaries under `assets/common/dictionaries/*_base.json`
+and the generated serialized dictionaries under `assets/common/dictionaries_serialized/*_base.dict`
+are frequency-list derivatives built mainly from Leipzig Corpora Collection / Wortschatz Leipzig
+word-frequency data, with project-maintained filtering, truncation, normalization, and additional
+entries. The companion `pastiera-dict` repository distributes larger downloadable `.dict` assets
+and their manifests.
+
+Provenance note: the maintained dictionary pipeline and current maintainer-provided sources point
+mainly to Leipzig/Wortschatz frequency data. Some older bundled entries predate the current
+documentation trail, so their exact upstream corpus IDs are not fully reconstructed here.
