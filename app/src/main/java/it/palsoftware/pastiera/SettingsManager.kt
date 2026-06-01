@@ -746,14 +746,14 @@ object SettingsManager {
     }
     
     /**
-     * Returns the state of swipe-to-delete (keycode 322).
+     * Returns the state of swipe-to-delete.
      */
     fun getSwipeToDelete(context: Context): Boolean {
         return getPreferences(context).getBoolean(KEY_SWIPE_TO_DELETE, DEFAULT_SWIPE_TO_DELETE)
     }
     
     /**
-     * Sets the state of swipe-to-delete (keycode 322).
+     * Sets the state of swipe-to-delete.
      */
     fun setSwipeToDelete(context: Context, enabled: Boolean) {
         getPreferences(context).edit()

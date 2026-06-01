@@ -29,6 +29,7 @@
     <string name="clear_alt_on_space_title">Alt bei Leerzeichen löschen</string>
     <string name="clear_alt_on_space_description">Deaktiviert automatisch Alt oder Alt-Lock beim Drücken der Leertaste.</string>
     <string name="swipe_to_delete_title">Wischen zum Löschen aktivieren</string>
+    <string name="swipe_to_delete_description">Aktuell nur Titan 2.</string>
     <string name="swipe_incremental_threshold_title">Wischleisten-Empfindlichkeit</string>
     <string name="auto_show_keyboard_title">Tastatur automatisch anzeigen</string>
     <string name="info_title">Informationen</string>

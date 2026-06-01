@@ -34,6 +34,7 @@ class InputEventRouter(
     private val context: Context,
     private val navModeController: NavModeController
 ) {
+    private val swipeToDeleteKeyCodes = setOf(322, 404)
 
     var suggestionController: it.palsoftware.pastiera.core.suggestions.SuggestionController? = null
     var onCommitText: (() -> Unit)? = null
@@ -348,7 +349,7 @@ class InputEventRouter(
             return EditableFieldRoutingResult.Consume
         }
 
-        if (keyCode == 322) {
+        if (keyCode in swipeToDeleteKeyCodes) {
             val swipeToDeleteEnabled = SettingsManager.getSwipeToDelete(context)
             if (swipeToDeleteEnabled) {
                 if (ic != null && TextSelectionHelper.deleteLastWord(ic)) {

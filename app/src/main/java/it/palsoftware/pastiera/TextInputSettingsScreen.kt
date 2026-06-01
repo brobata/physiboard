@@ -471,7 +471,7 @@ fun TextInputSettingsScreen(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(64.dp)
+                    .height(72.dp)
             ) {
                 Row(
                     modifier = Modifier
@@ -491,6 +491,12 @@ fun TextInputSettingsScreen(
                             text = stringResource(R.string.swipe_to_delete_title),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Medium,
+                            maxLines = 1
+                        )
+                        Text(
+                            text = stringResource(R.string.swipe_to_delete_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1
                         )
                     }

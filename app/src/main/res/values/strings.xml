@@ -49,6 +49,7 @@
     
     <!-- Swipe to Delete Section -->
     <string name="swipe_to_delete_title">Enable Swipe to Delete</string>
+    <string name="swipe_to_delete_description">Currently Titan 2 only.</string>
 
     <!-- Delete Alternatives Section -->
     <string name="delete_alternatives_title">Delete</string>

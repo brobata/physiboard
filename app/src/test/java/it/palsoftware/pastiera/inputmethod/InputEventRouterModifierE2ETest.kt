@@ -466,6 +466,44 @@ class InputEventRouterModifierE2ETest {
         assertEquals("(", inputConnectionRecorder.committedTexts.last())
     }
 
+    @Test
+    fun swipeToDelete_handlesBothKnownSwipeKeyCodes() {
+        SettingsManager.setSwipeToDelete(context, true)
+        inputConnectionRecorder.textBeforeCursor = "hello world"
+        val callbacks = TestCallbacks(modifierStateController)
+
+        listOf(322, 404).forEach { keyCode ->
+            inputConnectionRecorder.deleteSurroundingTextCalls = 0
+            val result = routeKeyDown(
+                keyCode = keyCode,
+                event = keyDown(keyCode),
+                callbacks = callbacks
+            )
+
+            assertTrue(result is InputEventRouter.EditableFieldRoutingResult.Consume)
+            assertTrue(inputConnectionRecorder.deleteSurroundingTextCalls > 0)
+        }
+    }
+
+    @Test
+    fun swipeToDelete_disabledStillConsumesBothKnownSwipeKeyCodes() {
+        SettingsManager.setSwipeToDelete(context, false)
+        inputConnectionRecorder.textBeforeCursor = "hello world"
+        val callbacks = TestCallbacks(modifierStateController)
+
+        listOf(322, 404).forEach { keyCode ->
+            inputConnectionRecorder.deleteSurroundingTextCalls = 0
+            val result = routeKeyDown(
+                keyCode = keyCode,
+                event = keyDown(keyCode),
+                callbacks = callbacks
+            )
+
+            assertTrue(result is InputEventRouter.EditableFieldRoutingResult.Consume)
+            assertEquals(0, inputConnectionRecorder.deleteSurroundingTextCalls)
+        }
+    }
+
     private fun routeKeyDown(
         keyCode: Int,
         event: KeyEvent,
@@ -573,6 +611,8 @@ class InputEventRouterModifierE2ETest {
 
     private class RecordingInputConnection {
         var commitTextCalls = 0
+        var deleteSurroundingTextCalls = 0
+        var textBeforeCursor: CharSequence = ""
         val committedTexts = mutableListOf<String>()
         val sentKeyEvents = mutableListOf<KeyEvent>()
         val contextMenuActions = mutableListOf<Int>()
@@ -591,6 +631,10 @@ class InputEventRouterModifierE2ETest {
                         }
                         true
                     }
+                    "deleteSurroundingText" -> {
+                        deleteSurroundingTextCalls++
+                        true
+                    }
                     "sendKeyEvent" -> {
                         val event = args?.getOrNull(0) as? KeyEvent
                         if (event != null) {
@@ -605,7 +649,7 @@ class InputEventRouterModifierE2ETest {
                         }
                         true
                     }
-                    "getTextBeforeCursor" -> ""
+                    "getTextBeforeCursor" -> textBeforeCursor
                     "getExtractedText" -> ExtractedText().apply {
                         selectionStart = 0
                         selectionEnd = 0
