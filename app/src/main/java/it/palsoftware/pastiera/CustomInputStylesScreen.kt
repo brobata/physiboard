@@ -54,6 +54,7 @@ private data class CustomInputStyle(
     val locale: String,
     val layout: String,
     val displayName: String,
+    val additionalSuggestionLocales: List<String> = emptyList(),
     val isSystemLocale: Boolean = false  // True if this is a system-enabled locale
 )
 
@@ -82,6 +83,7 @@ fun CustomInputStylesScreen(
     // Preserve dialog selections across layout screen
     var lastDialogLocale by remember { mutableStateOf<String?>(null) }
     var lastDialogLayout by remember { mutableStateOf<String?>(null) }
+    var lastDialogSuggestionLocales by remember { mutableStateOf<List<String>?>(null) }
     
     // Snackbar host state
     val snackbarHostState = remember { SnackbarHostState() }
@@ -219,7 +221,13 @@ fun CustomInputStylesScreen(
                 // If editing, also update the custom input style and editStyle state
                 editStyle?.let { oldStyle ->
                     if (oldStyle.locale == locale) {
-                        updateCustomInputStyle(context, oldStyle, locale, layout)
+                        updateCustomInputStyle(
+                            context,
+                            oldStyle,
+                            locale,
+                            layout,
+                            lastDialogSuggestionLocales ?: oldStyle.additionalSuggestionLocales
+                        )
                         // Update editStyle to reflect the new layout
                         editStyle = oldStyle.copy(layout = layout)
                         inputStyles = loadCustomInputStyles(context)
@@ -238,22 +246,25 @@ fun CustomInputStylesScreen(
         AddCustomInputStyleDialog(
             initialLocale = lastDialogLocale ?: editStyle?.locale,
             initialLayout = lastDialogLayout ?: editStyle?.layout,
+            initialSuggestionLocales = lastDialogSuggestionLocales ?: editStyle?.additionalSuggestionLocales ?: emptyList(),
             isSystemLocale = editStyle?.isSystemLocale ?: false,
             onDismiss = {
                 showAddDialog = false
                 editStyle = null
                 lastDialogLocale = null
                 lastDialogLayout = null
+                lastDialogSuggestionLocales = null
             },
-            onOpenLayoutSettings = { locale ->
+            onOpenLayoutSettings = { locale, additionalSuggestionLocales ->
                 // Preserve current selections before opening layout picker
                 lastDialogLocale = locale
                 lastDialogLayout = lastDialogLayout ?: AdditionalSubtypeUtils.getLayoutForLocale(context.assets, locale, context)
+                lastDialogSuggestionLocales = additionalSuggestionLocales
                 wasDialogOpenBeforeLayoutSettings = true
                 showLayoutSettingsForLocale = locale
                 showAddDialog = false
             },
-            onSave = { locale, layout ->
+            onSave = { locale, layout, additionalSuggestionLocales ->
                 val duplicateErrorMsg = context.getString(R.string.custom_input_styles_duplicate_error)
                 val targetOld = editStyle
                 val isSystem = targetOld?.isSystemLocale ?: false
@@ -261,9 +272,18 @@ fun CustomInputStylesScreen(
                 // For system locales, only update the layout mapping, don't modify preferences
                 if (isSystem) {
                     updateLocaleLayoutMapping(context, locale, layout)
+                    SettingsManager.setAdditionalSuggestionLocalesForInputStyle(
+                        context,
+                        locale,
+                        layout,
+                        additionalSuggestionLocales
+                    )
                     inputStyles = loadCustomInputStyles(context)
                     showAddDialog = false
                     editStyle = null
+                    lastDialogLocale = null
+                    lastDialogLayout = null
+                    lastDialogSuggestionLocales = null
                     coroutineScope.launch {
                         snackbarHostState.showSnackbar(context.getString(R.string.custom_input_styles_layout_mapping_updated, getLocaleDisplayName(locale), layout))
                     }
@@ -283,9 +303,9 @@ fun CustomInputStylesScreen(
                     }
 
                     val success = if (targetOld != null) {
-                        updateCustomInputStyle(context, targetOld, locale, layout)
+                        updateCustomInputStyle(context, targetOld, locale, layout, additionalSuggestionLocales)
                     } else {
-                        addCustomInputStyle(context, locale, layout)
+                        addCustomInputStyle(context, locale, layout, additionalSuggestionLocales)
                     }
 
                     if (success) {
@@ -294,6 +314,7 @@ fun CustomInputStylesScreen(
                         editStyle = null
                         lastDialogLocale = null
                         lastDialogLayout = null
+                        lastDialogSuggestionLocales = null
                         val msg = if (targetOld != null) {
                             context.getString(R.string.custom_input_styles_input_style_updated, getLocaleDisplayName(locale), layout)
                         } else {
@@ -600,10 +621,11 @@ private fun CustomInputStyleItem(
 private fun AddCustomInputStyleDialog(
     initialLocale: String? = null,
     initialLayout: String? = null,
+    initialSuggestionLocales: List<String> = emptyList(),
     isSystemLocale: Boolean = false,
     onDismiss: () -> Unit,
-    onOpenLayoutSettings: (String) -> Unit,
-    onSave: (String, String) -> Unit
+    onOpenLayoutSettings: (String, List<String>) -> Unit,
+    onSave: (String, String, List<String>) -> Unit
 ) {
     val context = LocalContext.current
     
@@ -611,6 +633,9 @@ private fun AddCustomInputStyleDialog(
     var showCustomLocaleDialog by remember { mutableStateOf(false) }
     var customLocaleInput by remember { mutableStateOf("") }
     var customLocaleError by remember { mutableStateOf<String?>(null) }
+    var selectedSuggestionLocales by remember(initialLocale, initialLayout) {
+        mutableStateOf(initialSuggestionLocales.map { normalizeLocaleTag(it) }.distinct())
+    }
     
     // Check if selected locale has dictionary
     val hasDictionary = remember(selectedLocale) {
@@ -757,7 +782,7 @@ private fun AddCustomInputStyleDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
-                                onOpenLayoutSettings(selectedLocale!!)
+                                onOpenLayoutSettings(selectedLocale!!, selectedSuggestionLocales)
                             },
                         shape = MaterialTheme.shapes.medium,
                         color = MaterialTheme.colorScheme.surfaceVariant
@@ -790,6 +815,13 @@ private fun AddCustomInputStyleDialog(
                             )
                         }
                     }
+
+                    SuggestionDictionariesSelector(
+                        primaryLocale = selectedLocale!!,
+                        availableLocales = availableLocales,
+                        selectedLocales = selectedSuggestionLocales,
+                        onSelectedLocalesChanged = { selectedSuggestionLocales = it }
+                    )
                 }
             }
         },
@@ -799,7 +831,7 @@ private fun AddCustomInputStyleDialog(
                     val locale = selectedLocale
                     val layout = currentLayout
                     if (locale != null && layout != null) {
-                        onSave(locale, layout)
+                        onSave(locale, layout, selectedSuggestionLocales)
                     }
                 },
                 enabled = selectedLocale != null && currentLayout != null
@@ -889,6 +921,86 @@ private fun AddCustomInputStyleDialog(
     }
 }
 
+@Composable
+private fun SuggestionDictionariesSelector(
+    primaryLocale: String,
+    availableLocales: List<String>,
+    selectedLocales: List<String>,
+    onSelectedLocalesChanged: (List<String>) -> Unit
+) {
+    val primaryLanguage = normalizeLocaleTag(primaryLocale).substringBefore('-')
+    val candidates = availableLocales
+        .map { normalizeLocaleTag(it) }
+        .distinct()
+        .filter { it.substringBefore('-') != primaryLanguage }
+        .sorted()
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = stringResource(R.string.custom_input_styles_suggestion_dictionaries),
+            style = MaterialTheme.typography.labelLarge
+        )
+        Text(
+            text = stringResource(
+                R.string.custom_input_styles_primary_suggestion_dictionary,
+                getLocaleDisplayName(primaryLocale)
+            ),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        if (candidates.isEmpty()) {
+            Text(
+                text = stringResource(R.string.custom_input_styles_no_extra_suggestion_dictionaries),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            return
+        }
+        candidates.forEach { locale ->
+            val checked = selectedLocales.contains(locale)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        onSelectedLocalesChanged(toggleLocale(selectedLocales, locale))
+                    }
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = getLocaleDisplayName(locale),
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Text(
+                        text = locale,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = checked,
+                    onCheckedChange = {
+                        onSelectedLocalesChanged(toggleLocale(selectedLocales, locale))
+                    }
+                )
+            }
+        }
+    }
+}
+
+private fun toggleLocale(current: List<String>, locale: String): List<String> {
+    return if (current.contains(locale)) {
+        current.filterNot { it == locale }
+    } else {
+        (current + locale).distinct()
+    }
+}
+
 private fun getLayoutDisplayName(context: Context, layoutName: String): String {
     return LayoutFileStore.getLayoutMetadataFromAssets(context.assets, layoutName)?.name
         ?: LayoutFileStore.getLayoutMetadata(context, layoutName)?.name
@@ -938,7 +1050,15 @@ private fun loadCustomInputStyles(context: Context): List<CustomInputStyle> {
     systemLocales.forEach { locale ->
         val layout = AdditionalSubtypeUtils.getLayoutForLocale(context.assets, locale, context)
         val displayName = "${getLocaleDisplayName(locale)} - $layout"
-        styles.add(CustomInputStyle(locale, layout, displayName, isSystemLocale = true))
+        styles.add(
+            CustomInputStyle(
+                locale,
+                layout,
+                displayName,
+                additionalSuggestionLocales = SettingsManager.getAdditionalSuggestionLocalesForInputStyle(context, locale, layout),
+                isSystemLocale = true
+            )
+        )
     }
     
     // Then, add custom input styles from preferences
@@ -952,7 +1072,15 @@ private fun loadCustomInputStyles(context: Context): List<CustomInputStyle> {
                 val locale = parts[0]
                 val layout = parts[1]
                 val displayName = "${getLocaleDisplayName(locale)} - $layout"
-                styles.add(CustomInputStyle(locale, layout, displayName, isSystemLocale = false))
+                styles.add(
+                    CustomInputStyle(
+                        locale,
+                        layout,
+                        displayName,
+                        additionalSuggestionLocales = SettingsManager.getAdditionalSuggestionLocalesForInputStyle(context, locale, layout),
+                        isSystemLocale = false
+                    )
+                )
             }
         }
     }
@@ -1022,7 +1150,12 @@ private fun formatLocaleString(locale: Locale): String {
 /**
  * Adds a custom input style.
  */
-private fun addCustomInputStyle(context: Context, locale: String, layout: String): Boolean {
+private fun addCustomInputStyle(
+    context: Context,
+    locale: String,
+    layout: String,
+    additionalSuggestionLocales: List<String>
+): Boolean {
     val currentStyles = SettingsManager.getCustomInputStyles(context)
     val entries = if (currentStyles.isBlank()) {
         emptyList()
@@ -1044,6 +1177,12 @@ private fun addCustomInputStyle(context: Context, locale: String, layout: String
     }
     
     SettingsManager.setCustomInputStyles(context, newStyles)
+    SettingsManager.setAdditionalSuggestionLocalesForInputStyle(
+        context,
+        locale,
+        layout,
+        additionalSuggestionLocales
+    )
     return true
 }
 
@@ -1054,7 +1193,8 @@ private fun updateCustomInputStyle(
     context: Context,
     oldStyle: CustomInputStyle,
     newLocale: String,
-    newLayout: String
+    newLayout: String,
+    additionalSuggestionLocales: List<String>
 ): Boolean {
     val currentStyles = SettingsManager.getCustomInputStyles(context)
     val entries = if (currentStyles.isBlank()) {
@@ -1077,6 +1217,15 @@ private fun updateCustomInputStyle(
 
     val newStyles = updated.joinToString(";")
     SettingsManager.setCustomInputStyles(context, newStyles)
+    if (oldKey != newKey) {
+        SettingsManager.removeAdditionalSuggestionLocalesForInputStyle(context, oldStyle.locale, oldStyle.layout)
+    }
+    SettingsManager.setAdditionalSuggestionLocalesForInputStyle(
+        context,
+        newLocale,
+        newLayout,
+        additionalSuggestionLocales
+    )
     return true
 }
 
@@ -1089,6 +1238,7 @@ private fun removeCustomInputStyle(context: Context, locale: String, layout: Str
     val filtered = entries.filterNot { it.startsWith("$locale:$layout") }
     val newStyles = filtered.joinToString(";")
     SettingsManager.setCustomInputStyles(context, newStyles)
+    SettingsManager.removeAdditionalSuggestionLocalesForInputStyle(context, locale, layout)
 }
 
 /**
@@ -1101,6 +1251,10 @@ private fun getLocaleDisplayName(locale: String): String {
     } catch (e: Exception) {
         locale
     }
+}
+
+private fun normalizeLocaleTag(locale: String): String {
+    return locale.trim().replace('_', '-')
 }
 
 /**

@@ -206,6 +206,7 @@ object PreferenceSchemas {
             "long_press_modifier" to PreferenceValueType.STRING,
             "keyboard_layout" to PreferenceValueType.STRING,
             "keyboard_layout_list" to PreferenceValueType.STRING,
+            "input_style_suggestion_locales" to PreferenceValueType.STRING,
             "restore_sym_page" to PreferenceValueType.INT,
             "pending_restore_sym_page" to PreferenceValueType.INT,
             "sym_pages_config" to PreferenceValueType.STRING,

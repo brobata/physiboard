@@ -3518,6 +3518,7 @@ object SettingsManager {
 
     // Custom Input Styles (Additional Subtypes)
     private const val KEY_CUSTOM_INPUT_STYLES = "custom_input_styles"
+    private const val KEY_INPUT_STYLE_SUGGESTION_LOCALES = "input_style_suggestion_locales"
 
     /**
      * Gets the custom input styles preference string.
@@ -3555,6 +3556,82 @@ object SettingsManager {
         getPreferences(context).edit()
             .putString(KEY_CUSTOM_INPUT_STYLES, stylesString)
             .apply()
+    }
+
+    fun getAdditionalSuggestionLocalesForInputStyle(
+        context: Context,
+        locale: String,
+        layout: String
+    ): List<String> {
+        val jsonString = getPreferences(context).getString(KEY_INPUT_STYLE_SUGGESTION_LOCALES, null)
+            ?: return emptyList()
+        return try {
+            val root = org.json.JSONObject(jsonString)
+            val array = root.optJSONArray(inputStyleSuggestionKey(locale, layout)) ?: return emptyList()
+            buildList {
+                for (i in 0 until array.length()) {
+                    val tag = array.optString(i).trim()
+                    if (tag.isNotBlank()) add(normalizeSuggestionLocaleTag(tag))
+                }
+            }.distinct()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error parsing input style suggestion locales", e)
+            emptyList()
+        }
+    }
+
+    fun setAdditionalSuggestionLocalesForInputStyle(
+        context: Context,
+        locale: String,
+        layout: String,
+        locales: List<String>
+    ) {
+        val prefs = getPreferences(context)
+        val root = try {
+            org.json.JSONObject(prefs.getString(KEY_INPUT_STYLE_SUGGESTION_LOCALES, null) ?: "{}")
+        } catch (_: Exception) {
+            org.json.JSONObject()
+        }
+        val key = inputStyleSuggestionKey(locale, layout)
+        val normalized = locales
+            .map { normalizeSuggestionLocaleTag(it) }
+            .filter { it.isNotBlank() }
+            .distinct()
+        if (normalized.isEmpty()) {
+            root.remove(key)
+        } else {
+            val array = org.json.JSONArray()
+            normalized.forEach { array.put(it) }
+            root.put(key, array)
+        }
+        prefs.edit()
+            .putString(KEY_INPUT_STYLE_SUGGESTION_LOCALES, root.toString())
+            .apply()
+    }
+
+    fun removeAdditionalSuggestionLocalesForInputStyle(
+        context: Context,
+        locale: String,
+        layout: String
+    ) {
+        val prefs = getPreferences(context)
+        val root = try {
+            org.json.JSONObject(prefs.getString(KEY_INPUT_STYLE_SUGGESTION_LOCALES, null) ?: "{}")
+        } catch (_: Exception) {
+            return
+        }
+        root.remove(inputStyleSuggestionKey(locale, layout))
+        prefs.edit()
+            .putString(KEY_INPUT_STYLE_SUGGESTION_LOCALES, root.toString())
+            .apply()
+    }
+
+    private fun inputStyleSuggestionKey(locale: String, layout: String): String {
+        return "${normalizeSuggestionLocaleTag(locale)}:${layout.trim()}"
+    }
+
+    private fun normalizeSuggestionLocaleTag(locale: String): String {
+        return locale.trim().replace('_', '-')
     }
     
     // ========================

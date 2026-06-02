@@ -50,6 +50,26 @@ class SettingsManagerLayoutSwitchTest {
     }
 
     @Test
+    fun inputStyleSuggestionLocales_persistPerLocaleAndLayout() {
+        val context = RuntimeEnvironment.getApplication()
+
+        SettingsManager.setAdditionalSuggestionLocalesForInputStyle(
+            context,
+            locale = "de_DE",
+            layout = "qwertz",
+            locales = listOf("en", "fr-FR", "en")
+        )
+
+        assertEquals(
+            listOf("en", "fr-FR"),
+            SettingsManager.getAdditionalSuggestionLocalesForInputStyle(context, "de-DE", "qwertz")
+        )
+        assertTrue(
+            SettingsManager.getAdditionalSuggestionLocalesForInputStyle(context, "de-DE", "qwerty").isEmpty()
+        )
+    }
+
+    @Test
     fun layoutSwitchToast_defaultsEnabled_andPersistsDisabledState() {
         val context = RuntimeEnvironment.getApplication()
 

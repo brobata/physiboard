@@ -9,8 +9,14 @@ data class SuggestionResult(
     val candidate: String,
     val distance: Int,
     val score: Double,
-    val source: SuggestionSource
+    val source: SuggestionSource,
+    val kind: SuggestionKind = SuggestionKind.CURRENT_WORD
 )
+
+enum class SuggestionKind {
+    CURRENT_WORD,
+    NEXT_WORD
+}
 
 class SuggestionEngine(
     private val repository: DictionaryRepository,

@@ -21,7 +21,8 @@ object DebugCaptureStore {
 
     data class SuggestionEntry(
         val candidate: String,
-        val source: String
+        val source: String,
+        val kind: String
     )
 
     data class SuggestionsSnapshot(
@@ -139,7 +140,8 @@ object DebugCaptureStore {
         val entries = suggestionResults.map { result ->
             SuggestionEntry(
                 candidate = result.candidate,
-                source = result.source.name
+                source = result.source.name,
+                kind = result.kind.name
             )
         }
         suggestions.addLast(

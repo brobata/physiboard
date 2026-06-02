@@ -1175,7 +1175,7 @@ private fun buildKeyboardDebugReport(
                     val repeatSuffix = if (snapshot.repeatCount > 1) " x${snapshot.repeatCount}" else ""
                     appendLine(
                         "${formatDebugTimestamp(snapshot.timestampMs)} | " +
-                            snapshot.entries.joinToString(", ") { "${it.candidate}{${it.source}}" } +
+                            snapshot.entries.joinToString(", ") { "${it.candidate}{${it.source}/${it.kind}}" } +
                             repeatSuffix
                     )
                 }

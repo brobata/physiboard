@@ -879,6 +879,9 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="custom_input_styles_change_layout_hint">Tap to change layout</string>
     <string name="custom_input_styles_custom_locale_placeholder">en_US, it_IT, fr_FR, etc.</string>
     <string name="custom_input_styles_installed_dictionaries">Installed dictionaries</string>
+    <string name="custom_input_styles_suggestion_dictionaries">Suggestion dictionaries</string>
+    <string name="custom_input_styles_primary_suggestion_dictionary">Primary: %1$s</string>
+    <string name="custom_input_styles_no_extra_suggestion_dictionaries">No other installed dictionaries available.</string>
 
     <!-- Installed dictionaries screen -->
     <string name="installed_dictionaries_title">Installed dictionaries</string>

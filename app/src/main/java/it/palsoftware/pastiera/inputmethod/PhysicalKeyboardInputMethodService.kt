@@ -1112,7 +1112,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             debugLogging = suggestionDebugLogging,
             onSuggestionsUpdated = { suggestions -> handleSuggestionsUpdated(suggestions) },
             currentLocale = initialLocale,
-            keyboardLayoutProvider = { SettingsManager.getKeyboardLayout(this) }
+            keyboardLayoutProvider = { SettingsManager.getKeyboardLayout(this) },
+            activeSuggestionLocalesProvider = { getAdditionalSuggestionLocalesForActiveInputStyle() }
         )
         inputEventRouter.suggestionController = suggestionController
         
@@ -2539,6 +2540,22 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             Log.w(TAG, "Failed to parse locale from subtype: $localeString", e)
             Locale.ITALIAN
         }
+    }
+
+    private fun getAdditionalSuggestionLocalesForActiveInputStyle(): List<Locale> {
+        val imm = getSystemService(InputMethodManager::class.java)
+        val subtypeLocale = imm.currentInputMethodSubtype?.localeString()
+            ?: getLocaleFromSubtype().toLanguageTag()
+        val layout = SettingsManager.getKeyboardLayout(this)
+        return SettingsManager.getAdditionalSuggestionLocalesForInputStyle(this, subtypeLocale, layout)
+            .mapNotNull { tag ->
+                try {
+                    AdditionalSubtypeUtils.localeFromSubtypeString(tag)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to parse additional suggestion locale: $tag", e)
+                    null
+                }
+            }
     }
     
     /**
