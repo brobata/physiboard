@@ -102,6 +102,13 @@ object SettingsManager {
     private const val KEY_ACCESSIBILITY_LIVE_ANNOUNCEMENTS_ENABLED = "accessibility_live_announcements_enabled" // Whether status bar accessibility live announcements are enabled
     private const val KEY_ACCESSIBILITY_READ_SECOND_ROW_ENABLED = "accessibility_read_second_row_enabled" // Whether TalkBack should read quick settings/variations row
     private const val KEY_ACCESSIBILITY_SUGGESTIONS_ANNOUNCEMENT_DELAY_MS = "accessibility_suggestions_announcement_delay_ms" // Delay before suggestions become accessible again while typing
+    private const val KEY_BOUNCE_KEYS_ENABLED = "bounce_keys_enabled" // Whether repeated same-key taps inside the delay are ignored
+    private const val KEY_BOUNCE_KEYS_DELAY_MS = "bounce_keys_delay_ms" // Minimum delay before the same key can be accepted again
+    private const val KEY_BOUNCE_KEYS_CHARACTER_KEYS_ENABLED = "bounce_keys_character_keys_enabled"
+    private const val KEY_BOUNCE_KEYS_MODIFIER_KEYS_ENABLED = "bounce_keys_modifier_keys_enabled"
+    private const val KEY_BOUNCE_KEYS_SPACE_ENABLED = "bounce_keys_space_enabled"
+    private const val KEY_BOUNCE_KEYS_ENTER_ENABLED = "bounce_keys_enter_enabled"
+    private const val KEY_BOUNCE_KEYS_BACKSPACE_ENABLED = "bounce_keys_backspace_enabled"
     private const val KEY_GLOBAL_VARIATION_LAYOUT_OVERRIDE = "global_variation_layout_override" // Optional layout id used for variation ordering across all layouts
     private const val KEY_APP_LANGUAGE_TAG = "app_language_tag" // BCP-47 language tag for app UI (null/blank = system)
     private const val KEY_APP_ENTER_BEHAVIOR_ENABLED = "app_enter_behavior_enabled"
@@ -226,6 +233,15 @@ object SettingsManager {
     private const val DEFAULT_SYM_AUTO_CLOSE_ON_TOUCH = false
     private const val DEFAULT_MODIFIER_TAP_LATCHES = false
     private const val DEFAULT_MODIFIER_LATCH_STAYS_ON_SPACE = false
+    private const val DEFAULT_BOUNCE_KEYS_ENABLED = false
+    private const val DEFAULT_BOUNCE_KEYS_DELAY_MS = 80L
+    private const val MIN_BOUNCE_KEYS_DELAY_MS = 20L
+    private const val MAX_BOUNCE_KEYS_DELAY_MS = 500L
+    private const val DEFAULT_BOUNCE_KEYS_CHARACTER_KEYS_ENABLED = true
+    private const val DEFAULT_BOUNCE_KEYS_MODIFIER_KEYS_ENABLED = false
+    private const val DEFAULT_BOUNCE_KEYS_SPACE_ENABLED = true
+    private const val DEFAULT_BOUNCE_KEYS_ENTER_ENABLED = true
+    private const val DEFAULT_BOUNCE_KEYS_BACKSPACE_ENABLED = true
     private const val DEFAULT_EMOJI_PICKER_EXPANDED_HEIGHT = true
     private val DEFAULT_SYM_PAGES_CONFIG = SymPagesConfig()
     private const val DEFAULT_STATIC_VARIATION_BAR_MODE = false
@@ -1026,6 +1042,123 @@ object SettingsManager {
 
     fun getMaxAccessibilitySuggestionsAnnouncementDelayMs(): Long =
         MAX_ACCESSIBILITY_SUGGESTIONS_ANNOUNCEMENT_DELAY_MS
+
+    fun getBounceKeysEnabled(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_BOUNCE_KEYS_ENABLED,
+            DEFAULT_BOUNCE_KEYS_ENABLED
+        )
+    }
+
+    fun setBounceKeysEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_BOUNCE_KEYS_ENABLED, enabled)
+            .apply()
+    }
+
+    fun getBounceKeysDelayMs(context: Context): Long {
+        return getPreferences(context).getLong(
+            KEY_BOUNCE_KEYS_DELAY_MS,
+            DEFAULT_BOUNCE_KEYS_DELAY_MS
+        ).coerceIn(MIN_BOUNCE_KEYS_DELAY_MS, MAX_BOUNCE_KEYS_DELAY_MS)
+    }
+
+    fun setBounceKeysDelayMs(context: Context, delayMs: Long) {
+        getPreferences(context).edit()
+            .putLong(
+                KEY_BOUNCE_KEYS_DELAY_MS,
+                delayMs.coerceIn(MIN_BOUNCE_KEYS_DELAY_MS, MAX_BOUNCE_KEYS_DELAY_MS)
+            )
+            .apply()
+    }
+
+    fun getMinBounceKeysDelayMs(): Long = MIN_BOUNCE_KEYS_DELAY_MS
+
+    fun getMaxBounceKeysDelayMs(): Long = MAX_BOUNCE_KEYS_DELAY_MS
+
+    fun getBounceKeysCharacterKeysEnabled(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_BOUNCE_KEYS_CHARACTER_KEYS_ENABLED,
+            DEFAULT_BOUNCE_KEYS_CHARACTER_KEYS_ENABLED
+        )
+    }
+
+    fun setBounceKeysCharacterKeysEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_BOUNCE_KEYS_CHARACTER_KEYS_ENABLED, enabled)
+            .apply()
+    }
+
+    fun getBounceKeysModifierKeysEnabled(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_BOUNCE_KEYS_MODIFIER_KEYS_ENABLED,
+            DEFAULT_BOUNCE_KEYS_MODIFIER_KEYS_ENABLED
+        )
+    }
+
+    fun setBounceKeysModifierKeysEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_BOUNCE_KEYS_MODIFIER_KEYS_ENABLED, enabled)
+            .apply()
+    }
+
+    fun getBounceKeysSpaceEnabled(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_BOUNCE_KEYS_SPACE_ENABLED,
+            DEFAULT_BOUNCE_KEYS_SPACE_ENABLED
+        )
+    }
+
+    fun setBounceKeysSpaceEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_BOUNCE_KEYS_SPACE_ENABLED, enabled)
+            .apply()
+    }
+
+    fun getBounceKeysEnterEnabled(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_BOUNCE_KEYS_ENTER_ENABLED,
+            DEFAULT_BOUNCE_KEYS_ENTER_ENABLED
+        )
+    }
+
+    fun setBounceKeysEnterEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_BOUNCE_KEYS_ENTER_ENABLED, enabled)
+            .apply()
+    }
+
+    fun getBounceKeysBackspaceEnabled(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_BOUNCE_KEYS_BACKSPACE_ENABLED,
+            DEFAULT_BOUNCE_KEYS_BACKSPACE_ENABLED
+        )
+    }
+
+    fun setBounceKeysBackspaceEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_BOUNCE_KEYS_BACKSPACE_ENABLED, enabled)
+            .apply()
+    }
+
+    fun getBounceKeysCategoryEnabled(
+        context: Context,
+        category: it.palsoftware.pastiera.inputmethod.BounceKeyFilter.Category
+    ): Boolean {
+        return when (category) {
+            it.palsoftware.pastiera.inputmethod.BounceKeyFilter.Category.CHARACTER ->
+                getBounceKeysCharacterKeysEnabled(context)
+            it.palsoftware.pastiera.inputmethod.BounceKeyFilter.Category.MODIFIER ->
+                getBounceKeysModifierKeysEnabled(context)
+            it.palsoftware.pastiera.inputmethod.BounceKeyFilter.Category.SPACE ->
+                getBounceKeysSpaceEnabled(context)
+            it.palsoftware.pastiera.inputmethod.BounceKeyFilter.Category.ENTER ->
+                getBounceKeysEnterEnabled(context)
+            it.palsoftware.pastiera.inputmethod.BounceKeyFilter.Category.BACKSPACE ->
+                getBounceKeysBackspaceEnabled(context)
+            it.palsoftware.pastiera.inputmethod.BounceKeyFilter.Category.UNSUPPORTED -> false
+        }
+    }
 
     /**
      * Returns whether Shift+Backspace performs forward delete.

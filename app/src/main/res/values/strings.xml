@@ -619,6 +619,21 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="settings_accessibility_delay_decrease">Decrease delay by 50 milliseconds</string>
     <string name="settings_accessibility_delay_increase">Increase delay by 50 milliseconds</string>
     <string name="settings_accessibility_delay_feedback">Suggestions delay: %1$d ms</string>
+    <string name="settings_accessibility_bounce_keys_title">Bounce Keys</string>
+    <string name="settings_accessibility_bounce_keys_description">Ignore accidental repeated presses of the same physical key.</string>
+    <string name="settings_accessibility_bounce_keys_delay_title">Minimum same-key delay: %1$d ms</string>
+    <string name="settings_accessibility_bounce_keys_delay_description">Same key presses below this delay are ignored.</string>
+    <string name="settings_accessibility_bounce_keys_character_keys_title">Character keys</string>
+    <string name="settings_accessibility_bounce_keys_character_keys_description">Letters, numbers and symbol keys.</string>
+    <string name="settings_accessibility_bounce_keys_modifier_keys_title">Modifier keys</string>
+    <string name="settings_accessibility_bounce_keys_modifier_keys_description">Shift, Ctrl, Alt and Sym.</string>
+    <string name="settings_accessibility_bounce_keys_text_control_title">Text control keys</string>
+    <string name="settings_accessibility_bounce_keys_space_title">Space</string>
+    <string name="settings_accessibility_bounce_keys_space_description">Ignore accidental repeated spaces.</string>
+    <string name="settings_accessibility_bounce_keys_enter_title">Enter</string>
+    <string name="settings_accessibility_bounce_keys_enter_description">Ignore accidental repeated line breaks or send actions.</string>
+    <string name="settings_accessibility_bounce_keys_backspace_title">Backspace</string>
+    <string name="settings_accessibility_bounce_keys_backspace_description">Ignore accidental repeated deletes.</string>
     
     <!-- Languages (Input Method Subtypes) -->
     <string name="languages_title">Languages</string>

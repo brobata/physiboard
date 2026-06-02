@@ -250,6 +250,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         handler = multiTapHandler,
         timeoutMs = MULTI_TAP_TIMEOUT_MS
     )
+    private val bounceKeyFilter = BounceKeyFilter()
     private val uiHandler = Handler(Looper.getMainLooper())
     private val clipboardCleanupIntervalMs = 60_000L
     private val clipboardCleanupRunnable = object : Runnable {
@@ -2102,6 +2103,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
 
     override fun onStartInput(info: EditorInfo?, restarting: Boolean) {
         super.onStartInput(info, restarting)
+        bounceKeyFilter.reset()
         
         currentPackageName = info?.packageName
         updateDebugImeContextSnapshot(info)
@@ -2876,6 +2878,18 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     }
 
     override fun onKeyDown(keyCode_: Int, event_: KeyEvent?): Boolean {
+        val (keyCode, event) = remapHardwareEvent(keyCode_, event_)
+        bounceKeyFilter.shouldConsumeKeyDown(this, keyCode, event)?.let { suppressed ->
+            notifyDebugKeyEvent(
+                keyCode = keyCode,
+                event = event,
+                action = "KEY_DOWN_SUPPRESSED",
+                origin = "bounce_keys",
+                outputKeyCodeName = suppressed.debugOutput()
+            )
+            return true
+        }
+
         // Check if we have an editable field at the very start
         val info = currentInputEditorInfo
         val initialInputConnection = currentInputConnection
@@ -2884,7 +2898,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         if (hasEditableField && !isInputViewActive) {
             isInputViewActive = true
         }
-        val (keyCode, event) = remapHardwareEvent(keyCode_, event_)
         if (hasEditableField && ::candidatesBarController.isInitialized) {
             candidatesBarController.resetSuggestionActionMode()
         }
@@ -3379,12 +3392,23 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     }
 
     override fun onKeyUp(keyCode_: Int, event_: KeyEvent?): Boolean {
+        val (keyCode, event) = remapHardwareEvent(keyCode_, event_)
+        bounceKeyFilter.shouldConsumeKeyUp(keyCode, event)?.let { suppressed ->
+            notifyDebugKeyEvent(
+                keyCode = keyCode,
+                event = event,
+                action = "KEY_UP_SUPPRESSED",
+                origin = "bounce_keys",
+                outputKeyCodeName = suppressed.debugOutput()
+            )
+            return true
+        }
+
         // Check if we have an editable field at the start (same logic as onKeyDown)
         val info = currentInputEditorInfo
         val ic = currentInputConnection
         val inputType = info?.inputType ?: EditorInfo.TYPE_NULL
         val hasEditableField = ic != null && inputType != EditorInfo.TYPE_NULL
-        val (keyCode, event) = remapHardwareEvent(keyCode_, event_)
 
         if (
             hasEditableField &&

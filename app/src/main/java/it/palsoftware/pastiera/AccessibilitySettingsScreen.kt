@@ -25,6 +25,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -39,6 +40,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlin.math.roundToLong
 
 @Composable
 fun AccessibilitySettingsScreen(
@@ -54,6 +56,27 @@ fun AccessibilitySettingsScreen(
     }
     var suggestionsAnnouncementDelayMs by remember {
         mutableStateOf(SettingsManager.getAccessibilitySuggestionsAnnouncementDelayMs(context))
+    }
+    var bounceKeysEnabled by remember {
+        mutableStateOf(SettingsManager.getBounceKeysEnabled(context))
+    }
+    var bounceKeysDelayMs by remember {
+        mutableStateOf(SettingsManager.getBounceKeysDelayMs(context))
+    }
+    var bounceCharacterKeysEnabled by remember {
+        mutableStateOf(SettingsManager.getBounceKeysCharacterKeysEnabled(context))
+    }
+    var bounceModifierKeysEnabled by remember {
+        mutableStateOf(SettingsManager.getBounceKeysModifierKeysEnabled(context))
+    }
+    var bounceSpaceEnabled by remember {
+        mutableStateOf(SettingsManager.getBounceKeysSpaceEnabled(context))
+    }
+    var bounceEnterEnabled by remember {
+        mutableStateOf(SettingsManager.getBounceKeysEnterEnabled(context))
+    }
+    var bounceBackspaceEnabled by remember {
+        mutableStateOf(SettingsManager.getBounceKeysBackspaceEnabled(context))
     }
 
     BackHandler { onBack() }
@@ -252,6 +275,194 @@ fun AccessibilitySettingsScreen(
                     }
                 }
             }
+
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(96.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.TouchApp,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.settings_accessibility_bounce_keys_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1
+                        )
+                        Text(
+                            text = stringResource(R.string.settings_accessibility_bounce_keys_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = bounceKeysEnabled,
+                        onCheckedChange = { enabled ->
+                            bounceKeysEnabled = enabled
+                            SettingsManager.setBounceKeysEnabled(context, enabled)
+                        }
+                    )
+                }
+            }
+
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(116.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 10.dp)
+                ) {
+                    Text(
+                        text = stringResource(
+                            R.string.settings_accessibility_bounce_keys_delay_title,
+                            bounceKeysDelayMs
+                        ),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_accessibility_bounce_keys_delay_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Slider(
+                        value = bounceKeysDelayMs.toFloat(),
+                        onValueChange = { value ->
+                            val updated = (value / 10f).roundToLong() * 10L
+                            bounceKeysDelayMs = updated.coerceIn(
+                                SettingsManager.getMinBounceKeysDelayMs(),
+                                SettingsManager.getMaxBounceKeysDelayMs()
+                            )
+                        },
+                        onValueChangeFinished = {
+                            SettingsManager.setBounceKeysDelayMs(context, bounceKeysDelayMs)
+                        },
+                        valueRange = SettingsManager.getMinBounceKeysDelayMs().toFloat()..
+                            SettingsManager.getMaxBounceKeysDelayMs().toFloat(),
+                        enabled = bounceKeysEnabled
+                    )
+                }
+            }
+
+            BounceKeyToggleRow(
+                title = stringResource(R.string.settings_accessibility_bounce_keys_character_keys_title),
+                description = stringResource(R.string.settings_accessibility_bounce_keys_character_keys_description),
+                checked = bounceCharacterKeysEnabled,
+                enabled = bounceKeysEnabled,
+                onCheckedChange = { enabled ->
+                    bounceCharacterKeysEnabled = enabled
+                    SettingsManager.setBounceKeysCharacterKeysEnabled(context, enabled)
+                }
+            )
+            BounceKeyToggleRow(
+                title = stringResource(R.string.settings_accessibility_bounce_keys_modifier_keys_title),
+                description = stringResource(R.string.settings_accessibility_bounce_keys_modifier_keys_description),
+                checked = bounceModifierKeysEnabled,
+                enabled = bounceKeysEnabled,
+                onCheckedChange = { enabled ->
+                    bounceModifierKeysEnabled = enabled
+                    SettingsManager.setBounceKeysModifierKeysEnabled(context, enabled)
+                }
+            )
+            Text(
+                text = stringResource(R.string.settings_accessibility_bounce_keys_text_control_title),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+            BounceKeyToggleRow(
+                title = stringResource(R.string.settings_accessibility_bounce_keys_space_title),
+                description = stringResource(R.string.settings_accessibility_bounce_keys_space_description),
+                checked = bounceSpaceEnabled,
+                enabled = bounceKeysEnabled,
+                onCheckedChange = { enabled ->
+                    bounceSpaceEnabled = enabled
+                    SettingsManager.setBounceKeysSpaceEnabled(context, enabled)
+                }
+            )
+            BounceKeyToggleRow(
+                title = stringResource(R.string.settings_accessibility_bounce_keys_enter_title),
+                description = stringResource(R.string.settings_accessibility_bounce_keys_enter_description),
+                checked = bounceEnterEnabled,
+                enabled = bounceKeysEnabled,
+                onCheckedChange = { enabled ->
+                    bounceEnterEnabled = enabled
+                    SettingsManager.setBounceKeysEnterEnabled(context, enabled)
+                }
+            )
+            BounceKeyToggleRow(
+                title = stringResource(R.string.settings_accessibility_bounce_keys_backspace_title),
+                description = stringResource(R.string.settings_accessibility_bounce_keys_backspace_description),
+                checked = bounceBackspaceEnabled,
+                enabled = bounceKeysEnabled,
+                onCheckedChange = { enabled ->
+                    bounceBackspaceEnabled = enabled
+                    SettingsManager.setBounceKeysBackspaceEnabled(context, enabled)
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun BounceKeyToggleRow(
+    title: String,
+    description: String,
+    checked: Boolean,
+    enabled: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(76.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    color = if (enabled) {
+                        MaterialTheme.colorScheme.onSurface
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                )
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = checked,
+                enabled = enabled,
+                onCheckedChange = onCheckedChange
+            )
         }
     }
 }
