@@ -271,6 +271,7 @@ object PreferenceSchemas {
             "custom_input_styles" to PreferenceValueType.STRING,
             "titan2_layout_enabled" to PreferenceValueType.BOOLEAN,
             "alt_shift_layout_switch" to PreferenceValueType.BOOLEAN,
+            "ctrl_space_layout_switch" to PreferenceValueType.BOOLEAN,
             "physical_keyboard_currency_symbol" to PreferenceValueType.STRING,
             "toast_on_layout_switch" to PreferenceValueType.BOOLEAN
         ),

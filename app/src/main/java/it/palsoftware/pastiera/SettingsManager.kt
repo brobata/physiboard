@@ -62,6 +62,7 @@ object SettingsManager {
     const val KEY_KEYBOARD_LAYOUT_AUTO_MAPPING_UPDATED = "keyboard_layout_auto_mapping_updated"
     private const val KEY_KEYBOARD_LAYOUT_LIST = "keyboard_layout_list" // JSON array of layout ids for cycling
     private const val KEY_ALT_SHIFT_LAYOUT_SWITCH = "alt_shift_layout_switch" // Enable Alt+Shift shortcut for layout cycling
+    private const val KEY_CTRL_SPACE_LAYOUT_SWITCH = "ctrl_space_layout_switch" // Enable Ctrl+Space shortcut for layout cycling
     private const val KEY_PHYSICAL_KEYBOARD_PROFILE_OVERRIDE = "physical_keyboard_profile_override" // auto | key2 | Q25 | titan | titan2 | titan2elite_qwerty | mp01
     private const val KEY_PHYSICAL_KEYBOARD_CURRENCY_SYMBOL = "physical_keyboard_currency_symbol" // Currency symbol for dedicated hardware keys
     private const val KEY_RESTORE_SYM_PAGE = "restore_sym_page" // SYM page to restore when returning from settings
@@ -214,7 +215,8 @@ object SettingsManager {
     private const val DEFAULT_LONG_PRESS_MODIFIER = "alt"
     private const val DEFAULT_KEYBOARD_LAYOUT = "qwerty"
     private const val DEFAULT_KEYBOARD_LAYOUT_AUTO_BY_LOCALE = true
-    private const val DEFAULT_ALT_SHIFT_LAYOUT_SWITCH = false
+    private const val DEFAULT_ALT_SHIFT_LAYOUT_SWITCH = true
+    private const val DEFAULT_CTRL_SPACE_LAYOUT_SWITCH = true
     private const val KEY_TOAST_ON_LAYOUT_SWITCH = "toast_on_layout_switch"
     private const val DEFAULT_TOAST_ON_LAYOUT_SWITCH = true
     private const val DEFAULT_PHYSICAL_KEYBOARD_PROFILE_OVERRIDE = "auto"
@@ -2788,6 +2790,25 @@ object SettingsManager {
     fun setAltShiftLayoutSwitchEnabled(context: Context, enabled: Boolean) {
         getPreferences(context).edit()
             .putBoolean(KEY_ALT_SHIFT_LAYOUT_SWITCH, enabled)
+            .apply()
+    }
+
+    /**
+     * Returns whether Ctrl+Space shortcut for keyboard layout cycling is enabled.
+     */
+    fun isCtrlSpaceLayoutSwitchEnabled(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_CTRL_SPACE_LAYOUT_SWITCH,
+            DEFAULT_CTRL_SPACE_LAYOUT_SWITCH
+        )
+    }
+
+    /**
+     * Enables/disables Ctrl+Space shortcut for keyboard layout cycling.
+     */
+    fun setCtrlSpaceLayoutSwitchEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_CTRL_SPACE_LAYOUT_SWITCH, enabled)
             .apply()
     }
 

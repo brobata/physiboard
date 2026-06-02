@@ -2992,6 +2992,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         if (
             hasEditableField &&
             keyCode == KeyEvent.KEYCODE_SPACE &&
+            SettingsManager.isCtrlSpaceLayoutSwitchEnabled(this) &&
             (event?.isCtrlPressed == true || ctrlPressed || ctrlLatchActive || ctrlOneShot)
         ) {
             var shouldUpdateStatusBar = false

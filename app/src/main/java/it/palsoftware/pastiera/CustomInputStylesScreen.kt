@@ -155,6 +155,10 @@ fun CustomInputStylesScreen(
                 AppLanguageSelectorCard()
             }
 
+            item {
+                LayoutSwitchShortcutsCard()
+            }
+
             if (inputStyles.isEmpty()) {
                 item {
                     Box(
@@ -335,6 +339,93 @@ fun CustomInputStylesScreen(
                     Text(stringResource(R.string.cancel))
                 }
             }
+        )
+    }
+}
+
+@Composable
+private fun LayoutSwitchShortcutsCard() {
+    val context = LocalContext.current
+    var altShiftLayoutSwitch by remember {
+        mutableStateOf(SettingsManager.isAltShiftLayoutSwitchEnabled(context))
+    }
+    var ctrlSpaceLayoutSwitch by remember {
+        mutableStateOf(SettingsManager.isCtrlSpaceLayoutSwitchEnabled(context))
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Keyboard,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = stringResource(R.string.layout_switch_shortcuts_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            LayoutSwitchShortcutRow(
+                title = stringResource(R.string.alt_shift_layout_switch_title),
+                description = stringResource(R.string.alt_shift_layout_switch_description),
+                checked = altShiftLayoutSwitch,
+                onCheckedChange = { enabled ->
+                    altShiftLayoutSwitch = enabled
+                    SettingsManager.setAltShiftLayoutSwitchEnabled(context, enabled)
+                }
+            )
+
+            LayoutSwitchShortcutRow(
+                title = stringResource(R.string.ctrl_space_layout_switch_title),
+                description = stringResource(R.string.ctrl_space_layout_switch_description),
+                checked = ctrlSpaceLayoutSwitch,
+                onCheckedChange = { enabled ->
+                    ctrlSpaceLayoutSwitch = enabled
+                    SettingsManager.setCtrlSpaceLayoutSwitchEnabled(context, enabled)
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun LayoutSwitchShortcutRow(
+    title: String,
+    description: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange
         )
     }
 }

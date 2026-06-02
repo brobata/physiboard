@@ -28,14 +28,25 @@ class SettingsManagerLayoutSwitchTest {
     }
 
     @Test
-    fun altShiftLayoutSwitch_defaultsDisabled_andPersistsEnabledState() {
+    fun altShiftLayoutSwitch_defaultsEnabled_andPersistsDisabledState() {
         val context = RuntimeEnvironment.getApplication()
 
-        assertFalse(SettingsManager.isAltShiftLayoutSwitchEnabled(context))
-
-        SettingsManager.setAltShiftLayoutSwitchEnabled(context, true)
-
         assertTrue(SettingsManager.isAltShiftLayoutSwitchEnabled(context))
+
+        SettingsManager.setAltShiftLayoutSwitchEnabled(context, false)
+
+        assertFalse(SettingsManager.isAltShiftLayoutSwitchEnabled(context))
+    }
+
+    @Test
+    fun ctrlSpaceLayoutSwitch_defaultsEnabled_andPersistsDisabledState() {
+        val context = RuntimeEnvironment.getApplication()
+
+        assertTrue(SettingsManager.isCtrlSpaceLayoutSwitchEnabled(context))
+
+        SettingsManager.setCtrlSpaceLayoutSwitchEnabled(context, false)
+
+        assertFalse(SettingsManager.isCtrlSpaceLayoutSwitchEnabled(context))
     }
 
     @Test
