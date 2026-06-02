@@ -187,7 +187,7 @@ class TextInputController(
         ) {
             return false
         }
-        if (typedText == "\"") {
+        if (typedText == "\"" || !isSmartQuoteTrailingDelimiter(typedText)) {
             return false
         }
 
@@ -197,7 +197,7 @@ class TextInputController(
             return false
         }
 
-        val openingIndex = before.dropLast(1).lastIndexOf('"')
+        val openingIndex = findSmartQuoteOpeningIndex(before)
         if (openingIndex < 0) {
             return false
         }
@@ -210,6 +210,36 @@ class TextInputController(
         inputConnection.deleteSurroundingText(before.length - openingIndex, 0)
         inputConnection.commitText(replacement, 1)
         return true
+    }
+
+    private fun isSmartQuoteTrailingDelimiter(typedText: String): Boolean {
+        if (typedText.length != 1) {
+            return false
+        }
+        val char = typedText[0]
+        return char.isWhitespace() ||
+            char in setOf('-', '–', '—', '.', ',', ';', ':', '!', '?', ')', ']', '}', '»', '›')
+    }
+
+    private fun findSmartQuoteOpeningIndex(textBeforeCursor: String): Int {
+        val candidateText = textBeforeCursor.dropLast(1)
+        var index = candidateText.lastIndexOf('"')
+        while (index >= 0) {
+            if (hasSmartQuoteOpeningContext(candidateText, index)) {
+                return index
+            }
+            index = candidateText.lastIndexOf('"', startIndex = index - 1)
+        }
+        return -1
+    }
+
+    private fun hasSmartQuoteOpeningContext(text: String, quoteIndex: Int): Boolean {
+        if (quoteIndex == 0) {
+            return true
+        }
+        val previous = text[quoteIndex - 1]
+        return previous.isWhitespace() ||
+            previous in setOf('(', '[', '{', '<', '«', '‹', '„', '“', '”', '»', '›', '-', '–', '—')
     }
 
     private fun smartQuotePair(style: String): SmartQuotePair {

@@ -149,10 +149,12 @@
     <string name="close">Close</string>
     
     <!-- Auto-Correction Section -->
-    <string name="auto_correct_title">Auto Substitutions</string>
-    <string name="auto_correct_languages_title">Substitutions</string>
-    <string name="auto_correct_settings_title">Auto-Correction Substitutions</string>
-    <string name="auto_correct_settings_description">Select which substitutions to use for auto-correction. The system language is shown at the top.</string>
+    <string name="auto_correct_title">Text replacements</string>
+    <string name="auto_correct_title_description">Apply saved rules like “ca → ça” when pressing Space or Enter.</string>
+    <string name="auto_correct_languages_title">Manage text replacements</string>
+    <string name="auto_correct_languages_description">Saved replacement rules run before automatic correction.</string>
+    <string name="auto_correct_settings_title">Text Replacements</string>
+    <string name="auto_correct_settings_description">Choose which replacement rule sets are active. These exact rules run before dictionary-based automatic correction.</string>
     <string name="auto_correct_system_language">System language</string>
     <string name="auto_correct_ricette_pastiera_description">Customizations valid for all substitutions</string>
     <string name="auto_correct_other_languages">Other Substitutions</string>
@@ -176,12 +178,14 @@
     <string name="auto_correct_language_code_required">Substitution name is required</string>
     <string name="auto_correct_language_already_exists">This substitution already exists</string>
     <string name="auto_correct_suggestions_toggle_title">Suggestions while typing</string>
-    <string name="auto_correct_accent_matching_title">Match accented words</string>
-    <string name="auto_correct_auto_replace_title">Auto-replace on space/enter</string>
+    <string name="auto_correct_accent_matching_title">Accent &amp; spelling marks</string>
+    <string name="auto_correct_auto_replace_title">Automatic correction</string>
+    <string name="auto_correct_auto_replace_description">Use dictionary suggestions to fix likely typos when pressing Space or Enter.</string>
     <string name="auto_correct_max_distance_title">Maximum correction distance</string>
     <string name="auto_correct_max_distance_off">Off</string>
     <string name="auto_correct_max_distance_description">Maximum number of character differences allowed for auto-correction. 0 = disabled, 1-3 = increasing tolerance.</string>
-    <string name="auto_correct_manage_user_dict_title">Manage user dictionary</string>
+    <string name="auto_correct_manage_user_dict_title">Personal dictionary</string>
+    <string name="auto_correct_manage_user_dict_description">Words Pastiera should know and suggest, without creating replacement rules.</string>
     <string name="auto_correct_keyboard_proximity_title">Keyboard Proximity Ranking</string>
     <string name="auto_correct_keyboard_proximity_description">Filter unlikely typos based on key distance (QWERTY/AZERTY/QWERTZ)</string>
     <string name="auto_correct_edit_type_ranking_title">Edit Type Ranking</string>

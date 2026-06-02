@@ -67,10 +67,12 @@
     <string name="reset_to_default">Auf Standard zurücksetzen</string>
     <string name="select_emoji">Emoji auswählen</string>
     <string name="close">Schließen</string>
-    <string name="auto_correct_title">Auto Ersetzungen</string>
-    <string name="auto_correct_languages_title">Ersetzungen</string>
-    <string name="auto_correct_settings_title">Autokorrektur-Ersetzungen</string>
-    <string name="auto_correct_settings_description">Wählen Sie aus, welche Ersetzungen für die Autokorrektur verwendet werden sollen. Die Systemsprache wird oben angezeigt.</string>
+    <string name="auto_correct_title">Textersetzungen</string>
+    <string name="auto_correct_title_description">Gespeicherte Regeln wie „ca → ça“ bei Leerzeichen oder Enter anwenden.</string>
+    <string name="auto_correct_languages_title">Textersetzungen verwalten</string>
+    <string name="auto_correct_languages_description">Gespeicherte Ersetzungsregeln greifen vor der automatischen Korrektur.</string>
+    <string name="auto_correct_settings_title">Textersetzungen</string>
+    <string name="auto_correct_settings_description">Wähle aus, welche Ersetzungsregeln aktiv sind. Diese exakten Regeln greifen vor der wörterbuchbasierten automatischen Korrektur.</string>
     <string name="auto_correct_system_language">Systemsprache</string>
     <string name="auto_correct_ricette_pastiera_description">Anpassungen gültig für alle Ersetzungen</string>
     <string name="auto_correct_other_languages">Andere Ersetzungen</string>
@@ -93,12 +95,14 @@
     <string name="auto_correct_language_code_required">Der Ersetzungsname ist erforderlich</string>
     <string name="auto_correct_language_already_exists">Diese Ersetzung existiert bereits</string>
     <string name="auto_correct_suggestions_toggle_title">Vorschläge während der Eingabe</string>
-    <string name="auto_correct_accent_matching_title">Akzentuierte Wörter abgleichen</string>
-    <string name="auto_correct_auto_replace_title">Automatisch ersetzen bei Leerzeichen/Eingabe</string>
+    <string name="auto_correct_accent_matching_title">Akzente &amp; Schreibzeichen</string>
+    <string name="auto_correct_auto_replace_title">Automatische Korrektur</string>
+    <string name="auto_correct_auto_replace_description">Wörterbuchvorschläge nutzen, um wahrscheinliche Tippfehler bei Leerzeichen oder Enter zu korrigieren.</string>
     <string name="auto_correct_max_distance_title">Maximale Korrekturdistanz</string>
     <string name="auto_correct_max_distance_off">Aus</string>
     <string name="auto_correct_max_distance_description">Maximale Anzahl von Zeichenunterschieden, die für die Autokorrektur erlaubt sind. 0 = deaktiviert, 1-3 = zunehmende Toleranz.</string>
-    <string name="auto_correct_manage_user_dict_title">Benutzerwörterbuch verwalten</string>
+    <string name="auto_correct_manage_user_dict_title">Persönliches Wörterbuch</string>
+    <string name="auto_correct_manage_user_dict_description">Wörter, die Pastiera kennen und vorschlagen soll, ohne daraus Ersetzungsregeln zu machen.</string>
     <string name="user_dict_title">Benutzerwörterbuch</string>
     <string name="user_dict_add_hint">Wort hinzufügen</string>
     <string name="user_dict_add_button">Wort speichern</string>

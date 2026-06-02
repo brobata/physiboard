@@ -16,7 +16,9 @@ object DebugCaptureStore {
         val outcome: String,
         val before: String,
         val after: String?,
-        val reason: String?
+        val reason: String?,
+        val distance: Int? = null,
+        val kind: String? = null
     )
 
     data class SuggestionEntry(
@@ -74,7 +76,9 @@ object DebugCaptureStore {
         source: String = "UNKNOWN",
         after: String? = null,
         outcome: AutoCorrectionOutcome = AutoCorrectionOutcome.NOT_APPLICABLE,
-        reason: String? = null
+        reason: String? = null,
+        distance: Int? = null,
+        kind: String? = null
     ) {
         // Suppress low-signal noise when auto-replace is off and there is no current word context.
         if (
@@ -94,7 +98,9 @@ object DebugCaptureStore {
                 outcome = outcome.name.lowercase(),
                 before = before,
                 after = after,
-                reason = reason
+                reason = reason,
+                distance = distance,
+                kind = kind
             )
         )
         while (autoCorrections.size > MAX_AUTOCORRECTIONS) {
@@ -107,7 +113,9 @@ object DebugCaptureStore {
         before: String,
         after: String,
         trigger: AutoCorrectionTrigger,
-        source: String = "UNKNOWN"
+        source: String = "UNKNOWN",
+        distance: Int? = null,
+        kind: String? = null
     ) {
         autoCorrections.addLast(
             AutoCorrectionEvent(
@@ -118,7 +126,9 @@ object DebugCaptureStore {
                 outcome = AutoCorrectionOutcome.APPLIED.name.lowercase(),
                 before = before,
                 after = after,
-                reason = null
+                reason = null,
+                distance = distance,
+                kind = kind
             )
         )
         while (autoCorrections.size > MAX_AUTOCORRECTIONS) {
@@ -127,11 +137,17 @@ object DebugCaptureStore {
     }
 
     @Synchronized
-    fun recordAutoCorrectionApplied(originalWord: String, correctedWord: String) {
+    fun recordAutoCorrectionApplied(
+        originalWord: String,
+        correctedWord: String,
+        trigger: AutoCorrectionTrigger = AutoCorrectionTrigger.OTHER,
+        source: String = "TEXT_REPLACEMENT"
+    ) {
         recordAutoCorrectionCommit(
             before = originalWord,
             after = correctedWord,
-            trigger = AutoCorrectionTrigger.OTHER
+            trigger = trigger,
+            source = source
         )
     }
 

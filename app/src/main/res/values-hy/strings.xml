@@ -54,10 +54,12 @@
     <string name="reset_to_default">Վերականգնել լռելյայնը</string>
     <string name="select_emoji">Ընտրել էմոջի</string>
     <string name="close">Փակել</string>
-    <string name="auto_correct_title">Ավտո փոխարինումներ</string>
-    <string name="auto_correct_languages_title">Փոխարինումներ</string>
-    <string name="auto_correct_settings_title">Ավտո-ուղղման փոխարինումներ</string>
-    <string name="auto_correct_settings_description">Ընտրեք՝ որ փոխարինումները կօգտագործվեն ավտո-ուղղման համար։ Համակարգի լեզուն վերևում է։</string>
+    <string name="auto_correct_title">Տեքստի փոխարինումներ</string>
+    <string name="auto_correct_title_description">Կիրառում է պահված կանոններ, օրինակ՝ “ca → ça”, բացատ կամ Enter սեղմելիս։</string>
+    <string name="auto_correct_languages_title">Կառավարել փոխարինումները</string>
+    <string name="auto_correct_languages_description">Պահված կանոնները կիրառվում են ավտոմատ ուղղումից առաջ։</string>
+    <string name="auto_correct_settings_title">Տեքստի փոխարինումներ</string>
+    <string name="auto_correct_settings_description">Ընտրեք ակտիվ կանոնների հավաքածուները։ Այս ճշգրիտ կանոնները կիրառվում են բառարանի վրա հիմնված ավտոմատ ուղղումից առաջ։</string>
     <string name="auto_correct_system_language">Համակարգի լեզու</string>
     <string name="auto_correct_ricette_pastiera_description">Կիրառվում է բոլոր փոխարինումների համար</string>
     <string name="auto_correct_other_languages">Այլ փոխարինումներ</string>
@@ -80,12 +82,14 @@
     <string name="auto_correct_language_code_required">Փոխարինման անունը պարտադիր է</string>
     <string name="auto_correct_language_already_exists">Փոխարինումը արդեն գոյություն ունի</string>
     <string name="auto_correct_suggestions_toggle_title">Առաջարկներ մուտքագրելիս</string>
-    <string name="auto_correct_accent_matching_title">Համապատասխանեցնել շեշտված բառեր</string>
-    <string name="auto_correct_auto_replace_title">Ավտոմատ փոխարինում բացատ/մուտքագրում</string>
+    <string name="auto_correct_accent_matching_title">Շեշտեր և ուղղագրական նշաններ</string>
+    <string name="auto_correct_auto_replace_title">Ավտոմատ ուղղում</string>
+    <string name="auto_correct_auto_replace_description">Օգտագործում է բառարանի առաջարկները՝ հավանական վրիպակները բացատ կամ Enter սեղմելիս ուղղելու համար։</string>
     <string name="auto_correct_max_distance_title">Ուղղման առավելագույն հեռավորություն</string>
     <string name="auto_correct_max_distance_off">Անջատված</string>
     <string name="auto_correct_max_distance_description">Նիշերի առավելագույն քանակի տարբերություններ, թույլատրված ավտո-ուղղման համար։ 0 = անջատված, 1-3 = աճող հանդուրժողականություն։</string>
-    <string name="auto_correct_manage_user_dict_title">Կառավարել օգտագործողի բառարանը</string>
+    <string name="auto_correct_manage_user_dict_title">Անձնական բառարան</string>
+    <string name="auto_correct_manage_user_dict_description">Բառեր, որոնք Pastiera-ն պետք է ճանաչի և առաջարկի՝ առանց փոխարինման կանոններ ստեղծելու։</string>
     <string name="user_dict_title">Օգտագործողի բառարան</string>
     <string name="user_dict_add_hint">Ավելացնել բառ</string>
     <string name="user_dict_add_button">Պահպանել բառ</string>

@@ -71,10 +71,12 @@
     <string name="reset_to_default">Сбросить по умолчанию</string>
     <string name="select_emoji">Выбрать Эмодзи</string>
     <string name="close">Закрыть</string>
-    <string name="auto_correct_title">Автозамены</string>
-    <string name="auto_correct_languages_title">Замены</string>
-    <string name="auto_correct_settings_title">Замены автоисправления</string>
-    <string name="auto_correct_settings_description">Выберите, какие замены используются для автоисправления. Системный язык сверху.</string>
+    <string name="auto_correct_title">Текстовые замены</string>
+    <string name="auto_correct_title_description">Применяет сохранённые правила, например “ca → ça”, при пробеле или Enter.</string>
+    <string name="auto_correct_languages_title">Управлять заменами</string>
+    <string name="auto_correct_languages_description">Сохранённые правила выполняются перед автоматическим исправлением.</string>
+    <string name="auto_correct_settings_title">Текстовые замены</string>
+    <string name="auto_correct_settings_description">Выберите активные наборы правил. Эти точные правила выполняются перед автоисправлением на основе словаря.</string>
     <string name="auto_correct_system_language">Язык системы</string>
     <string name="auto_correct_ricette_pastiera_description">Настройки действительны для всех замен</string>
     <string name="auto_correct_other_languages">Другие замены</string>
@@ -97,12 +99,14 @@
     <string name="auto_correct_language_code_required">Требуется имя замены</string>
     <string name="auto_correct_language_already_exists">Замена уже существует</string>
     <string name="auto_correct_suggestions_toggle_title">Предложения во время ввода</string>
-    <string name="auto_correct_accent_matching_title">Соответствие слов с акцентами</string>
-    <string name="auto_correct_auto_replace_title">Автозамена на пробел/ввод</string>
+    <string name="auto_correct_accent_matching_title">Акценты и знаки письма</string>
+    <string name="auto_correct_auto_replace_title">Автоматическое исправление</string>
+    <string name="auto_correct_auto_replace_description">Использует предложения словаря для исправления вероятных опечаток при пробеле или Enter.</string>
     <string name="auto_correct_max_distance_title">Максимальное расстояние исправления</string>
     <string name="auto_correct_max_distance_off">Выключено</string>
     <string name="auto_correct_max_distance_description">Максимальное количество различий символов, разрешённых для автоисправления. 0 = выключено, 1-3 = повышение терпимости.</string>
-    <string name="auto_correct_manage_user_dict_title">Управление словарём пользователя</string>
+    <string name="auto_correct_manage_user_dict_title">Личный словарь</string>
+    <string name="auto_correct_manage_user_dict_description">Слова, которые Pastiera должна знать и предлагать, без создания правил замены.</string>
     <string name="auto_correct_keyboard_proximity_title">Ранжирование по Близости Клавиатуры</string>
     <string name="auto_correct_keyboard_proximity_description">Фильтровать маловероятные опечатки на основе расстояния клавиш (QWERTY/AZERTY/QWERTZ)</string>
     <string name="auto_correct_edit_type_ranking_title">Ранжирование по Типу Редактирования</string>

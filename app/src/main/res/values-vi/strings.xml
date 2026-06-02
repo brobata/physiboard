@@ -82,10 +82,12 @@
     <string name="reset_to_default">Khôi phục mặc định</string>
     <string name="select_emoji">Chọn emoji</string>
     <string name="close">Đóng</string>
-    <string name="auto_correct_title">Thay thế tự động</string>
-    <string name="auto_correct_languages_title">Bộ thay thế</string>
-    <string name="auto_correct_settings_title">Bộ thay thế sửa tự động</string>
-    <string name="auto_correct_settings_description">Chọn các bộ thay thế dùng cho sửa tự động. Ngôn ngữ hệ thống được hiển thị ở trên cùng.</string>
+    <string name="auto_correct_title">Thay thế văn bản</string>
+    <string name="auto_correct_title_description">Áp dụng quy tắc đã lưu như “ca → ça” khi nhấn Space hoặc Enter.</string>
+    <string name="auto_correct_languages_title">Quản lý thay thế văn bản</string>
+    <string name="auto_correct_languages_description">Quy tắc đã lưu chạy trước sửa tự động.</string>
+    <string name="auto_correct_settings_title">Thay thế văn bản</string>
+    <string name="auto_correct_settings_description">Chọn bộ quy tắc đang bật. Các quy tắc chính xác này chạy trước sửa tự động dựa trên từ điển.</string>
     <string name="auto_correct_system_language">Ngôn ngữ hệ thống</string>
     <string name="auto_correct_ricette_pastiera_description">Tùy chỉnh áp dụng cho tất cả bộ thay thế</string>
     <string name="auto_correct_other_languages">Bộ thay thế khác</string>
@@ -108,12 +110,14 @@
     <string name="auto_correct_language_code_required">Bắt buộc có tên bộ thay thế</string>
     <string name="auto_correct_language_already_exists">Bộ thay thế này đã tồn tại</string>
     <string name="auto_correct_suggestions_toggle_title">Gợi ý khi đang gõ</string>
-    <string name="auto_correct_accent_matching_title">Khớp từ có dấu</string>
-    <string name="auto_correct_auto_replace_title">Tự thay thế khi nhấn cách/enter</string>
+    <string name="auto_correct_accent_matching_title">Dấu và ký hiệu chính tả</string>
+    <string name="auto_correct_auto_replace_title">Sửa tự động</string>
+    <string name="auto_correct_auto_replace_description">Dùng gợi ý từ điển để sửa lỗi có khả năng xảy ra khi nhấn Space hoặc Enter.</string>
     <string name="auto_correct_max_distance_title">Khoảng cách sửa tối đa</string>
     <string name="auto_correct_max_distance_off">Tắt</string>
     <string name="auto_correct_max_distance_description">Số khác biệt ký tự tối đa cho phép khi sửa tự động. 0 = tắt, 1-3 = độ dung sai tăng dần.</string>
-    <string name="auto_correct_manage_user_dict_title">Quản lý từ điển người dùng</string>
+    <string name="auto_correct_manage_user_dict_title">Từ điển cá nhân</string>
+    <string name="auto_correct_manage_user_dict_description">Các từ Pastiera nên biết và gợi ý, không tạo quy tắc thay thế.</string>
     <string name="auto_correct_keyboard_proximity_title">Xếp hạng độ gần bàn phím</string>
     <string name="auto_correct_keyboard_proximity_description">Lọc lỗi gõ khó xảy ra dựa trên khoảng cách phím (QWERTY/AZERTY/QWERTZ)</string>
     <string name="auto_correct_edit_type_ranking_title">Xếp hạng theo loại chỉnh sửa</string>

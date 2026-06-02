@@ -68,6 +68,17 @@ class SuggestionEngineTest {
     }
 
     @Test
+    fun testCaseOnlyVariantIsSuggestedForLowercaseInput() {
+        fakeRepo.isReady = true
+        fakeRepo.addTestEntry("Problem", 200)
+        fakeRepo.addTestEntry("Probleme", 250)
+
+        val results = engine.suggest("problem")
+
+        assertTrue("Sollte gleichlange Case-Variante 'Problem' vorschlagen", results.any { it.candidate == "Problem" })
+    }
+
+    @Test
     fun testUserDictionaryRanking() {
         fakeRepo.isReady = true
         // "hallo" im Hauptwörterbuch

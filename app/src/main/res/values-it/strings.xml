@@ -133,10 +133,12 @@
     <string name="close">Chiudi</string>
     
     <!-- Auto-Correction Section -->
-    <string name="auto_correct_title">Auto Sostituzioni</string>
-    <string name="auto_correct_languages_title">Sostituzioni</string>
-    <string name="auto_correct_settings_title">Sostituzioni Auto-Correzione</string>
-    <string name="auto_correct_settings_description">Seleziona quali sostituzioni usare per l\'auto-correzione. La lingua di sistema è mostrata in alto.</string>
+    <string name="auto_correct_title">Sostituzioni testo</string>
+    <string name="auto_correct_title_description">Applica regole salvate come “ca → ça” quando premi Spazio o Invio.</string>
+    <string name="auto_correct_languages_title">Gestisci sostituzioni testo</string>
+    <string name="auto_correct_languages_description">Le regole salvate vengono applicate prima della correzione automatica.</string>
+    <string name="auto_correct_settings_title">Sostituzioni testo</string>
+    <string name="auto_correct_settings_description">Scegli quali set di regole sono attivi. Queste regole esatte vengono applicate prima della correzione automatica basata sul dizionario.</string>
     <string name="auto_correct_system_language">Lingua di sistema</string>
     <string name="auto_correct_ricette_pastiera_description">Personalizzazioni valide per tutte le sostituzioni</string>
     <string name="auto_correct_other_languages">Altre Sostituzioni</string>
@@ -159,12 +161,14 @@
     <string name="auto_correct_language_code_required">Il nome della sostituzione è obbligatorio</string>
     <string name="auto_correct_language_already_exists">Questa sostituzione esiste già</string>
     <string name="auto_correct_suggestions_toggle_title">Suggerimenti durante la digitazione</string>
-    <string name="auto_correct_accent_matching_title">Corrispondenza parole accentate</string>
-    <string name="auto_correct_auto_replace_title">Sostituzione automatica su spazio/invio</string>
+    <string name="auto_correct_accent_matching_title">Accenti e segni ortografici</string>
+    <string name="auto_correct_auto_replace_title">Correzione automatica</string>
+    <string name="auto_correct_auto_replace_description">Usa i suggerimenti del dizionario per correggere probabili errori quando premi Spazio o Invio.</string>
     <string name="auto_correct_max_distance_title">Distanza massima correzione</string>
     <string name="auto_correct_max_distance_off">Disattivato</string>
     <string name="auto_correct_max_distance_description">Numero massimo di differenze di caratteri consentite per l\'auto-correzione. 0 = disabilitato, 1-3 = tolleranza crescente.</string>
-    <string name="auto_correct_manage_user_dict_title">Gestisci dizionario utente</string>
+    <string name="auto_correct_manage_user_dict_title">Dizionario personale</string>
+    <string name="auto_correct_manage_user_dict_description">Parole che Pastiera deve conoscere e suggerire, senza creare regole di sostituzione.</string>
     
     <!-- User dictionary management -->
     <string name="user_dict_title">Dizionario utente</string>

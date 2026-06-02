@@ -68,8 +68,10 @@ import androidx.compose.material.icons.filled.BugReport
 import androidx.activity.compose.BackHandler
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.core.content.FileProvider
 import it.palsoftware.pastiera.inputmethod.DeviceSpecific
 import kotlinx.coroutines.delay
+import java.io.File
 import java.security.MessageDigest
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -259,6 +261,9 @@ private data class RecordedKeyboardEvent(
     val deltaMs: Long?,
     val event: KeyboardEventTracker.KeyEventInfo
 )
+
+private const val DEBUG_REPORT_TEXT_SHARE_MAX_EVENTS = 250
+private const val DEBUG_REPORT_TEXT_SHARE_MAX_BYTES = 500 * 1024
 
 @Composable
 private fun DebugReportViewerDialog(
@@ -500,10 +505,17 @@ fun KeyboardSetupScreen(
         ).show()
     }
     val shareReport: (String) -> Unit = { report ->
-        val shareIntent = Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
-            putExtra(Intent.EXTRA_SUBJECT, "Pastiera Keyboard Debug Export")
-            putExtra(Intent.EXTRA_TEXT, report)
+        val shouldShareAsFile = includeRawTrackpadInExport ||
+            recordedEvents.size > DEBUG_REPORT_TEXT_SHARE_MAX_EVENTS ||
+            report.toByteArray(Charsets.UTF_8).size > DEBUG_REPORT_TEXT_SHARE_MAX_BYTES
+        val shareIntent = if (shouldShareAsFile) {
+            createDebugReportFileShareIntent(context, report)
+        } else {
+            Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_SUBJECT, "Pastiera Keyboard Debug Export")
+                putExtra(Intent.EXTRA_TEXT, report)
+            }
         }
         context.startActivity(
             Intent.createChooser(shareIntent, context.getString(R.string.debug_recorder_share_chooser))
@@ -944,6 +956,28 @@ private fun formatDebugTimestamp(timestampMs: Long): String {
     return formatter.format(Date(timestampMs))
 }
 
+private fun createDebugReportFileShareIntent(context: Context, report: String): Intent {
+    val reportDir = File(context.cacheDir, "debug-reports").apply {
+        deleteRecursively()
+        mkdirs()
+    }
+    val timestamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
+    val reportFile = File(reportDir, "pastiera-keyboard-debug-$timestamp.txt")
+    reportFile.writeText(report, Charsets.UTF_8)
+    val uri = FileProvider.getUriForFile(
+        context,
+        "${BuildConfig.APPLICATION_ID}.fileprovider",
+        reportFile
+    )
+    return Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_SUBJECT, "Pastiera Keyboard Debug Export")
+        putExtra(Intent.EXTRA_STREAM, uri)
+        clipData = ClipData.newUri(context.contentResolver, "Pastiera Keyboard Debug Export", uri)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+}
+
 private fun formatUnicodeForDebug(unicode: Int): String {
     if (unicode == 0) {
         return "0(n/a)"
@@ -1158,10 +1192,14 @@ private fun buildKeyboardDebugReport(
             appendLine("(no autocorrections recorded)")
         } else {
             autoCorrections.forEach { entry ->
+                val details = buildString {
+                    entry.distance?.let { append(" distance=$it") }
+                    entry.kind?.let { append(" kind=$it") }
+                }
                 appendLine(
                     "${formatDebugTimestamp(entry.timestampMs)} | type=${entry.type} trigger=${entry.trigger} " +
                         "source=${entry.source} outcome=${entry.outcome} before='${entry.before}' " +
-                        "after='${entry.after ?: "n/a"}' reason='${entry.reason ?: "n/a"}'"
+                        "after='${entry.after ?: "n/a"}' reason='${entry.reason ?: "n/a"}'$details"
                 )
             }
         }

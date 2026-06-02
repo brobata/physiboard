@@ -71,10 +71,12 @@
     <string name="reset_to_default">Скинути до стандартних</string>
     <string name="select_emoji">Обрати емодзі</string>
     <string name="close">Закрити</string>
-    <string name="auto_correct_title">Автозаміни</string>
-    <string name="auto_correct_languages_title">Заміни</string>
-    <string name="auto_correct_settings_title">Налаштування автокорекції</string>
-    <string name="auto_correct_settings_description">Оберіть які заміни використовуються для автокорекції. Системна мова зверху.</string>
+    <string name="auto_correct_title">Текстові заміни</string>
+    <string name="auto_correct_title_description">Застосовує збережені правила, наприклад “ca → ça”, після пробілу або Enter.</string>
+    <string name="auto_correct_languages_title">Керувати замінами</string>
+    <string name="auto_correct_languages_description">Збережені правила виконуються перед автоматичною корекцією.</string>
+    <string name="auto_correct_settings_title">Текстові заміни</string>
+    <string name="auto_correct_settings_description">Оберіть активні набори правил. Ці точні правила виконуються перед автоматичною корекцією на основі словника.</string>
     <string name="auto_correct_system_language">Системна мова</string>
     <string name="auto_correct_ricette_pastiera_description">Налаштування для всіх замін</string>
     <string name="auto_correct_other_languages">Інші заміни</string>
@@ -97,12 +99,14 @@
     <string name="auto_correct_language_code_required">Назва заміни обов\'язкова</string>
     <string name="auto_correct_language_already_exists">Ця заміна вже існує</string>
     <string name="auto_correct_suggestions_toggle_title">Пропозиції під час введення</string>
-    <string name="auto_correct_accent_matching_title">Відповідність слів з акцентами</string>
-    <string name="auto_correct_auto_replace_title">Автозаміна на пробіл/Enter</string>
+    <string name="auto_correct_accent_matching_title">Акценти й знаки письма</string>
+    <string name="auto_correct_auto_replace_title">Автоматична корекція</string>
+    <string name="auto_correct_auto_replace_description">Використовує пропозиції словника для виправлення ймовірних помилок після пробілу або Enter.</string>
     <string name="auto_correct_max_distance_title">Максимальна відстань корекції</string>
     <string name="auto_correct_max_distance_off">Вимкнено</string>
     <string name="auto_correct_max_distance_description">Максимальна кількість відмінностей символів для автокорекції. 0 = вимкнено, 1-3 = збільшення толерантності.</string>
-    <string name="auto_correct_manage_user_dict_title">Керування словником користувача</string>
+    <string name="auto_correct_manage_user_dict_title">Особистий словник</string>
+    <string name="auto_correct_manage_user_dict_description">Слова, які Pastiera має знати й пропонувати, без створення правил заміни.</string>
     <string name="auto_correct_keyboard_proximity_title">Ранжування за близькістю клавіш</string>
     <string name="auto_correct_keyboard_proximity_description">Фільтрувати малоймовірні друкарські помилки на основі відстані клавіш (QWERTY/AZERTY/QWERTZ)</string>
     <string name="auto_correct_edit_type_ranking_title">Ранжування за типом редагування</string>

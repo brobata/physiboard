@@ -4,16 +4,16 @@ import android.view.KeyEvent
 import android.view.inputmethod.InputConnection
 import it.palsoftware.pastiera.core.AutoSpaceTracker
 import android.util.Log
-import java.io.File
 import java.text.Normalizer
 import java.util.Locale
-import org.json.JSONObject
 import it.palsoftware.pastiera.inputmethod.DebugCaptureStore
 
 class AutoReplaceController(
     private val repository: DictionaryRepository,
     private val suggestionEngine: SuggestionEngine,
-    private val settingsProvider: () -> SuggestionSettings
+    private val settingsProvider: () -> SuggestionSettings,
+    private val knownWordProvider: ((String) -> Boolean)? = null,
+    private val exactReplacementProvider: ((String, Char?) -> String?)? = null
 ) {
     private fun triggerFromBoundaryChar(boundaryChar: Char?): DebugCaptureStore.AutoCorrectionTrigger {
         return when (boundaryChar) {
@@ -22,27 +22,6 @@ class AutoReplaceController(
             else -> DebugCaptureStore.AutoCorrectionTrigger.OTHER
         }
     }
-
-    // #region agent log
-    private fun debugLog(hypothesisId: String, location: String, message: String, data: Map<String, Any?> = emptyMap()) {
-        try {
-            val logFile = File("/Users/andrea/Desktop/DEV/Pastiera/pastiera/.cursor/debug.log")
-            val logEntry = JSONObject().apply {
-                put("sessionId", "debug-session")
-                put("runId", "run1")
-                put("hypothesisId", hypothesisId)
-                put("location", location)
-                put("message", message)
-                put("timestamp", System.currentTimeMillis())
-                put("data", JSONObject(data))
-            }
-            logFile.appendText(logEntry.toString() + "\n")
-        } catch (e: Exception) {
-            // Ignore log errors
-        }
-    }
-    // #endregion
-
     public data class ReplaceResult(
         val replaced: Boolean,
         val committed: Boolean,
@@ -101,6 +80,70 @@ class AutoReplaceController(
             val normalizedInput = WordNormalization.normalizeForDictionary(input, Locale.ROOT)
             val normalizedCandidate = WordNormalization.normalizeForDictionary(candidate, Locale.ROOT)
             return normalizedInput == normalizedCandidate
+        }
+
+        internal fun isCaseOnlyVariant(input: String, candidate: String): Boolean {
+            if (input.isEmpty() || candidate.isEmpty()) return false
+            return input != candidate && input.equals(candidate, ignoreCase = true)
+        }
+
+        internal fun isAcronymLike(candidate: String): Boolean {
+            val letters = candidate.filter { it.isLetter() }
+            return letters.length >= 2 && letters.all { it.isUpperCase() }
+        }
+
+        internal fun hasSingleRepeatedCharInsertion(input: String, candidate: String): Boolean {
+            if (candidate.length != input.length + 1) return false
+            var i = 0
+            var j = 0
+            var insertedIndex = -1
+            while (i < input.length && j < candidate.length) {
+                if (input[i].equals(candidate[j], ignoreCase = true)) {
+                    i++
+                    j++
+                } else {
+                    if (insertedIndex != -1) return false
+                    insertedIndex = j
+                    j++
+                }
+            }
+            if (insertedIndex == -1) insertedIndex = candidate.lastIndex
+            val inserted = candidate.getOrNull(insertedIndex) ?: return false
+            val prev = candidate.getOrNull(insertedIndex - 1)
+            val next = candidate.getOrNull(insertedIndex + 1)
+            return prev?.equals(inserted, ignoreCase = true) == true ||
+                next?.equals(inserted, ignoreCase = true) == true
+        }
+
+        private fun changesFirstLetter(input: String, candidate: String): Boolean {
+            val inputIndex = input.indexOfFirst { it.isLetter() }
+            val candidateIndex = candidate.indexOfFirst { it.isLetter() }
+            if (inputIndex < 0 || candidateIndex < 0) return false
+            return !input[inputIndex].equals(candidate[candidateIndex], ignoreCase = true)
+        }
+
+        internal fun isSafeAutoReplaceCandidate(
+            input: String,
+            lookupWord: String,
+            candidate: SuggestionResult?,
+            settings: SuggestionSettings,
+            isOrthographicVariant: Boolean
+        ): Boolean {
+            if (candidate == null) return false
+            val isCaseVariant = isCaseOnlyVariant(input, candidate.candidate)
+            if (candidate.kind != SuggestionKind.CURRENT_WORD) return false
+            if (!isOrthographicVariant && !isCaseVariant && candidate.distance <= 0) return false
+            if (candidate.distance > settings.maxAutoReplaceDistance) return false
+            if (input.all { it.isLowerCase() } && isAcronymLike(candidate.candidate)) return false
+
+            val lengthDelta = candidate.candidate.length - input.length
+            if (lengthDelta == 0) {
+                return isOrthographicVariant || isCaseVariant || !changesFirstLetter(input, candidate.candidate)
+            }
+            if (lengthDelta == 1 && hasSingleRepeatedCharInsertion(input, candidate.candidate)) return true
+
+            // Pure suffix/prefix growth or shortening is usually morphology/completion, not a typo.
+            return isOrthographicVariant && lookupWord.length == candidate.candidate.length
         }
 
         internal fun recomposeApostropheCandidate(
@@ -207,17 +250,6 @@ class AutoReplaceController(
         }
 
         val word = tracker.currentWord
-        // #region agent log
-        val textBeforeReal = inputConnection?.getTextBeforeCursor(16, 0)?.toString().orEmpty()
-        debugLog("C", "AutoReplaceController.handleBoundary:beforeReplace", "handleBoundary called", mapOf(
-            "trackerWord" to word,
-            "trackerWordLength" to word.length,
-            "textBeforeReal" to textBeforeReal,
-            "textBeforeRealLength" to textBeforeReal.length,
-            "keyCode" to keyCode,
-            "boundaryChar" to (boundaryChar?.toString() ?: "null")
-        ))
-        // #endregion
         if (word.isBlank()) {
             tracker.onBoundaryReached(boundaryChar, inputConnection)
             DebugCaptureStore.recordAutoCorrectionAttempt(
@@ -231,6 +263,91 @@ class AutoReplaceController(
 
         val apostropheSplit = splitApostropheWord(word)
         val lookupWord = apostropheSplit?.root ?: word
+        val wordLower = word.lowercase()
+
+        exactReplacementProvider?.invoke(word, boundaryChar)?.let { exactReplacement ->
+            if (!rejectedWords.contains(wordLower)) {
+                inputConnection.beginBatchEdit()
+                inputConnection.deleteSurroundingText(word.length, 0)
+                val shouldAppendBoundary = boundaryChar != null &&
+                    !(boundaryChar == ' ' && exactReplacement.endsWith("'"))
+                inputConnection.commitText(exactReplacement, 1)
+                repository.markUsed(exactReplacement)
+                lastReplacement = LastReplacement(
+                    originalWord = word,
+                    replacedWord = exactReplacement
+                )
+                tracker.reset()
+                inputConnection.endBatchEdit()
+                var boundaryCommitted = false
+                if (shouldAppendBoundary) {
+                    when (boundaryChar) {
+                        ' ' -> {
+                            boundaryCommitted = ensureTrailingSpace(inputConnection)
+                        }
+                        else -> {
+                            inputConnection.commitText(boundaryChar.toString(), 1)
+                            boundaryCommitted = true
+                        }
+                    }
+                }
+                if (boundaryCommitted && boundaryChar == ' ') {
+                    AutoSpaceTracker.markAutoSpace()
+                }
+                DebugCaptureStore.recordAutoCorrectionCommit(
+                    before = word,
+                    after = exactReplacement,
+                    trigger = trigger,
+                    source = "TEXT_REPLACEMENT",
+                    distance = 0,
+                    kind = SuggestionKind.CURRENT_WORD.name
+                )
+                Log.d("AutoReplaceController", "Committed exact replacement '$word' -> '$exactReplacement'")
+                return ReplaceResult(true, true, exactReplacement)
+            }
+        }
+
+        primaryDictionaryCaseVariant(lookupWord, word)?.let { caseReplacement ->
+            if (!rejectedWords.contains(wordLower)) {
+                inputConnection.beginBatchEdit()
+                inputConnection.deleteSurroundingText(word.length, 0)
+                val shouldAppendBoundary = boundaryChar != null &&
+                    !(boundaryChar == ' ' && caseReplacement.endsWith("'"))
+                inputConnection.commitText(caseReplacement, 1)
+                repository.markUsed(caseReplacement)
+                lastReplacement = LastReplacement(
+                    originalWord = word,
+                    replacedWord = caseReplacement
+                )
+                tracker.reset()
+                inputConnection.endBatchEdit()
+                var boundaryCommitted = false
+                if (shouldAppendBoundary) {
+                    when (boundaryChar) {
+                        ' ' -> {
+                            boundaryCommitted = ensureTrailingSpace(inputConnection)
+                        }
+                        else -> {
+                            inputConnection.commitText(boundaryChar.toString(), 1)
+                            boundaryCommitted = true
+                        }
+                    }
+                }
+                if (boundaryCommitted && boundaryChar == ' ') {
+                    AutoSpaceTracker.markAutoSpace()
+                }
+                DebugCaptureStore.recordAutoCorrectionCommit(
+                    before = word,
+                    after = caseReplacement,
+                    trigger = trigger,
+                    source = "PRIMARY_CASE",
+                    distance = 0,
+                    kind = SuggestionKind.CURRENT_WORD.name
+                )
+                Log.d("AutoReplaceController", "Committed primary dictionary case replacement '$word' -> '$caseReplacement'")
+                return ReplaceResult(true, true, caseReplacement)
+            }
+        }
 
         val suggestions = suggestionEngine.suggest(
             lookupWord,
@@ -251,50 +368,55 @@ class AutoReplaceController(
         
         // Safety checks for auto-replace
         val isOrthographicVariant = top != null && isAccentOnlyVariant(word, top.candidate)
+        val isCaseVariant = top != null && isCaseOnlyVariant(word, top.candidate)
         val minWordLength = if (isOrthographicVariant) 2 else 3 // Allow short orthographic fixes (e.g., "ja" -> "já")
-        val maxLengthRatio = 1.25 // Don't auto-correct if replacement is >25% longer
+        val maxLengthRatio = 1.25 // Keep as a fallback guard for longer typo candidates.
         
         // Check if word has been rejected by user
-        val wordLower = word.lowercase()
         val isRejected = rejectedWords.contains(wordLower)
         
         // Check if word exists in dictionary
-        val isKnownWord = repository.isKnownWord(lookupWord)
+        val isKnownWord = knownWordProvider?.invoke(lookupWord) ?: repository.isKnownWord(lookupWord)
         val isExactKnownWord = repository.getExactWordFrequency(lookupWord) > 0
+        val hasExactPrimaryCase = primaryDictionaryHasExactCase(lookupWord)
 
         // Only auto-replace if word is NOT known (i.e., it's a typo/unknown word)
         // Don't replace valid words with other valid words, even if they have higher frequency
-        val shouldReplace = top != null
-            && (!isKnownWord || (isOrthographicVariant && !isExactKnownWord)) // Allow orthographic fix when exact word isn't known
-            && !isRejected // Don't auto-correct if user has rejected this word
-            && top.distance <= settings.maxAutoReplaceDistance
-            && lookupWord.length >= minWordLength // Minimum word length check on root
-            && top.candidate.length <= (word.length * maxLengthRatio).toInt() // Max length ratio check on full text
+        val isSafeCandidate = isSafeAutoReplaceCandidate(
+            input = word,
+            lookupWord = lookupWord,
+            candidate = top,
+            settings = settings,
+            isOrthographicVariant = isOrthographicVariant
+        )
 
-        if (shouldReplace) {
-            val replacement = applyCasing(top!!.candidate, word)
-            val source = top.source.name
-            // #region agent log
-            val textBeforeDelete = inputConnection.getTextBeforeCursor(16, 0)?.toString().orEmpty()
-            debugLog("C", "AutoReplaceController.handleBoundary:beforeDelete", "about to deleteSurroundingText", mapOf(
-                "trackerWord" to word,
-                "trackerWordLength" to word.length,
-                "deleteCount" to word.length,
-                "textBeforeDelete" to textBeforeDelete,
-                "textBeforeDeleteLength" to textBeforeDelete.length,
-                "replacement" to replacement
-            ))
-            // #endregion
-            inputConnection.beginBatchEdit()
+        val shouldReplace = top != null
+            && (!isKnownWord || (isCaseVariant && !hasExactPrimaryCase) || (isOrthographicVariant && !isExactKnownWord)) // Allow case/orthographic fixes
+            && !isRejected // Don't auto-correct if user has rejected this word
+            && isSafeCandidate
+            && lookupWord.length >= minWordLength // Minimum word length check on root
+            && (top.candidate.length <= (word.length * maxLengthRatio).toInt() ||
+                hasSingleRepeatedCharInsertion(word, top.candidate)) // Max length ratio check on full text
+
+	        if (shouldReplace) {
+	            val replacement = applyCasing(top!!.candidate, word)
+	            if (replacement == word) {
+	                DebugCaptureStore.recordAutoCorrectionAttempt(
+	                    before = word,
+	                    trigger = trigger,
+	                    source = top.source.name,
+	                    after = top.candidate,
+	                    outcome = DebugCaptureStore.AutoCorrectionOutcome.SKIPPED,
+	                    reason = "same_replacement",
+	                    distance = top.distance,
+	                    kind = top.kind.name
+	                )
+	                tracker.onBoundaryReached(boundaryChar, inputConnection)
+	                return ReplaceResult(false, unicodeChar != 0)
+	            }
+	            val source = top.source.name
+	            inputConnection.beginBatchEdit()
             inputConnection.deleteSurroundingText(word.length, 0)
-            // #region agent log
-            val textAfterDelete = inputConnection.getTextBeforeCursor(16, 0)?.toString().orEmpty()
-            debugLog("C", "AutoReplaceController.handleBoundary:afterDelete", "deleteSurroundingText completed", mapOf(
-                "textAfterDelete" to textAfterDelete,
-                "textAfterDeleteLength" to textAfterDelete.length,
-                "deletedCount" to word.length
-            ))
-            // #endregion
             val shouldAppendBoundary = boundaryChar != null &&
                 !(boundaryChar == ' ' && replacement.endsWith("'"))
             inputConnection.commitText(replacement, 1)
@@ -328,7 +450,9 @@ class AutoReplaceController(
                 before = word,
                 after = replacement,
                 trigger = trigger,
-                source = source
+                source = source,
+                distance = top.distance,
+                kind = top.kind.name
             )
             Log.d("AutoReplaceController", "Committed text '${replacement + committedSuffix}', markAutoSpace=${boundaryCommitted && boundaryChar == ' '}")
             return ReplaceResult(true, true, replacement)
@@ -337,10 +461,15 @@ class AutoReplaceController(
         val skipReason = when {
             top == null -> "no_suggestion"
             isRejected -> "rejected_by_user"
-            isKnownWord && !(isOrthographicVariant && !isExactKnownWord) -> "known_word"
+            isKnownWord && !isCaseVariant && !(isOrthographicVariant && !isExactKnownWord) -> "known_word"
             top.distance > settings.maxAutoReplaceDistance -> "distance_too_high"
+            top.kind != SuggestionKind.CURRENT_WORD -> "not_current_word"
+            !isOrthographicVariant && !isCaseVariant && top.distance <= 0 -> "not_edit_distance"
+            word.all { it.isLowerCase() } && isAcronymLike(top.candidate) -> "acronym_candidate"
+            !isSafeCandidate -> "unsafe_shape"
             lookupWord.length < minWordLength -> "word_too_short"
-            top.candidate.length > (word.length * maxLengthRatio).toInt() -> "candidate_too_long"
+            top.candidate.length > (word.length * maxLengthRatio).toInt() &&
+                !hasSingleRepeatedCharInsertion(word, top.candidate) -> "candidate_too_long"
             else -> "constraints_not_met"
         }
         DebugCaptureStore.recordAutoCorrectionAttempt(
@@ -349,7 +478,9 @@ class AutoReplaceController(
             source = top?.source?.name ?: "UNKNOWN",
             after = top?.candidate,
             outcome = DebugCaptureStore.AutoCorrectionOutcome.SKIPPED,
-            reason = skipReason
+            reason = skipReason,
+            distance = top?.distance,
+            kind = top?.kind?.name
         )
 
         // Clear last replacement if no replacement happened
@@ -431,6 +562,29 @@ class AutoReplaceController(
     
     fun clearRejectedWords() {
         rejectedWords.clear()
+    }
+
+    private fun primaryDictionaryCaseVariant(lookupWord: String, originalWord: String): String? {
+        if (!repository.isReady || lookupWord != originalWord) return null
+        if (originalWord.none { it.isLetter() } || originalWord.any { it.isUpperCase() }) return null
+
+        val normalized = WordNormalization.normalizeForDictionary(originalWord, Locale.ROOT)
+        val entries = repository.topByNormalized(normalized, limit = 8)
+        if (entries.any { it.word == originalWord }) return null
+
+        return entries
+            .firstOrNull { entry ->
+                entry.word != originalWord &&
+                    entry.word.equals(originalWord, ignoreCase = true) &&
+                    entry.word.any { it.isUpperCase() }
+            }
+            ?.word
+    }
+
+    private fun primaryDictionaryHasExactCase(word: String): Boolean {
+        if (!repository.isReady || word.isBlank()) return false
+        val normalized = WordNormalization.normalizeForDictionary(word, Locale.ROOT)
+        return repository.topByNormalized(normalized, limit = 8).any { it.word == word }
     }
 
     private fun applyCasing(candidate: String, original: String): String {

@@ -535,19 +535,20 @@ class SuggestionEngine(
                         entry.word[0].equals(currentWord.firstOrNull() ?: ' ', ignoreCase = true) &&
                         entry.word.getOrNull(1) == '\''
                 val isPrefix = normCandidate.startsWith(normalizedWord)
+                val isActualCompletion = isPrefix && entry.word.length > currentWord.length
 
                 // Filter out capitalized words for prefix completions when input is lowercase
                 // (likely proper nouns like "Hardy" when typing "hard")
                 // Exception: Never filter user dictionary words
                 val inputIsLowercase = currentWord.firstOrNull()?.isLowerCase() == true
                 val candidateIsCapitalized = entry.word.firstOrNull()?.isUpperCase() == true
-                if (isPrefix && inputIsLowercase && candidateIsCapitalized && !isPreferredUserEntry(entry.source)) {
+                if (isActualCompletion && inputIsLowercase && candidateIsCapitalized && !isPreferredUserEntry(entry.source)) {
                     return@forEach // Skip capitalized prefix completions when user typed lowercase
                 }
 
                 val bareCandidate = normCandidate.replace("'", "")
                 val distanceScore = 1.0 / (1 + distance)
-                val isCompletion = isPrefix && entry.word.length > currentWord.length
+                val isCompletion = isActualCompletion
                 val prefixBonus = when {
                     // Avoid boosting completions when input is a single character
                     inputLen == 1 && isForcedPrefix -> 0.0

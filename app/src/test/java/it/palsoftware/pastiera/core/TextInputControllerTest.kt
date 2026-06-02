@@ -241,6 +241,56 @@ class TextInputControllerTest {
     }
 
     @Test
+    fun smartQuotes_enabled_supportsMultiWordQuotes() {
+        SettingsManager.setSmartQuotes(context, true)
+        SettingsManager.setSmartQuotesStyle(context, SettingsManager.SMART_QUOTES_STYLE_GERMAN_GUILLEMETS)
+        val inputConnection = FakeInputConnection(context, "Er sagte \"Man kann das testen\"")
+
+        val handled = controller.handleSmartQuoteReplacement(
+            typedText = " ",
+            inputConnection = inputConnection,
+            shouldDisableSmartPunctuation = false
+        )
+
+        assertTrue(handled)
+        assertEquals("Er sagte »Man kann das testen« ", inputConnection.text)
+    }
+
+    @Test
+    fun smartQuotes_enabled_ignoresEmbeddedQuotesInsideWords() {
+        SettingsManager.setSmartQuotes(context, true)
+        SettingsManager.setSmartQuotesStyle(context, SettingsManager.SMART_QUOTES_STYLE_GERMAN_GUILLEMETS)
+        val inputConnection = FakeInputConnection(context, "foo\"bar\"")
+
+        val handled = controller.handleSmartQuoteReplacement(
+            typedText = " ",
+            inputConnection = inputConnection,
+            shouldDisableSmartPunctuation = false
+        )
+        if (!handled) inputConnection.commitText(" ", 1)
+
+        assertFalse(handled)
+        assertEquals("foo\"bar\" ", inputConnection.text)
+    }
+
+    @Test
+    fun smartQuotes_enabled_waitsForDelimiterAfterClosingQuote() {
+        SettingsManager.setSmartQuotes(context, true)
+        SettingsManager.setSmartQuotesStyle(context, SettingsManager.SMART_QUOTES_STYLE_GERMAN_GUILLEMETS)
+        val inputConnection = FakeInputConnection(context, "\"Hallo\"")
+
+        val handled = controller.handleSmartQuoteReplacement(
+            typedText = "a",
+            inputConnection = inputConnection,
+            shouldDisableSmartPunctuation = false
+        )
+        if (!handled) inputConnection.commitText("a", 1)
+
+        assertFalse(handled)
+        assertEquals("\"Hallo\"a", inputConnection.text)
+    }
+
+    @Test
     fun smartQuotes_enabled_supportsNarrowSpacedGuillemets() {
         SettingsManager.setSmartQuotes(context, true)
         SettingsManager.setSmartQuotesStyle(context, SettingsManager.SMART_QUOTES_STYLE_FRENCH_GUILLEMETS_NARROW_SPACED)

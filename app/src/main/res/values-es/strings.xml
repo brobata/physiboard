@@ -61,10 +61,12 @@
     <string name="reset_to_default">Restablecer Predeterminado</string>
     <string name="select_emoji">Seleccionar Emoji</string>
     <string name="close">Cerrar</string>
-    <string name="auto_correct_title">Auto Sustituciones</string>
-    <string name="auto_correct_languages_title">Sustituciones</string>
-    <string name="auto_correct_settings_title">Sustituciones de Auto-Corrección</string>
-    <string name="auto_correct_settings_description">Seleccione qué sustituciones usar para la auto-corrección. El idioma del sistema se muestra en la parte superior.</string>
+    <string name="auto_correct_title">Reemplazos de texto</string>
+    <string name="auto_correct_title_description">Aplica reglas guardadas como “ca → ça” al pulsar Espacio o Enter.</string>
+    <string name="auto_correct_languages_title">Gestionar reemplazos</string>
+    <string name="auto_correct_languages_description">Las reglas guardadas se aplican antes de la corrección automática.</string>
+    <string name="auto_correct_settings_title">Reemplazos de texto</string>
+    <string name="auto_correct_settings_description">Elige qué conjuntos de reglas están activos. Estas reglas exactas se aplican antes de la corrección automática basada en diccionario.</string>
     <string name="auto_correct_system_language">Idioma del sistema</string>
     <string name="auto_correct_ricette_pastiera_description">Personalizaciones válidas para todas las sustituciones</string>
     <string name="auto_correct_other_languages">Otras Sustituciones</string>
@@ -87,12 +89,14 @@
     <string name="auto_correct_language_code_required">El nombre de la sustitución es obligatorio</string>
     <string name="auto_correct_language_already_exists">Esta sustitución ya existe</string>
     <string name="auto_correct_suggestions_toggle_title">Sugerencias mientras se escribe</string>
-    <string name="auto_correct_accent_matching_title">Coincidir palabras acentuadas</string>
-    <string name="auto_correct_auto_replace_title">Reemplazo automático en espacio/enter</string>
+    <string name="auto_correct_accent_matching_title">Acentos y signos ortográficos</string>
+    <string name="auto_correct_auto_replace_title">Corrección automática</string>
+    <string name="auto_correct_auto_replace_description">Usa sugerencias del diccionario para corregir errores probables al pulsar Espacio o Enter.</string>
     <string name="auto_correct_max_distance_title">Distancia máxima de corrección</string>
     <string name="auto_correct_max_distance_off">Desactivado</string>
     <string name="auto_correct_max_distance_description">Número máximo de diferencias de caracteres permitidas para la auto-corrección. 0 = desactivado, 1-3 = tolerancia creciente.</string>
-    <string name="auto_correct_manage_user_dict_title">Gestionar diccionario de usuario</string>
+    <string name="auto_correct_manage_user_dict_title">Diccionario personal</string>
+    <string name="auto_correct_manage_user_dict_description">Palabras que Pastiera debe conocer y sugerir, sin crear reglas de reemplazo.</string>
     <string name="user_dict_title">Diccionario de usuario</string>
     <string name="user_dict_add_hint">Añadir una palabra</string>
     <string name="user_dict_add_button">Guardar palabra</string>

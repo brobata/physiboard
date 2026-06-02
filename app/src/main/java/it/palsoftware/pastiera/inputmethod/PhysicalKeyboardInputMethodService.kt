@@ -4013,9 +4013,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         if (canAddWordByGesture) {
             Log.d(TAG, "Adding user word '$addWordCandidate' from trackpad gesture")
             uiHandler.post {
+                val ic = currentInputConnection
                 candidatesBarController.flashSuggestionSlot(2)
                 suggestionController.addUserWord(addWordCandidate)
                 suggestionController.clearPendingAddWord()
+                if (ic != null) {
+                    AddWordCommitHelper.commitAutoSpaceAfterAddWord(ic)
+                }
                 updateStatusBarText()
                 NotificationHelper.triggerHapticFeedback(this)
             }

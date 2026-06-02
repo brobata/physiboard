@@ -5,6 +5,7 @@ import android.util.Log
 import android.view.KeyEvent
 import android.view.inputmethod.InputConnection
 import it.palsoftware.pastiera.inputmethod.AutoCorrector
+import it.palsoftware.pastiera.inputmethod.DebugCaptureStore
 import it.palsoftware.pastiera.inputmethod.NotificationHelper
 import it.palsoftware.pastiera.core.AutoSpaceTracker
 
@@ -123,7 +124,7 @@ class AutoCorrectionManager(
         val isEnterBoundary = boundaryChar == '\n'
         val isPunctuationBoundary = boundaryChar in punctuationChars
 
-        if (inputConnection != null && isPunctuationBoundary && AutoSpaceTracker.isPending()) {
+        if (isPunctuationBoundary && AutoSpaceTracker.isPending()) {
             val bracketSet = "()[]{}"
             if (boundaryChar in it.palsoftware.pastiera.core.Punctuation.AUTO_SPACE) {
                 val applied = AutoSpaceTracker.replaceAutoSpaceWithPunctuation(
@@ -160,7 +161,12 @@ class AutoCorrectionManager(
 
         inputConnection.deleteSurroundingText(deleteCount, 0)
         inputConnection.commitText(correctedWord, 1)
-        AutoCorrector.recordCorrection(wordToReplace, correctedWord)
+        val trigger = when {
+            isSpaceBoundary -> DebugCaptureStore.AutoCorrectionTrigger.SPACE
+            isEnterBoundary -> DebugCaptureStore.AutoCorrectionTrigger.ENTER
+            else -> DebugCaptureStore.AutoCorrectionTrigger.OTHER
+        }
+        AutoCorrector.recordCorrection(wordToReplace, correctedWord, trigger)
         
         // Trigger haptic feedback when autocorrection occurs
         NotificationHelper.triggerHapticFeedback(context)

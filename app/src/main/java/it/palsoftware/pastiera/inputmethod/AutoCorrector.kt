@@ -5,6 +5,7 @@ import android.content.res.AssetManager
 import android.util.Log
 import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils.localeString
 import org.json.JSONObject
+import java.text.Normalizer
 
 /**
  * Handles auto-correction of accents, apostrophes, and contractions.
@@ -97,23 +98,19 @@ object AutoCorrector {
 
             for (locale in standardLocales) {
                 try {
-                    // First load custom corrections (if they exist)
-                    if (context != null) {
-                        val customCorrections = it.palsoftware.pastiera.SettingsManager.getCustomAutoCorrections(context, locale)
-                        if (customCorrections.isNotEmpty()) {
-                            // Load custom corrections
-                            val customJson = correctionsToJson(customCorrections)
-                            loadCorrectionsFromJson(locale, customJson)
-                            // Don't add standard languages to customLanguages - these are just modifications, not new languages
-                            Log.d(TAG, "Loaded ${customCorrections.size} custom corrections for locale: $locale")
-                            continue // Skip loading default file
-                        }
-                    }
-                    
-                    // If no customizations, load default file
+                    // Load bundled defaults first, then overlay custom corrections.
                     val fileName = "common/autocorrect/auto_corrections_$locale.json"
                     val jsonString = assets.open(fileName).bufferedReader().use { it.readText() }
                     loadCorrectionsFromJson(locale, jsonString)
+
+                    if (context != null) {
+                        val customCorrections = it.palsoftware.pastiera.SettingsManager.getCustomAutoCorrections(context, locale)
+                        if (customCorrections.isNotEmpty()) {
+                            val customJson = correctionsToJson(customCorrections)
+                            loadCorrectionsFromJson(locale, customJson)
+                            Log.d(TAG, "Loaded ${customCorrections.size} custom corrections for locale: $locale")
+                        }
+                    }
                 } catch (e: Exception) {
                     // File not found or parsing error - ignore this language
                     Log.d(TAG, "No correction file found for locale: $locale")
@@ -198,7 +195,7 @@ object AutoCorrector {
      */
     private fun loadCorrectionsFromJson(locale: String, jsonString: String) {
         val jsonObject = JSONObject(jsonString)
-        val correctionMap = mutableMapOf<String, String>()
+        val correctionMap = corrections[locale]?.toMutableMap() ?: mutableMapOf()
 
         // JSON file contains an object with keys that are words to correct
         val keys = jsonObject.keys()
@@ -339,6 +336,22 @@ object AutoCorrector {
         }
 
         return null
+    }
+
+    private fun getCustomCorrection(word: String, locale: String, context: Context?): String? {
+        if (context == null) return null
+        val customCorrections = it.palsoftware.pastiera.SettingsManager.getCustomAutoCorrections(context, locale)
+        val correction = customCorrections[word.lowercase()] ?: return null
+        return applyCapitalization(word, correction)
+    }
+
+    private fun isOrthographicReplacement(original: String, replacement: String): Boolean {
+        fun normalize(text: String): String {
+            return Normalizer.normalize(text.lowercase(), Normalizer.Form.NFD)
+                .replace("\\p{Mn}".toRegex(), "")
+                .filter { it.isLetterOrDigit() }
+        }
+        return normalize(original) == normalize(replacement)
     }
 
     /**
@@ -482,22 +495,35 @@ object AutoCorrector {
                         Log.d(TAG, "Sequence '$sequence' has been rejected, don't correct")
                         continue // Try with fewer words
                     }
-                    if (maxWords == 1 && isKnownWord?.invoke(sequence) == true) {
-                        Log.d(TAG, "Word '$sequence' is known in an active dictionary, don't auto-substitute")
-                        continue
-                    }
+	                    for (lang in languagesToSearch) {
+	                        val customCorrection = getCustomCorrection(sequence, lang, context)
+	                        if (customCorrection != null) {
+	                            val known = maxWords == 1 && isKnownWord?.invoke(sequence) == true
+	                            if (!known || isOrthographicReplacement(sequence, customCorrection)) {
+	                                Log.d(TAG, "Found custom correction for sequence: '$sequence' → '$customCorrection' (language: $lang)")
+	                                return Pair(sequence, customCorrection)
+	                            }
+	                        }
+	                    }
 
-                    // Check if there's a correction for this sequence in one of the enabled languages
-                    for (lang in languagesToSearch) {
-                        val correction = getCorrection(sequence, lang, context)
-                        if (correction != null) {
-                            Log.d(TAG, "Found correction for multi-word sequence: '$sequence' → '$correction' (language: $lang)")
-                            return Pair(sequence, correction)
-                        }
-                    }
-                }
-            }
-        }
+	                    // Check if there's a correction for this sequence in one of the enabled languages
+	                    for (lang in languagesToSearch) {
+	                        val correction = getCorrection(sequence, lang, context)
+	                        if (correction != null) {
+	                            val known = maxWords == 1 && isKnownWord?.invoke(sequence) == true
+	                            if (!known || isOrthographicReplacement(sequence, correction)) {
+	                                Log.d(TAG, "Found correction for multi-word sequence: '$sequence' → '$correction' (language: $lang)")
+	                                return Pair(sequence, correction)
+	                            }
+	                        }
+	                    }
+	                    if (maxWords == 1 && isKnownWord?.invoke(sequence) == true) {
+	                        Log.d(TAG, "Word '$sequence' is known in an active dictionary, don't auto-substitute")
+	                        continue
+	                    }
+	                }
+	            }
+	        }
 
         // If we didn't find patterns with spaces, search for a single word
         var startIndex = endIndex
@@ -521,22 +547,36 @@ object AutoCorrector {
             return null
         }
 
-        if (isKnownWord?.invoke(word) == true) {
-            Log.d(TAG, "Word '$word' is known in an active dictionary, don't auto-substitute")
-            return null
-        }
+	        for (lang in languagesToSearch) {
+	            val customCorrection = getCustomCorrection(word, lang, context)
+	            if (customCorrection != null) {
+	                val known = isKnownWord?.invoke(word) == true
+	                if (!known || isOrthographicReplacement(word, customCorrection)) {
+	                    Log.d(TAG, "Found custom correction for word: '$word' → '$customCorrection' (language: $lang)")
+	                    return Pair(word, customCorrection)
+	                }
+	            }
+	        }
 
-        // Check if there's a correction for the single word in one of the enabled languages
-        for (lang in languagesToSearch) {
-            val correction = getCorrection(word, lang, context)
-            if (correction != null) {
-                Log.d(TAG, "Found correction for word: '$word' → '$correction' (language: $lang)")
-                return Pair(word, correction)
-            }
-        }
+	        // Check if there's a correction for the single word in one of the enabled languages
+	        for (lang in languagesToSearch) {
+	            val correction = getCorrection(word, lang, context)
+	            if (correction != null) {
+	                val known = isKnownWord?.invoke(word) == true
+	                if (!known || isOrthographicReplacement(word, correction)) {
+	                    Log.d(TAG, "Found correction for word: '$word' → '$correction' (language: $lang)")
+	                    return Pair(word, correction)
+	                }
+	            }
+	        }
 
-        return null
-    }
+	        if (isKnownWord?.invoke(word) == true) {
+	            Log.d(TAG, "Word '$word' is known in an active dictionary, don't auto-substitute")
+	            return null
+	        }
+
+	        return null
+	    }
 
     /**
      * Records an applied correction.
@@ -544,13 +584,17 @@ object AutoCorrector {
      * @param originalWord The original word
      * @param correctedWord The corrected word
      */
-    fun recordCorrection(originalWord: String, correctedWord: String) {
+    fun recordCorrection(
+        originalWord: String,
+        correctedWord: String,
+        trigger: DebugCaptureStore.AutoCorrectionTrigger = DebugCaptureStore.AutoCorrectionTrigger.OTHER
+    ) {
         lastCorrection = LastCorrection(
             originalWord = originalWord,
             correctedWord = correctedWord,
             correctionLength = correctedWord.length
         )
-        DebugCaptureStore.recordAutoCorrectionApplied(originalWord, correctedWord)
+        DebugCaptureStore.recordAutoCorrectionApplied(originalWord, correctedWord, trigger)
         Log.d(TAG, "Correction recorded: '$originalWord' → '$correctedWord'")
     }
 
