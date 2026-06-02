@@ -180,6 +180,7 @@ fun CustomInputStylesScreen(
                 items(inputStyles, key = { "${it.locale}:${it.layout}" }) { style ->
                     CustomInputStyleItem(
                         style = style,
+                        canHideSystemLocale = style.isSystemLocale && inputStyles.size > 1,
                         onClick = {
                             // Allow editing both custom styles and system locales (locale can't be changed for system locales)
                             editStyle = style
@@ -190,6 +191,10 @@ fun CustomInputStylesScreen(
                             if (!style.isSystemLocale) {
                                 deleteConfirmStyle = style
                             }
+                        },
+                        onHideSystemLocale = {
+                            SettingsManager.hideSystemInputStyle(context, style.locale, style.layout)
+                            inputStyles = loadCustomInputStyles(context)
                         }
                     )
                 }
@@ -555,8 +560,10 @@ private fun AppLanguageSelectorCard() {
 @Composable
 private fun CustomInputStyleItem(
     style: CustomInputStyle,
+    canHideSystemLocale: Boolean,
     onClick: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onHideSystemLocale: () -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -600,13 +607,33 @@ private fun CustomInputStyleItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            if (!style.isSystemLocale) {
-                IconButton(onClick = onDelete) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = stringResource(R.string.custom_input_styles_delete),
-                        tint = MaterialTheme.colorScheme.error
-                    )
+            when {
+                !style.isSystemLocale -> {
+                    IconButton(onClick = onDelete) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = stringResource(R.string.custom_input_styles_delete),
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+                canHideSystemLocale -> {
+                    IconButton(onClick = onHideSystemLocale) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = stringResource(R.string.custom_input_styles_hide_system_locale),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                else -> {
+                    IconButton(onClick = {}, enabled = false) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = stringResource(R.string.custom_input_styles_hide_system_locale),
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                        )
+                    }
                 }
             }
         }
@@ -1049,6 +1076,9 @@ private fun loadCustomInputStyles(context: Context): List<CustomInputStyle> {
     val systemLocales = getSystemEnabledLocales(context)
     systemLocales.forEach { locale ->
         val layout = AdditionalSubtypeUtils.getLayoutForLocale(context.assets, locale, context)
+        if (SettingsManager.isSystemInputStyleHidden(context, locale, layout)) {
+            return@forEach
+        }
         val displayName = "${getLocaleDisplayName(locale)} - $layout"
         styles.add(
             CustomInputStyle(

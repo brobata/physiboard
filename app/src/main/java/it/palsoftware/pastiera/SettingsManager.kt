@@ -3519,6 +3519,7 @@ object SettingsManager {
     // Custom Input Styles (Additional Subtypes)
     private const val KEY_CUSTOM_INPUT_STYLES = "custom_input_styles"
     private const val KEY_INPUT_STYLE_SUGGESTION_LOCALES = "input_style_suggestion_locales"
+    private const val KEY_HIDDEN_SYSTEM_INPUT_STYLES = "hidden_system_input_styles"
 
     /**
      * Gets the custom input styles preference string.
@@ -3556,6 +3557,16 @@ object SettingsManager {
         getPreferences(context).edit()
             .putString(KEY_CUSTOM_INPUT_STYLES, stylesString)
             .apply()
+    }
+
+    fun isSystemInputStyleHidden(context: Context, locale: String, layout: String): Boolean {
+        return hiddenSystemInputStyleKeys(context).contains(inputStyleKey(locale, layout))
+    }
+
+    fun hideSystemInputStyle(context: Context, locale: String, layout: String) {
+        val updated = hiddenSystemInputStyleKeys(context).toMutableSet()
+        updated.add(inputStyleKey(locale, layout))
+        saveHiddenSystemInputStyleKeys(context, updated)
     }
 
     fun getAdditionalSuggestionLocalesForInputStyle(
@@ -3627,11 +3638,40 @@ object SettingsManager {
     }
 
     private fun inputStyleSuggestionKey(locale: String, layout: String): String {
+        return inputStyleKey(locale, layout)
+    }
+
+    private fun inputStyleKey(locale: String, layout: String): String {
         return "${normalizeSuggestionLocaleTag(locale)}:${layout.trim()}"
     }
 
     private fun normalizeSuggestionLocaleTag(locale: String): String {
         return locale.trim().replace('_', '-')
+    }
+
+    private fun hiddenSystemInputStyleKeys(context: Context): Set<String> {
+        val jsonString = getPreferences(context).getString(KEY_HIDDEN_SYSTEM_INPUT_STYLES, null)
+            ?: return emptySet()
+        return try {
+            val array = org.json.JSONArray(jsonString)
+            buildSet {
+                for (i in 0 until array.length()) {
+                    val key = array.optString(i).trim()
+                    if (key.isNotBlank()) add(key)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error parsing hidden system input styles", e)
+            emptySet()
+        }
+    }
+
+    private fun saveHiddenSystemInputStyleKeys(context: Context, keys: Set<String>) {
+        val array = org.json.JSONArray()
+        keys.sorted().forEach { array.put(it) }
+        getPreferences(context).edit()
+            .putString(KEY_HIDDEN_SYSTEM_INPUT_STYLES, array.toString())
+            .apply()
     }
     
     // ========================

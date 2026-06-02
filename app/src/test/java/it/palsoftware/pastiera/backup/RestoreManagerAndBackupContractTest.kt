@@ -40,6 +40,10 @@ class RestoreManagerAndBackupContractTest {
             PreferenceValueType.STRING,
             PreferenceSchemas.expectedType("pastiera_prefs", "input_style_suggestion_locales")
         )
+        assertEquals(
+            PreferenceValueType.STRING,
+            PreferenceSchemas.expectedType("pastiera_prefs", "hidden_system_input_styles")
+        )
     }
 
     @Test

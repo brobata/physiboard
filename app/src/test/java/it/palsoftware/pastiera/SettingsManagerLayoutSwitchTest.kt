@@ -70,6 +70,18 @@ class SettingsManagerLayoutSwitchTest {
     }
 
     @Test
+    fun hiddenSystemInputStyles_persistPerLocaleAndLayout() {
+        val context = RuntimeEnvironment.getApplication()
+
+        assertFalse(SettingsManager.isSystemInputStyleHidden(context, "de_DE", "qwertz"))
+
+        SettingsManager.hideSystemInputStyle(context, "de_DE", "qwertz")
+
+        assertTrue(SettingsManager.isSystemInputStyleHidden(context, "de-DE", "qwertz"))
+        assertFalse(SettingsManager.isSystemInputStyleHidden(context, "de-DE", "qwerty"))
+    }
+
+    @Test
     fun layoutSwitchToast_defaultsEnabled_andPersistsDisabledState() {
         val context = RuntimeEnvironment.getApplication()
 

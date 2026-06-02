@@ -12,6 +12,7 @@ import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils
 import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils.localeString
 import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils.setInputMethodAndSubtypeCompat
 import it.palsoftware.pastiera.data.layout.LayoutFileStore
+import it.palsoftware.pastiera.SettingsManager
 
 /**
  * Utility class for cycling between IME subtypes.
@@ -202,7 +203,10 @@ object SubtypeCycler {
         return subtypes.filter { subtype ->
             val locale = subtype.localeString()
             val layout = AdditionalSubtypeUtils.resolveActiveLayout(assets, context, subtype)
-            seen.add("$locale:$layout")
+            val hiddenSystemLocale =
+                !AdditionalSubtypeUtils.isAdditionalSubtype(subtype) &&
+                    SettingsManager.isSystemInputStyleHidden(context, locale, layout)
+            !hiddenSystemLocale && seen.add("$locale:$layout")
         }
     }
     
