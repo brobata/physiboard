@@ -262,10 +262,14 @@ object DeviceSpecific {
             )
         }
         if (isTitanFamily(fp)) {
+            val model = resolveTitanModel(fp)
             return DeviceProfile(
                 family = KeyboardFamily.UNIHERTZ,
-                model = resolveTitanModel(fp),
-                physicalLayoutName = "titan2",
+                model = model,
+                physicalLayoutName = when (model) {
+                    KeyboardModel.TITAN_ORIGINAL -> "titan"
+                    else -> "titan2"
+                },
                 needsEventRemapping = false
             )
         }
@@ -305,6 +309,7 @@ object DeviceSpecific {
             "key2" -> KeyboardModel.KEY2
             "q25" -> KeyboardModel.Q25
             "titan2elite_qwerty" -> KeyboardModel.TITAN_2_ELITE_QWERTY
+            "titan" -> KeyboardModel.TITAN_ORIGINAL
             "titan2" -> KeyboardModel.TITAN_2
             "mp01" -> KeyboardModel.MINIMAL_PHONE
             else -> currentDeviceProfile().model
@@ -315,7 +320,7 @@ object DeviceSpecific {
         val normalized = physicalProfileOverride?.trim()?.lowercase().orEmpty()
         return when (normalized) {
             "", "auto" -> null
-            "key2", "q25", "titan2", "titan2elite_qwerty", "mp01" -> normalized
+            "key2", "q25", "titan", "titan2", "titan2elite_qwerty", "mp01" -> normalized
             else -> null
         }
     }

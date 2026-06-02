@@ -67,6 +67,24 @@ class DeviceSpecificTest {
     }
 
     @Test
+    fun originalTitanProfile_detectsOriginalTitanLayout() {
+        DeviceSpecific.setBuildFingerprintForTests(
+            brand = "Unihertz",
+            manufacturer = "A-gold",
+            model = "Titan",
+            device = "Titan",
+            product = "Titan",
+            board = "g61v71c2k_dfl_tee",
+            display = "Titan_20221121"
+        )
+
+        assertEquals("titan", DeviceSpecific.physicalKeyboardName())
+        assertEquals("Unihertz", DeviceSpecific.keyboardName())
+        assertFalse(DeviceSpecific.needsRemapping())
+        assertFalse(DeviceSpecific.isTitan2Device())
+    }
+
+    @Test
     fun minimalPhoneProfile_detectsMp01LayoutWithoutRemapping() {
         DeviceSpecific.setBuildFingerprintForTests(
             brand = "minimal",

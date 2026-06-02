@@ -62,7 +62,7 @@ object SettingsManager {
     const val KEY_KEYBOARD_LAYOUT_AUTO_MAPPING_UPDATED = "keyboard_layout_auto_mapping_updated"
     private const val KEY_KEYBOARD_LAYOUT_LIST = "keyboard_layout_list" // JSON array of layout ids for cycling
     private const val KEY_ALT_SHIFT_LAYOUT_SWITCH = "alt_shift_layout_switch" // Enable Alt+Shift shortcut for layout cycling
-    private const val KEY_PHYSICAL_KEYBOARD_PROFILE_OVERRIDE = "physical_keyboard_profile_override" // auto | key2 | Q25 | titan2 | titan2elite_qwerty | mp01
+    private const val KEY_PHYSICAL_KEYBOARD_PROFILE_OVERRIDE = "physical_keyboard_profile_override" // auto | key2 | Q25 | titan | titan2 | titan2elite_qwerty | mp01
     private const val KEY_PHYSICAL_KEYBOARD_CURRENCY_SYMBOL = "physical_keyboard_currency_symbol" // Currency symbol for dedicated hardware keys
     private const val KEY_RESTORE_SYM_PAGE = "restore_sym_page" // SYM page to restore when returning from settings
     private const val KEY_PENDING_RESTORE_SYM_PAGE = "pending_restore_sym_page" // Temporary SYM page state saved when opening settings
@@ -2657,7 +2657,7 @@ object SettingsManager {
 
     /**
      * Returns the manual physical keyboard profile override used for device-specific mappings.
-     * Supported values: auto, key2, Q25, titan2, titan2elite_qwerty, mp01.
+     * Supported values: auto, key2, Q25, titan, titan2, titan2elite_qwerty, mp01.
      */
     fun getPhysicalKeyboardProfileOverride(context: Context): String {
         val value = getPreferences(context).getString(
@@ -2742,6 +2742,7 @@ object SettingsManager {
             normalized.equals("auto", ignoreCase = true) -> "auto"
             normalized.equals("key2", ignoreCase = true) -> "key2"
             normalized.equals("q25", ignoreCase = true) -> "Q25"
+            normalized.equals("titan", ignoreCase = true) -> "titan"
             normalized.equals("titan2", ignoreCase = true) -> "titan2"
             normalized.equals("titan2elite_qwerty", ignoreCase = true) -> "titan2elite_qwerty"
             normalized.equals("mp01", ignoreCase = true) -> "mp01"
