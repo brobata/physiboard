@@ -42,6 +42,7 @@ class SuggestionController(
     private val appContext = context.applicationContext
     private val debugLogging: Boolean = debugLogging
     private val userDictionaryStore = UserDictionaryStore()
+    private val dictionaryRepositoryCache = mutableMapOf<String, DictionaryRepository>()
     private var dictionaryRepository: DictionaryRepository = createDictionaryRepository(currentLocale)
     private var suggestionEngine = SuggestionEngine(dictionaryRepository, locale = currentLocale, debugLogging = debugLogging).apply {
         setKeyboardLayout(keyboardLayoutProvider())
@@ -67,14 +68,24 @@ class SuggestionController(
     )
 
     private fun createDictionaryRepository(locale: Locale): DictionaryRepository {
-        return dictionaryRepositoryFactory?.invoke(appContext, assets, userDictionaryStore, locale, debugLogging)
-            ?: AndroidDictionaryRepository(
+        val cacheKey = dictionaryCacheKey(locale)
+        return dictionaryRepositoryCache.getOrPut(cacheKey) {
+            dictionaryRepositoryFactory?.invoke(appContext, assets, userDictionaryStore, locale, debugLogging)
+                ?: AndroidDictionaryRepository(
                 appContext,
                 assets,
                 userDictionaryStore,
                 baseLocale = locale,
                 debugLogging = debugLogging
             )
+        }
+    }
+
+    private fun dictionaryCacheKey(locale: Locale): String {
+        return locale.language
+            .takeIf { it.isNotBlank() }
+            ?.lowercase(Locale.ROOT)
+            ?: locale.toLanguageTag().lowercase(Locale.ROOT)
     }
     
     /**
@@ -86,6 +97,9 @@ class SuggestionController(
         // Cancel previous load job if still running to prevent conflicts
         currentLoadJob?.cancel()
         currentLoadJob = null
+        pendingInitialContextConnection = null
+        pendingPrimaryRefreshAfterLoad = false
+        pendingExtraRefreshAfterLoad = false
         
         currentLocale = newLocale
         dictionaryRepository = createDictionaryRepository(currentLocale)
@@ -107,10 +121,8 @@ class SuggestionController(
             }
         )
         
-        // Reload dictionary in background
-        currentLoadJob = loadScope.launch {
-            dictionaryRepository.loadIfNeeded()
-        }
+        // Reload dictionary in background and refresh the current word when ready.
+        schedulePrimaryDictionaryLoad(refreshAfterLoad = true)
         
         // Reset tracker and clear suggestions
         previousCompletedWord = null
@@ -135,6 +147,9 @@ class SuggestionController(
     private val cursorDebounceMs = 120L
     private var pendingAddUserWord: String? = null
     private var previousCompletedWord: String? = null
+    private var pendingInitialContextConnection: InputConnection? = null
+    @Volatile private var pendingPrimaryRefreshAfterLoad: Boolean = false
+    @Volatile private var pendingExtraRefreshAfterLoad: Boolean = false
 
     private fun updateSuggestionsForWord(word: String) {
         val settings = settingsProvider()
@@ -156,7 +171,7 @@ class SuggestionController(
         )
         val extraSuggestions = activeExtraSuggestionEngines().flatMap { extra ->
             if (!extra.repository.isReady) {
-                scheduleRepositoryLoad(extra.repository)
+                scheduleRepositoryLoad(extra.repository, refreshAfterLoad = true)
                 emptyList()
             } else {
                 extra.engine.suggest(
@@ -295,7 +310,12 @@ class SuggestionController(
      */
     fun readInitialContext(inputConnection: InputConnection?) {
         if (!isEnabled()) return
-        if (inputConnection == null || !dictionaryRepository.isReady) return
+        if (inputConnection == null) return
+        if (!dictionaryRepository.isReady) {
+            pendingInitialContextConnection = inputConnection
+            ensureDictionaryLoaded(refreshAfterLoad = true)
+            return
+        }
         
         val word = extractWordAtCursor(inputConnection)
         if (!word.isNullOrBlank()) {
@@ -410,7 +430,7 @@ class SuggestionController(
 
         return activeExtraSuggestionEngines().any { extra ->
             if (!extra.repository.isReady) {
-                scheduleRepositoryLoad(extra.repository)
+                scheduleRepositoryLoad(extra.repository, refreshAfterLoad = false)
                 // Defer legacy auto-substitution while an explicitly active
                 // extra dictionary is still loading; wrong replacements are
                 // worse than skipping one boundary.
@@ -557,10 +577,29 @@ class SuggestionController(
         }
     }
 
-    private fun scheduleRepositoryLoad(repository: DictionaryRepository) {
+    private fun scheduleRepositoryLoad(repository: DictionaryRepository, refreshAfterLoad: Boolean) {
+        if (refreshAfterLoad) {
+            pendingExtraRefreshAfterLoad = true
+        }
         if (!repository.isReady && !repository.isLoadStarted) {
             loadScope.launch {
-                repository.loadIfNeeded()
+                try {
+                    repository.loadIfNeeded()
+                    val shouldRefresh = refreshAfterLoad || pendingExtraRefreshAfterLoad
+                    if (shouldRefresh && repository.isReady) {
+                        pendingExtraRefreshAfterLoad = false
+                        cursorHandler.post {
+                            val word = tracker.currentWord
+                            if (word.isNotBlank()) {
+                                updateSuggestionsForWord(word)
+                            }
+                        }
+                    }
+                } catch (_: CancellationException) {
+                    // Cancelled due to rapid switches; safe to ignore.
+                } catch (e: Exception) {
+                    Log.e("PastieraIME", "Failed to load extra dictionary", e)
+                }
             }
         }
     }
@@ -674,21 +713,61 @@ class SuggestionController(
      * Should be called during initialization to have dictionary ready when user focuses a field.
      */
     fun preloadDictionary() {
-        if (!dictionaryRepository.isReady && !dictionaryRepository.isLoadStarted) {
-            loadScope.launch {
-                dictionaryRepository.loadIfNeeded()
-            }
-        }
-        activeExtraSuggestionEngines().forEach { scheduleRepositoryLoad(it.repository) }
+        schedulePrimaryDictionaryLoad(refreshAfterLoad = false)
+        activeExtraSuggestionEngines().forEach { scheduleRepositoryLoad(it.repository, refreshAfterLoad = false) }
     }
 
-    private fun ensureDictionaryLoaded() {
+    private fun ensureDictionaryLoaded(refreshAfterLoad: Boolean = false) {
         if (!dictionaryRepository.isReady) {
-            dictionaryRepository.ensureLoadScheduled {
-                loadScope.launch {
-                    dictionaryRepository.loadIfNeeded()
-                }
+            schedulePrimaryDictionaryLoad(refreshAfterLoad)
+        }
+    }
+
+    private fun schedulePrimaryDictionaryLoad(refreshAfterLoad: Boolean) {
+        val repository = dictionaryRepository
+        if (refreshAfterLoad) {
+            pendingPrimaryRefreshAfterLoad = true
+        }
+        if (repository.isReady) {
+            if (refreshAfterLoad) {
+                pendingPrimaryRefreshAfterLoad = false
+                cursorHandler.post { refreshSuggestionsAfterDictionaryReady(repository) }
             }
+            return
+        }
+        if (repository.isLoadStarted) return
+
+        currentLoadJob = loadScope.launch {
+            try {
+                repository.loadIfNeeded()
+                val shouldRefresh = refreshAfterLoad || pendingPrimaryRefreshAfterLoad
+                if (shouldRefresh && repository.isReady) {
+                    pendingPrimaryRefreshAfterLoad = false
+                    cursorHandler.post { refreshSuggestionsAfterDictionaryReady(repository) }
+                }
+            } catch (_: CancellationException) {
+                // Cancelled due to rapid switches; safe to ignore.
+            } catch (e: Exception) {
+                Log.e("PastieraIME", "Failed to load dictionary", e)
+            }
+        }
+    }
+
+    private fun refreshSuggestionsAfterDictionaryReady(repository: DictionaryRepository) {
+        if (!isEnabled() || repository !== dictionaryRepository || !repository.isReady) return
+
+        pendingInitialContextConnection?.let { inputConnection ->
+            pendingInitialContextConnection = null
+            val word = extractWordAtCursor(inputConnection)
+            if (!word.isNullOrBlank()) {
+                tracker.setWord(word)
+                return
+            }
+        }
+
+        val word = tracker.currentWord
+        if (word.isNotBlank()) {
+            updateSuggestionsForWord(word)
         }
     }
 

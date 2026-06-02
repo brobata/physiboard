@@ -1,14 +1,16 @@
 package it.palsoftware.pastiera.core.suggestions
 
+import android.os.Looper
 import android.view.KeyCharacterMap
 import android.view.KeyEvent
 import java.util.Locale
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
@@ -130,6 +132,30 @@ class SuggestionControllerNextWordTest {
         assertEquals(listOf("english"), snapshots.last().map { it.candidate })
     }
 
+    @Test
+    fun refreshesCurrentWordSuggestionsWhenDictionaryFinishesLoading() {
+        val delayedRepository = FakeDictionaryRepository().apply {
+            isReady = false
+            addTestEntry("english", 200)
+        }
+        val context = RuntimeEnvironment.getApplication()
+        val controller = SuggestionController(
+            context = context,
+            assets = context.assets,
+            settingsProvider = { SuggestionSettings(suggestionsEnabled = true, maxSuggestions = 3) },
+            onSuggestionsUpdated = { suggestions -> snapshots.add(suggestions) },
+            currentLocale = Locale.ENGLISH,
+            dictionaryRepositoryFactory = { _, _, _, _, _ -> delayedRepository },
+            nextWordPredictorOverride = NextWordPredictor(store)
+        )
+
+        controller.preloadDictionary()
+        controller.onCharacterCommitted("e", null)
+
+        waitForSuggestion("english")
+        assertEquals(listOf("english"), snapshots.last().map { it.candidate })
+    }
+
     private fun newController(): SuggestionController {
         val context = RuntimeEnvironment.getApplication()
         return SuggestionController(
@@ -182,5 +208,16 @@ class SuggestionControllerNextWordTest {
             KeyCharacterMap.VIRTUAL_KEYBOARD,
             0
         )
+    }
+
+    private fun waitForSuggestion(candidate: String) {
+        repeat(40) {
+            shadowOf(Looper.getMainLooper()).idle()
+            if (snapshots.any { suggestions -> suggestions.any { it.candidate == candidate } }) {
+                return
+            }
+            Thread.sleep(50)
+        }
+        assertTrue("Expected suggestion '$candidate'", false)
     }
 }

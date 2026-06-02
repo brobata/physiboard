@@ -2527,12 +2527,12 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     }
     
     /**
-     * Gets the locale from the current IME subtype.
-     * Falls back to Italian if no subtype is available.
+     * Gets the locale from an IME subtype.
+     * Falls back to the current subtype, then Italian if no subtype is available.
      */
-    private fun getLocaleFromSubtype(): Locale {
+    private fun getLocaleFromSubtype(subtypeOverride: InputMethodSubtype? = null): Locale {
         val imm = getSystemService(InputMethodManager::class.java)
-        val subtype = imm.currentInputMethodSubtype
+        val subtype = subtypeOverride ?: imm.currentInputMethodSubtype
         val localeString = subtype?.localeString() ?: "it-IT"
         return try {
             AdditionalSubtypeUtils.localeFromSubtypeString(localeString)
@@ -2566,8 +2566,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         super.onCurrentInputMethodSubtypeChanged(newSubtype)
         
         if (::suggestionController.isInitialized) {
-            val newLocale = getLocaleFromSubtype()
+            val newLocale = getLocaleFromSubtype(newSubtype)
             suggestionController.updateLocale(newLocale)
+            if (!inputContextState.shouldDisableSuggestions) {
+                suggestionController.readInitialContext(currentInputConnection)
+            }
             if (Log.isLoggable(TAG, Log.DEBUG)) {
                 Log.d(TAG, "IME subtype changed, updating locale to: ${newLocale.language}")
             }
