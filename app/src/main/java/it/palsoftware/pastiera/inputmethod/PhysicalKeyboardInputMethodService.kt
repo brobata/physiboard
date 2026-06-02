@@ -70,6 +70,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     companion object {
         private const val TAG = "PastieraInputMethod"
         private const val TRACKPAD_DEBUG_TAG = "TrackpadDebug"
+        private const val NATIVE_TRACKPAD_MIN_SWIPE_VELOCITY_PX_PER_MS = 2f
         private const val DISCORD_PACKAGE_NAME = "com.discord"
         private val MESSENGER_ENTER_BEHAVIOR_PACKAGES = setOf(
             "com.whatsapp",
@@ -241,6 +242,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private var nativeTrackpadGestureStart: NativeTrackpadGestureStart? = null
     private var nativeTrackpadLastX: Float = 0f
     private var nativeTrackpadLastY: Float = 0f
+    private var nativeTrackpadLastEventTimeUptimeMs: Long = 0L
     private var nativeTrackpadGestureHandled: Boolean = false
     private var nativeTrackpadGestureAtMs: Long = 0L
     private var trackpadDecorMotionView: View? = null
@@ -3765,11 +3767,12 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 )
                 nativeTrackpadLastX = event.x
                 nativeTrackpadLastY = event.y
+                nativeTrackpadLastEventTimeUptimeMs = event.eventTime
                 nativeTrackpadGestureHandled = false
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
-                val start = nativeTrackpadGestureStart ?: NativeTrackpadGestureStart(
+                nativeTrackpadGestureStart ?: NativeTrackpadGestureStart(
                     x = event.x,
                     y = event.y,
                     origin = origin,
@@ -3778,35 +3781,38 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                     source = event.source,
                     eventTimeUptimeMs = event.eventTime
                 ).also { nativeTrackpadGestureStart = it }
-                if (nativeTrackpadGestureHandled) {
-                    return true
-                }
                 for (index in 0 until event.historySize) {
                     val historicalX = event.getHistoricalX(0, index)
                     val historicalY = event.getHistoricalY(0, index)
                     nativeTrackpadLastX = historicalX
                     nativeTrackpadLastY = historicalY
-                    if (handleNativeImeTrackpadSwipeCandidate(start, historicalX, historicalY, "move_history[$index]")) {
-                        return true
-                    }
+                    nativeTrackpadLastEventTimeUptimeMs = event.getHistoricalEventTime(index)
                 }
                 nativeTrackpadLastX = event.x
                 nativeTrackpadLastY = event.y
-                handleNativeImeTrackpadSwipeCandidate(start, event.x, event.y, "move")
+                nativeTrackpadLastEventTimeUptimeMs = event.eventTime
                 return true
             }
             MotionEvent.ACTION_UP -> {
                 val start = nativeTrackpadGestureStart
                 if (start != null && !nativeTrackpadGestureHandled) {
-                    handleNativeImeTrackpadSwipeCandidate(start, nativeTrackpadLastX, nativeTrackpadLastY, "up")
+                    handleNativeImeTrackpadSwipeCandidate(
+                        start = start,
+                        x = nativeTrackpadLastX,
+                        y = nativeTrackpadLastY,
+                        phase = "up",
+                        eventTimeUptimeMs = nativeTrackpadLastEventTimeUptimeMs.takeIf { it > 0L } ?: event.eventTime
+                    )
                 }
                 nativeTrackpadGestureStart = null
                 nativeTrackpadGestureHandled = false
+                nativeTrackpadLastEventTimeUptimeMs = 0L
                 return true
             }
             MotionEvent.ACTION_CANCEL -> {
                 nativeTrackpadGestureStart = null
                 nativeTrackpadGestureHandled = false
+                nativeTrackpadLastEventTimeUptimeMs = 0L
                 return true
             }
             else -> return false
@@ -3817,25 +3823,32 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         start: NativeTrackpadGestureStart,
         x: Float,
         y: Float,
-        phase: String
+        phase: String,
+        eventTimeUptimeMs: Long
     ): Boolean {
         val deltaX = x - start.x
         val deltaY = y - start.y
         val upwardDistance = -deltaY
         val leftwardDistance = -deltaX
         val threshold = nativeImeTrackpadSwipeThreshold()
+        val durationMs = (eventTimeUptimeMs - start.eventTimeUptimeMs).coerceAtLeast(1L)
+        val upVelocity = upwardDistance / durationMs
+        val leftVelocity = leftwardDistance / durationMs
         val verticalEnough = upwardDistance >= threshold
-        val mostlyVertical = upwardDistance >= kotlin.math.abs(deltaX) * 1.4f
+        val mostlyVertical = kotlin.math.abs(deltaX) < upwardDistance / 4f
+        val verticalFastEnough = upVelocity >= NATIVE_TRACKPAD_MIN_SWIPE_VELOCITY_PX_PER_MS
         val leftEnough = leftwardDistance >= threshold
-        val mostlyHorizontal = leftwardDistance >= kotlin.math.abs(deltaY) * 1.4f
+        val mostlyHorizontal = kotlin.math.abs(deltaY) < leftwardDistance / 4f
+        val horizontalFastEnough = leftVelocity >= NATIVE_TRACKPAD_MIN_SWIPE_VELOCITY_PX_PER_MS
         Log.d(
             TRACKPAD_DEBUG_TAG,
-            "Native candidate[$phase]: startX=${start.x}, startY=${start.y}, x=$x, y=$y, dx=$deltaX, dy=$deltaY, up=$upwardDistance, left=$leftwardDistance, threshold=$threshold, verticalEnough=$verticalEnough, mostlyVertical=$mostlyVertical, leftEnough=$leftEnough, mostlyHorizontal=$mostlyHorizontal"
+            "Native candidate[$phase]: startX=${start.x}, startY=${start.y}, x=$x, y=$y, dx=$deltaX, dy=$deltaY, up=$upwardDistance, left=$leftwardDistance, threshold=$threshold, duration=${durationMs}ms, upVelocity=$upVelocity, leftVelocity=$leftVelocity, verticalEnough=$verticalEnough, mostlyVertical=$mostlyVertical, verticalFastEnough=$verticalFastEnough, leftEnough=$leftEnough, mostlyHorizontal=$mostlyHorizontal, horizontalFastEnough=$horizontalFastEnough"
         )
         val direction = when {
-            verticalEnough && mostlyVertical -> NativeTrackpadSwipeDirection.UP
+            verticalEnough && mostlyVertical && verticalFastEnough -> NativeTrackpadSwipeDirection.UP
             leftEnough &&
                 mostlyHorizontal &&
+                horizontalFastEnough &&
                 SettingsManager.getSwipeToDelete(this) &&
                 SettingsManager.getSwipeToDeleteProvider(this) == SettingsManager.SWIPE_TO_DELETE_PROVIDER_NATIVE_IME -> NativeTrackpadSwipeDirection.LEFT
             else -> {
@@ -3854,7 +3867,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                     threshold = threshold,
                     deviceId = start.deviceId,
                     source = start.source,
-                    eventTimeUptimeMs = start.eventTimeUptimeMs
+                    eventTimeUptimeMs = eventTimeUptimeMs
                 )
                 return false
             }
@@ -3877,7 +3890,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 threshold = threshold,
                 deviceId = start.deviceId,
                 source = start.source,
-                eventTimeUptimeMs = start.eventTimeUptimeMs
+                eventTimeUptimeMs = eventTimeUptimeMs
             )
             nativeTrackpadGestureHandled = true
             return true
@@ -3890,7 +3903,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 val third = nativeImeTrackpadThird(start.x)
                 Log.d(
                     TRACKPAD_DEBUG_TAG,
-                    "Native swipe accepted[$phase]: direction=UP startX=${start.x}, startY=${start.y}, x=$x, y=$y, dx=$deltaX, dy=$deltaY, third=$third"
+                    "Native swipe accepted[$phase]: direction=UP startX=${start.x}, startY=${start.y}, x=$x, y=$y, dx=$deltaX, dy=$deltaY, duration=${durationMs}ms, velocity=$upVelocity, third=$third"
                 )
                 KeyboardEventTracker.notifySyntheticGestureKeyEvent(
                     provider = SettingsManager.TRACKPAD_PROVIDER_NATIVE_IME,
@@ -3908,14 +3921,14 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                     threshold = threshold,
                     deviceId = start.deviceId,
                     source = start.source,
-                    eventTimeUptimeMs = start.eventTimeUptimeMs
+                    eventTimeUptimeMs = eventTimeUptimeMs
                 )
                 acceptSuggestionAtIndex(third)
             }
             NativeTrackpadSwipeDirection.LEFT -> {
                 Log.d(
                     TRACKPAD_DEBUG_TAG,
-                    "Native swipe accepted[$phase]: direction=LEFT startX=${start.x}, startY=${start.y}, x=$x, y=$y, dx=$deltaX, dy=$deltaY"
+                    "Native swipe accepted[$phase]: direction=LEFT startX=${start.x}, startY=${start.y}, x=$x, y=$y, dx=$deltaX, dy=$deltaY, duration=${durationMs}ms, velocity=$leftVelocity"
                 )
                 KeyboardEventTracker.notifySyntheticGestureKeyEvent(
                     provider = SettingsManager.TRACKPAD_PROVIDER_NATIVE_IME,
@@ -3933,7 +3946,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                     threshold = threshold,
                     deviceId = start.deviceId,
                     source = start.source,
-                    eventTimeUptimeMs = start.eventTimeUptimeMs
+                    eventTimeUptimeMs = eventTimeUptimeMs
                 )
                 deleteWordFromNativeTrackpadSwipe()
             }
