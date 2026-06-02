@@ -179,6 +179,8 @@ class MainActivity : LocalizedComponentActivity() {
             KeyEvent.KEYCODE_ENTER -> "KEYCODE_ENTER"
             KeyEvent.KEYCODE_DEL -> "KEYCODE_DEL"
             KeyEvent.KEYCODE_BACK -> "KEYCODE_BACK"
+            KeyEvent.KEYCODE_MOVE_HOME -> "MOVE_HOME"
+            KeyEvent.KEYCODE_MOVE_END -> "MOVE_END"
             else -> "KEYCODE_$keyCode"
         }
     }

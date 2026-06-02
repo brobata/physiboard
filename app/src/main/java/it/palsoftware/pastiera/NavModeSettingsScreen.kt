@@ -730,7 +730,7 @@ private fun KeyMappingDialog(
                     if (selectedType == "keycode") {
                         val keycodes = listOf(
                             "DPAD_UP", "DPAD_DOWN", "DPAD_LEFT", "DPAD_RIGHT",
-                            "TAB", "PAGE_UP", "PAGE_DOWN", "ESCAPE", "DPAD_CENTER",
+                            "TAB", "MOVE_HOME", "MOVE_END", "PAGE_UP", "PAGE_DOWN", "ESCAPE", "DPAD_CENTER",
                             "FORWARD_DEL"
                         )
                         LazyVerticalGrid(
@@ -754,6 +754,7 @@ private fun KeyMappingDialog(
                             "select_all", "expand_selection_left", "expand_selection_right",
                             "move_word_left", "move_word_right",
                             "expand_selection_word_left", "expand_selection_word_right",
+                            "page_start", "page_end",
                             "toggle_minimal_ui",
                             "media_play_pause", "media_previous", "media_next"
                         )
@@ -918,6 +919,8 @@ private fun getMappingLabelShort(mapping: KeyMappingLoader.CtrlMapping): String?
             "DPAD_LEFT" -> stringResource(R.string.nav_mode_keycode_left)
             "DPAD_RIGHT" -> stringResource(R.string.nav_mode_keycode_right)
             "DPAD_CENTER" -> stringResource(R.string.nav_mode_keycode_center)
+            "MOVE_HOME" -> stringResource(R.string.nav_mode_keycode_home)
+            "MOVE_END" -> stringResource(R.string.nav_mode_keycode_end)
             "PAGE_UP" -> stringResource(R.string.nav_mode_keycode_page_up)
             "PAGE_DOWN" -> stringResource(R.string.nav_mode_keycode_page_down)
             "ESCAPE" -> stringResource(R.string.nav_mode_keycode_escape)
@@ -937,6 +940,8 @@ private fun getMappingLabelShort(mapping: KeyMappingLoader.CtrlMapping): String?
             "move_word_right" -> stringResource(R.string.nav_mode_action_move_word_right)
             "expand_selection_word_left" -> stringResource(R.string.nav_mode_action_expand_selection_word_left)
             "expand_selection_word_right" -> stringResource(R.string.nav_mode_action_expand_selection_word_right)
+            "page_start" -> stringResource(R.string.nav_mode_action_page_start)
+            "page_end" -> stringResource(R.string.nav_mode_action_page_end)
             "toggle_minimal_ui" -> stringResource(R.string.nav_mode_action_toggle_pastierina)
             "media_play_pause" -> stringResource(R.string.nav_mode_action_media_play_pause)
             "media_previous" -> stringResource(R.string.nav_mode_action_media_previous)

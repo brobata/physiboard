@@ -1182,6 +1182,26 @@ class InputEventRouter(
                             TextSelectionHelper.expandSelectionWordRight(ic)
                             return true
                         }
+                        "page_start", "page_end" -> {
+                            val targetKeyCode = when (ctrlMapping.value) {
+                                "page_start" -> KeyEvent.KEYCODE_MOVE_HOME
+                                "page_end" -> KeyEvent.KEYCODE_MOVE_END
+                                else -> null
+                            } ?: return callSuper()
+                            KeyboardEventTracker.notifyKeyEvent(
+                                keyCode,
+                                event,
+                                "KEY_DOWN",
+                                origin = "ime_router",
+                                outputKeyCode = targetKeyCode,
+                                outputKeyCodeName = "ctrl_${KeyboardEventTracker.getOutputKeyCodeName(targetKeyCode)}"
+                            )
+                            sendCtrlKeyEvent(ic, targetKeyCode)
+                            Handler(Looper.getMainLooper()).postDelayed({
+                                updateStatusBar()
+                            }, 50)
+                            return true
+                        }
                         "toggle_minimal_ui" -> {
                             KeyboardEventTracker.notifyKeyEvent(
                                 keyCode,
@@ -1247,6 +1267,8 @@ class InputEventRouter(
                         "DPAD_RIGHT" -> KeyEvent.KEYCODE_DPAD_RIGHT
                         "DPAD_CENTER" -> KeyEvent.KEYCODE_DPAD_CENTER
                         "TAB" -> KeyEvent.KEYCODE_TAB
+                        "MOVE_HOME" -> KeyEvent.KEYCODE_MOVE_HOME
+                        "MOVE_END" -> KeyEvent.KEYCODE_MOVE_END
                         "PAGE_UP" -> KeyEvent.KEYCODE_PAGE_UP
                         "PAGE_DOWN" -> KeyEvent.KEYCODE_PAGE_DOWN
                         "ESCAPE" -> KeyEvent.KEYCODE_ESCAPE
@@ -1270,6 +1292,8 @@ class InputEventRouter(
                                 KeyEvent.KEYCODE_DPAD_DOWN,
                                 KeyEvent.KEYCODE_DPAD_LEFT,
                                 KeyEvent.KEYCODE_DPAD_RIGHT,
+                                KeyEvent.KEYCODE_MOVE_HOME,
+                                KeyEvent.KEYCODE_MOVE_END,
                                 KeyEvent.KEYCODE_PAGE_UP,
                                 KeyEvent.KEYCODE_PAGE_DOWN
                             )
@@ -1342,6 +1366,14 @@ class InputEventRouter(
         val eventTime = SystemClock.uptimeMillis()
         audioManager.dispatchMediaKeyEvent(KeyEvent(eventTime, eventTime, KeyEvent.ACTION_DOWN, keyCode, 0))
         audioManager.dispatchMediaKeyEvent(KeyEvent(eventTime, eventTime, KeyEvent.ACTION_UP, keyCode, 0))
+        return true
+    }
+
+    private fun sendCtrlKeyEvent(inputConnection: InputConnection, keyCode: Int): Boolean {
+        val eventTime = SystemClock.uptimeMillis()
+        val metaState = KeyEvent.META_CTRL_ON or KeyEvent.META_CTRL_LEFT_ON
+        inputConnection.sendKeyEvent(KeyEvent(eventTime, eventTime, KeyEvent.ACTION_DOWN, keyCode, 0, metaState))
+        inputConnection.sendKeyEvent(KeyEvent(eventTime, eventTime, KeyEvent.ACTION_UP, keyCode, 0, metaState))
         return true
     }
 

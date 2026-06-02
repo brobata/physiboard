@@ -311,6 +311,8 @@ object KeyMappingLoader {
                 "DPAD_RIGHT" to KeyEvent.KEYCODE_DPAD_RIGHT,
                 "DPAD_CENTER" to KeyEvent.KEYCODE_DPAD_CENTER,
                 "TAB" to KeyEvent.KEYCODE_TAB,
+                "MOVE_HOME" to KeyEvent.KEYCODE_MOVE_HOME,
+                "MOVE_END" to KeyEvent.KEYCODE_MOVE_END,
                 "PAGE_UP" to KeyEvent.KEYCODE_PAGE_UP,
                 "PAGE_DOWN" to KeyEvent.KEYCODE_PAGE_DOWN,
                 "ESCAPE" to KeyEvent.KEYCODE_ESCAPE,

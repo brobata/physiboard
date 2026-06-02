@@ -188,6 +188,8 @@ object KeyboardEventTracker {
             KeyEvent.KEYCODE_DPAD_LEFT -> "DPAD_LEFT"
             KeyEvent.KEYCODE_DPAD_RIGHT -> "DPAD_RIGHT"
             KeyEvent.KEYCODE_TAB -> "TAB"
+            KeyEvent.KEYCODE_MOVE_HOME -> "MOVE_HOME"
+            KeyEvent.KEYCODE_MOVE_END -> "MOVE_END"
             KeyEvent.KEYCODE_PAGE_UP -> "PAGE_UP"
             KeyEvent.KEYCODE_PAGE_DOWN -> "PAGE_DOWN"
             KeyEvent.KEYCODE_ESCAPE -> "ESCAPE"

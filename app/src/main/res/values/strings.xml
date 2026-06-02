@@ -687,6 +687,8 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="nav_mode_action_move_word_right">Word→</string>
     <string name="nav_mode_action_expand_selection_word_left">←WordSel</string>
     <string name="nav_mode_action_expand_selection_word_right">WordSel→</string>
+    <string name="nav_mode_action_page_start">DocStart</string>
+    <string name="nav_mode_action_page_end">DocEnd</string>
     <string name="nav_mode_action_toggle_pastierina">Pastierina</string>
     <string name="nav_mode_action_media_play_pause">Play/Pause</string>
     <string name="nav_mode_action_media_previous">Media Previous</string>
@@ -696,6 +698,8 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="nav_mode_keycode_left">←</string>
     <string name="nav_mode_keycode_right">→</string>
     <string name="nav_mode_keycode_center">○</string>
+    <string name="nav_mode_keycode_home">Home</string>
+    <string name="nav_mode_keycode_end">End</string>
     <string name="nav_mode_keycode_page_up">PgUp</string>
     <string name="nav_mode_keycode_page_down">PgDn</string>
     <string name="nav_mode_keycode_escape">Esc</string>
