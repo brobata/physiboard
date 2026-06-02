@@ -137,6 +137,8 @@ class NavModeController(
                     "DPAD_RIGHT" -> KeyEvent.KEYCODE_DPAD_RIGHT
                     "DPAD_CENTER" -> KeyEvent.KEYCODE_DPAD_CENTER
                     "TAB" -> KeyEvent.KEYCODE_TAB
+                    "MOVE_HOME" -> KeyEvent.KEYCODE_MOVE_HOME
+                    "MOVE_END" -> KeyEvent.KEYCODE_MOVE_END
                     "PAGE_UP" -> KeyEvent.KEYCODE_PAGE_UP
                     "PAGE_DOWN" -> KeyEvent.KEYCODE_PAGE_DOWN
                     "ESCAPE" -> KeyEvent.KEYCODE_ESCAPE

@@ -193,6 +193,33 @@ class InputEventRouterCtrlHoldNavModeTest {
     }
 
     @Test
+    fun heldCtrl_whenEnabledAndShiftHeld_sendsSelectionNavKey() {
+        SettingsManager.setNavModeCtrlHoldEnabled(context, true)
+        val inputConnection = mockInputConnection()
+
+        val handled = router.handleCtrlModifiedKey(
+            keyCode = KeyEvent.KEYCODE_D,
+            event = ctrlShiftKeyDown(KeyEvent.KEYCODE_D),
+            inputConnection = inputConnection,
+            ctrlKeyMap = navMapping,
+            ctrlLatchFromNavMode = false,
+            ctrlOneShot = false,
+            ctrlPhysicallyPressed = true,
+            selectionShiftActive = true,
+            clearCtrlOneShot = {},
+            updateStatusBar = {},
+            callSuper = { false },
+            toggleMinimalUi = {}
+        )
+
+        assertTrue(handled)
+        val sentEvents = captureSentKeyEvents(inputConnection, expectedCount = 2)
+        assertEquals(listOf(KeyEvent.ACTION_DOWN, KeyEvent.ACTION_UP), sentEvents.map { it.action })
+        assertEquals(listOf(KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_LEFT), sentEvents.map { it.keyCode })
+        assertTrue(sentEvents.all { it.isShiftPressed })
+    }
+
+    @Test
     fun latchedNavMode_performsActionMappings() {
         modifierStateController.ctrlLatchActive = true
         modifierStateController.ctrlLatchFromNavMode = true
@@ -331,6 +358,18 @@ class InputEventRouterCtrlHoldNavModeTest {
             keyCode,
             0,
             KeyEvent.META_CTRL_ON or KeyEvent.META_CTRL_LEFT_ON
+        )
+    }
+
+    private fun ctrlShiftKeyDown(keyCode: Int): KeyEvent {
+        return KeyEvent(
+            0L,
+            0L,
+            KeyEvent.ACTION_DOWN,
+            keyCode,
+            0,
+            KeyEvent.META_CTRL_ON or KeyEvent.META_CTRL_LEFT_ON or
+                KeyEvent.META_SHIFT_ON or KeyEvent.META_SHIFT_LEFT_ON
         )
     }
 

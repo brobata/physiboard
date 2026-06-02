@@ -442,6 +442,7 @@ class InputEventRouter(
                     ctrlLatchFromNavMode = params.ctrlLatchFromNavMode,
                     ctrlOneShot = params.ctrlOneShot,
                     ctrlPhysicallyPressed = params.ctrlPressed,
+                    selectionShiftActive = params.shiftPressed || event?.isShiftPressed == true,
                     clearCtrlOneShot = {
                         callbacks.clearCtrlOneShot()
                     },
@@ -1068,6 +1069,7 @@ class InputEventRouter(
         ctrlLatchFromNavMode: Boolean,
         ctrlOneShot: Boolean,
         ctrlPhysicallyPressed: Boolean,
+        selectionShiftActive: Boolean = false,
         clearCtrlOneShot: () -> Unit,
         updateStatusBar: () -> Unit,
         callSuper: () -> Boolean,
@@ -1141,9 +1143,17 @@ class InputEventRouter(
                                 "KEY_DOWN",
                                 origin = "ime_router",
                                 outputKeyCode = null,
-                                outputKeyCodeName = "move_word_left"
+                                outputKeyCodeName = if (selectionShiftActive) {
+                                    "expand_selection_word_left"
+                                } else {
+                                    "move_word_left"
+                                }
                             )
-                            TextSelectionHelper.moveCursorWordLeft(ic)
+                            if (selectionShiftActive) {
+                                TextSelectionHelper.expandSelectionWordLeft(ic)
+                            } else {
+                                TextSelectionHelper.moveCursorWordLeft(ic)
+                            }
                             return true
                         }
                         "move_word_right" -> {
@@ -1153,9 +1163,17 @@ class InputEventRouter(
                                 "KEY_DOWN",
                                 origin = "ime_router",
                                 outputKeyCode = null,
-                                outputKeyCodeName = "move_word_right"
+                                outputKeyCodeName = if (selectionShiftActive) {
+                                    "expand_selection_word_right"
+                                } else {
+                                    "move_word_right"
+                                }
                             )
-                            TextSelectionHelper.moveCursorWordRight(ic)
+                            if (selectionShiftActive) {
+                                TextSelectionHelper.expandSelectionWordRight(ic)
+                            } else {
+                                TextSelectionHelper.moveCursorWordRight(ic)
+                            }
                             return true
                         }
                         "expand_selection_word_left" -> {
@@ -1194,9 +1212,13 @@ class InputEventRouter(
                                 "KEY_DOWN",
                                 origin = "ime_router",
                                 outputKeyCode = targetKeyCode,
-                                outputKeyCodeName = "ctrl_${KeyboardEventTracker.getOutputKeyCodeName(targetKeyCode)}"
+                                outputKeyCodeName = if (selectionShiftActive) {
+                                    "ctrl_shift_${KeyboardEventTracker.getOutputKeyCodeName(targetKeyCode)}"
+                                } else {
+                                    "ctrl_${KeyboardEventTracker.getOutputKeyCodeName(targetKeyCode)}"
+                                }
                             )
-                            sendCtrlKeyEvent(ic, targetKeyCode)
+                            sendModifiedKeyEvent(ic, targetKeyCode, ctrl = true, shift = selectionShiftActive)
                             Handler(Looper.getMainLooper()).postDelayed({
                                 updateStatusBar()
                             }, 50)
@@ -1282,10 +1304,18 @@ class InputEventRouter(
                             "KEY_DOWN",
                             origin = "ime_router",
                             outputKeyCode = mappedKeyCode,
-                            outputKeyCodeName = KeyboardEventTracker.getOutputKeyCodeName(mappedKeyCode)
+                            outputKeyCodeName = if (selectionShiftActive && mappedKeyCode.isSelectionAwareNavKey()) {
+                                "shift_${KeyboardEventTracker.getOutputKeyCodeName(mappedKeyCode)}"
+                            } else {
+                                KeyboardEventTracker.getOutputKeyCodeName(mappedKeyCode)
+                            }
                         )
-                        ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, mappedKeyCode))
-                        ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, mappedKeyCode))
+                        sendModifiedKeyEvent(
+                            inputConnection = ic,
+                            keyCode = mappedKeyCode,
+                            ctrl = false,
+                            shift = selectionShiftActive && mappedKeyCode.isSelectionAwareNavKey()
+                        )
 
                         if (mappedKeyCode in listOf(
                                 KeyEvent.KEYCODE_DPAD_UP,
@@ -1369,12 +1399,30 @@ class InputEventRouter(
         return true
     }
 
-    private fun sendCtrlKeyEvent(inputConnection: InputConnection, keyCode: Int): Boolean {
+    private fun sendModifiedKeyEvent(
+        inputConnection: InputConnection,
+        keyCode: Int,
+        ctrl: Boolean,
+        shift: Boolean
+    ): Boolean {
         val eventTime = SystemClock.uptimeMillis()
-        val metaState = KeyEvent.META_CTRL_ON or KeyEvent.META_CTRL_LEFT_ON
+        val metaState =
+            (if (ctrl) KeyEvent.META_CTRL_ON or KeyEvent.META_CTRL_LEFT_ON else 0) or
+                (if (shift) KeyEvent.META_SHIFT_ON or KeyEvent.META_SHIFT_LEFT_ON else 0)
         inputConnection.sendKeyEvent(KeyEvent(eventTime, eventTime, KeyEvent.ACTION_DOWN, keyCode, 0, metaState))
         inputConnection.sendKeyEvent(KeyEvent(eventTime, eventTime, KeyEvent.ACTION_UP, keyCode, 0, metaState))
         return true
+    }
+
+    private fun Int.isSelectionAwareNavKey(): Boolean {
+        return this == KeyEvent.KEYCODE_DPAD_UP ||
+            this == KeyEvent.KEYCODE_DPAD_DOWN ||
+            this == KeyEvent.KEYCODE_DPAD_LEFT ||
+            this == KeyEvent.KEYCODE_DPAD_RIGHT ||
+            this == KeyEvent.KEYCODE_MOVE_HOME ||
+            this == KeyEvent.KEYCODE_MOVE_END ||
+            this == KeyEvent.KEYCODE_PAGE_UP ||
+            this == KeyEvent.KEYCODE_PAGE_DOWN
     }
 
     private fun resolveLayoutShortcutKeyCode(keyCode: Int): Int {
