@@ -469,6 +469,10 @@ class InputEventRouterModifierE2ETest {
     @Test
     fun swipeToDelete_handlesBothKnownSwipeKeyCodes() {
         SettingsManager.setSwipeToDelete(context, true)
+        SettingsManager.setSwipeToDeleteProvider(
+            context,
+            SettingsManager.SWIPE_TO_DELETE_PROVIDER_TITAN2_KEYCODE
+        )
         inputConnectionRecorder.textBeforeCursor = "hello world"
         val callbacks = TestCallbacks(modifierStateController)
 

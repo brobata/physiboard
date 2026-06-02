@@ -57,6 +57,28 @@ class KeyMappingLoaderTest {
     }
 
     @Test
+    fun loadAltMappings_originalTitanAutoDetection_usesOriginalTitanAsset() {
+        val context = RuntimeEnvironment.getApplication()
+        SettingsManager.setPhysicalKeyboardProfileOverride(context, "auto")
+        DeviceSpecific.setBuildFingerprintForTests(
+            brand = "Unihertz",
+            manufacturer = "A-gold",
+            model = "Titan",
+            device = "Titan",
+            product = "Titan",
+            board = "g61v71c2k_dfl_tee",
+            display = "Titan_20221121"
+        )
+
+        val mappings = KeyMappingLoader.loadAltKeyMappings(context.assets, context)
+
+        assertTrue(mappings.size >= 26)
+        assertEquals(":", mappings[KeyEvent.KEYCODE_Q])
+        assertEquals("1", mappings[KeyEvent.KEYCODE_U])
+        assertEquals("9", mappings[KeyEvent.KEYCODE_M])
+    }
+
+    @Test
     fun loadSymPage2Mappings_exposesExpandedTypographyDefaults() {
         val context = RuntimeEnvironment.getApplication()
 
