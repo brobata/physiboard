@@ -19,6 +19,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import androidx.core.widget.TextViewCompat
 import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.SettingsActivity
 import it.palsoftware.pastiera.inputmethod.suggestions.SuggestionButtonHandler
@@ -263,7 +264,7 @@ class FullSuggestionsBar(
         // Show or hide hamburger button based on showHamburgerButton flag
         hamburgerButton?.visibility = if (showHamburgerButton) View.VISIBLE else View.GONE
 
-        val slots = buildSlots(suggestions)
+        val slots = buildSlots(suggestions, addWordCandidate)
         applySuggestionsAccessibilityThrottle(slots)
         if (slots == lastSlots && bar.childCount > 0) {
             bar.visibility = View.VISIBLE
@@ -318,13 +319,21 @@ class FullSuggestionsBar(
         val padV = dpToPx(3f) // tighter vertical padding to further reduce height
         val padH = dpToPx(12f)
 
-        val slotOrder = listOf(slots[0], slots[1], slots[2]) // left, center, right
+        val addOnly = addWordCandidate != null &&
+            slots[0]?.equals(addWordCandidate, ignoreCase = true) == true &&
+            slots[1] == null &&
+            slots[2] == null
+        val slotOrder = if (addOnly) {
+            listOf(slots[0])
+        } else {
+            listOf(slots[0], slots[1], slots[2]) // left, center, right
+        }
         for ((index, suggestion) in slotOrder.withIndex()) {
             val slotIndex = suggestionButtons.size
             val weightLayoutParams = LinearLayout.LayoutParams(
                 0,
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                1f
+                if (addOnly) 3f else 1f
             ).apply {
                 // Apply margin only if not the last suggestion box
                 if (index < slotOrder.size - 1) {
@@ -335,6 +344,13 @@ class FullSuggestionsBar(
                 text = (suggestion ?: "")
                 gravity = Gravity.CENTER
                 textSize = 14f // keep readable while shrinking the bar
+                TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
+                    this,
+                    7,
+                    14,
+                    1,
+                    TypedValue.COMPLEX_UNIT_SP
+                )
                 includeFontPadding = false
                 minHeight = 0
                 setTextColor(Color.WHITE)
@@ -381,13 +397,16 @@ class FullSuggestionsBar(
         }
     }
 
-    private fun buildSlots(suggestions: List<String>): List<String?> {
+    private fun buildSlots(suggestions: List<String>, addWordCandidate: String?): List<String?> {
         val s0 = suggestions.getOrNull(0)
         val s1 = suggestions.getOrNull(1)
-        val s2 = suggestions.getOrNull(2)
+        val addCandidate = addWordCandidate?.takeUnless { candidate ->
+            suggestions.any { it.equals(candidate, ignoreCase = true) }
+        }
+        val s2 = addCandidate ?: suggestions.getOrNull(2)
         return listOf(
             // left
-            if (suggestions.size >= 3) s2 else null,
+            s2,
             // center
             s0,
             // right

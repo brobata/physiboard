@@ -43,7 +43,11 @@ class AutoReplaceController(
     }
     // #endregion
 
-    public data class ReplaceResult(val replaced: Boolean, val committed: Boolean)
+    public data class ReplaceResult(
+        val replaced: Boolean,
+        val committed: Boolean,
+        val replacement: String? = null
+    )
 
     companion object {
         internal data class ApostropheSplit(val prefix: String, val root: String)
@@ -327,7 +331,7 @@ class AutoReplaceController(
                 source = source
             )
             Log.d("AutoReplaceController", "Committed text '${replacement + committedSuffix}', markAutoSpace=${boundaryCommitted && boundaryChar == ' '}")
-            return ReplaceResult(true, true)
+            return ReplaceResult(true, true, replacement)
         }
 
         val skipReason = when {

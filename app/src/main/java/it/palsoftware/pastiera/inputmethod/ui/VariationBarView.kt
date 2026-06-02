@@ -15,6 +15,7 @@ import android.text.TextPaint
 import android.text.style.UnderlineSpan
 import android.view.inputmethod.InputMethodManager
 import androidx.core.content.ContextCompat
+import androidx.core.widget.TextViewCompat
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -566,13 +567,21 @@ class VariationBarView(
         }
 
         val addCandidate = snapshot.addWordCandidate
+        val addOnly = addCandidate != null &&
+            displayedVariations.size == 1 &&
+            displayedVariations.firstOrNull()?.equals(addCandidate, ignoreCase = true) == true
         for ((index, variation) in displayedVariations.withIndex()) {
             val isAddCandidate = addCandidate != null && variation.equals(addCandidate, ignoreCase = true)
             val isLast = index == displayedVariations.lastIndex
+            val variationWidth = if (addOnly) {
+                variationsAvailableWidth.coerceAtLeast(buttonWidth)
+            } else {
+                buttonWidth
+            }
             val button = createVariationButton(
                 variation,
                 inputConnection,
-                buttonWidth,
+                variationWidth,
                 variationButtonHeight,
                 maxButtonWidth,
                 isStaticContent,
@@ -997,6 +1006,13 @@ class VariationBarView(
         return TextView(context).apply {
             text = variation
             textSize = 16f
+            TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
+                this,
+                6,
+                16,
+                1,
+                TypedValue.COMPLEX_UNIT_SP
+            )
             setTextColor(Color.WHITE)
             setTypeface(null, android.graphics.Typeface.BOLD)
             gravity = Gravity.CENTER

@@ -164,6 +164,7 @@
     <string name="auto_correct_edit_correction">Edit Correction</string>
     <string name="auto_correct_original">Original</string>
     <string name="auto_correct_corrected">Corrected</string>
+    <string name="auto_correct_add_replacement_to_dictionary">Add replacement to personal dictionary</string>
     <string name="auto_correct_delete">Delete</string>
     <string name="auto_correct_save">Save</string>
     <string name="auto_correct_cancel">Cancel</string>
@@ -927,6 +928,8 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="trackpad_gestures_description">Swipe up on the trackpad to accept suggestions</string>
     <string name="trackpad_gestures_enabled_title">Enable Trackpad Gestures</string>
     <string name="trackpad_gestures_enabled_description">Swipe up on trackpad to accept word suggestions</string>
+    <string name="trackpad_gesture_add_word_title">Add words with gestures</string>
+    <string name="trackpad_gesture_add_word_description">Allow the suggestion gesture to activate the dictionary add button.</string>
     <string name="trackpad_gestures_show_tutorial">Show Tutorial</string>
     <string name="trackpad_gestures_tutorial_description">Learn how to use trackpad gestures</string>
     <string name="trackpad_gestures_install_shizuku">Install Shizuku</string>

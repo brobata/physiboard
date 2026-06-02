@@ -1917,9 +1917,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         val addWordCandidate = suggestionController.pendingAddWord()
         val suggestionsEnabled = SettingsManager.isExperimentalSuggestionsEnabled(this) && SettingsManager.getSuggestionsEnabled(this)
         val baseSuggestions = if (suggestionsEnabled) latestSuggestions else emptyList()
-        val suggestionsWithAdd = if (addWordCandidate != null) {
-            listOf(addWordCandidate)
-        } else baseSuggestions
         val snapshot = StatusBarController.StatusSnapshot(
             capsLockEnabled = modifierSnapshot.capsLockEnabled,
             shiftPhysicallyPressed = modifierSnapshot.shiftPhysicallyPressed,
@@ -1934,7 +1931,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             symPage = symPage,
             clipboardCount = clipboardCount,
             variations = variationSnapshot.variations,
-            suggestions = suggestionsWithAdd,
+            suggestions = baseSuggestions,
             addWordCandidate = addWordCandidate,
             lastInsertedChar = variationSnapshot.lastInsertedChar,
             // Granular smart features flags
@@ -3787,9 +3784,14 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         variationInteractedDuringHold = true
 
         // Allow gesture only when suggestions bar should be visible/usable
+        val addWordCandidate = suggestionController.pendingAddWord()
+        val addWordGestureEnabled = SettingsManager.getTrackpadGestureAddWordEnabled(this)
+        val canAddWordByGesture = third == 0 &&
+            addWordGestureEnabled &&
+            addWordCandidate != null
         val allowGesture =
             symPage == 0 &&
-            latestSuggestions.isNotEmpty() &&
+            (latestSuggestions.isNotEmpty() || canAddWordByGesture) &&
             SettingsManager.getSuggestionsEnabled(this) &&
             !shouldDisableSmartFeatures
         if (!allowGesture) {
@@ -3797,6 +3799,18 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 TAG,
                 "Trackpad gesture ignored: bar not visible/usable (sym=$symPage, suggestions=${latestSuggestions.size})"
             )
+            return
+        }
+
+        if (canAddWordByGesture) {
+            Log.d(TAG, "Adding user word '$addWordCandidate' from trackpad gesture")
+            uiHandler.post {
+                candidatesBarController.flashSuggestionSlot(2)
+                suggestionController.addUserWord(addWordCandidate)
+                suggestionController.clearPendingAddWord()
+                updateStatusBarText()
+                NotificationHelper.triggerHapticFeedback(this)
+            }
             return
         }
 

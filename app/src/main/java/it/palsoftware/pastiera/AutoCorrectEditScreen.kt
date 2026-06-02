@@ -1,6 +1,7 @@
 package it.palsoftware.pastiera
 
 import android.content.Context
+import android.content.Intent
 import android.content.res.AssetManager
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -28,6 +29,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import it.palsoftware.pastiera.inputmethod.AutoCorrector
+import it.palsoftware.pastiera.core.suggestions.UserDictionaryStore
 import it.palsoftware.pastiera.R
 import org.json.JSONObject
 import java.util.Locale
@@ -54,6 +56,7 @@ fun AutoCorrectEditScreen(
     // State for the add/edit dialog
     var showAddDialog by remember { mutableStateOf(false) }
     var editingKey by remember { mutableStateOf<String?>(null) }
+    val userDictionaryStore = remember { UserDictionaryStore() }
     
     // State for search query
     var searchQuery by remember { mutableStateOf("") }
@@ -237,7 +240,7 @@ fun AutoCorrectEditScreen(
                 showAddDialog = false
                 editingKey = null
             },
-            onSave = { original, corrected ->
+            onSave = { original, corrected, addReplacementToDictionary ->
                 val newCorrections = LinkedHashMap<String, String>()
                 val key = original.lowercase()
                 
@@ -258,6 +261,9 @@ fun AutoCorrectEditScreen(
                 
                 corrections = newCorrections
                 saveCorrections(context, languageCode, corrections, null)
+                if (addReplacementToDictionary) {
+                    addReplacementToUserDictionaryIfNeeded(context, userDictionaryStore, corrected)
+                }
                 // Reload all corrections (including new languages)
                 try {
                     val assets = context.assets
@@ -348,15 +354,17 @@ private fun AddCorrectionDialog(
     originalKey: String?,
     originalValue: String?,
     onDismiss: () -> Unit,
-    onSave: (String, String) -> Unit
+    onSave: (String, String, Boolean) -> Unit
 ) {
     var originalText by remember { mutableStateOf(originalKey ?: "") }
     var correctedText by remember { mutableStateOf(originalValue ?: "") }
+    var addReplacementToDictionary by remember { mutableStateOf(true) }
     
     // Update fields when originalKey changes
     LaunchedEffect(originalKey) {
         originalText = originalKey ?: ""
         correctedText = originalValue ?: ""
+        addReplacementToDictionary = true
     }
     
     AlertDialog(
@@ -389,13 +397,28 @@ private fun AddCorrectionDialog(
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Checkbox(
+                        checked = addReplacementToDictionary,
+                        onCheckedChange = { addReplacementToDictionary = it }
+                    )
+                    Text(
+                        text = stringResource(R.string.auto_correct_add_replacement_to_dictionary),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         },
         confirmButton = {
             TextButton(
                 onClick = {
                     if (originalText.isNotBlank() && correctedText.isNotBlank()) {
-                        onSave(originalText.trim(), correctedText.trim())
+                        onSave(originalText.trim(), correctedText.trim(), addReplacementToDictionary)
                     }
                 },
                 enabled = originalText.isNotBlank() && correctedText.isNotBlank()
@@ -455,6 +478,32 @@ private fun saveCorrections(
     languageName: String? = null
 ) {
     SettingsManager.saveCustomAutoCorrections(context, languageCode, corrections, languageName)
+}
+
+internal fun addReplacementToUserDictionaryIfNeeded(
+    context: Context,
+    userDictionaryStore: UserDictionaryStore,
+    replacement: String
+): Boolean {
+    val word = replacement.trim()
+    if (word.isEmpty() || word.none { it.isLetterOrDigit() }) {
+        return false
+    }
+
+    userDictionaryStore.loadUserEntries(context)
+    val alreadyExists = userDictionaryStore.getSnapshot().any { entry ->
+        entry.word.equals(word, ignoreCase = true)
+    }
+    if (alreadyExists) {
+        return false
+    }
+
+    userDictionaryStore.addWord(context, word)
+    val intent = Intent(AppBroadcastActions.USER_DICTIONARY_UPDATED).apply {
+        setPackage(context.packageName)
+    }
+    context.sendBroadcast(intent)
+    return true
 }
 
 /**

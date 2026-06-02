@@ -38,18 +38,11 @@ class SuggestionController(
     }
     private var tracker = CurrentWordTracker(
         onWordChanged = { word ->
-            val settings = settingsProvider()
-            if (settings.suggestionsEnabled) {
-                if (debugLogging) {
-                    Log.d("PastieraIME", "trackerWordChanged='$word' len=${word.length}")
-                }
-                val next = suggestionEngine.suggest(word, settings.maxSuggestions, settings.accentMatching, settings.useKeyboardProximity, settings.useEditTypeRanking)
-                latestSuggestions.set(next)
-                suggestionsListener?.invoke(next)
-            }
+            updateSuggestionsForWord(word)
         },
         onWordReset = {
             latestSuggestions.set(emptyList())
+            pendingAddUserWord = null
             suggestionsListener?.invoke(emptyList())
         }
     )
@@ -75,15 +68,11 @@ class SuggestionController(
         // Recreate tracker to use new engine (tracker captures suggestionEngine in closure)
         tracker = CurrentWordTracker(
             onWordChanged = { word ->
-                val settings = settingsProvider()
-                if (settings.suggestionsEnabled) {
-                    val next = suggestionEngine.suggest(word, settings.maxSuggestions, settings.accentMatching, settings.useKeyboardProximity, settings.useEditTypeRanking)
-                    latestSuggestions.set(next)
-                    suggestionsListener?.invoke(next)
-                }
+                updateSuggestionsForWord(word)
             },
             onWordReset = {
                 latestSuggestions.set(emptyList())
+                pendingAddUserWord = null
                 suggestionsListener?.invoke(emptyList())
             }
         )
@@ -113,6 +102,36 @@ class SuggestionController(
     private var cursorRunnable: Runnable? = null
     private val cursorDebounceMs = 120L
     private var pendingAddUserWord: String? = null
+
+    private fun updateSuggestionsForWord(word: String) {
+        val settings = settingsProvider()
+        if (!settings.suggestionsEnabled) {
+            pendingAddUserWord = null
+            latestSuggestions.set(emptyList())
+            suggestionsListener?.invoke(emptyList())
+            return
+        }
+        if (debugLogging) {
+            Log.d("PastieraIME", "trackerWordChanged='$word' len=${word.length}")
+        }
+        val next = suggestionEngine.suggest(
+            word,
+            settings.maxSuggestions,
+            settings.accentMatching,
+            settings.useKeyboardProximity,
+            settings.useEditTypeRanking
+        )
+        pendingAddUserWord = addWordCandidateFor(word)
+        latestSuggestions.set(next)
+        suggestionsListener?.invoke(next)
+    }
+
+    private fun addWordCandidateFor(word: String?): String? {
+        val candidate = word?.trim() ?: return null
+        if (candidate.isEmpty() || candidate.none { it.isLetterOrDigit() }) return null
+        if (!dictionaryRepository.isReady) return null
+        return if (dictionaryRepository.isKnownWord(candidate)) null else candidate
+    }
     
     // #region agent log
     private fun debugLog(hypothesisId: String, location: String, message: String, data: Map<String, Any?> = emptyMap()) {
@@ -209,6 +228,7 @@ class SuggestionController(
 
         val result = autoReplaceController.handleBoundary(keyCode, event, tracker, inputConnection)
         if (result.replaced) {
+            pendingAddUserWord = addWordCandidateFor(result.replacement)
             NotificationHelper.triggerHapticFeedback(appContext)
         } else {
             pendingAddUserWord = null
@@ -369,9 +389,9 @@ class SuggestionController(
     ): String? {
         if (inputConnection == null) return null
         return try {
-            val before = inputConnection.getTextBeforeCursor(12, 0)?.toString() ?: ""
+            val before = inputConnection.getTextBeforeCursor(CURSOR_WORD_CONTEXT_CHARS, 0)?.toString() ?: ""
             val after = if (includeAfterCursor) {
-                inputConnection.getTextAfterCursor(12, 0)?.toString() ?: ""
+                inputConnection.getTextAfterCursor(CURSOR_WORD_CONTEXT_CHARS, 0)?.toString() ?: ""
             } else {
                 ""
             }
@@ -443,5 +463,9 @@ class SuggestionController(
                 }
             }
         }
+    }
+
+    companion object {
+        private const val CURSOR_WORD_CONTEXT_CHARS = 128
     }
 }

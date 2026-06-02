@@ -89,6 +89,7 @@ object SettingsManager {
     private const val KEY_CLIPBOARD_HISTORY_ENABLED = "clipboard_history_enabled" // Whether clipboard history is enabled
     private const val KEY_CLIPBOARD_RETENTION_TIME = "clipboard_retention_time" // How long to keep clipboard entries (in minutes)
     private const val KEY_TRACKPAD_GESTURES_ENABLED = "trackpad_gestures_enabled" // Whether trackpad gesture suggestions are enabled
+    private const val KEY_TRACKPAD_GESTURE_ADD_WORD_ENABLED = "trackpad_gesture_add_word_enabled" // Whether suggestion gestures can trigger add-word
     private const val KEY_TRACKPAD_SWIPE_THRESHOLD = "trackpad_swipe_threshold" // Threshold for swipe detection on trackpad
     private const val KEY_TRACKPAD_PROVIDER = "trackpad_provider" // shizuku | native_ime
     private const val KEY_SHIFT_BACKSPACE_DELETE = "shift_backspace_delete" // Shift + Backspace performs forward delete
@@ -243,6 +244,7 @@ object SettingsManager {
     private const val DEFAULT_CLIPBOARD_HISTORY_ENABLED = true
     private const val DEFAULT_CLIPBOARD_RETENTION_TIME = 120L // 2 hours in minutes
     private const val DEFAULT_TRACKPAD_GESTURES_ENABLED = false
+    private const val DEFAULT_TRACKPAD_GESTURE_ADD_WORD_ENABLED = true
     private const val DEFAULT_TRACKPAD_SWIPE_THRESHOLD = 500f
     private const val MIN_TRACKPAD_SWIPE_THRESHOLD = 120f
     private const val MAX_TRACKPAD_SWIPE_THRESHOLD = 1000f
@@ -3290,6 +3292,19 @@ object SettingsManager {
         getPreferences(context).edit()
             .putBoolean(KEY_TRACKPAD_GESTURES_ENABLED, enabled)
             .commit()  // Use commit() instead of apply() to ensure synchronous write
+    }
+
+    fun getTrackpadGestureAddWordEnabled(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_TRACKPAD_GESTURE_ADD_WORD_ENABLED,
+            DEFAULT_TRACKPAD_GESTURE_ADD_WORD_ENABLED
+        )
+    }
+
+    fun setTrackpadGestureAddWordEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_TRACKPAD_GESTURE_ADD_WORD_ENABLED, enabled)
+            .commit()
     }
 
     /**

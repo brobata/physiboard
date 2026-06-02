@@ -36,6 +36,9 @@ fun TrackpadGestureSettingsScreen(
     var trackpadGesturesEnabled by remember {
         mutableStateOf(SettingsManager.getTrackpadGesturesEnabled(context))
     }
+    var trackpadGestureAddWordEnabled by remember {
+        mutableStateOf(SettingsManager.getTrackpadGestureAddWordEnabled(context))
+    }
     var swipeThreshold by remember {
         mutableStateOf(SettingsManager.getTrackpadSwipeThreshold(context))
     }
@@ -137,6 +140,44 @@ fun TrackpadGestureSettingsScreen(
                         onCheckedChange = { enabled ->
                             trackpadGesturesEnabled = enabled
                             SettingsManager.setTrackpadGesturesEnabled(context, enabled)
+                        }
+                    )
+                }
+            }
+
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(64.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Spacer(modifier = Modifier.width(24.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.trackpad_gesture_add_word_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1
+                        )
+                        Text(
+                            text = stringResource(R.string.trackpad_gesture_add_word_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2
+                        )
+                    }
+                    Switch(
+                        checked = trackpadGestureAddWordEnabled,
+                        enabled = trackpadGesturesEnabled,
+                        onCheckedChange = { enabled ->
+                            trackpadGestureAddWordEnabled = enabled
+                            SettingsManager.setTrackpadGestureAddWordEnabled(context, enabled)
                         }
                     )
                 }

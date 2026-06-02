@@ -255,6 +255,7 @@ object PreferenceSchemas {
             "clipboard_history_enabled" to PreferenceValueType.BOOLEAN,
             "clipboard_retention_time" to PreferenceValueType.LONG,
             "trackpad_gestures_enabled" to PreferenceValueType.BOOLEAN,
+            "trackpad_gesture_add_word_enabled" to PreferenceValueType.BOOLEAN,
             "trackpad_swipe_threshold" to PreferenceValueType.FLOAT,
             "trackpad_provider" to PreferenceValueType.STRING,
             "pastierina_mode_override" to PreferenceValueType.STRING,
