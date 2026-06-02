@@ -376,15 +376,26 @@ class InputEventRouter(
             return EditableFieldRoutingResult.Consume
         }
 
+        var passThroughAltBoundary = false
         if (
             params.clearAltOnSpaceEnabled &&
             (keyCode == KeyEvent.KEYCODE_SPACE || keyCode == KeyEvent.KEYCODE_ENTER) &&
             (altLatchActive || altOneShotActive)
         ) {
-            controllers.modifierStateController.clearAltState()
-            altLatchActive = false
-            altOneShotActive = false
-            callbacks.updateStatusBar()
+            val keepLatchedAlt = altLatchActive && SettingsManager.getAltLatchStaysOnSpace(context)
+            if (keepLatchedAlt) {
+                if (altOneShotActive) {
+                    controllers.modifierStateController.altOneShot = false
+                    altOneShotActive = false
+                    callbacks.updateStatusBar()
+                }
+                passThroughAltBoundary = true
+            } else {
+                controllers.modifierStateController.clearAltState()
+                altLatchActive = false
+                altOneShotActive = false
+                callbacks.updateStatusBar()
+            }
         }
 
         if (
@@ -406,7 +417,7 @@ class InputEventRouter(
             return EditableFieldRoutingResult.Consume
         }
 
-        if (event?.isAltPressed == true || altLatchActive || altOneShotActive) {
+        if (!passThroughAltBoundary && (event?.isAltPressed == true || altLatchActive || altOneShotActive)) {
             controllers.altSymManager.cancelPendingLongPress(keyCode)
             if (altOneShotActive) {
                 callbacks.clearAltOneShot()

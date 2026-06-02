@@ -26,12 +26,14 @@ class ModifierStateController(
 
         fun tap(
             now: Long = System.currentTimeMillis(),
-            isConsecutiveTap: Boolean
+            isConsecutiveTap: Boolean,
+            singleTapLatches: Boolean = false
         ): ShiftState {
             val doubleTap = isConsecutiveTap && now - lastTapTime < doubleTapThreshold
             lastTapTime = now
             state = when {
                 doubleTap -> if (state == ShiftState.CAPS) ShiftState.OFF else ShiftState.CAPS
+                singleTapLatches -> if (state == ShiftState.CAPS) ShiftState.OFF else ShiftState.CAPS
                 state == ShiftState.OFF -> ShiftState.ONE_SHOT
                 else -> ShiftState.OFF
             }
@@ -78,6 +80,10 @@ class ModifierStateController(
 
     private val ctrlState = ModifierKeyHandler.CtrlState()
     private val altState = ModifierKeyHandler.AltState()
+
+    var shiftTapLatches: Boolean = false
+    var ctrlTapLatches: Boolean = false
+    var altTapLatches: Boolean = false
 
     fun registerModifierTap(keyCode: Int): Boolean {
         val isConsecutive = lastKeyWasModifier && lastModifierKeyCode == keyCode
@@ -228,7 +234,10 @@ class ModifierStateController(
         shiftPressedFlag = true
         val previous = shiftStateMachine.state
         val isConsecutiveTap = registerModifierTap(keyCode)
-        val current = shiftStateMachine.tap(isConsecutiveTap = isConsecutiveTap)
+        val current = shiftStateMachine.tap(
+            isConsecutiveTap = isConsecutiveTap,
+            singleTapLatches = shiftTapLatches
+        )
         val changed = previous != current
         return ModifierKeyHandler.ModifierKeyResult(
             shouldUpdateStatusBar = changed,
@@ -262,6 +271,7 @@ class ModifierStateController(
             ctrlState,
             isInputViewActive,
             isConsecutiveTap = isConsecutiveTap,
+            singleTapLatches = ctrlTapLatches,
             onNavModeDeactivated
         )
         ctrlPressed = true
@@ -282,7 +292,8 @@ class ModifierStateController(
         val result = modifierKeyHandler.handleAltKeyDown(
             keyCode,
             altState,
-            isConsecutiveTap = isConsecutiveTap
+            isConsecutiveTap = isConsecutiveTap,
+            singleTapLatches = altTapLatches
         )
         altPressed = true
         return result

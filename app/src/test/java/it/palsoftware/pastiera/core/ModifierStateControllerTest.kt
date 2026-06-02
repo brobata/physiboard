@@ -201,6 +201,53 @@ class ModifierStateControllerTest {
     }
 
     @Test
+    fun shiftTapLatchSetting_locksOnSingleTap() {
+        val controller = ModifierStateController(doubleTapThreshold)
+        controller.shiftTapLatches = true
+
+        controller.handleShiftKeyDown(KeyEvent.KEYCODE_SHIFT_LEFT)
+        assertEquals(ShiftState.CAPS, controller.shiftState)
+        assertTrue(controller.capsLockEnabled)
+        controller.handleShiftKeyUp(KeyEvent.KEYCODE_SHIFT_LEFT)
+
+        controller.handleShiftKeyDown(KeyEvent.KEYCODE_SHIFT_LEFT)
+        assertEquals(ShiftState.OFF, controller.shiftState)
+        assertFalse(controller.capsLockEnabled)
+    }
+
+    @Test
+    fun altTapLatchSetting_locksOnSingleTap() {
+        val controller = ModifierStateController(doubleTapThreshold)
+        controller.altTapLatches = true
+
+        controller.handleAltKeyDown(KeyEvent.KEYCODE_ALT_LEFT)
+        assertFalse(controller.altOneShot)
+        assertTrue(controller.altLatchActive)
+        controller.handleAltKeyUp(KeyEvent.KEYCODE_ALT_LEFT)
+
+        controller.handleAltKeyDown(KeyEvent.KEYCODE_ALT_LEFT)
+        assertFalse(controller.altOneShot)
+        assertFalse(controller.altLatchActive)
+    }
+
+    @Test
+    fun ctrlTapLatchSetting_locksOnSingleTapWithoutNavMode() {
+        val controller = ModifierStateController(doubleTapThreshold)
+        controller.ctrlTapLatches = true
+
+        controller.handleCtrlKeyDown(KeyEvent.KEYCODE_CTRL_LEFT, isInputViewActive = true)
+        assertFalse(controller.ctrlOneShot)
+        assertTrue(controller.ctrlLatchActive)
+        assertFalse(controller.ctrlLatchFromNavMode)
+        controller.handleCtrlKeyUp(KeyEvent.KEYCODE_CTRL_LEFT)
+
+        controller.handleCtrlKeyDown(KeyEvent.KEYCODE_CTRL_LEFT, isInputViewActive = true)
+        assertFalse(controller.ctrlOneShot)
+        assertFalse(controller.ctrlLatchActive)
+        assertFalse(controller.ctrlLatchFromNavMode)
+    }
+
+    @Test
     fun testCtrlNavLatchTapOutsideInputViewDeactivatesAndConsumes() {
         val controller = ModifierStateController(doubleTapThreshold)
         controller.ctrlLatchActive = true

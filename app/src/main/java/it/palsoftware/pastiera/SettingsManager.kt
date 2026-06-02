@@ -68,6 +68,12 @@ object SettingsManager {
     private const val KEY_PENDING_RESTORE_SYM_PAGE = "pending_restore_sym_page" // Temporary SYM page state saved when opening settings
     private const val KEY_SYM_PAGES_CONFIG = "sym_pages_config" // Order/enabled pages for SYM
     private const val KEY_SYM_AUTO_CLOSE = "sym_auto_close" // Auto-close SYM layout after key press
+    private const val KEY_SYM_AUTO_CLOSE_ON_TOUCH = "sym_auto_close_on_touch" // Auto-close SYM layout after tapping on-screen SYM keys
+    private const val KEY_SHIFT_TAP_LATCHES = "shift_tap_latches"
+    private const val KEY_ALT_TAP_LATCHES = "alt_tap_latches"
+    private const val KEY_CTRL_TAP_LATCHES = "ctrl_tap_latches"
+    private const val KEY_ALT_LATCH_STAYS_ON_SPACE = "alt_latch_stays_on_space"
+    private const val KEY_CTRL_LATCH_STAYS_ON_SPACE = "ctrl_latch_stays_on_space"
     private const val KEY_EMOJI_PICKER_EXPANDED_HEIGHT = "emoji_picker_expanded_height"
     private const val KEY_DISMISSED_RELEASES = "dismissed_releases" // Set of release tag_names that were dismissed
     private const val KEY_TUTORIAL_COMPLETED = "tutorial_completed" // Whether the first-run tutorial has been completed
@@ -214,6 +220,9 @@ object SettingsManager {
     private const val DEFAULT_PHYSICAL_KEYBOARD_PROFILE_OVERRIDE = "auto"
     private const val DEFAULT_PHYSICAL_KEYBOARD_CURRENCY_SYMBOL = "€"
     private const val DEFAULT_SYM_AUTO_CLOSE = true
+    private const val DEFAULT_SYM_AUTO_CLOSE_ON_TOUCH = false
+    private const val DEFAULT_MODIFIER_TAP_LATCHES = false
+    private const val DEFAULT_MODIFIER_LATCH_STAYS_ON_SPACE = false
     private const val DEFAULT_EMOJI_PICKER_EXPANDED_HEIGHT = true
     private val DEFAULT_SYM_PAGES_CONFIG = SymPagesConfig()
     private const val DEFAULT_STATIC_VARIATION_BAR_MODE = false
@@ -394,6 +403,71 @@ object SettingsManager {
         val clampedValue = threshold.coerceIn(MIN_LONG_PRESS_THRESHOLD, MAX_LONG_PRESS_THRESHOLD)
         getPreferences(context).edit()
             .putLong(KEY_LONG_PRESS_THRESHOLD, clampedValue)
+            .apply()
+    }
+
+    fun getShiftTapLatches(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_SHIFT_TAP_LATCHES,
+            DEFAULT_MODIFIER_TAP_LATCHES
+        )
+    }
+
+    fun setShiftTapLatches(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_SHIFT_TAP_LATCHES, enabled)
+            .apply()
+    }
+
+    fun getAltTapLatches(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_ALT_TAP_LATCHES,
+            DEFAULT_MODIFIER_TAP_LATCHES
+        )
+    }
+
+    fun setAltTapLatches(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_ALT_TAP_LATCHES, enabled)
+            .apply()
+    }
+
+    fun getCtrlTapLatches(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_CTRL_TAP_LATCHES,
+            DEFAULT_MODIFIER_TAP_LATCHES
+        )
+    }
+
+    fun setCtrlTapLatches(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_CTRL_TAP_LATCHES, enabled)
+            .apply()
+    }
+
+    fun getAltLatchStaysOnSpace(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_ALT_LATCH_STAYS_ON_SPACE,
+            DEFAULT_MODIFIER_LATCH_STAYS_ON_SPACE
+        )
+    }
+
+    fun setAltLatchStaysOnSpace(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_ALT_LATCH_STAYS_ON_SPACE, enabled)
+            .apply()
+    }
+
+    fun getCtrlLatchStaysOnSpace(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_CTRL_LATCH_STAYS_ON_SPACE,
+            DEFAULT_MODIFIER_LATCH_STAYS_ON_SPACE
+        )
+    }
+
+    fun setCtrlLatchStaysOnSpace(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_CTRL_LATCH_STAYS_ON_SPACE, enabled)
             .apply()
     }
     
@@ -3013,6 +3087,19 @@ object SettingsManager {
     fun setSymAutoClose(context: Context, enabled: Boolean) {
         getPreferences(context).edit()
             .putBoolean(KEY_SYM_AUTO_CLOSE, enabled)
+            .apply()
+    }
+
+    fun getSymAutoCloseOnTouch(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_SYM_AUTO_CLOSE_ON_TOUCH,
+            DEFAULT_SYM_AUTO_CLOSE_ON_TOUCH
+        )
+    }
+
+    fun setSymAutoCloseOnTouch(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_SYM_AUTO_CLOSE_ON_TOUCH, enabled)
             .apply()
     }
 

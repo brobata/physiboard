@@ -49,6 +49,22 @@ fun KeyboardTimingSettingsScreen(
     var softwareKeyboardMode by remember {
         mutableStateOf(SettingsManager.getSoftwareKeyboardMode(context))
     }
+
+    var shiftTapLatches by remember {
+        mutableStateOf(SettingsManager.getShiftTapLatches(context))
+    }
+    var altTapLatches by remember {
+        mutableStateOf(SettingsManager.getAltTapLatches(context))
+    }
+    var ctrlTapLatches by remember {
+        mutableStateOf(SettingsManager.getCtrlTapLatches(context))
+    }
+    var altLatchStaysOnSpace by remember {
+        mutableStateOf(SettingsManager.getAltLatchStaysOnSpace(context))
+    }
+    var ctrlLatchStaysOnSpace by remember {
+        mutableStateOf(SettingsManager.getCtrlLatchStaysOnSpace(context))
+    }
     
     
     // Handle system back button
@@ -334,6 +350,118 @@ fun KeyboardTimingSettingsScreen(
                 }
             }
 
+            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+            Text(
+                text = stringResource(R.string.modifier_tap_behavior_title),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+            )
+
+            ModifierTapLatchRow(
+                title = stringResource(R.string.shift_tap_latches_title),
+                description = stringResource(R.string.shift_tap_latches_description),
+                checked = shiftTapLatches,
+                onCheckedChange = { enabled ->
+                    shiftTapLatches = enabled
+                    SettingsManager.setShiftTapLatches(context, enabled)
+                }
+            )
+
+            ModifierTapLatchRow(
+                title = stringResource(R.string.alt_tap_latches_title),
+                description = stringResource(R.string.alt_tap_latches_description),
+                checked = altTapLatches,
+                onCheckedChange = { enabled ->
+                    altTapLatches = enabled
+                    SettingsManager.setAltTapLatches(context, enabled)
+                }
+            )
+
+            ModifierTapLatchRow(
+                title = stringResource(R.string.alt_latch_stays_on_space_title),
+                description = stringResource(R.string.alt_latch_stays_on_space_description),
+                checked = altLatchStaysOnSpace,
+                onCheckedChange = { enabled ->
+                    altLatchStaysOnSpace = enabled
+                    SettingsManager.setAltLatchStaysOnSpace(context, enabled)
+                }
+            )
+
+            ModifierTapLatchRow(
+                title = stringResource(R.string.ctrl_tap_latches_title),
+                description = stringResource(R.string.ctrl_tap_latches_description),
+                checked = ctrlTapLatches,
+                onCheckedChange = { enabled ->
+                    ctrlTapLatches = enabled
+                    SettingsManager.setCtrlTapLatches(context, enabled)
+                }
+            )
+
+            if (ctrlTapLatches) {
+                ModifierTapLatchRow(
+                    title = stringResource(R.string.ctrl_latch_stays_on_space_title),
+                    description = stringResource(R.string.ctrl_latch_stays_on_space_description),
+                    checked = ctrlLatchStaysOnSpace,
+                    indent = true,
+                    onCheckedChange = { enabled ->
+                        ctrlLatchStaysOnSpace = enabled
+                        SettingsManager.setCtrlLatchStaysOnSpace(context, enabled)
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ModifierTapLatchRow(
+    title: String,
+    description: String,
+    checked: Boolean,
+    indent: Boolean = false,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(74.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = if (indent) 52.dp else 16.dp, end = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            if (!indent) {
+                Icon(
+                    imageVector = Icons.Filled.Keyboard,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1
+                )
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2
+                )
+            }
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange
+            )
         }
     }
 }

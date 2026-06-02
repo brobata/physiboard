@@ -409,6 +409,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         if (!isBoundary) return
         val hasAlt = altLatchActive || altOneShot
         if (!hasAlt) return
+        if (altLatchActive && SettingsManager.getAltLatchStaysOnSpace(this)) {
+            altOneShot = false
+            updateStatusBar()
+            return
+        }
         modifierStateController.clearAltState()
         updateStatusBar()
     }
@@ -1060,6 +1065,14 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 keyCode == KeyEvent.KEYCODE_DEL ||
                 keyCode == KeyEvent.KEYCODE_SPACE
 
+    private fun updateModifierTapLatchSettings() {
+        if (!::modifierStateController.isInitialized) {
+            return
+        }
+        modifierStateController.shiftTapLatches = SettingsManager.getShiftTapLatches(this)
+        modifierStateController.altTapLatches = SettingsManager.getAltTapLatches(this)
+        modifierStateController.ctrlTapLatches = SettingsManager.getCtrlTapLatches(this)
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -1071,6 +1084,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         NotificationHelper.cancelNavModeNotification(this)
 
         modifierStateController = ModifierStateController(DOUBLE_TAP_THRESHOLD)
+        updateModifierTapLatchSettings()
         navModeController = NavModeController(this, modifierStateController)
         navModeController.setOnNavModeChangedListener { isActive ->
             updateNavModeStatusIcon(isActive)
@@ -1409,6 +1423,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 }
             } else if (key == "clear_alt_on_space") {
                 clearAltOnSpaceEnabled = SettingsManager.getClearAltOnSpace(this)
+            } else if (key == "shift_tap_latches" || key == "alt_tap_latches" || key == "ctrl_tap_latches") {
+                updateModifierTapLatchSettings()
+                Handler(Looper.getMainLooper()).post {
+                    updateStatusBarText()
+                }
             } else if (key == "physical_keyboard_profile_override") {
                 Log.d(TAG, "Physical keyboard profile override changed, reloading Alt mappings...")
                 physicalKeyboardProfileOverride = SettingsManager.getPhysicalKeyboardProfileOverride(this)
@@ -2992,8 +3011,19 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 ctrlLatchFromNavMode
             if (hadCtrl) {
                 val navModeLatched = ctrlLatchFromNavMode
-                modifierStateController.clearCtrlState(resetPressedState = true)
-                if (navModeLatched) {
+                val keepLockedCtrl = ctrlLatchActive &&
+                    !ctrlLatchFromNavMode &&
+                    SettingsManager.getCtrlTapLatches(this) &&
+                    SettingsManager.getCtrlLatchStaysOnSpace(this)
+                if (keepLockedCtrl) {
+                    modifierStateController.ctrlOneShot = false
+                    modifierStateController.ctrlPressed = false
+                    modifierStateController.ctrlPhysicallyPressed = false
+                    modifierStateController.ctrlLatchFromNavMode = false
+                } else {
+                    modifierStateController.clearCtrlState(resetPressedState = true)
+                }
+                if (navModeLatched && !keepLockedCtrl) {
                     navModeController.cancelNotification()
                     navModeController.refreshNavModeState()
                 }

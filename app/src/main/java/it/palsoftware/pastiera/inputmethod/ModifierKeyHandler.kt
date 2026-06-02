@@ -39,6 +39,7 @@ class ModifierKeyHandler(
         state: CtrlState,
         isInputViewActive: Boolean,
         isConsecutiveTap: Boolean,
+        singleTapLatches: Boolean = false,
         onNavModeDeactivated: (() -> Unit)? = null
     ): ModifierKeyResult {
         if (keyCode != KeyEvent.KEYCODE_CTRL_LEFT && keyCode != KeyEvent.KEYCODE_CTRL_RIGHT) {
@@ -94,6 +95,11 @@ class ModifierKeyHandler(
                 }
             }
             else -> {
+                if (singleTapLatches) {
+                    state.latchActive = true
+                    state.lastReleaseTime = 0
+                    return ModifierKeyResult(shouldUpdateStatusBar = true)
+                }
                 // Check for double-tap to enable latch
                 if (allowDoubleTap && currentTime - state.lastReleaseTime < doubleTapThreshold && state.lastReleaseTime > 0) {
                     state.latchActive = true
@@ -127,7 +133,8 @@ class ModifierKeyHandler(
     fun handleAltKeyDown(
         keyCode: Int,
         state: AltState,
-        isConsecutiveTap: Boolean
+        isConsecutiveTap: Boolean,
+        singleTapLatches: Boolean = false
     ): ModifierKeyResult {
         if (keyCode != KeyEvent.KEYCODE_ALT_LEFT && keyCode != KeyEvent.KEYCODE_ALT_RIGHT) {
             return ModifierKeyResult()
@@ -166,6 +173,11 @@ class ModifierKeyHandler(
                 }
             }
             else -> {
+                if (singleTapLatches) {
+                    state.latchActive = true
+                    state.lastReleaseTime = 0
+                    return ModifierKeyResult(shouldUpdateStatusBar = true)
+                }
                 // Check for double-tap to enable latch
                 if (allowDoubleTap && currentTime - state.lastReleaseTime < doubleTapThreshold && state.lastReleaseTime > 0) {
                     state.latchActive = true

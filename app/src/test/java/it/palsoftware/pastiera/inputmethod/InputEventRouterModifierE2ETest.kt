@@ -50,6 +50,7 @@ class InputEventRouterModifierE2ETest {
         SettingsManager.resetVariationsToDefault(context)
         SettingsManager.setLongPressModifier(context, "alt")
         SettingsManager.setPhysicalKeyboardCurrencySymbol(context, "€")
+        SettingsManager.setAltLatchStaysOnSpace(context, false)
         prefs = context.getSharedPreferences("router_e2e_modifier_tests", Context.MODE_PRIVATE)
         prefs.edit().clear().commit()
 
@@ -74,6 +75,7 @@ class InputEventRouterModifierE2ETest {
         SettingsManager.resetVariationsToDefault(context)
         SettingsManager.setLongPressModifier(context, "alt")
         SettingsManager.setPhysicalKeyboardCurrencySymbol(context, "€")
+        SettingsManager.setAltLatchStaysOnSpace(context, false)
     }
 
     @Test
@@ -161,6 +163,41 @@ class InputEventRouterModifierE2ETest {
         assertFalse(modifierStateController.altPressed)
         assertFalse(modifierStateController.altPhysicallyPressed)
         assertFalse(modifierStateController.altOneShot)
+    }
+
+    @Test
+    fun latchedAltThenSpace_clearsLatchByDefaultAndLetsSpacePassThrough() {
+        modifierStateController.altLatchActive = true
+        val callbacks = TestCallbacks(modifierStateController)
+
+        val result = routeKeyDown(
+            keyCode = KeyEvent.KEYCODE_SPACE,
+            event = keyDown(KeyEvent.KEYCODE_SPACE),
+            callbacks = callbacks,
+            clearAltOnSpaceEnabled = true
+        )
+
+        assertTrue(result is InputEventRouter.EditableFieldRoutingResult.CallSuper)
+        assertFalse(modifierStateController.altLatchActive)
+        assertTrue(inputConnectionRecorder.committedTexts.isEmpty())
+    }
+
+    @Test
+    fun latchedAltThenSpace_canKeepLatchWhenConfigured() {
+        SettingsManager.setAltLatchStaysOnSpace(context, true)
+        modifierStateController.altLatchActive = true
+        val callbacks = TestCallbacks(modifierStateController)
+
+        val result = routeKeyDown(
+            keyCode = KeyEvent.KEYCODE_SPACE,
+            event = keyDown(KeyEvent.KEYCODE_SPACE),
+            callbacks = callbacks,
+            clearAltOnSpaceEnabled = true
+        )
+
+        assertTrue(result is InputEventRouter.EditableFieldRoutingResult.CallSuper)
+        assertTrue(modifierStateController.altLatchActive)
+        assertTrue(inputConnectionRecorder.committedTexts.isEmpty())
     }
 
     @Test
@@ -511,12 +548,13 @@ class InputEventRouterModifierE2ETest {
     private fun routeKeyDown(
         keyCode: Int,
         event: KeyEvent,
-        callbacks: TestCallbacks
+        callbacks: TestCallbacks,
+        clearAltOnSpaceEnabled: Boolean = false
     ): InputEventRouter.EditableFieldRoutingResult {
         return router.routeEditableFieldKeyDown(
             keyCode = keyCode,
             event = event,
-            params = buildParams(),
+            params = buildParams(clearAltOnSpaceEnabled),
             controllers = InputEventRouter.EditableFieldKeyDownControllers(
                 modifierStateController = modifierStateController,
                 symLayoutController = symLayoutController,
@@ -528,7 +566,7 @@ class InputEventRouterModifierE2ETest {
         )
     }
 
-    private fun buildParams(): InputEventRouter.EditableFieldKeyDownHandlingParams {
+    private fun buildParams(clearAltOnSpaceEnabled: Boolean = false): InputEventRouter.EditableFieldKeyDownHandlingParams {
         return InputEventRouter.EditableFieldKeyDownHandlingParams(
             inputConnection = inputConnection,
             isNumericField = false,
@@ -543,7 +581,7 @@ class InputEventRouterModifierE2ETest {
             ctrlKeyMap = ctrlKeyMap,
             ctrlOneShot = modifierStateController.ctrlOneShot,
             altOneShot = modifierStateController.altOneShot,
-            clearAltOnSpaceEnabled = false,
+            clearAltOnSpaceEnabled = clearAltOnSpaceEnabled,
             shiftOneShot = modifierStateController.shiftOneShot,
             capsLockEnabled = modifierStateController.capsLockEnabled,
             cursorUpdateDelayMs = 0L

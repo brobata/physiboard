@@ -910,6 +910,7 @@ class StatusBarController(
                     keyButton.isFocusable = true
                     keyButton.setOnClickListener {
                         inputConnection.commitText(content, 1)
+                        closeSymAfterTouchKeyIfNeeded()
                     }
                 }
                 
@@ -1154,6 +1155,7 @@ class StatusBarController(
                     keyButton.isFocusable = true
                     keyButton.setOnClickListener {
                         inputConnection.commitText(content, 1)
+                        closeSymAfterTouchKeyIfNeeded()
                     }
                 }
                 rowLayout.addView(keyButton, LinearLayout.LayoutParams(fixedKeyWidth, keyHeight).apply {
@@ -1625,6 +1627,15 @@ class StatusBarController(
         }
     }
 
+    private fun closeSymAfterTouchKeyIfNeeded() {
+        if (
+            SettingsManager.getSymAutoClose(context) &&
+            SettingsManager.getSymAutoCloseOnTouch(context)
+        ) {
+            onSymCloseRequested?.invoke()
+        }
+    }
+
     private fun addKeyToRow(
         rowLayout: LinearLayout,
         keyCode: Int,
@@ -1661,6 +1672,7 @@ class StatusBarController(
             keyButton.isFocusable = true
             keyButton.setOnClickListener {
                 inputConnection.commitText(content, 1)
+                closeSymAfterTouchKeyIfNeeded()
             }
         }
         

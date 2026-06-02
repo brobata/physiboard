@@ -50,6 +50,9 @@ fun SymCustomizationScreen(
     var symAutoClose by remember { 
         mutableStateOf(SettingsManager.getSymAutoClose(context))
     }
+    var symAutoCloseOnTouch by remember {
+        mutableStateOf(SettingsManager.getSymAutoCloseOnTouch(context))
+    }
     var emojiPickerExpandedHeight by remember {
         mutableStateOf(SettingsManager.getEmojiPickerExpandedHeight(context))
     }
@@ -309,6 +312,48 @@ fun SymCustomizationScreen(
                     onCheckedChange = { enabled ->
                         symAutoClose = enabled
                         SettingsManager.setSymAutoClose(context, enabled)
+                    }
+                )
+            }
+        }
+
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(64.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 52.dp, end = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.sym_auto_close_touch_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = if (symAutoClose) {
+                            MaterialTheme.colorScheme.onSurface
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        maxLines = 1
+                    )
+                    Text(
+                        text = stringResource(R.string.sym_auto_close_touch_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2
+                    )
+                }
+                Switch(
+                    checked = symAutoCloseOnTouch,
+                    enabled = symAutoClose,
+                    onCheckedChange = { enabled ->
+                        symAutoCloseOnTouch = enabled
+                        SettingsManager.setSymAutoCloseOnTouch(context, enabled)
                     }
                 )
             }
