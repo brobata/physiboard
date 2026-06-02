@@ -6,9 +6,9 @@ usage() {
 Usage: $0 <base-version> [--install] [--device <adb-serial>]
 
 Examples:
-  $0 0.85
-  $0 0.85 --install
-  $0 0.85 --install --device 192.168.178.190:46293
+  $0 0.86
+  $0 0.86 --install
+  $0 0.86 --install --device 192.168.178.190:46293
 USAGE
 }
 

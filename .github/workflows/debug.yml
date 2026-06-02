@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version_name:
-        description: "Nightly version label, e.g. 0.85"
+        description: "Nightly version label, e.g. 0.86"
         required: true
         type: string
       artifact_name:

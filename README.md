@@ -87,9 +87,9 @@ Input method for physical keyboards android devices (e.g. Unihertz Titan 2), des
 - Core modifier state machine tests:
   - `./gradlew :app:testStableDebugUnitTest --tests it.palsoftware.pastiera.core.ModifierStateControllerTest`
 - Build nightly debug APK with dynamic nightly version code:
-  - `./scripts/build-nightly-debug.sh 0.85`
-  - `./scripts/build-nightly-debug.sh 0.85 --install`
-  - `./scripts/build-nightly-debug.sh 0.85 --install --device <adb-serial>`
+  - `./scripts/build-nightly-debug.sh 0.86`
+  - `./scripts/build-nightly-debug.sh 0.86 --install`
+  - `./scripts/build-nightly-debug.sh 0.86 --install --device <adb-serial>`
 
 ## Continuous Integration
 - Pushes to `main` and pull requests run `.github/workflows/ci.yml`.
@@ -118,9 +118,9 @@ Input method for physical keyboards android devices (e.g. Unihertz Titan 2), des
   - `-PPASTIERA_VERSION_CODE=...`
   - `-PPASTIERA_VERSION_NAME=...`
 - Local release builds can use the same mechanism:
-  - `./gradlew :app:assembleStableRelease -PPASTIERA_VERSION_CODE=85 -PPASTIERA_VERSION_NAME=0.85`
-  - `./scripts/build-release.sh 0.85 85`
-  - `./scripts/build-fdroid.sh 0.85 85`
+  - `./gradlew :app:assembleStableRelease -PPASTIERA_VERSION_CODE=86 -PPASTIERA_VERSION_NAME=0.86`
+  - `./scripts/build-release.sh 0.86 86`
+  - `./scripts/build-fdroid.sh 0.86 86`
 
 ### Local signing config (`release/keystore.properties`)
 - Local wrapper scripts read signing config from `release/keystore.properties` (gitignored).
@@ -145,28 +145,28 @@ Input method for physical keyboards android devices (e.g. Unihertz Titan 2), des
   - builds a nightly release APK signed with the shared nightly key
   - computes a SHA256 checksum
   - uploads the APK and checksum as workflow artifacts
-  - automatically turns a base version like `0.85` into a unique nightly version like `0.85-nightly.20260306.195412`
+  - automatically turns a base version like `0.86` into a unique nightly version like `0.86-nightly.20260306.195412`
   - optionally publishes a GitHub pre-release under the `nightly/v*` tag scheme using that full nightly version
 - The nightly flavor uses a separate application ID so it installs alongside the stable release.
 - The nightly flavor is signed with a shared nightly key so local and CI nightly builds remain upgrade-compatible.
-- Nightly version names follow the pattern `BASE-nightly.YYYYMMDD.HHMMSS`, for example `0.85-nightly.20260307.005731`.
+- Nightly version names follow the pattern `BASE-nightly.YYYYMMDD.HHMMSS`, for example `0.86-nightly.20260307.005731`.
 - GitHub Nightly builds and private F-Droid Nightly builds share the same application ID and signing key, but F-Droid Nightly builds disable GitHub update checks so updates come from the F-Droid repo.
 - Nightly pre-release disclaimer text is maintained in `.github/release-templates/debug-prerelease.md`.
 - The same versioning can be generated locally:
-  - `./scripts/nightly-version.sh 0.85`
-  - `./gradlew :app:assembleNightlyRelease -PPASTIERA_VERSION_NAME=0.85 -PPASTIERA_NIGHTLY_VERSION_SUFFIX=-nightly.$(./scripts/nightly-version.sh 0.85 | awk -F= '/^timestamp=/{print $2}')`
+  - `./scripts/nightly-version.sh 0.86`
+  - `./gradlew :app:assembleNightlyRelease -PPASTIERA_VERSION_NAME=0.86 -PPASTIERA_NIGHTLY_VERSION_SUFFIX=-nightly.$(./scripts/nightly-version.sh 0.86 | awk -F= '/^timestamp=/{print $2}')`
 - Local wrappers are available:
-  - `./scripts/build-nightly.sh 0.85`
-  - `./scripts/build-nightly.sh 0.85 --publish`
-  - `./scripts/build-nightly-debug.sh 0.85`
-  - `./scripts/build-nightly-debug.sh 0.85 --install`
-  - `./scripts/build-nightly-debug.sh 0.85 --install --device <adb-serial>`
-  - `./scripts/publish-private-fdroid-nightly.sh 0.85`
-  - `./scripts/publish-private-fdroid-nightly.sh 0.85 ../palsoftware-web/apps/docs/public https://pastiera.eu/fdroid/nightly/repo`
-  - `./scripts/publish-private-fdroid-nightly.sh 0.85 --timestamp 20260307.005731`
-  - `./scripts/publish-private-fdroid-nightly.sh 0.85 ../palsoftware-web/apps/docs/public https://pastiera.eu/fdroid/nightly/repo --no-push-pages`
-  - `./scripts/build-release.sh 0.85 85`
-  - `./scripts/build-release.sh 0.85 85 --publish`
+  - `./scripts/build-nightly.sh 0.86`
+  - `./scripts/build-nightly.sh 0.86 --publish`
+  - `./scripts/build-nightly-debug.sh 0.86`
+  - `./scripts/build-nightly-debug.sh 0.86 --install`
+  - `./scripts/build-nightly-debug.sh 0.86 --install --device <adb-serial>`
+  - `./scripts/publish-private-fdroid-nightly.sh 0.86`
+  - `./scripts/publish-private-fdroid-nightly.sh 0.86 ../palsoftware-web/apps/docs/public https://pastiera.eu/fdroid/nightly/repo`
+  - `./scripts/publish-private-fdroid-nightly.sh 0.86 --timestamp 20260307.005731`
+  - `./scripts/publish-private-fdroid-nightly.sh 0.86 ../palsoftware-web/apps/docs/public https://pastiera.eu/fdroid/nightly/repo --no-push-pages`
+  - `./scripts/build-release.sh 0.86 86`
+  - `./scripts/build-release.sh 0.86 86 --publish`
 
 ## Private F-Droid Nightly Repo
 - Docs landing page:
@@ -180,7 +180,7 @@ Input method for physical keyboards android devices (e.g. Unihertz Titan 2), des
 - Local publish flow:
   - install `fdroidserver`
   - make sure nightly signing is configured
-  - run `./scripts/publish-private-fdroid-nightly.sh 0.85`
+  - run `./scripts/publish-private-fdroid-nightly.sh 0.86`
   - pass `--timestamp YYYYMMDD.HHMMSS` when mirroring a GitHub Nightly pre-release so the F-Droid build uses the same version name and version code
   - optional: add `--no-push-pages` if you explicitly do not want the generated Pages repo changes committed and pushed
 - The script:
