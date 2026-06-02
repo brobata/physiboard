@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Backspace
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
@@ -26,6 +27,7 @@ import kotlinx.coroutines.delay
  * Settings screen for trackpad gesture suggestions.
  */
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 fun TrackpadGestureSettingsScreen(
     modifier: Modifier = Modifier,
     onBack: () -> Unit
@@ -39,6 +41,19 @@ fun TrackpadGestureSettingsScreen(
     }
     var showTutorialDialog by remember { mutableStateOf(false) }
     var shizukuStatus by remember { mutableStateOf(ShizukuStatus.NotConnected) }
+    var trackpadProvider by remember { mutableStateOf(SettingsManager.getTrackpadProvider(context)) }
+    var providerMenuExpanded by remember { mutableStateOf(false) }
+    var swipeToDelete by remember { mutableStateOf(SettingsManager.getSwipeToDelete(context)) }
+    var swipeToDeleteProvider by remember { mutableStateOf(SettingsManager.getSwipeToDeleteProvider(context)) }
+    var swipeToDeleteProviderMenuExpanded by remember { mutableStateOf(false) }
+    val trackpadProviderOptions = listOf(
+        SettingsManager.TRACKPAD_PROVIDER_NATIVE_IME to stringResource(R.string.trackpad_provider_native_ime),
+        SettingsManager.TRACKPAD_PROVIDER_SHIZUKU to stringResource(R.string.trackpad_provider_shizuku)
+    )
+    val swipeToDeleteProviderOptions = listOf(
+        SettingsManager.SWIPE_TO_DELETE_PROVIDER_NATIVE_IME to stringResource(R.string.swipe_to_delete_provider_native_ime),
+        SettingsManager.SWIPE_TO_DELETE_PROVIDER_TITAN2_KEYCODE to stringResource(R.string.swipe_to_delete_provider_titan2_keycode)
+    )
 
     BackHandler { onBack() }
     LaunchedEffect(Unit) {
@@ -127,30 +142,191 @@ fun TrackpadGestureSettingsScreen(
                 }
             }
 
-            // Shizuku status indicator
-            Row(
+            Text(
+                text = stringResource(R.string.trackpad_provider_title),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+            ExposedDropdownMenuBox(
+                expanded = providerMenuExpanded,
+                onExpandedChange = { providerMenuExpanded = it },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
             ) {
-                val (statusIcon, statusTint, statusText) = when (shizukuStatus) {
-                    ShizukuStatus.Connected -> Triple(Icons.Filled.CheckCircle, MaterialTheme.colorScheme.primary, stringResource(R.string.trackpad_gestures_shizuku_connected))
-                    ShizukuStatus.NotAuthorized -> Triple(Icons.Filled.Warning, MaterialTheme.colorScheme.tertiary, stringResource(R.string.trackpad_gestures_shizuku_not_authorized))
-                    ShizukuStatus.NotConnected -> Triple(Icons.Filled.Error, MaterialTheme.colorScheme.error, stringResource(R.string.trackpad_gestures_shizuku_not_connected))
+                OutlinedTextField(
+                    value = trackpadProviderOptions.firstOrNull { it.first == trackpadProvider }?.second ?: trackpadProvider,
+                    onValueChange = {},
+                    readOnly = true,
+                    singleLine = true,
+                    label = { Text(stringResource(R.string.trackpad_provider_title)) },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = providerMenuExpanded) },
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                    modifier = Modifier
+                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                        .fillMaxWidth()
+                )
+                ExposedDropdownMenu(
+                    expanded = providerMenuExpanded,
+                    onDismissRequest = { providerMenuExpanded = false }
+                ) {
+                    trackpadProviderOptions.forEach { (value, label) ->
+                        DropdownMenuItem(
+                            text = { Text(label) },
+                            onClick = {
+                                trackpadProvider = value
+                                SettingsManager.setTrackpadProvider(context, value)
+                                providerMenuExpanded = false
+                            },
+                            leadingIcon = {
+                                if (trackpadProvider == value) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Check,
+                                        contentDescription = null
+                                    )
+                                }
+                            },
+                            contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                        )
+                    }
                 }
-                Icon(
-                    imageVector = statusIcon,
-                    contentDescription = null,
-                    tint = statusTint,
-                    modifier = Modifier.size(16.dp)
+            }
+
+            if (trackpadProvider == SettingsManager.TRACKPAD_PROVIDER_SHIZUKU) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    val (statusIcon, statusTint, statusText) = when (shizukuStatus) {
+                        ShizukuStatus.Connected -> Triple(Icons.Filled.CheckCircle, MaterialTheme.colorScheme.primary, stringResource(R.string.trackpad_gestures_shizuku_connected))
+                        ShizukuStatus.NotAuthorized -> Triple(Icons.Filled.Warning, MaterialTheme.colorScheme.tertiary, stringResource(R.string.trackpad_gestures_shizuku_not_authorized))
+                        ShizukuStatus.NotConnected -> Triple(Icons.Filled.Error, MaterialTheme.colorScheme.error, stringResource(R.string.trackpad_gestures_shizuku_not_connected))
+                    }
+                    Icon(
+                        imageVector = statusIcon,
+                        contentDescription = null,
+                        tint = statusTint,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = statusText,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = statusTint
+                    )
+                }
+            }
+
+            if (trackpadProvider == SettingsManager.TRACKPAD_PROVIDER_NATIVE_IME) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.CheckCircle,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = stringResource(R.string.trackpad_provider_native_ime_status),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
+            ExposedDropdownMenuBox(
+                expanded = swipeToDeleteProviderMenuExpanded,
+                onExpandedChange = { swipeToDeleteProviderMenuExpanded = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
+            ) {
+                OutlinedTextField(
+                    value = swipeToDeleteProviderOptions.firstOrNull { it.first == swipeToDeleteProvider }?.second ?: swipeToDeleteProvider,
+                    onValueChange = {},
+                    readOnly = true,
+                    enabled = swipeToDelete,
+                    singleLine = true,
+                    label = { Text(stringResource(R.string.swipe_to_delete_provider_title)) },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = swipeToDeleteProviderMenuExpanded) },
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                    modifier = Modifier
+                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                        .fillMaxWidth()
                 )
-                Text(
-                    text = statusText,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = statusTint
-                )
+                ExposedDropdownMenu(
+                    expanded = swipeToDeleteProviderMenuExpanded,
+                    onDismissRequest = { swipeToDeleteProviderMenuExpanded = false }
+                ) {
+                    swipeToDeleteProviderOptions.forEach { (value, label) ->
+                        DropdownMenuItem(
+                            text = { Text(label) },
+                            onClick = {
+                                swipeToDeleteProvider = value
+                                SettingsManager.setSwipeToDeleteProvider(context, value)
+                                swipeToDeleteProviderMenuExpanded = false
+                            },
+                            leadingIcon = {
+                                if (swipeToDeleteProvider == value) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Check,
+                                        contentDescription = null
+                                    )
+                                }
+                            },
+                            contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                        )
+                    }
+                }
+            }
+
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(72.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Backspace,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.swipe_to_delete_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1
+                        )
+                        Text(
+                            text = stringResource(R.string.swipe_to_delete_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2
+                        )
+                    }
+                    Switch(
+                        checked = swipeToDelete,
+                        onCheckedChange = { enabled ->
+                            swipeToDelete = enabled
+                            SettingsManager.setSwipeToDelete(context, enabled)
+                        }
+                    )
+                }
             }
 
             // Swipe sensitivity slider
@@ -251,49 +427,50 @@ fun TrackpadGestureSettingsScreen(
                 }
             }
 
-            // Install Shizuku Button
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(64.dp)
-                    .clickable {
-                        val url = context.getString(R.string.trackpad_gestures_shizuku_url)
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                        context.startActivity(intent)
-                    }
-            ) {
-                Row(
+            if (trackpadProvider == SettingsManager.TRACKPAD_PROVIDER_SHIZUKU) {
+                Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        .height(64.dp)
+                        .clickable {
+                            val url = context.getString(R.string.trackpad_gestures_shizuku_url)
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                            context.startActivity(intent)
+                        }
                 ) {
-                    Icon(
-                        imageVector = Icons.Filled.Download,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.trackpad_gestures_install_shizuku),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Download,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
                         )
-                        Text(
-                            text = stringResource(R.string.trackpad_gestures_install_shizuku_description),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.trackpad_gestures_install_shizuku),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1
+                            )
+                            Text(
+                                text = stringResource(R.string.trackpad_gestures_install_shizuku_description),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
             }
         }

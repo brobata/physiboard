@@ -351,11 +351,23 @@ class InputEventRouter(
 
         if (keyCode in swipeToDeleteKeyCodes) {
             val swipeToDeleteEnabled = SettingsManager.getSwipeToDelete(context)
-            if (swipeToDeleteEnabled) {
+            val swipeToDeleteProvider = SettingsManager.getSwipeToDeleteProvider(context)
+            if (
+                swipeToDeleteEnabled &&
+                swipeToDeleteProvider == SettingsManager.SWIPE_TO_DELETE_PROVIDER_TITAN2_KEYCODE
+            ) {
                 if (ic != null && TextSelectionHelper.deleteLastWord(ic)) {
                     return EditableFieldRoutingResult.Consume
                 }
             } else {
+                KeyboardEventTracker.notifyKeyEvent(
+                    keyCode = keyCode,
+                    event = event,
+                    action = "KEY_DOWN",
+                    origin = "ime_service",
+                    outputKeyCode = null,
+                    outputKeyCodeName = "swipe_to_delete_ignored_${swipeToDeleteProvider}"
+                )
                 return EditableFieldRoutingResult.Consume
             }
         }

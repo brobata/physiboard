@@ -36,6 +36,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.size
@@ -364,6 +365,7 @@ fun KeyboardSetupScreen(
     var recordStartedAtMs by rememberSaveable { mutableStateOf<Long?>(null) }
     var lastRecordedAtMs by rememberSaveable { mutableStateOf<Long?>(null) }
     var includeSuggestionsInExport by rememberSaveable { mutableStateOf(false) }
+    var includeRawTrackpadInExport by rememberSaveable { mutableStateOf(false) }
     var showDebugReportViewer by rememberSaveable { mutableStateOf(false) }
     var latestDebugReport by rememberSaveable { mutableStateOf("") }
     val recordedEvents = remember { mutableStateListOf<RecordedKeyboardEvent>() }
@@ -480,7 +482,8 @@ fun KeyboardSetupScreen(
             context = context,
             recordStartedAtMs = recordStartedAtMs,
             events = recordedEvents,
-            includeSuggestions = includeSuggestionsInExport
+            includeSuggestions = includeSuggestionsInExport,
+            includeRawTrackpad = includeRawTrackpadInExport
         )
     }
     val copyReportToClipboard: (String) -> Unit = { report ->
@@ -642,95 +645,133 @@ fun KeyboardSetupScreen(
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Top
             ) {
-                OutlinedButton(
-                    onClick = {
-                        if (isRecording) {
-                            isRecording = false
-                        } else {
-                            recordedEvents.clear()
-                            val startTime = System.currentTimeMillis()
-                            recordStartedAtMs = startTime
-                            lastRecordedAtMs = null
-                            isRecording = true
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                if (isRecording) {
+                                    isRecording = false
+                                } else {
+                                    recordedEvents.clear()
+                                    val startTime = System.currentTimeMillis()
+                                    recordStartedAtMs = startTime
+                                    lastRecordedAtMs = null
+                                    isRecording = true
+                                }
+                            }
+                        ) {
+                            Text(
+                                if (isRecording) {
+                                    stringResource(R.string.debug_recorder_stop)
+                                } else {
+                                    stringResource(R.string.debug_recorder_record)
+                                }
+                            )
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                recordedEvents.clear()
+                                DebugCaptureStore.clearAll()
+                                recordStartedAtMs = null
+                                lastRecordedAtMs = null
+                                isRecording = false
+                                showDebugReportViewer = false
+                                latestDebugReport = ""
+                                displayedLastKeyEvent = null
+                            }
+                        ) {
+                            Text(stringResource(R.string.debug_recorder_clear))
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                latestDebugReport = buildCurrentReport()
+                                showDebugReportViewer = true
+                            }
+                        ) {
+                            Text(stringResource(R.string.debug_recorder_view))
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                val report = buildCurrentReport()
+                                shareReport(report)
+                            }
+                        ) {
+                            Text(stringResource(R.string.debug_recorder_share))
                         }
                     }
-                ) {
-                    Text(
-                        if (isRecording) {
-                            stringResource(R.string.debug_recorder_stop)
-                        } else {
-                            stringResource(R.string.debug_recorder_record)
-                        }
-                    )
-                }
-                OutlinedButton(
-                    onClick = {
-                        recordedEvents.clear()
-                        DebugCaptureStore.clearAll()
-                        recordStartedAtMs = null
-                        lastRecordedAtMs = null
-                        isRecording = false
-                        showDebugReportViewer = false
-                        latestDebugReport = ""
-                        displayedLastKeyEvent = null
-                    }
-                ) {
-                    Text(stringResource(R.string.debug_recorder_clear))
-                }
-                OutlinedButton(
-                    onClick = {
-                        latestDebugReport = buildCurrentReport()
-                        showDebugReportViewer = true
-                    }
-                ) {
-                    Text(stringResource(R.string.debug_recorder_view))
-                }
-                OutlinedButton(
-                    onClick = {
-                        val report = buildCurrentReport()
-                        shareReport(report)
-                    }
-                ) {
-                    Text(stringResource(R.string.debug_recorder_share))
-                }
-                FilterChip(
-                    selected = includeSuggestionsInExport,
-                    onClick = {
-                        includeSuggestionsInExport = !includeSuggestionsInExport
-                    },
-                    label = {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
                         Text(
-                            text = stringResource(R.string.debug_recorder_include_suggestions),
-                            style = MaterialTheme.typography.labelSmall
+                            text = context.getString(
+                                R.string.debug_recorder_status,
+                                if (isRecording) context.getString(R.string.debug_recorder_status_recording)
+                                else context.getString(R.string.debug_recorder_status_stopped),
+                                recordedEvents.size
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "${stringResource(R.string.debug_recorder_started_at)}${
+                                recordStartedAtMs?.let { formatDebugTimestamp(it) } ?: "n/a"
+                            }",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                )
+                }
+                Column(
+                    modifier = Modifier.width(140.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    FilterChip(
+                        selected = includeSuggestionsInExport,
+                        onClick = {
+                            includeSuggestionsInExport = !includeSuggestionsInExport
+                        },
+                        label = {
+                            Text(
+                                text = stringResource(R.string.debug_recorder_include_suggestions),
+                                style = MaterialTheme.typography.labelSmall,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    FilterChip(
+                        selected = includeRawTrackpadInExport,
+                        onClick = {
+                            includeRawTrackpadInExport = !includeRawTrackpadInExport
+                        },
+                        label = {
+                            Text(
+                                text = stringResource(R.string.debug_recorder_include_raw_trackpad),
+                                style = MaterialTheme.typography.labelSmall,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
-            Text(
-                text = context.getString(
-                    R.string.debug_recorder_status,
-                    if (isRecording) context.getString(R.string.debug_recorder_status_recording)
-                    else context.getString(R.string.debug_recorder_status_stopped),
-                    recordedEvents.size
-                ),
-                style = MaterialTheme.typography.bodySmall,
-                fontFamily = FontFamily.Monospace,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = "${stringResource(R.string.debug_recorder_started_at)}${
-                    recordStartedAtMs?.let { formatDebugTimestamp(it) } ?: "n/a"
-                }",
-                style = MaterialTheme.typography.bodySmall,
-                fontFamily = FontFamily.Monospace,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
 
         // Last keyboard event (always visible)
@@ -1004,7 +1045,8 @@ private fun buildKeyboardDebugReport(
     context: Context,
     recordStartedAtMs: Long?,
     events: List<RecordedKeyboardEvent>,
-    includeSuggestions: Boolean
+    includeSuggestions: Boolean,
+    includeRawTrackpad: Boolean
 ): String {
     val nowMs = System.currentTimeMillis()
     val tz = TimeZone.getDefault()
@@ -1012,6 +1054,7 @@ private fun buildKeyboardDebugReport(
     val imeContext = DebugCaptureStore.imeContextSnapshot()
     val autoCorrections = DebugCaptureStore.autoCorrectionsSnapshot()
     val suggestionsSnapshots = if (includeSuggestions) DebugCaptureStore.suggestionsSnapshot() else emptyList()
+    val rawTrackpadEvents = if (includeRawTrackpad) DebugCaptureStore.rawTrackpadEventsSnapshot() else emptyList()
     val filteredSuggestionsRows = if (includeSuggestions) buildFilteredSuggestionRows(suggestionsSnapshots) else emptyList()
     val suggestionFilterMode = "empty_hidden,dedupe_consecutive"
     val inputDevices = keyboardInputDevicesSnapshot()
@@ -1092,6 +1135,7 @@ private fun buildKeyboardDebugReport(
         appendLine("started_at=${recordStartedAtMs?.let { formatDebugTimestamp(it) } ?: "n/a"}")
         appendLine("event_count=${events.size}")
         appendLine("include_suggestions=$includeSuggestions")
+        appendLine("include_raw_trackpad=$includeRawTrackpad")
         appendLine("suggestions_filter=${if (includeSuggestions) suggestionFilterMode else "disabled"}")
         appendLine("attempt_logging_supported=true")
         appendLine()
@@ -1131,6 +1175,26 @@ private fun buildKeyboardDebugReport(
                         "${formatDebugTimestamp(snapshot.timestampMs)} | " +
                             snapshot.entries.joinToString(", ") { "${it.candidate}{${it.source}}" } +
                             repeatSuffix
+                    )
+                }
+            }
+        }
+        if (includeRawTrackpad) {
+            appendLine()
+            appendLine("[raw_trackpad]")
+            if (rawTrackpadEvents.isEmpty()) {
+                appendLine("(no raw trackpad events recorded)")
+            } else {
+                rawTrackpadEvents.forEach { event ->
+                    appendLine(
+                        "${formatDebugTimestamp(event.timestampMs)} | provider=${event.provider} " +
+                            "origin=${event.origin} phase=${event.phase} action=${event.action} " +
+                            "outcome=${event.outcome} start=(${event.startX ?: "n/a"},${event.startY ?: "n/a"}) " +
+                            "xy=(${event.x ?: "n/a"},${event.y ?: "n/a"}) " +
+                            "delta=(${event.deltaX ?: "n/a"},${event.deltaY ?: "n/a"}) " +
+                            "threshold=${event.threshold ?: "n/a"} deviceId=${event.deviceId} " +
+                            "source=${event.source} sourceHex=${formatHexInt(event.source)} " +
+                            "eventUptimeMs=${event.eventTimeUptimeMs}"
                     )
                 }
             }

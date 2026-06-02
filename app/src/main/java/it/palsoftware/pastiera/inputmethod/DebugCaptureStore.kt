@@ -38,11 +38,32 @@ object DebugCaptureStore {
         val physicalProfileOverride: String?
     )
 
+    data class RawTrackpadEvent(
+        val timestampMs: Long,
+        val provider: String,
+        val origin: String,
+        val phase: String,
+        val action: String,
+        val outcome: String,
+        val startX: Float?,
+        val startY: Float?,
+        val x: Float?,
+        val y: Float?,
+        val deltaX: Float?,
+        val deltaY: Float?,
+        val threshold: Float?,
+        val deviceId: Int,
+        val source: Int,
+        val eventTimeUptimeMs: Long
+    )
+
     private const val MAX_AUTOCORRECTIONS = 100
     private const val MAX_SUGGESTION_SNAPSHOTS = 50
+    private const val MAX_RAW_TRACKPAD_EVENTS = 200
 
     private val autoCorrections = ArrayDeque<AutoCorrectionEvent>()
     private val suggestions = ArrayDeque<SuggestionsSnapshot>()
+    private val rawTrackpadEvents = ArrayDeque<RawTrackpadEvent>()
     private var imeContextSnapshot: ImeContextSnapshot? = null
 
     @Synchronized
@@ -151,10 +172,56 @@ object DebugCaptureStore {
     }
 
     @Synchronized
+    fun recordRawTrackpadEvent(
+        provider: String,
+        origin: String,
+        phase: String,
+        action: String,
+        outcome: String,
+        startX: Float? = null,
+        startY: Float? = null,
+        x: Float? = null,
+        y: Float? = null,
+        deltaX: Float? = null,
+        deltaY: Float? = null,
+        threshold: Float? = null,
+        deviceId: Int = -1,
+        source: Int = 0,
+        eventTimeUptimeMs: Long = 0L
+    ) {
+        rawTrackpadEvents.addLast(
+            RawTrackpadEvent(
+                timestampMs = System.currentTimeMillis(),
+                provider = provider,
+                origin = origin,
+                phase = phase,
+                action = action,
+                outcome = outcome,
+                startX = startX,
+                startY = startY,
+                x = x,
+                y = y,
+                deltaX = deltaX,
+                deltaY = deltaY,
+                threshold = threshold,
+                deviceId = deviceId,
+                source = source,
+                eventTimeUptimeMs = eventTimeUptimeMs
+            )
+        )
+        while (rawTrackpadEvents.size > MAX_RAW_TRACKPAD_EVENTS) {
+            rawTrackpadEvents.removeFirst()
+        }
+    }
+
+    @Synchronized
     fun autoCorrectionsSnapshot(): List<AutoCorrectionEvent> = autoCorrections.toList()
 
     @Synchronized
     fun suggestionsSnapshot(): List<SuggestionsSnapshot> = suggestions.toList()
+
+    @Synchronized
+    fun rawTrackpadEventsSnapshot(): List<RawTrackpadEvent> = rawTrackpadEvents.toList()
 
     @Synchronized
     fun imeContextSnapshot(): ImeContextSnapshot? = imeContextSnapshot
@@ -163,6 +230,7 @@ object DebugCaptureStore {
     fun clearAll() {
         autoCorrections.clear()
         suggestions.clear()
+        rawTrackpadEvents.clear()
         imeContextSnapshot = null
     }
 }

@@ -49,7 +49,10 @@
     
     <!-- Swipe to Delete Section -->
     <string name="swipe_to_delete_title">Enable Swipe to Delete</string>
-    <string name="swipe_to_delete_description">Currently Titan 2 only.</string>
+    <string name="swipe_to_delete_description">Delete the previous word with a left swipe on supported trackpad input.</string>
+    <string name="swipe_to_delete_provider_title">Swipe to Delete Provider</string>
+    <string name="swipe_to_delete_provider_titan2_keycode">Titan 2 keycode workaround</string>
+    <string name="swipe_to_delete_provider_native_ime">Native IME events</string>
 
     <!-- Delete Alternatives Section -->
     <string name="delete_alternatives_title">Delete</string>
@@ -669,6 +672,7 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="debug_recorder_status_stopped">stopped</string>
     <string name="debug_recorder_started_at">Started at: </string>
     <string name="debug_recorder_include_suggestions">incl. suggestions</string>
+    <string name="debug_recorder_include_raw_trackpad">incl. raw trackpad</string>
     <string name="debug_report_viewer_title">Debug Report Viewer</string>
     
     <!-- Nav Mode Key Labels -->
@@ -910,6 +914,10 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="trackpad_gestures_shizuku_connected">Shizuku Connected</string>
     <string name="trackpad_gestures_shizuku_not_connected">Shizuku Not Connected</string>
     <string name="trackpad_gestures_shizuku_not_authorized">App Not Authorized in Shizuku</string>
+    <string name="trackpad_provider_title">Trackpad input provider</string>
+    <string name="trackpad_provider_shizuku">Shizuku (getevent)</string>
+    <string name="trackpad_provider_native_ime">Native IME events (experimental)</string>
+    <string name="trackpad_provider_native_ime_status">Native IME events active (experimental)</string>
     <string name="trackpad_swipe_threshold_title">Trackpad Swipe Sensitivity</string>
     <string name="trackpad_swipe_threshold_description">Adjust how far you need to swipe up to accept a suggestion.</string>
 

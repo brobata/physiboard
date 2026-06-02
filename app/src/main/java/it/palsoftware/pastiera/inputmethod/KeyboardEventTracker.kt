@@ -40,13 +40,66 @@ object KeyboardEventTracker {
         val outputKeyCodeName: String? = null,
         val eventTimeUptimeMs: Long = 0L
     )
+
     
     fun registerState(state: MutableState<KeyEventInfo?>) {
         _keyEventState = state
     }
-    
+
     fun unregisterState() {
         _keyEventState = null
+    }
+
+    fun notifySyntheticGestureKeyEvent(
+        provider: String,
+        origin: String,
+        phase: String,
+        action: String,
+        direction: String? = null,
+        outcome: String,
+        startX: Float? = null,
+        startY: Float? = null,
+        x: Float? = null,
+        y: Float? = null,
+        deltaX: Float? = null,
+        deltaY: Float? = null,
+        threshold: Float? = null,
+        deviceId: Int = -1,
+        source: Int = 0,
+        eventTimeUptimeMs: Long = 0L
+    ) {
+        _keyEventState?.value = KeyEventInfo(
+            keyCode = 0,
+            keyCodeName = direction?.let { "GESTURE_${it.uppercase()}" } ?: "GESTURE_TRACKPAD",
+            origin = origin,
+            action = "GESTURE_$phase",
+            scanCode = 0,
+            deviceId = deviceId,
+            source = source,
+            flags = 0,
+            repeatCount = 0,
+            metaState = 0,
+            unicodeChar = 0,
+            rawUnicodeChar = 0,
+            effectiveUnicodeChar = 0,
+            isAltPressed = false,
+            isShiftPressed = false,
+            isCtrlPressed = false,
+            outputKeyCode = null,
+            outputKeyCodeName = listOfNotNull(
+                provider,
+                action,
+                outcome,
+                startX?.let { "sx=${it.toInt()}" },
+                startY?.let { "sy=${it.toInt()}" },
+                x?.let { "x=${it.toInt()}" },
+                y?.let { "y=${it.toInt()}" },
+                deltaX?.let { "dx=${it.toInt()}" },
+                deltaY?.let { "dy=${it.toInt()}" },
+                threshold?.let { "threshold=${it.toInt()}" }
+            ).joinToString(":"),
+            eventTimeUptimeMs = eventTimeUptimeMs
+        )
     }
     
     fun notifyKeyEvent(

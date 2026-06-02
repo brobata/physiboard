@@ -13,7 +13,9 @@ import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.core.content.ContextCompat
+import android.view.InputDevice
 import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
@@ -234,6 +236,12 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private var lastAltTapUpTime: Long = 0L
     private var symTogglePendingOnKeyUp: Boolean = false
     private var symChordUsedSinceKeyDown: Boolean = false
+    private var nativeTrackpadGestureStart: NativeTrackpadGestureStart? = null
+    private var nativeTrackpadLastX: Float = 0f
+    private var nativeTrackpadLastY: Float = 0f
+    private var nativeTrackpadGestureHandled: Boolean = false
+    private var nativeTrackpadGestureAtMs: Long = 0L
+    private var trackpadDecorMotionView: View? = null
 
     private val multiTapHandler = Handler(Looper.getMainLooper())
     private val multiTapController = MultiTapController(
@@ -1455,8 +1463,12 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                     trackpadGestureDetector.stop()
                     Log.d(TRACKPAD_DEBUG_TAG, "Building new detector...")
                     trackpadGestureDetector = buildTrackpadGestureDetector()
-                    Log.d(TRACKPAD_DEBUG_TAG, "Starting new detector...")
-                    trackpadGestureDetector.start()
+                    if (shouldStartShizukuTrackpadDetector()) {
+                        Log.d(TRACKPAD_DEBUG_TAG, "Starting new Shizuku detector...")
+                        trackpadGestureDetector.start()
+                    } else {
+                        Log.d(TRACKPAD_DEBUG_TAG, "Detector start skipped after gestures change")
+                    }
                     Log.d(TRACKPAD_DEBUG_TAG, "Detector restart complete for gestures_enabled change")
                 } else {
                     Log.d(TRACKPAD_DEBUG_TAG, "Detector NOT initialized yet, skipping restart")
@@ -1470,12 +1482,28 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                     trackpadGestureDetector.stop()
                     Log.d(TRACKPAD_DEBUG_TAG, "Building new detector...")
                     trackpadGestureDetector = buildTrackpadGestureDetector()
-                    Log.d(TRACKPAD_DEBUG_TAG, "Starting new detector...")
-                    trackpadGestureDetector.start()
+                    if (shouldStartShizukuTrackpadDetector()) {
+                        Log.d(TRACKPAD_DEBUG_TAG, "Starting new Shizuku detector...")
+                        trackpadGestureDetector.start()
+                    } else {
+                        Log.d(TRACKPAD_DEBUG_TAG, "Detector start skipped after swipe threshold change")
+                    }
                     Log.d(TRACKPAD_DEBUG_TAG, "Detector restart complete for swipe_threshold change")
                 } else {
                     Log.d(TRACKPAD_DEBUG_TAG, "Detector NOT initialized yet, skipping restart")
                 }
+            } else if (key == "trackpad_provider") {
+                val newValue = SettingsManager.getTrackpadProvider(this)
+                Log.d(TRACKPAD_DEBUG_TAG, "SharedPrefs listener: trackpad_provider changed to $newValue")
+                if (::trackpadGestureDetector.isInitialized) {
+                    trackpadGestureDetector.stop()
+                    trackpadGestureDetector = buildTrackpadGestureDetector()
+                    if (shouldStartShizukuTrackpadDetector()) {
+                        Log.d(TRACKPAD_DEBUG_TAG, "Starting Shizuku detector for provider change")
+                        trackpadGestureDetector.start()
+                    }
+                }
+                attachTrackpadDecorViewMotionHook("provider_changed")
             } else if (key == "pastierina_mode_override") {
                 keyboardVisibilityController.syncMinimalUiOverrideFromSettings()
             } else if (key == "software_keyboard_mode") {
@@ -1619,9 +1647,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // Update additional subtypes on startup
         updateAdditionalSubtypes()
         // Start trackpad gesture detection
-        Log.d(TRACKPAD_DEBUG_TAG, "onCreate: Calling initial trackpadGestureDetector.start()...")
-        trackpadGestureDetector.start()
-        Log.d(TRACKPAD_DEBUG_TAG, "onCreate: Initial start() call completed")
+        if (shouldStartShizukuTrackpadDetector()) {
+            Log.d(TRACKPAD_DEBUG_TAG, "onCreate: Calling initial Shizuku trackpadGestureDetector.start()...")
+            trackpadGestureDetector.start()
+            Log.d(TRACKPAD_DEBUG_TAG, "onCreate: Initial Shizuku start() call completed")
+        } else {
+            Log.d(TRACKPAD_DEBUG_TAG, "onCreate: Initial Shizuku detector start skipped")
+        }
     }
 
     private fun buildTrackpadGestureDetector(): TrackpadGestureDetector {
@@ -1633,7 +1665,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             "buildTrackpadGestureDetector() - gesturesEnabled=$gesturesEnabled, swipeThreshold=$swipeThreshold, eventDevice=$eventDevice"
         )
         return TrackpadGestureDetector(
-            isEnabled = { SettingsManager.getTrackpadGesturesEnabled(this) },
+            isEnabled = { shouldStartShizukuTrackpadDetector() },
             onSwipeUp = { third -> acceptSuggestionAtIndex(third) },
             scope = trackpadScope,
             swipeUpThreshold = swipeThreshold,
@@ -1701,6 +1733,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         speechResultReceiver = null
         multiTapController.cancelAll()
         updateNavModeStatusIcon(false)
+        trackpadDecorMotionView?.setOnGenericMotionListener(null)
+        trackpadDecorMotionView = null
 
         // Stop trackpad gesture detection
         trackpadGestureDetector.stop()
@@ -1998,6 +2032,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         updateDebugImeContextSnapshot(info)
+        attachTrackpadDecorViewMotionHook("onStartInputView")
 
         // Register additional subtypes when IME becomes active
         // This ensures dynamic languages are loaded even if service was already created
@@ -2046,7 +2081,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // Check if trackpad gestures should be started
         if (::trackpadGestureDetector.isInitialized) {
             val gesturesEnabled = SettingsManager.getTrackpadGesturesEnabled(this)
-            if (gesturesEnabled && !trackpadGestureDetector.isRunning()) {
+            if (shouldStartShizukuTrackpadDetector() && !trackpadGestureDetector.isRunning()) {
                 val shizukuRunning = try { Shizuku.pingBinder() } catch (e: Exception) { false }
                 val shizukuAuthorized = try { 
                     Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED 
@@ -2058,6 +2093,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 } else {
                     Log.d(TRACKPAD_DEBUG_TAG, "onStartInputView: Gestures enabled but Shizuku not ready (running=$shizukuRunning, authorized=$shizukuAuthorized)")
                 }
+            } else if (!shouldStartShizukuTrackpadDetector() && trackpadGestureDetector.isRunning()) {
+                Log.d(TRACKPAD_DEBUG_TAG, "onStartInputView: stopping Shizuku detector for non-Shizuku provider")
+                trackpadGestureDetector.stop()
             } else if (gesturesEnabled && trackpadGestureDetector.isRunning()) {
                 Log.d(TRACKPAD_DEBUG_TAG, "onStartInputView: Gestures enabled and detector already running, skipping")
             }
@@ -2107,6 +2145,44 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     override fun onWindowShown() {
         super.onWindowShown()
         updateStatusBarText()
+        attachTrackpadDecorViewMotionHook("onWindowShown")
+    }
+
+    private fun shouldStartShizukuTrackpadDetector(): Boolean {
+        return SettingsManager.getTrackpadGesturesEnabled(this) &&
+            SettingsManager.getTrackpadProvider(this) == SettingsManager.TRACKPAD_PROVIDER_SHIZUKU
+    }
+
+    private fun isNativeImeTrackpadProviderActive(): Boolean {
+        return SettingsManager.getTrackpadGesturesEnabled(this) &&
+            SettingsManager.getTrackpadProvider(this) == SettingsManager.TRACKPAD_PROVIDER_NATIVE_IME
+    }
+
+    private fun attachTrackpadDecorViewMotionHook(reason: String) {
+        val decorView = window?.window?.decorView
+        if (decorView == null) {
+            Log.d(TRACKPAD_DEBUG_TAG, "DecorView hook skipped[$reason]: no IME decorView")
+            return
+        }
+
+        if (trackpadDecorMotionView === decorView) {
+            decorView.isFocusableInTouchMode = true
+            decorView.requestFocus()
+            Log.d(TRACKPAD_DEBUG_TAG, "DecorView hook refreshed[$reason]: view=${decorView.javaClass.simpleName}")
+            return
+        }
+
+        trackpadDecorMotionView?.setOnGenericMotionListener(null)
+        trackpadDecorMotionView = decorView
+        decorView.isFocusableInTouchMode = true
+        decorView.requestFocus()
+        decorView.setOnGenericMotionListener { _, event ->
+            handleNativeImeTrackpadMotion(event, origin = "ime_decor")
+        }
+        Log.d(
+            TRACKPAD_DEBUG_TAG,
+            "DecorView hook attached[$reason]: view=${decorView.javaClass.simpleName}, focused=${decorView.isFocused}"
+        )
     }
     
     /**
@@ -3402,6 +3478,273 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             .takeIf { it != 0 } ?: R.string.input_method_name
     }
 
+    private fun handleNativeImeTrackpadMotion(event: MotionEvent, origin: String): Boolean {
+        if (!isNativeImeTrackpadProviderActive()) {
+            return false
+        }
+        if (!DeviceSpecific.physicalKeyboardName().equals("titan2", ignoreCase = true)) {
+            return false
+        }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.BAKLAVA) {
+            return false
+        }
+
+        val deviceName = InputDevice.getDevice(event.deviceId)?.name.orEmpty()
+        val isTrackpadEvent = event.isFromSource(InputDevice.SOURCE_TOUCHPAD) ||
+            deviceName.equals("touchPad", ignoreCase = true)
+        if (!isTrackpadEvent) {
+            return false
+        }
+
+        Log.d(
+            TRACKPAD_DEBUG_TAG,
+            "NativeMotion[$origin]: action=${motionActionName(event.actionMasked)} source=${event.source}(0x${event.source.toString(16)}) deviceId=${event.deviceId} device='$deviceName' x=${event.x} y=${event.y}"
+        )
+
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                nativeTrackpadGestureStart = NativeTrackpadGestureStart(
+                    x = event.x,
+                    y = event.y,
+                    origin = origin,
+                    actionName = motionActionName(event.actionMasked),
+                    deviceId = event.deviceId,
+                    source = event.source,
+                    eventTimeUptimeMs = event.eventTime
+                )
+                DebugCaptureStore.recordRawTrackpadEvent(
+                    provider = SettingsManager.TRACKPAD_PROVIDER_NATIVE_IME,
+                    origin = origin,
+                    phase = "down",
+                    action = motionActionName(event.actionMasked),
+                    outcome = "start",
+                    startX = event.x,
+                    startY = event.y,
+                    x = event.x,
+                    y = event.y,
+                    deltaX = 0f,
+                    deltaY = 0f,
+                    threshold = nativeImeTrackpadSwipeThreshold(),
+                    deviceId = event.deviceId,
+                    source = event.source,
+                    eventTimeUptimeMs = event.eventTime
+                )
+                nativeTrackpadLastX = event.x
+                nativeTrackpadLastY = event.y
+                nativeTrackpadGestureHandled = false
+                return true
+            }
+            MotionEvent.ACTION_MOVE -> {
+                val start = nativeTrackpadGestureStart ?: NativeTrackpadGestureStart(
+                    x = event.x,
+                    y = event.y,
+                    origin = origin,
+                    actionName = motionActionName(event.actionMasked),
+                    deviceId = event.deviceId,
+                    source = event.source,
+                    eventTimeUptimeMs = event.eventTime
+                ).also { nativeTrackpadGestureStart = it }
+                if (nativeTrackpadGestureHandled) {
+                    return true
+                }
+                for (index in 0 until event.historySize) {
+                    val historicalX = event.getHistoricalX(0, index)
+                    val historicalY = event.getHistoricalY(0, index)
+                    nativeTrackpadLastX = historicalX
+                    nativeTrackpadLastY = historicalY
+                    if (handleNativeImeTrackpadSwipeCandidate(start, historicalX, historicalY, "move_history[$index]")) {
+                        return true
+                    }
+                }
+                nativeTrackpadLastX = event.x
+                nativeTrackpadLastY = event.y
+                handleNativeImeTrackpadSwipeCandidate(start, event.x, event.y, "move")
+                return true
+            }
+            MotionEvent.ACTION_UP -> {
+                val start = nativeTrackpadGestureStart
+                if (start != null && !nativeTrackpadGestureHandled) {
+                    handleNativeImeTrackpadSwipeCandidate(start, nativeTrackpadLastX, nativeTrackpadLastY, "up")
+                }
+                nativeTrackpadGestureStart = null
+                nativeTrackpadGestureHandled = false
+                return true
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                nativeTrackpadGestureStart = null
+                nativeTrackpadGestureHandled = false
+                return true
+            }
+            else -> return false
+        }
+    }
+
+    private fun handleNativeImeTrackpadSwipeCandidate(
+        start: NativeTrackpadGestureStart,
+        x: Float,
+        y: Float,
+        phase: String
+    ): Boolean {
+        val deltaX = x - start.x
+        val deltaY = y - start.y
+        val upwardDistance = -deltaY
+        val leftwardDistance = -deltaX
+        val threshold = nativeImeTrackpadSwipeThreshold()
+        val verticalEnough = upwardDistance >= threshold
+        val mostlyVertical = upwardDistance >= kotlin.math.abs(deltaX) * 1.4f
+        val leftEnough = leftwardDistance >= threshold
+        val mostlyHorizontal = leftwardDistance >= kotlin.math.abs(deltaY) * 1.4f
+        Log.d(
+            TRACKPAD_DEBUG_TAG,
+            "Native candidate[$phase]: startX=${start.x}, startY=${start.y}, x=$x, y=$y, dx=$deltaX, dy=$deltaY, up=$upwardDistance, left=$leftwardDistance, threshold=$threshold, verticalEnough=$verticalEnough, mostlyVertical=$mostlyVertical, leftEnough=$leftEnough, mostlyHorizontal=$mostlyHorizontal"
+        )
+        val direction = when {
+            verticalEnough && mostlyVertical -> NativeTrackpadSwipeDirection.UP
+            leftEnough &&
+                mostlyHorizontal &&
+                SettingsManager.getSwipeToDelete(this) &&
+                SettingsManager.getSwipeToDeleteProvider(this) == SettingsManager.SWIPE_TO_DELETE_PROVIDER_NATIVE_IME -> NativeTrackpadSwipeDirection.LEFT
+            else -> {
+                DebugCaptureStore.recordRawTrackpadEvent(
+                    provider = SettingsManager.TRACKPAD_PROVIDER_NATIVE_IME,
+                    origin = start.origin,
+                    phase = phase,
+                    action = start.actionName,
+                    outcome = "candidate",
+                    startX = start.x,
+                    startY = start.y,
+                    x = x,
+                    y = y,
+                    deltaX = deltaX,
+                    deltaY = deltaY,
+                    threshold = threshold,
+                    deviceId = start.deviceId,
+                    source = start.source,
+                    eventTimeUptimeMs = start.eventTimeUptimeMs
+                )
+                return false
+            }
+        }
+
+        val now = System.currentTimeMillis()
+        if (now - nativeTrackpadGestureAtMs < 250L) {
+            DebugCaptureStore.recordRawTrackpadEvent(
+                provider = SettingsManager.TRACKPAD_PROVIDER_NATIVE_IME,
+                origin = start.origin,
+                phase = phase,
+                action = start.actionName,
+                outcome = "debounced",
+                startX = start.x,
+                startY = start.y,
+                x = x,
+                y = y,
+                deltaX = deltaX,
+                deltaY = deltaY,
+                threshold = threshold,
+                deviceId = start.deviceId,
+                source = start.source,
+                eventTimeUptimeMs = start.eventTimeUptimeMs
+            )
+            nativeTrackpadGestureHandled = true
+            return true
+        }
+        nativeTrackpadGestureAtMs = now
+        nativeTrackpadGestureHandled = true
+
+        when (direction) {
+            NativeTrackpadSwipeDirection.UP -> {
+                val third = nativeImeTrackpadThird(start.x)
+                Log.d(
+                    TRACKPAD_DEBUG_TAG,
+                    "Native swipe accepted[$phase]: direction=UP startX=${start.x}, startY=${start.y}, x=$x, y=$y, dx=$deltaX, dy=$deltaY, third=$third"
+                )
+                KeyboardEventTracker.notifySyntheticGestureKeyEvent(
+                    provider = SettingsManager.TRACKPAD_PROVIDER_NATIVE_IME,
+                    origin = start.origin,
+                    phase = phase,
+                    action = start.actionName,
+                    direction = direction.name.lowercase(),
+                    outcome = "accepted_suggestion_$third",
+                    startX = start.x,
+                    startY = start.y,
+                    x = x,
+                    y = y,
+                    deltaX = deltaX,
+                    deltaY = deltaY,
+                    threshold = threshold,
+                    deviceId = start.deviceId,
+                    source = start.source,
+                    eventTimeUptimeMs = start.eventTimeUptimeMs
+                )
+                acceptSuggestionAtIndex(third)
+            }
+            NativeTrackpadSwipeDirection.LEFT -> {
+                Log.d(
+                    TRACKPAD_DEBUG_TAG,
+                    "Native swipe accepted[$phase]: direction=LEFT startX=${start.x}, startY=${start.y}, x=$x, y=$y, dx=$deltaX, dy=$deltaY"
+                )
+                KeyboardEventTracker.notifySyntheticGestureKeyEvent(
+                    provider = SettingsManager.TRACKPAD_PROVIDER_NATIVE_IME,
+                    origin = start.origin,
+                    phase = phase,
+                    action = start.actionName,
+                    direction = direction.name.lowercase(),
+                    outcome = "accepted_delete",
+                    startX = start.x,
+                    startY = start.y,
+                    x = x,
+                    y = y,
+                    deltaX = deltaX,
+                    deltaY = deltaY,
+                    threshold = threshold,
+                    deviceId = start.deviceId,
+                    source = start.source,
+                    eventTimeUptimeMs = start.eventTimeUptimeMs
+                )
+                deleteWordFromNativeTrackpadSwipe()
+            }
+        }
+        return true
+    }
+
+    private fun nativeImeTrackpadSwipeThreshold(): Float {
+        return SettingsManager.getTrackpadSwipeThreshold(this).coerceIn(120f, 1000f)
+    }
+
+    private fun nativeImeTrackpadThird(x: Float): Int {
+        val width = 1440f
+        val clampedX = x.coerceIn(0f, width)
+        return when {
+            clampedX < width / 3f -> 0
+            clampedX < (width * 2f) / 3f -> 1
+            else -> 2
+        }
+    }
+
+    private fun motionActionName(action: Int): String {
+        return when (action) {
+            MotionEvent.ACTION_DOWN -> "ACTION_DOWN"
+            MotionEvent.ACTION_UP -> "ACTION_UP"
+            MotionEvent.ACTION_MOVE -> "ACTION_MOVE"
+            MotionEvent.ACTION_CANCEL -> "ACTION_CANCEL"
+            MotionEvent.ACTION_SCROLL -> "ACTION_SCROLL"
+            else -> "ACTION_$action"
+        }
+    }
+
+    private fun deleteWordFromNativeTrackpadSwipe() {
+        val ic = currentInputConnection
+        if (ic == null) {
+            Log.w(TRACKPAD_DEBUG_TAG, "Native swipe-to-delete ignored: no InputConnection")
+            return
+        }
+        if (TextSelectionHelper.deleteLastWord(ic)) {
+            Log.d(TRACKPAD_DEBUG_TAG, "Native swipe-to-delete deleted previous word")
+        } else {
+            Log.d(TRACKPAD_DEBUG_TAG, "Native swipe-to-delete found nothing to delete")
+        }
+    }
+
     private fun acceptSuggestionAtIndex(third: Int) {
         // Clear latched UI layers when selecting a suggestion via trackpad.
         if (shiftLayerLatched || altLayerLatched) {
@@ -3528,5 +3871,20 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             NotificationHelper.triggerHapticFeedback(this)
             Log.d(TAG, "Suggestion '$suggestion' inserted successfully")
         }
+    }
+
+    private data class NativeTrackpadGestureStart(
+        val x: Float,
+        val y: Float,
+        val origin: String,
+        val actionName: String,
+        val deviceId: Int,
+        val source: Int,
+        val eventTimeUptimeMs: Long
+    )
+
+    private enum class NativeTrackpadSwipeDirection {
+        UP,
+        LEFT
     }
 }

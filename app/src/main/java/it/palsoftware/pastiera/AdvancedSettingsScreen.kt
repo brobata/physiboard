@@ -102,6 +102,7 @@ fun AdvancedSettingsScreen(
         mutableStateOf(SettingsManager.getClipboardRetentionTime(context).toString())
     }
     var shizukuStatus by remember { mutableStateOf(ShizukuStatus.NotConnected) }
+    var trackpadProvider by remember { mutableStateOf(SettingsManager.getTrackpadProvider(context)) }
     var navigationDirection by remember { mutableStateOf(AdvancedNavigationDirection.Push) }
     val navigationStack = remember {
         mutableStateListOf<AdvancedDestination>(AdvancedDestination.Main)
@@ -119,6 +120,9 @@ fun AdvancedSettingsScreen(
                 }
                 "clipboard_retention_time" -> {
                     clipboardRetentionTime = SettingsManager.getClipboardRetentionTime(context).toString()
+                }
+                "trackpad_provider" -> {
+                    trackpadProvider = SettingsManager.getTrackpadProvider(context)
                 }
             }
         }
@@ -306,7 +310,7 @@ fun AdvancedSettingsScreen(
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
-                                // Shizuku Status Row
+                                // Trackpad provider status row
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -315,30 +319,34 @@ fun AdvancedSettingsScreen(
                                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
                                     Icon(
-                                        imageVector = when (shizukuStatus) {
-                                            ShizukuStatus.Connected -> Icons.Filled.CheckCircle
-                                            ShizukuStatus.NotAuthorized -> Icons.Filled.Warning
-                                            ShizukuStatus.NotConnected -> Icons.Filled.Error
+                                        imageVector = when {
+                                            trackpadProvider == SettingsManager.TRACKPAD_PROVIDER_NATIVE_IME -> Icons.Filled.CheckCircle
+                                            shizukuStatus == ShizukuStatus.Connected -> Icons.Filled.CheckCircle
+                                            shizukuStatus == ShizukuStatus.NotAuthorized -> Icons.Filled.Warning
+                                            else -> Icons.Filled.Error
                                         },
                                         contentDescription = null,
-                                        tint = when (shizukuStatus) {
-                                            ShizukuStatus.Connected -> MaterialTheme.colorScheme.primary
-                                            ShizukuStatus.NotAuthorized -> MaterialTheme.colorScheme.tertiary
-                                            ShizukuStatus.NotConnected -> MaterialTheme.colorScheme.error
+                                        tint = when {
+                                            trackpadProvider == SettingsManager.TRACKPAD_PROVIDER_NATIVE_IME -> MaterialTheme.colorScheme.primary
+                                            shizukuStatus == ShizukuStatus.Connected -> MaterialTheme.colorScheme.primary
+                                            shizukuStatus == ShizukuStatus.NotAuthorized -> MaterialTheme.colorScheme.tertiary
+                                            else -> MaterialTheme.colorScheme.error
                                         },
                                         modifier = Modifier.size(14.dp)
                                     )
                                     Text(
-                                        text = when (shizukuStatus) {
-                                            ShizukuStatus.Connected -> stringResource(R.string.trackpad_gestures_shizuku_connected)
-                                            ShizukuStatus.NotAuthorized -> stringResource(R.string.trackpad_gestures_shizuku_not_authorized)
-                                            ShizukuStatus.NotConnected -> stringResource(R.string.trackpad_gestures_shizuku_not_connected)
+                                        text = when {
+                                            trackpadProvider == SettingsManager.TRACKPAD_PROVIDER_NATIVE_IME -> stringResource(R.string.trackpad_provider_native_ime_status)
+                                            shizukuStatus == ShizukuStatus.Connected -> stringResource(R.string.trackpad_gestures_shizuku_connected)
+                                            shizukuStatus == ShizukuStatus.NotAuthorized -> stringResource(R.string.trackpad_gestures_shizuku_not_authorized)
+                                            else -> stringResource(R.string.trackpad_gestures_shizuku_not_connected)
                                         },
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = when (shizukuStatus) {
-                                            ShizukuStatus.Connected -> MaterialTheme.colorScheme.primary
-                                            ShizukuStatus.NotAuthorized -> MaterialTheme.colorScheme.tertiary
-                                            ShizukuStatus.NotConnected -> MaterialTheme.colorScheme.error
+                                        color = when {
+                                            trackpadProvider == SettingsManager.TRACKPAD_PROVIDER_NATIVE_IME -> MaterialTheme.colorScheme.primary
+                                            shizukuStatus == ShizukuStatus.Connected -> MaterialTheme.colorScheme.primary
+                                            shizukuStatus == ShizukuStatus.NotAuthorized -> MaterialTheme.colorScheme.tertiary
+                                            else -> MaterialTheme.colorScheme.error
                                         }
                                     )
                                 }

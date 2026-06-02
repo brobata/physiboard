@@ -42,6 +42,7 @@ object SettingsManager {
     private const val KEY_SMART_QUOTES = "smart_quotes"
     private const val KEY_SMART_QUOTES_STYLE = "smart_quotes_style"
     private const val KEY_SWIPE_TO_DELETE = "swipe_to_delete"
+    private const val KEY_SWIPE_TO_DELETE_PROVIDER = "swipe_to_delete_provider"
     private const val KEY_AUTO_SHOW_KEYBOARD = "auto_show_keyboard"
     private const val KEY_CLEAR_ALT_ON_SPACE = "clear_alt_on_space"
     private const val KEY_ALT_CTRL_SPEECH_SHORTCUT = "alt_ctrl_speech_shortcut"
@@ -82,6 +83,7 @@ object SettingsManager {
     private const val KEY_CLIPBOARD_RETENTION_TIME = "clipboard_retention_time" // How long to keep clipboard entries (in minutes)
     private const val KEY_TRACKPAD_GESTURES_ENABLED = "trackpad_gestures_enabled" // Whether trackpad gesture suggestions are enabled
     private const val KEY_TRACKPAD_SWIPE_THRESHOLD = "trackpad_swipe_threshold" // Threshold for swipe detection on trackpad
+    private const val KEY_TRACKPAD_PROVIDER = "trackpad_provider" // shizuku | native_ime
     private const val KEY_SHIFT_BACKSPACE_DELETE = "shift_backspace_delete" // Shift + Backspace performs forward delete
     private const val KEY_ALT_BACKSPACE_DELETE = "alt_backspace_delete" // Alt + Backspace performs forward delete
     private const val KEY_BACKSPACE_AT_START_DELETE = "backspace_at_start_delete" // Backspace at line start performs forward delete
@@ -230,9 +232,23 @@ object SettingsManager {
     private const val DEFAULT_CLIPBOARD_HISTORY_ENABLED = true
     private const val DEFAULT_CLIPBOARD_RETENTION_TIME = 120L // 2 hours in minutes
     private const val DEFAULT_TRACKPAD_GESTURES_ENABLED = false
-    private const val DEFAULT_TRACKPAD_SWIPE_THRESHOLD = 300f
+    private const val DEFAULT_TRACKPAD_SWIPE_THRESHOLD = 500f
     private const val MIN_TRACKPAD_SWIPE_THRESHOLD = 120f
-    private const val MAX_TRACKPAD_SWIPE_THRESHOLD = 600f
+    private const val MAX_TRACKPAD_SWIPE_THRESHOLD = 1000f
+    const val TRACKPAD_PROVIDER_SHIZUKU = "shizuku"
+    const val TRACKPAD_PROVIDER_NATIVE_IME = "native_ime"
+    private const val DEFAULT_TRACKPAD_PROVIDER = TRACKPAD_PROVIDER_NATIVE_IME
+    private val TRACKPAD_PROVIDER_VALUES = setOf(
+        TRACKPAD_PROVIDER_SHIZUKU,
+        TRACKPAD_PROVIDER_NATIVE_IME
+    )
+    const val SWIPE_TO_DELETE_PROVIDER_TITAN2_KEYCODE = "titan2_keycode"
+    const val SWIPE_TO_DELETE_PROVIDER_NATIVE_IME = "native_ime"
+    private const val DEFAULT_SWIPE_TO_DELETE_PROVIDER = SWIPE_TO_DELETE_PROVIDER_NATIVE_IME
+    private val SWIPE_TO_DELETE_PROVIDER_VALUES = setOf(
+        SWIPE_TO_DELETE_PROVIDER_TITAN2_KEYCODE,
+        SWIPE_TO_DELETE_PROVIDER_NATIVE_IME
+    )
     private const val DEFAULT_SHIFT_BACKSPACE_DELETE = false
     private const val DEFAULT_ALT_BACKSPACE_DELETE = false
     private const val DEFAULT_BACKSPACE_AT_START_DELETE = false
@@ -759,6 +775,29 @@ object SettingsManager {
         getPreferences(context).edit()
             .putBoolean(KEY_SWIPE_TO_DELETE, enabled)
             .apply()
+    }
+
+    fun getSwipeToDeleteProvider(context: Context): String {
+        val value = getPreferences(context).getString(
+            KEY_SWIPE_TO_DELETE_PROVIDER,
+            DEFAULT_SWIPE_TO_DELETE_PROVIDER
+        ).orEmpty()
+        return if (SWIPE_TO_DELETE_PROVIDER_VALUES.contains(value)) {
+            value
+        } else {
+            DEFAULT_SWIPE_TO_DELETE_PROVIDER
+        }
+    }
+
+    fun setSwipeToDeleteProvider(context: Context, provider: String) {
+        val normalized = if (SWIPE_TO_DELETE_PROVIDER_VALUES.contains(provider)) {
+            provider
+        } else {
+            DEFAULT_SWIPE_TO_DELETE_PROVIDER
+        }
+        getPreferences(context).edit()
+            .putString(KEY_SWIPE_TO_DELETE_PROVIDER, normalized)
+            .commit()
     }
     
     /**
@@ -3166,6 +3205,18 @@ object SettingsManager {
     fun getMinTrackpadSwipeThreshold(): Float = MIN_TRACKPAD_SWIPE_THRESHOLD
     fun getMaxTrackpadSwipeThreshold(): Float = MAX_TRACKPAD_SWIPE_THRESHOLD
     fun getDefaultTrackpadSwipeThreshold(): Float = DEFAULT_TRACKPAD_SWIPE_THRESHOLD
+
+    fun getTrackpadProvider(context: Context): String {
+        val value = getPreferences(context).getString(KEY_TRACKPAD_PROVIDER, DEFAULT_TRACKPAD_PROVIDER).orEmpty()
+        return if (TRACKPAD_PROVIDER_VALUES.contains(value)) value else DEFAULT_TRACKPAD_PROVIDER
+    }
+
+    fun setTrackpadProvider(context: Context, provider: String) {
+        val normalized = if (TRACKPAD_PROVIDER_VALUES.contains(provider)) provider else DEFAULT_TRACKPAD_PROVIDER
+        getPreferences(context).edit()
+            .putString(KEY_TRACKPAD_PROVIDER, normalized)
+            .commit()
+    }
 
     /**
      * Returns the File for variations.json in filesDir.
