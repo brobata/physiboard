@@ -3716,7 +3716,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         if (!isNativeImeTrackpadProviderActive()) {
             return false
         }
-        if (!DeviceSpecific.physicalKeyboardName().equals("titan2", ignoreCase = true)) {
+        if (!DeviceSpecific.isTitan2Device()) {
             return false
         }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.BAKLAVA) {
