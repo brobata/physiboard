@@ -487,7 +487,11 @@ object AdditionalSubtypeUtils {
      * Checks if a subtype should be kept based on current system locales.
      * Returns true if the subtype should be kept, false if it should be removed.
      */
-    fun shouldKeepSubtype(subtype: InputMethodSubtype, currentSystemLocales: Set<String>, systemLanguageCodes: Set<String>): Boolean {
+    fun shouldKeepSubtype(
+        subtype: InputMethodSubtype,
+        currentSystemLocales: Set<String>,
+        systemLanguageCodes: Set<String>
+    ): Boolean {
         // Keep ALL additional (custom) subtypes. They may not be present in system locales.
         if (isAdditionalSubtype(subtype)) return true
 
@@ -495,6 +499,26 @@ object AdditionalSubtypeUtils {
         val subtypeLocale = subtype.localeString()
         val languageCode = subtypeLocale.split("_").first().lowercase()
         return currentSystemLocales.contains(subtypeLocale) || systemLanguageCodes.contains(languageCode)
+    }
+
+    fun shouldKeepSubtype(
+        context: Context,
+        assets: AssetManager,
+        subtype: InputMethodSubtype,
+        currentSystemLocales: Set<String>,
+        systemLanguageCodes: Set<String>
+    ): Boolean {
+        if (!shouldKeepSubtype(subtype, currentSystemLocales, systemLanguageCodes)) {
+            return false
+        }
+        if (isAdditionalSubtype(subtype)) {
+            return true
+        }
+
+        val locale = subtype.localeString()
+        val layout = getKeyboardLayoutFromSubtype(subtype)
+            ?: getLayoutForLocale(assets, locale, context)
+        return !SettingsManager.isSystemInputStyleHidden(context, locale, layout)
     }
     
     /**
@@ -741,7 +765,22 @@ object AdditionalSubtypeUtils {
                             
                             // Get currently enabled subtypes (include implicit ones from method.xml)
                             val currentlyEnabled = imm.getEnabledInputMethodSubtypeList(updatedInfo, true)
-                            val enabledHashCodes = currentlyEnabled.map { it.hashCode() }.toMutableSet()
+                            val currentSystemLocales = getSystemEnabledLocales(context).toSet()
+                            val systemLanguageCodes = currentSystemLocales.map { locale ->
+                                locale.split("_").first().lowercase(Locale.ROOT)
+                            }.toSet()
+                            val enabledHashCodes = currentlyEnabled
+                                .filter { subtype ->
+                                    shouldKeepSubtype(
+                                        context,
+                                        context.assets,
+                                        subtype,
+                                        currentSystemLocales,
+                                        systemLanguageCodes
+                                    )
+                                }
+                                .map { it.hashCode() }
+                                .toMutableSet()
                             
                             // Add hash codes of additional subtypes to enabled set
                             subtypes.forEach { additionalSubtype ->
@@ -762,7 +801,7 @@ object AdditionalSubtypeUtils {
                                 }
                             }
                             
-                            // Enable all subtypes (original + additional)
+                            // Enable visible base subtypes plus all configured additional subtypes.
                             if (enabledHashCodes.isNotEmpty()) {
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                                     imm.setExplicitlyEnabledInputMethodSubtypes(
@@ -792,9 +831,20 @@ object AdditionalSubtypeUtils {
                         if (updatedInfo != null) {
                             // Get currently enabled subtypes (include implicit ones from method.xml)
                             val currentlyEnabled = imm.getEnabledInputMethodSubtypeList(updatedInfo, true)
-                            // Filter out additional subtypes (keep only system subtypes)
-                            val systemSubtypes = currentlyEnabled.filterNot { subtype ->
-                                isAdditionalSubtype(subtype)
+                            val currentSystemLocales = getSystemEnabledLocales(context).toSet()
+                            val systemLanguageCodes = currentSystemLocales.map { locale ->
+                                locale.split("_").first().lowercase(Locale.ROOT)
+                            }.toSet()
+
+                            val systemSubtypes = currentlyEnabled.filter { subtype ->
+                                !isAdditionalSubtype(subtype) &&
+                                    shouldKeepSubtype(
+                                        context,
+                                        context.assets,
+                                        subtype,
+                                        currentSystemLocales,
+                                        systemLanguageCodes
+                                    )
                             }
                             
                             if (systemSubtypes.isNotEmpty()) {

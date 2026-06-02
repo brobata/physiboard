@@ -82,6 +82,21 @@ class FakeDictionaryRepository : DictionaryRepository {
             .take(limit)
     }
 
+    override fun topCommonEntries(limit: Int): List<DictionaryEntry> {
+        return entries
+            .filter {
+                it.word.length > 1 &&
+                    it.source != SuggestionSource.DEFAULT_USER &&
+                    it.word.any { ch -> ch.isLetter() }
+            }
+            .sortedWith(
+                compareByDescending<DictionaryEntry> { it.source == SuggestionSource.USER }
+                    .thenByDescending { effectiveFrequency(it) }
+                    .thenBy { it.word.length }
+            )
+            .take(limit)
+    }
+
     override fun isKnownWord(word: String): Boolean {
         val normalized = normalize(word)
         return entries.any { normalize(it.word) == normalized }

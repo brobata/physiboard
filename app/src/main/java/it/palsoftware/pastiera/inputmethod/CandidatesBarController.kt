@@ -48,6 +48,34 @@ class CandidatesBarController(
             candidatesStatusBar.onAddUserWord = value
         }
 
+    var onSuggestionCommitted: (() -> Unit)? = null
+        set(value) {
+            field = value
+            inputStatusBar.onSuggestionCommitted = value
+            candidatesStatusBar.onSuggestionCommitted = value
+        }
+
+    var onHideSuggestion: ((String) -> Unit)? = null
+        set(value) {
+            field = value
+            inputStatusBar.onHideSuggestion = value
+            candidatesStatusBar.onHideSuggestion = value
+        }
+
+    var onDeleteUserSuggestion: ((String) -> Unit)? = null
+        set(value) {
+            field = value
+            inputStatusBar.onDeleteUserSuggestion = value
+            candidatesStatusBar.onDeleteUserSuggestion = value
+        }
+
+    var canDeleteUserSuggestion: ((String) -> Boolean)? = null
+        set(value) {
+            field = value
+            inputStatusBar.canDeleteUserSuggestion = value
+            candidatesStatusBar.canDeleteUserSuggestion = value
+        }
+
     var onLanguageSwitchRequested: (() -> Unit)? = null
         set(value) {
             field = value
@@ -221,5 +249,10 @@ class CandidatesBarController(
     fun flashSuggestionSlot(suggestionIndex: Int) {
         inputStatusBar.flashSuggestionSlot(suggestionIndex)
         candidatesStatusBar.flashSuggestionSlot(suggestionIndex)
+    }
+
+    fun resetSuggestionActionMode() {
+        inputStatusBar.resetSuggestionActionMode()
+        candidatesStatusBar.resetSuggestionActionMode()
     }
 }

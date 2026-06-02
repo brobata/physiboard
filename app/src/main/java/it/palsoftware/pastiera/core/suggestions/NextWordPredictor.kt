@@ -13,8 +13,37 @@ class NextWordPredictor(
         store.learn(locale.toLanguageTag(), prefix, displayNextWord)
     }
 
+    fun learnSentenceStart(locale: Locale, firstWord: String?) {
+        val displayWord = cleanDisplayWord(firstWord) ?: return
+        store.learn(locale.toLanguageTag(), SENTENCE_START_PREFIX, displayWord)
+    }
+
     fun predict(locale: Locale, previousWord: String?, limit: Int = 3): List<SuggestionResult> {
         val prefix = normalizedKey(previousWord, locale) ?: return emptyList()
+        return predictForPrefix(locale, prefix, limit)
+    }
+
+    fun predictSentenceStart(locale: Locale, limit: Int = 3): List<SuggestionResult> {
+        return predictForPrefix(locale, SENTENCE_START_PREFIX, limit)
+    }
+
+    fun forget(locale: Locale, previousWord: String?, nextWord: String?): Boolean {
+        val prefix = normalizedKey(previousWord, locale) ?: return false
+        val displayNextWord = cleanDisplayWord(nextWord) ?: return false
+        return store.delete(locale.toLanguageTag(), prefix, displayNextWord) > 0
+    }
+
+    fun forgetSentenceStart(locale: Locale, firstWord: String?): Boolean {
+        val displayWord = cleanDisplayWord(firstWord) ?: return false
+        return store.delete(locale.toLanguageTag(), SENTENCE_START_PREFIX, displayWord) > 0
+    }
+
+    fun forgetNextWordEverywhere(locale: Locale, nextWord: String?): Boolean {
+        val displayNextWord = cleanDisplayWord(nextWord) ?: return false
+        return store.deleteNextWord(locale.toLanguageTag(), displayNextWord) > 0
+    }
+
+    private fun predictForPrefix(locale: Locale, prefix: String, limit: Int): List<SuggestionResult> {
         return store.predict(locale.toLanguageTag(), prefix, limit)
             .map { prediction ->
                 SuggestionResult(
@@ -48,6 +77,7 @@ class NextWordPredictor(
     }
 
     companion object {
+        private const val SENTENCE_START_PREFIX = "__sentence_start__"
         private val COMBINING_MARKS_REGEX = "\\p{Mn}".toRegex()
         private val NON_WORD_KEY_REGEX = "[^\\p{L}\\p{N}]".toRegex()
     }

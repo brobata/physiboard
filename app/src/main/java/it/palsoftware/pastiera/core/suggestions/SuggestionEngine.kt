@@ -15,7 +15,8 @@ data class SuggestionResult(
 
 enum class SuggestionKind {
     CURRENT_WORD,
-    NEXT_WORD
+    NEXT_WORD,
+    STARTER_WORD
 }
 
 class SuggestionEngine(
@@ -31,6 +32,10 @@ class SuggestionEngine(
 
     // Keyboard layout positions - built dynamically based on layout type
     private var keyboardPositions: Map<Char, Pair<Int, Int>> = buildKeyboardPositions("qwerty")
+
+    private fun isPreferredUserEntry(source: SuggestionSource): Boolean {
+        return source == SuggestionSource.USER || source == SuggestionSource.DEFAULT_USER
+    }
 
     /**
      * Build character-to-position map for a given keyboard layout.
@@ -370,7 +375,7 @@ class SuggestionEngine(
         val completions = repository.lookupByPrefixMerged(normalizedWord, maxSize = 200)
             .filter {
                 val norm = normalizeCached(it.word)
-                val meetsFrequency = it.source == SuggestionSource.USER || repository.effectiveFrequency(it) >= minFrequencyForPrefixSuggestion
+                val meetsFrequency = isPreferredUserEntry(it.source) || repository.effectiveFrequency(it) >= minFrequencyForPrefixSuggestion
                 // Only show words that are longer (actual completions) and meet frequency threshold
                 // Exception: USER dictionary words are always included regardless of frequency
                 norm.startsWith(normalizedWord) && it.word.length > currentWord.length && meetsFrequency
@@ -411,8 +416,8 @@ class SuggestionEngine(
 
         // Comparator with three-tier priority: USER words > prefix completions > edit-distance
         val comparator = Comparator<SuggestionResult> { a, b ->
-            val aIsUser = a.source == SuggestionSource.USER
-            val bIsUser = b.source == SuggestionSource.USER
+            val aIsUser = isPreferredUserEntry(a.source)
+            val bIsUser = isPreferredUserEntry(b.source)
 
             // User dictionary words ALWAYS rank highest
             if (aIsUser && !bIsUser) return@Comparator -1
@@ -506,7 +511,7 @@ class SuggestionEngine(
                 // Filter prefix completions by their ACTUAL frequency, not SymSpell boosted frequency
                 // Exception: Never filter user dictionary words
                 val isActualPrefix = normCandidate.startsWith(normalizedWord) && entry.word.length > currentWord.length
-                if (isActualPrefix && entry.source != SuggestionSource.USER) {
+                if (isActualPrefix && !isPreferredUserEntry(entry.source)) {
                     val minFreqForCandidate = if (inputLen <= 2) {
                         150
                     } else if (inputLen == 3) {
@@ -536,7 +541,7 @@ class SuggestionEngine(
                 // Exception: Never filter user dictionary words
                 val inputIsLowercase = currentWord.firstOrNull()?.isLowerCase() == true
                 val candidateIsCapitalized = entry.word.firstOrNull()?.isUpperCase() == true
-                if (isPrefix && inputIsLowercase && candidateIsCapitalized && entry.source != SuggestionSource.USER) {
+                if (isPrefix && inputIsLowercase && candidateIsCapitalized && !isPreferredUserEntry(entry.source)) {
                     return@forEach // Skip capitalized prefix completions when user typed lowercase
                 }
 
@@ -555,7 +560,7 @@ class SuggestionEngine(
                     else -> 0.0
                 }
                 val frequencyScore = (effectiveFreq / 1_600.0)
-                val sourceBoost = if (entry.source == SuggestionSource.USER) 5.0 else 1.0
+                val sourceBoost = if (isPreferredUserEntry(entry.source)) 5.0 else 1.0
                 val accentBonus = if (isSingleCharInput && candidateLen == 1 && hasAccent) 0.8 else 0.0
                 val accentSameLengthBonus = if (!isSingleCharInput && candidateLen == currentWord.length && hasAccent) 0.4 else 0.0
                 val baseLetterMalus = if (isSingleCharInput && candidateLen == 1 && !hasAccent && isSameBaseLetter) -2.0 else 0.0

@@ -254,7 +254,8 @@ class InputEventRouter(
         val getMapping: (Int) -> LayoutMapping?,
         val handleMultiTapCommit: (Int, LayoutMapping, Boolean, InputConnection?, Boolean) -> Boolean,
         val isLongPressSuppressed: (Int) -> Boolean,
-        val toggleMinimalUi: () -> Unit
+        val toggleMinimalUi: () -> Unit,
+        val onShiftOneShotToggledOff: () -> Unit = {}
     )
 
     fun routeEditableFieldKeyDown(
@@ -271,7 +272,11 @@ class InputEventRouter(
 
         if (keyCode == KeyEvent.KEYCODE_SHIFT_LEFT || keyCode == KeyEvent.KEYCODE_SHIFT_RIGHT) {
             if (!params.shiftPressed) {
+                val wasShiftOneShot = controllers.modifierStateController.shiftOneShot
                 val result = controllers.modifierStateController.handleShiftKeyDown(keyCode)
+                if (wasShiftOneShot && !controllers.modifierStateController.shiftOneShot) {
+                    callbacks.onShiftOneShotToggledOff()
+                }
                 if (result.shouldUpdateStatusBar) {
                     callbacks.updateStatusBar()
                 } else if (result.shouldRefreshStatusBar) {

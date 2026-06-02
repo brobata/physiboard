@@ -23,7 +23,8 @@ object SuggestionButtonHandler {
         suggestion: String,
         inputConnection: InputConnection?,
         listener: VariationButtonHandler.OnVariationSelectedListener? = null,
-        shouldDisableAutoCapitalize: Boolean
+        shouldDisableAutoCapitalize: Boolean,
+        onSuggestionCommitted: (() -> Unit)? = null
     ): View.OnClickListener {
         return View.OnClickListener {
             Log.d(TAG, "Click on suggestion button: $suggestion")
@@ -43,6 +44,7 @@ object SuggestionButtonHandler {
             val committed = replaceCurrentWord(inputConnection, suggestion, forceLeadingCapital)
             if (committed) {
                 NotificationHelper.triggerHapticFeedback(context)
+                onSuggestionCommitted?.invoke()
             }
             listener?.onVariationSelected(suggestion)
         }

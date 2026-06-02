@@ -91,6 +91,14 @@ class StatusBarController(
             field = value
             variationBarView?.onAddUserWord = value
         }
+
+    var onSuggestionCommitted: (() -> Unit)? = null
+
+    var onHideSuggestion: ((String) -> Unit)? = null
+
+    var onDeleteUserSuggestion: ((String) -> Unit)? = null
+
+    var canDeleteUserSuggestion: ((String) -> Boolean)? = null
     
     var onLanguageSwitchRequested: (() -> Unit)? = null
         set(value) {
@@ -526,6 +534,10 @@ class StatusBarController(
     private fun hideHamburgerMenu() {
         hamburgerMenuView?.hide()
         fullSuggestionsBar?.hideHamburgerMenu()
+    }
+
+    fun resetSuggestionActionMode() {
+        fullSuggestionsBar?.resetActionMode()
     }
 
     private fun toggleHamburgerMenu() {
@@ -2080,7 +2092,11 @@ class StatusBarController(
             onVariationSelectedListener,
             snapshot.shouldDisableSuggestions,
             snapshot.addWordCandidate,
-            onAddUserWord
+            onAddUserWord,
+            onSuggestionCommitted,
+            onHideSuggestion,
+            onDeleteUserSuggestion,
+            canDeleteUserSuggestion
         )
         
         if (snapshot.clipboardOverlay) {

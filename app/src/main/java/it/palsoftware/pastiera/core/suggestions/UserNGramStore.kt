@@ -101,6 +101,22 @@ class UserNGramStore(context: Context) : SQLiteOpenHelper(
         }
     }
 
+    fun delete(locale: String, prefix: String, nextWord: String): Int {
+        return writableDatabase.delete(
+            TABLE_BIGRAMS,
+            "$COL_LOCALE = ? AND $COL_PREFIX = ? AND $COL_NEXT_WORD = ? COLLATE NOCASE",
+            arrayOf(locale, prefix, nextWord)
+        )
+    }
+
+    fun deleteNextWord(locale: String, nextWord: String): Int {
+        return writableDatabase.delete(
+            TABLE_BIGRAMS,
+            "$COL_LOCALE = ? AND $COL_NEXT_WORD = ? COLLATE NOCASE",
+            arrayOf(locale, nextWord)
+        )
+    }
+
     internal fun clearAll() {
         writableDatabase.delete(TABLE_BIGRAMS, null, null)
     }

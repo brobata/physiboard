@@ -66,6 +66,8 @@ class FullSuggestionsBar(
     private var liveAnnouncementsEnabled: Boolean = false
     private var suggestionsAnnouncementDelayMs: Long = 600L
     private var lastAnnouncedSlots: List<String?> = emptyList()
+    private var actionCandidate: String? = null
+    private var actionSlots: List<String?> = emptyList()
 
     @Suppress("DEPRECATION")
     private fun View.announceForAccessibilityCompat(text: CharSequence) {
@@ -219,6 +221,12 @@ class FullSuggestionsBar(
         hamburgerMenuView?.hide()
     }
 
+    fun resetActionMode() {
+        actionCandidate = null
+        actionSlots = emptyList()
+        lastSlots = emptyList()
+    }
+
     /**
      * Checks if a dictionary file exists for the current IME subtype.
      * Returns true if a dictionary is found (serialized format).
@@ -241,7 +249,11 @@ class FullSuggestionsBar(
         listener: VariationButtonHandler.OnVariationSelectedListener?,
         shouldDisableSuggestions: Boolean,
         addWordCandidate: String?,
-        onAddUserWord: ((String) -> Unit)?
+        onAddUserWord: ((String) -> Unit)?,
+        onSuggestionCommitted: (() -> Unit)?,
+        onHideSuggestion: ((String) -> Unit)?,
+        onDeleteUserSuggestion: ((String) -> Unit)?,
+        canDeleteUserSuggestion: ((String) -> Boolean)?
     ) {
         val bar = container ?: return
         val frame = frameContainer ?: return
@@ -257,6 +269,8 @@ class FullSuggestionsBar(
             hamburgerButton?.visibility = View.GONE
             lastSlots = emptyList()
             lastAnnouncedSlots = emptyList()
+            actionCandidate = null
+            actionSlots = emptyList()
             return
         }
 
@@ -266,12 +280,28 @@ class FullSuggestionsBar(
 
         val slots = buildSlots(suggestions, addWordCandidate)
         applySuggestionsAccessibilityThrottle(slots)
-        if (slots == lastSlots && bar.childCount > 0) {
+        if (actionCandidate != null && slots != actionSlots) {
+            actionCandidate = null
+            actionSlots = emptyList()
+        }
+        if (actionCandidate == null && slots == lastSlots && bar.childCount > 0) {
             bar.visibility = View.VISIBLE
             return
         }
 
-        renderSlots(bar, slots, inputConnection, listener, shouldDisableSuggestions, addWordCandidate, onAddUserWord)
+        renderSlots(
+            bar,
+            slots,
+            inputConnection,
+            listener,
+            shouldDisableSuggestions,
+            addWordCandidate,
+            onAddUserWord,
+            onSuggestionCommitted,
+            onHideSuggestion,
+            onDeleteUserSuggestion,
+            canDeleteUserSuggestion
+        )
         lastSlots = slots
     }
 
@@ -293,7 +323,11 @@ class FullSuggestionsBar(
         listener: VariationButtonHandler.OnVariationSelectedListener?,
         shouldDisableSuggestions: Boolean,
         addWordCandidate: String?,
-        onAddUserWord: ((String) -> Unit)?
+        onAddUserWord: ((String) -> Unit)?,
+        onSuggestionCommitted: (() -> Unit)?,
+        onHideSuggestion: ((String) -> Unit)?,
+        onDeleteUserSuggestion: ((String) -> Unit)?,
+        canDeleteUserSuggestion: ((String) -> Boolean)?
     ) {
         bar.removeAllViews()
         suggestionButtons.clear()
@@ -340,6 +374,17 @@ class FullSuggestionsBar(
                     marginEnd = dpToPx(3f)
                 }
             }
+            if (suggestion != null && actionCandidate?.equals(suggestion, ignoreCase = true) == true) {
+                val actionSlot = buildSuggestionActionSlot(
+                    candidate = suggestion,
+                    weightLayoutParams = weightLayoutParams,
+                    onHideSuggestion = onHideSuggestion,
+                    onDeleteUserSuggestion = onDeleteUserSuggestion,
+                    canDeleteUserSuggestion = canDeleteUserSuggestion
+                )
+                bar.addView(actionSlot)
+                continue
+            }
             val button = TextView(context).apply {
                 text = (suggestion ?: "")
                 gravity = Gravity.CENTER
@@ -375,6 +420,7 @@ class FullSuggestionsBar(
                         setCompoundDrawables(null, null, addDrawable, null)
                         compoundDrawablePadding = dpToPx(6f)
                         setOnClickListener {
+                            resetActionMode()
                             flashSlot(slotIndex)
                             onAddUserWord?.invoke(suggestion)
                         }
@@ -383,11 +429,33 @@ class FullSuggestionsBar(
                             suggestion,
                             inputConnection,
                             listener,
-                            shouldDisableSuggestions
+                            shouldDisableSuggestions,
+                            onSuggestionCommitted
                         )
                         setOnClickListener { view ->
+                            resetActionMode()
                             flashSlot(slotIndex)
                             clickListener.onClick(view)
+                        }
+                        setOnLongClickListener {
+                            performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                            actionCandidate = suggestion
+                            actionSlots = slots
+                            lastSlots = emptyList()
+                            renderSlots(
+                                bar = bar,
+                                slots = slots,
+                                inputConnection = inputConnection,
+                                listener = listener,
+                                shouldDisableSuggestions = shouldDisableSuggestions,
+                                addWordCandidate = addWordCandidate,
+                                onAddUserWord = onAddUserWord,
+                                onSuggestionCommitted = onSuggestionCommitted,
+                                onHideSuggestion = onHideSuggestion,
+                                onDeleteUserSuggestion = onDeleteUserSuggestion,
+                                canDeleteUserSuggestion = canDeleteUserSuggestion
+                            )
+                            true
                         }
                     }
                 }
@@ -396,6 +464,87 @@ class FullSuggestionsBar(
             suggestionButtons.add(button)
         }
     }
+
+    private fun buildSuggestionActionSlot(
+        candidate: String,
+        weightLayoutParams: LinearLayout.LayoutParams,
+        onHideSuggestion: ((String) -> Unit)?,
+        onDeleteUserSuggestion: ((String) -> Unit)?,
+        canDeleteUserSuggestion: ((String) -> Boolean)?
+    ): LinearLayout {
+        val canDelete = canDeleteUserSuggestion?.invoke(candidate) == true
+        val actions = buildList {
+            add(ActionButtonSpec(android.R.drawable.ic_menu_view, Color.rgb(68, 92, 140), Color.WHITE) {
+                onHideSuggestion?.invoke(candidate)
+            })
+            if (canDelete) {
+                add(ActionButtonSpec(android.R.drawable.ic_menu_delete, Color.rgb(120, 52, 58), Color.WHITE) {
+                    onDeleteUserSuggestion?.invoke(candidate)
+                })
+            }
+        }
+
+        return LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            layoutParams = weightLayoutParams
+            background = buildSuggestionBackground()
+            setPadding(dpToPx(4f), dpToPx(4f), dpToPx(4f), dpToPx(4f))
+
+        actions.forEachIndexed { index, action ->
+            val button = ImageView(context).apply {
+                ContextCompat.getDrawable(context, action.iconRes)?.mutate()?.let { icon ->
+                    icon.setTint(action.iconColor)
+                    setImageDrawable(icon)
+                }
+                scaleType = ImageView.ScaleType.CENTER
+                background = buildActionBackground(action.backgroundColor)
+                layoutParams = LinearLayout.LayoutParams(
+                    0,
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    1f
+                ).apply {
+                    if (index < actions.lastIndex) marginEnd = dpToPx(3f)
+                }
+                isClickable = true
+                isFocusable = true
+                setOnClickListener {
+                    resetActionMode()
+                    action.onClick()
+                }
+                setOnLongClickListener {
+                    resetActionMode()
+                    true
+                }
+            }
+            addView(button)
+        }
+        }
+    }
+
+    private fun buildActionBackground(color: Int): StateListDrawable {
+        val normal = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = dpToPx(7f).toFloat()
+            setColor(color)
+        }
+        val pressed = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = dpToPx(7f).toFloat()
+            setColor(PRESSED_BLUE)
+        }
+        return StateListDrawable().apply {
+            addState(intArrayOf(android.R.attr.state_pressed), pressed)
+            addState(intArrayOf(), normal)
+        }
+    }
+
+    private data class ActionButtonSpec(
+        val iconRes: Int,
+        val backgroundColor: Int,
+        val iconColor: Int,
+        val onClick: () -> Unit
+    )
 
     private fun buildSlots(suggestions: List<String>, addWordCandidate: String?): List<String?> {
         val s0 = suggestions.getOrNull(0)

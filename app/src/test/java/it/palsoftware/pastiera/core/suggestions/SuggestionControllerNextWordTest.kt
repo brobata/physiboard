@@ -1,16 +1,16 @@
 package it.palsoftware.pastiera.core.suggestions
 
-import android.os.Looper
 import android.view.KeyCharacterMap
 import android.view.KeyEvent
+import android.view.inputmethod.InputConnection
 import java.util.Locale
+import java.lang.reflect.Proxy
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.Shadows.shadowOf
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
@@ -52,8 +52,9 @@ class SuggestionControllerNextWordTest {
         pressSpace(controller)
 
         val latest = snapshots.last()
-        assertEquals(listOf("bin"), latest.map { it.candidate })
+        assertEquals(listOf("bin", "bar"), latest.map { it.candidate })
         assertEquals(SuggestionKind.NEXT_WORD, latest.first().kind)
+        assertEquals(SuggestionKind.STARTER_WORD, latest[1].kind)
     }
 
     @Test
@@ -83,7 +84,7 @@ class SuggestionControllerNextWordTest {
 
         assertEquals(listOf("bin"), store.predict("de-DE", "ich", limit = 3).map { it.word })
         assertTrue(store.predict("de-DE", "bin", limit = 3).isEmpty())
-        assertTrue(snapshots.last().isEmpty())
+        assertEquals(SuggestionKind.STARTER_WORD, snapshots.last().first().kind)
     }
 
     @Test
@@ -133,27 +134,106 @@ class SuggestionControllerNextWordTest {
     }
 
     @Test
-    fun refreshesCurrentWordSuggestionsWhenDictionaryFinishesLoading() {
-        val delayedRepository = FakeDictionaryRepository().apply {
-            isReady = false
-            addTestEntry("english", 200)
-        }
-        val context = RuntimeEnvironment.getApplication()
-        val controller = SuggestionController(
-            context = context,
-            assets = context.assets,
-            settingsProvider = { SuggestionSettings(suggestionsEnabled = true, maxSuggestions = 3) },
-            onSuggestionsUpdated = { suggestions -> snapshots.add(suggestions) },
-            currentLocale = Locale.ENGLISH,
-            dictionaryRepositoryFactory = { _, _, _, _, _ -> delayedRepository },
-            nextWordPredictorOverride = NextWordPredictor(store)
-        )
+    fun emptyInitialContextShowsStarterSuggestions() {
+        fakeRepository.addTestEntry("Pastiera", 255, SuggestionSource.DEFAULT_USER)
+        fakeRepository.addTestEntry("BlackBerry", 255, SuggestionSource.DEFAULT_USER)
+        fakeRepository.addTestEntry("Parenzo", 255, SuggestionSource.DEFAULT_USER)
+        fakeRepository.addTestEntry("ich", 220)
+        fakeRepository.addTestEntry("dann", 210)
+        val controller = newController()
 
-        controller.preloadDictionary()
-        controller.onCharacterCommitted("e", null)
+        controller.readInitialContext(emptyInputConnection())
 
-        waitForSuggestion("english")
-        assertEquals(listOf("english"), snapshots.last().map { it.candidate })
+        val latest = snapshots.last()
+        assertEquals(listOf("ich", "dann", "bar"), latest.map { it.candidate })
+        assertEquals(SuggestionKind.STARTER_WORD, latest.first().kind)
+    }
+
+    @Test
+    fun typingLetterOverridesStarterSuggestions() {
+        fakeRepository.addTestEntry("ich", 220)
+        fakeRepository.addTestEntry("dann", 210)
+        val controller = newController()
+
+        controller.readInitialContext(emptyInputConnection())
+        typeWord(controller, "b")
+
+        val latest = snapshots.last()
+        assertEquals(listOf("bar"), latest.map { it.candidate })
+        assertEquals(SuggestionKind.CURRENT_WORD, latest.first().kind)
+    }
+
+    @Test
+    fun softBoundaryFallsBackToStarterSuggestionsWhenNoBigramExists() {
+        fakeRepository.addTestEntry("ich", 220)
+        fakeRepository.addTestEntry("dann", 210)
+        val controller = newController()
+
+        typeWord(controller, "neu")
+        pressSpace(controller)
+
+        val latest = snapshots.last()
+        assertEquals(listOf("ich", "dann", "bar"), latest.map { it.candidate })
+        assertEquals(SuggestionKind.STARTER_WORD, latest.first().kind)
+    }
+
+    @Test
+    fun learnedBigramOverridesSoftBoundaryStarterFallback() {
+        fakeRepository.addTestEntry("ich", 220)
+        fakeRepository.addTestEntry("dann", 210)
+        val controller = newController()
+
+        typeWord(controller, "ich")
+        pressSpace(controller)
+        typeWord(controller, "bin")
+        pressSpace(controller)
+        typeWord(controller, "ich")
+        pressSpace(controller)
+
+        val latest = snapshots.last()
+        assertEquals(listOf("bin", "ich", "dann"), latest.map { it.candidate })
+        assertEquals(SuggestionKind.NEXT_WORD, latest.first().kind)
+        assertEquals(SuggestionKind.STARTER_WORD, latest[1].kind)
+    }
+
+    @Test
+    fun dismissSuggestionForgetsBigramAndRefillsVisibleSuggestions() {
+        fakeRepository.addTestEntry("ich", 220)
+        fakeRepository.addTestEntry("dann", 210)
+        val controller = newController()
+
+        typeWord(controller, "ich")
+        pressSpace(controller)
+        typeWord(controller, "bin")
+        pressSpace(controller)
+        typeWord(controller, "ich")
+        pressSpace(controller)
+
+        controller.dismissSuggestion("bin")
+
+        val latest = snapshots.last()
+        assertEquals(listOf("ich", "dann", "bar"), latest.map { it.candidate })
+        assertEquals(SuggestionKind.STARTER_WORD, latest.first().kind)
+        assertTrue(store.predict("de-DE", "ich", limit = 3).isEmpty())
+    }
+
+    @Test
+    fun learnsSentenceStartAndPredictsItBeforeStarterFallback() {
+        fakeRepository.addTestEntry("ich", 220)
+        fakeRepository.addTestEntry("dann", 210)
+        val controller = newController()
+
+        typeWord(controller, "Hallo")
+        pressPeriod(controller)
+        typeWord(controller, "Morgen")
+        pressSpace(controller)
+        controller.onContextReset()
+        controller.readInitialContext(emptyInputConnection())
+
+        val latest = snapshots.last()
+        assertEquals(listOf("Hallo", "Morgen", "ich"), latest.map { it.candidate })
+        assertEquals(SuggestionKind.NEXT_WORD, latest.first().kind)
+        assertEquals(SuggestionKind.STARTER_WORD, latest[2].kind)
     }
 
     private fun newController(): SuggestionController {
@@ -210,14 +290,15 @@ class SuggestionControllerNextWordTest {
         )
     }
 
-    private fun waitForSuggestion(candidate: String) {
-        repeat(40) {
-            shadowOf(Looper.getMainLooper()).idle()
-            if (snapshots.any { suggestions -> suggestions.any { it.candidate == candidate } }) {
-                return
+    private fun emptyInputConnection(): InputConnection {
+        return Proxy.newProxyInstance(
+            InputConnection::class.java.classLoader,
+            arrayOf(InputConnection::class.java)
+        ) { _, method, _ ->
+            when (method.name) {
+                "getTextBeforeCursor", "getTextAfterCursor" -> ""
+                else -> null
             }
-            Thread.sleep(50)
-        }
-        assertTrue("Expected suggestion '$candidate'", false)
+        } as InputConnection
     }
 }

@@ -39,6 +39,7 @@ import it.palsoftware.pastiera.core.NavModeController
 import it.palsoftware.pastiera.core.SymLayoutController
 import it.palsoftware.pastiera.core.TextInputController
 import it.palsoftware.pastiera.core.suggestions.SuggestionController
+import it.palsoftware.pastiera.core.suggestions.SuggestionKind
 import it.palsoftware.pastiera.core.suggestions.SuggestionResult
 import it.palsoftware.pastiera.core.suggestions.SuggestionSettings
 import it.palsoftware.pastiera.data.layout.LayoutMappingRepository
@@ -216,7 +217,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private lateinit var keyboardVisibilityController: KeyboardVisibilityController
     private lateinit var launcherShortcutController: LauncherShortcutController
     private lateinit var clipboardHistoryManager: ClipboardHistoryManager
-    private var latestSuggestions: List<String> = emptyList()
+    private var latestSuggestionResults: List<SuggestionResult> = emptyList()
+    private var suppressedAutoCapContextKey: String? = null
     private var clearAltOnSpaceEnabled: Boolean = false
     private var physicalKeyboardProfileOverride: String = "auto"
     private var isLanguageSwitchInProgress: Boolean = false
@@ -755,9 +757,107 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     }
 
     private fun handleSuggestionsUpdated(suggestions: List<SuggestionResult>) {
-        latestSuggestions = suggestions.map { it.candidate }
+        latestSuggestionResults = suggestions
         DebugCaptureStore.recordSuggestionsUpdated(suggestions)
         uiHandler.post { updateStatusBarText() }
+    }
+
+    private fun visibleSuggestionStrings(): List<String> {
+        if (latestSuggestionResults.isEmpty()) return emptyList()
+
+        val hasWordStartSuggestion = latestSuggestionResults.any {
+            it.kind == SuggestionKind.NEXT_WORD || it.kind == SuggestionKind.STARTER_WORD
+        }
+        val forceWordStartCapital = if (hasWordStartSuggestion) {
+            val modifierSnapshot = modifierStateController.snapshot()
+            val shiftActive = modifierSnapshot.capsLockEnabled ||
+                modifierSnapshot.shiftPhysicallyPressed ||
+                modifierSnapshot.shiftOneShot ||
+                shiftLayerLatched
+            shiftActive || (
+                !isAutoCapSuppressedAtCursor() &&
+                AutoCapitalizeHelper.shouldAutoCapitalizeAtCursor(
+                    context = this,
+                    inputConnection = currentInputConnection,
+                    shouldDisableAutoCapitalize = shouldDisableSmartFeatures
+                ) && SettingsManager.getAutoCapitalizeFirstLetter(this)
+            )
+        } else {
+            false
+        }
+        val locale = getLocaleFromSubtype()
+
+        return latestSuggestionResults.map { suggestion ->
+            when (suggestion.kind) {
+                SuggestionKind.NEXT_WORD,
+                SuggestionKind.STARTER_WORD -> recaseWordStartSuggestion(
+                    suggestion.candidate,
+                    forceWordStartCapital,
+                    locale
+                )
+                SuggestionKind.CURRENT_WORD -> suggestion.candidate
+            }
+        }
+    }
+
+    private fun recaseWordStartSuggestion(
+        candidate: String,
+        forceLeadingCapital: Boolean,
+        locale: Locale
+    ): String {
+        val firstLetterIndex = candidate.indexOfFirst { it.isLetter() }
+        if (firstLetterIndex < 0) return candidate
+
+        val firstLetter = candidate[firstLetterIndex]
+        val replacement = if (forceLeadingCapital) {
+            firstLetter.titlecase(locale)
+        } else {
+            firstLetter.lowercase(locale)
+        }
+        return candidate.substring(0, firstLetterIndex) +
+            replacement +
+            candidate.substring(firstLetterIndex + 1)
+    }
+
+    private fun autoCapContextKey(): String? {
+        val ic = currentInputConnection ?: return null
+        return try {
+            val before = ic.getTextBeforeCursor(200, 0)?.toString() ?: return null
+            val after = ic.getTextAfterCursor(1, 0)?.toString().orEmpty()
+            "$before|$after"
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun suppressAutoCapAtCurrentCursor() {
+        suppressedAutoCapContextKey = autoCapContextKey()
+    }
+
+    private fun suppressAutoCapRenderingAtCursorIfNeeded() {
+        if (
+            AutoCapitalizeHelper.shouldAutoCapitalizeAtCursor(
+                context = this,
+                inputConnection = currentInputConnection,
+                shouldDisableAutoCapitalize = shouldDisableSmartFeatures
+            )
+        ) {
+            suppressAutoCapAtCurrentCursor()
+        }
+    }
+
+    private fun clearAutoCapSuppression() {
+        suppressedAutoCapContextKey = null
+    }
+
+    private fun isAutoCapSuppressedAtCursor(): Boolean {
+        val suppressed = suppressedAutoCapContextKey ?: return false
+        return autoCapContextKey() == suppressed
+    }
+
+    private fun requestAutoCapShiftOneShot(): Boolean {
+        if (isAutoCapSuppressedAtCursor()) return false
+        return modifierStateController.requestShiftOneShotFromAutoCap()
     }
     
     
@@ -785,7 +885,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                     this,
                     currentInputConnection,
                     state.shouldDisableAutoCapitalize,
-                    enableShift = { modifierStateController.requestShiftOneShotFromAutoCap() },
+                    enableShift = { requestAutoCapShiftOneShot() },
                     disableShift = { modifierStateController.consumeShiftOneShot() },
                     onUpdateStatusBar = { updateStatusBarText() }
                 )
@@ -808,7 +908,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             this,
             currentInputConnection,
             state.shouldDisableAutoCapitalize,
-            enableShift = { modifierStateController.requestShiftOneShotFromAutoCap() },
+            enableShift = { requestAutoCapShiftOneShot() },
             disableShift = { modifierStateController.consumeShiftOneShot() },
             onUpdateStatusBar = { updateStatusBarText() }
         )
@@ -1137,6 +1237,35 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             suggestionController.clearPendingAddWord()
             updateStatusBarText()
         }
+        candidatesBarController.onSuggestionCommitted = {
+            if (shiftLayerLatched || altLayerLatched) {
+                shiftLayerLatched = false
+                altLayerLatched = false
+                modifierStateBeforeHold?.let { modifierStateController.restoreLogicalState(it) }
+                modifierStateBeforeHold = null
+            }
+            if (shiftOneShot) {
+                modifierStateController.consumeShiftOneShot()
+            }
+            variationInteractedDuringHold = true
+            suggestionController.readInitialContext(currentInputConnection)
+            updateStatusBarText()
+        }
+        candidatesBarController.onHideSuggestion = { suggestion ->
+            suggestionController.dismissSuggestion(suggestion, hardDeleteUserWord = false)
+            updateStatusBarText()
+            NotificationHelper.triggerHapticFeedback(this)
+        }
+        candidatesBarController.onDeleteUserSuggestion = { suggestion ->
+            suggestionController.dismissSuggestion(suggestion, hardDeleteUserWord = true)
+            updateStatusBarText()
+            NotificationHelper.triggerHapticFeedback(this)
+        }
+        candidatesBarController.canDeleteUserSuggestion = { suggestion ->
+            suggestionController.userDictionarySnapshot().any { entry ->
+                entry.word.equals(suggestion, ignoreCase = true)
+            }
+        }
         candidatesBarController.onLanguageSwitchRequested = {
             if (shiftLayerLatched || altLayerLatched) {
                 shiftLayerLatched = false
@@ -1248,7 +1377,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             typingSoundPlayer.play(keyCode)
         }
         candidatesBarController.onSoftwareKeyboardShiftTapped = {
+            val wasShiftOneShot = modifierStateController.shiftOneShot
             val downResult = modifierStateController.handleShiftKeyDown(KeyEvent.KEYCODE_SHIFT_LEFT)
+            if (wasShiftOneShot && !modifierStateController.shiftOneShot) {
+                suppressAutoCapRenderingAtCursorIfNeeded()
+            }
             val upResult = modifierStateController.handleShiftKeyUp(KeyEvent.KEYCODE_SHIFT_LEFT)
             if (
                 downResult.shouldUpdateStatusBar ||
@@ -1917,7 +2050,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         val state = inputContextState
         val addWordCandidate = suggestionController.pendingAddWord()
         val suggestionsEnabled = SettingsManager.isExperimentalSuggestionsEnabled(this) && SettingsManager.getSuggestionsEnabled(this)
-        val baseSuggestions = if (suggestionsEnabled) latestSuggestions else emptyList()
+        val baseSuggestions = if (suggestionsEnabled) visibleSuggestionStrings() else emptyList()
         val snapshot = StatusBarController.StatusSnapshot(
             capsLockEnabled = modifierSnapshot.capsLockEnabled,
             shiftPhysicallyPressed = modifierSnapshot.shiftPhysicallyPressed,
@@ -2028,7 +2161,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 state = state,
                 inputConnection = currentInputConnection,
                 enableCapsLock = { modifierStateController.capsLockEnabled = true },
-                enableShiftOneShot = { modifierStateController.requestShiftOneShotFromAutoCap() },
+                enableShiftOneShot = { requestAutoCapShiftOneShot() },
                 onUpdateStatusBar = { updateStatusBarText() }
             )
             
@@ -2036,7 +2169,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 this,
                 currentInputConnection,
                 state.shouldDisableAutoCapitalize,
-                enableShift = { modifierStateController.requestShiftOneShotFromAutoCap() },
+                enableShift = { requestAutoCapShiftOneShot() },
                 disableShift = { modifierStateController.consumeShiftOneShot() },
                 onUpdateStatusBar = { updateStatusBarText() },
                 inputContextState = state
@@ -2080,7 +2213,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 state = state,
                 inputConnection = currentInputConnection,
                 enableCapsLock = { modifierStateController.capsLockEnabled = true },
-                enableShiftOneShot = { modifierStateController.requestShiftOneShotFromAutoCap() },
+                enableShiftOneShot = { requestAutoCapShiftOneShot() },
                 onUpdateStatusBar = { updateStatusBarText() }
             )
             
@@ -2088,7 +2221,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 this,
                 currentInputConnection,
                 state.shouldDisableAutoCapitalize,
-                enableShift = { modifierStateController.requestShiftOneShotFromAutoCap() },
+                enableShift = { requestAutoCapShiftOneShot() },
                 disableShift = { modifierStateController.consumeShiftOneShot() },
                 onUpdateStatusBar = { updateStatusBarText() },
                 inputContextState = state
@@ -2122,6 +2255,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     override fun onFinishInput() {
         super.onFinishInput()
         isInputViewActive = false
+        if (::candidatesBarController.isInitialized) {
+            candidatesBarController.resetSuggestionActionMode()
+        }
         inputContextState = InputContextState.EMPTY
         multiTapController.cancelAll()
         disableEmojiSearchInputCapture()
@@ -2136,6 +2272,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
         isInputViewActive = false
+        if (::candidatesBarController.isInitialized) {
+            candidatesBarController.resetSuggestionActionMode()
+        }
         stopClipboardCleanupTimer()
         if (finishingInput) {
             multiTapController.cancelAll()
@@ -2286,9 +2425,15 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                                 locale.split("_").first().lowercase()
                             }.toSet()
                             
-                            // Filter ALL subtypes (base + additional) to keep only those with valid system locales
+                            // Filter ALL subtypes (base + additional) to keep only visible, valid input styles.
                             val validSubtypes = allSubtypes.filter { subtype ->
-                                AdditionalSubtypeUtils.shouldKeepSubtype(subtype, currentSystemLocales, systemLanguageCodes)
+                                AdditionalSubtypeUtils.shouldKeepSubtype(
+                                    this,
+                                    assets,
+                                    subtype,
+                                    currentSystemLocales,
+                                    systemLanguageCodes
+                                )
                             }
                             
                             // Convert to hash codes for setExplicitlyEnabledInputMethodSubtypes
@@ -2336,9 +2481,15 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                                     locale.split("_").first().lowercase()
                                 }.toSet()
                                 
-                                // Filter to keep only subtypes with valid system locales
+                                // Filter to keep only visible subtypes with valid system locales.
                                 val validSubtypes = allSubtypes.filter { subtype ->
-                                    AdditionalSubtypeUtils.shouldKeepSubtype(subtype, currentSystemLocales, systemLanguageCodes)
+                                    AdditionalSubtypeUtils.shouldKeepSubtype(
+                                        this,
+                                        assets,
+                                        subtype,
+                                        currentSystemLocales,
+                                        systemLanguageCodes
+                                    )
                                 }
                                 
                                 val validEnabledHashCodes = validSubtypes.map { it.hashCode() }.toIntArray()
@@ -2548,6 +2699,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             ?: getLocaleFromSubtype().toLanguageTag()
         val layout = SettingsManager.getKeyboardLayout(this)
         return SettingsManager.getAdditionalSuggestionLocalesForInputStyle(this, subtypeLocale, layout)
+            .filterNot { tag -> tag.equals("x-pastiera", ignoreCase = true) }
             .mapNotNull { tag ->
                 try {
                     AdditionalSubtypeUtils.localeFromSubtypeString(tag)
@@ -2589,6 +2741,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     
     override fun onWindowHidden() {
         super.onWindowHidden()
+        if (::candidatesBarController.isInitialized) {
+            candidatesBarController.resetSuggestionActionMode()
+        }
         multiTapController.finalizeCycle()
         resetModifierStates(preserveNavMode = true)
         suggestionController.onContextReset()
@@ -2626,6 +2781,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         val state = inputContextState
         val cursorPositionChanged = (oldSelStart != newSelStart) || (oldSelEnd != newSelEnd)
         val collapsedSelection = newSelStart == newSelEnd
+        if (cursorPositionChanged && ::candidatesBarController.isInitialized) {
+            candidatesBarController.resetSuggestionActionMode()
+        }
         val forwardByOne = oldSelStart == oldSelEnd &&
             newSelEnd == newSelStart &&
             newSelStart == oldSelStart + 1
@@ -2676,7 +2834,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             oldSelEnd,
             newSelStart,
             newSelEnd,
-            enableShift = { modifierStateController.requestShiftOneShotFromAutoCap() },
+            enableShift = { requestAutoCapShiftOneShot() },
             disableShift = { modifierStateController.consumeShiftOneShot() },
             onUpdateStatusBar = { updateStatusBarText() },
             inputContextState = state
@@ -2727,6 +2885,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             isInputViewActive = true
         }
         val (keyCode, event) = remapHardwareEvent(keyCode_, event_)
+        if (hasEditableField && ::candidatesBarController.isInitialized) {
+            candidatesBarController.resetSuggestionActionMode()
+        }
 
         if (shouldPlayTypingSound(hasEditableField, keyCode, event)) {
             typingSoundPlayer.play(keyCode)
@@ -3127,7 +3288,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                     textInputController = textInputController,
                     autoCorrectionManager = autoCorrectionManager,
                     inputContextState = state,
-                    enableShiftOneShot = { modifierStateController.requestShiftOneShotFromAutoCap() },
+                    enableShiftOneShot = { requestAutoCapShiftOneShot() },
                     editorInfo = info
                 ) { updateStatusBarText() }
             ) {
@@ -3193,7 +3354,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 isLongPressSuppressed = { code ->
                     multiTapController.isLongPressSuppressed(code)
                 },
-                toggleMinimalUi = { keyboardVisibilityController.toggleUserMinimalUi() }
+                toggleMinimalUi = { keyboardVisibilityController.toggleUserMinimalUi() },
+                onShiftOneShotToggledOff = { suppressAutoCapRenderingAtCursorIfNeeded() }
             )
         )
 
@@ -3794,6 +3956,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     }
 
     private fun acceptSuggestionAtIndex(third: Int) {
+        val visibleSuggestions = visibleSuggestionStrings()
+
         // Clear latched UI layers when selecting a suggestion via trackpad.
         if (shiftLayerLatched || altLayerLatched) {
             shiftLayerLatched = false
@@ -3811,13 +3975,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             addWordCandidate != null
         val allowGesture =
             symPage == 0 &&
-            (latestSuggestions.isNotEmpty() || canAddWordByGesture) &&
+            (visibleSuggestions.isNotEmpty() || canAddWordByGesture) &&
             SettingsManager.getSuggestionsEnabled(this) &&
             !shouldDisableSmartFeatures
         if (!allowGesture) {
             Log.d(
                 TAG,
-                "Trackpad gesture ignored: bar not visible/usable (sym=$symPage, suggestions=${latestSuggestions.size})"
+                "Trackpad gesture ignored: bar not visible/usable (sym=$symPage, suggestions=${visibleSuggestions.size})"
             )
             return
         }
@@ -3835,7 +3999,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
 
         // Log current suggestions
-        Log.d(TAG, "Current latestSuggestions: $latestSuggestions")
+        Log.d(TAG, "Current latestSuggestions: $visibleSuggestions")
 
         // Map third to suggestion index based on FullSuggestionsBar slot layout
         // slots[0] = left = suggestions[2]
@@ -3848,9 +4012,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             else -> return
         }
 
-        val suggestion = latestSuggestions.getOrNull(suggestionIndex)
+        val suggestion = visibleSuggestions.getOrNull(suggestionIndex)
         if (suggestion == null) {
-            Log.d(TAG, "No suggestion at index $suggestionIndex (third=$third), latestSuggestions=$latestSuggestions")
+            Log.d(TAG, "No suggestion at index $suggestionIndex (third=$third), latestSuggestions=$visibleSuggestions")
             return
         }
 
@@ -3919,6 +4083,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             ic.deleteSurroundingText(deleteBefore, deleteAfter)
             val textToCommit = if (shouldAppendSpace) "$replacement " else replacement
             ic.commitText(textToCommit, 1)
+            if (shiftOneShot) {
+                modifierStateController.consumeShiftOneShot()
+            }
             DebugCaptureStore.recordAutoCorrectionCommit(
                 before = currentWord,
                 after = replacement,

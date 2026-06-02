@@ -8,5 +8,6 @@ data class DictionaryEntry(
 
 enum class SuggestionSource {
     MAIN,
+    DEFAULT_USER,
     USER
 }

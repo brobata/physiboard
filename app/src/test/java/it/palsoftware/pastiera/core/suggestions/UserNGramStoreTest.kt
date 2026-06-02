@@ -72,4 +72,27 @@ class UserNGramStoreTest {
         assertEquals(listOf("am"), store.predict("en-US", "ich", limit = 3).map { it.word })
         assertTrue(store.predict("fr-FR", "ich", limit = 3).isEmpty())
     }
+
+    @Test
+    fun delete_removesOneBigramCaseInsensitively() {
+        store.learn("de-DE", "ich", "Bin", nowMs = 100L)
+        store.learn("de-DE", "ich", "habe", nowMs = 200L)
+
+        val deleted = store.delete("de-DE", "ich", "bin")
+
+        assertEquals(1, deleted)
+        assertEquals(listOf("habe"), store.predict("de-DE", "ich", limit = 3).map { it.word })
+    }
+
+    @Test
+    fun deleteNextWord_removesWordAcrossPrefixes() {
+        store.learn("de-DE", "ich", "bin", nowMs = 100L)
+        store.learn("de-DE", "wir", "bin", nowMs = 200L)
+
+        val deleted = store.deleteNextWord("de-DE", "bin")
+
+        assertEquals(2, deleted)
+        assertTrue(store.predict("de-DE", "ich", limit = 3).isEmpty())
+        assertTrue(store.predict("de-DE", "wir", limit = 3).isEmpty())
+    }
 }

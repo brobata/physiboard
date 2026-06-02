@@ -126,6 +126,7 @@ class SuggestionController(
         
         // Reset tracker and clear suggestions
         previousCompletedWord = null
+        sentenceStartPending = true
         tracker.reset()
         suggestionsListener?.invoke(emptyList())
     }
@@ -150,6 +151,7 @@ class SuggestionController(
     private var pendingInitialContextConnection: InputConnection? = null
     @Volatile private var pendingPrimaryRefreshAfterLoad: Boolean = false
     @Volatile private var pendingExtraRefreshAfterLoad: Boolean = false
+    private var sentenceStartPending: Boolean = true
 
     private fun updateSuggestionsForWord(word: String) {
         val settings = settingsProvider()
@@ -320,6 +322,8 @@ class SuggestionController(
         val word = extractWordAtCursor(inputConnection)
         if (!word.isNullOrBlank()) {
             tracker.setWord(word)
+        } else if (previousCompletedWord == null) {
+            publishSentenceStartPredictionsOrStarter()
         }
     }
 
@@ -337,6 +341,7 @@ class SuggestionController(
         if (inputConnection == null) {
             tracker.reset()
             previousCompletedWord = null
+            sentenceStartPending = true
             suggestionsListener?.invoke(emptyList())
             return
         }
@@ -381,7 +386,8 @@ class SuggestionController(
                     publishNextWordPredictions(previous)
                 } else {
                     previousCompletedWord = null
-                    suggestionsListener?.invoke(emptyList())
+                    sentenceStartPending = true
+                    publishSentenceStartPredictionsOrStarter()
                 }
             }
         }
@@ -393,6 +399,7 @@ class SuggestionController(
         tracker.onContextChanged()
         pendingAddUserWord = null
         previousCompletedWord = null
+        sentenceStartPending = true
         suggestionsListener?.invoke(emptyList())
     }
 
@@ -400,22 +407,29 @@ class SuggestionController(
         if (!isEnabled()) return
         tracker.onContextChanged()
         previousCompletedWord = null
+        sentenceStartPending = true
     }
 
     fun addUserWord(word: String) {
         if (!isEnabled()) return
-        dictionaryRepository.addUserEntryQuick(word)
+        dictionaryRepositoryCache.values
+            .ifEmpty { listOf(dictionaryRepository) }
+            .forEach { repository -> repository.addUserEntryQuick(word) }
     }
 
     fun removeUserWord(word: String) {
         if (!isEnabled()) return
-        dictionaryRepository.removeUserEntry(word)
+        dictionaryRepositoryCache.values
+            .ifEmpty { listOf(dictionaryRepository) }
+            .forEach { repository -> repository.removeUserEntry(word) }
         refreshUserDictionary()
     }
 
     fun markUsed(word: String) {
         if (!isEnabled()) return
-        dictionaryRepository.markUsed(word)
+        dictionaryRepositoryCache.values
+            .ifEmpty { listOf(dictionaryRepository) }
+            .forEach { repository -> repository.markUsed(word) }
     }
 
     fun isKnownWordInActiveDictionaries(word: String): Boolean {
@@ -444,6 +458,50 @@ class SuggestionController(
     fun currentSuggestions(): List<SuggestionResult> = latestSuggestions.get()
 
     fun userDictionarySnapshot(): List<UserDictionaryStore.UserEntry> = userDictionaryStore.getSnapshot()
+
+    fun dismissSuggestion(candidate: String, hardDeleteUserWord: Boolean = false) {
+        if (!isEnabled()) return
+        val trimmed = candidate.trim()
+        if (trimmed.isEmpty()) return
+
+        val current = latestSuggestions.get()
+        val suggestion = current.firstOrNull { it.candidate.equals(trimmed, ignoreCase = true) }
+        if (suggestion?.kind == SuggestionKind.NEXT_WORD) {
+            forgetNextWordSuggestion(trimmed, hardDeleteEverywhere = hardDeleteUserWord)
+        }
+        if (hardDeleteUserWord) {
+            removeUserWord(trimmed)
+            activeExtraSuggestionEngines().forEach { extra ->
+                if (extra.repository.isReady) {
+                    extra.repository.removeUserEntry(trimmed)
+                }
+            }
+        }
+
+        val next = fillWithStarterSuggestions(
+            current.filterNot { it.candidate.equals(trimmed, ignoreCase = true) },
+            settingsProvider(),
+            excludedCandidates = setOf(trimmed)
+        )
+        latestSuggestions.set(next)
+        suggestionsListener?.invoke(next)
+    }
+
+    private fun forgetNextWordSuggestion(candidate: String, hardDeleteEverywhere: Boolean) {
+        val locales = listOf(currentLocale) + activeExtraLocales()
+        locales.forEach { locale ->
+            if (hardDeleteEverywhere) {
+                nextWordPredictor.forgetNextWordEverywhere(locale, candidate)
+            } else {
+                val previous = previousCompletedWord
+                if (previous != null) {
+                    nextWordPredictor.forget(locale, previous, candidate)
+                } else {
+                    nextWordPredictor.forgetSentenceStart(locale, candidate)
+                }
+            }
+        }
+    }
 
     /**
      * Forces a refresh of user dictionary entries.
@@ -492,6 +550,9 @@ class SuggestionController(
 
         val cleanWord = completedWord?.trim()?.takeIf { it.any { ch -> ch.isLetterOrDigit() } }
         if (cleanWord != null) {
+            if (sentenceStartPending) {
+                nextWordPredictor.learnSentenceStart(currentLocale, cleanWord)
+            }
             previousCompletedWord?.let { previous ->
                 nextWordPredictor.learn(currentLocale, previous, cleanWord)
             }
@@ -500,6 +561,7 @@ class SuggestionController(
         when {
             cleanWord != null && isSoftPredictionBoundary(boundaryChar) -> {
                 previousCompletedWord = cleanWord
+                sentenceStartPending = false
                 publishNextWordPredictions(cleanWord)
             }
             cleanWord == null && isSoftPredictionBoundary(boundaryChar) -> {
@@ -513,6 +575,7 @@ class SuggestionController(
             }
             else -> {
                 previousCompletedWord = null
+                sentenceStartPending = true
                 latestSuggestions.set(emptyList())
                 suggestionsListener?.invoke(emptyList())
             }
@@ -530,8 +593,105 @@ class SuggestionController(
             nextWordPredictor.predict(locale, previousWord, settings.maxSuggestions)
         }
         val predictions = mergeSuggestionResults(primary, extras, settings.maxSuggestions)
-        latestSuggestions.set(predictions)
-        suggestionsListener?.invoke(predictions)
+        val suggestions = fillWithStarterSuggestions(predictions, settings)
+        if (suggestions.isNotEmpty()) {
+            latestSuggestions.set(suggestions)
+            suggestionsListener?.invoke(suggestions)
+        } else {
+            publishStarterSuggestions()
+        }
+    }
+
+    private fun publishSentenceStartPredictionsOrStarter() {
+        val settings = settingsProvider()
+        val primary = nextWordPredictor.predictSentenceStart(currentLocale, settings.maxSuggestions)
+        val extras = activeExtraLocales().flatMap { locale ->
+            nextWordPredictor.predictSentenceStart(locale, settings.maxSuggestions)
+        }
+        val predictions = mergeSuggestionResults(primary, extras, settings.maxSuggestions)
+        val suggestions = fillWithStarterSuggestions(predictions, settings)
+        if (suggestions.isNotEmpty()) {
+            latestSuggestions.set(suggestions)
+            suggestionsListener?.invoke(suggestions)
+        } else {
+            publishStarterSuggestions()
+        }
+    }
+
+    private fun publishStarterSuggestions() {
+        val settings = settingsProvider()
+        if (!settings.suggestionsEnabled || !dictionaryRepository.isReady) {
+            latestSuggestions.set(emptyList())
+            suggestionsListener?.invoke(emptyList())
+            return
+        }
+
+        val suggestions = starterSuggestions(settings)
+        latestSuggestions.set(suggestions)
+        suggestionsListener?.invoke(suggestions)
+    }
+
+    private fun starterSuggestions(settings: SuggestionSettings): List<SuggestionResult> {
+        val primary = starterSuggestionsFor(dictionaryRepository, PRIMARY_SUGGESTION_BOOST, settings.maxSuggestions)
+        val extras = activeExtraSuggestionEngines().flatMap { extra ->
+            if (!extra.repository.isReady) {
+                scheduleRepositoryLoad(extra.repository, refreshAfterLoad = true)
+                emptyList()
+            } else {
+                starterSuggestionsFor(extra.repository, 0.0, settings.maxSuggestions)
+            }
+        }
+        return mergeSuggestionResults(primary, extras, settings.maxSuggestions)
+    }
+
+    private fun fillWithStarterSuggestions(
+        predictions: List<SuggestionResult>,
+        settings: SuggestionSettings
+    ): List<SuggestionResult> {
+        if (predictions.size >= settings.maxSuggestions) return predictions.take(settings.maxSuggestions)
+
+        val seen = predictions
+            .mapTo(HashSet()) { it.candidate.lowercase(currentLocale) }
+        val fillers = starterSuggestions(settings)
+            .filter { seen.add(it.candidate.lowercase(currentLocale)) }
+        return (predictions + fillers).take(settings.maxSuggestions)
+    }
+
+    private fun fillWithStarterSuggestions(
+        predictions: List<SuggestionResult>,
+        settings: SuggestionSettings,
+        excludedCandidates: Set<String>
+    ): List<SuggestionResult> {
+        if (predictions.size >= settings.maxSuggestions) return predictions.take(settings.maxSuggestions)
+
+        val excluded = excludedCandidates.mapTo(HashSet()) { it.lowercase(currentLocale) }
+        val seen = predictions
+            .mapTo(HashSet()) { it.candidate.lowercase(currentLocale) }
+        val fillers = starterSuggestions(settings)
+            .filter { result ->
+                val key = result.candidate.lowercase(currentLocale)
+                key !in excluded && seen.add(key)
+            }
+        return (predictions + fillers).take(settings.maxSuggestions)
+    }
+
+    private fun starterSuggestionsFor(
+        repository: DictionaryRepository,
+        scoreBoost: Double,
+        limit: Int
+    ): List<SuggestionResult> {
+        return repository.topCommonEntries(limit * 3)
+            .map { entry ->
+                SuggestionResult(
+                    candidate = entry.word,
+                    distance = 0,
+                    score = repository.effectiveFrequency(entry) / 1_600.0 + scoreBoost +
+                        if (entry.source == SuggestionSource.USER) 5.0 else 0.0,
+                    source = entry.source,
+                    kind = SuggestionKind.STARTER_WORD
+                )
+            }
+            .take(limit)
     }
 
     private fun mergeSuggestionResults(
@@ -592,6 +752,8 @@ class SuggestionController(
                             val word = tracker.currentWord
                             if (word.isNotBlank()) {
                                 updateSuggestionsForWord(word)
+                            } else if (previousCompletedWord == null) {
+                                publishSentenceStartPredictionsOrStarter()
                             }
                         }
                     }
@@ -763,11 +925,17 @@ class SuggestionController(
                 tracker.setWord(word)
                 return
             }
+            if (previousCompletedWord == null) {
+                publishSentenceStartPredictionsOrStarter()
+                return
+            }
         }
 
         val word = tracker.currentWord
         if (word.isNotBlank()) {
             updateSuggestionsForWord(word)
+        } else if (previousCompletedWord == null) {
+            publishSentenceStartPredictionsOrStarter()
         }
     }
 

@@ -36,6 +36,7 @@ interface DictionaryRepository {
     fun symSpellLookup(term: String, maxSuggestions: Int): List<SymSpell.SuggestItem>
     fun bestEntryForNormalized(normalized: String): DictionaryEntry?
     fun topByNormalized(normalized: String, limit: Int = 5): List<DictionaryEntry>
+    fun topCommonEntries(limit: Int = 16): List<DictionaryEntry>
     fun isKnownWord(word: String): Boolean
     fun ensureLoadScheduled(background: () -> Unit)
 }
@@ -110,6 +111,7 @@ class AndroidDictionaryRepository(
     private val normalizedIndex: MutableMap<String, MutableList<DictionaryEntry>> = mutableMapOf()
     @Volatile private var symSpell: SymSpell? = null
     @Volatile private var symSpellBuilt: Boolean = false
+    @Volatile private var topCommonEntriesCache: List<DictionaryEntry>? = null
     @Volatile override var isReady: Boolean = false
         internal set
     @Volatile private var loadStarted: Boolean = false
@@ -188,6 +190,7 @@ class AndroidDictionaryRepository(
                 synchronized(this) { loadStarted = false }
                 prefixCache.clear()
                 normalizedIndex.clear()
+                topCommonEntriesCache = null
                 symSpell = null
                 symSpellBuilt = false
                 isReady = false
@@ -247,7 +250,16 @@ class AndroidDictionaryRepository(
 
     override fun removeUserEntry(word: String) {
         userDictionaryStore.removeWord(context, word)
-        // Caller should refresh asynchronously; keep legacy path noop here.
+        val normalized = normalize(word)
+        normalizedIndex[normalized]?.removeAll { entry ->
+            entry.source == SuggestionSource.USER && entry.word.equals(word, ignoreCase = true)
+        }
+        prefixCache.values.forEach { entries ->
+            entries.removeAll { entry ->
+                entry.source == SuggestionSource.USER && entry.word.equals(word, ignoreCase = true)
+            }
+        }
+        topCommonEntriesCache = null
     }
 
     override fun markUsed(word: String) {
@@ -258,6 +270,30 @@ class AndroidDictionaryRepository(
         if (!isReady) return false
         val normalized = normalize(word)
         return normalizedIndex[normalized]?.isNotEmpty() == true
+    }
+
+    override fun topCommonEntries(limit: Int): List<DictionaryEntry> {
+        if (!isReady || limit <= 0) return emptyList()
+        val cached = topCommonEntriesCache
+        if (cached != null) return cached.take(limit)
+
+        val computed = normalizedIndex.values.asSequence()
+            .mapNotNull { entries -> entries.maxByOrNull { effectiveFrequency(it) } }
+            .filter { entry ->
+                entry.word.length > 1 &&
+                    entry.source != SuggestionSource.DEFAULT_USER &&
+                    entry.word.any { it.isLetter() } &&
+                    entry.word.none { !it.isLetter() && it != '\'' }
+            }
+            .sortedWith(
+                compareByDescending<DictionaryEntry> { it.source == SuggestionSource.USER }
+                    .thenByDescending { effectiveFrequency(it) }
+                    .thenBy { it.word.length }
+            )
+            .take(48)
+            .toList()
+        topCommonEntriesCache = computed
+        return computed.take(limit)
     }
 
     /**
@@ -508,7 +544,7 @@ class AndroidDictionaryRepository(
                     val obj = jsonArray.getJSONObject(i)
                     val word = obj.getString("w")
                     val freq = obj.optInt("f", 1)
-                    add(DictionaryEntry(word, freq, SuggestionSource.USER))
+                    add(DictionaryEntry(word, freq, SuggestionSource.DEFAULT_USER))
                 }
             }
         } catch (e: Exception) {
@@ -680,5 +716,6 @@ class AndroidDictionaryRepository(
         normalizedIndex.values.forEach { list ->
             list.sortByDescending { effectiveFrequency(it) }
         }
+        topCommonEntriesCache = null
     }
 }
