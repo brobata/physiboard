@@ -48,6 +48,11 @@ object VariationRepository {
                     }
                 }
             }
+            layoutPriorities.forEach { (baseChar, priorityList) ->
+                if (!variationsMap.containsKey(baseChar)) {
+                    variationsMap[baseChar] = priorityList
+                }
+            }
             variationsMap
         } catch (e: Exception) {
             Log.e(TAG, "Error loading character variations", e)

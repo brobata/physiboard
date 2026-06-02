@@ -12,12 +12,12 @@ import org.robolectric.annotation.Config
 class AdditionalSubtypeUtilsLayoutTest {
 
     @Test
-    fun germanLocales_resolveToGermanMultitapQwertz() {
+    fun germanLocales_resolveToQwertz() {
         val context = RuntimeEnvironment.getApplication()
 
-        assertEquals("german_multitap_qwertz", AdditionalSubtypeUtils.getLayoutForLocale(context.assets, "de", context))
-        assertEquals("german_multitap_qwertz", AdditionalSubtypeUtils.getLayoutForLocale(context.assets, "de_DE", context))
-        assertEquals("german_multitap_qwertz", AdditionalSubtypeUtils.getLayoutForLocale(context.assets, "de-AT", context))
+        assertEquals("qwertz", AdditionalSubtypeUtils.getLayoutForLocale(context.assets, "de", context))
+        assertEquals("qwertz", AdditionalSubtypeUtils.getLayoutForLocale(context.assets, "de_DE", context))
+        assertEquals("qwertz", AdditionalSubtypeUtils.getLayoutForLocale(context.assets, "de-AT", context))
     }
 
     @Test

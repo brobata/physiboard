@@ -21,19 +21,21 @@ class VariationRepositoryLayoutOverrideTest {
     }
 
     @Test
-    fun germanMultitapQwertz_prioritizesGermanUmlautVariations() {
+    fun qwertz_prioritizesGermanUmlautAndPercentVariations() {
         val context = RuntimeEnvironment.getApplication()
 
         val variations = VariationRepository.loadVariations(
             assets = context.assets,
             context = context,
-            activeLayoutName = "german_multitap_qwertz"
+            activeLayoutName = "qwertz"
         )
 
         assertEquals("ü", variations['u']?.first())
         assertEquals("Ü", variations['U']?.first())
         assertEquals("ö", variations['o']?.first())
         assertEquals("ä", variations['a']?.first())
+        assertEquals("%", variations['p']?.first())
+        assertEquals("%", variations['P']?.first())
     }
 
     @Test
@@ -53,12 +55,13 @@ class VariationRepositoryLayoutOverrideTest {
         val variations = VariationRepository.loadVariations(
             assets = context.assets,
             context = context,
-            activeLayoutName = "german_multitap_qwertz"
+            activeLayoutName = "qwertz"
         )
 
         assertEquals("ü", variations['u']?.first())
         assertEquals("Ü", variations['U']?.first())
         assertTrue(variations['u'].orEmpty().contains("ù"))
+        assertEquals("%", variations['p']?.first())
     }
 
     @Test
