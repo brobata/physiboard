@@ -362,6 +362,22 @@ object AdditionalSubtypeUtils {
         // No subtype available: keep current selection to avoid unexpected jumps.
         return SettingsManager.getKeyboardLayout(context)
     }
+
+    /**
+     * Resolves the concrete layout declared by an input style, when present.
+     * Falls back to the normal active-layout resolver for base/system subtypes.
+     */
+    fun resolveInputStyleLayout(
+        assets: AssetManager,
+        context: Context,
+        subtype: InputMethodSubtype?
+    ): String {
+        val layoutFromSubtype = subtype?.let { getKeyboardLayoutFromSubtype(it) }
+        if (!layoutFromSubtype.isNullOrEmpty()) {
+            return layoutFromSubtype
+        }
+        return resolveActiveLayout(assets, context, subtype)
+    }
     
     /**
      * Gets the default keyboard layout for a locale from the JSON mapping.

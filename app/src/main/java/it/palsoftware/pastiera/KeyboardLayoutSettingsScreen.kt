@@ -53,6 +53,8 @@ import androidx.lifecycle.LifecycleEventObserver
 fun KeyboardLayoutSettingsScreen(
     modifier: Modifier = Modifier,
     locale: String,
+    initialLayout: String? = null,
+    pickerMode: Boolean = false,
     onBack: () -> Unit,
     onLayoutSelected: (String, String) -> Unit
 ) {
@@ -67,15 +69,14 @@ fun KeyboardLayoutSettingsScreen(
     var physicalKeyboardCurrencySymbol by remember {
         mutableStateOf(SettingsManager.getPhysicalKeyboardCurrencySymbol(context))
     }
-    var toastOnLayoutSwitch by remember {
-        mutableStateOf(SettingsManager.isToastOnLayoutSwitchEnabled(context))
-    }
     val detectedPhysicalProfile = remember { DeviceSpecific.physicalKeyboardName() }
     var showPhysicalProfileMenu by remember { mutableStateOf(false) }
     var showCurrencySymbolMenu by remember { mutableStateOf(false) }
-    var selectedLayout by remember(locale, automaticLayoutMode) {
+    var selectedLayout by remember(locale, automaticLayoutMode, initialLayout, pickerMode) {
         mutableStateOf(
-            if (automaticLayoutMode) {
+            if (pickerMode && initialLayout != null) {
+                initialLayout
+            } else if (automaticLayoutMode) {
                 AdditionalSubtypeUtils.getLayoutForLocale(context.assets, locale, context)
             } else {
                 SettingsManager.getKeyboardLayout(context)
@@ -237,15 +238,15 @@ fun KeyboardLayoutSettingsScreen(
                     // Save button
                     IconButton(
                         onClick = {
-                            SettingsManager.setKeyboardLayoutAutoByLocale(context, automaticLayoutMode)
-                            SettingsManager.setPhysicalKeyboardProfileOverride(context, physicalKeyboardProfileOverride)
-                            SettingsManager.setPhysicalKeyboardCurrencySymbol(context, physicalKeyboardCurrencySymbol)
-                            SettingsManager.setToastOnLayoutSwitchEnabled(context, toastOnLayoutSwitch)
-                            if (automaticLayoutMode) {
-                                onLayoutSelected(locale, selectedLayout)
-                            } else {
-                                SettingsManager.setKeyboardLayout(context, selectedLayout)
+                            if (!pickerMode) {
+                                SettingsManager.setKeyboardLayoutAutoByLocale(context, automaticLayoutMode)
+                                SettingsManager.setPhysicalKeyboardProfileOverride(context, physicalKeyboardProfileOverride)
+                                SettingsManager.setPhysicalKeyboardCurrencySymbol(context, physicalKeyboardCurrencySymbol)
+                                if (!automaticLayoutMode) {
+                                    SettingsManager.setKeyboardLayout(context, selectedLayout)
+                                }
                             }
+                            onLayoutSelected(locale, selectedLayout)
                             onBack()
                         }
                     ) {
@@ -304,181 +305,20 @@ fun KeyboardLayoutSettingsScreen(
                 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = stringResource(R.string.keyboard_layout_mode_title),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Text(
-                                text = if (automaticLayoutMode) {
-                                    stringResource(R.string.keyboard_layout_mode_auto_description)
-                                } else {
-                                    stringResource(R.string.keyboard_layout_mode_manual_description)
-                                },
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Switch(
-                            checked = automaticLayoutMode,
-                            onCheckedChange = { enabled ->
-                                automaticLayoutMode = enabled
-                            }
-                        )
-                    }
-                }
-                
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = stringResource(R.string.keyboard_profile_override_title),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Text(
-                                text = if (physicalKeyboardProfileOverride == "auto") {
-                                    stringResource(
-                                        R.string.keyboard_profile_override_auto_description,
-                                        detectedPhysicalProfile
-                                    )
-                                } else {
-                                    stringResource(R.string.keyboard_profile_override_manual_description)
-                                },
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Box {
-                            TextButton(onClick = { showPhysicalProfileMenu = true }) {
-                                Text(text = keyboardProfileLabel(context, physicalKeyboardProfileOverride))
-                                Icon(
-                                    imageVector = Icons.Filled.ArrowDropDown,
-                                    contentDescription = null
-                                )
-                            }
-                            DropdownMenu(
-                                expanded = showPhysicalProfileMenu,
-                                onDismissRequest = { showPhysicalProfileMenu = false }
-                            ) {
-                                listOf("auto", "key2", "Q25", "titan", "titan2", "titan2elite_qwerty", "mp01").forEach { profile ->
-                                    DropdownMenuItem(
-                                        text = { Text(keyboardProfileLabel(context, profile)) },
-                                        onClick = {
-                                            physicalKeyboardProfileOverride = profile
-                                            showPhysicalProfileMenu = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = stringResource(R.string.keyboard_currency_symbol_title),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Text(
-                                text = stringResource(R.string.keyboard_currency_symbol_description),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Box {
-                            TextButton(onClick = { showCurrencySymbolMenu = true }) {
-                                Text(text = physicalKeyboardCurrencySymbol)
-                                Icon(
-                                    imageVector = Icons.Filled.ArrowDropDown,
-                                    contentDescription = null
-                                )
-                            }
-                            DropdownMenu(
-                                expanded = showCurrencySymbolMenu,
-                                onDismissRequest = { showCurrencySymbolMenu = false }
-                            ) {
-                                SettingsManager.physicalKeyboardCurrencySymbols().forEach { symbol ->
-                                    DropdownMenuItem(
-                                        text = { Text(symbol) },
-                                        onClick = {
-                                            physicalKeyboardCurrencySymbol = symbol
-                                            showCurrencySymbolMenu = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = stringResource(R.string.toast_on_layout_switch_title),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Text(
-                                text = stringResource(R.string.toast_on_layout_switch_description),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Switch(
-                            checked = toastOnLayoutSwitch,
-                            onCheckedChange = { enabled ->
-                                toastOnLayoutSwitch = enabled
-                            }
-                        )
-                    }
+                if (!pickerMode) {
+                    KeyboardLayoutGlobalSettingsSection(
+                        automaticLayoutMode = automaticLayoutMode,
+                        onAutomaticLayoutModeChanged = { automaticLayoutMode = it },
+                        physicalKeyboardProfileOverride = physicalKeyboardProfileOverride,
+                        onPhysicalKeyboardProfileOverrideChanged = { physicalKeyboardProfileOverride = it },
+                        showPhysicalProfileMenu = showPhysicalProfileMenu,
+                        onShowPhysicalProfileMenuChanged = { showPhysicalProfileMenu = it },
+                        detectedPhysicalProfile = detectedPhysicalProfile,
+                        physicalKeyboardCurrencySymbol = physicalKeyboardCurrencySymbol,
+                        onPhysicalKeyboardCurrencySymbolChanged = { physicalKeyboardCurrencySymbol = it },
+                        showCurrencySymbolMenu = showCurrencySymbolMenu,
+                        onShowCurrencySymbolMenuChanged = { showCurrencySymbolMenu = it }
+                    )
                 }
 
                 // No Conversion (QWERTY - default, passes keycodes as-is)
@@ -667,10 +507,11 @@ fun KeyboardLayoutSettingsScreen(
                             // If deleted layout was selected, switch to qwerty
                             if (selectedLayout == layoutName) {
                                 selectedLayout = "qwerty"
-                                if (automaticLayoutMode) {
-                                    onLayoutSelected(locale, "qwerty")
-                                } else {
+                                if (!pickerMode && !automaticLayoutMode) {
                                     SettingsManager.setKeyboardLayout(context, "qwerty")
+                                }
+                                if (!pickerMode) {
+                                    onLayoutSelected(locale, "qwerty")
                                 }
                             }
                             
@@ -696,6 +537,140 @@ fun KeyboardLayoutSettingsScreen(
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun KeyboardLayoutGlobalSettingsSection(
+    automaticLayoutMode: Boolean,
+    onAutomaticLayoutModeChanged: (Boolean) -> Unit,
+    physicalKeyboardProfileOverride: String,
+    onPhysicalKeyboardProfileOverrideChanged: (String) -> Unit,
+    showPhysicalProfileMenu: Boolean,
+    onShowPhysicalProfileMenuChanged: (Boolean) -> Unit,
+    detectedPhysicalProfile: String,
+    physicalKeyboardCurrencySymbol: String,
+    onPhysicalKeyboardCurrencySymbolChanged: (String) -> Unit,
+    showCurrencySymbolMenu: Boolean,
+    onShowCurrencySymbolMenuChanged: (Boolean) -> Unit
+) {
+    val context = LocalContext.current
+
+    KeyboardLayoutSettingRow(
+        title = stringResource(R.string.keyboard_layout_mode_title),
+        description = if (automaticLayoutMode) {
+            stringResource(R.string.keyboard_layout_mode_auto_description)
+        } else {
+            stringResource(R.string.keyboard_layout_mode_manual_description)
+        },
+        control = {
+            Switch(
+                checked = automaticLayoutMode,
+                onCheckedChange = onAutomaticLayoutModeChanged
+            )
+        }
+    )
+
+    KeyboardLayoutSettingRow(
+        title = stringResource(R.string.keyboard_profile_override_title),
+        description = if (physicalKeyboardProfileOverride == "auto") {
+            stringResource(
+                R.string.keyboard_profile_override_auto_description,
+                detectedPhysicalProfile
+            )
+        } else {
+            stringResource(R.string.keyboard_profile_override_manual_description)
+        },
+        control = {
+            Box {
+                TextButton(onClick = { onShowPhysicalProfileMenuChanged(true) }) {
+                    Text(text = keyboardProfileLabel(context, physicalKeyboardProfileOverride))
+                    Icon(
+                        imageVector = Icons.Filled.ArrowDropDown,
+                        contentDescription = null
+                    )
+                }
+                DropdownMenu(
+                    expanded = showPhysicalProfileMenu,
+                    onDismissRequest = { onShowPhysicalProfileMenuChanged(false) }
+                ) {
+                    listOf("auto", "key2", "Q25", "titan", "titan2", "titan2elite_qwerty", "mp01").forEach { profile ->
+                        DropdownMenuItem(
+                            text = { Text(keyboardProfileLabel(context, profile)) },
+                            onClick = {
+                                onPhysicalKeyboardProfileOverrideChanged(profile)
+                                onShowPhysicalProfileMenuChanged(false)
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    )
+
+    KeyboardLayoutSettingRow(
+        title = stringResource(R.string.keyboard_currency_symbol_title),
+        description = stringResource(R.string.keyboard_currency_symbol_description),
+        control = {
+            Box {
+                TextButton(onClick = { onShowCurrencySymbolMenuChanged(true) }) {
+                    Text(text = physicalKeyboardCurrencySymbol)
+                    Icon(
+                        imageVector = Icons.Filled.ArrowDropDown,
+                        contentDescription = null
+                    )
+                }
+                DropdownMenu(
+                    expanded = showCurrencySymbolMenu,
+                    onDismissRequest = { onShowCurrencySymbolMenuChanged(false) }
+                ) {
+                    SettingsManager.physicalKeyboardCurrencySymbols().forEach { symbol ->
+                        DropdownMenuItem(
+                            text = { Text(symbol) },
+                            onClick = {
+                                onPhysicalKeyboardCurrencySymbolChanged(symbol)
+                                onShowCurrencySymbolMenuChanged(false)
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    )
+}
+
+@Composable
+private fun KeyboardLayoutSettingRow(
+    title: String,
+    description: String,
+    control: @Composable () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            control()
+        }
     }
 }
 

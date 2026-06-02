@@ -835,7 +835,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         val layoutName = try {
             val imm = getSystemService(InputMethodManager::class.java)
             val currentSubtype = imm.currentInputMethodSubtype
-            AdditionalSubtypeUtils.resolveActiveLayout(assets, this, currentSubtype)
+            AdditionalSubtypeUtils.resolveInputStyleLayout(assets, this, currentSubtype)
         } catch (e: Exception) {
             Log.w(TAG, "Error getting layout from subtype, using preferences", e)
             SettingsManager.getKeyboardLayout(this)
@@ -2573,7 +2573,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             }
         }
         
-        val layoutToUse = AdditionalSubtypeUtils.resolveActiveLayout(assets, this, newSubtype)
+        val layoutToUse = AdditionalSubtypeUtils.resolveInputStyleLayout(assets, this, newSubtype)
 
         val currentLayout = SettingsManager.getKeyboardLayout(this)
         if (layoutToUse != currentLayout) {

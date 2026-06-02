@@ -78,7 +78,8 @@ class AutoCorrectionManager(
         isAutoCorrectEnabled: Boolean,
         commitBoundary: Boolean,
         onStatusBarUpdate: () -> Unit,
-        boundaryCharOverride: Char? = null
+        boundaryCharOverride: Char? = null,
+        isKnownWord: ((String) -> Boolean)? = null
     ): Boolean {
         Log.d(
             TAG,
@@ -141,7 +142,11 @@ class AutoCorrectionManager(
         inputConnection.finishComposingText()
 
         val textBeforeCursor = inputConnection.getTextBeforeCursor(100, 0)
-        val correction = AutoCorrector.processText(textBeforeCursor, context = context) ?: return false
+        val correction = AutoCorrector.processText(
+            textBeforeCursor,
+            context = context,
+            isKnownWord = isKnownWord
+        ) ?: return false
 
         val (wordToReplace, correctedWord) = correction
         if (correctedWord == wordToReplace) {

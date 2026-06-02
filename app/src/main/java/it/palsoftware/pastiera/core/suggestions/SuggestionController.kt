@@ -398,6 +398,29 @@ class SuggestionController(
         dictionaryRepository.markUsed(word)
     }
 
+    fun isKnownWordInActiveDictionaries(word: String): Boolean {
+        if (!isEnabled()) return false
+        val candidate = word.trim()
+        if (candidate.isEmpty()) return false
+
+        ensureDictionaryLoaded()
+        if (dictionaryRepository.isReady && dictionaryRepository.isKnownWord(candidate)) {
+            return true
+        }
+
+        return activeExtraSuggestionEngines().any { extra ->
+            if (!extra.repository.isReady) {
+                scheduleRepositoryLoad(extra.repository)
+                // Defer legacy auto-substitution while an explicitly active
+                // extra dictionary is still loading; wrong replacements are
+                // worse than skipping one boundary.
+                true
+            } else {
+                extra.repository.isKnownWord(candidate)
+            }
+        }
+    }
+
     fun currentSuggestions(): List<SuggestionResult> = latestSuggestions.get()
 
     fun userDictionarySnapshot(): List<UserDictionaryStore.UserEntry> = userDictionaryStore.getSnapshot()

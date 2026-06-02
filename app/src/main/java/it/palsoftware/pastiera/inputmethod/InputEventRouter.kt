@@ -920,7 +920,8 @@ class InputEventRouter(
                 isAutoCorrectEnabled,
                 commitBoundary = isMultiline, // commit newline inside autocorrect only for multiline
                 onStatusBarUpdate = updateStatusBar,
-                boundaryCharOverride = '\n'
+                boundaryCharOverride = '\n',
+                isKnownWord = { word -> suggestionController?.isKnownWordInActiveDictionaries(word) == true }
             )
             if (handled) {
                 suggestionController?.onContextReset()
@@ -954,7 +955,8 @@ class InputEventRouter(
                 inputConnection,
                 isAutoCorrectEnabled,
                 commitBoundary = true,
-                onStatusBarUpdate = updateStatusBar
+                onStatusBarUpdate = updateStatusBar,
+                isKnownWord = { word -> suggestionController?.isKnownWordInActiveDictionaries(word) == true }
             )
         ) {
             suggestionController?.onContextReset()

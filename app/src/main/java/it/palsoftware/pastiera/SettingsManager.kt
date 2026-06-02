@@ -3569,6 +3569,12 @@ object SettingsManager {
         saveHiddenSystemInputStyleKeys(context, updated)
     }
 
+    fun showSystemInputStyle(context: Context, locale: String, layout: String) {
+        val updated = hiddenSystemInputStyleKeys(context).toMutableSet()
+        updated.remove(inputStyleKey(locale, layout))
+        saveHiddenSystemInputStyleKeys(context, updated)
+    }
+
     fun getAdditionalSuggestionLocalesForInputStyle(
         context: Context,
         locale: String,
@@ -3578,17 +3584,51 @@ object SettingsManager {
             ?: return emptyList()
         return try {
             val root = org.json.JSONObject(jsonString)
-            val array = root.optJSONArray(inputStyleSuggestionKey(locale, layout)) ?: return emptyList()
-            buildList {
-                for (i in 0 until array.length()) {
-                    val tag = array.optString(i).trim()
-                    if (tag.isNotBlank()) add(normalizeSuggestionLocaleTag(tag))
-                }
-            }.distinct()
+            val array = suggestionLocalesArrayForInputStyle(root, locale, layout) ?: return emptyList()
+            suggestionLocalesFromArray(array)
         } catch (e: Exception) {
             Log.e(TAG, "Error parsing input style suggestion locales", e)
             emptyList()
         }
+    }
+
+    private fun suggestionLocalesArrayForInputStyle(
+        root: org.json.JSONObject,
+        locale: String,
+        layout: String
+    ): org.json.JSONArray? {
+        val normalizedLocale = normalizeSuggestionLocaleTag(locale)
+        val language = normalizedLocale.substringBefore("-")
+        val exactKey = inputStyleSuggestionKey(locale, layout)
+        val languageLayoutKey = inputStyleKey(language, layout)
+
+        root.optJSONArray(exactKey)?.let { return it }
+        root.optJSONArray(languageLayoutKey)?.let { return it }
+
+        legacySuggestionLayoutAliases(layout).forEach { legacyLayout ->
+            root.optJSONArray(inputStyleKey(normalizedLocale, legacyLayout))?.let { return it }
+            root.optJSONArray(inputStyleKey(language, legacyLayout))?.let { return it }
+        }
+
+        return null
+    }
+
+    private fun legacySuggestionLayoutAliases(layout: String): List<String> {
+        return when (layout.trim()) {
+            "qwertz" -> listOf("german_multitap_qwertz")
+            else -> emptyList()
+        }
+    }
+
+    private fun suggestionLocalesFromArray(array: org.json.JSONArray): List<String> {
+        return buildList {
+            for (i in 0 until array.length()) {
+                val tag = array.optString(i).trim()
+                if (tag.isNotBlank()) {
+                    add(normalizeSuggestionLocaleTag(tag))
+                }
+            }
+        }.distinct()
     }
 
     fun setAdditionalSuggestionLocalesForInputStyle(

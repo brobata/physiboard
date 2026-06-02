@@ -89,12 +89,14 @@ object SubtypeCycler {
             }
             
             val nextSubtype = enabledSubtypes[nextIndex]
+            val nextLayout = resolveSubtypeCycleLayout(assets, context, nextSubtype)
             
             // Try to switch using setInputMethodAndSubtype
             // This requires the IME window token, which may not always be available
             val result = trySwitchSubtype(imm, imeId, nextSubtype, context)
             
             if (result) {
+                SettingsManager.setKeyboardLayout(context, nextLayout)
                 if (showToast) {
                     showUnifiedSubtypeToast(context, nextSubtype, assets)
                 }
@@ -157,7 +159,7 @@ object SubtypeCycler {
                     appInfo
                 )
                 
-                val layoutName = AdditionalSubtypeUtils.resolveActiveLayout(assets, context, subtype)
+                val layoutName = resolveSubtypeCycleLayout(assets, context, subtype)
                 
                 // Get layout display name from metadata
                 val layoutMetadata = try {
@@ -202,12 +204,29 @@ object SubtypeCycler {
         val seen = mutableSetOf<String>()
         return subtypes.filter { subtype ->
             val locale = subtype.localeString()
-            val layout = AdditionalSubtypeUtils.resolveActiveLayout(assets, context, subtype)
+            val layout = resolveSubtypeCycleLayout(assets, context, subtype)
             val hiddenSystemLocale =
                 !AdditionalSubtypeUtils.isAdditionalSubtype(subtype) &&
                     SettingsManager.isSystemInputStyleHidden(context, locale, layout)
             !hiddenSystemLocale && seen.add("$locale:$layout")
         }
+    }
+
+    private fun resolveSubtypeCycleLayout(
+        assets: AssetManager,
+        context: Context,
+        subtype: InputMethodSubtype?
+    ): String {
+        if (subtype != null) {
+            val layoutFromSubtype = AdditionalSubtypeUtils.getKeyboardLayoutFromSubtype(subtype)
+            if (!layoutFromSubtype.isNullOrEmpty()) {
+                return layoutFromSubtype
+            }
+            val locale = subtype.localeString().ifBlank { "en_US" }
+            return AdditionalSubtypeUtils.getLayoutForLocale(assets, locale, context)
+        }
+
+        return SettingsManager.getKeyboardLayout(context)
     }
     
     /**

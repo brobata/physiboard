@@ -4,7 +4,13 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Test
+import it.palsoftware.pastiera.inputmethod.AutoCorrector
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [33])
 class AutoReplaceControllerLogicTest {
 
     @Test
@@ -67,5 +73,18 @@ class AutoReplaceControllerLogicTest {
         assertEquals("perche", AutoReplaceController.stripAccents("perché"))
         assertEquals("a", AutoReplaceController.stripAccents("á"))
         assertEquals("hallo", AutoReplaceController.stripAccents("hallo"))
+    }
+
+    @Test
+    fun autoSubstitutionSkipsKnownWords() {
+        AutoCorrector.loadCustomCorrections("de", """{"agree":"are"}""")
+
+        val correction = AutoCorrector.processText(
+            textBeforeCursor = "agree ",
+            locale = "de",
+            isKnownWord = { it.equals("agree", ignoreCase = true) }
+        )
+
+        assertNull(correction)
     }
 }

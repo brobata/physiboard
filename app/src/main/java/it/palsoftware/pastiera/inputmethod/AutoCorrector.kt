@@ -352,7 +352,8 @@ object AutoCorrector {
     fun processText(
         textBeforeCursor: CharSequence?,
         locale: String? = null,
-        context: Context? = null
+        context: Context? = null,
+        isKnownWord: ((String) -> Boolean)? = null
     ): Pair<String, String>? {
         if (textBeforeCursor == null || textBeforeCursor.isEmpty()) {
             return null
@@ -376,15 +377,21 @@ object AutoCorrector {
         }
 
         // Determine current IME language; if unavailable, do not apply autosubstitution
-        val imeLanguage = if (context != null) getCurrentImeLanguageCode(context) else null
+        val imeLanguage = locale ?: if (context != null) getCurrentImeLanguageCode(context) else null
         if (imeLanguage == null) {
             return null
         }
 
-        // Build candidate languages: IME language + x-pastiera (if available)
-        val candidates = buildSet {
-            if (corrections.containsKey(imeLanguage)) add(imeLanguage)
-            if (corrections.containsKey("x-pastiera")) add("x-pastiera")
+        // Build candidate languages. When the user explicitly enables multiple
+        // substitution languages, search those languages instead of only the
+        // active IME language.
+        val candidates = if (enabledLanguages.isNotEmpty()) {
+            enabledLanguages.filter { corrections.containsKey(it) }.toSet()
+        } else {
+            buildSet {
+                if (corrections.containsKey(imeLanguage)) add(imeLanguage)
+                if (corrections.containsKey("x-pastiera")) add("x-pastiera")
+            }
         }
 
         // Apply toggle filter (if not empty). x-pastiera remains only if enabled.
@@ -475,6 +482,10 @@ object AutoCorrector {
                         Log.d(TAG, "Sequence '$sequence' has been rejected, don't correct")
                         continue // Try with fewer words
                     }
+                    if (maxWords == 1 && isKnownWord?.invoke(sequence) == true) {
+                        Log.d(TAG, "Word '$sequence' is known in an active dictionary, don't auto-substitute")
+                        continue
+                    }
 
                     // Check if there's a correction for this sequence in one of the enabled languages
                     for (lang in languagesToSearch) {
@@ -507,6 +518,11 @@ object AutoCorrector {
         val wordLower = word.lowercase()
         if (rejectedWords.contains(wordLower)) {
             Log.d(TAG, "Word '$word' has been rejected, don't correct")
+            return null
+        }
+
+        if (isKnownWord?.invoke(word) == true) {
+            Log.d(TAG, "Word '$word' is known in an active dictionary, don't auto-substitute")
             return null
         }
 
