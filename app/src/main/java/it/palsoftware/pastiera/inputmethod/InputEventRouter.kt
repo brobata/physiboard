@@ -39,6 +39,9 @@ class InputEventRouter(
     var suggestionController: it.palsoftware.pastiera.core.suggestions.SuggestionController? = null
     var onCommitText: (() -> Unit)? = null
 
+    private fun isSuggestionDebugLoggingEnabled(): Boolean =
+        SettingsManager.isSuggestionDebugLoggingEnabled(context)
+
     /**
      * Track in-word apostrophes so suggestions don't reset (e.g., "we'" -> "we'll").
      */
@@ -71,11 +74,15 @@ class InputEventRouter(
     }
 
     private fun commitTextWithTracking(ic: InputConnection?, text: CharSequence, trackWord: Boolean = true) {
-        Log.d("PastieraIME", "commitTextWithTracking enter: '$text', trackWord=$trackWord")
+        if (isSuggestionDebugLoggingEnabled()) {
+            Log.d("PastieraIME", "commitTextWithTracking enter: '$text', trackWord=$trackWord")
+        }
         onCommitText?.invoke()
         ic?.commitText(text, 1)
         if (trackWord) {
-            Log.d("PastieraIME", "commitTextWithTracking notify SC: '$text'")
+            if (isSuggestionDebugLoggingEnabled()) {
+                Log.d("PastieraIME", "commitTextWithTracking notify SC: '$text'")
+            }
             suggestionController?.onCharacterCommitted(text, ic)
         }
     }
@@ -672,7 +679,9 @@ class InputEventRouter(
                 shiftOneShotActive
             )
             if (char.isNotEmpty() && char[0].isLetter()) {
-                Log.d("PastieraIME", "layout commit: '$char'")
+                if (isSuggestionDebugLoggingEnabled()) {
+                    Log.d("PastieraIME", "layout commit: '$char'")
+                }
                 commitTextWithTracking(ic, char)
                 Handler(Looper.getMainLooper()).postDelayed({
                     callbacks.updateStatusBar()
@@ -688,7 +697,9 @@ class InputEventRouter(
         if (ic != null && event != null && event.unicodeChar != 0) {
             val ch = event.unicodeChar.toChar()
             if (ch.isLetter()) {
-                Log.d("PastieraIME", "fallback commit: '$ch'")
+                if (isSuggestionDebugLoggingEnabled()) {
+                    Log.d("PastieraIME", "fallback commit: '$ch'")
+                }
                 commitTextWithTracking(ic, ch.toString())
                 Handler(Looper.getMainLooper()).postDelayed({
                     callbacks.updateStatusBar()
@@ -922,16 +933,20 @@ class InputEventRouter(
             val inputType = editorInfo?.inputType ?: 0
             val isMultiline = (inputType and InputType.TYPE_TEXT_FLAG_MULTI_LINE) != 0
 
-            val handled = autoCorrectionManager.handleBoundaryKey(
-                keyCode,
-                event,
-                inputConnection,
-                isAutoCorrectEnabled,
-                commitBoundary = isMultiline, // commit newline inside autocorrect only for multiline
-                onStatusBarUpdate = updateStatusBar,
-                boundaryCharOverride = '\n',
-                isKnownWord = { word -> suggestionController?.isKnownWordInActiveDictionaries(word) == true }
-            )
+            val handled = if (shouldDisableSuggestions || suggestionController == null) {
+                autoCorrectionManager.handleBoundaryKey(
+                    keyCode,
+                    event,
+                    inputConnection,
+                    isAutoCorrectEnabled,
+                    commitBoundary = isMultiline, // commit newline inside autocorrect only for multiline
+                    onStatusBarUpdate = updateStatusBar,
+                    boundaryCharOverride = '\n',
+                    isKnownWord = { word -> suggestionController?.isKnownWordInActiveDictionaries(word) == true }
+                )
+            } else {
+                false
+            }
             if (handled) {
                 suggestionController?.onContextReset()
                 // For multiline with commitBoundary=true, newline was already committed; consume Enter.
@@ -958,6 +973,8 @@ class InputEventRouter(
         }
 
         if (
+            (isBoundaryKey || isPunctuation) &&
+            (shouldDisableSuggestions || suggestionController == null) &&
             autoCorrectionManager.handleBoundaryKey(
                 keyCode,
                 event,

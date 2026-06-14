@@ -1,5 +1,6 @@
 package it.palsoftware.pastiera.core.suggestions
 
+import android.os.Looper
 import android.view.KeyCharacterMap
 import android.view.KeyEvent
 import android.view.inputmethod.InputConnection
@@ -13,6 +14,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
@@ -99,7 +101,7 @@ class SuggestionControllerNextWordTest {
         pressSpace(controller)
         typeWord(controller, "b")
 
-        val latest = snapshots.last()
+        val latest = waitForSuggestionCandidates("bar")
         assertEquals(listOf("bar"), latest.map { it.candidate })
         assertEquals(SuggestionKind.CURRENT_WORD, latest.first().kind)
     }
@@ -130,7 +132,7 @@ class SuggestionControllerNextWordTest {
 
         typeWord(controller, "eng")
 
-        assertEquals(listOf("english"), snapshots.last().map { it.candidate })
+        assertEquals(listOf("english"), waitForSuggestionCandidates("english").map { it.candidate })
     }
 
     @Test
@@ -158,7 +160,7 @@ class SuggestionControllerNextWordTest {
         controller.readInitialContext(emptyInputConnection())
         typeWord(controller, "b")
 
-        val latest = snapshots.last()
+        val latest = waitForSuggestionCandidates("bar")
         assertEquals(listOf("bar"), latest.map { it.candidate })
         assertEquals(SuggestionKind.CURRENT_WORD, latest.first().kind)
     }
@@ -253,6 +255,21 @@ class SuggestionControllerNextWordTest {
         word.forEach { ch ->
             controller.onCharacterCommitted(ch.toString(), null)
         }
+    }
+
+    private fun waitForSuggestionCandidates(vararg candidates: String): List<SuggestionResult> {
+        val expected = candidates.toList()
+        repeat(50) {
+            shadowOf(Looper.getMainLooper()).idle()
+            snapshots.lastOrNull()?.let { latest ->
+                if (latest.map { it.candidate } == expected) {
+                    return latest
+                }
+            }
+            Thread.sleep(10)
+        }
+        shadowOf(Looper.getMainLooper()).idle()
+        return snapshots.last()
     }
 
     private fun pressSpace(controller: SuggestionController) {

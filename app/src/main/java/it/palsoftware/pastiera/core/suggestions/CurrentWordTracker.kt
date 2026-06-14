@@ -16,7 +16,7 @@ class CurrentWordTracker(
     val currentWord: String
         get() = current.toString()
 
-    fun setWord(word: String) {
+    fun setWord(word: String, notify: Boolean = true) {
         current.clear()
         if (word.length <= maxLength) {
             current.append(word)
@@ -24,7 +24,9 @@ class CurrentWordTracker(
             current.append(word.takeLast(maxLength))
         }
         if (debugLogging) Log.d(tag, "setWord currentWord='$current'")
-        onWordChanged(current.toString())
+        if (notify) {
+            onWordChanged(current.toString())
+        }
     }
 
     fun onCharacterCommitted(text: CharSequence) {

@@ -51,6 +51,7 @@ class SuggestionController(
             updateSuggestionsForWord(word)
         },
         onWordReset = {
+            cancelPendingWordSuggestions()
             latestSuggestions.set(emptyList())
             pendingAddUserWord = null
             suggestionsListener?.invoke(emptyList())
@@ -116,6 +117,7 @@ class SuggestionController(
         // Cancel previous load job if still running to prevent conflicts
         currentLoadJob?.cancel()
         currentLoadJob = null
+        cancelPendingWordSuggestions()
         pendingInitialContextConnection = null
         pendingPrimaryRefreshAfterLoad = false
         pendingExtraRefreshAfterLoad = false
@@ -134,6 +136,7 @@ class SuggestionController(
                 updateSuggestionsForWord(word)
             },
             onWordReset = {
+                cancelPendingWordSuggestions()
                 latestSuggestions.set(emptyList())
                 pendingAddUserWord = null
                 suggestionsListener?.invoke(emptyList())
@@ -161,7 +164,9 @@ class SuggestionController(
     private val latestSuggestions: AtomicReference<List<SuggestionResult>> = AtomicReference(emptyList())
     // Dedicated IO scope so dictionary preload never blocks the main thread.
     private val loadScope = CoroutineScope(Dispatchers.IO)
+    private val suggestionScope = CoroutineScope(Dispatchers.Default)
     private var currentLoadJob: Job? = null
+    private var suggestionJob: Job? = null
     private val cursorHandler = Handler(Looper.getMainLooper())
     private var cursorRunnable: Runnable? = null
     private val cursorDebounceMs = 120L
@@ -170,11 +175,19 @@ class SuggestionController(
     private var pendingInitialContextConnection: InputConnection? = null
     @Volatile private var pendingPrimaryRefreshAfterLoad: Boolean = false
     @Volatile private var pendingExtraRefreshAfterLoad: Boolean = false
+    @Volatile private var suggestionGeneration: Int = 0
     private var sentenceStartPending: Boolean = true
+
+    private fun cancelPendingWordSuggestions() {
+        suggestionGeneration += 1
+        suggestionJob?.cancel()
+        suggestionJob = null
+    }
 
     private fun updateSuggestionsForWord(word: String) {
         val settings = settingsProvider()
         if (!settings.suggestionsEnabled) {
+            cancelPendingWordSuggestions()
             pendingAddUserWord = null
             latestSuggestions.set(emptyList())
             suggestionsListener?.invoke(emptyList())
@@ -183,38 +196,70 @@ class SuggestionController(
         if (debugLogging) {
             Log.d("PastieraIME", "trackerWordChanged='$word' len=${word.length}")
         }
-        val primary = suggestionEngine.suggest(
-            word,
-            settings.maxSuggestions,
-            settings.accentMatching,
-            settings.useKeyboardProximity,
-            settings.useEditTypeRanking
-        )
-        val extraSuggestions = activeExtraSuggestionEngines().flatMap { extra ->
+
+        val generation = suggestionGeneration + 1
+        suggestionGeneration = generation
+        suggestionJob?.cancel()
+
+        val wordSnapshot = word
+        val localeSnapshot = currentLocale
+        val layoutSnapshot = keyboardLayoutProvider()
+        val primaryRepository = dictionaryRepository
+        val extraRepositories = activeExtraSuggestionEngines().mapNotNull { extra ->
             if (!extra.repository.isReady) {
                 scheduleRepositoryLoad(extra.repository, refreshAfterLoad = true)
-                emptyList()
+                null
             } else {
-                extra.engine.suggest(
-                    word,
+                extra.locale to extra.repository
+            }
+        }
+
+        suggestionJob = suggestionScope.launch {
+            val primary = if (primaryRepository.isReady) {
+                SuggestionEngine(primaryRepository, locale = localeSnapshot, debugLogging = debugLogging).apply {
+                    setKeyboardLayout(layoutSnapshot)
+                }.suggest(
+                    wordSnapshot,
+                    settings.maxSuggestions,
+                    settings.accentMatching,
+                    settings.useKeyboardProximity,
+                    settings.useEditTypeRanking
+                )
+            } else {
+                emptyList()
+            }
+
+            val extraSuggestions = extraRepositories.flatMap { (locale, repository) ->
+                SuggestionEngine(repository, locale = locale, debugLogging = debugLogging).apply {
+                    setKeyboardLayout(layoutSnapshot)
+                }.suggest(
+                    wordSnapshot,
                     settings.maxSuggestions,
                     settings.accentMatching,
                     settings.useKeyboardProximity,
                     settings.useEditTypeRanking
                 )
             }
+
+            val next = mergeSuggestionResults(primary, extraSuggestions, settings.maxSuggestions, localeSnapshot)
+            val pendingCandidate = addWordCandidateFor(wordSnapshot, primaryRepository)
+
+            cursorHandler.post {
+                if (generation != suggestionGeneration || tracker.currentWord != wordSnapshot) {
+                    return@post
+                }
+                pendingAddUserWord = pendingCandidate
+                latestSuggestions.set(next)
+                suggestionsListener?.invoke(next)
+            }
         }
-        val next = mergeSuggestionResults(primary, extraSuggestions, settings.maxSuggestions)
-        pendingAddUserWord = addWordCandidateFor(word)
-        latestSuggestions.set(next)
-        suggestionsListener?.invoke(next)
     }
 
-    private fun addWordCandidateFor(word: String?): String? {
+    private fun addWordCandidateFor(word: String?, repository: DictionaryRepository = dictionaryRepository): String? {
         val candidate = word?.trim() ?: return null
         if (candidate.isEmpty() || candidate.none { it.isLetterOrDigit() }) return null
-        if (!dictionaryRepository.isReady) return null
-        return if (dictionaryRepository.isKnownWord(candidate)) null else candidate
+        if (!repository.isReady) return null
+        return if (repository.isKnownWord(candidate)) null else candidate
     }
     var suggestionsListener: ((List<SuggestionResult>) -> Unit)? = onSuggestionsUpdated
 
@@ -268,7 +313,7 @@ class SuggestionController(
         if (inputConnection != null && dictionaryRepository.isReady) {
             val word = extractWordAtCursor(inputConnection, includeAfterCursor = false)
             if (!word.isNullOrBlank()) {
-                tracker.setWord(word)
+                tracker.setWord(word, notify = false)
                 Log.d("PastieraIME", "SYNC: Synced tracker to actual word='$word' before boundary")
             }
         }
@@ -649,7 +694,8 @@ class SuggestionController(
     private fun mergeSuggestionResults(
         primary: List<SuggestionResult>,
         extras: List<SuggestionResult>,
-        limit: Int
+        limit: Int,
+        locale: Locale = currentLocale
     ): List<SuggestionResult> {
         val seen = HashSet<String>()
         return (primary.map { it to PRIMARY_SUGGESTION_BOOST } + extras.map { it to 0.0 })
@@ -659,7 +705,7 @@ class SuggestionController(
                 }.thenBy { (result, _) -> result.candidate.length }
             )
             .map { it.first }
-            .filter { result -> seen.add(result.candidate.lowercase(currentLocale)) }
+            .filter { result -> seen.add(result.candidate.lowercase(locale)) }
             .take(limit)
     }
 

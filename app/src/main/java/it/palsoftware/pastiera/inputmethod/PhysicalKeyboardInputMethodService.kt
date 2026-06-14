@@ -215,10 +215,16 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private lateinit var inputEventRouter: InputEventRouter
     private lateinit var typingSoundPlayer: TypingSoundPlayer
     private var skipNextSelectionUpdateAfterCommit: Boolean = false
+    private var editorHasActiveSelection: Boolean = false
     private lateinit var keyboardVisibilityController: KeyboardVisibilityController
     private lateinit var launcherShortcutController: LauncherShortcutController
     private lateinit var clipboardHistoryManager: ClipboardHistoryManager
     private var latestSuggestionResults: List<SuggestionResult> = emptyList()
+    private var lastRenderedStatusSnapshot: StatusBarController.StatusSnapshot? = null
+    private var lastRenderedEmojiMapText: String? = null
+    private var lastRenderedSymMappings: Map<Int, String>? = null
+    private var lastRenderedStatusInputConnection: android.view.inputmethod.InputConnection? = null
+    private var lastRenderedMinimalUiActive: Boolean? = null
     private var suppressedAutoCapContextKey: String? = null
     private var clearAltOnSpaceEnabled: Boolean = false
     private var physicalKeyboardProfileOverride: String = "auto"
@@ -254,6 +260,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     )
     private val bounceKeyFilter = BounceKeyFilter()
     private val uiHandler = Handler(Looper.getMainLooper())
+    private var pendingStatusBarUpdate: Runnable? = null
+    private var pendingSelectionAutoCapCheck: Runnable? = null
     private val clipboardCleanupIntervalMs = 60_000L
     private val clipboardCleanupRunnable = object : Runnable {
         override fun run() {
@@ -304,6 +312,78 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
 
     private fun refreshStatusBar() {
         updateStatusBarText()
+    }
+
+    private fun scheduleStatusBarTextUpdate(delayMs: Long = CURSOR_UPDATE_DELAY) {
+        pendingStatusBarUpdate?.let { uiHandler.removeCallbacks(it) }
+        val runnable = Runnable {
+            pendingStatusBarUpdate = null
+            updateStatusBarText()
+        }
+        pendingStatusBarUpdate = runnable
+        uiHandler.postDelayed(runnable, delayMs)
+    }
+
+    private fun cancelPendingSelectionDrivenUiWork() {
+        pendingStatusBarUpdate?.let { uiHandler.removeCallbacks(it) }
+        pendingStatusBarUpdate = null
+        pendingSelectionAutoCapCheck?.let { uiHandler.removeCallbacks(it) }
+        pendingSelectionAutoCapCheck = null
+    }
+
+    private fun invalidateRenderedStatusSnapshot() {
+        lastRenderedStatusSnapshot = null
+        lastRenderedEmojiMapText = null
+        lastRenderedSymMappings = null
+        lastRenderedStatusInputConnection = null
+        lastRenderedMinimalUiActive = null
+    }
+
+    private fun checkAutoCapitalizeOnSelectionChange(
+        oldSelStart: Int,
+        oldSelEnd: Int,
+        newSelStart: Int,
+        newSelEnd: Int
+    ) {
+        val perfStart = ImePerfLogger.mark()
+        val state = inputContextState
+        try {
+            AutoCapitalizeHelper.checkAutoCapitalizeOnSelectionChange(
+                this,
+                currentInputConnection,
+                state.shouldDisableAutoCapitalize,
+                oldSelStart,
+                oldSelEnd,
+                newSelStart,
+                newSelEnd,
+                enableShift = { requestAutoCapShiftOneShot() },
+                disableShift = { modifierStateController.consumeShiftOneShot() },
+                onUpdateStatusBar = { updateStatusBarText() },
+                inputContextState = state
+            )
+        } finally {
+            ImePerfLogger.logDuration(
+                label = "checkAutoCapitalizeOnSelectionChange",
+                startNanos = perfStart,
+                thresholdMs = 8L,
+                details = "pkg=$currentPackageName"
+            )
+        }
+    }
+
+    private fun scheduleAutoCapitalizeOnSelectionChange(
+        oldSelStart: Int,
+        oldSelEnd: Int,
+        newSelStart: Int,
+        newSelEnd: Int
+    ) {
+        pendingSelectionAutoCapCheck?.let { uiHandler.removeCallbacks(it) }
+        val runnable = Runnable {
+            pendingSelectionAutoCapCheck = null
+            checkAutoCapitalizeOnSelectionChange(oldSelStart, oldSelEnd, newSelStart, newSelEnd)
+        }
+        pendingSelectionAutoCapCheck = runnable
+        uiHandler.postDelayed(runnable, CURSOR_UPDATE_DELAY * 2)
     }
 
     private fun isPureModifierKey(keyCode: Int): Boolean {
@@ -762,7 +842,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private fun handleSuggestionsUpdated(suggestions: List<SuggestionResult>) {
         latestSuggestionResults = suggestions
         DebugCaptureStore.recordSuggestionsUpdated(suggestions)
-        uiHandler.post { updateStatusBarText() }
+        scheduleStatusBarTextUpdate()
     }
 
     private fun visibleSuggestionStrings(): List<String> {
@@ -773,18 +853,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
         val forceWordStartCapital = if (hasWordStartSuggestion) {
             val modifierSnapshot = modifierStateController.snapshot()
-            val shiftActive = modifierSnapshot.capsLockEnabled ||
+            modifierSnapshot.capsLockEnabled ||
                 modifierSnapshot.shiftPhysicallyPressed ||
                 modifierSnapshot.shiftOneShot ||
                 shiftLayerLatched
-            shiftActive || (
-                !isAutoCapSuppressedAtCursor() &&
-                AutoCapitalizeHelper.shouldAutoCapitalizeAtCursor(
-                    context = this,
-                    inputConnection = currentInputConnection,
-                    shouldDisableAutoCapitalize = shouldDisableSmartFeatures
-                ) && SettingsManager.getAutoCapitalizeFirstLetter(this)
-            )
         } else {
             false
         }
@@ -1099,7 +1171,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             }
         }
         if (tapResult.handled) {
-            Log.d(TAG, "multiTap commit text='${tapResult.committedText}' replaced=${tapResult.replacedInWindow}")
+            if (SettingsManager.isSuggestionDebugLoggingEnabled(this)) {
+                Log.d(TAG, "multiTap commit text='${tapResult.committedText}' replaced=${tapResult.replacedInWindow}")
+            }
             // Prevent onUpdateSelection from re-triggering suggestion recalculation for the same commit.
             markSelectionUpdateSkipAfterCommit()
             tapResult.committedText?.let { committedText ->
@@ -2043,17 +2117,32 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
      * Aggiorna la status bar delegando al controller dedicato.
      */
     private fun updateStatusBarText() {
-        val variationSnapshot = variationStateController.refreshFromCursor(
-            currentInputConnection,
-            inputContextState.shouldDisableVariations
-        )
+        val totalStart = ImePerfLogger.mark()
+        var variationMs = 0L
+        var suggestionsMs = 0L
+        var updateBarsMs = 0L
+
+        val minimalUiActive = candidatesBarController.isMinimalUiActive()
+        val variationStart = ImePerfLogger.mark()
+        val variationSnapshot = if (minimalUiActive) {
+            VariationStateController.Snapshot(isActive = false, lastInsertedChar = null, variations = emptyList())
+        } else {
+            variationStateController.refreshFromCursor(
+                currentInputConnection,
+                inputContextState.shouldDisableVariations,
+                hasActiveSelection = editorHasActiveSelection
+            )
+        }
+        variationMs = ImePerfLogger.elapsedMs(variationStart)
         val clipboardCount = clipboardHistoryManager?.getHistorySize() ?: 0
         
         val modifierSnapshot = modifierStateController.snapshot()
         val state = inputContextState
         val addWordCandidate = suggestionController.pendingAddWord()
         val suggestionsEnabled = SettingsManager.isExperimentalSuggestionsEnabled(this) && SettingsManager.getSuggestionsEnabled(this)
+        val suggestionsStart = ImePerfLogger.mark()
         val baseSuggestions = if (suggestionsEnabled) visibleSuggestionStrings() else emptyList()
+        suggestionsMs = ImePerfLogger.elapsedMs(suggestionsStart)
         val snapshot = StatusBarController.StatusSnapshot(
             capsLockEnabled = modifierSnapshot.capsLockEnabled,
             shiftPhysicallyPressed = modifierSnapshot.shiftPhysicallyPressed,
@@ -2087,10 +2176,31 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // Passa anche la mappa emoji quando SYM è attivo (solo pagina 1)
         val emojiMapText = symLayoutController.emojiMapText()
         // Passa le mappature SYM per la griglia emoji/caratteri
-        val symMappings = symLayoutController.currentSymMappings()
+        val symMappings = symLayoutController.currentSymMappings()?.toMap()
         // Passa l'inputConnection per rendere i pulsanti clickabili
         val inputConnection = currentInputConnection
-        candidatesBarController.updateStatusBars(snapshot, emojiMapText, inputConnection, symMappings)
+        val unchangedRenderedState =
+            snapshot == lastRenderedStatusSnapshot &&
+                emojiMapText == lastRenderedEmojiMapText &&
+                symMappings == lastRenderedSymMappings &&
+                inputConnection === lastRenderedStatusInputConnection &&
+                minimalUiActive == lastRenderedMinimalUiActive
+        if (!unchangedRenderedState) {
+            val updateBarsStart = ImePerfLogger.mark()
+            candidatesBarController.updateStatusBars(snapshot, emojiMapText, inputConnection, symMappings)
+            updateBarsMs = ImePerfLogger.elapsedMs(updateBarsStart)
+            lastRenderedStatusSnapshot = snapshot
+            lastRenderedEmojiMapText = emojiMapText
+            lastRenderedSymMappings = symMappings
+            lastRenderedStatusInputConnection = inputConnection
+            lastRenderedMinimalUiActive = minimalUiActive
+        }
+        ImePerfLogger.logDuration(
+            label = "updateStatusBarText",
+            startNanos = totalStart,
+            thresholdMs = 16L,
+            details = "variation=${variationMs}ms suggestions=${suggestionsMs}ms updateBars=${updateBarsMs}ms pkg=$currentPackageName"
+        )
     }
     
     /**
@@ -2106,6 +2216,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     override fun onStartInput(info: EditorInfo?, restarting: Boolean) {
         super.onStartInput(info, restarting)
         bounceKeyFilter.reset()
+        cancelPendingSelectionDrivenUiWork()
+        invalidateRenderedStatusSnapshot()
+        editorHasActiveSelection = false
         
         currentPackageName = info?.packageName
         updateDebugImeContextSnapshot(info)
@@ -2780,11 +2893,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         candidatesStart: Int,
         candidatesEnd: Int
     ) {
+        val perfStart = ImePerfLogger.mark()
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
         
         val state = inputContextState
         val cursorPositionChanged = (oldSelStart != newSelStart) || (oldSelEnd != newSelEnd)
         val collapsedSelection = newSelStart == newSelEnd
+        editorHasActiveSelection = !collapsedSelection
         if (cursorPositionChanged && ::candidatesBarController.isInitialized) {
             candidatesBarController.resetSuggestionActionMode()
         }
@@ -2817,10 +2932,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             // Drop add-word candidate if cursor leaves its word
             suggestionController.clearPendingAddWordIfCursorOutside(currentInputConnection)
             
-            // Always update status bar (it handles variations/suggestions internally based on flags)
-            Handler(Looper.getMainLooper()).postDelayed({
-                updateStatusBarText()
-            }, CURSOR_UPDATE_DELAY)
+            // Always update status bar (it handles variations/suggestions internally based on flags).
+            // Telegram can emit a selection update for every hardware key. Coalescing keeps
+            // expensive InputConnection reads from stacking up behind fast typing.
+            scheduleStatusBarTextUpdate()
         }
         if (SettingsManager.isSuggestionDebugLoggingEnabled(this)) {
             Log.d(
@@ -2829,19 +2944,20 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             )
         }
         
-        // Check auto-capitalization on selection change (if auto-cap enabled)
-        AutoCapitalizeHelper.checkAutoCapitalizeOnSelectionChange(
-            this,
-            currentInputConnection,
-            state.shouldDisableAutoCapitalize,
-            oldSelStart,
-            oldSelEnd,
-            newSelStart,
-            newSelEnd,
-            enableShift = { requestAutoCapShiftOneShot() },
-            disableShift = { modifierStateController.consumeShiftOneShot() },
-            onUpdateStatusBar = { updateStatusBarText() },
-            inputContextState = state
+        // Auto-cap reads editor context through InputConnection. For simple typing feedback,
+        // debounce it so remote editors like Telegram don't pay that cost for every character.
+        if (cursorPositionChanged && collapsedSelection && forwardByOne) {
+            scheduleAutoCapitalizeOnSelectionChange(oldSelStart, oldSelEnd, newSelStart, newSelEnd)
+        } else {
+            pendingSelectionAutoCapCheck?.let { uiHandler.removeCallbacks(it) }
+            pendingSelectionAutoCapCheck = null
+            checkAutoCapitalizeOnSelectionChange(oldSelStart, oldSelEnd, newSelStart, newSelEnd)
+        }
+        ImePerfLogger.logDuration(
+            label = "onUpdateSelection",
+            startNanos = perfStart,
+            thresholdMs = 16L,
+            details = "old=($oldSelStart,$oldSelEnd) new=($newSelStart,$newSelEnd) forwardByOne=$forwardByOne skip=$shouldSkipForCommit pkg=$currentPackageName"
         )
     }
 
@@ -2881,6 +2997,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
 
     override fun onKeyDown(keyCode_: Int, event_: KeyEvent?): Boolean {
         val (keyCode, event) = remapHardwareEvent(keyCode_, event_)
+        val perfStart = ImePerfLogger.mark()
+        try {
         bounceKeyFilter.shouldConsumeKeyDown(this, keyCode, event)?.let { suppressed ->
             notifyDebugKeyEvent(
                 keyCode = keyCode,
@@ -3387,6 +3505,14 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             InputEventRouter.EditableFieldRoutingResult.Consume -> true
             InputEventRouter.EditableFieldRoutingResult.CallSuper -> super.onKeyDown(keyCode, event)
             InputEventRouter.EditableFieldRoutingResult.Continue -> super.onKeyDown(keyCode, event)
+        }
+        } finally {
+            ImePerfLogger.logDuration(
+                label = "onKeyDown",
+                startNanos = perfStart,
+                thresholdMs = 16L,
+                details = "key=${KeyEvent.keyCodeToString(keyCode)} repeat=${event?.repeatCount ?: -1} pkg=$currentPackageName"
+            )
         }
     }
 
