@@ -545,6 +545,60 @@ class InputEventRouterModifierE2ETest {
         }
     }
 
+    @Test
+    fun shiftOnGermanMultiTapQwertz_commitsUppercaseWithoutCyclingVariants() {
+        it.palsoftware.pastiera.data.layout.LayoutMappingRepository.loadLayout(
+            context.assets,
+            "german_multitap_qwertz",
+            context
+        )
+        SettingsManager.setLongPressModifier(context, "variations")
+        val callbacks = callbacksWithCurrentLayout()
+
+        repeat(2) {
+            val result = routeKeyDown(
+                keyCode = KeyEvent.KEYCODE_S,
+                event = keyDown(
+                    KeyEvent.KEYCODE_S,
+                    metaState = KeyEvent.META_SHIFT_ON or KeyEvent.META_SHIFT_LEFT_ON
+                ),
+                callbacks = callbacks
+            )
+
+            assertTrue(result is InputEventRouter.EditableFieldRoutingResult.Consume)
+        }
+
+        assertEquals(listOf("S", "S"), inputConnectionRecorder.committedTexts)
+        assertEquals(0, inputConnectionRecorder.deleteSurroundingTextCalls)
+    }
+
+    @Test
+    fun shiftOnPlainQwertz_commitsUppercaseWithoutMultitapSideEffects() {
+        it.palsoftware.pastiera.data.layout.LayoutMappingRepository.loadLayout(
+            context.assets,
+            "qwertz",
+            context
+        )
+        SettingsManager.setLongPressModifier(context, "variations")
+        val callbacks = callbacksWithCurrentLayout()
+
+        repeat(2) {
+            val result = routeKeyDown(
+                keyCode = KeyEvent.KEYCODE_S,
+                event = keyDown(
+                    KeyEvent.KEYCODE_S,
+                    metaState = KeyEvent.META_SHIFT_ON or KeyEvent.META_SHIFT_LEFT_ON
+                ),
+                callbacks = callbacks
+            )
+
+            assertTrue(result is InputEventRouter.EditableFieldRoutingResult.Consume)
+        }
+
+        assertEquals(listOf("S", "S"), inputConnectionRecorder.committedTexts)
+        assertEquals(0, inputConnectionRecorder.deleteSurroundingTextCalls)
+    }
+
     private fun routeKeyDown(
         keyCode: Int,
         event: KeyEvent,
@@ -599,6 +653,15 @@ class InputEventRouterModifierE2ETest {
         )
     }
 
+    private fun callbacksWithCurrentLayout(): TestCallbacks {
+        return TestCallbacks(
+            modifierStateController,
+            mappingProvider = { key ->
+                it.palsoftware.pastiera.data.layout.LayoutMappingRepository.getMapping(key)
+            }
+        )
+    }
+
     private fun rebuildAltSymControllers() {
         altSymManager = AltSymManager(context.assets, prefs, context)
         altSymManager.reloadSymMappings()
@@ -618,7 +681,8 @@ class InputEventRouterModifierE2ETest {
     }
 
     private class TestCallbacks(
-        private val modifierStateController: ModifierStateController
+        private val modifierStateController: ModifierStateController,
+        private val mappingProvider: (Int) -> it.palsoftware.pastiera.data.layout.LayoutMapping? = { null }
     ) {
         var updateStatusBarCalls = 0
         var refreshStatusBarCalls = 0
@@ -643,7 +707,7 @@ class InputEventRouterModifierE2ETest {
                 callSuper = { false },
                 callSuperWithKey = { _, _ -> false },
                 startSpeechRecognition = { },
-                getMapping = { null },
+                getMapping = mappingProvider,
                 handleMultiTapCommit = { _, _, _, _, _ -> false },
                 isLongPressSuppressed = { false },
                 toggleMinimalUi = { }

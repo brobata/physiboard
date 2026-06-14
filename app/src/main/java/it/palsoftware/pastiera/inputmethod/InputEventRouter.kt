@@ -543,14 +543,18 @@ class InputEventRouter(
             return EditableFieldRoutingResult.Consume
         }
 
+        val shouldUseMultiTap = mapping?.isRealMultiTap == true && !resolvedUppercase
+
         // Ignore system-generated repeats on multi-tap keys so holding the key
         // won't churn through tap levels. Legacy keys keep their normal repeat.
-        if (mapping?.isRealMultiTap == true && (event?.repeatCount ?: 0) > 0) {
+        if (shouldUseMultiTap && (event?.repeatCount ?: 0) > 0) {
             return EditableFieldRoutingResult.Consume
         }
 
         // Multi-tap: commit immediately and replace within the timeout window.
-        if (mapping?.isRealMultiTap == true && ic != null) {
+        // Shift/caps input should behave like normal uppercase typing, not cycle
+        // through uppercase variants such as S -> ẞ on QWERTZ.
+        if (shouldUseMultiTap && ic != null) {
             if (callbacks.handleMultiTapCommit(keyCode, mapping, resolvedUppercase, ic, hasLongPressSupport)) {
                 if (shiftOneShotActive) {
                     callbacks.disableShiftOneShot()
