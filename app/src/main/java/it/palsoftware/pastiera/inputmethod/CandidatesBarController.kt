@@ -184,9 +184,13 @@ class CandidatesBarController(
         return inputStatusBar.handleBackPressed() || candidatesStatusBar.handleBackPressed()
     }
 
-    fun handleEmojiPickerSearchKeyDown(event: KeyEvent?, ctrlActive: Boolean): Boolean {
-        return inputStatusBar.handleEmojiPickerSearchKeyDown(event, ctrlActive) ||
-            candidatesStatusBar.handleEmojiPickerSearchKeyDown(event, ctrlActive)
+    fun handleEmojiPickerSearchKeyDown(
+        event: KeyEvent?,
+        ctrlActive: Boolean,
+        resolveTypedText: ((KeyEvent) -> String?)? = null
+    ): Boolean {
+        return inputStatusBar.handleEmojiPickerSearchKeyDown(event, ctrlActive, resolveTypedText) ||
+            candidatesStatusBar.handleEmojiPickerSearchKeyDown(event, ctrlActive, resolveTypedText)
     }
 
     fun shouldConsumeEmojiPickerSearchKeyUp(event: KeyEvent?, ctrlActive: Boolean): Boolean {

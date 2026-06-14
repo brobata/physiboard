@@ -230,7 +230,7 @@ object SettingsManager {
     private const val DEFAULT_PHYSICAL_KEYBOARD_PROFILE_OVERRIDE = "auto"
     private const val DEFAULT_PHYSICAL_KEYBOARD_CURRENCY_SYMBOL = "€"
     private const val DEFAULT_SYM_AUTO_CLOSE = true
-    private const val DEFAULT_SYM_AUTO_CLOSE_ON_TOUCH = false
+    private const val DEFAULT_SYM_AUTO_CLOSE_ON_TOUCH = true
     private const val DEFAULT_MODIFIER_TAP_LATCHES = false
     private const val DEFAULT_MODIFIER_LATCH_STAYS_ON_SPACE = false
     private const val DEFAULT_BOUNCE_KEYS_ENABLED = false

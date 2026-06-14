@@ -2928,6 +2928,27 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 disableEmojiSearchInputCapture()
             }
         }
+        // Let the picker handle text-editing shortcuts before the generic Ctrl router can
+        // touch the app editor selection.
+        if (
+            emojiSearchCandidateActive &&
+            candidatesBarController.isEmojiPickerSearchInputActive() &&
+            candidatesBarController.handleEmojiPickerSearchKeyDown(
+                event,
+                emojiSearchCtrlActive,
+                resolveTypedText = { typedEvent ->
+                    getCharacterFromLayout(
+                        typedEvent.keyCode,
+                        typedEvent,
+                        isShiftModifierActive(typedEvent)
+                    )?.toString()
+                }
+            )
+        ) {
+            updateEmojiSearchExternalSelectionSnapshot(initialInputConnection)
+            ensureEmojiSearchCursorAnchorMonitoring(initialInputConnection)
+            return true
+        }
         val emojiSearchInputConnection =
             if (emojiSearchCandidateActive && candidatesBarController.isEmojiPickerSearchInputActive()) {
                 candidatesBarController.createEmojiPickerSearchInputConnection()
@@ -2953,23 +2974,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 ensureEmojiSearchCursorAnchorMonitoring(initialInputConnection)
                 return true
             }
-        }
-
-        // When the inline emoji picker (SYM page 4) is open, route printable hardware input
-        // to the picker search field instead of the target app text field.
-        if (
-            hasEditableField &&
-            symPage == 4 &&
-            keyCode != KeyEvent.KEYCODE_BACK &&
-            keyCode != KEYCODE_SYM &&
-            !isPureModifierKey(keyCode) &&
-            ::candidatesBarController.isInitialized &&
-            candidatesBarController.isEmojiPickerSearchInputActive() &&
-            candidatesBarController.handleEmojiPickerSearchKeyDown(event, emojiSearchCtrlActive)
-        ) {
-            updateEmojiSearchExternalSelectionSnapshot(initialInputConnection)
-            ensureEmojiSearchCursorAnchorMonitoring(initialInputConnection)
-            return true
         }
 
         if (hasEditableField && keyCode == KEYCODE_SYM && event?.repeatCount == 0) {

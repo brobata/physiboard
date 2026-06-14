@@ -568,9 +568,13 @@ class StatusBarController(
         return false
     }
 
-    fun handleEmojiPickerSearchKeyDown(event: KeyEvent?, ctrlActive: Boolean): Boolean {
+    fun handleEmojiPickerSearchKeyDown(
+        event: KeyEvent?,
+        ctrlActive: Boolean,
+        resolveTypedText: ((KeyEvent) -> String?)? = null
+    ): Boolean {
         if (event == null) return false
-        return emojiPickerView?.handleSearchKeyDown(event, ctrlActive) == true
+        return emojiPickerView?.handleSearchKeyDown(event, ctrlActive, resolveTypedText) == true
     }
 
     fun shouldConsumeEmojiPickerSearchKeyUp(event: KeyEvent?, ctrlActive: Boolean): Boolean {
@@ -921,8 +925,7 @@ class StatusBarController(
                     keyButton.isClickable = true
                     keyButton.isFocusable = true
                     keyButton.setOnClickListener {
-                        inputConnection.commitText(content, 1)
-                        closeSymAfterTouchKeyIfNeeded()
+                        commitTouchSymbolAfterCloseIfNeeded(keyButton, inputConnection, content)
                     }
                 }
                 
@@ -1166,8 +1169,7 @@ class StatusBarController(
                     keyButton.isClickable = true
                     keyButton.isFocusable = true
                     keyButton.setOnClickListener {
-                        inputConnection.commitText(content, 1)
-                        closeSymAfterTouchKeyIfNeeded()
+                        commitTouchSymbolAfterCloseIfNeeded(keyButton, inputConnection, content)
                     }
                 }
                 rowLayout.addView(keyButton, LinearLayout.LayoutParams(fixedKeyWidth, keyHeight).apply {
@@ -1639,12 +1641,27 @@ class StatusBarController(
         }
     }
 
-    private fun closeSymAfterTouchKeyIfNeeded() {
-        if (
+    private fun closeSymAfterTouchKeyIfNeeded(): Boolean {
+        val shouldClose =
             SettingsManager.getSymAutoClose(context) &&
             SettingsManager.getSymAutoCloseOnTouch(context)
-        ) {
+        if (shouldClose) {
             onSymCloseRequested?.invoke()
+        }
+        return shouldClose
+    }
+
+    private fun commitTouchSymbolAfterCloseIfNeeded(
+        anchor: View,
+        inputConnection: android.view.inputmethod.InputConnection,
+        content: String
+    ) {
+        if (closeSymAfterTouchKeyIfNeeded()) {
+            anchor.post {
+                inputConnection.commitText(content, 1)
+            }
+        } else {
+            inputConnection.commitText(content, 1)
         }
     }
 
@@ -1683,8 +1700,7 @@ class StatusBarController(
             keyButton.isClickable = true
             keyButton.isFocusable = true
             keyButton.setOnClickListener {
-                inputConnection.commitText(content, 1)
-                closeSymAfterTouchKeyIfNeeded()
+                commitTouchSymbolAfterCloseIfNeeded(keyButton, inputConnection, content)
             }
         }
         

@@ -33,6 +33,7 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import android.content.res.Configuration
 import it.palsoftware.pastiera.R
+import it.palsoftware.pastiera.SettingsManager
 import it.palsoftware.pastiera.data.emoji.EmojiRepository
 import it.palsoftware.pastiera.data.emoji.RecentEmojiManager
 import it.palsoftware.pastiera.data.emoji.EmojiSearchRepository
@@ -99,6 +100,7 @@ class EmojiPickerView(
     private var isSearchMode: Boolean = false
     private var isSearchPanelVisible: Boolean = false
     private var searchInputCaptureEnabled: Boolean = true
+    private var pendingSearchReplacementRange: IntRange? = null
     private val selectedTabBackground = createTabBackground(true)
     private val unselectedTabBackground = createTabBackground(false)
     private var tabCategoryIds: List<String> = emptyList()
@@ -415,26 +417,40 @@ class EmojiPickerView(
      * IME hardware keys do not automatically target this EditText.
      * Handle printable keys manually while emoji picker page is open.
      */
-    fun handleSearchKeyDown(event: KeyEvent, ctrlActive: Boolean = event.isCtrlPressed): Boolean {
+    fun handleSearchKeyDown(
+        event: KeyEvent,
+        ctrlActive: Boolean = event.isCtrlPressed,
+        resolveTypedText: ((KeyEvent) -> String?)? = null
+    ): Boolean {
         if (!isSearchPanelVisible) return false
         if (!searchInputCaptureEnabled) return false
         if (event.isAltPressed || event.isMetaPressed) return false
         if (ctrlActive) {
             focusSearchField()
+            if (handleTextEditingCtrlShortcut(event.keyCode)) {
+                return true
+            }
             val ctrlEvent = event.withCtrlMeta()
             return searchField.onKeyShortcut(ctrlEvent.keyCode, ctrlEvent) ||
                 searchField.dispatchKeyEvent(ctrlEvent)
         }
         focusSearchField()
-        if (searchField.dispatchKeyEvent(event)) {
-            return true
-        }
 
         return when (event.keyCode) {
             KeyEvent.KEYCODE_DEL -> {
                 val text = searchField.text ?: return true
                 if (text.isEmpty()) return true
-                text.delete(text.length - 1, text.length)
+                val replacementRange = selectedSearchRange(text.length)
+                val start = replacementRange?.first
+                    ?: minOf(searchField.selectionStart, searchField.selectionEnd).coerceAtLeast(0)
+                val end = replacementRange?.last?.plus(1)
+                    ?: maxOf(searchField.selectionStart, searchField.selectionEnd).coerceAtMost(text.length)
+                if (start < end) {
+                    text.delete(start, end)
+                    pendingSearchReplacementRange = null
+                } else {
+                    text.delete(text.length - 1, text.length)
+                }
                 true
             }
             KeyEvent.KEYCODE_SPACE -> {
@@ -444,11 +460,18 @@ class EmojiPickerView(
             KeyEvent.KEYCODE_ENTER,
             KeyEvent.KEYCODE_NUMPAD_ENTER -> true
             else -> {
-                val unicode = event.unicodeChar
-                if (unicode <= 0) return false
-                val ch = unicode.toChar()
-                if (Character.isISOControl(ch)) return false
-                appendSearchText(ch.toString())
+                val typedText = resolveTypedText?.invoke(event) ?: run {
+                    val unicode = event.unicodeChar
+                    if (unicode <= 0) {
+                        return searchField.dispatchKeyEvent(event)
+                    }
+                    val ch = unicode.toChar()
+                    if (Character.isISOControl(ch)) {
+                        return searchField.dispatchKeyEvent(event)
+                    }
+                    ch.toString()
+                }
+                appendSearchText(typedText)
                 true
             }
         }
@@ -495,6 +518,10 @@ class EmojiPickerView(
                 event.keyCode == KeyEvent.KEYCODE_PAGE_DOWN
         }
 
+        if (event.isCtrlPressed && handleTextEditingCtrlShortcut(event.keyCode)) {
+            return true
+        }
+
         return when (event.keyCode) {
             KeyEvent.KEYCODE_DPAD_LEFT -> {
                 moveSearchCursorBy(-1)
@@ -535,6 +562,22 @@ class EmojiPickerView(
     private fun setSearchSelection(index: Int) {
         val text = searchField.text ?: return
         Selection.setSelection(text, index.coerceIn(0, text.length))
+        pendingSearchReplacementRange = null
+    }
+
+    private fun selectedSearchRange(textLength: Int): IntRange? {
+        val selectionStart = searchField.selectionStart
+        val selectionEnd = searchField.selectionEnd
+        if (selectionStart >= 0 && selectionEnd >= 0 && selectionStart != selectionEnd) {
+            val start = minOf(selectionStart, selectionEnd).coerceIn(0, textLength)
+            val endExclusive = maxOf(selectionStart, selectionEnd).coerceIn(0, textLength)
+            if (start < endExclusive) return start until endExclusive
+        }
+        return pendingSearchReplacementRange?.let { range ->
+            val start = range.first.coerceIn(0, textLength)
+            val endExclusive = (range.last + 1).coerceIn(0, textLength)
+            if (start < endExclusive) start until endExclusive else null
+        }
     }
 
     private fun isTextEditingCtrlShortcut(keyCode: Int): Boolean {
@@ -542,6 +585,29 @@ class EmojiPickerView(
             keyCode == KeyEvent.KEYCODE_C ||
             keyCode == KeyEvent.KEYCODE_X ||
             keyCode == KeyEvent.KEYCODE_V
+    }
+
+    private fun handleTextEditingCtrlShortcut(keyCode: Int): Boolean {
+        focusSearchField()
+        return when (keyCode) {
+            KeyEvent.KEYCODE_A -> {
+                searchField.text?.let { text ->
+                    Selection.selectAll(text)
+                    pendingSearchReplacementRange = 0 until text.length
+                }
+                true
+            }
+            KeyEvent.KEYCODE_C -> searchField.onTextContextMenuItem(android.R.id.copy)
+            KeyEvent.KEYCODE_X -> {
+                pendingSearchReplacementRange = null
+                searchField.onTextContextMenuItem(android.R.id.cut)
+            }
+            KeyEvent.KEYCODE_V -> {
+                pendingSearchReplacementRange = null
+                searchField.onTextContextMenuItem(android.R.id.paste)
+            }
+            else -> false
+        }
     }
 
     private fun focusSearchField() {
@@ -642,8 +708,24 @@ class EmojiPickerView(
     private fun appendSearchText(text: String) {
         if (text.isEmpty()) return
         val editable = searchField.text ?: return
-        editable.append(text)
-        searchField.setSelection(editable.length)
+        val selectionStart = searchField.selectionStart
+        val selectionEnd = searchField.selectionEnd
+        val replacementRange = selectedSearchRange(editable.length)
+        if (replacementRange != null) {
+            val start = replacementRange.first
+            val end = replacementRange.last + 1
+            editable.replace(start, end, text)
+            searchField.setSelection(start + text.length)
+            pendingSearchReplacementRange = null
+        } else if (selectionStart >= 0 && selectionEnd >= 0 && selectionStart != selectionEnd) {
+            val start = minOf(selectionStart, selectionEnd).coerceIn(0, editable.length)
+            val end = maxOf(selectionStart, selectionEnd).coerceIn(0, editable.length)
+            editable.replace(start, end, text)
+            searchField.setSelection(start + text.length)
+        } else {
+            editable.append(text)
+            searchField.setSelection(editable.length)
+        }
     }
 
     fun disableSearchInputCapture() {
@@ -661,6 +743,7 @@ class EmojiPickerView(
             }
         } else {
             searchField.clearFocus()
+            pendingSearchReplacementRange = null
         }
     }
 
@@ -814,7 +897,18 @@ class EmojiPickerView(
     }
 
     private fun onEmojiSelected(emoji: String, categoryId: String) {
-        currentInputConnection?.commitText(emoji, 1)
+        val inputConnection = currentInputConnection
+        if (
+            SettingsManager.getSymAutoClose(context) &&
+            SettingsManager.getSymAutoCloseOnTouch(context)
+        ) {
+            onCloseRequested?.invoke()
+            post {
+                inputConnection?.commitText(emoji, 1)
+            }
+        } else {
+            inputConnection?.commitText(emoji, 1)
+        }
         // Save to storage and refresh recents when safe for UX.
         val requiresNotRecents = categoryId == EmojiRepository.RECENTS_CATEGORY_ID
         coroutineScope.launch(Dispatchers.IO) {

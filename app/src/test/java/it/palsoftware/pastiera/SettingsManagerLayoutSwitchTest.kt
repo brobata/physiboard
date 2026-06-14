@@ -50,6 +50,17 @@ class SettingsManagerLayoutSwitchTest {
     }
 
     @Test
+    fun symAutoCloseOnTouch_defaultsEnabled_andPersistsDisabledState() {
+        val context = RuntimeEnvironment.getApplication()
+
+        assertTrue(SettingsManager.getSymAutoCloseOnTouch(context))
+
+        SettingsManager.setSymAutoCloseOnTouch(context, false)
+
+        assertFalse(SettingsManager.getSymAutoCloseOnTouch(context))
+    }
+
+    @Test
     fun inputStyleSuggestionLocales_persistPerLocaleAndLayout() {
         val context = RuntimeEnvironment.getApplication()
 
