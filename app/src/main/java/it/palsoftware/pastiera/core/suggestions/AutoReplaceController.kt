@@ -135,6 +135,12 @@ class AutoReplaceController(
             if (!isOrthographicVariant && !isCaseVariant && candidate.distance <= 0) return false
             if (candidate.distance > settings.maxAutoReplaceDistance) return false
             if (input.all { it.isLowerCase() } && isAcronymLike(candidate.candidate)) return false
+            if (!isCaseVariant &&
+                input.firstOrNull()?.isLowerCase() == true &&
+                candidate.candidate.firstOrNull()?.isUpperCase() == true
+            ) {
+                return false
+            }
             val lengthDelta = candidate.candidate.length - input.length
             if (lengthDelta == 0) {
                 return isOrthographicVariant || isCaseVariant || !changesFirstLetter(input, candidate.candidate)
