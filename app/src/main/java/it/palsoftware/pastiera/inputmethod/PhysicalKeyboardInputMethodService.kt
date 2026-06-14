@@ -1703,9 +1703,17 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 } else {
                     Log.d(TRACKPAD_DEBUG_TAG, "Detector NOT initialized yet, skipping restart")
                 }
-            } else if (key == "trackpad_swipe_threshold") {
-                val newValue = SettingsManager.getTrackpadSwipeThreshold(this)
-                Log.d(TRACKPAD_DEBUG_TAG, "SharedPrefs listener: trackpad_swipe_threshold changed to $newValue")
+            } else if (
+                key == "trackpad_swipe_threshold" ||
+                key == "trackpad_suggestion_swipe_threshold" ||
+                key == "trackpad_delete_swipe_threshold"
+            ) {
+                val suggestionValue = SettingsManager.getTrackpadSuggestionSwipeThreshold(this)
+                val deleteValue = SettingsManager.getTrackpadDeleteSwipeThreshold(this)
+                Log.d(
+                    TRACKPAD_DEBUG_TAG,
+                    "SharedPrefs listener: trackpad thresholds changed: suggestion=$suggestionValue, delete=$deleteValue"
+                )
                 Log.d(TAG, "Trackpad swipe threshold changed, restarting detection...")
                 if (::trackpadGestureDetector.isInitialized) {
                     Log.d(TRACKPAD_DEBUG_TAG, "Detector initialized, stopping old detector...")
@@ -1888,7 +1896,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
 
     private fun buildTrackpadGestureDetector(): TrackpadGestureDetector {
         val gesturesEnabled = SettingsManager.getTrackpadGesturesEnabled(this)
-        val swipeThreshold = SettingsManager.getTrackpadSwipeThreshold(this).toInt()
+        val swipeThreshold = SettingsManager.getTrackpadSuggestionSwipeThreshold(this).toInt()
         val eventDevice = resolveTrackpadEventDevice()
         Log.d(
             TRACKPAD_DEBUG_TAG,
@@ -3890,7 +3898,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                     y = event.y,
                     deltaX = 0f,
                     deltaY = 0f,
-                    threshold = nativeImeTrackpadSwipeThreshold(),
+                    threshold = nativeImeTrackpadSuggestionSwipeThreshold(),
                     deviceId = event.deviceId,
                     source = event.source,
                     eventTimeUptimeMs = event.eventTime
@@ -3960,20 +3968,22 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         val deltaY = y - start.y
         val upwardDistance = -deltaY
         val leftwardDistance = -deltaX
-        val threshold = nativeImeTrackpadSwipeThreshold()
+        val suggestionThreshold = nativeImeTrackpadSuggestionSwipeThreshold()
+        val deleteThreshold = nativeImeTrackpadDeleteSwipeThreshold()
         val durationMs = (eventTimeUptimeMs - start.eventTimeUptimeMs).coerceAtLeast(1L)
         val upVelocity = upwardDistance / durationMs
         val leftVelocity = leftwardDistance / durationMs
-        val verticalEnough = upwardDistance >= threshold
+        val verticalEnough = upwardDistance >= suggestionThreshold
         val mostlyVertical = kotlin.math.abs(deltaX) < upwardDistance / 4f
         val verticalFastEnough = upVelocity >= NATIVE_TRACKPAD_MIN_SWIPE_VELOCITY_PX_PER_MS
-        val leftEnough = leftwardDistance >= threshold
+        val leftEnough = leftwardDistance >= deleteThreshold
         val mostlyHorizontal = kotlin.math.abs(deltaY) < leftwardDistance / 4f
         val horizontalFastEnough = leftVelocity >= NATIVE_TRACKPAD_MIN_SWIPE_VELOCITY_PX_PER_MS
         Log.d(
             TRACKPAD_DEBUG_TAG,
-            "Native candidate[$phase]: startX=${start.x}, startY=${start.y}, x=$x, y=$y, dx=$deltaX, dy=$deltaY, up=$upwardDistance, left=$leftwardDistance, threshold=$threshold, duration=${durationMs}ms, upVelocity=$upVelocity, leftVelocity=$leftVelocity, verticalEnough=$verticalEnough, mostlyVertical=$mostlyVertical, verticalFastEnough=$verticalFastEnough, leftEnough=$leftEnough, mostlyHorizontal=$mostlyHorizontal, horizontalFastEnough=$horizontalFastEnough"
+            "Native candidate[$phase]: startX=${start.x}, startY=${start.y}, x=$x, y=$y, dx=$deltaX, dy=$deltaY, up=$upwardDistance, left=$leftwardDistance, suggestionThreshold=$suggestionThreshold, deleteThreshold=$deleteThreshold, duration=${durationMs}ms, upVelocity=$upVelocity, leftVelocity=$leftVelocity, verticalEnough=$verticalEnough, mostlyVertical=$mostlyVertical, verticalFastEnough=$verticalFastEnough, leftEnough=$leftEnough, mostlyHorizontal=$mostlyHorizontal, horizontalFastEnough=$horizontalFastEnough"
         )
+        val candidateThreshold = if (leftwardDistance > upwardDistance) deleteThreshold else suggestionThreshold
         val direction = when {
             verticalEnough && mostlyVertical && verticalFastEnough -> NativeTrackpadSwipeDirection.UP
             leftEnough &&
@@ -3994,7 +4004,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                     y = y,
                     deltaX = deltaX,
                     deltaY = deltaY,
-                    threshold = threshold,
+                    threshold = candidateThreshold,
                     deviceId = start.deviceId,
                     source = start.source,
                     eventTimeUptimeMs = eventTimeUptimeMs
@@ -4017,7 +4027,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 y = y,
                 deltaX = deltaX,
                 deltaY = deltaY,
-                threshold = threshold,
+                threshold = when (direction) {
+                    NativeTrackpadSwipeDirection.UP -> suggestionThreshold
+                    NativeTrackpadSwipeDirection.LEFT -> deleteThreshold
+                },
                 deviceId = start.deviceId,
                 source = start.source,
                 eventTimeUptimeMs = eventTimeUptimeMs
@@ -4048,7 +4061,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                     y = y,
                     deltaX = deltaX,
                     deltaY = deltaY,
-                    threshold = threshold,
+                    threshold = suggestionThreshold,
                     deviceId = start.deviceId,
                     source = start.source,
                     eventTimeUptimeMs = eventTimeUptimeMs
@@ -4073,7 +4086,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                     y = y,
                     deltaX = deltaX,
                     deltaY = deltaY,
-                    threshold = threshold,
+                    threshold = deleteThreshold,
                     deviceId = start.deviceId,
                     source = start.source,
                     eventTimeUptimeMs = eventTimeUptimeMs
@@ -4084,8 +4097,12 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         return true
     }
 
-    private fun nativeImeTrackpadSwipeThreshold(): Float {
-        return SettingsManager.getTrackpadSwipeThreshold(this).coerceIn(120f, 1000f)
+    private fun nativeImeTrackpadSuggestionSwipeThreshold(): Float {
+        return SettingsManager.getTrackpadSuggestionSwipeThreshold(this)
+    }
+
+    private fun nativeImeTrackpadDeleteSwipeThreshold(): Float {
+        return SettingsManager.getTrackpadDeleteSwipeThreshold(this)
     }
 
     private fun nativeImeTrackpadThird(x: Float): Int {

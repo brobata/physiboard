@@ -61,6 +61,35 @@ class SettingsManagerLayoutSwitchTest {
     }
 
     @Test
+    fun trackpadSwipeThresholds_fallBackToLegacyValue() {
+        val context = RuntimeEnvironment.getApplication()
+
+        SettingsManager.getPreferences(context).edit()
+            .putFloat("trackpad_swipe_threshold", 420f)
+            .commit()
+
+        assertEquals(420f, SettingsManager.getTrackpadSuggestionSwipeThreshold(context), 0.01f)
+        assertEquals(420f, SettingsManager.getTrackpadDeleteSwipeThreshold(context), 0.01f)
+    }
+
+    @Test
+    fun trackpadSwipeThresholds_persistSeparatelyAndClamp() {
+        val context = RuntimeEnvironment.getApplication()
+
+        SettingsManager.setTrackpadSuggestionSwipeThreshold(context, 240f)
+        SettingsManager.setTrackpadDeleteSwipeThreshold(context, 720f)
+
+        assertEquals(240f, SettingsManager.getTrackpadSuggestionSwipeThreshold(context), 0.01f)
+        assertEquals(720f, SettingsManager.getTrackpadDeleteSwipeThreshold(context), 0.01f)
+
+        SettingsManager.setTrackpadSuggestionSwipeThreshold(context, 40f)
+        SettingsManager.setTrackpadDeleteSwipeThreshold(context, 2000f)
+
+        assertEquals(120f, SettingsManager.getTrackpadSuggestionSwipeThreshold(context), 0.01f)
+        assertEquals(750f, SettingsManager.getTrackpadDeleteSwipeThreshold(context), 0.01f)
+    }
+
+    @Test
     fun inputStyleSuggestionLocales_persistPerLocaleAndLayout() {
         val context = RuntimeEnvironment.getApplication()
 

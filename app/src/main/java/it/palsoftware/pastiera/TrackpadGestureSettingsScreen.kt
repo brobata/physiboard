@@ -39,10 +39,14 @@ fun TrackpadGestureSettingsScreen(
     var trackpadGestureAddWordEnabled by remember {
         mutableStateOf(SettingsManager.getTrackpadGestureAddWordEnabled(context))
     }
-    var swipeThreshold by remember {
-        mutableStateOf(SettingsManager.getTrackpadSwipeThreshold(context))
+    var suggestionSwipeThreshold by remember {
+        mutableStateOf(SettingsManager.getTrackpadSuggestionSwipeThreshold(context))
+    }
+    var deleteSwipeThreshold by remember {
+        mutableStateOf(SettingsManager.getTrackpadDeleteSwipeThreshold(context))
     }
     var showTutorialDialog by remember { mutableStateOf(false) }
+    var showSensitivitySettings by remember { mutableStateOf(false) }
     var shizukuStatus by remember { mutableStateOf(ShizukuStatus.NotConnected) }
     var trackpadProvider by remember { mutableStateOf(SettingsManager.getTrackpadProvider(context)) }
     var providerMenuExpanded by remember { mutableStateOf(false) }
@@ -58,7 +62,13 @@ fun TrackpadGestureSettingsScreen(
         SettingsManager.SWIPE_TO_DELETE_PROVIDER_TITAN2_KEYCODE to stringResource(R.string.swipe_to_delete_provider_titan2_keycode)
     )
 
-    BackHandler { onBack() }
+    BackHandler {
+        if (showSensitivitySettings) {
+            showSensitivitySettings = false
+        } else {
+            onBack()
+        }
+    }
     LaunchedEffect(Unit) {
         while (true) {
             shizukuStatus = resolveShizukuStatus()
@@ -80,14 +90,28 @@ fun TrackpadGestureSettingsScreen(
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = onBack) {
+                    IconButton(
+                        onClick = {
+                            if (showSensitivitySettings) {
+                                showSensitivitySettings = false
+                            } else {
+                                onBack()
+                            }
+                        }
+                    ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.settings_back_content_description)
                         )
                     }
                     Text(
-                        text = stringResource(R.string.trackpad_gestures_title),
+                        text = stringResource(
+                            if (showSensitivitySettings) {
+                                R.string.trackpad_sensitivity_title
+                            } else {
+                                R.string.trackpad_gestures_title
+                            }
+                        ),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.padding(start = 8.dp)
@@ -102,6 +126,22 @@ fun TrackpadGestureSettingsScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
+            if (showSensitivitySettings) {
+                TrackpadSensitivitySettings(
+                    suggestionSwipeThreshold = suggestionSwipeThreshold,
+                    onSuggestionSwipeThresholdChange = { newValue ->
+                        suggestionSwipeThreshold = newValue
+                        SettingsManager.setTrackpadSuggestionSwipeThreshold(context, newValue)
+                    },
+                    deleteSwipeThreshold = deleteSwipeThreshold,
+                    onDeleteSwipeThresholdChange = { newValue ->
+                        deleteSwipeThreshold = newValue
+                        SettingsManager.setTrackpadDeleteSwipeThreshold(context, newValue)
+                    }
+                )
+                return@Column
+            }
+
             // Enable/Disable Toggle
             Surface(
                 modifier = Modifier
@@ -370,58 +410,48 @@ fun TrackpadGestureSettingsScreen(
                 }
             }
 
-            // Swipe sensitivity slider
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 8.dp)
+                    .height(72.dp)
+                    .clickable { showSensitivitySettings = true }
             ) {
-                Column(
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Speed,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier
-                                .size(24.dp)
-                                .padding(end = 12.dp)
-                        )
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = stringResource(R.string.trackpad_swipe_threshold_title),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Medium,
-                                maxLines = 1
-                            )
-                            Text(
-                                text = stringResource(R.string.trackpad_swipe_threshold_description),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 2
-                            )
-                        }
+                    Icon(
+                        imageVector = Icons.Filled.Speed,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = swipeThreshold.toInt().toString(),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            text = stringResource(R.string.trackpad_sensitivity_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1
+                        )
+                        Text(
+                            text = stringResource(R.string.trackpad_sensitivity_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2
                         )
                     }
-                    Slider(
-                        value = swipeThreshold,
-                        onValueChange = { newValue ->
-                            swipeThreshold = newValue
-                            SettingsManager.setTrackpadSwipeThreshold(context, newValue)
-                        },
-                        valueRange = SettingsManager.getMinTrackpadSwipeThreshold()..SettingsManager.getMaxTrackpadSwipeThreshold(),
-                        steps = 10
+                    Text(
+                        text = "${suggestionSwipeThreshold.toInt()} / ${deleteSwipeThreshold.toInt()}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -522,6 +552,92 @@ fun TrackpadGestureSettingsScreen(
         TrackpadTutorialDialog(
             onDismiss = { showTutorialDialog = false }
         )
+    }
+}
+
+@Composable
+private fun TrackpadSensitivitySettings(
+    suggestionSwipeThreshold: Float,
+    onSuggestionSwipeThresholdChange: (Float) -> Unit,
+    deleteSwipeThreshold: Float,
+    onDeleteSwipeThresholdChange: (Float) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        TrackpadSensitivitySlider(
+            title = stringResource(R.string.trackpad_suggestion_swipe_threshold_title),
+            description = stringResource(R.string.trackpad_suggestion_swipe_threshold_description),
+            value = suggestionSwipeThreshold,
+            onValueChange = onSuggestionSwipeThresholdChange
+        )
+        TrackpadSensitivitySlider(
+            title = stringResource(R.string.trackpad_delete_swipe_threshold_title),
+            description = stringResource(R.string.trackpad_delete_swipe_threshold_description),
+            value = deleteSwipeThreshold,
+            onValueChange = onDeleteSwipeThresholdChange
+        )
+    }
+}
+
+@Composable
+private fun TrackpadSensitivitySlider(
+    title: String,
+    description: String,
+    value: Float,
+    onValueChange: (Float) -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Speed,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1
+                    )
+                    Text(
+                        text = description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2
+                    )
+                }
+                Text(
+                    text = value.toInt().toString(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Slider(
+                value = value,
+                onValueChange = onValueChange,
+                valueRange = SettingsManager.getMinTrackpadSwipeThreshold()..SettingsManager.getMaxTrackpadSwipeThreshold(),
+                steps = 10
+            )
+        }
     }
 }
 

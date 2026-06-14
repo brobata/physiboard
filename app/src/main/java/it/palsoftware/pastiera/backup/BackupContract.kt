@@ -269,6 +269,8 @@ object PreferenceSchemas {
             "trackpad_gestures_enabled" to PreferenceValueType.BOOLEAN,
             "trackpad_gesture_add_word_enabled" to PreferenceValueType.BOOLEAN,
             "trackpad_swipe_threshold" to PreferenceValueType.FLOAT,
+            "trackpad_suggestion_swipe_threshold" to PreferenceValueType.FLOAT,
+            "trackpad_delete_swipe_threshold" to PreferenceValueType.FLOAT,
             "trackpad_provider" to PreferenceValueType.STRING,
             "pastierina_mode_override" to PreferenceValueType.STRING,
             "pastierina_mode_active" to PreferenceValueType.BOOLEAN,

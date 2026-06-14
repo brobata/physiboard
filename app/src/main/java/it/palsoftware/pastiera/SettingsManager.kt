@@ -91,6 +91,8 @@ object SettingsManager {
     private const val KEY_TRACKPAD_GESTURES_ENABLED = "trackpad_gestures_enabled" // Whether trackpad gesture suggestions are enabled
     private const val KEY_TRACKPAD_GESTURE_ADD_WORD_ENABLED = "trackpad_gesture_add_word_enabled" // Whether suggestion gestures can trigger add-word
     private const val KEY_TRACKPAD_SWIPE_THRESHOLD = "trackpad_swipe_threshold" // Threshold for swipe detection on trackpad
+    private const val KEY_TRACKPAD_SUGGESTION_SWIPE_THRESHOLD = "trackpad_suggestion_swipe_threshold"
+    private const val KEY_TRACKPAD_DELETE_SWIPE_THRESHOLD = "trackpad_delete_swipe_threshold"
     private const val KEY_TRACKPAD_PROVIDER = "trackpad_provider" // shizuku | native_ime
     private const val KEY_SHIFT_BACKSPACE_DELETE = "shift_backspace_delete" // Shift + Backspace performs forward delete
     private const val KEY_ALT_BACKSPACE_DELETE = "alt_backspace_delete" // Alt + Backspace performs forward delete
@@ -262,8 +264,10 @@ object SettingsManager {
     private const val DEFAULT_TRACKPAD_GESTURES_ENABLED = false
     private const val DEFAULT_TRACKPAD_GESTURE_ADD_WORD_ENABLED = true
     private const val DEFAULT_TRACKPAD_SWIPE_THRESHOLD = 500f
+    private const val DEFAULT_TRACKPAD_SUGGESTION_SWIPE_THRESHOLD = DEFAULT_TRACKPAD_SWIPE_THRESHOLD
+    private const val DEFAULT_TRACKPAD_DELETE_SWIPE_THRESHOLD = DEFAULT_TRACKPAD_SWIPE_THRESHOLD
     private const val MIN_TRACKPAD_SWIPE_THRESHOLD = 120f
-    private const val MAX_TRACKPAD_SWIPE_THRESHOLD = 1000f
+    private const val MAX_TRACKPAD_SWIPE_THRESHOLD = 750f
     const val TRACKPAD_PROVIDER_SHIZUKU = "shizuku"
     const val TRACKPAD_PROVIDER_NATIVE_IME = "native_ime"
     private const val DEFAULT_TRACKPAD_PROVIDER = TRACKPAD_PROVIDER_NATIVE_IME
@@ -3466,6 +3470,36 @@ object SettingsManager {
     fun getMinTrackpadSwipeThreshold(): Float = MIN_TRACKPAD_SWIPE_THRESHOLD
     fun getMaxTrackpadSwipeThreshold(): Float = MAX_TRACKPAD_SWIPE_THRESHOLD
     fun getDefaultTrackpadSwipeThreshold(): Float = DEFAULT_TRACKPAD_SWIPE_THRESHOLD
+
+    fun getTrackpadSuggestionSwipeThreshold(context: Context): Float {
+        val prefs = getPreferences(context)
+        return prefs.getFloat(
+            KEY_TRACKPAD_SUGGESTION_SWIPE_THRESHOLD,
+            prefs.getFloat(KEY_TRACKPAD_SWIPE_THRESHOLD, DEFAULT_TRACKPAD_SUGGESTION_SWIPE_THRESHOLD)
+        ).coerceIn(MIN_TRACKPAD_SWIPE_THRESHOLD, MAX_TRACKPAD_SWIPE_THRESHOLD)
+    }
+
+    fun setTrackpadSuggestionSwipeThreshold(context: Context, threshold: Float) {
+        val clamped = threshold.coerceIn(MIN_TRACKPAD_SWIPE_THRESHOLD, MAX_TRACKPAD_SWIPE_THRESHOLD)
+        getPreferences(context).edit()
+            .putFloat(KEY_TRACKPAD_SUGGESTION_SWIPE_THRESHOLD, clamped)
+            .commit()
+    }
+
+    fun getTrackpadDeleteSwipeThreshold(context: Context): Float {
+        val prefs = getPreferences(context)
+        return prefs.getFloat(
+            KEY_TRACKPAD_DELETE_SWIPE_THRESHOLD,
+            prefs.getFloat(KEY_TRACKPAD_SWIPE_THRESHOLD, DEFAULT_TRACKPAD_DELETE_SWIPE_THRESHOLD)
+        ).coerceIn(MIN_TRACKPAD_SWIPE_THRESHOLD, MAX_TRACKPAD_SWIPE_THRESHOLD)
+    }
+
+    fun setTrackpadDeleteSwipeThreshold(context: Context, threshold: Float) {
+        val clamped = threshold.coerceIn(MIN_TRACKPAD_SWIPE_THRESHOLD, MAX_TRACKPAD_SWIPE_THRESHOLD)
+        getPreferences(context).edit()
+            .putFloat(KEY_TRACKPAD_DELETE_SWIPE_THRESHOLD, clamped)
+            .commit()
+    }
 
     fun getTrackpadProvider(context: Context): String {
         val value = getPreferences(context).getString(KEY_TRACKPAD_PROVIDER, DEFAULT_TRACKPAD_PROVIDER).orEmpty()

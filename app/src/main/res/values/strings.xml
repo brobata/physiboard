@@ -969,6 +969,12 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="trackpad_provider_native_ime_status">Native IME events active (experimental)</string>
     <string name="trackpad_swipe_threshold_title">Trackpad Swipe Sensitivity</string>
     <string name="trackpad_swipe_threshold_description">Adjust how far you need to swipe up to accept a suggestion.</string>
+    <string name="trackpad_sensitivity_title">Trackpad Sensitivity</string>
+    <string name="trackpad_sensitivity_description">Adjust suggestion and delete gestures separately.</string>
+    <string name="trackpad_suggestion_swipe_threshold_title">Suggestion Swipe</string>
+    <string name="trackpad_suggestion_swipe_threshold_description">Distance required to swipe up and accept a suggestion.</string>
+    <string name="trackpad_delete_swipe_threshold_title">Delete Swipe</string>
+    <string name="trackpad_delete_swipe_threshold_description">Distance required to swipe left and delete the previous word.</string>
 
     <!-- Trackpad Gesture Tutorial -->
     <string name="trackpad_tutorial_title">Trackpad Gesture Suggestions</string>
