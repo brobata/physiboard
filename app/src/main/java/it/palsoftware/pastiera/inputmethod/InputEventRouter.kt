@@ -35,6 +35,7 @@ class InputEventRouter(
     private val navModeController: NavModeController
 ) {
     private val swipeToDeleteKeyCodes = setOf(322, 404)
+    private val restrictedFieldBasicCtrlActions = setOf("select_all", "copy", "cut", "paste")
 
     var suggestionController: it.palsoftware.pastiera.core.suggestions.SuggestionController? = null
     var onCommitText: (() -> Unit)? = null
@@ -225,6 +226,7 @@ class InputEventRouter(
         val shiftPressed: Boolean,
         val shiftLayerLatched: Boolean,
         val ctrlPressed: Boolean,
+        val ctrlPhysicallyPressed: Boolean,
         val altPressed: Boolean,
         val ctrlLatchActive: Boolean,
         val altLatchActive: Boolean,
@@ -276,6 +278,12 @@ class InputEventRouter(
         var altLatchActive = params.altLatchActive
         var altOneShotActive = params.altOneShot
         val ic = params.inputConnection
+        val effectiveCtrlActive = event?.isCtrlPressed == true ||
+            params.ctrlPressed ||
+            params.ctrlPhysicallyPressed ||
+            params.ctrlLatchActive ||
+            params.ctrlOneShot ||
+            params.ctrlLatchFromNavMode
 
         if (keyCode == KeyEvent.KEYCODE_SHIFT_LEFT || keyCode == KeyEvent.KEYCODE_SHIFT_RIGHT) {
             if (!params.shiftPressed) {
@@ -419,6 +427,9 @@ class InputEventRouter(
                 altSymManager = controllers.altSymManager,
                 symLayoutController = controllers.symLayoutController,
                 ctrlLatchActive = params.ctrlLatchActive,
+                ctrlPressed = params.ctrlPressed,
+                ctrlPhysicallyPressed = params.ctrlPhysicallyPressed,
+                ctrlLatchFromNavMode = params.ctrlLatchFromNavMode,
                 ctrlOneShot = params.ctrlOneShot,
                 altLatchActive = altLatchActive,
                 cursorUpdateDelayMs = params.cursorUpdateDelayMs,
@@ -455,7 +466,7 @@ class InputEventRouter(
             }
         }
 
-        if (event?.isCtrlPressed == true || params.ctrlLatchActive || params.ctrlOneShot) {
+        if (event?.isCtrlPressed == true || params.ctrlLatchActive || params.ctrlOneShot || (params.isNumericField && effectiveCtrlActive)) {
             if (
                 handleCtrlModifiedKey(
                     keyCode = keyCode,
@@ -464,8 +475,9 @@ class InputEventRouter(
                     ctrlKeyMap = params.ctrlKeyMap,
                     ctrlLatchFromNavMode = params.ctrlLatchFromNavMode,
                     ctrlOneShot = params.ctrlOneShot,
-                    ctrlPhysicallyPressed = params.ctrlPressed,
+                    ctrlPhysicallyPressed = params.ctrlPressed || params.ctrlPhysicallyPressed,
                     selectionShiftActive = params.shiftPressed || event?.isShiftPressed == true,
+                    forceBasicContextMenuActions = params.isNumericField,
                     clearCtrlOneShot = {
                         callbacks.clearCtrlOneShot()
                     },
@@ -1011,6 +1023,9 @@ class InputEventRouter(
         altSymManager: AltSymManager,
         symLayoutController: SymLayoutController,
         ctrlLatchActive: Boolean,
+        ctrlPressed: Boolean,
+        ctrlPhysicallyPressed: Boolean,
+        ctrlLatchFromNavMode: Boolean,
         ctrlOneShot: Boolean,
         altLatchActive: Boolean,
         cursorUpdateDelayMs: Long,
@@ -1022,7 +1037,12 @@ class InputEventRouter(
         // Numeric fields always use the Alt mapping for every key press (short press included).
         // However, if Ctrl is active, let Ctrl handling take precedence (e.g., for copy/paste).
         if (isNumericField) {
-            val isCtrlActive = event?.isCtrlPressed == true || ctrlLatchActive || ctrlOneShot
+            val isCtrlActive = event?.isCtrlPressed == true ||
+                ctrlLatchActive ||
+                ctrlOneShot ||
+                ctrlPressed ||
+                ctrlPhysicallyPressed ||
+                ctrlLatchFromNavMode
             if (!isCtrlActive) {
                 val altChar = altSymManager.getAltMappings()[keyCode]
                 if (altChar != null) {
@@ -1109,6 +1129,7 @@ class InputEventRouter(
         ctrlOneShot: Boolean,
         ctrlPhysicallyPressed: Boolean,
         selectionShiftActive: Boolean = false,
+        forceBasicContextMenuActions: Boolean = false,
         clearCtrlOneShot: () -> Unit,
         updateStatusBar: () -> Unit,
         callSuper: () -> Boolean,
@@ -1123,6 +1144,11 @@ class InputEventRouter(
         } else {
             keyCode
         }
+        val ctrlMapping = ctrlKeyMap[shortcutKeyCode]
+        val shouldForceContextMenuAction =
+            forceBasicContextMenuActions &&
+                ctrlMapping?.type == "action" &&
+                ctrlMapping.value in restrictedFieldBasicCtrlActions
 
         fun passThroughCtrlCombo(): Boolean {
             if (event != null) {
@@ -1137,7 +1163,7 @@ class InputEventRouter(
 
         // When Ctrl is physically held, prefer native app shortcuts (rich-text editors, IDEs, etc.).
         // This must take precedence over one-shot, because a physical press sets one-shot internally.
-        if (isPhysicalCtrlCombo && !ctrlLatchFromNavMode && !useNavModeForHeldCtrl) {
+        if (isPhysicalCtrlCombo && !ctrlLatchFromNavMode && !useNavModeForHeldCtrl && !shouldForceContextMenuAction) {
             return passThroughCtrlCombo()
         }
 
@@ -1146,7 +1172,6 @@ class InputEventRouter(
             updateStatusBar()
         }
 
-        val ctrlMapping = ctrlKeyMap[shortcutKeyCode]
         if (ctrlMapping != null) {
             when (ctrlMapping.type) {
                 "action" -> {

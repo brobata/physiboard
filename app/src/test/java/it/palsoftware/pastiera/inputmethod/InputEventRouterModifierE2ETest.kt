@@ -260,6 +260,49 @@ class InputEventRouterModifierE2ETest {
     }
 
     @Test
+    fun heldCtrlVInNumericField_performsPasteInsteadOfCommittingAltDigitOrNativeKey() {
+        val callbacks = TestCallbacks(modifierStateController)
+        modifierStateController.ctrlPressed = true
+        modifierStateController.ctrlPhysicallyPressed = true
+
+        val result = routeKeyDown(
+            keyCode = KeyEvent.KEYCODE_V,
+            event = keyDown(KeyEvent.KEYCODE_V, metaState = KeyEvent.META_CTRL_ON or KeyEvent.META_CTRL_LEFT_ON),
+            callbacks = callbacks,
+            isNumericField = true
+        )
+
+        assertTrue(result is InputEventRouter.EditableFieldRoutingResult.Consume)
+        assertEquals(listOf(android.R.id.paste), inputConnectionRecorder.contextMenuActions)
+        assertTrue(inputConnectionRecorder.committedTexts.isEmpty())
+        assertTrue(inputConnectionRecorder.sentKeyEvents.isEmpty())
+    }
+
+    @Test
+    fun nativeCtrlMappingInNumericField_stillPassesNativeCtrlInsteadOfForcingPaste() {
+        ctrlKeyMap = mapOf(
+            KeyEvent.KEYCODE_V to KeyMappingLoader.CtrlMapping("native_ctrl", "")
+        )
+        val callbacks = TestCallbacks(modifierStateController)
+        modifierStateController.ctrlPressed = true
+        modifierStateController.ctrlPhysicallyPressed = true
+
+        val result = routeKeyDown(
+            keyCode = KeyEvent.KEYCODE_V,
+            event = keyDown(KeyEvent.KEYCODE_V, metaState = KeyEvent.META_CTRL_ON or KeyEvent.META_CTRL_LEFT_ON),
+            callbacks = callbacks,
+            isNumericField = true
+        )
+
+        assertTrue(result is InputEventRouter.EditableFieldRoutingResult.Consume)
+        assertTrue(inputConnectionRecorder.contextMenuActions.isEmpty())
+        assertTrue(inputConnectionRecorder.committedTexts.isEmpty())
+        val sentEvent = inputConnectionRecorder.sentKeyEvents.single()
+        assertEquals(KeyEvent.KEYCODE_V, sentEvent.keyCode)
+        assertTrue(sentEvent.isCtrlPressed)
+    }
+
+    @Test
     fun symEmojiPage_defaultLayout_mapsA_andConsumes() {
         val callbacks = TestCallbacks(modifierStateController)
         if (!altSymManager.getSymMappings().containsKey(KeyEvent.KEYCODE_A)) {
@@ -603,12 +646,13 @@ class InputEventRouterModifierE2ETest {
         keyCode: Int,
         event: KeyEvent,
         callbacks: TestCallbacks,
-        clearAltOnSpaceEnabled: Boolean = false
+        clearAltOnSpaceEnabled: Boolean = false,
+        isNumericField: Boolean = false
     ): InputEventRouter.EditableFieldRoutingResult {
         return router.routeEditableFieldKeyDown(
             keyCode = keyCode,
             event = event,
-            params = buildParams(clearAltOnSpaceEnabled),
+            params = buildParams(clearAltOnSpaceEnabled, isNumericField),
             controllers = InputEventRouter.EditableFieldKeyDownControllers(
                 modifierStateController = modifierStateController,
                 symLayoutController = symLayoutController,
@@ -620,14 +664,18 @@ class InputEventRouterModifierE2ETest {
         )
     }
 
-    private fun buildParams(clearAltOnSpaceEnabled: Boolean = false): InputEventRouter.EditableFieldKeyDownHandlingParams {
+    private fun buildParams(
+        clearAltOnSpaceEnabled: Boolean = false,
+        isNumericField: Boolean = false
+    ): InputEventRouter.EditableFieldKeyDownHandlingParams {
         return InputEventRouter.EditableFieldKeyDownHandlingParams(
             inputConnection = inputConnection,
-            isNumericField = false,
+            isNumericField = isNumericField,
             isInputViewActive = true,
             shiftPressed = modifierStateController.shiftPressed,
             shiftLayerLatched = shiftLayerLatchedForTest,
             ctrlPressed = modifierStateController.ctrlPressed,
+            ctrlPhysicallyPressed = modifierStateController.ctrlPhysicallyPressed,
             altPressed = modifierStateController.altPressed,
             ctrlLatchActive = modifierStateController.ctrlLatchActive,
             altLatchActive = modifierStateController.altLatchActive,

@@ -3455,6 +3455,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 shiftPressed = shiftPressed,
                 shiftLayerLatched = shiftLayerLatched,
                 ctrlPressed = ctrlPressed,
+                ctrlPhysicallyPressed = ctrlPhysicallyPressed,
                 altPressed = altPressed,
                 ctrlLatchActive = ctrlLatchActive,
                 altLatchActive = altLatchActive,
