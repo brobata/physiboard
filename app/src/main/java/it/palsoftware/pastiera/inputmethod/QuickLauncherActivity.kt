@@ -656,22 +656,7 @@ private fun QuickLauncherCommandRow(
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                AndroidView(
-                    factory = { context ->
-                        ImageView(context).apply {
-                            layoutParams = ViewGroup.LayoutParams(
-                                ViewGroup.LayoutParams.MATCH_PARENT,
-                                ViewGroup.LayoutParams.MATCH_PARENT
-                            )
-                            scaleType = ImageView.ScaleType.FIT_CENTER
-                        }
-                    },
-                    update = { imageView ->
-                        val drawable = (command.icon as? CommandIcon.DrawableIcon)?.drawable
-                        imageView.setImageDrawable(drawable?.constantState?.newDrawable() ?: drawable)
-                    },
-                    modifier = Modifier.size(40.dp)
-                )
+                CommandRowIcon(command)
                 Column(
                     modifier = Modifier
                         .weight(1f)
@@ -982,6 +967,35 @@ private fun customSearchScore(customSearch: String, query: String): Int? {
         customSearch.split(' ').any { it.startsWith(query) } -> 12 + customSearch.length
         customSearch.contains(query) -> 30 + customSearch.indexOf(query)
         else -> subsequenceScore(customSearch, query)?.plus(50)
+    }
+}
+
+@Composable
+private fun CommandRowIcon(command: CommandTarget) {
+    val drawable = (command.icon as? CommandIcon.DrawableIcon)?.drawable
+    if (drawable != null) {
+        AndroidView(
+            factory = { context ->
+                ImageView(context).apply {
+                    layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT
+                    )
+                    scaleType = ImageView.ScaleType.FIT_CENTER
+                }
+            },
+            update = { imageView ->
+                imageView.setImageDrawable(drawable.constantState?.newDrawable() ?: drawable)
+            },
+            modifier = Modifier.size(40.dp)
+        )
+    } else {
+        Icon(
+            imageVector = commandMaterialIcon(command),
+            contentDescription = null,
+            modifier = Modifier.size(32.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
     }
 }
 

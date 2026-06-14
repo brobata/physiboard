@@ -26,27 +26,9 @@ import android.view.KeyEvent
 import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.VolumeDown
-import androidx.compose.material.icons.automirrored.filled.VolumeOff
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Event
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Keyboard
-import androidx.compose.material.icons.filled.KeyboardCommandKey
-import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.filled.SkipPrevious
-import androidx.compose.material.icons.filled.TaskAlt
-import androidx.compose.material.icons.filled.VolumeDown
-import androidx.compose.material.icons.filled.VolumeOff
-import androidx.compose.material.icons.filled.VolumeUp
-import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.ui.res.stringResource
 import it.palsoftware.pastiera.R
 import androidx.compose.ui.focus.FocusRequester
@@ -54,7 +36,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.material3.ModalBottomSheet
@@ -595,7 +576,7 @@ private fun CommandGridItem(
                     )
                 } else {
                     Icon(
-                        imageVector = commandPickerIcon(command),
+                        imageVector = commandMaterialIcon(command),
                         contentDescription = null,
                         modifier = Modifier.size(34.dp),
                         tint = MaterialTheme.colorScheme.primary
@@ -615,32 +596,5 @@ private fun CommandGridItem(
                 modifier = Modifier.basicMarquee()
             )
         }
-    }
-}
-
-private fun commandPickerIcon(command: CommandTarget): ImageVector {
-    return when {
-        command.source == CommandSourceId.AppActions && command.id.contains("agenda") -> Icons.Default.Event
-        command.source == CommandSourceId.AppActions && command.id.contains("tasker") -> Icons.Default.TaskAlt
-        command.source == CommandSourceId.AppActions && command.id.contains("homeassistant.assist") -> Icons.Default.Mic
-        command.source == CommandSourceId.AppActions && command.id.contains("homeassistant.voice") -> Icons.Default.Mic
-        command.source == CommandSourceId.AppActions && command.id.contains("homeassistant") -> Icons.Default.Home
-        command.source == CommandSourceId.AppActions -> Icons.Default.Search
-        command.id == "device.media.play_pause" -> Icons.Default.PlayArrow
-        command.id == "device.media.previous" -> Icons.Default.SkipPrevious
-        command.id == "device.media.next" -> Icons.Default.SkipNext
-        command.id == "device.volume.up" -> Icons.AutoMirrored.Filled.VolumeUp
-        command.id == "device.volume.down" -> Icons.AutoMirrored.Filled.VolumeDown
-        command.id == "device.volume.mute" -> Icons.AutoMirrored.Filled.VolumeOff
-        command.id == "device.brightness.up" -> Icons.Default.WbSunny
-        command.id == "device.brightness.down" -> Icons.Default.WbSunny
-        command.id.contains("input_method") -> Icons.Default.Keyboard
-        command.id.contains("language") -> Icons.Default.Language
-        command.source == CommandSourceId.DeviceControl -> Icons.Default.Settings
-        command.source == CommandSourceId.Pastiera -> Icons.Default.KeyboardCommandKey
-        command.source == CommandSourceId.NavActions -> Icons.Default.KeyboardCommandKey
-        command.icon == CommandIcon.Settings -> Icons.Default.Settings
-        command.icon == CommandIcon.DeviceControl -> Icons.Default.Settings
-        else -> Icons.Default.Search
     }
 }
