@@ -2348,7 +2348,8 @@ object SettingsManager {
             CommandSourceVisibility(CommandSourceId.Apps.storageValue, quickLauncherEnabled = true),
             CommandSourceVisibility(CommandSourceId.Pastiera.storageValue, quickLauncherEnabled = false),
             CommandSourceVisibility(CommandSourceId.AppActions.storageValue, quickLauncherEnabled = false),
-            CommandSourceVisibility(CommandSourceId.DeviceControl.storageValue, quickLauncherEnabled = false)
+            CommandSourceVisibility(CommandSourceId.DeviceControl.storageValue, quickLauncherEnabled = false),
+            CommandSourceVisibility(CommandSourceId.NavActions.storageValue, quickLauncherEnabled = false)
         )
     }
 

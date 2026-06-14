@@ -1,6 +1,7 @@
 package it.palsoftware.pastiera.inputmethod
 
 import android.os.Bundle
+import android.content.SharedPreferences
 import android.util.Log
 import android.view.KeyEvent
 import android.view.ViewGroup
@@ -39,6 +40,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -56,6 +58,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -112,6 +115,7 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
     private var launchedAutomatically = false
     private var keyboardLayout: Map<Int, LayoutMapping> = emptyMap()
     private var enterHandledOnKeyDown = false
+    private var quickLauncherPrefsListener: SharedPreferences.OnSharedPreferenceChangeListener? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -142,6 +146,7 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
         commands = quickLauncherCommandsFromCachedApps()
         loadingApps = commands.isEmpty()
         refreshFilteredCommands()
+        registerQuickLauncherPreferencesListener()
 
         setContent {
             PastieraTheme {
@@ -176,14 +181,15 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
             }
         }
 
-        lifecycleScope.launch {
-            val loadedCommands = withContext(Dispatchers.IO) {
-                CommandRegistry(this@QuickLauncherActivity).getCommands(CommandSurface.QuickLauncher)
-            }
-            commands = loadedCommands
-            loadingApps = false
-            refreshFilteredCommands()
+        reloadCommandsFromRegistry()
+    }
+
+    override fun onDestroy() {
+        quickLauncherPrefsListener?.let { listener ->
+            SettingsManager.getPreferences(this).unregisterOnSharedPreferenceChangeListener(listener)
         }
+        quickLauncherPrefsListener = null
+        super.onDestroy()
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
@@ -284,6 +290,31 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
         refreshFilteredCommands()
     }
 
+    private fun registerQuickLauncherPreferencesListener() {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == PREF_COMMAND_SURFACE_SOURCES) {
+                launchedAutomatically = false
+                commands = quickLauncherCommandsFromCachedApps()
+                loadingApps = commands.isEmpty()
+                refreshFilteredCommands()
+                reloadCommandsFromRegistry()
+            }
+        }
+        SettingsManager.getPreferences(this).registerOnSharedPreferenceChangeListener(listener)
+        quickLauncherPrefsListener = listener
+    }
+
+    private fun reloadCommandsFromRegistry() {
+        lifecycleScope.launch {
+            val loadedCommands = withContext(Dispatchers.IO) {
+                CommandRegistry(this@QuickLauncherActivity).getCommands(CommandSurface.QuickLauncher)
+            }
+            commands = loadedCommands
+            loadingApps = false
+            refreshFilteredCommands()
+        }
+    }
+
     private fun moveFavorite(commandId: String, direction: Int) {
         val favorites = commandCustomizations.values
             .filter { it.favorite }
@@ -299,6 +330,9 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
     }
 
     private fun quickLauncherCommandsFromCachedApps(): List<CommandTarget> {
+        if (!SettingsManager.isCommandSourceEnabled(this, CommandSourceId.Apps.storageValue, CommandSurface.QuickLauncher)) {
+            return emptyList()
+        }
         AppListHelper.syncPackageChanges(this)
         val cachedApps = AppListHelper.getCachedInstalledApps() ?: return emptyList()
         return cachedApps.map { app ->
@@ -355,6 +389,7 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
 
     companion object {
         private const val TAG = "QuickLauncher"
+        private const val PREF_COMMAND_SURFACE_SOURCES = "command_surface_sources"
     }
 }
 
@@ -384,17 +419,33 @@ private fun QuickLauncherSheet(
     val visible = remember { mutableStateOf(true) }
     val isCollapsedPill = pillMode && query.isBlank()
     val widthFraction = if (isCollapsedPill) 0.72f else widthPercent.coerceIn(50, 100) / 100f
-    val entries = remember(commands, customizations, customizationRevision) {
-        commands
-            .groupBy { it.source }
-            .flatMap { (source, sourceCommands) ->
-                if (commands.size <= 4) {
-                    sourceCommands.map { QuickLauncherEntry.Command(it) }
-                } else {
-                    listOf(QuickLauncherEntry.Header(source.displayLabel)) +
+    val entries = remember(commands, query, customizations, customizationRevision) {
+        if (query.isNotBlank()) {
+            commands.map { QuickLauncherEntry.Command(it) }
+        } else {
+            commands
+                .groupBy { it.source }
+                .flatMap { (source, sourceCommands) ->
+                    if (commands.size <= 4) {
                         sourceCommands.map { QuickLauncherEntry.Command(it) }
+                    } else {
+                        listOf(QuickLauncherEntry.Header(source.displayLabel)) +
+                            sourceCommands.map { QuickLauncherEntry.Command(it) }
+                    }
                 }
+        }
+    }
+    val listState = rememberLazyListState()
+    val entryScrollKey = remember(entries) {
+        entries.joinToString("|") { entry ->
+            when (entry) {
+                is QuickLauncherEntry.Header -> "h:${entry.label}"
+                is QuickLauncherEntry.Command -> "c:${entry.command.id}"
             }
+        }
+    }
+    LaunchedEffect(query, entryScrollKey) {
+        listState.scrollToItem(0)
     }
 
     AnimatedVisibility(
@@ -531,6 +582,7 @@ private fun QuickLauncherSheet(
                     }
                 } else if (!isCollapsedPill) {
                     LazyColumn(
+                        state = listState,
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f),
