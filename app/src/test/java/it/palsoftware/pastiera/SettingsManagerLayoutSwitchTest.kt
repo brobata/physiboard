@@ -218,6 +218,22 @@ class SettingsManagerLayoutSwitchTest {
         assertEquals(SettingsManager.LauncherShortcut.TYPE_COMMAND, shortcut?.type)
         assertEquals(PastieraCommandSource.COMMAND_QUICK_LAUNCHER, shortcut?.commandId)
         assertEquals(android.view.KeyEvent.KEYCODE_SPACE, SettingsManager.getQuickLauncherShortcutKey(context))
+        assertTrue(SettingsManager.isQuickLauncherShortcut(context, android.view.KeyEvent.KEYCODE_SPACE))
+        assertFalse(SettingsManager.isQuickLauncherShortcut(context, android.view.KeyEvent.KEYCODE_ENTER))
+    }
+
+    @Test
+    fun legacyQuickLauncherShortcut_isDetectedAsQuickLauncherKey() {
+        val context = RuntimeEnvironment.getApplication()
+
+        SettingsManager.setLauncherAction(
+            context,
+            android.view.KeyEvent.KEYCODE_K,
+            SettingsManager.LauncherShortcut(type = SettingsManager.LauncherShortcut.TYPE_QUICK_LAUNCHER)
+        )
+
+        assertEquals(android.view.KeyEvent.KEYCODE_K, SettingsManager.getQuickLauncherShortcutKey(context))
+        assertTrue(SettingsManager.isQuickLauncherShortcut(context, android.view.KeyEvent.KEYCODE_K))
     }
 
     @Test

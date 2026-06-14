@@ -2261,6 +2261,10 @@ object SettingsManager {
             ?.key
     }
 
+    fun isQuickLauncherShortcut(context: Context, keyCode: Int): Boolean {
+        return getLauncherShortcut(context, keyCode)?.isQuickLauncherCommand() == true
+    }
+
     private fun LauncherShortcut.isQuickLauncherCommand(): Boolean {
         return type == LauncherShortcut.TYPE_QUICK_LAUNCHER ||
             commandId == PastieraCommandSource.COMMAND_QUICK_LAUNCHER ||

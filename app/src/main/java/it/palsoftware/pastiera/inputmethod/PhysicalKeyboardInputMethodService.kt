@@ -3012,7 +3012,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             hasEditableField &&
             symTogglePendingOnKeyUp &&
             SettingsManager.getQuickLauncherTextFieldShortcuts(this) &&
-            SettingsManager.getLauncherShortcut(this, keyCode)?.type == SettingsManager.LauncherShortcut.TYPE_QUICK_LAUNCHER &&
+            SettingsManager.isQuickLauncherShortcut(this, keyCode) &&
             event?.repeatCount == 0
         ) {
             symChordUsedSinceKeyDown = true

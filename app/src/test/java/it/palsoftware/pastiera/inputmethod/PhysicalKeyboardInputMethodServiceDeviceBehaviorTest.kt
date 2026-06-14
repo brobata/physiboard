@@ -18,6 +18,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.RuntimeEnvironment
 import java.lang.reflect.Field
@@ -321,6 +322,29 @@ class PhysicalKeyboardInputMethodServiceDeviceBehaviorTest {
             keyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_A, t0 + 300L, t0 + 300L)
         )
         assertTrue("commits=${recorder.committedTexts}", recorder.committedTexts.contains("="))
+    }
+
+    @Test
+    fun symPlusQuickLauncherShortcut_opensQuickLauncherFromEditableField() {
+        val context = RuntimeEnvironment.getApplication()
+        SettingsManager.setQuickLauncherTextFieldShortcuts(context, true)
+        SettingsManager.setQuickLauncherShortcut(context, KeyEvent.KEYCODE_SPACE)
+        val t0 = 4_200L
+
+        val symHandled = service.onKeyDown(
+            KeyEvent.KEYCODE_SYM,
+            keyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_SYM, t0, t0)
+        )
+        val spaceHandled = service.onKeyDown(
+            KeyEvent.KEYCODE_SPACE,
+            keyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_SPACE, t0, t0 + 40L)
+        )
+
+        val startedIntent = shadowOf(RuntimeEnvironment.getApplication()).nextStartedActivity
+        assertTrue(symHandled)
+        assertTrue(spaceHandled)
+        assertEquals(QuickLauncherActivity::class.java.name, startedIntent.component?.className)
+        assertFalse("Space should not be committed when opening QuickLauncher", recorder.committedTexts.contains(" "))
     }
 
     @Test
