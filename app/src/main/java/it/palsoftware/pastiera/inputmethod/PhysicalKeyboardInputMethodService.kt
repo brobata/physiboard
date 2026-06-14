@@ -4155,9 +4155,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // Allow gesture only when suggestions bar should be visible/usable
         val addWordCandidate = suggestionController.pendingAddWord()
         val addWordGestureEnabled = SettingsManager.getTrackpadGestureAddWordEnabled(this)
-        val canAddWordByGesture = third == 0 &&
-            addWordGestureEnabled &&
-            addWordCandidate != null
+        val canAddWordByGesture = TrackpadAddWordGesturePolicy.canAddWordByGesture(
+            third = third,
+            addWordGestureEnabled = addWordGestureEnabled,
+            fullWidthWhenAddOnlyEnabled = SettingsManager.getTrackpadGestureAddWordFullWidthEnabled(this),
+            addWordCandidate = addWordCandidate,
+            visibleSuggestions = visibleSuggestions
+        )
         val allowGesture =
             symPage == 0 &&
             (visibleSuggestions.isNotEmpty() || canAddWordByGesture) &&
@@ -4172,11 +4176,12 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
 
         if (canAddWordByGesture) {
-            Log.d(TAG, "Adding user word '$addWordCandidate' from trackpad gesture")
+            val wordToAdd = addWordCandidate ?: return
+            Log.d(TAG, "Adding user word '$wordToAdd' from trackpad gesture")
             uiHandler.post {
                 val ic = currentInputConnection
                 candidatesBarController.flashSuggestionSlot(2)
-                suggestionController.addUserWord(addWordCandidate)
+                suggestionController.addUserWord(wordToAdd)
                 suggestionController.clearPendingAddWord()
                 if (ic != null) {
                     AddWordCommitHelper.commitAutoSpaceAfterAddWord(ic)

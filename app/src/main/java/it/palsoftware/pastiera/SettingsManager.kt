@@ -90,6 +90,7 @@ object SettingsManager {
     private const val KEY_CLIPBOARD_RETENTION_TIME = "clipboard_retention_time" // How long to keep clipboard entries (in minutes)
     private const val KEY_TRACKPAD_GESTURES_ENABLED = "trackpad_gestures_enabled" // Whether trackpad gesture suggestions are enabled
     private const val KEY_TRACKPAD_GESTURE_ADD_WORD_ENABLED = "trackpad_gesture_add_word_enabled" // Whether suggestion gestures can trigger add-word
+    private const val KEY_TRACKPAD_GESTURE_ADD_WORD_FULL_WIDTH_ENABLED = "trackpad_gesture_add_word_full_width_enabled"
     private const val KEY_TRACKPAD_SWIPE_THRESHOLD = "trackpad_swipe_threshold" // Threshold for swipe detection on trackpad
     private const val KEY_TRACKPAD_SUGGESTION_SWIPE_THRESHOLD = "trackpad_suggestion_swipe_threshold"
     private const val KEY_TRACKPAD_DELETE_SWIPE_THRESHOLD = "trackpad_delete_swipe_threshold"
@@ -263,6 +264,7 @@ object SettingsManager {
     private const val DEFAULT_CLIPBOARD_RETENTION_TIME = 120L // 2 hours in minutes
     private const val DEFAULT_TRACKPAD_GESTURES_ENABLED = false
     private const val DEFAULT_TRACKPAD_GESTURE_ADD_WORD_ENABLED = true
+    private const val DEFAULT_TRACKPAD_GESTURE_ADD_WORD_FULL_WIDTH_ENABLED = true
     private const val DEFAULT_TRACKPAD_SWIPE_THRESHOLD = 500f
     private const val DEFAULT_TRACKPAD_SUGGESTION_SWIPE_THRESHOLD = DEFAULT_TRACKPAD_SWIPE_THRESHOLD
     private const val DEFAULT_TRACKPAD_DELETE_SWIPE_THRESHOLD = DEFAULT_TRACKPAD_SWIPE_THRESHOLD
@@ -3446,6 +3448,19 @@ object SettingsManager {
     fun setTrackpadGestureAddWordEnabled(context: Context, enabled: Boolean) {
         getPreferences(context).edit()
             .putBoolean(KEY_TRACKPAD_GESTURE_ADD_WORD_ENABLED, enabled)
+            .commit()
+    }
+
+    fun getTrackpadGestureAddWordFullWidthEnabled(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_TRACKPAD_GESTURE_ADD_WORD_FULL_WIDTH_ENABLED,
+            DEFAULT_TRACKPAD_GESTURE_ADD_WORD_FULL_WIDTH_ENABLED
+        )
+    }
+
+    fun setTrackpadGestureAddWordFullWidthEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_TRACKPAD_GESTURE_ADD_WORD_FULL_WIDTH_ENABLED, enabled)
             .commit()
     }
 

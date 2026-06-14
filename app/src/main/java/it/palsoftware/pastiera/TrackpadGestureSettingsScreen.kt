@@ -39,6 +39,9 @@ fun TrackpadGestureSettingsScreen(
     var trackpadGestureAddWordEnabled by remember {
         mutableStateOf(SettingsManager.getTrackpadGestureAddWordEnabled(context))
     }
+    var trackpadGestureAddWordFullWidthEnabled by remember {
+        mutableStateOf(SettingsManager.getTrackpadGestureAddWordFullWidthEnabled(context))
+    }
     var suggestionSwipeThreshold by remember {
         mutableStateOf(SettingsManager.getTrackpadSuggestionSwipeThreshold(context))
     }
@@ -218,6 +221,44 @@ fun TrackpadGestureSettingsScreen(
                         onCheckedChange = { enabled ->
                             trackpadGestureAddWordEnabled = enabled
                             SettingsManager.setTrackpadGestureAddWordEnabled(context, enabled)
+                        }
+                    )
+                }
+            }
+
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(64.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Spacer(modifier = Modifier.width(24.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.trackpad_gesture_add_word_full_width_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1
+                        )
+                        Text(
+                            text = stringResource(R.string.trackpad_gesture_add_word_full_width_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2
+                        )
+                    }
+                    Switch(
+                        checked = trackpadGestureAddWordFullWidthEnabled,
+                        enabled = trackpadGesturesEnabled && trackpadGestureAddWordEnabled,
+                        onCheckedChange = { enabled ->
+                            trackpadGestureAddWordFullWidthEnabled = enabled
+                            SettingsManager.setTrackpadGestureAddWordFullWidthEnabled(context, enabled)
                         }
                     )
                 }

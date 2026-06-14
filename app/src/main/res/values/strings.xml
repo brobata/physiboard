@@ -955,6 +955,8 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="trackpad_gestures_enabled_description">Swipe up on trackpad to accept word suggestions</string>
     <string name="trackpad_gesture_add_word_title">Add words with gestures</string>
     <string name="trackpad_gesture_add_word_description">Allow the suggestion gesture to activate the dictionary add button.</string>
+    <string name="trackpad_gesture_add_word_full_width_title">Full-width add-word swipe</string>
+    <string name="trackpad_gesture_add_word_full_width_description">When only the add-word button is shown, allow any trackpad third to add it.</string>
     <string name="trackpad_gestures_show_tutorial">Show Tutorial</string>
     <string name="trackpad_gestures_tutorial_description">Learn how to use trackpad gestures</string>
     <string name="trackpad_gestures_install_shizuku">Install Shizuku</string>
