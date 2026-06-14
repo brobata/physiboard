@@ -354,6 +354,16 @@ object AutoCorrector {
         return normalize(original) == normalize(replacement)
     }
 
+    private fun shouldApplyExactReplacement(
+        original: String,
+        replacement: String,
+        isKnownWord: ((String) -> Boolean)?,
+        explicitSubstitutionLanguagesEnabled: Boolean
+    ): Boolean {
+        val known = isKnownWord?.invoke(original) == true
+        return !known || isOrthographicReplacement(original, replacement) || explicitSubstitutionLanguagesEnabled
+    }
+
     /**
      * Processes text before cursor and applies corrections if needed.
      * Supports both single words and patterns with spaces (e.g. "cos e" → "cos'è").
@@ -389,11 +399,8 @@ object AutoCorrector {
             emptySet<String>()
         }
 
-        // Determine current IME language; if unavailable, do not apply autosubstitution
+        // Determine current IME language when no explicit substitution languages are configured.
         val imeLanguage = locale ?: if (context != null) getCurrentImeLanguageCode(context) else null
-        if (imeLanguage == null) {
-            return null
-        }
 
         // Build candidate languages. When the user explicitly enables multiple
         // substitution languages, search those languages instead of only the
@@ -401,6 +408,9 @@ object AutoCorrector {
         val candidates = if (enabledLanguages.isNotEmpty()) {
             enabledLanguages.filter { corrections.containsKey(it) }.toSet()
         } else {
+            if (imeLanguage == null) {
+                return null
+            }
             buildSet {
                 if (corrections.containsKey(imeLanguage)) add(imeLanguage)
                 if (corrections.containsKey("x-pastiera")) add("x-pastiera")
@@ -416,6 +426,7 @@ object AutoCorrector {
         if (languagesToSearch.isEmpty()) {
             return null
         }
+        val explicitSubstitutionLanguagesEnabled = context != null && enabledLanguages.isNotEmpty()
 
         // Highest priority: exact trigger matches that include symbols.
         // Use a cursor endpoint trimmed only for trailing whitespace so pure-symbol
@@ -495,28 +506,42 @@ object AutoCorrector {
                         Log.d(TAG, "Sequence '$sequence' has been rejected, don't correct")
                         continue // Try with fewer words
                     }
-	                    for (lang in languagesToSearch) {
-	                        val customCorrection = getCustomCorrection(sequence, lang, context)
-	                        if (customCorrection != null) {
-	                            val known = maxWords == 1 && isKnownWord?.invoke(sequence) == true
-	                            if (!known || isOrthographicReplacement(sequence, customCorrection)) {
-	                                Log.d(TAG, "Found custom correction for sequence: '$sequence' → '$customCorrection' (language: $lang)")
-	                                return Pair(sequence, customCorrection)
-	                            }
-	                        }
-	                    }
+		                    for (lang in languagesToSearch) {
+		                        val customCorrection = getCustomCorrection(sequence, lang, context)
+		                        if (customCorrection != null) {
+		                            if (
+		                                maxWords > 1 ||
+		                                shouldApplyExactReplacement(
+		                                    sequence,
+		                                    customCorrection,
+		                                    isKnownWord,
+		                                    explicitSubstitutionLanguagesEnabled
+		                                )
+		                            ) {
+		                                Log.d(TAG, "Found custom correction for sequence: '$sequence' → '$customCorrection' (language: $lang)")
+		                                return Pair(sequence, customCorrection)
+		                            }
+		                        }
+		                    }
 
 	                    // Check if there's a correction for this sequence in one of the enabled languages
-	                    for (lang in languagesToSearch) {
-	                        val correction = getCorrection(sequence, lang, context)
-	                        if (correction != null) {
-	                            val known = maxWords == 1 && isKnownWord?.invoke(sequence) == true
-	                            if (!known || isOrthographicReplacement(sequence, correction)) {
-	                                Log.d(TAG, "Found correction for multi-word sequence: '$sequence' → '$correction' (language: $lang)")
-	                                return Pair(sequence, correction)
-	                            }
-	                        }
-	                    }
+		                    for (lang in languagesToSearch) {
+		                        val correction = getCorrection(sequence, lang, context)
+		                        if (correction != null) {
+		                            if (
+		                                maxWords > 1 ||
+		                                shouldApplyExactReplacement(
+		                                    sequence,
+		                                    correction,
+		                                    isKnownWord,
+		                                    explicitSubstitutionLanguagesEnabled
+		                                )
+		                            ) {
+		                                Log.d(TAG, "Found correction for multi-word sequence: '$sequence' → '$correction' (language: $lang)")
+		                                return Pair(sequence, correction)
+		                            }
+		                        }
+		                    }
 	                    if (maxWords == 1 && isKnownWord?.invoke(sequence) == true) {
 	                        Log.d(TAG, "Word '$sequence' is known in an active dictionary, don't auto-substitute")
 	                        continue
@@ -550,8 +575,7 @@ object AutoCorrector {
 	        for (lang in languagesToSearch) {
 	            val customCorrection = getCustomCorrection(word, lang, context)
 	            if (customCorrection != null) {
-	                val known = isKnownWord?.invoke(word) == true
-	                if (!known || isOrthographicReplacement(word, customCorrection)) {
+	                if (shouldApplyExactReplacement(word, customCorrection, isKnownWord, explicitSubstitutionLanguagesEnabled)) {
 	                    Log.d(TAG, "Found custom correction for word: '$word' → '$customCorrection' (language: $lang)")
 	                    return Pair(word, customCorrection)
 	                }
@@ -562,8 +586,7 @@ object AutoCorrector {
 	        for (lang in languagesToSearch) {
 	            val correction = getCorrection(word, lang, context)
 	            if (correction != null) {
-	                val known = isKnownWord?.invoke(word) == true
-	                if (!known || isOrthographicReplacement(word, correction)) {
+	                if (shouldApplyExactReplacement(word, correction, isKnownWord, explicitSubstitutionLanguagesEnabled)) {
 	                    Log.d(TAG, "Found correction for word: '$word' → '$correction' (language: $lang)")
 	                    return Pair(word, correction)
 	                }

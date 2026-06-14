@@ -312,6 +312,53 @@ class AutoReplaceControllerLogicTest {
     }
 
     @Test
+    fun exactReplacementAllowsTwoLetterCustomSubstitutionWithApostropheBeforeDictionaryCaseCandidate() {
+        val context = RuntimeEnvironment.getApplication()
+        SettingsManager.saveCustomAutoCorrections(context, "fr", mapOf("ct" to "c'était"))
+        SettingsManager.setAutoCorrectEnabledLanguages(context, setOf("fr"))
+        AutoCorrector.loadCorrections(context.assets, context)
+        val repository = FakeDictionaryRepository().apply {
+            isReady = true
+            addTestEntry("CT", 255)
+        }
+        val controller = AutoReplaceController(
+            repository = repository,
+            suggestionEngine = SuggestionEngine(repository),
+            settingsProvider = {
+                SuggestionSettings(
+                    autoReplaceOnSpaceEnter = true,
+                    maxAutoReplaceDistance = 1
+                )
+            },
+            knownWordProvider = { word -> word.equals("ct", ignoreCase = true) },
+            exactReplacementProvider = { word, boundaryChar ->
+                AutoCorrector.processText(
+                    textBeforeCursor = word + (boundaryChar ?: ' '),
+                    locale = "fr",
+                    context = context,
+                    isKnownWord = { candidate -> candidate.equals("ct", ignoreCase = true) }
+                )?.takeIf { (original, replacement) ->
+                    original == word && replacement != word
+                }?.second
+            }
+        )
+        val tracker = CurrentWordTracker(onWordChanged = {}, onWordReset = {})
+        tracker.setWord("Ct")
+        val inputConnection = FakeInputConnection(context, "Ct")
+
+        val result = controller.handleBoundary(
+            keyCode = KeyEvent.KEYCODE_SPACE,
+            event = KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_SPACE),
+            tracker = tracker,
+            inputConnection = inputConnection
+        )
+
+        assertTrue(result.replaced)
+        assertEquals("C'était ", inputConnection.text)
+        assertEquals("C'était", result.replacement)
+    }
+
+    @Test
     fun activeDictionaryKnownWordProviderPreventsFuzzyReplacement() {
         val context = RuntimeEnvironment.getApplication()
         val repository = FakeDictionaryRepository().apply {
