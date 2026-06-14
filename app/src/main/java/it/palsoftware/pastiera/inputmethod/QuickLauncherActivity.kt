@@ -299,6 +299,7 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
     }
 
     private fun quickLauncherCommandsFromCachedApps(): List<CommandTarget> {
+        AppListHelper.syncPackageChanges(this)
         val cachedApps = AppListHelper.getCachedInstalledApps() ?: return emptyList()
         return cachedApps.map { app ->
             CommandTarget(
