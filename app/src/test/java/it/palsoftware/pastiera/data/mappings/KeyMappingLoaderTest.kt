@@ -89,6 +89,8 @@ class KeyMappingLoaderTest {
         assertEquals("„", mappings[KeyEvent.KEYCODE_J])
         assertEquals("“", mappings[KeyEvent.KEYCODE_K])
         assertEquals("&", mappings[KeyEvent.KEYCODE_C])
+        assertEquals("°", mappings[KeyEvent.KEYCODE_O])
+        assertEquals("^", mappings[KeyEvent.KEYCODE_V])
         assertEquals("»", mappings[KeyEvent.KEYCODE_Z])
         assertEquals("«", mappings[KeyEvent.KEYCODE_X])
     }

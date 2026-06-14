@@ -8,7 +8,7 @@
     "KEYCODE_Y": "]",
     "KEYCODE_U": "<",
     "KEYCODE_I": ">",
-    "KEYCODE_O": "^",
+    "KEYCODE_O": "°",
     "KEYCODE_P": "%",
     "KEYCODE_A": "=",
     "KEYCODE_S": ";",
@@ -22,7 +22,7 @@
     "KEYCODE_Z": "»",
     "KEYCODE_X": "«",
     "KEYCODE_C": "&",
-    "KEYCODE_V": "¿",
+    "KEYCODE_V": "^",
     "KEYCODE_B": "¡",
     "KEYCODE_N": "§",
     "KEYCODE_M": "$"
