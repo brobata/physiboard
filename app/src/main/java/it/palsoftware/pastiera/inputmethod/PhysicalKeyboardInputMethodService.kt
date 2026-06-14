@@ -1314,6 +1314,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             suggestionController.clearPendingAddWord()
             updateStatusBarText()
         }
+        candidatesBarController.onAddUserWordSubstitutionRequested = { word ->
+            showAddSubstitutionDialog(word)
+        }
         candidatesBarController.onSuggestionCommitted = {
             if (shiftLayerLatched || altLayerLatched) {
                 shiftLayerLatched = false
@@ -2815,6 +2818,25 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         } catch (e: Exception) {
             Log.w(TAG, "Failed to parse locale from subtype: $localeString", e)
             Locale.ITALIAN
+        }
+    }
+
+    private fun showAddSubstitutionDialog(word: String) {
+        val replacement = word.trim()
+        if (replacement.isBlank()) return
+        val languageCode = getLocaleFromSubtype().language.ifBlank { "it" }
+        try {
+            val intent = Intent(this, AddSubstitutionActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
+                addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY)
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                putExtra(AddSubstitutionActivity.EXTRA_REPLACEMENT, replacement)
+                putExtra(AddSubstitutionActivity.EXTRA_LANGUAGE_CODE, languageCode)
+            }
+            startActivity(intent)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to open add-substitution dialog", e)
         }
     }
 

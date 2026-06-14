@@ -150,6 +150,16 @@
             android:finishOnTaskLaunch="true" />
 
         <activity
+            android:name=".inputmethod.AddSubstitutionActivity"
+            android:theme="@style/Theme.Pastiera.OverlayDialog"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:noHistory="true"
+            android:finishOnTaskLaunch="true" />
+
+        <activity
             android:name=".inputmethod.QuickLauncherActivity"
             android:theme="@style/Theme.Pastiera.QuickLauncherOverlay"
             android:exported="false"

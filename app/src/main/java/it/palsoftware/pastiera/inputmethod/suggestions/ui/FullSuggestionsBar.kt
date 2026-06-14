@@ -250,6 +250,7 @@ class FullSuggestionsBar(
         shouldDisableSuggestions: Boolean,
         addWordCandidate: String?,
         onAddUserWord: ((String) -> Unit)?,
+        onAddUserWordSubstitutionRequested: ((String) -> Unit)?,
         onSuggestionCommitted: (() -> Unit)?,
         onHideSuggestion: ((String) -> Unit)?,
         onDeleteUserSuggestion: ((String) -> Unit)?,
@@ -277,6 +278,7 @@ class FullSuggestionsBar(
         frame.visibility = View.VISIBLE
         // Show or hide hamburger button based on showHamburgerButton flag
         hamburgerButton?.visibility = if (showHamburgerButton) View.VISIBLE else View.GONE
+        applyContainerInsetsForHamburger()
 
         val slots = buildSlots(suggestions, addWordCandidate)
         applySuggestionsAccessibilityThrottle(slots)
@@ -297,6 +299,7 @@ class FullSuggestionsBar(
             shouldDisableSuggestions,
             addWordCandidate,
             onAddUserWord,
+            onAddUserWordSubstitutionRequested,
             onSuggestionCommitted,
             onHideSuggestion,
             onDeleteUserSuggestion,
@@ -316,6 +319,28 @@ class FullSuggestionsBar(
         }
     }
 
+    private fun applyContainerInsetsForHamburger() {
+        val bar = container ?: return
+        val rightInset = if (showHamburgerButton) dpToPx(35f) else 0
+        val params = (bar.layoutParams as? FrameLayout.LayoutParams)
+            ?: FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                targetHeightPx
+            )
+        var changed = false
+        if (params.height != targetHeightPx) {
+            params.height = targetHeightPx
+            changed = true
+        }
+        if (params.marginEnd != rightInset) {
+            params.marginEnd = rightInset
+            changed = true
+        }
+        if (changed || bar.layoutParams !is FrameLayout.LayoutParams) {
+            bar.layoutParams = params
+        }
+    }
+
     private fun renderSlots(
         bar: LinearLayout,
         slots: List<String?>,
@@ -324,6 +349,7 @@ class FullSuggestionsBar(
         shouldDisableSuggestions: Boolean,
         addWordCandidate: String?,
         onAddUserWord: ((String) -> Unit)?,
+        onAddUserWordSubstitutionRequested: ((String) -> Unit)?,
         onSuggestionCommitted: (() -> Unit)?,
         onHideSuggestion: ((String) -> Unit)?,
         onDeleteUserSuggestion: ((String) -> Unit)?,
@@ -334,15 +360,7 @@ class FullSuggestionsBar(
         bar.visibility = View.VISIBLE
 
         // Force bar and frame to the target height to avoid fallback to wrap_content.
-        (bar.layoutParams as? FrameLayout.LayoutParams)?.let { lp ->
-            lp.height = targetHeightPx
-            bar.layoutParams = lp
-        } ?: run {
-            bar.layoutParams = FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                targetHeightPx
-            )
-        }
+        applyContainerInsetsForHamburger()
         (frameContainer?.layoutParams as? ViewGroup.LayoutParams)?.let { lp ->
             lp.height = targetHeightPx
             frameContainer?.layoutParams = lp
@@ -424,6 +442,12 @@ class FullSuggestionsBar(
                             flashSlot(slotIndex)
                             onAddUserWord?.invoke(suggestion)
                         }
+                        setOnLongClickListener {
+                            performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                            resetActionMode()
+                            onAddUserWordSubstitutionRequested?.invoke(suggestion)
+                            true
+                        }
                     } else {
                         val clickListener = SuggestionButtonHandler.createSuggestionClickListener(
                             suggestion,
@@ -450,6 +474,7 @@ class FullSuggestionsBar(
                                 shouldDisableSuggestions = shouldDisableSuggestions,
                                 addWordCandidate = addWordCandidate,
                                 onAddUserWord = onAddUserWord,
+                                onAddUserWordSubstitutionRequested = onAddUserWordSubstitutionRequested,
                                 onSuggestionCommitted = onSuggestionCommitted,
                                 onHideSuggestion = onHideSuggestion,
                                 onDeleteUserSuggestion = onDeleteUserSuggestion,

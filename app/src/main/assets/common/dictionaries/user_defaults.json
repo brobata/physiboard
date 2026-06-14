@@ -1,4 +1,6 @@
 [
+  { "w": "hallo", "f": 80 },
+  { "w": "haue", "f": 60 },
   { "w": "Pastiera", "f": 30 },
   { "w": "BlackBerry", "f": 25 },
   { "w": "Parenzo", "f": 20 }

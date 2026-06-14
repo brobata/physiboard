@@ -48,6 +48,13 @@ class CandidatesBarController(
             candidatesStatusBar.onAddUserWord = value
         }
 
+    var onAddUserWordSubstitutionRequested: ((String) -> Unit)? = null
+        set(value) {
+            field = value
+            inputStatusBar.onAddUserWordSubstitutionRequested = value
+            candidatesStatusBar.onAddUserWordSubstitutionRequested = value
+        }
+
     var onSuggestionCommitted: (() -> Unit)? = null
         set(value) {
             field = value

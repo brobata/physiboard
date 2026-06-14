@@ -135,6 +135,12 @@ class AutoReplaceController(
             if (!isOrthographicVariant && !isCaseVariant && candidate.distance <= 0) return false
             if (candidate.distance > settings.maxAutoReplaceDistance) return false
             if (input.all { it.isLowerCase() } && isAcronymLike(candidate.candidate)) return false
+            if (!isCaseVariant &&
+                input.firstOrNull()?.isLowerCase() == true &&
+                candidate.candidate.firstOrNull()?.isUpperCase() == true
+            ) {
+                return false
+            }
 
             val lengthDelta = candidate.candidate.length - input.length
             if (lengthDelta == 0) {
@@ -225,13 +231,13 @@ class AutoReplaceController(
 
         val settings = settingsProvider()
         val trigger = triggerFromBoundaryChar(boundaryChar)
-        if (!settings.autoReplaceOnSpaceEnter || inputConnection == null) {
+        if (inputConnection == null) {
             tracker.onBoundaryReached(boundaryChar, inputConnection)
             DebugCaptureStore.recordAutoCorrectionAttempt(
                 before = tracker.currentWord,
                 trigger = trigger,
                 outcome = DebugCaptureStore.AutoCorrectionOutcome.NOT_APPLICABLE,
-                reason = if (!settings.autoReplaceOnSpaceEnter) "auto_replace_disabled" else "no_input_connection"
+                reason = "no_input_connection"
             )
             return ReplaceResult(false, unicodeChar != 0)
         }
@@ -305,6 +311,17 @@ class AutoReplaceController(
                 Log.d("AutoReplaceController", "Committed exact replacement '$word' -> '$exactReplacement'")
                 return ReplaceResult(true, true, exactReplacement)
             }
+        }
+
+        if (!settings.autoReplaceOnSpaceEnter) {
+            tracker.onBoundaryReached(boundaryChar, inputConnection)
+            DebugCaptureStore.recordAutoCorrectionAttempt(
+                before = word,
+                trigger = trigger,
+                outcome = DebugCaptureStore.AutoCorrectionOutcome.NOT_APPLICABLE,
+                reason = "auto_replace_disabled"
+            )
+            return ReplaceResult(false, unicodeChar != 0)
         }
 
         primaryDictionaryCaseVariant(lookupWord, word)?.let { caseReplacement ->

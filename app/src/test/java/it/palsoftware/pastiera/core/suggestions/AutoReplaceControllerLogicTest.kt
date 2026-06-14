@@ -153,6 +153,22 @@ class AutoReplaceControllerLogicTest {
     }
 
     @Test
+    fun safeAutoReplaceRejectsProperNounTypoForLowercaseInput() {
+        val settings = SuggestionSettings(maxAutoReplaceDistance = 1)
+
+        assertEquals(
+            false,
+            AutoReplaceController.isSafeAutoReplaceCandidate(
+                input = "hallo",
+                lookupWord = "hallo",
+                candidate = SuggestionResult("Halle", 1, 1.0, SuggestionSource.MAIN),
+                settings = settings,
+                isOrthographicVariant = false
+            )
+        )
+    }
+
+    @Test
     fun safeAutoReplaceRejectsSameLengthFirstLetterSubstitution() {
         val settings = SuggestionSettings(maxAutoReplaceDistance = 1)
 
@@ -309,6 +325,41 @@ class AutoReplaceControllerLogicTest {
         assertTrue(result.replaced)
         assertEquals("Ça ", inputConnection.text)
         assertEquals("Ça", result.replacement)
+    }
+
+    @Test
+    fun exactReplacementRunsEvenWhenFuzzyAutoReplaceIsDisabled() {
+        val context = RuntimeEnvironment.getApplication()
+        val repository = FakeDictionaryRepository().apply {
+            isReady = true
+        }
+        val controller = AutoReplaceController(
+            repository = repository,
+            suggestionEngine = SuggestionEngine(repository),
+            settingsProvider = {
+                SuggestionSettings(
+                    autoReplaceOnSpaceEnter = false,
+                    maxAutoReplaceDistance = 1
+                )
+            },
+            exactReplacementProvider = { word, _ ->
+                if (word == "tssst") "totallynewsubstitution" else null
+            }
+        )
+        val tracker = CurrentWordTracker(onWordChanged = {}, onWordReset = {})
+        tracker.setWord("tssst")
+        val inputConnection = FakeInputConnection(context, "tssst")
+
+        val result = controller.handleBoundary(
+            keyCode = KeyEvent.KEYCODE_SPACE,
+            event = KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_SPACE),
+            tracker = tracker,
+            inputConnection = inputConnection
+        )
+
+        assertTrue(result.replaced)
+        assertEquals("totallynewsubstitution ", inputConnection.text)
+        assertEquals("totallynewsubstitution", result.replacement)
     }
 
     @Test

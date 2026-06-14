@@ -170,6 +170,12 @@
     <string name="auto_correct_delete">Delete</string>
     <string name="auto_correct_save">Save</string>
     <string name="auto_correct_cancel">Cancel</string>
+    <string name="add_substitution_title">Add substitution</string>
+    <string name="add_substitution_replacement_label">Replacement: %1$s</string>
+    <string name="add_substitution_trigger_label">Shortcut</string>
+    <string name="add_substitution_also_dictionary">Also add replacement to dictionary</string>
+    <string name="add_substitution_saved">Substitution saved</string>
+    <string name="add_substitution_failed">Could not save substitution</string>
     <string name="auto_correct_no_corrections">No corrections available. Tap the + button to add one.</string>
     <string name="auto_correct_add_language">Add New Substitution</string>
     <string name="auto_correct_language_code">Substitution Code</string>

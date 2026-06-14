@@ -69,6 +69,7 @@ class VariationBarView(
     var onCursorMovedListener: (() -> Unit)? = null
     var onSpeechRecognitionRequested: (() -> Unit)? = null
     var onAddUserWord: ((String) -> Unit)? = null
+    var onAddUserWordSubstitutionRequested: ((String) -> Unit)? = null
     var onLanguageSwitchRequested: (() -> Unit)? = null
     var onClipboardRequested: (() -> Unit)? = null
     var onEmojiPickerRequested: (() -> Unit)? = null
@@ -1052,6 +1053,13 @@ class VariationBarView(
                     )
                 }
             )
+            if (isAddCandidate) {
+                setOnLongClickListener {
+                    performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+                    onAddUserWordSubstitutionRequested?.invoke(variation)
+                    true
+                }
+            }
         }
     }
 

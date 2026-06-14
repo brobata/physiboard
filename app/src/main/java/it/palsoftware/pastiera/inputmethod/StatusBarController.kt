@@ -92,6 +92,12 @@ class StatusBarController(
             variationBarView?.onAddUserWord = value
         }
 
+    var onAddUserWordSubstitutionRequested: ((String) -> Unit)? = null
+        set(value) {
+            field = value
+            variationBarView?.onAddUserWordSubstitutionRequested = value
+        }
+
     var onSuggestionCommitted: (() -> Unit)? = null
 
     var onHideSuggestion: ((String) -> Unit)? = null
@@ -2109,6 +2115,7 @@ class StatusBarController(
             snapshot.shouldDisableSuggestions,
             snapshot.addWordCandidate,
             onAddUserWord,
+            onAddUserWordSubstitutionRequested,
             onSuggestionCommitted,
             onHideSuggestion,
             onDeleteUserSuggestion,

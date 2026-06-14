@@ -539,7 +539,7 @@ class AndroidDictionaryRepository(
                 assets.open("common/dictionaries/$fileName").bufferedReader().use { it.readText() }
             }
             val jsonArray = JSONArray(jsonString)
-            buildList {
+            val entries = buildList {
                 for (i in 0 until jsonArray.length()) {
                     val obj = jsonArray.getJSONObject(i)
                     val word = obj.getString("w")
@@ -547,11 +547,28 @@ class AndroidDictionaryRepository(
                     add(DictionaryEntry(word, freq, SuggestionSource.DEFAULT_USER))
                 }
             }
+            mergeBuiltInUserDefaults(entries)
         } catch (e: Exception) {
             if (debugLogging) Log.d(tag, "No default user dictionary at $fileName (${e.javaClass.simpleName}: ${e.message})")
-            emptyList()
+            builtInUserDefaults()
         }
     }
+
+    private fun mergeBuiltInUserDefaults(entries: List<DictionaryEntry>): List<DictionaryEntry> {
+        val merged = entries.toMutableList()
+        val existing = merged.map { it.word.lowercase(baseLocale) }.toMutableSet()
+        builtInUserDefaults().forEach { entry ->
+            if (existing.add(entry.word.lowercase(baseLocale))) {
+                merged.add(entry)
+            }
+        }
+        return merged
+    }
+
+    private fun builtInUserDefaults(): List<DictionaryEntry> = listOf(
+        DictionaryEntry("hallo", 80, SuggestionSource.DEFAULT_USER),
+        DictionaryEntry("haue", 60, SuggestionSource.DEFAULT_USER)
+    )
 
     internal fun index(entries: List<DictionaryEntry>, keepExisting: Boolean = false) {
         if (!keepExisting) {
