@@ -1577,11 +1577,12 @@ private fun launcherShortcutLabel(shortcut: SettingsManager.LauncherShortcut?): 
     }
 }
 
-private fun applyDevsChoiceSettings(context: Context) {
+internal fun applyDevsChoiceSettings(context: Context) {
     SettingsManager.setAppLanguageTag(context, null)
     SettingsManager.setPhysicalKeyboardProfileOverride(context, "auto")
     SettingsManager.setSoftwareKeyboardMode(context, SettingsManager.SoftwareKeyboardMode.AUTO)
     SettingsManager.setLongPressModifier(context, "variations")
+    SettingsManager.setLongPressThreshold(context, 200L)
     SettingsManager.setTrackpadGesturesEnabled(context, true)
     SettingsManager.setKeyboardLayoutAutoByLocale(context, false)
     SettingsManager.setKeyboardLayout(context, "qwertz")
