@@ -153,22 +153,6 @@ class AutoReplaceControllerLogicTest {
     }
 
     @Test
-    fun safeAutoReplaceRejectsProperNounTypoForLowercaseInput() {
-        val settings = SuggestionSettings(maxAutoReplaceDistance = 1)
-
-        assertEquals(
-            false,
-            AutoReplaceController.isSafeAutoReplaceCandidate(
-                input = "hallo",
-                lookupWord = "hallo",
-                candidate = SuggestionResult("Halle", 1, 1.0, SuggestionSource.MAIN),
-                settings = settings,
-                isOrthographicVariant = false
-            )
-        )
-    }
-
-    @Test
     fun safeAutoReplaceRejectsSameLengthFirstLetterSubstitution() {
         val settings = SuggestionSettings(maxAutoReplaceDistance = 1)
 

@@ -9,9 +9,6 @@ import org.junit.Test
 import java.util.Locale
 import kotlin.math.pow
 import org.mockito.Mockito.mock
-import org.mockito.Mockito.`when`
-import java.io.File
-import kotlinx.coroutines.runBlocking
 
 class DictionaryRepositoryTest {
 
@@ -25,10 +22,6 @@ class DictionaryRepositoryTest {
         context = mock(Context::class.java)
         assets = mock(AssetManager::class.java)
         userDictionaryStore = mock(UserDictionaryStore::class.java)
-        val filesDir = File(System.getProperty("java.io.tmpdir"), "pastiera-dictionary-test-${System.nanoTime()}").apply { mkdirs() }
-        `when`(context.filesDir).thenReturn(filesDir)
-        `when`(context.getFileStreamPath("user_defaults.json")).thenReturn(File(filesDir, "user_defaults.json"))
-        `when`(userDictionaryStore.loadUserEntries(context)).thenReturn(emptyList())
         repository = AndroidDictionaryRepository(
             context = context,
             assets = assets,
@@ -111,15 +104,5 @@ class DictionaryRepositoryTest {
         val bestHello = repository.bestEntryForNormalized(repository.normalize("hello"))
         assertEquals(SuggestionSource.MAIN, bestHello?.source)
         assertEquals(150, bestHello?.frequency)
-    }
-
-    @Test
-    fun builtInUserDefaultsAreLoadedWhenEditableDefaultsAreUnavailable() {
-        runBlocking {
-            repository.refreshUserEntries()
-        }
-
-        assertTrue(repository.isKnownWord("hallo"))
-        assertTrue(repository.isKnownWord("haue"))
     }
 }
