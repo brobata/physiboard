@@ -310,11 +310,7 @@ class AltSymManager(
         val insertedChar = insertedNormalChars.remove(keyCode)
         keyPressWasShifted.remove(keyCode)
         
-        // Non cancellare il long press se shift è ancora premuto
-        // Questo permette al long press di completarsi anche se il tasto viene rilasciato mentre shift è premuto
-        if (!shiftPressed) {
-            longPressRunnables.remove(keyCode)?.let { handler.removeCallbacks(it) }
-        }
+        longPressRunnables.remove(keyCode)?.let { handler.removeCallbacks(it) }
 
         // If the long press did NOT trigger and we had inserted a normal char, notify tracking
         if (!wasLongPressActivated && insertedChar != null) {

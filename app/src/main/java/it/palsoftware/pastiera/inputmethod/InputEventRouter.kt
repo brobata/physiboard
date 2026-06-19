@@ -494,6 +494,7 @@ class InputEventRouter(
         val resolvedUppercase = mapping?.let {
             when {
                 shiftOneShotActive -> true
+                params.shiftLayerLatched -> true
                 params.capsLockEnabled && event?.isShiftPressed != true -> true
                 event?.isShiftPressed == true -> true
                 else -> false
@@ -562,7 +563,8 @@ class InputEventRouter(
             return EditableFieldRoutingResult.Consume
         }
 
-        val shouldUseMultiTap = mapping?.isRealMultiTap == true && !resolvedUppercase
+        val shouldUseMultiTap = mapping?.isRealMultiTap == true &&
+            !shouldSuppressUppercaseEszettMultiTap(mapping, resolvedUppercase)
 
         // Ignore system-generated repeats on multi-tap keys so holding the key
         // won't churn through tap levels. Legacy keys keep their normal repeat.
@@ -571,8 +573,8 @@ class InputEventRouter(
         }
 
         // Multi-tap: commit immediately and replace within the timeout window.
-        // Shift/caps input should behave like normal uppercase typing, not cycle
-        // through uppercase variants such as S -> ẞ on QWERTZ.
+        // Uppercase multi-tap is intentional for layouts that expose accented
+        // uppercase letters such as E -> È -> É.
         if (shouldUseMultiTap && ic != null) {
             if (callbacks.handleMultiTapCommit(keyCode, mapping, resolvedUppercase, ic, hasLongPressSupport)) {
                 if (shiftOneShotActive) {
@@ -665,12 +667,12 @@ class InputEventRouter(
         val charForVariations = if (LayoutMappingRepository.isMapped(keyCode)) {
             LayoutMappingRepository.getCharacterWithModifiers(
                 keyCode,
-                event?.isShiftPressed == true,
+                effectiveShiftForLongPress,
                 params.capsLockEnabled,
                 shiftOneShotActive
             )
         } else {
-            callbacks.getCharacterFromLayout(keyCode, event, event?.isShiftPressed == true)
+            callbacks.getCharacterFromLayout(keyCode, event, effectiveShiftForLongPress)
         }
         if (charForVariations != null) {
             if (controllers.variationStateController.hasVariationsFor(charForVariations)) {
@@ -686,7 +688,7 @@ class InputEventRouter(
         if (isAlphabeticKey && LayoutMappingRepository.isMapped(keyCode)) {
             val char = LayoutMappingRepository.getCharacterStringWithModifiers(
                 keyCode,
-                event?.isShiftPressed == true,
+                effectiveShiftForLongPress,
                 params.capsLockEnabled,
                 shiftOneShotActive
             )
@@ -764,6 +766,13 @@ class InputEventRouter(
         }
 
         return false
+    }
+
+    private fun shouldSuppressUppercaseEszettMultiTap(
+        mapping: LayoutMapping,
+        resolvedUppercase: Boolean
+    ): Boolean {
+        return resolvedUppercase && mapping.taps.drop(1).any { it.uppercase == "ẞ" }
     }
 
     fun handleTextInputPipeline(

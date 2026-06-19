@@ -1,6 +1,8 @@
 package it.palsoftware.pastiera.inputmethod
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.view.KeyEvent
 import android.view.inputmethod.ExtractedText
 import android.view.inputmethod.InputConnection
@@ -10,6 +12,8 @@ import it.palsoftware.pastiera.core.SymLayoutController
 import it.palsoftware.pastiera.core.TextInputController
 import it.palsoftware.pastiera.SettingsManager
 import it.palsoftware.pastiera.SymPagesConfig
+import it.palsoftware.pastiera.data.layout.LayoutMapping
+import it.palsoftware.pastiera.data.layout.TapMapping
 import it.palsoftware.pastiera.data.mappings.KeyMappingLoader
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -596,7 +600,16 @@ class InputEventRouterModifierE2ETest {
             context
         )
         SettingsManager.setLongPressModifier(context, "variations")
-        val callbacks = callbacksWithCurrentLayout()
+        val multiTapController = MultiTapController(
+            handler = Handler(Looper.getMainLooper()),
+            timeoutMs = 400L
+        )
+        val callbacks = callbacksWithCurrentLayout(
+            multiTapCommitHandler = { code, mapping, uppercase, inputConnection, _ ->
+                inputConnection != null &&
+                    multiTapController.handleTap(code, mapping, uppercase, inputConnection).handled
+            }
+        )
 
         repeat(2) {
             val result = routeKeyDown(
@@ -609,6 +622,86 @@ class InputEventRouterModifierE2ETest {
             )
 
             assertTrue(result is InputEventRouter.EditableFieldRoutingResult.Consume)
+            symLayoutController.handleKeyUp(KeyEvent.KEYCODE_S, shiftPressed = true)
+        }
+
+        assertEquals(listOf("S", "S"), inputConnectionRecorder.committedTexts)
+        assertEquals(0, inputConnectionRecorder.deleteSurroundingTextCalls)
+    }
+
+    @Test
+    fun shiftedRealMultiTapLayout_cyclesUppercaseAccentVariants() {
+        val italianStyleMapping = LayoutMapping(
+            lowercase = "e",
+            uppercase = "E",
+            multiTapEnabled = true,
+            taps = listOf(
+                TapMapping(lowercase = "e", uppercase = "E"),
+                TapMapping(lowercase = "è", uppercase = "È"),
+                TapMapping(lowercase = "é", uppercase = "É")
+            )
+        )
+        val multiTapController = MultiTapController(
+            handler = Handler(Looper.getMainLooper()),
+            timeoutMs = 400L
+        )
+        val callbacks = TestCallbacks(
+            modifierStateController = modifierStateController,
+            mappingProvider = { key ->
+                if (key == KeyEvent.KEYCODE_E) italianStyleMapping else null
+            },
+            multiTapCommitHandler = { code, mapping, uppercase, inputConnection, _ ->
+                inputConnection != null &&
+                    multiTapController.handleTap(code, mapping, uppercase, inputConnection).handled
+            }
+        )
+
+        repeat(3) {
+            val result = routeKeyDown(
+                keyCode = KeyEvent.KEYCODE_E,
+                event = keyDown(
+                    KeyEvent.KEYCODE_E,
+                    metaState = KeyEvent.META_SHIFT_ON or KeyEvent.META_SHIFT_LEFT_ON
+                ),
+                callbacks = callbacks
+            )
+
+            assertTrue(result is InputEventRouter.EditableFieldRoutingResult.Consume)
+        }
+
+        assertEquals(listOf("E", "È", "É"), inputConnectionRecorder.committedTexts)
+        assertEquals(2, inputConnectionRecorder.deleteSurroundingTextCalls)
+    }
+
+    @Test
+    fun latchedShiftOnGermanMultiTapQwertz_keepsDoubleSInWords() {
+        it.palsoftware.pastiera.data.layout.LayoutMappingRepository.loadLayout(
+            context.assets,
+            "german_multitap_qwertz",
+            context
+        )
+        inputConnectionRecorder.textBeforeCursor = "foo"
+        shiftLayerLatchedForTest = true
+        val multiTapController = MultiTapController(
+            handler = Handler(Looper.getMainLooper()),
+            timeoutMs = 400L
+        )
+        val callbacks = callbacksWithCurrentLayout(
+            multiTapCommitHandler = { code, mapping, uppercase, inputConnection, _ ->
+                inputConnection != null &&
+                    multiTapController.handleTap(code, mapping, uppercase, inputConnection).handled
+            }
+        )
+
+        repeat(2) {
+            val result = routeKeyDown(
+                keyCode = KeyEvent.KEYCODE_S,
+                event = keyDown(KeyEvent.KEYCODE_S),
+                callbacks = callbacks
+            )
+
+            assertTrue(result is InputEventRouter.EditableFieldRoutingResult.Consume)
+            symLayoutController.handleKeyUp(KeyEvent.KEYCODE_S, shiftPressed = false)
         }
 
         assertEquals(listOf("S", "S"), inputConnectionRecorder.committedTexts)
@@ -701,12 +794,15 @@ class InputEventRouterModifierE2ETest {
         )
     }
 
-    private fun callbacksWithCurrentLayout(): TestCallbacks {
+    private fun callbacksWithCurrentLayout(
+        multiTapCommitHandler: (Int, it.palsoftware.pastiera.data.layout.LayoutMapping, Boolean, InputConnection?, Boolean) -> Boolean = { _, _, _, _, _ -> false }
+    ): TestCallbacks {
         return TestCallbacks(
             modifierStateController,
             mappingProvider = { key ->
                 it.palsoftware.pastiera.data.layout.LayoutMappingRepository.getMapping(key)
-            }
+            },
+            multiTapCommitHandler = multiTapCommitHandler
         )
     }
 
@@ -730,7 +826,8 @@ class InputEventRouterModifierE2ETest {
 
     private class TestCallbacks(
         private val modifierStateController: ModifierStateController,
-        private val mappingProvider: (Int) -> it.palsoftware.pastiera.data.layout.LayoutMapping? = { null }
+        private val mappingProvider: (Int) -> it.palsoftware.pastiera.data.layout.LayoutMapping? = { null },
+        private val multiTapCommitHandler: (Int, it.palsoftware.pastiera.data.layout.LayoutMapping, Boolean, InputConnection?, Boolean) -> Boolean = { _, _, _, _, _ -> false }
     ) {
         var updateStatusBarCalls = 0
         var refreshStatusBarCalls = 0
@@ -756,7 +853,7 @@ class InputEventRouterModifierE2ETest {
                 callSuperWithKey = { _, _ -> false },
                 startSpeechRecognition = { },
                 getMapping = mappingProvider,
-                handleMultiTapCommit = { _, _, _, _, _ -> false },
+                handleMultiTapCommit = multiTapCommitHandler,
                 isLongPressSuppressed = { false },
                 toggleMinimalUi = { }
             )
