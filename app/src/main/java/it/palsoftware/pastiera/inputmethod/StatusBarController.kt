@@ -436,6 +436,9 @@ class StatusBarController(
             normalKey = normalKey,
             specialKey = specialKey,
             textAndIcons = textAndIcons,
+            ledInactive = ledInactive,
+            ledActive = ledActive,
+            ledLocked = ledLocked,
             accent = accent,
             keyPopup = keyPopup,
             keyPopupSelected = keyPopupSelected,
@@ -1194,6 +1197,9 @@ class StatusBarController(
         keyboardView.layoutName = layoutName
         keyboardView.shifted = uppercase
         keyboardView.shiftLocked = snapshot.capsLockEnabled
+        keyboardView.ctrlOneShot = snapshot.ctrlOneShot
+        keyboardView.ctrlLocked = snapshot.ctrlLatchActive || snapshot.ctrlLatchFromNavMode
+        keyboardView.ctrlPressed = snapshot.ctrlPhysicallyPressed
         val symKeySpec = nextSoftwareSymKeySpec(snapshot.symPage)
         keyboardView.symbolsLabel = symKeySpec.label
         keyboardView.symbolsIconRes = symKeySpec.iconRes

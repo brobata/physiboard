@@ -246,7 +246,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private var lastAltTapUpTime: Long = 0L
     private var symTogglePendingOnKeyUp: Boolean = false
     private var symChordUsedSinceKeyDown: Boolean = false
-    private var softwareCtrlStartedWithLatch: Boolean = false
     private var nativeTrackpadGestureStart: NativeTrackpadGestureStart? = null
     private var nativeTrackpadLastX: Float = 0f
     private var nativeTrackpadLastY: Float = 0f
@@ -1955,7 +1954,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private fun handleSoftwareKeyboardModifierKeyDown(keyCode: Int): Boolean {
         return when (keyCode) {
             KeyEvent.KEYCODE_CTRL_LEFT, KeyEvent.KEYCODE_CTRL_RIGHT -> {
-                softwareCtrlStartedWithLatch = ctrlLatchActive
                 modifierStateBeforeHold = modifierStateController.captureLogicalState()
                 variationInteractedDuringHold = false
                 otherKeyInteractedDuringHold = false
@@ -1987,11 +1985,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 val shortcutUsedDuringHold = otherKeyInteractedDuringHold
 
                 val result = modifierStateController.handleCtrlKeyUp(keyCode)
-                if (wasTap && !softwareCtrlStartedWithLatch) {
-                    modifierStateController.ctrlOneShot = false
-                    modifierStateController.ctrlLatchActive = true
-                    modifierStateController.ctrlLatchFromNavMode = false
-                } else if (shortcutUsedDuringHold && ctrlOneShot && !ctrlLatchActive) {
+                if (shortcutUsedDuringHold && ctrlOneShot && !ctrlLatchActive) {
                     modifierStateController.ctrlOneShot = false
                 }
                 if (result.shouldUpdateStatusBar || wasTap || shortcutUsedDuringHold) {
@@ -2001,7 +1995,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 variationInteractedDuringHold = false
                 otherKeyInteractedDuringHold = false
                 modifierStateBeforeHold = null
-                softwareCtrlStartedWithLatch = false
                 true
             }
             KEYCODE_SYM -> {

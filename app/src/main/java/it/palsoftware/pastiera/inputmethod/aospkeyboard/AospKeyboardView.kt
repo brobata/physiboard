@@ -65,6 +65,9 @@ class AospKeyboardView @JvmOverloads constructor(
         val normalKey: Int,
         val specialKey: Int,
         val textAndIcons: Int,
+        val ledInactive: Int,
+        val ledActive: Int,
+        val ledLocked: Int,
         val accent: Int,
         val keyPopup: Int = specialKey,
         val keyPopupSelected: Int = accent,
@@ -133,6 +136,30 @@ class AospKeyboardView @JvmOverloads constructor(
             invalidate()
         }
     var shiftLocked: Boolean = false
+        set(value) {
+            if (field == value) {
+                return
+            }
+            field = value
+            invalidate()
+        }
+    var ctrlOneShot: Boolean = false
+        set(value) {
+            if (field == value) {
+                return
+            }
+            field = value
+            invalidate()
+        }
+    var ctrlLocked: Boolean = false
+        set(value) {
+            if (field == value) {
+                return
+            }
+            field = value
+            invalidate()
+        }
+    var ctrlPressed: Boolean = false
         set(value) {
             if (field == value) {
                 return
@@ -793,7 +820,7 @@ class AospKeyboardView @JvmOverloads constructor(
     private fun backgroundFor(key: Key): Drawable? {
         themeOverride?.let { theme ->
             val pressed = key == pressedKey
-            val baseColor = if (isFunctional(key.spec.type)) theme.specialKey else theme.normalKey
+            val baseColor = themedKeyColor(theme, key.spec.type)
             return GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
                 cornerRadius = keyCornerRadius(theme)
@@ -811,6 +838,22 @@ class AospKeyboardView @JvmOverloads constructor(
             else -> normalKeyBackground
         }
         return drawable?.constantState?.newDrawable()?.mutate() ?: drawable
+    }
+
+    private fun themedKeyColor(theme: ThemeOverride, type: KeyType): Int {
+        return when (type) {
+            KeyType.SHIFT -> when {
+                shiftLocked -> theme.ledLocked
+                shifted -> theme.ledActive
+                else -> theme.ledInactive
+            }
+            KeyType.CTRL -> when {
+                ctrlLocked -> theme.ledLocked
+                ctrlPressed || ctrlOneShot -> theme.ledActive
+                else -> theme.ledInactive
+            }
+            else -> if (isFunctional(type)) theme.specialKey else theme.normalKey
+        }
     }
 
     private fun themedPopupBackground(): Drawable? {
