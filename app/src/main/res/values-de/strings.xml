@@ -845,6 +845,10 @@ Jede Taste kann als Keycode, Aktion, Native Ctrl oder Keine konfiguriert werden.
     <string name="software_keyboard_layout_style_full_iso">Vollständig ISO</string>
     <string name="virtual_keyboard_behavior_title">Verhalten der virtuellen Tastatur</string>
     <string name="virtual_keyboard_behavior_description">Modus, Layout-Stil und spezifisches Verhalten der virtuellen Tastatur.</string>
+    <string name="software_keyboard_theme_link_title">Theme der Software-Tastatur</string>
+    <string name="software_keyboard_theme_link_description">Öffnet den Theme-Editor direkt auf der Seite für die virtuelle Tastatur.</string>
+    <string name="software_keyboard_nearest_key_touch_title">Nächstgelegene Taste</string>
+    <string name="software_keyboard_nearest_key_touch_description">Berührungen in der Lücke zwischen Tasten werden der wahrscheinlich nächsten Taste zugeordnet.</string>
     <string name="delete_alternatives_selection_hint">Wenn Text ausgewählt ist, sind diese Alternativen deaktiviert und Rücktaste löscht die Auswahl.</string>
     <string name="alt_shift_layout_switch_title">Alt+Shift-Layoutwechsel</string>
     <string name="alt_shift_layout_switch_description">Sprachen/Layouts mit Alt+Shift wechseln.</string>

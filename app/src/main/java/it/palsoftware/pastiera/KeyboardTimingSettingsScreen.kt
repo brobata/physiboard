@@ -1,6 +1,7 @@
 package it.palsoftware.pastiera
 
 import android.content.Context
+import android.content.Intent
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.SizeTransform
@@ -463,6 +464,9 @@ private fun VirtualKeyboardBehaviorSettingsScreen(
     var softwareKeyboardLayoutStyle by remember {
         mutableStateOf(SettingsManager.getSoftwareKeyboardLayoutStyle(context))
     }
+    var nearestKeyTouchEnabled by remember {
+        mutableStateOf(SettingsManager.getSoftwareKeyboardNearestKeyTouchEnabled(context))
+    }
     var showSoftwareKeyboardModeMenu by remember { mutableStateOf(false) }
     var showSoftwareKeyboardLayoutStyleMenu by remember { mutableStateOf(false) }
 
@@ -664,6 +668,73 @@ private fun VirtualKeyboardBehaviorSettingsScreen(
                     }
                 }
             }
+
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(74.dp)
+                    .clickable {
+                        context.startActivity(
+                            Intent(context, SettingsActivity::class.java)
+                                .putExtra(
+                                    SettingsActivity.EXTRA_DESTINATION,
+                                    SettingsActivity.DESTINATION_CUSTOMIZATION
+                                )
+                                .putExtra(
+                                    SettingsActivity.EXTRA_CUSTOMIZATION_DESTINATION,
+                                    SettingsActivity.CUSTOMIZATION_DESTINATION_KEYBOARD_THEME
+                                )
+                                .putExtra(
+                                    SettingsActivity.EXTRA_KEYBOARD_THEME_TARGET,
+                                    SettingsActivity.KEYBOARD_THEME_TARGET_SOFTWARE
+                                )
+                        )
+                    }
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Keyboard,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.software_keyboard_theme_link_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1
+                        )
+                        Text(
+                            text = stringResource(R.string.software_keyboard_theme_link_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            ModifierTapLatchRow(
+                title = stringResource(R.string.software_keyboard_nearest_key_touch_title),
+                description = stringResource(R.string.software_keyboard_nearest_key_touch_description),
+                checked = nearestKeyTouchEnabled,
+                onCheckedChange = { enabled ->
+                    nearestKeyTouchEnabled = enabled
+                    SettingsManager.setSoftwareKeyboardNearestKeyTouchEnabled(context, enabled)
+                }
+            )
         }
     }
 }

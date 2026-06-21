@@ -90,7 +90,8 @@ import kotlin.math.sqrt
 @Composable
 fun KeyboardThemeScreen(
     modifier: Modifier = Modifier,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    initialTarget: SettingsManager.KeyboardThemeTarget? = null
 ) {
     val context = LocalContext.current
     val builtInPresets = remember { keyboardThemePresets() }
@@ -99,7 +100,10 @@ fun KeyboardThemeScreen(
     }
     val themeOptions = builtInPresets.map { KeyboardThemeOption("builtin:${it.name}", it, it) } + savedThemes
     val initialPreviewPage = remember {
-        if (
+        if (initialTarget == SettingsManager.KeyboardThemeTarget.SOFTWARE) {
+            1
+        } else if (
+            initialTarget == null &&
             SettingsManager.resolveEffectiveSoftwareKeyboardMode(context) ==
                 SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL
         ) {

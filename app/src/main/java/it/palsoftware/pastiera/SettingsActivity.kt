@@ -17,6 +17,9 @@ class SettingsActivity : LocalizedComponentActivity() {
         const val CUSTOMIZATION_DESTINATION_LAUNCHER_SHORTCUTS = "launcher_shortcuts"
         const val CUSTOMIZATION_DESTINATION_APP_ENTER_BEHAVIOR = "app_enter_behavior"
         const val CUSTOMIZATION_DESTINATION_STATUS_BAR_BUTTONS = "status_bar_buttons"
+        const val CUSTOMIZATION_DESTINATION_KEYBOARD_THEME = "keyboard_theme"
+        const val EXTRA_KEYBOARD_THEME_TARGET = "it.palsoftware.pastiera.KEYBOARD_THEME_TARGET"
+        const val KEYBOARD_THEME_TARGET_SOFTWARE = "software"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -30,7 +33,8 @@ class SettingsActivity : LocalizedComponentActivity() {
                 SettingsScreen(
                     modifier = Modifier.fillMaxSize(),
                     initialDestination = intent.getStringExtra(EXTRA_DESTINATION),
-                    initialCustomizationDestination = intent.getStringExtra(EXTRA_CUSTOMIZATION_DESTINATION)
+                    initialCustomizationDestination = intent.getStringExtra(EXTRA_CUSTOMIZATION_DESTINATION),
+                    initialKeyboardThemeTarget = intent.getStringExtra(EXTRA_KEYBOARD_THEME_TARGET)
                 )
             }
         }

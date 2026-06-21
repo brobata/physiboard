@@ -867,6 +867,10 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="software_keyboard_layout_style_full_iso">Full ISO</string>
     <string name="virtual_keyboard_behavior_title">Virtual keyboard behavior</string>
     <string name="virtual_keyboard_behavior_description">Mode, layout style, and virtual-keyboard specific behavior.</string>
+    <string name="software_keyboard_theme_link_title">Software keyboard theme</string>
+    <string name="software_keyboard_theme_link_description">Open the theme editor on the virtual keyboard page.</string>
+    <string name="software_keyboard_nearest_key_touch_title">Nearest key touch</string>
+    <string name="software_keyboard_nearest_key_touch_description">Touches in the gap between keys go to the nearest likely key.</string>
 
     <string name="titan2_layout_title">Titan 2 Layout Alignment</string>
     <string name="titan2_layout_description">Align on-screen keyboard with Titan 2 physical keys</string>

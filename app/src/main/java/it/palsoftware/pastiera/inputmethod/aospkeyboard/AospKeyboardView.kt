@@ -32,6 +32,7 @@ import android.view.inputmethod.InputMethodManager
 import androidx.core.content.ContextCompat
 import it.palsoftware.pastiera.R
 import java.util.Locale
+import kotlin.math.abs
 
 /**
  * AOSP LatinIME alphabet key plane embedded in Pastiera.
@@ -145,6 +146,7 @@ class AospKeyboardView @JvmOverloads constructor(
             rebuildKeys(width, height)
             invalidate()
         }
+    var nearestKeyTouchEnabled: Boolean = true
     var shifted: Boolean = false
         set(value) {
             if (field == value) {
@@ -1017,7 +1019,24 @@ class AospKeyboardView @JvmOverloads constructor(
         return (relativeX / panel.keyWidth).toInt().coerceIn(0, panel.keys.lastIndex)
     }
 
-    private fun findKey(x: Float, y: Float): Key? = keys.firstOrNull { it.hitRect.contains(x, y) }
+    private fun findKey(x: Float, y: Float): Key? {
+        keys.firstOrNull { it.hitRect.contains(x, y) }?.let { return it }
+        if (!nearestKeyTouchEnabled) return null
+
+        val verticalSlop = maxOf(rowGapPx.toFloat(), dp(8f).toFloat())
+        val candidateRows = keys
+            .filter { y >= it.hitRect.top - verticalSlop && y <= it.hitRect.bottom + verticalSlop }
+            .ifEmpty { return null }
+        return candidateRows.minByOrNull { key ->
+            val dx = when {
+                x < key.hitRect.left -> key.hitRect.left - x
+                x > key.hitRect.right -> x - key.hitRect.right
+                else -> 0f
+            }
+            val dy = abs(y - key.hitRect.centerY())
+            dx * dx + dy * dy
+        }
+    }
 
     private fun soundKeyCodeFor(key: Key): Int {
         return when (key.spec.type) {

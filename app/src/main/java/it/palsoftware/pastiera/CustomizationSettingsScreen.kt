@@ -77,7 +77,8 @@ import it.palsoftware.pastiera.commands.CommandTarget
 fun CustomizationSettingsScreen(
     modifier: Modifier = Modifier,
     onBack: () -> Unit,
-    initialDestination: String? = null
+    initialDestination: String? = null,
+    initialKeyboardThemeTarget: String? = null
 ) {
     val context = LocalContext.current
     val prefs = remember { SettingsManager.getPreferences(context) }
@@ -162,6 +163,8 @@ fun CustomizationSettingsScreen(
                     CustomizationDestination.AppEnterBehavior
                 SettingsActivity.CUSTOMIZATION_DESTINATION_STATUS_BAR_BUTTONS ->
                     CustomizationDestination.StatusBarButtons
+                SettingsActivity.CUSTOMIZATION_DESTINATION_KEYBOARD_THEME ->
+                    CustomizationDestination.KeyboardTheme
                 else -> null
             }
             add(deepLinkedDestination ?: CustomizationDestination.Main)
@@ -885,7 +888,12 @@ fun CustomizationSettingsScreen(
             CustomizationDestination.KeyboardTheme -> {
                 KeyboardThemeScreen(
                     modifier = modifier,
-                    onBack = { navigateBack() }
+                    onBack = { navigateBack() },
+                    initialTarget = when (initialKeyboardThemeTarget) {
+                        SettingsActivity.KEYBOARD_THEME_TARGET_SOFTWARE ->
+                            SettingsManager.KeyboardThemeTarget.SOFTWARE
+                        else -> null
+                    }
                 )
             }
 

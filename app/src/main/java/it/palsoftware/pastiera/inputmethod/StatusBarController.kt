@@ -1218,6 +1218,8 @@ class StatusBarController(
         }
         keyboardView.layoutName = layoutName
         keyboardView.layoutStyle = softwareKeyboardLayoutStyle()
+        keyboardView.nearestKeyTouchEnabled =
+            SettingsManager.getSoftwareKeyboardNearestKeyTouchEnabled(context)
         keyboardView.shifted = uppercase
         keyboardView.shiftLocked = snapshot.capsLockEnabled
         keyboardView.ctrlOneShot = snapshot.ctrlOneShot

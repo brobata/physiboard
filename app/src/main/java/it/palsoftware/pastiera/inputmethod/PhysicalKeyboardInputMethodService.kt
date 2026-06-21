@@ -1770,6 +1770,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 Handler(Looper.getMainLooper()).post {
                     updateStatusBarText()
                 }
+            } else if (key == "software_keyboard_nearest_key_touch_enabled") {
+                Handler(Looper.getMainLooper()).post {
+                    updateStatusBarText()
+                }
             } else if (SettingsManager.isKeyboardThemePreferenceKey(key)) {
                 Handler(Looper.getMainLooper()).post {
                     updateStatusBarText()

@@ -69,7 +69,8 @@ sealed class SettingsDestination {
 fun SettingsScreen(
     modifier: Modifier = Modifier,
     initialDestination: String? = null,
-    initialCustomizationDestination: String? = null
+    initialCustomizationDestination: String? = null,
+    initialKeyboardThemeTarget: String? = null
 ) {
     val context = LocalContext.current
     val activity = context as? ComponentActivity
@@ -198,7 +199,8 @@ fun SettingsScreen(
                 CustomizationSettingsScreen(
                     modifier = modifier,
                     onBack = { navigateBack() },
-                    initialDestination = initialCustomizationDestination
+                    initialDestination = initialCustomizationDestination,
+                    initialKeyboardThemeTarget = initialKeyboardThemeTarget
                 )
             }
             is SettingsDestination.Advanced -> {
