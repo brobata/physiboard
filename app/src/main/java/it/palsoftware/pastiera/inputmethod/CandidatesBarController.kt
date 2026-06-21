@@ -5,13 +5,14 @@ import android.content.res.AssetManager
 import android.view.KeyEvent
 import android.widget.LinearLayout
 import android.view.inputmethod.InputConnection
+import it.palsoftware.pastiera.SettingsManager
 
 /**
  * Coordinates the two StatusBarController instances (full input view vs
  * candidates-only view) so the IME service can treat them as a single surface.
  */
 class CandidatesBarController(
-    context: Context,
+    private val context: Context,
     clipboardHistoryManager: it.palsoftware.pastiera.clipboard.ClipboardHistoryManager? = null,
     assets: AssetManager? = null,
     imeServiceClass: Class<*>? = null
@@ -186,7 +187,11 @@ class CandidatesBarController(
     }
 
     fun getCandidatesView(emojiMapText: String = ""): LinearLayout {
-        return candidatesStatusBar.getOrCreateLayout(emojiMapText)
+        return candidatesStatusBar.getOrCreateLayout(emojiMapText).also {
+            if (usesFullSoftwareKeyboard()) {
+                candidatesStatusBar.collapseLayout()
+            }
+        }
     }
 
     fun setForceMinimalUi(force: Boolean) {
@@ -256,7 +261,11 @@ class CandidatesBarController(
         symMappings: Map<Int, String>?
     ) {
         inputStatusBar.update(snapshot, emojiMapText, inputConnection, symMappings)
-        candidatesStatusBar.update(snapshot, emojiMapText, inputConnection, symMappings)
+        if (usesFullSoftwareKeyboard()) {
+            candidatesStatusBar.collapseLayout()
+        } else {
+            candidatesStatusBar.update(snapshot, emojiMapText, inputConnection, symMappings)
+        }
     }
 
     fun updateClipboardCount(count: Int) {
@@ -273,4 +282,8 @@ class CandidatesBarController(
         inputStatusBar.resetSuggestionActionMode()
         candidatesStatusBar.resetSuggestionActionMode()
     }
+
+    private fun usesFullSoftwareKeyboard(): Boolean =
+        SettingsManager.resolveEffectiveSoftwareKeyboardMode(context) ==
+            SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL
 }

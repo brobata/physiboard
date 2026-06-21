@@ -458,6 +458,21 @@ class StatusBarController(
 
     fun getLayout(): LinearLayout? = statusBarLayout
 
+    fun collapseLayout() {
+        val layout = statusBarLayout ?: return
+        hideHamburgerMenu()
+        layout.visibility = View.GONE
+        layout.layoutParams = (layout.layoutParams ?: ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            0
+        )).apply {
+            width = ViewGroup.LayoutParams.MATCH_PARENT
+            height = 0
+        }
+        layout.requestLayout()
+        (layout.parent as? View)?.requestLayout()
+    }
+
     fun getOrCreateLayout(emojiMapText: String = ""): LinearLayout {
         if (statusBarLayout == null) {
             statusBarLayout = LinearLayout(context).apply {
@@ -606,6 +621,15 @@ class StatusBarController(
             emojiMapTextView?.text = emojiMapText
         }
         return statusBarLayout!!
+    }
+
+    private fun restoreLayoutHeight(layout: View) {
+        val params = layout.layoutParams ?: return
+        if (params.height != 0) {
+            return
+        }
+        params.height = ViewGroup.LayoutParams.WRAP_CONTENT
+        layout.layoutParams = params
     }
 
     private fun attachHamburgerMenu(wrapper: View?) {
@@ -2322,6 +2346,7 @@ class StatusBarController(
         }
         
         val layout = ensureLayoutCreated(emojiMapText) ?: return
+        restoreLayoutHeight(layout)
         ensureMainChildOrder()
         applyChromeZOrder()
         applyKeyboardThemeOverrides(activeColors)
