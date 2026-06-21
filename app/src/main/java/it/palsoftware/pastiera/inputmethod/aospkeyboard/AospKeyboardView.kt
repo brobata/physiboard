@@ -630,6 +630,9 @@ class AospKeyboardView @JvmOverloads constructor(
     }
 
     private fun longPressAlternatesFor(key: Key): List<String> {
+        if (!key.spec.type.canShowLongPressAlternates()) {
+            return emptyList()
+        }
         val providerAlternates = longPressAlternatesProvider
             ?.invoke(key.spec.output)
             ?.filter { it.isNotEmpty() }
@@ -763,6 +766,9 @@ class AospKeyboardView @JvmOverloads constructor(
 
     private fun isFunctional(type: KeyType): Boolean =
         type == KeyType.SHIFT || type == KeyType.BACKSPACE || type == KeyType.SYMBOLS || type == KeyType.CTRL || type == KeyType.ENTER || type == KeyType.LANGUAGE
+
+    private fun KeyType.canShowLongPressAlternates(): Boolean =
+        this == KeyType.CHAR || this == KeyType.COMMA || this == KeyType.PERIOD
 
     private fun drawable(resId: Int): Drawable? = ContextCompat.getDrawable(context, resId)
 
