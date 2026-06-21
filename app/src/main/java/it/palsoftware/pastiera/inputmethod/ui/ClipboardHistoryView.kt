@@ -187,6 +187,18 @@ class ClipboardHistoryView(
         currentInputConnection = connection
     }
 
+    fun configureSoftwareKeyboardMode(heightPx: Int?) {
+        val targetHeight = heightPx?.takeIf { it > 0 } ?: dpToPx(177f)
+        updateHeight(targetHeight)
+    }
+
+    private fun updateHeight(heightPx: Int) {
+        (layoutParams ?: ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, heightPx)).also {
+            it.height = heightPx
+            layoutParams = it
+        }
+    }
+
     fun refresh() {
         clipboardHistoryManager.prepareClipboardHistory()
         val entries = loadEntries()

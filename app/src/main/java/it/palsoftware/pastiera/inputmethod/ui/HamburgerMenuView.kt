@@ -153,15 +153,19 @@ class HamburgerMenuView(
 
         val menuCallbacks = StatusBarCallbacks(
             onClipboardRequested = {
+                onClose()
                 callbacks.onClipboardRequested?.invoke()
             },
             onSpeechRecognitionRequested = {
+                onClose()
                 callbacks.onSpeechRecognitionRequested?.invoke()
             },
             onEmojiPickerRequested = {
+                onClose()
                 callbacks.onEmojiPickerRequested?.invoke()
             },
             onLanguageSwitchRequested = {
+                onClose()
                 callbacks.onLanguageSwitchRequested?.invoke()
             },
             onHamburgerMenuRequested = null,
@@ -169,15 +173,19 @@ class HamburgerMenuView(
                 callbacks.onMinimalUiToggleRequested?.invoke()
             },
             onOpenSettings = {
+                onClose()
                 callbacks.onOpenSettings?.invoke()
             },
             onSymbolsPageRequested = {
+                onClose()
                 callbacks.onSymbolsPageRequested?.invoke()
             },
             onUndoRequested = {
+                onClose()
                 callbacks.onUndoRequested?.invoke()
             },
             onRedoRequested = {
+                onClose()
                 callbacks.onRedoRequested?.invoke()
             },
             onHapticFeedback = callbacks.onHapticFeedback

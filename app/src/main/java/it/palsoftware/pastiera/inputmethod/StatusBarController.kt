@@ -841,7 +841,10 @@ class StatusBarController(
     /**
      * Updates the clipboard history view inline in the keyboard container.
      */
-    private fun updateClipboardView(inputConnection: android.view.inputmethod.InputConnection? = null) {
+    private fun updateClipboardView(
+        inputConnection: android.view.inputmethod.InputConnection? = null,
+        softwareKeyboardHeight: Int? = null
+    ) {
         val manager = clipboardHistoryManager ?: return
         val container = emojiKeyboardContainer ?: return
         // Clipboard page should be edge-to-edge; remove the SYM container side padding.
@@ -860,6 +863,7 @@ class StatusBarController(
             emojiKeyButtons.clear()
             container.addView(view)
         }
+        view.configureSoftwareKeyboardMode(softwareKeyboardHeight)
         view.setInputConnection(inputConnection)
 
         // Refresh only when needed (data changed), otherwise keep the list stable.
@@ -2466,7 +2470,10 @@ class StatusBarController(
         )
         if (snapshot.clipboardOverlay) {
             // Show clipboard as dedicated overlay (not part of SYM pages)
-            updateClipboardView(inputConnection)
+            updateClipboardView(
+                inputConnection,
+                softwareKeyboardHeight = lastSoftwareKeyboardHeight.takeIf { isFullSoftwareKeyboardMode && it > 0 }
+            )
             variationsBar?.resetVariationsState()
 
             // Pin background and hide variations while showing clipboard grid
@@ -2550,7 +2557,10 @@ class StatusBarController(
             // Handle page 3 (clipboard), page 4 (emoji picker) vs pages 1-2 (emoji/symbols)
             if (snapshot.symPage == 3) {
                 // Show clipboard history inline (similar to emoji grid)
-                updateClipboardView(inputConnection)
+                updateClipboardView(
+                    inputConnection,
+                    softwareKeyboardHeight = lastSoftwareKeyboardHeight.takeIf { isFullSoftwareKeyboardMode && it > 0 }
+                )
             } else if (snapshot.symPage == 4) {
                 // Show emoji picker view
                 updateEmojiPickerView(inputConnection, softwareKeyboardHeight = lastSoftwareKeyboardHeight.takeIf { isFullSoftwareKeyboardMode && it > 0 })
