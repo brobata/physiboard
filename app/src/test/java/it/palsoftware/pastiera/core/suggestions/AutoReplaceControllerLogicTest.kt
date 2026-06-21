@@ -363,6 +363,38 @@ class AutoReplaceControllerLogicTest {
     }
 
     @Test
+    fun softwareSpaceBoundaryReportsCommittedWhenNoReplacementHappens() {
+        val context = RuntimeEnvironment.getApplication()
+        val repository = FakeDictionaryRepository().apply {
+            isReady = true
+        }
+        val controller = AutoReplaceController(
+            repository = repository,
+            suggestionEngine = SuggestionEngine(repository),
+            settingsProvider = {
+                SuggestionSettings(
+                    autoReplaceOnSpaceEnter = false,
+                    maxAutoReplaceDistance = 1
+                )
+            }
+        )
+        val tracker = CurrentWordTracker(onWordChanged = {}, onWordReset = {})
+        tracker.setWord("hello")
+        val inputConnection = FakeInputConnection(context, "hello")
+
+        val result = controller.handleBoundary(
+            keyCode = KeyEvent.KEYCODE_SPACE,
+            event = null,
+            tracker = tracker,
+            inputConnection = inputConnection
+        )
+
+        assertEquals(false, result.replaced)
+        assertTrue(result.committed)
+        assertEquals("hello ", inputConnection.text)
+    }
+
+    @Test
     fun exactReplacementAllowsTwoLetterCustomSubstitutionWithApostropheBeforeDictionaryCaseCandidate() {
         val context = RuntimeEnvironment.getApplication()
         SettingsManager.saveCustomAutoCorrections(context, "fr", mapOf("ct" to "c'était"))

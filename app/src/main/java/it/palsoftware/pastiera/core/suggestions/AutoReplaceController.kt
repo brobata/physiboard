@@ -227,6 +227,7 @@ class AutoReplaceController(
             keyCode == KeyEvent.KEYCODE_ENTER -> '\n'
             else -> null
         }
+        val boundaryCommittedByTracker = boundaryChar != null && inputConnection != null
 
         val settings = settingsProvider()
         val trigger = triggerFromBoundaryChar(boundaryChar)
@@ -238,7 +239,7 @@ class AutoReplaceController(
                 outcome = DebugCaptureStore.AutoCorrectionOutcome.NOT_APPLICABLE,
                 reason = "no_input_connection"
             )
-            return ReplaceResult(false, unicodeChar != 0)
+            return ReplaceResult(false, boundaryCommittedByTracker)
         }
 
         // If there's a non-word symbol between the last word and cursor (e.g., emoji), skip.
@@ -251,7 +252,7 @@ class AutoReplaceController(
                 outcome = DebugCaptureStore.AutoCorrectionOutcome.SKIPPED,
                 reason = "hard_boundary_before_cursor"
             )
-            return ReplaceResult(false, unicodeChar != 0)
+            return ReplaceResult(false, boundaryCommittedByTracker)
         }
 
         val word = tracker.currentWord
@@ -263,7 +264,7 @@ class AutoReplaceController(
                 outcome = DebugCaptureStore.AutoCorrectionOutcome.NOT_APPLICABLE,
                 reason = "empty_word"
             )
-            return ReplaceResult(false, unicodeChar != 0)
+            return ReplaceResult(false, boundaryCommittedByTracker)
         }
 
         val apostropheSplit = splitApostropheWord(word)
@@ -320,7 +321,7 @@ class AutoReplaceController(
                 outcome = DebugCaptureStore.AutoCorrectionOutcome.NOT_APPLICABLE,
                 reason = "auto_replace_disabled"
             )
-            return ReplaceResult(false, unicodeChar != 0)
+            return ReplaceResult(false, boundaryCommittedByTracker)
         }
 
         primaryDictionaryCaseVariant(lookupWord, word)?.let { caseReplacement ->
@@ -428,7 +429,7 @@ class AutoReplaceController(
 	                    kind = top.kind.name
 	                )
 	                tracker.onBoundaryReached(boundaryChar, inputConnection)
-	                return ReplaceResult(false, unicodeChar != 0)
+	                return ReplaceResult(false, boundaryCommittedByTracker)
 	            }
 	            val source = top.source.name
 	            inputConnection.beginBatchEdit()
@@ -502,7 +503,7 @@ class AutoReplaceController(
         // Clear last replacement if no replacement happened
         lastReplacement = null
         tracker.onBoundaryReached(boundaryChar, inputConnection)
-        return ReplaceResult(false, unicodeChar != 0)
+        return ReplaceResult(false, boundaryCommittedByTracker)
     }
 
     fun handleBackspaceUndo(

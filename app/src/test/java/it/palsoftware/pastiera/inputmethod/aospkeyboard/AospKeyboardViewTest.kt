@@ -36,22 +36,36 @@ class AospKeyboardViewTest {
         override fun onEnter() { enterCount++ }
         override fun onShift() { shiftCount++ }
         override fun onSymbols() { symbolCount++ }
+        override fun onCtrl() = Unit
         override fun onLanguageSwitch() { languageSwitchCount++ }
         override fun onCursorMove(delta: Int) { cursorDelta += delta }
         override fun onKeyPressSound(keyCode: Int) { soundKeyCodes += keyCode }
     }
 
     @Test
-    fun germanQwertzLayout_preservesLayoutId_andRendersVisibleUmlautKeys() {
+    fun germanMultitapQwertzCompact_normalizesToQwertzSoftwareGeometry() {
         val view = measuredKeyboard().apply {
             layoutName = "german_multitap_qwertz"
         }
 
         val labels = labels(view)
 
-        assertTrue(labels.contains("ä"))
-        assertTrue(labels.contains("ö"))
-        assertTrue(labels.contains("ü"))
+        assertTrue(!labels.contains("ä"))
+        assertTrue(!labels.contains("ö"))
+        assertTrue(!labels.contains("ü"))
+        assertTrue(labels.containsAll(listOf("q", "w", "e", "r", "t", "z", "u", "i", "o", "p")))
+    }
+
+    @Test
+    fun germanMultitapQwertzExtendedIso_rendersVisibleUmlautKeys() {
+        val view = measuredKeyboard().apply {
+            layoutName = "german_multitap_qwertz"
+            layoutStyle = AospKeyboardView.SoftwareLayoutStyle.EXTENDED_ISO
+        }
+
+        val labels = labels(view)
+
+        assertTrue(labels.containsAll(listOf("ä", "ö", "ü")))
         assertTrue(labels.containsAll(listOf("q", "w", "e", "r", "t", "z", "u", "i", "o", "p")))
     }
 
