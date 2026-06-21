@@ -675,6 +675,10 @@ class StatusBarController(
         fullSuggestionsBar?.resetActionMode()
     }
 
+    fun cancelSoftwareKeyboardTouchState() {
+        (emojiKeyboardContainer?.getChildAt(0) as? AospKeyboardView)?.cancelActiveTouchState()
+    }
+
     private fun toggleHamburgerMenu() {
         if (hamburgerMenuView?.isVisible() == true) {
             hideHamburgerMenu()

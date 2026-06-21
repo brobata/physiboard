@@ -304,6 +304,11 @@ class CandidatesBarController(
         candidatesStatusBar.resetSuggestionActionMode()
     }
 
+    fun cancelSoftwareKeyboardTouchState() {
+        inputStatusBar.cancelSoftwareKeyboardTouchState()
+        candidatesStatusBar.cancelSoftwareKeyboardTouchState()
+    }
+
     private fun usesFullSoftwareKeyboard(): Boolean =
         SettingsManager.resolveEffectiveSoftwareKeyboardMode(context) ==
             SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL

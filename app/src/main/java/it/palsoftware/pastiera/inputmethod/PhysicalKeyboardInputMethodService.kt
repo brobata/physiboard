@@ -2041,6 +2041,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
         val downHandled = dispatchSoftwareKeyboardSyntheticKey(keyCode, KeyEvent.ACTION_DOWN)
         val upHandled = dispatchSoftwareKeyboardSyntheticKey(keyCode, KeyEvent.ACTION_UP)
+        if ((downHandled || upHandled) && SettingsManager.isQuickLauncherShortcut(this, keyCode)) {
+            candidatesBarController.cancelSoftwareKeyboardTouchState()
+        }
         if (consumeCtrlOneShotAfterStroke && (downHandled || upHandled)) {
             modifierStateController.ctrlOneShot = false
             updateStatusBarText()

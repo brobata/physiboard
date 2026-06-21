@@ -735,6 +735,18 @@ class AospKeyboardView @JvmOverloads constructor(
         invalidate()
     }
 
+    fun cancelActiveTouchState() {
+        handler.removeCallbacks(longPressRunnable)
+        dismissPopup()
+        spaceSwipeActive = false
+        spaceLongPressArmed = false
+        releaseHeldModifier()
+        chordKey = null
+        chordPointerId = -1
+        pressedKey = null
+        invalidate()
+    }
+
     private fun showMoreKeysOrRepeat() {
         val key = pressedKey ?: return
         if (isModifierPreviewLayerActive()) {
