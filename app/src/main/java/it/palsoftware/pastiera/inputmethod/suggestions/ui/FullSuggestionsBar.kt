@@ -77,6 +77,7 @@ class FullSuggestionsBar(
             }
             field = value
             hamburgerButton?.setColorFilter(value?.textAndIcons ?: Color.WHITE)
+            hamburgerMenuView?.themeOverride = value
             if (lastSlots.isNotEmpty()) lastSlots = emptyList()
         }
 
@@ -164,7 +165,9 @@ class FullSuggestionsBar(
             frameContainer?.let { frame ->
                 if (buttonRegistry != null && callbacksProvider != null) {
                     if (hamburgerMenuView == null) {
-                        hamburgerMenuView = HamburgerMenuView(context, buttonRegistry)
+                        hamburgerMenuView = HamburgerMenuView(context, buttonRegistry).apply {
+                            themeOverride = this@FullSuggestionsBar.themeOverride
+                        }
                     }
                     hamburgerMenuView?.attachTo(frame)
                     lastMinimalUiActive?.let { hamburgerMenuView?.setMinimalUiActive(it) }
@@ -602,7 +605,7 @@ class FullSuggestionsBar(
         val pressed = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = dpToPx(7f).toFloat()
-            setColor(PRESSED_BLUE)
+            setColor(themeOverride?.accent ?: PRESSED_BLUE)
         }
         return StateListDrawable().apply {
             addState(intArrayOf(android.R.attr.state_pressed), pressed)

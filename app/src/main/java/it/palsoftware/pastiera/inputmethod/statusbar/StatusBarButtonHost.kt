@@ -123,6 +123,7 @@ class StatusBarButtonHost(
     private fun updateButton(id: StatusBarButtonId, state: ButtonState) {
         val hosted = hostedButtons[id] ?: return
         registry.updateButton(id, hosted.button, state)
+        applyTheme(hosted.button, resolveThemeHeight(hosted), state)
     }
 
     private fun prepareForAttach(hosted: HostedButton, width: Int, height: Int) {
@@ -182,15 +183,16 @@ class StatusBarButtonHost(
             ?: hosted.container.height.takeIf { it > 0 }
     }
 
-    private fun applyTheme(view: View, fallbackHeight: Int? = null) {
+    private fun applyTheme(view: View, fallbackHeight: Int? = null, state: ButtonState? = null) {
         val theme = themeOverride ?: return
         val height = view.layoutParams?.height?.takeIf { it > 0 }
             ?: view.height.takeIf { it > 0 }
             ?: fallbackHeight?.takeIf { it > 0 }
         if (height != null) {
+            val active = state is ButtonState.MinimalUiState && state.isActive
             view.background = StatusBarButtonStyles.createButtonDrawable(
                 heightPx = height,
-                normalColor = theme.normalColor,
+                normalColor = if (active) theme.pressedColor else theme.normalColor,
                 pressedColor = theme.pressedColor,
                 cornerRadiusRatio = theme.cornerRadiusRatio,
                 borderColor = theme.borderColor,
