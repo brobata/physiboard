@@ -1176,7 +1176,9 @@ class StatusBarController(
         keyboardView.layoutName = layoutName
         keyboardView.shifted = uppercase
         keyboardView.shiftLocked = snapshot.capsLockEnabled
-        keyboardView.symbolsLabel = nextSoftwareSymKeyLabel(snapshot.symPage)
+        val symKeySpec = nextSoftwareSymKeySpec(snapshot.symPage)
+        keyboardView.symbolsLabel = symKeySpec.label
+        keyboardView.symbolsIconRes = symKeySpec.iconRes
         keyboardView.spacebarLabel = buildSoftwareKeyboardSpacebarLabel(snapshot)
         keyboardView.longPressTimeoutMs = SettingsManager.getLongPressThreshold(context)
         keyboardView.longPressAlternatesProvider = { output ->
@@ -1196,7 +1198,12 @@ class StatusBarController(
         }
     }
 
-    private fun nextSoftwareSymKeyLabel(currentPage: Int): String {
+    private data class SoftwareSymKeySpec(
+        val label: String,
+        val iconRes: Int? = null
+    )
+
+    private fun nextSoftwareSymKeySpec(currentPage: Int): SoftwareSymKeySpec {
         val pageValues = SettingsManager.getSymPagesConfig(context).enabledOrderedPages().mapNotNull { page ->
             when (page) {
                 it.palsoftware.pastiera.SymPagesConfig.PAGE_EMOJI -> 1
@@ -1207,7 +1214,7 @@ class StatusBarController(
             }
         }
         if (pageValues.isEmpty()) {
-            return "SYM"
+            return SoftwareSymKeySpec("SYM")
         }
         val nextPage = if (currentPage == 0) {
             pageValues.firstOrNull()
@@ -1220,11 +1227,11 @@ class StatusBarController(
             }
         }
         return when (nextPage) {
-            1 -> "☺"
-            2 -> "SYM"
-            3 -> "▣"
-            4 -> "☺⌕"
-            else -> "ABC"
+            1 -> SoftwareSymKeySpec("", R.drawable.ic_emoji_emotions_24)
+            2 -> SoftwareSymKeySpec("SYM")
+            3 -> SoftwareSymKeySpec("", R.drawable.ic_content_paste_24)
+            4 -> SoftwareSymKeySpec("", R.drawable.ic_emoji_emotions_24)
+            else -> SoftwareSymKeySpec("ABC")
         }
     }
 
@@ -1372,7 +1379,8 @@ class StatusBarController(
             gravity = Gravity.CENTER_HORIZONTAL
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, keyHeight)
         }
-        row4.addView(createSoftwareSymbolControl(nextSoftwareSymKeyLabel(page), keyHeight, fixedKeyWidth) {
+        val symKeySpec = nextSoftwareSymKeySpec(page)
+        row4.addView(createSoftwareSymbolControl(symKeySpec.label, keyHeight, fixedKeyWidth, iconRes = symKeySpec.iconRes) {
             onSoftwareKeyboardSymToggleRequested?.invoke()
         }, LinearLayout.LayoutParams(fixedKeyWidth, keyHeight).apply { marginEnd = keySpacing })
         row4.addView(createSoftwareSymbolControl("", keyHeight, fixedKeyWidth, iconRes = R.drawable.keyboard_control_key_24) {

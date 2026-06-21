@@ -155,6 +155,14 @@ class AospKeyboardView @JvmOverloads constructor(
             field = normalized
             invalidate()
         }
+    var symbolsIconRes: Int? = null
+        set(value) {
+            if (field == value) {
+                return
+            }
+            field = value
+            invalidate()
+        }
     var longPressTimeoutMs: Long = 500L
         set(value) {
             field = value.coerceIn(50L, 1000L)
@@ -277,6 +285,7 @@ class AospKeyboardView @JvmOverloads constructor(
             KeyType.BACKSPACE -> backspaceIcon
             KeyType.ENTER -> returnIcon
             KeyType.CTRL -> ctrlIcon
+            KeyType.SYMBOLS -> symbolsIconRes?.let(::drawable)
             else -> null
         } ?: return false
         drawCenteredIcon(canvas, icon, key.visualRect)
