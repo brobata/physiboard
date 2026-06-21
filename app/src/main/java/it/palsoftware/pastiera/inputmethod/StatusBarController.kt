@@ -2382,9 +2382,11 @@ class StatusBarController(
         val isFullSoftwareKeyboardMode =
             mode == Mode.FULL &&
                 SettingsManager.resolveEffectiveSoftwareKeyboardMode(context) == SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL
+        val isSoftwareKeyboardClipboardPage = isFullSoftwareKeyboardMode && snapshot.symPage == 3
         val isSoftwareKeyboardEmojiPage = isFullSoftwareKeyboardMode && snapshot.symPage == 4
         val isSoftwareKeyboardSymbolPage = isFullSoftwareKeyboardMode && snapshot.symPage in 1..2
-        val isSoftwareKeyboardOverlayPage = isSoftwareKeyboardEmojiPage || isSoftwareKeyboardSymbolPage
+        val isSoftwareKeyboardOverlayPage =
+            isSoftwareKeyboardSymbolPage || isSoftwareKeyboardClipboardPage || isSoftwareKeyboardEmojiPage
         val activeTheme = activeThemeSettings(isFullSoftwareKeyboardMode)
         val activeColors = activeTheme.toKeyboardThemeColors()
         val softwareThemeSettings = if (isFullSoftwareKeyboardMode) activeTheme else softwareTheme()
@@ -2760,32 +2762,56 @@ class StatusBarController(
         reserveLedSpace: Boolean
     ) {
         surface.visibility = View.VISIBLE
-        surface.layoutParams = (surface.layoutParams as? LinearLayout.LayoutParams
-            ?: LinearLayout.LayoutParams(
+        val surfaceParams = surface.layoutParams as? LinearLayout.LayoutParams
+        if (surfaceParams == null) {
+            surface.layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 surfaceHeight
-            )).apply {
-            width = ViewGroup.LayoutParams.MATCH_PARENT
-            height = surfaceHeight
-            weight = 0f
+            )
+        } else if (
+            surfaceParams.width != ViewGroup.LayoutParams.MATCH_PARENT ||
+            surfaceParams.height != surfaceHeight ||
+            surfaceParams.weight != 0f
+        ) {
+            surfaceParams.width = ViewGroup.LayoutParams.MATCH_PARENT
+            surfaceParams.height = surfaceHeight
+            surfaceParams.weight = 0f
+            surface.layoutParams = surfaceParams
         }
-        stack.layoutParams = FrameLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.MATCH_PARENT
-        )
+        val stackParams = stack.layoutParams as? FrameLayout.LayoutParams
+        if (stackParams == null) {
+            stack.layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        } else if (
+            stackParams.width != ViewGroup.LayoutParams.MATCH_PARENT ||
+            stackParams.height != ViewGroup.LayoutParams.MATCH_PARENT
+        ) {
+            stackParams.width = ViewGroup.LayoutParams.MATCH_PARENT
+            stackParams.height = ViewGroup.LayoutParams.MATCH_PARENT
+            stack.layoutParams = stackParams
+        }
         updateSurfaceCloseBottomMargin(if (reserveLedSpace) measureLedStripHeight() else 0)
 
-        content.layoutParams = if (reserveLedSpace) {
-            LinearLayout.LayoutParams(
+        val contentParams = content.layoutParams as? LinearLayout.LayoutParams
+        val targetContentHeight = if (reserveLedSpace) 0 else surfaceHeight
+        val targetContentWeight = if (reserveLedSpace) 1f else 0f
+        if (contentParams == null) {
+            content.layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                0,
-                1f
+                targetContentHeight,
+                targetContentWeight
             )
-        } else {
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                surfaceHeight
-            )
+        } else if (
+            contentParams.width != ViewGroup.LayoutParams.MATCH_PARENT ||
+            contentParams.height != targetContentHeight ||
+            contentParams.weight != targetContentWeight
+        ) {
+            contentParams.width = ViewGroup.LayoutParams.MATCH_PARENT
+            contentParams.height = targetContentHeight
+            contentParams.weight = targetContentWeight
+            content.layoutParams = contentParams
         }
     }
 

@@ -50,17 +50,15 @@ class SymLayoutController(
         val config = SettingsManager.getSymPagesConfig(context)
         alignSymPageToConfig(config)
         val pages = buildActivePages(config)
-        val cycle = mutableListOf(0)
-        cycle.addAll(pages.map { it.toPrefValue() })
-        if (cycle.size > 1) {
-            val currentIndex = cycle.indexOf(symPage).takeIf { it >= 0 } ?: 0
-            val nextIndex = (currentIndex + 1) % cycle.size
-            symPage = cycle[nextIndex]
-        } else {
-            symPage = 0
-        }
+        symPage = nextSymPageValue(pages)
         persistSymPage()
         return symPage
+    }
+
+    fun peekNextSymPage(): Int {
+        val config = SettingsManager.getSymPagesConfig(context)
+        alignSymPageToConfig(config)
+        return nextSymPageValue(buildActivePages(config))
     }
 
     fun closeSymPage(): Boolean {
@@ -195,6 +193,17 @@ class SymLayoutController(
         return (1..cycle.size).asSequence()
             .map { offset -> cycle[(currentIndex + offset) % cycle.size] }
             .firstOrNull { it == SymPage.EMOJI || it == SymPage.SYMBOLS }
+    }
+
+    private fun nextSymPageValue(pages: List<SymPage>): Int {
+        val cycle = mutableListOf(0)
+        cycle.addAll(pages.map { it.toPrefValue() })
+        if (cycle.size <= 1) {
+            return 0
+        }
+        val currentIndex = cycle.indexOf(symPage).takeIf { it >= 0 } ?: 0
+        val nextIndex = (currentIndex + 1) % cycle.size
+        return cycle[nextIndex]
     }
 
     private fun mappingsForPage(pageToUse: SymPage, shiftPressed: Boolean): Map<Int, String> {

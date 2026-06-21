@@ -2029,8 +2029,18 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 if (holdDuration >= 300L && symLayoutController.currentSymPage() == 0) {
                     symChordUsedSinceKeyDown = true
                 }
-                dispatchSoftwareKeyboardSyntheticKey(keyCode, KeyEvent.ACTION_UP)
                 modifierDownTimes.remove(keyCode)
+                // Keep AOSP-rendered text SYM pages synchronous: the held-SYM preview and the
+                // activated SYM page use the same view, so posting KEY_UP would draw one frame
+                // of the base keyboard between them. Overlay pages replace the touched view and
+                // must still be posted to avoid mutating the hierarchy during touch dispatch.
+                if (symLayoutController.peekNextSymPage() in 3..4) {
+                    uiHandler.post {
+                        dispatchSoftwareKeyboardSyntheticKey(keyCode, KeyEvent.ACTION_UP)
+                    }
+                } else {
+                    dispatchSoftwareKeyboardSyntheticKey(keyCode, KeyEvent.ACTION_UP)
+                }
                 true
             }
             else -> false
@@ -2041,7 +2051,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         val consumeCtrlOneShotAfterStroke = ctrlOneShot && !ctrlLatchActive && !ctrlLatchFromNavMode
         val softwareModifierActive =
             symTogglePendingOnKeyUp ||
-                symLayoutController.currentSymPage() in 1..2 ||
+                symLayoutController.currentSymPage() in 1..4 ||
                 ctrlPressed ||
                 ctrlPhysicallyPressed ||
                 ctrlLatchActive ||
