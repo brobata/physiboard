@@ -1217,6 +1217,7 @@ class StatusBarController(
             }
         }
         keyboardView.layoutName = layoutName
+        keyboardView.layoutStyle = softwareKeyboardLayoutStyle()
         keyboardView.shifted = uppercase
         keyboardView.shiftLocked = snapshot.capsLockEnabled
         keyboardView.ctrlOneShot = snapshot.ctrlOneShot
@@ -1241,6 +1242,14 @@ class StatusBarController(
         lastSymPageRendered = 0
         lastInputConnectionUsed = inputConnection
     }
+
+    private fun softwareKeyboardLayoutStyle(): AospKeyboardView.SoftwareLayoutStyle =
+        when (SettingsManager.getSoftwareKeyboardLayoutStyle(context)) {
+            SettingsManager.SoftwareKeyboardLayoutStyle.COMPACT -> AospKeyboardView.SoftwareLayoutStyle.COMPACT
+            SettingsManager.SoftwareKeyboardLayoutStyle.EXTENDED_ISO -> AospKeyboardView.SoftwareLayoutStyle.EXTENDED_ISO
+            SettingsManager.SoftwareKeyboardLayoutStyle.FULL_ANSI -> AospKeyboardView.SoftwareLayoutStyle.FULL_ANSI
+            SettingsManager.SoftwareKeyboardLayoutStyle.FULL_ISO -> AospKeyboardView.SoftwareLayoutStyle.FULL_ISO
+        }
 
     private fun prepareSoftwareKeyboardForSymbolTransition() {
         val activeColors = softwareTheme()

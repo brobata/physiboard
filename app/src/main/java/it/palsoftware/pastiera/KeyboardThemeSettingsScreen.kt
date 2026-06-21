@@ -1037,6 +1037,7 @@ private fun createVirtualKeyboardThemePreviewView(
 
     val keyboardView = AospKeyboardView(context).apply {
         layoutName = SettingsManager.getKeyboardLayout(context)
+        layoutStyle = softwareKeyboardPreviewLayoutStyle(context)
         shifted = false
         spacebarLabel = "space"
         themeOverride = theme.toAospThemeOverride()
@@ -1080,6 +1081,7 @@ private fun updateVirtualKeyboardThemePreviewView(view: android.view.View, theme
     }
     (root.getTag(R.id.keyboard_theme_preview_aosp_keyboard) as? AospKeyboardView)?.apply {
         layoutName = SettingsManager.getKeyboardLayout(context)
+        layoutStyle = softwareKeyboardPreviewLayoutStyle(context)
         themeOverride = theme.toAospThemeOverride()
         layoutParams = (layoutParams as? LinearLayout.LayoutParams)?.apply {
             height = dpToPx(context, 164f * theme.keyHeightScale.coerceIn(0.72f, 1.45f))
@@ -1094,6 +1096,14 @@ private fun updateVirtualKeyboardThemePreviewView(view: android.view.View, theme
         update(virtualPreviewLedSnapshot())
     }
 }
+
+private fun softwareKeyboardPreviewLayoutStyle(context: android.content.Context): AospKeyboardView.SoftwareLayoutStyle =
+    when (SettingsManager.getSoftwareKeyboardLayoutStyle(context)) {
+        SettingsManager.SoftwareKeyboardLayoutStyle.COMPACT -> AospKeyboardView.SoftwareLayoutStyle.COMPACT
+        SettingsManager.SoftwareKeyboardLayoutStyle.EXTENDED_ISO -> AospKeyboardView.SoftwareLayoutStyle.EXTENDED_ISO
+        SettingsManager.SoftwareKeyboardLayoutStyle.FULL_ANSI -> AospKeyboardView.SoftwareLayoutStyle.FULL_ANSI
+        SettingsManager.SoftwareKeyboardLayoutStyle.FULL_ISO -> AospKeyboardView.SoftwareLayoutStyle.FULL_ISO
+    }
 
 private fun showVirtualPreviewVariations(variationBar: VariationBarView) {
     variationBar.showVariations(

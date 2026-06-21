@@ -80,6 +80,15 @@ class AospKeyboardView @JvmOverloads constructor(
         val ortholinear: Boolean = false
     )
 
+    enum class SoftwareLayoutStyle {
+        COMPACT,
+        EXTENDED_ISO,
+        FULL_ANSI,
+        FULL_ISO
+    }
+
+    private enum class LayoutFamily { QWERTY, QWERTZ, AZERTY }
+
     private enum class KeyType { CHAR, SHIFT, BACKSPACE, SYMBOLS, CTRL, COMMA, PERIOD, SPACE, ENTER, LANGUAGE }
 
     private data class KeySpec(
@@ -124,6 +133,15 @@ class AospKeyboardView @JvmOverloads constructor(
                 return
             }
             field = normalized
+            rebuildKeys(width, height)
+            invalidate()
+        }
+    var layoutStyle: SoftwareLayoutStyle = SoftwareLayoutStyle.COMPACT
+        set(value) {
+            if (field == value) {
+                return
+            }
+            field = value
             rebuildKeys(width, height)
             invalidate()
         }
@@ -567,7 +585,7 @@ class AospKeyboardView @JvmOverloads constructor(
         val horizontalOffset = horizontalPaddingPx + ((viewWidth - horizontalPaddingPx * 2) - usableWidth) / 2f
         val visualWidthScale = if (theme?.distributeHorizontalSpacing == false) 1f else keyWidthScale
         val rowHeight = (viewHeight - verticalPaddingPx * 2 - rowGapPx * 3) / 4f
-        rowsFor(layoutName).forEachIndexed { rowIndex, row ->
+        rowsFor(layoutName, layoutStyle).forEachIndexed { rowIndex, row ->
             val y = verticalPaddingPx + rowIndex * (rowHeight + rowGapPx)
             row.forEach { spec ->
                 val rawLeft = horizontalOffset + usableWidth * (spec.xPercent / 100f)
@@ -585,23 +603,30 @@ class AospKeyboardView @JvmOverloads constructor(
         }
     }
 
-    private fun rowsFor(layout: String): List<List<KeySpec>> {
-        val rowStrings = when (layout) {
-            "german_multitap_qwertz" -> listOf("qwertzuiopü", "asdfghjklöä", "yxcvbnm")
-            "qwertz" -> listOf("qwertzuiop", "asdfghjkl", "yxcvbnm")
-            "azerty" -> listOf("azertyuiop", "qsdfghjklm", "wxcvbn'")
-            else -> listOf("qwertyuiop", "asdfghjkl", "zxcvbnm")
+    private fun rowsFor(layout: String, style: SoftwareLayoutStyle): List<List<KeySpec>> {
+        val family = layoutFamilyFor(layout)
+        val rowStrings = rowTemplateFor(family, style)
+        if (style == SoftwareLayoutStyle.FULL_ANSI || style == SoftwareLayoutStyle.FULL_ISO) {
+            return fullRowsFor(rowStrings, style)
         }
         val row1Width = 100f / rowStrings[0].length
         val row1 = rowStrings[0].mapIndexed { index, ch ->
             charSpec(ch, index * row1Width, widthPercent = row1Width)
         }
-        val row2Start = if (themeOverride?.ortholinear == true || layout == "azerty" || layout == "german_multitap_qwertz") 0f else 5f
-        val row2Width = if (layout == "german_multitap_qwertz") 100f / rowStrings[1].length else 10f
+        val row2Start = if (
+            themeOverride?.ortholinear == true ||
+            family == LayoutFamily.AZERTY ||
+            style == SoftwareLayoutStyle.EXTENDED_ISO
+        ) 0f else 5f
+        val row2Width = if (style == SoftwareLayoutStyle.EXTENDED_ISO) {
+            100f / rowStrings[1].length
+        } else {
+            10f
+        }
         val row2 = rowStrings[1].mapIndexed { index, ch -> charSpec(ch, row2Start + index * row2Width, widthPercent = row2Width) }
-        val row3CharWidth = if (layout == "german_multitap_qwertz") row1Width else 10f
-        val row3Start = if (layout == "german_multitap_qwertz") row3CharWidth * 2f else 15f
-        val row3SideKeyWidth = if (layout == "german_multitap_qwertz") row3CharWidth * 2f else 15f
+        val row3CharWidth = if (style == SoftwareLayoutStyle.EXTENDED_ISO) row1Width else 10f
+        val row3Start = if (style == SoftwareLayoutStyle.EXTENDED_ISO) row3CharWidth * 2f else 15f
+        val row3SideKeyWidth = if (style == SoftwareLayoutStyle.EXTENDED_ISO) row3CharWidth * 2f else 15f
         val row3Chars = rowStrings[2].mapIndexed { index, ch ->
             charSpec(ch, row3Start + index * row3CharWidth, widthPercent = row3CharWidth)
         }
@@ -616,16 +641,148 @@ class AospKeyboardView @JvmOverloads constructor(
                 visualInsetLeftPercent = 1f
             )
         )
-        val row4 = listOf(
+        return listOf(row1, row2, row3, bottomRow(includeEnter = true))
+    }
+
+    private fun fullRowsFor(rowStrings: List<String>, style: SoftwareLayoutStyle): List<List<KeySpec>> {
+        if (style == SoftwareLayoutStyle.FULL_ANSI) {
+            return fullAnsiRowsFor(rowStrings)
+        }
+        val columns = maxOf(rowStrings[0].length + 1, rowStrings[1].length + 1, rowStrings[2].length + 2)
+        val cellWidth = 100f / columns
+        fun row(chars: String, reservedRightCells: Int): List<KeySpec> {
+            val freeColumns = columns - reservedRightCells
+            val start = if (themeOverride?.ortholinear == true || chars.length >= freeColumns) {
+                0f
+            } else {
+                (freeColumns - chars.length) * cellWidth / 2f
+            }
+            return chars.mapIndexed { index, ch ->
+                charSpec(ch, start + index * cellWidth, widthPercent = cellWidth)
+            }
+        }
+
+        val row1 = row(rowStrings[0], reservedRightCells = 1) + KeySpec(
+            KeyType.BACKSPACE,
+            "⌫",
+            xPercent = 100f - cellWidth,
+            widthPercent = cellWidth
+        )
+        val row2 = row(rowStrings[1], reservedRightCells = 1) + KeySpec(
+            KeyType.ENTER,
+            "↵",
+            output = "\n",
+            xPercent = 100f - cellWidth,
+            widthPercent = cellWidth
+        )
+        val row3Start = cellWidth
+        val row3Chars = rowStrings[2].mapIndexed { index, ch ->
+            charSpec(ch, row3Start + index * cellWidth, widthPercent = cellWidth)
+        }
+        val row3 = listOf(
+            KeySpec(KeyType.SHIFT, "⇧", xPercent = 0f, widthPercent = cellWidth)
+        ) + row3Chars + listOf(
+            KeySpec(
+                KeyType.SHIFT,
+                "⇧",
+                xPercent = 100f - cellWidth,
+                widthPercent = cellWidth
+            )
+        )
+        return listOf(row1, row2, row3, bottomRow(includeEnter = false))
+    }
+
+    private fun fullAnsiRowsFor(rowStrings: List<String>): List<List<KeySpec>> {
+        val columns = maxOf(rowStrings[0].length + 1, rowStrings[1].length + 2, rowStrings[2].length + 3)
+        val cellWidth = 100f / columns
+        fun row(chars: String, reservedRightCells: Int): List<KeySpec> {
+            val freeColumns = columns - reservedRightCells
+            val start = if (themeOverride?.ortholinear == true || chars.length >= freeColumns) {
+                0f
+            } else {
+                (freeColumns - chars.length) * cellWidth / 2f
+            }
+            return chars.mapIndexed { index, ch ->
+                charSpec(ch, start + index * cellWidth, widthPercent = cellWidth)
+            }
+        }
+
+        val row1 = row(rowStrings[0], reservedRightCells = 1) + KeySpec(
+            KeyType.BACKSPACE,
+            "⌫",
+            xPercent = 100f - cellWidth,
+            widthPercent = cellWidth
+        )
+        val row2 = row(rowStrings[1], reservedRightCells = 2) + KeySpec(
+            KeyType.ENTER,
+            "↵",
+            output = "\n",
+            xPercent = 100f - cellWidth * 2f,
+            widthPercent = cellWidth * 2f
+        )
+        val row3Chars = rowStrings[2].mapIndexed { index, ch ->
+            charSpec(ch, cellWidth + index * cellWidth, widthPercent = cellWidth)
+        }
+        val row3 = listOf(
+            KeySpec(KeyType.SHIFT, "⇧", xPercent = 0f, widthPercent = cellWidth)
+        ) + row3Chars + listOf(
+            KeySpec(
+                KeyType.SHIFT,
+                "⇧",
+                xPercent = 100f - cellWidth * 2f,
+                widthPercent = cellWidth * 2f
+            )
+        )
+        return listOf(row1, row2, row3, bottomRow(includeEnter = false))
+    }
+
+    private fun rowTemplateFor(family: LayoutFamily, style: SoftwareLayoutStyle): List<String> =
+        when (style) {
+            SoftwareLayoutStyle.COMPACT -> when (family) {
+                LayoutFamily.QWERTY -> listOf("qwertyuiop", "asdfghjkl", "zxcvbnm")
+                LayoutFamily.QWERTZ -> listOf("qwertzuiop", "asdfghjkl", "yxcvbnm")
+                LayoutFamily.AZERTY -> listOf("azertyuiop", "qsdfghjklm", "wxcvbn'")
+            }
+            SoftwareLayoutStyle.EXTENDED_ISO -> when (family) {
+                LayoutFamily.QWERTY -> listOf("qwertyuiop[", "asdfghjkl;'", "zxcvbnm")
+                LayoutFamily.QWERTZ -> listOf("qwertzuiopü", "asdfghjklöä", "yxcvbnm")
+                LayoutFamily.AZERTY -> listOf("azertyuiop^", "qsdfghjklmù", "wxcvbn'")
+            }
+            SoftwareLayoutStyle.FULL_ANSI -> when (family) {
+                LayoutFamily.QWERTY -> listOf("qwertyuiop[]", "asdfghjkl;'", "zxcvbnm,./")
+                LayoutFamily.QWERTZ -> listOf("qwertzuiop[]", "asdfghjkl;'", "yxcvbnm,./")
+                LayoutFamily.AZERTY -> listOf("azertyuiop[]", "qsdfghjklm'", "wxcvbn,;:!")
+            }
+            SoftwareLayoutStyle.FULL_ISO -> when (family) {
+                LayoutFamily.QWERTY -> listOf("qwertyuiop[]", "asdfghjkl;'#", "\\zxcvbnm,./")
+                LayoutFamily.QWERTZ -> listOf("qwertzuiopü+", "asdfghjklöä#", "<yxcvbnm,.-")
+                LayoutFamily.AZERTY -> listOf("azertyuiop^$", "qsdfghjklmù*", "<wxcvbn,;:!")
+            }
+        }
+
+    private fun layoutFamilyFor(layout: String): LayoutFamily =
+        when (layout) {
+            "qwertz", "german_multitap_qwertz" -> LayoutFamily.QWERTZ
+            "azerty" -> LayoutFamily.AZERTY
+            else -> LayoutFamily.QWERTY
+        }
+
+    private fun bottomRow(includeEnter: Boolean): List<KeySpec> {
+        val row = listOf(
             KeySpec(KeyType.SYMBOLS, "SYM", xPercent = 0f, widthPercent = 12f),
             KeySpec(KeyType.CTRL, "CTRL", xPercent = 12f, widthPercent = 10f),
             KeySpec(KeyType.COMMA, ",", xPercent = 22f, widthPercent = 8f, moreKeys = listOf("'", "\"", ";", ":")),
             KeySpec(KeyType.SPACE, "space", output = " ", xPercent = 30f, widthPercent = 40f),
             KeySpec(KeyType.PERIOD, ".", xPercent = 70f, widthPercent = 8f, moreKeys = listOf("!", "?", ";", ":", "…")),
-            KeySpec(KeyType.CTRL, "CTRL", xPercent = 78f, widthPercent = 10f),
-            KeySpec(KeyType.ENTER, "↵", output = "\n", xPercent = 88f, widthPercent = 12f)
+            KeySpec(KeyType.CTRL, "CTRL", xPercent = 78f, widthPercent = 10f)
         )
-        return listOf(row1, row2, row3, row4)
+        return if (!includeEnter) {
+            row
+        } else {
+            row + listOf(
+            KeySpec(KeyType.ENTER, "↵", output = "\n", xPercent = 88f, widthPercent = 12f)
+            )
+        }
     }
 
     private fun charSpec(ch: Char, xPercent: Float, hint: String = "", widthPercent: Float = 10f): KeySpec {

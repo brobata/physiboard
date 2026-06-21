@@ -859,6 +859,14 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="software_keyboard_mode_always_virtual">Always Virtual Keyboard</string>
     <string name="software_keyboard_mode_always_hardware">Always Hardware Keyboard</string>
     <string name="software_keyboard_mode_auto_short">Auto (PKB: Hardware, otherwise Virtual)</string>
+    <string name="software_keyboard_layout_style_title">Virtual keyboard layout</string>
+    <string name="software_keyboard_layout_style_description">%1$s. Controls the key grid used by the virtual keyboard. Full layouts expose the extra keys of their ANSI/ISO layout family.</string>
+    <string name="software_keyboard_layout_style_compact">Compact</string>
+    <string name="software_keyboard_layout_style_extended_iso">Extended ISO</string>
+    <string name="software_keyboard_layout_style_full_ansi">Full ANSI</string>
+    <string name="software_keyboard_layout_style_full_iso">Full ISO</string>
+    <string name="virtual_keyboard_behavior_title">Virtual keyboard behavior</string>
+    <string name="virtual_keyboard_behavior_description">Mode, layout style, and virtual-keyboard specific behavior.</string>
 
     <string name="titan2_layout_title">Titan 2 Layout Alignment</string>
     <string name="titan2_layout_description">Align on-screen keyboard with Titan 2 physical keys</string>

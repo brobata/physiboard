@@ -1,6 +1,15 @@
 package it.palsoftware.pastiera
 
 import android.content.Context
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -31,6 +40,7 @@ import it.palsoftware.pastiera.R
 /**
  * Keyboard & Timing settings screen.
  */
+@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun KeyboardTimingSettingsScreen(
     modifier: Modifier = Modifier,
@@ -44,10 +54,6 @@ fun KeyboardTimingSettingsScreen(
     
     var longPressModifier by remember { 
         mutableStateOf(SettingsManager.getLongPressModifier(context))
-    }
-
-    var softwareKeyboardMode by remember {
-        mutableStateOf(SettingsManager.getSoftwareKeyboardMode(context))
     }
 
     var shiftTapLatches by remember {
@@ -65,7 +71,76 @@ fun KeyboardTimingSettingsScreen(
     var ctrlLatchStaysOnSpace by remember {
         mutableStateOf(SettingsManager.getCtrlLatchStaysOnSpace(context))
     }
-    
+
+    var showVirtualKeyboardSettings by remember { mutableStateOf(false) }
+
+    AnimatedContent(
+        targetState = showVirtualKeyboardSettings,
+        transitionSpec = {
+            val direction = if (targetState) 1 else -1
+            (slideInHorizontally(
+                animationSpec = tween(220),
+                initialOffsetX = { fullWidth -> direction * fullWidth }
+            ) + fadeIn(animationSpec = tween(160))).togetherWith(
+                slideOutHorizontally(
+                    animationSpec = tween(220),
+                    targetOffsetX = { fullWidth -> -direction * fullWidth }
+                ) + fadeOut(animationSpec = tween(120))
+            ).using(SizeTransform(clip = false))
+        },
+        label = "keyboardTimingSubscreen"
+    ) { showSubscreen ->
+        if (showSubscreen) {
+            VirtualKeyboardBehaviorSettingsScreen(
+                modifier = modifier,
+                onBack = { showVirtualKeyboardSettings = false }
+            )
+        } else {
+            KeyboardTimingMainContent(
+                modifier = modifier,
+                onBack = onBack,
+                longPressThreshold = longPressThreshold,
+                onLongPressThresholdChange = { longPressThreshold = it },
+                longPressModifier = longPressModifier,
+                onLongPressModifierChange = { longPressModifier = it },
+                shiftTapLatches = shiftTapLatches,
+                onShiftTapLatchesChange = { shiftTapLatches = it },
+                altTapLatches = altTapLatches,
+                onAltTapLatchesChange = { altTapLatches = it },
+                ctrlTapLatches = ctrlTapLatches,
+                onCtrlTapLatchesChange = { ctrlTapLatches = it },
+                altLatchStaysOnSpace = altLatchStaysOnSpace,
+                onAltLatchStaysOnSpaceChange = { altLatchStaysOnSpace = it },
+                ctrlLatchStaysOnSpace = ctrlLatchStaysOnSpace,
+                onCtrlLatchStaysOnSpaceChange = { ctrlLatchStaysOnSpace = it },
+                onVirtualKeyboardSettingsClick = { showVirtualKeyboardSettings = true }
+            )
+        }
+    }
+}
+
+@Composable
+private fun KeyboardTimingMainContent(
+    modifier: Modifier,
+    onBack: () -> Unit,
+    longPressThreshold: Long,
+    onLongPressThresholdChange: (Long) -> Unit,
+    longPressModifier: String,
+    onLongPressModifierChange: (String) -> Unit,
+    shiftTapLatches: Boolean,
+    onShiftTapLatchesChange: (Boolean) -> Unit,
+    altTapLatches: Boolean,
+    onAltTapLatchesChange: (Boolean) -> Unit,
+    ctrlTapLatches: Boolean,
+    onCtrlTapLatchesChange: (Boolean) -> Unit,
+    altLatchStaysOnSpace: Boolean,
+    onAltLatchStaysOnSpaceChange: (Boolean) -> Unit,
+    ctrlLatchStaysOnSpace: Boolean,
+    onCtrlLatchStaysOnSpaceChange: (Boolean) -> Unit,
+    onVirtualKeyboardSettingsClick: () -> Unit
+) {
+    val context = LocalContext.current
+
     
     // Handle system back button
     BackHandler { onBack() }
@@ -145,11 +220,11 @@ fun KeyboardTimingSettingsScreen(
                     Slider(
                         value = longPressThreshold.toFloat(),
                         onValueChange = { newValue ->
-                            val clampedValue = newValue.toLong().coerceIn(
-                                SettingsManager.getMinLongPressThreshold(),
-                                SettingsManager.getMaxLongPressThreshold()
-                            )
-                            longPressThreshold = clampedValue
+                    val clampedValue = newValue.toLong().coerceIn(
+                        SettingsManager.getMinLongPressThreshold(),
+                        SettingsManager.getMaxLongPressThreshold()
+                    )
+                            onLongPressThresholdChange(clampedValue)
                             SettingsManager.setLongPressThreshold(context, clampedValue)
                         },
                         valueRange = SettingsManager.getMinLongPressThreshold().toFloat()..SettingsManager.getMaxLongPressThreshold().toFloat(),
@@ -163,7 +238,6 @@ fun KeyboardTimingSettingsScreen(
         
             // Long Press Modifier (Alt/Shift/Variations/Sym) - Dropdown Style
             var showModifierMenu by remember { mutableStateOf(false) }
-            var showSoftwareKeyboardModeMenu by remember { mutableStateOf(false) }
 
             Surface(
                 modifier = Modifier
@@ -218,7 +292,7 @@ fun KeyboardTimingSettingsScreen(
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.long_press_modifier_alt)) },
                         onClick = {
-                            longPressModifier = "alt"
+                            onLongPressModifierChange("alt")
                             SettingsManager.setLongPressModifier(context, "alt")
                             showModifierMenu = false
                         },
@@ -231,7 +305,7 @@ fun KeyboardTimingSettingsScreen(
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.long_press_modifier_shift)) },
                         onClick = {
-                            longPressModifier = "shift"
+                            onLongPressModifierChange("shift")
                             SettingsManager.setLongPressModifier(context, "shift")
                             showModifierMenu = false
                         },
@@ -244,7 +318,7 @@ fun KeyboardTimingSettingsScreen(
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.long_press_modifier_variations)) },
                         onClick = {
-                            longPressModifier = "variations"
+                            onLongPressModifierChange("variations")
                             SettingsManager.setLongPressModifier(context, "variations")
                             showModifierMenu = false
                         },
@@ -257,7 +331,7 @@ fun KeyboardTimingSettingsScreen(
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.long_press_modifier_sym)) },
                         onClick = {
-                            longPressModifier = "sym"
+                            onLongPressModifierChange("sym")
                             SettingsManager.setLongPressModifier(context, "sym")
                             showModifierMenu = false
                         },
@@ -270,6 +344,166 @@ fun KeyboardTimingSettingsScreen(
                 }
             }
 
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(74.dp)
+                    .clickable { onVirtualKeyboardSettingsClick() }
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Language,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.virtual_keyboard_behavior_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1
+                        )
+                        Text(
+                            text = stringResource(R.string.virtual_keyboard_behavior_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+            Text(
+                text = stringResource(R.string.modifier_tap_behavior_title),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+            )
+
+            ModifierTapLatchRow(
+                title = stringResource(R.string.shift_tap_latches_title),
+                description = stringResource(R.string.shift_tap_latches_description),
+                checked = shiftTapLatches,
+                onCheckedChange = { enabled ->
+                    onShiftTapLatchesChange(enabled)
+                    SettingsManager.setShiftTapLatches(context, enabled)
+                }
+            )
+
+            ModifierTapLatchRow(
+                title = stringResource(R.string.alt_tap_latches_title),
+                description = stringResource(R.string.alt_tap_latches_description),
+                checked = altTapLatches,
+                onCheckedChange = { enabled ->
+                    onAltTapLatchesChange(enabled)
+                    SettingsManager.setAltTapLatches(context, enabled)
+                }
+            )
+
+            ModifierTapLatchRow(
+                title = stringResource(R.string.alt_latch_stays_on_space_title),
+                description = stringResource(R.string.alt_latch_stays_on_space_description),
+                checked = altLatchStaysOnSpace,
+                onCheckedChange = { enabled ->
+                    onAltLatchStaysOnSpaceChange(enabled)
+                    SettingsManager.setAltLatchStaysOnSpace(context, enabled)
+                }
+            )
+
+            ModifierTapLatchRow(
+                title = stringResource(R.string.ctrl_tap_latches_title),
+                description = stringResource(R.string.ctrl_tap_latches_description),
+                checked = ctrlTapLatches,
+                onCheckedChange = { enabled ->
+                    onCtrlTapLatchesChange(enabled)
+                    SettingsManager.setCtrlTapLatches(context, enabled)
+                }
+            )
+
+            if (ctrlTapLatches) {
+                ModifierTapLatchRow(
+                    title = stringResource(R.string.ctrl_latch_stays_on_space_title),
+                    description = stringResource(R.string.ctrl_latch_stays_on_space_description),
+                    checked = ctrlLatchStaysOnSpace,
+                    indent = true,
+                    onCheckedChange = { enabled ->
+                        onCtrlLatchStaysOnSpaceChange(enabled)
+                        SettingsManager.setCtrlLatchStaysOnSpace(context, enabled)
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun VirtualKeyboardBehaviorSettingsScreen(
+    modifier: Modifier = Modifier,
+    onBack: () -> Unit
+) {
+    val context = LocalContext.current
+    var softwareKeyboardMode by remember {
+        mutableStateOf(SettingsManager.getSoftwareKeyboardMode(context))
+    }
+    var softwareKeyboardLayoutStyle by remember {
+        mutableStateOf(SettingsManager.getSoftwareKeyboardLayoutStyle(context))
+    }
+    var showSoftwareKeyboardModeMenu by remember { mutableStateOf(false) }
+    var showSoftwareKeyboardLayoutStyleMenu by remember { mutableStateOf(false) }
+
+    BackHandler { onBack() }
+
+    Scaffold(
+        topBar = {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.statusBars),
+                tonalElevation = 1.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.settings_back_content_description)
+                        )
+                    }
+                    Text(
+                        text = stringResource(R.string.virtual_keyboard_behavior_title),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
+            }
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(paddingValues)
+                .verticalScroll(rememberScrollState())
+        ) {
             val effectiveSoftwareMode = SettingsManager.resolveEffectiveSoftwareKeyboardMode(context)
             val softwareKeyboardModeLabel = when (softwareKeyboardMode) {
                 SettingsManager.SoftwareKeyboardMode.AUTO -> {
@@ -350,67 +584,85 @@ fun KeyboardTimingSettingsScreen(
                 }
             }
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+            val softwareKeyboardLayoutStyleLabel = when (softwareKeyboardLayoutStyle) {
+                SettingsManager.SoftwareKeyboardLayoutStyle.COMPACT ->
+                    stringResource(R.string.software_keyboard_layout_style_compact)
+                SettingsManager.SoftwareKeyboardLayoutStyle.EXTENDED_ISO ->
+                    stringResource(R.string.software_keyboard_layout_style_extended_iso)
+                SettingsManager.SoftwareKeyboardLayoutStyle.FULL_ANSI ->
+                    stringResource(R.string.software_keyboard_layout_style_full_ansi)
+                SettingsManager.SoftwareKeyboardLayoutStyle.FULL_ISO ->
+                    stringResource(R.string.software_keyboard_layout_style_full_iso)
+            }
 
-            Text(
-                text = stringResource(R.string.modifier_tap_behavior_title),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
-            )
-
-            ModifierTapLatchRow(
-                title = stringResource(R.string.shift_tap_latches_title),
-                description = stringResource(R.string.shift_tap_latches_description),
-                checked = shiftTapLatches,
-                onCheckedChange = { enabled ->
-                    shiftTapLatches = enabled
-                    SettingsManager.setShiftTapLatches(context, enabled)
-                }
-            )
-
-            ModifierTapLatchRow(
-                title = stringResource(R.string.alt_tap_latches_title),
-                description = stringResource(R.string.alt_tap_latches_description),
-                checked = altTapLatches,
-                onCheckedChange = { enabled ->
-                    altTapLatches = enabled
-                    SettingsManager.setAltTapLatches(context, enabled)
-                }
-            )
-
-            ModifierTapLatchRow(
-                title = stringResource(R.string.alt_latch_stays_on_space_title),
-                description = stringResource(R.string.alt_latch_stays_on_space_description),
-                checked = altLatchStaysOnSpace,
-                onCheckedChange = { enabled ->
-                    altLatchStaysOnSpace = enabled
-                    SettingsManager.setAltLatchStaysOnSpace(context, enabled)
-                }
-            )
-
-            ModifierTapLatchRow(
-                title = stringResource(R.string.ctrl_tap_latches_title),
-                description = stringResource(R.string.ctrl_tap_latches_description),
-                checked = ctrlTapLatches,
-                onCheckedChange = { enabled ->
-                    ctrlTapLatches = enabled
-                    SettingsManager.setCtrlTapLatches(context, enabled)
-                }
-            )
-
-            if (ctrlTapLatches) {
-                ModifierTapLatchRow(
-                    title = stringResource(R.string.ctrl_latch_stays_on_space_title),
-                    description = stringResource(R.string.ctrl_latch_stays_on_space_description),
-                    checked = ctrlLatchStaysOnSpace,
-                    indent = true,
-                    onCheckedChange = { enabled ->
-                        ctrlLatchStaysOnSpace = enabled
-                        SettingsManager.setCtrlLatchStaysOnSpace(context, enabled)
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(82.dp)
+                    .clickable { showSoftwareKeyboardLayoutStyleMenu = true }
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Keyboard,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.software_keyboard_layout_style_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1
+                        )
+                        Text(
+                            text = stringResource(
+                                R.string.software_keyboard_layout_style_description,
+                                softwareKeyboardLayoutStyleLabel
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2
+                        )
                     }
-                )
+                    Icon(
+                        imageVector = Icons.Default.ArrowDropDown,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                DropdownMenu(
+                    expanded = showSoftwareKeyboardLayoutStyleMenu,
+                    onDismissRequest = { showSoftwareKeyboardLayoutStyleMenu = false }
+                ) {
+                    listOf(
+                        SettingsManager.SoftwareKeyboardLayoutStyle.COMPACT to stringResource(R.string.software_keyboard_layout_style_compact),
+                        SettingsManager.SoftwareKeyboardLayoutStyle.EXTENDED_ISO to stringResource(R.string.software_keyboard_layout_style_extended_iso),
+                        SettingsManager.SoftwareKeyboardLayoutStyle.FULL_ANSI to stringResource(R.string.software_keyboard_layout_style_full_ansi),
+                        SettingsManager.SoftwareKeyboardLayoutStyle.FULL_ISO to stringResource(R.string.software_keyboard_layout_style_full_iso)
+                    ).forEach { (style, title) ->
+                        DropdownMenuItem(
+                            text = { Text(title) },
+                            onClick = {
+                                softwareKeyboardLayoutStyle = style
+                                SettingsManager.setSoftwareKeyboardLayoutStyle(context, style)
+                                showSoftwareKeyboardLayoutStyleMenu = false
+                            },
+                            leadingIcon = {
+                                if (softwareKeyboardLayoutStyle == style) {
+                                    Icon(Icons.Default.Check, contentDescription = null)
+                                }
+                            }
+                        )
+                    }
+                }
             }
         }
     }

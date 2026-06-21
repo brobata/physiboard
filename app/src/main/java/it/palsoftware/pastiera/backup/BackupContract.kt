@@ -275,6 +275,7 @@ object PreferenceSchemas {
             "pastierina_mode_override" to PreferenceValueType.STRING,
             "pastierina_mode_active" to PreferenceValueType.BOOLEAN,
             "software_keyboard_mode" to PreferenceValueType.STRING,
+            "software_keyboard_layout_style" to PreferenceValueType.STRING,
             "sym_auto_close_on_touch" to PreferenceValueType.BOOLEAN,
             "shift_tap_latches" to PreferenceValueType.BOOLEAN,
             "alt_tap_latches" to PreferenceValueType.BOOLEAN,

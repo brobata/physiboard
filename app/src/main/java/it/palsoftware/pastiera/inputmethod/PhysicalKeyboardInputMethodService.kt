@@ -1766,6 +1766,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 keyboardVisibilityController.syncMinimalUiOverrideFromSettings()
             } else if (key == "software_keyboard_mode") {
                 keyboardVisibilityController.syncMinimalUiOverrideFromSettings()
+            } else if (key == "software_keyboard_layout_style") {
+                Handler(Looper.getMainLooper()).post {
+                    updateStatusBarText()
+                }
             } else if (SettingsManager.isKeyboardThemePreferenceKey(key)) {
                 Handler(Looper.getMainLooper()).post {
                     updateStatusBarText()

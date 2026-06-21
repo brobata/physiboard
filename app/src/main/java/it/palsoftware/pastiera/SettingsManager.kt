@@ -102,6 +102,7 @@ object SettingsManager {
     private const val KEY_PASTIERINA_MODE_OVERRIDE = "pastierina_mode_override" // follow_system | force_minimal | force_full
     private const val KEY_PASTIERINA_MODE_ACTIVE = "pastierina_mode_active" // Current effective state
     private const val KEY_SOFTWARE_KEYBOARD_MODE = "software_keyboard_mode" // auto | force_hardware | force_virtual
+    private const val KEY_SOFTWARE_KEYBOARD_LAYOUT_STYLE = "software_keyboard_layout_style" // compact | extended_iso | full_ansi | full_iso
     private const val KEY_TITAN2_LAYOUT_ENABLED = "titan2_layout_enabled" // Align OSK with Titan 2 physical layout
     private const val KEY_ACCESSIBILITY_LIVE_ANNOUNCEMENTS_ENABLED = "accessibility_live_announcements_enabled" // Whether status bar accessibility live announcements are enabled
     private const val KEY_ACCESSIBILITY_READ_SECOND_ROW_ENABLED = "accessibility_read_second_row_enabled" // Whether TalkBack should read quick settings/variations row
@@ -316,6 +317,13 @@ object SettingsManager {
         FORCE_VIRTUAL("force_virtual")
     }
 
+    enum class SoftwareKeyboardLayoutStyle(val storageValue: String) {
+        COMPACT("compact"),
+        EXTENDED_ISO("extended_iso"),
+        FULL_ANSI("full_ansi"),
+        FULL_ISO("full_iso")
+    }
+
     enum class KeyboardThemeTarget {
         HARDWARE,
         SOFTWARE
@@ -425,6 +433,21 @@ object SettingsManager {
     fun setSoftwareKeyboardMode(context: Context, mode: SoftwareKeyboardMode) {
         getPreferences(context).edit()
             .putString(KEY_SOFTWARE_KEYBOARD_MODE, mode.storageValue)
+            .apply()
+    }
+
+    fun getSoftwareKeyboardLayoutStyle(context: Context): SoftwareKeyboardLayoutStyle {
+        val value = getPreferences(context).getString(
+            KEY_SOFTWARE_KEYBOARD_LAYOUT_STYLE,
+            SoftwareKeyboardLayoutStyle.COMPACT.storageValue
+        )
+        return SoftwareKeyboardLayoutStyle.values().firstOrNull { it.storageValue == value }
+            ?: SoftwareKeyboardLayoutStyle.COMPACT
+    }
+
+    fun setSoftwareKeyboardLayoutStyle(context: Context, style: SoftwareKeyboardLayoutStyle) {
+        getPreferences(context).edit()
+            .putString(KEY_SOFTWARE_KEYBOARD_LAYOUT_STYLE, style.storageValue)
             .apply()
     }
 

@@ -837,6 +837,14 @@ Jede Taste kann als Keycode, Aktion, Native Ctrl oder Keine konfiguriert werden.
     <string name="software_keyboard_mode_always_virtual">Immer virtuelle Tastatur</string>
     <string name="software_keyboard_mode_always_hardware">Immer Hardware-Tastatur</string>
     <string name="software_keyboard_mode_auto_short">Auto (PKB: Hardware, sonst virtuell)</string>
+    <string name="software_keyboard_layout_style_title">Layout der virtuellen Tastatur</string>
+    <string name="software_keyboard_layout_style_description">%1$s. Steuert das Tastenraster der virtuellen Tastatur. Vollständige Layouts zeigen die zusätzlichen Tasten ihrer ANSI-/ISO-Layoutfamilie.</string>
+    <string name="software_keyboard_layout_style_compact">Kompakt</string>
+    <string name="software_keyboard_layout_style_extended_iso">Erweitert ISO</string>
+    <string name="software_keyboard_layout_style_full_ansi">Vollständig ANSI</string>
+    <string name="software_keyboard_layout_style_full_iso">Vollständig ISO</string>
+    <string name="virtual_keyboard_behavior_title">Verhalten der virtuellen Tastatur</string>
+    <string name="virtual_keyboard_behavior_description">Modus, Layout-Stil und spezifisches Verhalten der virtuellen Tastatur.</string>
     <string name="delete_alternatives_selection_hint">Wenn Text ausgewählt ist, sind diese Alternativen deaktiviert und Rücktaste löscht die Auswahl.</string>
     <string name="alt_shift_layout_switch_title">Alt+Shift-Layoutwechsel</string>
     <string name="alt_shift_layout_switch_description">Sprachen/Layouts mit Alt+Shift wechseln.</string>
