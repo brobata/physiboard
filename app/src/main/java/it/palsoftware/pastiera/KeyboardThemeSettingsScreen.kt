@@ -1045,6 +1045,7 @@ private fun createVirtualKeyboardThemePreviewView(
     val keyboardView = AospKeyboardView(context).apply {
         layoutName = SettingsManager.getKeyboardLayout(context)
         layoutStyle = softwareKeyboardPreviewLayoutStyle(context)
+        includeNumberRow = SettingsManager.getSoftwareKeyboardNumberRowEnabled(context)
         shifted = false
         spacebarLabel = "space"
         themeOverride = theme.toAospThemeOverride()
@@ -1054,7 +1055,7 @@ private fun createVirtualKeyboardThemePreviewView(
         keyboardView,
         LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
-            dpToPx(context, 164f * theme.keyHeightScale.coerceIn(0.72f, 1.45f))
+            dpToPx(context, virtualKeyboardPreviewHeightDp(context, theme))
         )
     )
 
@@ -1090,13 +1091,14 @@ private fun updateVirtualKeyboardThemePreviewView(view: android.view.View, theme
     (root.getTag(R.id.keyboard_theme_preview_aosp_keyboard) as? AospKeyboardView)?.apply {
         layoutName = SettingsManager.getKeyboardLayout(context)
         layoutStyle = softwareKeyboardPreviewLayoutStyle(context)
+        includeNumberRow = SettingsManager.getSoftwareKeyboardNumberRowEnabled(context)
         themeOverride = theme.toAospThemeOverride()
         applyVirtualKeyboardSymPreviewState(context)
         layoutParams = (layoutParams as? LinearLayout.LayoutParams)?.apply {
-            height = dpToPx(context, 164f * theme.keyHeightScale.coerceIn(0.72f, 1.45f))
+            height = dpToPx(context, virtualKeyboardPreviewHeightDp(context, theme))
         } ?: LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
-            dpToPx(context, 164f * theme.keyHeightScale.coerceIn(0.72f, 1.45f))
+            dpToPx(context, virtualKeyboardPreviewHeightDp(context, theme))
         )
     }
     (root.getTag(R.id.keyboard_theme_preview_led_view) as? LedStatusView)?.apply {
@@ -1138,6 +1140,11 @@ private fun softwareKeyboardPreviewLayoutStyle(context: android.content.Context)
         SettingsManager.SoftwareKeyboardLayoutStyle.FULL_ANSI -> AospKeyboardView.SoftwareLayoutStyle.FULL_ANSI
         SettingsManager.SoftwareKeyboardLayoutStyle.FULL_ISO -> AospKeyboardView.SoftwareLayoutStyle.FULL_ISO
     }
+
+private fun virtualKeyboardPreviewHeightDp(context: android.content.Context, theme: KeyboardThemePreset): Float {
+    val rows = if (SettingsManager.getSoftwareKeyboardNumberRowEnabled(context)) 5f else 4f
+    return 41f * rows * theme.keyHeightScale.coerceIn(0.72f, 1.45f)
+}
 
 private fun showVirtualPreviewVariations(variationBar: VariationBarView) {
     variationBar.showVariations(

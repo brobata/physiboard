@@ -80,6 +80,29 @@ class AospKeyboardViewTest {
     }
 
     @Test
+    fun numberRowDisabledByDefaultInView_doesNotRenderDigits() {
+        val view = measuredKeyboard()
+
+        assertTrue(!labels(view).contains("1"))
+        assertTrue(!labels(view).contains("0"))
+    }
+
+    @Test
+    fun numberRowExtendedIso_alignsWithElevenKeyTopRow() {
+        val view = measuredKeyboard().apply {
+            layoutName = "german_multitap_qwertz"
+            layoutStyle = AospKeyboardView.SoftwareLayoutStyle.EXTENDED_ISO
+            includeNumberRow = true
+        }
+
+        val labels = labels(view)
+
+        assertTrue(labels.containsAll(listOf("1", "0", "+", "ü")))
+        assertEquals(leftOfLabel(view, "q"), leftOfLabel(view, "1"), 0.1f)
+        assertEquals(leftOfLabel(view, "ü"), leftOfLabel(view, "+"), 0.1f)
+    }
+
+    @Test
     fun longPressDefaultSelection_survivesMoveOutsidePopup_andCommitsFirstAlternateOnRelease() {
         val listener = RecordingListener()
         val view = measuredKeyboard().apply {
@@ -250,6 +273,9 @@ class AospKeyboardViewTest {
         val hitRect = field<RectF>(keyForLabel(view, label), "hitRect")
         return hitRect.centerX() to hitRect.centerY()
     }
+
+    private fun leftOfLabel(view: AospKeyboardView, label: String): Float =
+        field<RectF>(keyForLabel(view, label), "hitRect").left
 
     private fun keyForLabel(view: AospKeyboardView, label: String): Any = keys(view).first { key ->
         val spec = field<Any>(key, "spec")

@@ -1769,7 +1769,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 keyboardVisibilityController.syncMinimalUiOverrideFromSettings()
             } else if (key == "software_keyboard_mode") {
                 keyboardVisibilityController.syncMinimalUiOverrideFromSettings()
-            } else if (key == "software_keyboard_layout_style") {
+            } else if (key == "software_keyboard_layout_style" || key == "software_keyboard_number_row_enabled") {
                 Handler(Looper.getMainLooper()).post {
                     updateStatusBarText()
                 }

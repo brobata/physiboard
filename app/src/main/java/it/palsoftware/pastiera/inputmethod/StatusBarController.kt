@@ -1229,6 +1229,7 @@ class StatusBarController(
         }
         keyboardView.layoutName = layoutName
         keyboardView.layoutStyle = softwareKeyboardLayoutStyle()
+        keyboardView.includeNumberRow = SettingsManager.getSoftwareKeyboardNumberRowEnabled(context)
         keyboardView.nearestKeyTouchEnabled =
             SettingsManager.getSoftwareKeyboardNearestKeyTouchEnabled(context)
         keyboardView.shifted = uppercase

@@ -145,6 +145,16 @@ class AospKeyboardView @JvmOverloads constructor(
             rebuildKeys(width, height)
             invalidate()
         }
+    var includeNumberRow: Boolean = false
+        set(value) {
+            if (field == value) {
+                return
+            }
+            field = value
+            rebuildKeys(width, height)
+            requestLayout()
+            invalidate()
+        }
     var nearestKeyTouchEnabled: Boolean = true
     var shifted: Boolean = false
         set(value) {
@@ -352,7 +362,8 @@ class AospKeyboardView @JvmOverloads constructor(
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val width = MeasureSpec.getSize(widthMeasureSpec)
-        val desiredHeight = verticalPaddingPx * 2 + preferredKeyHeightPx * 4 + rowGapPx * 3
+        val rowCount = keyboardRowCount()
+        val desiredHeight = verticalPaddingPx * 2 + preferredKeyHeightPx * rowCount + rowGapPx * (rowCount - 1)
         val resolvedHeight = resolveSize(desiredHeight, heightMeasureSpec)
         setMeasuredDimension(width, resolvedHeight)
     }
@@ -601,8 +612,10 @@ class AospKeyboardView @JvmOverloads constructor(
         val usableWidth = ((viewWidth - horizontalPaddingPx * 2) * totalWidthScale).toInt()
         val horizontalOffset = horizontalPaddingPx + ((viewWidth - horizontalPaddingPx * 2) - usableWidth) / 2f
         val visualWidthScale = if (theme?.distributeHorizontalSpacing == false) 1f else keyWidthScale
-        val rowHeight = (viewHeight - verticalPaddingPx * 2 - rowGapPx * 3) / 4f
-        rowsFor(layoutName, layoutStyle).forEachIndexed { rowIndex, row ->
+        val rows = rowsFor(layoutName, layoutStyle)
+        val rowCount = rows.size.coerceAtLeast(1)
+        val rowHeight = (viewHeight - verticalPaddingPx * 2 - rowGapPx * (rowCount - 1)) / rowCount.toFloat()
+        rows.forEachIndexed { rowIndex, row ->
             val y = verticalPaddingPx + rowIndex * (rowHeight + rowGapPx)
             row.forEach { spec ->
                 val rawLeft = horizontalOffset + usableWidth * (spec.xPercent / 100f)
@@ -620,11 +633,13 @@ class AospKeyboardView @JvmOverloads constructor(
         }
     }
 
+    private fun keyboardRowCount(): Int = if (includeNumberRow) 5 else 4
+
     private fun rowsFor(layout: String, style: SoftwareLayoutStyle): List<List<KeySpec>> {
         val family = SoftwareKeyboardLayoutTemplates.familyFor(layout)
         val rowStrings = SoftwareKeyboardLayoutTemplates.rowTemplateFor(family, style)
         if (style == SoftwareLayoutStyle.FULL_ANSI || style == SoftwareLayoutStyle.FULL_ISO) {
-            return fullRowsFor(rowStrings, style)
+            return maybeWithNumberRow(fullRowsFor(rowStrings, style))
         }
         val row1Width = 100f / rowStrings[0].length
         val row1 = rowStrings[0].mapIndexed { index, ch ->
@@ -658,7 +673,26 @@ class AospKeyboardView @JvmOverloads constructor(
                 visualInsetLeftPercent = 1f
             )
         )
-        return listOf(row1, row2, row3, bottomRow(includeEnter = true))
+        return maybeWithNumberRow(listOf(row1, row2, row3, bottomRow(includeEnter = true)))
+    }
+
+    private fun maybeWithNumberRow(rows: List<List<KeySpec>>): List<List<KeySpec>> =
+        if (includeNumberRow) listOf(numberRowFor(rows.firstOrNull().orEmpty())) + rows else rows
+
+    private fun numberRowFor(referenceRow: List<KeySpec>): List<KeySpec> {
+        val referenceChars = referenceRow.filter { it.type == KeyType.CHAR }
+        val labels = numberRowLabels(referenceChars.size)
+        return referenceChars.mapIndexedNotNull { index, spec ->
+            labels.getOrNull(index)?.firstOrNull()?.let { ch ->
+                charSpec(ch, xPercent = spec.xPercent, widthPercent = spec.widthPercent)
+            }
+        }
+    }
+
+    private fun numberRowLabels(count: Int): List<String> {
+        val labels = mutableListOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0")
+        labels += listOf("+", "-", "=").take((count - labels.size).coerceAtLeast(0))
+        return labels.take(count)
     }
 
     private fun fullRowsFor(rowStrings: List<String>, style: SoftwareLayoutStyle): List<List<KeySpec>> {

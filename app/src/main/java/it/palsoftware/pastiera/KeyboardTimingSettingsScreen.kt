@@ -467,6 +467,9 @@ private fun VirtualKeyboardBehaviorSettingsScreen(
     var nearestKeyTouchEnabled by remember {
         mutableStateOf(SettingsManager.getSoftwareKeyboardNearestKeyTouchEnabled(context))
     }
+    var numberRowEnabled by remember {
+        mutableStateOf(SettingsManager.getSoftwareKeyboardNumberRowEnabled(context))
+    }
     var showSoftwareKeyboardModeMenu by remember { mutableStateOf(false) }
     var showSoftwareKeyboardLayoutStyleMenu by remember { mutableStateOf(false) }
 
@@ -725,6 +728,16 @@ private fun VirtualKeyboardBehaviorSettingsScreen(
                     )
                 }
             }
+
+            ModifierTapLatchRow(
+                title = stringResource(R.string.software_keyboard_number_row_title),
+                description = stringResource(R.string.software_keyboard_number_row_description),
+                checked = numberRowEnabled,
+                onCheckedChange = { enabled ->
+                    numberRowEnabled = enabled
+                    SettingsManager.setSoftwareKeyboardNumberRowEnabled(context, enabled)
+                }
+            )
 
             ModifierTapLatchRow(
                 title = stringResource(R.string.software_keyboard_nearest_key_touch_title),

@@ -869,6 +869,8 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="virtual_keyboard_behavior_description">Mode, layout style, and virtual-keyboard specific behavior.</string>
     <string name="software_keyboard_theme_link_title">Software keyboard theme</string>
     <string name="software_keyboard_theme_link_description">Open the theme editor on the virtual keyboard page.</string>
+    <string name="software_keyboard_number_row_title">Number row</string>
+    <string name="software_keyboard_number_row_description">Show 1-0 above the virtual keyboard letters.</string>
     <string name="software_keyboard_nearest_key_touch_title">Nearest key touch</string>
     <string name="software_keyboard_nearest_key_touch_description">Touches in the gap between keys go to the nearest likely key.</string>
 
