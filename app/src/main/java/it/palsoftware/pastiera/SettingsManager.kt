@@ -489,6 +489,12 @@ object SettingsManager {
             statusBarButton = 0xFFDDDDDD.toInt()
         )
 
+    private fun defaultKeyboardTheme(target: KeyboardThemeTarget): KeyboardThemeSettings =
+        when (target) {
+            KeyboardThemeTarget.HARDWARE -> defaultKeyboardTheme()
+            KeyboardThemeTarget.SOFTWARE -> defaultKeyboardTheme().copy(showLeds = false)
+        }
+
     fun keyboardThemeKeyForTarget(target: KeyboardThemeTarget): String =
         when (target) {
             KeyboardThemeTarget.HARDWARE -> KEY_KEYBOARD_THEME_HARDWARE
@@ -500,7 +506,7 @@ object SettingsManager {
     }
 
     fun getKeyboardTheme(context: Context, target: KeyboardThemeTarget): KeyboardThemeSettings {
-        val defaults = defaultKeyboardTheme()
+        val defaults = defaultKeyboardTheme(target)
         val stored = getPreferences(context).getString(keyboardThemeKeyForTarget(target), null)
             ?: return defaults
         return try {
