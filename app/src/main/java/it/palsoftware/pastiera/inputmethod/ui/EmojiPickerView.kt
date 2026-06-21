@@ -101,9 +101,15 @@ class EmojiPickerView(
     private var isSearchPanelVisible: Boolean = false
     private var searchInputCaptureEnabled: Boolean = true
     private var pendingSearchReplacementRange: IntRange? = null
-    private val selectedTabBackground = createTabBackground(true)
-    private val unselectedTabBackground = createTabBackground(false)
     private var tabCategoryIds: List<String> = emptyList()
+    var themeOverride: KeyboardThemeColors? = null
+        set(value) {
+            if (field == value) {
+                return
+            }
+            field = value
+            applyTheme()
+        }
 
     init {
         setBackgroundColor(Color.TRANSPARENT)
@@ -122,8 +128,6 @@ class EmojiPickerView(
 
         searchField = EditText(context).apply {
             hint = context.getString(R.string.emoji_picker_search_placeholder)
-            setTextColor(Color.WHITE)
-            setHintTextColor(Color.argb(160, 255, 255, 255))
             textSize = 14f
             setSingleLine(true)
             inputType = InputType.TYPE_CLASS_TEXT
@@ -158,7 +162,7 @@ class EmojiPickerView(
 
         searchPanel = FrameLayout(context).apply {
             visibility = View.GONE
-            setBackgroundColor(Color.rgb(24, 24, 24))
+            setBackgroundColor(themeOverride?.background ?: Color.rgb(24, 24, 24))
             val panelPadding = dpToPx(6f)
             setPadding(panelPadding, panelPadding, panelPadding, panelPadding)
             layoutParams = FrameLayout.LayoutParams(
@@ -176,7 +180,6 @@ class EmojiPickerView(
         closeButton = ImageView(context).apply {
             setImageResource(R.drawable.ic_close_24)
             contentDescription = context.getString(R.string.close)
-            setColorFilter(Color.WHITE)
             background = createCloseButtonBackground()
             scaleType = ImageView.ScaleType.CENTER_INSIDE
             val pad = dpToPx(4f)
@@ -264,7 +267,6 @@ class EmojiPickerView(
         emptyView = TextView(context).apply {
             text = context.getString(R.string.emoji_picker_error)
             textSize = 14f
-            setTextColor(Color.argb(128, 255, 255, 255))
             gravity = Gravity.CENTER
             layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -278,7 +280,6 @@ class EmojiPickerView(
         searchToggleButton = ImageView(context).apply {
             setImageResource(R.drawable.ic_search_24)
             contentDescription = context.getString(R.string.emoji_picker_search_label)
-            setColorFilter(Color.WHITE)
             background = createTabBackground(false)
             scaleType = ImageView.ScaleType.CENTER_INSIDE
             val pad = dpToPx(4f)
@@ -313,7 +314,6 @@ class EmojiPickerView(
         keyboardSwitcherButton = ImageView(context).apply {
             setImageResource(R.drawable.ic_close_24)
             contentDescription = context.getString(R.string.close)
-            setColorFilter(Color.WHITE)
             background = createTabBackground(false)
             scaleType = ImageView.ScaleType.CENTER_INSIDE
             val pad = dpToPx(4f)
@@ -358,6 +358,7 @@ class EmojiPickerView(
             compactHeight
         )
 
+        applyTheme()
         loadCategories()
     }
 
@@ -750,7 +751,7 @@ class EmojiPickerView(
     private fun setSearchPanelVisible(visible: Boolean) {
         isSearchPanelVisible = visible
         searchPanel.visibility = if (visible) View.VISIBLE else View.GONE
-        searchToggleButton.background = if (visible) selectedTabBackground else unselectedTabBackground
+        searchToggleButton.background = createTabBackground(visible)
         setSearchInputCaptureEnabled(visible)
         if (visible) {
             searchField.requestFocus()
@@ -851,8 +852,8 @@ class EmojiPickerView(
                 setImageResource(iconRes)
                 contentDescription = label
                 scaleType = ImageView.ScaleType.CENTER_INSIDE
-                setColorFilter(Color.WHITE)
-                background = if (isSelected) selectedTabBackground else unselectedTabBackground
+                setColorFilter(themeOverride?.textAndIcons ?: Color.WHITE)
+                background = createTabBackground(isSelected)
                 // Icon always visible (alpha 1), background changes
                 val pad = dpToPx(4f) // Minimal padding
                 setPadding(pad, pad, pad, pad)
@@ -892,7 +893,7 @@ class EmojiPickerView(
             val categoryId = tabCategoryIds.getOrNull(i)
             val isSelected = categoryId == selectedCategoryId
             // Icon always visible, only background changes
-            view.background = if (isSelected) selectedTabBackground else unselectedTabBackground
+            view.background = createTabBackground(isSelected)
         }
     }
 
@@ -1037,30 +1038,74 @@ class EmojiPickerView(
     }
 
     private fun createTabBackground(isSelected: Boolean): GradientDrawable {
+        val theme = themeOverride
         return GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            // Selected: visible background, not selected: transparent
-            val color = if (isSelected) Color.argb(100, 255, 255, 255) else Color.argb(0, 255, 255, 255)
+            val color = if (theme != null) {
+                if (isSelected) colorWithAlpha(theme.accent, 100) else Color.TRANSPARENT
+            } else if (isSelected) {
+                Color.argb(100, 255, 255, 255)
+            } else {
+                Color.TRANSPARENT
+            }
             setColor(color)
+            if (theme != null && isSelected) {
+                setStroke(dpToPx(1f), theme.divider)
+            }
             cornerRadius = dpToPx(6f).toFloat()
         }
     }
 
     private fun createCloseButtonBackground(): GradientDrawable {
+        val theme = themeOverride
         return GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            setColor(Color.argb(95, 220, 38, 38))
+            setColor(theme?.statusBarButton ?: Color.argb(95, 220, 38, 38))
+            if (theme != null) {
+                setStroke(dpToPx(1f), theme.divider)
+            }
             cornerRadius = dpToPx(6f).toFloat()
         }
     }
 
     private fun createSearchFieldBackground(): GradientDrawable {
+        val theme = themeOverride
         return GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            setColor(Color.argb(36, 255, 255, 255))
+            setColor(theme?.suggestion ?: Color.argb(36, 255, 255, 255))
+            if (theme != null) {
+                setStroke(dpToPx(1f), theme.divider)
+            }
             cornerRadius = dpToPx(7f).toFloat()
         }
     }
+
+    private fun applyTheme() {
+        val theme = themeOverride
+        val background = theme?.background ?: Color.TRANSPARENT
+        setBackgroundColor(background)
+        vertical.setBackgroundColor(background)
+        recyclerView.setBackgroundColor(background)
+        searchPanel.setBackgroundColor(background)
+        loadingView.setBackgroundColor(background)
+        emptyView.setBackgroundColor(background)
+        searchField.setTextColor(theme?.textAndIcons ?: Color.WHITE)
+        searchField.setHintTextColor(colorWithAlpha(theme?.textAndIcons ?: Color.WHITE, 160))
+        searchField.background = createSearchFieldBackground()
+        closeButton.setColorFilter(theme?.textAndIcons ?: Color.WHITE)
+        closeButton.background = createCloseButtonBackground()
+        searchToggleButton.setColorFilter(theme?.textAndIcons ?: Color.WHITE)
+        searchToggleButton.background = createTabBackground(isSearchPanelVisible)
+        keyboardSwitcherButton.setColorFilter(theme?.textAndIcons ?: Color.WHITE)
+        keyboardSwitcherButton.background = createTabBackground(false)
+        emptyView.setTextColor(colorWithAlpha(theme?.textAndIcons ?: Color.WHITE, 128))
+        updateTabsSelection()
+        sectionAdapter.notifyDataSetChanged()
+        searchAdapter.notifyDataSetChanged()
+    }
+
+    private fun colorWithAlpha(color: Int, alpha: Int): Int =
+        Color.argb(alpha.coerceIn(0, 255), Color.red(color), Color.green(color), Color.blue(color))
 
     private fun showVariantsPopup(anchor: View, entry: EmojiRepository.EmojiEntry, categoryId: String) {
         val context = anchor.context
@@ -1084,9 +1129,7 @@ class EmojiPickerView(
                 textSize = 24f
                 gravity = Gravity.CENTER
                 setPadding(itemHorizontalPadding, itemVerticalPadding, itemHorizontalPadding, itemVerticalPadding)
-                val nightModeFlags = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
-                val isDarkTheme = nightModeFlags == Configuration.UI_MODE_NIGHT_YES
-                setTextColor(if (isDarkTheme) Color.WHITE else Color.BLACK)
+                setTextColor(themeOverride?.textAndIcons ?: Color.BLACK)
             }
             textView.setOnClickListener {
                 onEmojiSelected(emoji, categoryId)
@@ -1106,7 +1149,7 @@ class EmojiPickerView(
             WRAP_CONTENT,
             false // Don't take focus to avoid closing emoji picker
         ).apply {
-            setBackgroundDrawable(ColorDrawable(Color.parseColor("#EEFFFFFF")))
+            setBackgroundDrawable(ColorDrawable(themeOverride?.keyPopup ?: Color.parseColor("#EEFFFFFF")))
             isOutsideTouchable = true
             isFocusable = false
             elevation = 12f
@@ -1200,9 +1243,7 @@ class EmojiPickerView(
                 }
                 is SectionItem.Emoji -> {
                     (holder as EmojiViewHolder).textView.text = item.entry.base
-                    val nightModeFlags = context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK
-                    val isDarkTheme = nightModeFlags == android.content.res.Configuration.UI_MODE_NIGHT_YES
-                    holder.textView.setTextColor(if (isDarkTheme) Color.WHITE else Color.BLACK)
+                    holder.textView.setTextColor(themeOverride?.textAndIcons ?: Color.WHITE)
                     holder.textView.setOnClickListener {
                         onEmojiSelected(item.entry.base, item.categoryId)
                     }
@@ -1243,9 +1284,7 @@ class EmojiPickerView(
         override fun onBindViewHolder(holder: SearchEmojiViewHolder, position: Int) {
             val item = getItem(position)
             holder.textView.text = item.entry.base
-            val nightModeFlags = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
-            val isDarkTheme = nightModeFlags == Configuration.UI_MODE_NIGHT_YES
-            holder.textView.setTextColor(if (isDarkTheme) Color.WHITE else Color.BLACK)
+            holder.textView.setTextColor(themeOverride?.textAndIcons ?: Color.WHITE)
             holder.textView.setOnClickListener {
                 onEmojiSelected(item.entry.base, item.categoryId)
             }

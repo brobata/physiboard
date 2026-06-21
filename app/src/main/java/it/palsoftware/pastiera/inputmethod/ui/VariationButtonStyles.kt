@@ -12,16 +12,25 @@ object VariationButtonStyles {
     fun createButtonDrawable(
         heightPx: Int,
         normalColor: Int = NORMAL_COLOR,
-        pressedColor: Int = PRESSED_BLUE
+        pressedColor: Int = PRESSED_BLUE,
+        cornerRadiusRatio: Float = BUTTON_CORNER_RADIUS_RATIO,
+        borderColor: Int? = null,
+        borderWidthPx: Int = 0
     ): StateListDrawable {
-        val radius = (heightPx * BUTTON_CORNER_RADIUS_RATIO).coerceAtLeast(0f)
+        val radius = (heightPx * cornerRadiusRatio).coerceAtLeast(0f)
         val normalDrawable = GradientDrawable().apply {
             setColor(normalColor)
             cornerRadius = radius
+            if (borderColor != null && borderWidthPx > 0) {
+                setStroke(borderWidthPx, borderColor)
+            }
         }
         val pressedDrawable = GradientDrawable().apply {
             setColor(pressedColor)
             cornerRadius = radius
+            if (borderColor != null && borderWidthPx > 0) {
+                setStroke(borderWidthPx, borderColor)
+            }
         }
         return StateListDrawable().apply {
             addState(intArrayOf(android.R.attr.state_pressed), pressedDrawable)
@@ -29,7 +38,7 @@ object VariationButtonStyles {
         }
     }
 
-    fun cornerRadiusForSize(heightPx: Int): Float {
-        return (heightPx * BUTTON_CORNER_RADIUS_RATIO).coerceAtLeast(0f)
+    fun cornerRadiusForSize(heightPx: Int, cornerRadiusRatio: Float? = null): Float {
+        return (heightPx * (cornerRadiusRatio ?: BUTTON_CORNER_RADIUS_RATIO)).coerceAtLeast(0f)
     }
 }

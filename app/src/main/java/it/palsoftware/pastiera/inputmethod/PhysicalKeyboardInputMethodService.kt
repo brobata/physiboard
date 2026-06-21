@@ -1440,6 +1440,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             symLayoutController.openSymbolsPage()
             updateStatusBarText()
         }
+        candidatesBarController.onSoftwareKeyboardSymToggleRequested = {
+            ensureInputViewCreated()
+            symLayoutController.toggleSymPage()
+            updateStatusBarText()
+        }
         candidatesBarController.onSymCloseRequested = {
             if (symLayoutController.closeSymPage()) {
                 updateStatusBarText()
@@ -1476,20 +1481,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             modifierStateController.registerNonModifierKey()
         }
         candidatesBarController.onSoftwareKeyboardTextInput = { text, inputConnection, snapshot ->
+            val ic = inputConnection ?: currentInputConnection
             val consumedShiftOneShot = text.length == 1 &&
                 text[0].isLetter() &&
                 modifierStateController.consumeShiftOneShot()
-            val handled = if (text == " ") {
-                textInputController.handleDoubleSpaceToPeriod(
-                    keyCode = KeyEvent.KEYCODE_SPACE,
-                    inputConnection = inputConnection,
-                    shouldDisableDoubleSpaceToPeriod = snapshot.shouldDisableDoubleSpaceToPeriod,
-                    shouldDisableAutoCapitalize = snapshot.shouldDisableAutoCapitalize,
-                    onStatusBarUpdate = { updateStatusBarText() }
-                )
-            } else {
-                false
-            }
+            val handled = handleSoftwareKeyboardTextInput(text, ic, snapshot)
             if (consumedShiftOneShot) {
                 updateStatusBarText()
             }
@@ -1749,6 +1745,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 keyboardVisibilityController.syncMinimalUiOverrideFromSettings()
             } else if (key == "software_keyboard_mode") {
                 keyboardVisibilityController.syncMinimalUiOverrideFromSettings()
+            } else if (SettingsManager.isKeyboardThemePreferenceKey(key)) {
+                Handler(Looper.getMainLooper()).post {
+                    updateStatusBarText()
+                }
             } else if (
                 key == SettingsManager.KEY_TYPING_SOUND_MODE ||
                 key == SettingsManager.KEY_TYPING_SOUND_OUTPUT_MODE ||
@@ -1895,6 +1895,50 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         } else {
             Log.d(TRACKPAD_DEBUG_TAG, "onCreate: Initial Shizuku detector start skipped")
         }
+    }
+
+    private fun handleSoftwareKeyboardTextInput(
+        text: String,
+        inputConnection: InputConnection?,
+        snapshot: StatusBarController.StatusSnapshot
+    ): Boolean {
+        val ic = inputConnection ?: return false
+
+        if (text == " ") {
+            if (
+                textInputController.handleDoubleSpaceToPeriod(
+                    keyCode = KeyEvent.KEYCODE_SPACE,
+                    inputConnection = ic,
+                    shouldDisableDoubleSpaceToPeriod = snapshot.shouldDisableDoubleSpaceToPeriod,
+                    shouldDisableAutoCapitalize = snapshot.shouldDisableAutoCapitalize,
+                    onStatusBarUpdate = { updateStatusBarText() }
+                )
+            ) {
+                suggestionController.onBoundaryKey(KeyEvent.KEYCODE_SPACE, null, ic)
+                updateStatusBarText()
+                return true
+            }
+
+            val replaceResult = if (!snapshot.shouldDisableSuggestions) {
+                suggestionController.onBoundaryKey(KeyEvent.KEYCODE_SPACE, null, ic)
+            } else {
+                null
+            }
+            if (replaceResult?.committed != true) {
+                markSelectionUpdateSkipAfterCommit()
+                ic.commitText(" ", 1)
+            }
+            updateStatusBarText()
+            return true
+        }
+
+        markSelectionUpdateSkipAfterCommit()
+        ic.commitText(text, 1)
+        if (!snapshot.shouldDisableSuggestions) {
+            suggestionController.onCharacterCommitted(text, ic)
+        }
+        updateStatusBarText()
+        return true
     }
 
     private fun buildTrackpadGestureDetector(): TrackpadGestureDetector {

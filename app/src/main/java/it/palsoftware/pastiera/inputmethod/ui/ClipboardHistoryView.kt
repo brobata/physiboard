@@ -37,9 +37,19 @@ class ClipboardHistoryView(
     private val recyclerView: RecyclerView
     private val emptyStateView: TextView
     private val clearButton: TextView
+    private val titleText: TextView
+    private var closeButton: ImageView? = null
     private var currentInputConnection: InputConnection? = null
     private val entryHeightPx: Int
     private var scrollToTopPending: Boolean = false
+    var themeOverride: KeyboardThemeColors? = null
+        set(value) {
+            if (field == value) {
+                return
+            }
+            field = value
+            applyTheme()
+        }
 
         init {
         // Use FrameLayout for two-level layout: header on top, scrollable content below
@@ -67,10 +77,9 @@ class ClipboardHistoryView(
             isFocusableInTouchMode = false
         }
 
-        val titleText = TextView(context).apply {
+        titleText = TextView(context).apply {
             text = context.getString(R.string.clipboard_history_title)
             textSize = 12f
-            setTextColor(Color.argb(180, 255, 255, 255))
             layoutParams = LinearLayout.LayoutParams(
                 0,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -81,7 +90,6 @@ class ClipboardHistoryView(
         clearButton = TextView(context).apply {
             text = context.getString(R.string.clipboard_clear_all)
             textSize = 12f
-            setTextColor(Color.parseColor("#FF6B6B"))
             isClickable = true
             isFocusable = true
             val padding = dpToPx(8f)
@@ -109,7 +117,6 @@ class ClipboardHistoryView(
         emptyStateView = TextView(context).apply {
             text = context.getString(R.string.clipboard_empty_state)
             textSize = 14f
-            setTextColor(Color.argb(128, 255, 255, 255))
             gravity = Gravity.CENTER
             layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -172,6 +179,7 @@ class ClipboardHistoryView(
             fixedHeight
         )
 
+        applyTheme()
         refresh()
     }
 
@@ -228,9 +236,7 @@ class ClipboardHistoryView(
         val padding = dpToPx(4f)
         return ImageView(context).apply {
             setImageResource(R.drawable.ic_close_24)
-            setColorFilter(Color.WHITE)
             contentDescription = context.getString(R.string.close)
-            background = createCloseButtonBackground()
             scaleType = ImageView.ScaleType.CENTER_INSIDE
             setPadding(padding, padding, padding, padding)
             isClickable = true
@@ -241,13 +247,19 @@ class ClipboardHistoryView(
             setOnClickListener {
                 onCloseRequested?.invoke()
             }
+            closeButton = this
+            applyCloseButtonTheme(this)
         }
     }
 
     private fun createCloseButtonBackground(): GradientDrawable {
+        val theme = themeOverride
         return GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            setColor(Color.argb(95, 220, 38, 38))
+            setColor(theme?.statusBarButton ?: Color.argb(95, 220, 38, 38))
+            if (theme != null) {
+                setStroke(dpToPx(1f), theme.divider)
+            }
             cornerRadius = dpToPx(6f).toFloat()
         }
     }
@@ -297,18 +309,44 @@ class ClipboardHistoryView(
     }
 
     private fun createRoundedBackground(isPinned: Boolean = false): GradientDrawable {
+        val theme = themeOverride
         return GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            // Use different color for pinned entries (e.g., slightly yellow tint)
-            val color = if (isPinned) {
-                Color.argb(60, 7, 7, 212) // rgb(7 7 212) tint for pinned entries
+            val color = if (theme != null) {
+                if (isPinned) colorWithAlpha(theme.accent, 95) else theme.suggestion
+            } else if (isPinned) {
+                Color.argb(60, 7, 7, 212)
             } else {
-                Color.argb(40, 255, 255, 255) // Default white tint
+                Color.argb(40, 255, 255, 255)
             }
             setColor(color)
+            if (theme != null) {
+                setStroke(dpToPx(1f), theme.divider)
+            }
             cornerRadius = dpToPx(6f).toFloat()
         }
     }
+
+    private fun applyTheme() {
+        val theme = themeOverride
+        val background = theme?.background ?: Color.TRANSPARENT
+        setBackgroundColor(background)
+        recyclerView.setBackgroundColor(background)
+        titleText.setTextColor(colorWithAlpha(theme?.textAndIcons ?: Color.WHITE, 180))
+        clearButton.setTextColor(theme?.accent ?: Color.parseColor("#FF6B6B"))
+        emptyStateView.setTextColor(colorWithAlpha(theme?.textAndIcons ?: Color.WHITE, 128))
+        closeButton?.let { applyCloseButtonTheme(it) }
+        adapter.notifyDataSetChanged()
+    }
+
+    private fun applyCloseButtonTheme(button: ImageView) {
+        val theme = themeOverride
+        button.setColorFilter(theme?.textAndIcons ?: Color.WHITE)
+        button.background = createCloseButtonBackground()
+    }
+
+    private fun colorWithAlpha(color: Int, alpha: Int): Int =
+        Color.argb(alpha.coerceIn(0, 255), Color.red(color), Color.green(color), Color.blue(color))
 
     private fun dpToPx(dp: Float): Int {
         return TypedValue.applyDimension(
@@ -349,7 +387,7 @@ class ClipboardHistoryView(
                 textSize = 14f
                 maxLines = 2
                 ellipsize = TextUtils.TruncateAt.END
-                setTextColor(Color.WHITE)
+                setTextColor(themeOverride?.textAndIcons ?: Color.WHITE)
             }
 
             container.addView(textView)

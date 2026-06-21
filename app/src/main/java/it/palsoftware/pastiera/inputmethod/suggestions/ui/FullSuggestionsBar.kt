@@ -26,6 +26,7 @@ import it.palsoftware.pastiera.inputmethod.suggestions.SuggestionButtonHandler
 import it.palsoftware.pastiera.inputmethod.VariationButtonHandler
 import it.palsoftware.pastiera.inputmethod.SubtypeCycler
 import it.palsoftware.pastiera.inputmethod.ui.HamburgerMenuView
+import it.palsoftware.pastiera.inputmethod.ui.KeyboardThemeColors
 import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonRegistry
 import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarCallbacks
 import android.view.inputmethod.InputMethodManager
@@ -68,6 +69,16 @@ class FullSuggestionsBar(
     private var lastAnnouncedSlots: List<String?> = emptyList()
     private var actionCandidate: String? = null
     private var actionSlots: List<String?> = emptyList()
+    var requireDictionaryForSuggestions: Boolean = true
+    var themeOverride: KeyboardThemeColors? = null
+        set(value) {
+            if (field == value) {
+                return
+            }
+            field = value
+            hamburgerButton?.setColorFilter(value?.textAndIcons ?: Color.WHITE)
+            if (lastSlots.isNotEmpty()) lastSlots = emptyList()
+        }
 
     @Suppress("DEPRECATION")
     private fun View.announceForAccessibilityCompat(text: CharSequence) {
@@ -126,7 +137,7 @@ class FullSuggestionsBar(
             // Create hamburger menu button positioned absolutely on the right
             hamburgerButton = ImageView(context).apply {
                 setImageResource(R.drawable.ic_menu_24)
-                setColorFilter(Color.WHITE)
+                setColorFilter(themeOverride?.textAndIcons ?: Color.WHITE)
                 contentDescription = context.getString(R.string.status_bar_button_hamburger_description)
                 scaleType = ImageView.ScaleType.CENTER
                 background = null
@@ -260,7 +271,7 @@ class FullSuggestionsBar(
         val frame = frameContainer ?: return
         
         // Hide bar if shouldShow is false or if no dictionary exists for current subtype
-        val hasDictionary = hasDictionaryForCurrentSubtype()
+        val hasDictionary = !requireDictionaryForSuggestions || hasDictionaryForCurrentSubtype()
         if (!shouldShow || !hasDictionary) {
             cancelPendingSuggestionsAccessibilityEnable()
             suggestionButtons.clear()
@@ -276,6 +287,8 @@ class FullSuggestionsBar(
         }
 
         frame.visibility = View.VISIBLE
+        frame.alpha = 1f
+        bar.alpha = 1f
         // Show or hide hamburger button based on showHamburgerButton flag
         hamburgerButton?.visibility = if (showHamburgerButton) View.VISIBLE else View.GONE
         applyContainerInsetsForHamburger()
@@ -288,6 +301,12 @@ class FullSuggestionsBar(
         }
         if (actionCandidate == null && slots == lastSlots && bar.childCount > 0) {
             bar.visibility = View.VISIBLE
+            bar.alpha = 1f
+            frame.alpha = 1f
+            for (index in 0 until bar.childCount) {
+                bar.getChildAt(index).alpha = 1f
+                bar.getChildAt(index).visibility = View.VISIBLE
+            }
             return
         }
 
@@ -306,6 +325,30 @@ class FullSuggestionsBar(
             canDeleteUserSuggestion
         )
         lastSlots = slots
+    }
+
+    fun showPreview(suggestions: List<String>, showStatusButton: Boolean = false) {
+        val frame = ensureView()
+        val bar = container ?: return
+        frame.visibility = View.VISIBLE
+        bar.visibility = View.VISIBLE
+        hamburgerButton?.visibility = if (showStatusButton) View.VISIBLE else View.GONE
+        applyContainerInsetsForHamburger()
+        renderSlots(
+            bar = bar,
+            slots = listOf(suggestions.getOrNull(2), suggestions.getOrNull(0), suggestions.getOrNull(1)),
+            inputConnection = null,
+            listener = null,
+            shouldDisableSuggestions = false,
+            addWordCandidate = null,
+            onAddUserWord = null,
+            onAddUserWordSubstitutionRequested = null,
+            onSuggestionCommitted = null,
+            onHideSuggestion = null,
+            onDeleteUserSuggestion = null,
+            canDeleteUserSuggestion = null
+        )
+        lastSlots = emptyList()
     }
 
     private fun openSettings() {
@@ -358,6 +401,8 @@ class FullSuggestionsBar(
         bar.removeAllViews()
         suggestionButtons.clear()
         bar.visibility = View.VISIBLE
+        bar.alpha = 1f
+        frameContainer?.alpha = 1f
 
         // Force bar and frame to the target height to avoid fallback to wrap_content.
         applyContainerInsetsForHamburger()
@@ -404,6 +449,7 @@ class FullSuggestionsBar(
                 continue
             }
             val button = TextView(context).apply {
+                alpha = 1f
                 text = (suggestion ?: "")
                 gravity = Gravity.CENTER
                 textSize = 14f // keep readable while shrinking the bar
@@ -416,7 +462,7 @@ class FullSuggestionsBar(
                 )
                 includeFontPadding = false
                 minHeight = 0
-                setTextColor(Color.WHITE)
+                setTextColor(themeOverride?.textAndIcons ?: Color.WHITE)
                 setTypeface(null, android.graphics.Typeface.NORMAL)
                 maxLines = 1
                 ellipsize = TextUtils.TruncateAt.END
@@ -499,11 +545,11 @@ class FullSuggestionsBar(
     ): LinearLayout {
         val canDelete = canDeleteUserSuggestion?.invoke(candidate) == true
         val actions = buildList {
-            add(ActionButtonSpec(android.R.drawable.ic_menu_view, Color.rgb(68, 92, 140), Color.WHITE) {
+            add(ActionButtonSpec(android.R.drawable.ic_menu_view, themeOverride?.statusBarButton ?: Color.rgb(68, 92, 140), themeOverride?.textAndIcons ?: Color.WHITE) {
                 onHideSuggestion?.invoke(candidate)
             })
             if (canDelete) {
-                add(ActionButtonSpec(android.R.drawable.ic_menu_delete, Color.rgb(120, 52, 58), Color.WHITE) {
+                add(ActionButtonSpec(android.R.drawable.ic_menu_delete, themeOverride?.statusBarButton ?: Color.rgb(120, 52, 58), themeOverride?.textAndIcons ?: Color.WHITE) {
                     onDeleteUserSuggestion?.invoke(candidate)
                 })
             }
@@ -659,14 +705,18 @@ class FullSuggestionsBar(
     }
 
     private fun buildSuggestionBackground(): StateListDrawable {
+        val radiusRatio = themeOverride?.chromeCornerRadiusRatio ?: 0f
+        val radius = (targetHeightPx * radiusRatio).coerceAtLeast(0f)
         val normalDrawable = GradientDrawable().apply {
-            setColor(DEFAULT_SUGGESTION_COLOR)
-            cornerRadius = 0f
+            setColor(themeOverride?.suggestion ?: DEFAULT_SUGGESTION_COLOR)
+            cornerRadius = radius
             alpha = 255 // placeholders look identical; they stay non-clickable
+            themeOverride?.let { setStroke(dpToPx(1f), it.divider) }
         }
         val pressedDrawable = GradientDrawable().apply {
-            setColor(PRESSED_BLUE)
-            cornerRadius = 0f
+            setColor(themeOverride?.accent ?: PRESSED_BLUE)
+            cornerRadius = radius
+            themeOverride?.let { setStroke(dpToPx(1f), it.divider) }
         }
         return StateListDrawable().apply {
             addState(intArrayOf(android.R.attr.state_pressed), pressedDrawable)

@@ -118,6 +118,13 @@ class CandidatesBarController(
             candidatesStatusBar.onSymbolsPageRequested = value
         }
 
+    var onSoftwareKeyboardSymToggleRequested: (() -> Unit)? = null
+        set(value) {
+            field = value
+            inputStatusBar.onSoftwareKeyboardSymToggleRequested = value
+            candidatesStatusBar.onSoftwareKeyboardSymToggleRequested = value
+        }
+
     var onSymCloseRequested: (() -> Unit)? = null
         set(value) {
             field = value

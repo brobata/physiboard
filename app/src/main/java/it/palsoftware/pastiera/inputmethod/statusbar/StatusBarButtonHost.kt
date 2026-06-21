@@ -1,6 +1,8 @@
 package it.palsoftware.pastiera.inputmethod.statusbar
 
 import android.content.Context
+import android.widget.ImageView
+import android.widget.TextView
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
@@ -24,6 +26,17 @@ class StatusBarButtonHost(
 
     private val hostedButtons = mutableMapOf<StatusBarButtonId, HostedButton>()
 
+    var themeOverride: StatusBarButtonStyles.ThemeOverride? = null
+        set(value) {
+            if (field == value) {
+                return
+            }
+            field = value
+            hostedButtons.values.forEach { hosted ->
+                applyTheme(hosted.button, resolveThemeHeight(hosted))
+            }
+        }
+
     fun getOrCreateButton(
         id: StatusBarButtonId,
         size: Int,
@@ -42,6 +55,7 @@ class StatusBarButtonHost(
 
         val result = registry.createButton(context, id, size, callbacks) ?: return null
         val button = result.view
+        applyTheme(button, height.takeIf { it > 0 } ?: size)
         val container = if (result.badgeView != null || result.flashOverlayView != null) {
             createWrappedView(button, result.badgeView, result.flashOverlayView, width, height)
         } else {
@@ -113,6 +127,8 @@ class StatusBarButtonHost(
 
     private fun prepareForAttach(hosted: HostedButton, width: Int, height: Int) {
         (hosted.container.parent as? ViewGroup)?.removeView(hosted.container)
+        hosted.container.visibility = View.VISIBLE
+        hosted.container.alpha = 1f
         hosted.button.visibility = View.VISIBLE
         hosted.button.alpha = 1f
         if (hosted.container is FrameLayout) {
@@ -122,6 +138,7 @@ class StatusBarButtonHost(
             params.height = height
             hosted.button.layoutParams = params
         }
+        applyTheme(hosted.button, height)
     }
 
     private fun createWrappedView(
@@ -156,6 +173,34 @@ class StatusBarButtonHost(
         }
 
         return frame
+    }
+
+    private fun resolveThemeHeight(hosted: HostedButton): Int? {
+        return hosted.button.layoutParams?.height?.takeIf { it > 0 }
+            ?: hosted.button.height.takeIf { it > 0 }
+            ?: hosted.container.layoutParams?.height?.takeIf { it > 0 }
+            ?: hosted.container.height.takeIf { it > 0 }
+    }
+
+    private fun applyTheme(view: View, fallbackHeight: Int? = null) {
+        val theme = themeOverride ?: return
+        val height = view.layoutParams?.height?.takeIf { it > 0 }
+            ?: view.height.takeIf { it > 0 }
+            ?: fallbackHeight?.takeIf { it > 0 }
+        if (height != null) {
+            view.background = StatusBarButtonStyles.createButtonDrawable(
+                heightPx = height,
+                normalColor = theme.normalColor,
+                pressedColor = theme.pressedColor,
+                cornerRadiusRatio = theme.cornerRadiusRatio,
+                borderColor = theme.borderColor,
+                borderWidthPx = theme.borderWidthPx
+            )
+        }
+        when (view) {
+            is ImageView -> view.setColorFilter(theme.iconColor)
+            is TextView -> view.setTextColor(theme.iconColor)
+        }
     }
 
     private fun dpToPx(dp: Float): Int {

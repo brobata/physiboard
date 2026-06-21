@@ -35,6 +35,7 @@ import it.palsoftware.pastiera.inputmethod.ui.EmojiPickerView
 import it.palsoftware.pastiera.inputmethod.ui.HamburgerMenuView
 import it.palsoftware.pastiera.inputmethod.ui.LedStatusView
 import it.palsoftware.pastiera.inputmethod.ui.VariationBarView
+import it.palsoftware.pastiera.inputmethod.ui.KeyboardThemeColors
 import it.palsoftware.pastiera.inputmethod.suggestions.ui.FullSuggestionsBar
 import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonRegistry
 import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarCallbacks
@@ -131,6 +132,8 @@ class StatusBarController(
             field = value
             variationBarView?.onSymbolsPageRequested = value
         }
+
+    var onSoftwareKeyboardSymToggleRequested: (() -> Unit)? = null
 
     var onSymCloseRequested: (() -> Unit)? = null
 
@@ -289,7 +292,8 @@ class StatusBarController(
         get() = dpToPx(600f) // fallback when nothing measured yet
     private val ledStatusView = LedStatusView(context)
     private val buttonRegistry = StatusBarButtonRegistry()
-    private val variationBarView: VariationBarView? = if (mode == Mode.FULL) VariationBarView(context, assets, imeServiceClass, buttonRegistry) else null
+    private val variationBarView: VariationBarView? =
+        if (mode == Mode.FULL) VariationBarView(context, assets, imeServiceClass, buttonRegistry) else null
     private var variationsWrapper: View? = null
     private var hamburgerMenuView: HamburgerMenuView? = null
     private var forceMinimalUi: Boolean = false
@@ -329,6 +333,114 @@ class StatusBarController(
                 "appliedBottomPadding=$appliedBottomPadding"
         )
     }
+
+    private fun hardwareTheme(): SettingsManager.KeyboardThemeSettings =
+        SettingsManager.getKeyboardTheme(context, SettingsManager.KeyboardThemeTarget.HARDWARE)
+
+    private fun softwareTheme(): SettingsManager.KeyboardThemeSettings =
+        SettingsManager.getKeyboardTheme(context, SettingsManager.KeyboardThemeTarget.SOFTWARE)
+
+    private fun activeThemeSettings(
+        isFullSoftwareKeyboardMode: Boolean =
+            mode == Mode.FULL &&
+                SettingsManager.resolveEffectiveSoftwareKeyboardMode(context) == SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL
+    ): SettingsManager.KeyboardThemeSettings =
+        if (isFullSoftwareKeyboardMode) softwareTheme() else hardwareTheme()
+
+    private fun activeThemeColors(
+        isFullSoftwareKeyboardMode: Boolean =
+            mode == Mode.FULL &&
+                SettingsManager.resolveEffectiveSoftwareKeyboardMode(context) == SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL
+    ): KeyboardThemeColors =
+        activeThemeSettings(isFullSoftwareKeyboardMode).toKeyboardThemeColors()
+
+    private fun applyKeyboardThemeOverrides(activeColors: KeyboardThemeColors) {
+        statusBarLayout?.setBackgroundColor(activeColors.background)
+        symSurfaceStack?.setBackgroundColor(activeColors.background)
+        symSurfaceContainer?.setBackgroundColor(activeColors.background)
+        emojiKeyboardContainer?.setBackgroundColor(activeColors.background)
+        variationBarView?.themeOverride = activeColors
+        ledStatusView.themeOverride = activeColors
+        fullSuggestionsBar?.themeOverride = activeColors
+        hamburgerMenuView?.themeOverride = activeColors
+        clipboardHistoryView?.themeOverride = activeColors
+        emojiPickerView?.themeOverride = activeColors
+        applySurfaceCloseButtonTheme(activeColors)
+    }
+
+    private fun statusBarCallbacks(): StatusBarCallbacks =
+        StatusBarCallbacks(
+            onClipboardRequested = onClipboardRequested,
+            onSpeechRecognitionRequested = onSpeechRecognitionRequested,
+            onEmojiPickerRequested = onEmojiPickerRequested,
+            onLanguageSwitchRequested = onLanguageSwitchRequested,
+            onHamburgerMenuRequested = onHamburgerMenuRequested,
+            onMinimalUiToggleRequested = { handleMinimalUiToggleFromMenu() },
+            onOpenSettings = { openSettings() },
+            onSymbolsPageRequested = onSymbolsPageRequested,
+            onUndoRequested = onUndoRequested,
+            onRedoRequested = onRedoRequested,
+            onHapticFeedback = { NotificationHelper.triggerHapticFeedback(context) }
+        )
+
+    private fun applyChromeZOrder() {
+        // The software keyboard draws an opaque themed canvas. Keep the chrome
+        // rows above it without assigning competing Z to the surface itself.
+        val chromeZ = 1f
+        fullSuggestionsBar?.ensureView()?.apply {
+            elevation = 0f
+            translationZ = chromeZ
+        }
+        variationsWrapper?.apply {
+            elevation = 0f
+            translationZ = chromeZ
+        }
+        symSurfaceContainer?.translationZ = 0f
+        symSurfaceStack?.translationZ = 0f
+        emojiKeyboardContainer?.translationZ = 0f
+    }
+
+    private fun ensureMainChildOrder() {
+        val layout = statusBarLayout ?: return
+        val suggestions = fullSuggestionsBar?.ensureView()
+        val modifiers = modifiersContainer
+        val variations = variationsWrapper
+        val surface = symSurfaceContainer
+        val children = listOf(suggestions, modifiers, variations, surface).filterNotNull()
+        val alreadyOrdered = children.withIndex().all { (index, child) ->
+            child.parent === layout && layout.indexOfChild(child) == index
+        }
+        if (alreadyOrdered) {
+            return
+        }
+        children.forEach { child ->
+            val parent = child.parent
+            if (parent === layout) {
+                layout.removeView(child)
+            } else if (parent is ViewGroup) {
+                parent.removeView(child)
+            }
+        }
+        children.forEach { layout.addView(it) }
+    }
+
+    private fun SettingsManager.KeyboardThemeSettings.toAospThemeOverride(): AospKeyboardView.ThemeOverride =
+        AospKeyboardView.ThemeOverride(
+            background = background,
+            divider = divider,
+            normalKey = normalKey,
+            specialKey = specialKey,
+            textAndIcons = textAndIcons,
+            accent = accent,
+            keyPopup = keyPopup,
+            keyPopupSelected = keyPopupSelected,
+            keyCornerRadiusRatio = keyCornerRadiusRatio,
+            keyHeightScale = keyHeightScale,
+            keyWidthScale = keyWidthScale,
+            rowGapScale = rowGapScale,
+            distributeHorizontalSpacing = distributeHorizontalSpacing,
+            ortholinear = ortholinear
+        )
 
     fun setForceMinimalUi(force: Boolean) {
         if (forceMinimalUi == force) {
@@ -447,6 +559,15 @@ class StatusBarController(
             val ledStrip = ledStatusView.ensureView()
             ledStatusView.onLongPressListener = { handleMinimalUiToggleFromMenu() }
 
+            fullSuggestionsBar = FullSuggestionsBar(
+                context,
+                buttonRegistry,
+                callbacksProvider = { statusBarCallbacks() }
+            )
+            if (assets != null && imeServiceClass != null) {
+                fullSuggestionsBar?.setSubtypeCyclingParams(assets, imeServiceClass)
+            }
+
             symSurfaceStack = LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
                 clipChildren = true
@@ -473,35 +594,12 @@ class StatusBarController(
             }
 
             statusBarLayout?.apply {
-                // Full-width suggestions bar above the rest
-                fullSuggestionsBar = FullSuggestionsBar(
-                    context,
-                    buttonRegistry,
-                    callbacksProvider = {
-                    StatusBarCallbacks(
-                        onClipboardRequested = onClipboardRequested,
-                        onSpeechRecognitionRequested = onSpeechRecognitionRequested,
-                        onEmojiPickerRequested = onEmojiPickerRequested,
-                        onLanguageSwitchRequested = onLanguageSwitchRequested,
-                        onHamburgerMenuRequested = onHamburgerMenuRequested,
-                        onMinimalUiToggleRequested = { handleMinimalUiToggleFromMenu() },
-                        onOpenSettings = { openSettings() },
-                        onSymbolsPageRequested = onSymbolsPageRequested,
-                        onUndoRequested = onUndoRequested,
-                        onRedoRequested = onRedoRequested,
-                        onHapticFeedback = { NotificationHelper.triggerHapticFeedback(context) }
-                    )
-                }
-                )
-                // Set subtype cycling parameters if available
-                if (assets != null && imeServiceClass != null) {
-                    fullSuggestionsBar?.setSubtypeCyclingParams(assets, imeServiceClass)
-                }
                 addView(fullSuggestionsBar?.ensureView())
                 addView(modifiersContainer)
                 variationsWrapper?.let { addView(it) }
                 addView(symSurfaceContainer)
             }
+            applyChromeZOrder()
             applyAccessibilitySecondRowReadPreference()
             statusBarLayout?.let { ViewCompat.requestApplyInsets(it) }
         } else if (emojiMapText.isNotEmpty()) {
@@ -516,24 +614,18 @@ class StatusBarController(
         menu.attachTo(frame)
     }
 
+    private fun activeHamburgerWrapper(): View? {
+        return variationsWrapper
+    }
+
     private fun showHamburgerMenu() {
         if (hamburgerMenuView == null) {
-            attachHamburgerMenu(variationsWrapper)
+            attachHamburgerMenu(activeHamburgerWrapper())
+        } else {
+            attachHamburgerMenu(activeHamburgerWrapper())
         }
         val menu = hamburgerMenuView ?: return
-        val callbacks = StatusBarCallbacks(
-            onClipboardRequested = onClipboardRequested,
-            onSpeechRecognitionRequested = onSpeechRecognitionRequested,
-            onEmojiPickerRequested = onEmojiPickerRequested,
-            onLanguageSwitchRequested = onLanguageSwitchRequested,
-            onHamburgerMenuRequested = null,
-            onMinimalUiToggleRequested = { handleMinimalUiToggleFromMenu() },
-            onOpenSettings = { openSettings() },
-            onSymbolsPageRequested = onSymbolsPageRequested,
-            onUndoRequested = onUndoRequested,
-            onRedoRequested = onRedoRequested,
-            onHapticFeedback = { NotificationHelper.triggerHapticFeedback(context) }
-        )
+        val callbacks = statusBarCallbacks().copy(onHamburgerMenuRequested = null)
         menu.show(callbacks) { hideHamburgerMenu() }
     }
 
@@ -722,6 +814,10 @@ class StatusBarController(
         val view = clipboardHistoryView ?: ClipboardHistoryView(context, manager) {
             onSymCloseRequested?.invoke()
         }.also { clipboardHistoryView = it }
+        view.themeOverride = (if (
+            mode == Mode.FULL &&
+                SettingsManager.resolveEffectiveSoftwareKeyboardMode(context) == SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL
+        ) softwareTheme() else hardwareTheme()).toKeyboardThemeColors()
         if (view.parent !== container) {
             container.removeAllViews()
             emojiKeyButtons.clear()
@@ -754,6 +850,10 @@ class StatusBarController(
         val view = emojiPickerView ?: EmojiPickerView(context) {
             onSymCloseRequested?.invoke()
         }.also { emojiPickerView = it }
+        view.themeOverride = (if (
+            mode == Mode.FULL &&
+                SettingsManager.resolveEffectiveSoftwareKeyboardMode(context) == SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL
+        ) softwareTheme() else hardwareTheme()).toKeyboardThemeColors()
         val wasJustAdded = view.parent !== container
         if (wasJustAdded) {
             container.removeAllViews()
@@ -989,6 +1089,7 @@ class StatusBarController(
                 )
             )
         }
+        keyboardView.visibility = View.VISIBLE
         keyboardView.listener = object : AospKeyboardView.Listener {
             override fun onText(text: String) {
                 onSoftwareKeyboardNonShiftInteraction?.invoke()
@@ -1016,7 +1117,14 @@ class StatusBarController(
 
             override fun onSymbols() {
                 onSoftwareKeyboardNonShiftInteraction?.invoke()
-                onSymbolsPageRequested?.invoke()
+                prepareSoftwareKeyboardForSymbolTransition()
+                onSoftwareKeyboardSymToggleRequested?.invoke()
+            }
+
+            override fun onCtrl() {
+                onSoftwareKeyboardNonShiftInteraction?.invoke()
+                inputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_CTRL_LEFT))
+                inputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_CTRL_LEFT))
             }
 
             override fun onLanguageSwitch() {
@@ -1043,14 +1151,57 @@ class StatusBarController(
         }
         keyboardView.layoutName = layoutName
         keyboardView.shifted = uppercase
+        keyboardView.shiftLocked = snapshot.capsLockEnabled
+        keyboardView.symbolsLabel = nextSoftwareSymKeyLabel(snapshot.symPage)
         keyboardView.spacebarLabel = buildSoftwareKeyboardSpacebarLabel(snapshot)
         keyboardView.longPressTimeoutMs = SettingsManager.getLongPressThreshold(context)
         keyboardView.longPressAlternatesProvider = { output ->
             resolveSoftwareKeyboardLongPressAlternates(output, snapshot)
         }
+        keyboardView.themeOverride = softwareTheme().toAospThemeOverride()
         softwareKeyboardShown = true
         lastSymPageRendered = 0
         lastInputConnectionUsed = inputConnection
+    }
+
+    private fun prepareSoftwareKeyboardForSymbolTransition() {
+        val activeColors = softwareTheme()
+        emojiKeyboardContainer?.apply {
+            setBackgroundColor(activeColors.background)
+            (getChildAt(0) as? AospKeyboardView)?.visibility = View.INVISIBLE
+        }
+    }
+
+    private fun nextSoftwareSymKeyLabel(currentPage: Int): String {
+        val pageValues = SettingsManager.getSymPagesConfig(context).enabledOrderedPages().mapNotNull { page ->
+            when (page) {
+                it.palsoftware.pastiera.SymPagesConfig.PAGE_EMOJI -> 1
+                it.palsoftware.pastiera.SymPagesConfig.PAGE_SYMBOLS -> 2
+                it.palsoftware.pastiera.SymPagesConfig.PAGE_CLIPBOARD -> 3
+                it.palsoftware.pastiera.SymPagesConfig.PAGE_EMOJI_PICKER -> 4
+                else -> null
+            }
+        }
+        if (pageValues.isEmpty()) {
+            return "SYM"
+        }
+        val nextPage = if (currentPage == 0) {
+            pageValues.firstOrNull()
+        } else {
+            val currentIndex = pageValues.indexOf(currentPage)
+            when {
+                currentIndex < 0 -> pageValues.firstOrNull()
+                currentIndex == pageValues.lastIndex -> 0
+                else -> pageValues[currentIndex + 1]
+            }
+        }
+        return when (nextPage) {
+            1 -> "☺"
+            2 -> "SYM"
+            3 -> "▣"
+            4 -> "☺⌕"
+            else -> "ABC"
+        }
     }
 
     private fun resolveSoftwareKeyboardLongPressAlternates(output: String, snapshot: StatusSnapshot): List<String> {
@@ -1115,9 +1266,10 @@ class StatusBarController(
 
     private fun updateSoftwareSymbolKeyboard(
         symMappings: Map<Int, String>,
-        page: Int,
+        snapshot: StatusSnapshot,
         inputConnection: android.view.inputmethod.InputConnection? = null
     ) {
+        val page = snapshot.symPage
         val container = emojiKeyboardContainer ?: return
         container.setPadding(0, 0, 0, emojiKeyboardBottomPaddingPx)
         val inputConnectionChanged = lastInputConnectionUsed != inputConnection
@@ -1164,7 +1316,7 @@ class StatusBarController(
                 )
             }
             if (rowIndex == 2) {
-                rowLayout.addView(createSoftwareSymbolControl("⇧", keyHeight, fixedKeyWidth) {
+                rowLayout.addView(createSoftwareSymbolControl("", keyHeight, fixedKeyWidth, iconRes = R.drawable.shift_24) {
                     // Keep page stable; shifted symbol layers can be added later without touching PKB SYM.
                 }, LinearLayout.LayoutParams(fixedKeyWidth, keyHeight).apply { marginEnd = keySpacing })
             }
@@ -1183,7 +1335,7 @@ class StatusBarController(
                 })
             }
             if (rowIndex == 2) {
-                rowLayout.addView(createSoftwareSymbolControl("⌫", keyHeight, fixedKeyWidth) {
+                rowLayout.addView(createSoftwareSymbolControl("", keyHeight, fixedKeyWidth, iconRes = R.drawable.backspace_24) {
                     inputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
                     inputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DEL))
                 }, LinearLayout.LayoutParams(fixedKeyWidth, keyHeight).apply { marginStart = keySpacing })
@@ -1196,22 +1348,26 @@ class StatusBarController(
             gravity = Gravity.CENTER_HORIZONTAL
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, keyHeight)
         }
-        row4.addView(createSoftwareSymbolControl("ABC", keyHeight, fixedKeyWidth) {
-            onSymbolsPageRequested?.invoke()
-        }, LinearLayout.LayoutParams(fixedKeyWidth * 2, keyHeight).apply { marginEnd = keySpacing })
-        row4.addView(createSoftwareSymbolControl("☺", keyHeight, fixedKeyWidth) {
-            onEmojiPickerRequested?.invoke()
+        row4.addView(createSoftwareSymbolControl(nextSoftwareSymKeyLabel(page), keyHeight, fixedKeyWidth) {
+            onSoftwareKeyboardSymToggleRequested?.invoke()
         }, LinearLayout.LayoutParams(fixedKeyWidth, keyHeight).apply { marginEnd = keySpacing })
-        row4.addView(createSoftwareSymbolControl("", keyHeight, fixedKeyWidth) {
-            inputConnection?.commitText(" ", 1)
-        }, LinearLayout.LayoutParams(fixedKeyWidth * 4, keyHeight).apply { marginEnd = keySpacing })
+        row4.addView(createSoftwareSymbolControl("", keyHeight, fixedKeyWidth, iconRes = R.drawable.keyboard_control_key_24) {
+            sendSoftwareCtrlTap(inputConnection)
+        }, LinearLayout.LayoutParams(fixedKeyWidth, keyHeight).apply { marginEnd = keySpacing })
+        row4.addView(createSoftwareSymbolControl(",", keyHeight, fixedKeyWidth) {
+            inputConnection?.commitText(",", 1)
+        }, LinearLayout.LayoutParams(fixedKeyWidth, keyHeight).apply { marginEnd = keySpacing })
+        row4.addView(createSoftwareSymbolSpaceControl(buildSoftwareKeyboardSpacebarLabel(snapshot), keyHeight, inputConnection), LinearLayout.LayoutParams(fixedKeyWidth * 4, keyHeight).apply { marginEnd = keySpacing })
         row4.addView(createSoftwareSymbolControl(".", keyHeight, fixedKeyWidth) {
             inputConnection?.commitText(".", 1)
         }, LinearLayout.LayoutParams(fixedKeyWidth, keyHeight).apply { marginEnd = keySpacing })
-        row4.addView(createSoftwareSymbolControl("↵", keyHeight, fixedKeyWidth) {
+        row4.addView(createSoftwareSymbolControl("", keyHeight, fixedKeyWidth, iconRes = R.drawable.keyboard_control_key_24) {
+            sendSoftwareCtrlTap(inputConnection)
+        }, LinearLayout.LayoutParams(fixedKeyWidth, keyHeight).apply { marginEnd = keySpacing })
+        row4.addView(createSoftwareSymbolControl("", keyHeight, fixedKeyWidth, iconRes = R.drawable.keyboard_return_24) {
             inputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
             inputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
-        }, LinearLayout.LayoutParams(fixedKeyWidth * 2, keyHeight))
+        }, LinearLayout.LayoutParams(fixedKeyWidth, keyHeight))
         container.addView(row4)
 
         lastSymPageRendered = page
@@ -1224,16 +1380,26 @@ class StatusBarController(
         label: String,
         height: Int,
         width: Int,
+        iconRes: Int? = null,
         onClick: () -> Unit
     ): TextView {
+        val theme = activeThemeColors(isFullSoftwareKeyboardMode = true)
         return TextView(context).apply {
             text = label
-            setTextColor(Color.WHITE)
+            setTextColor(theme.textAndIcons)
             textSize = if (label.length <= 1) 22f else 15f
             typeface = android.graphics.Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
+            iconRes?.let { resId ->
+                val icon = ContextCompat.getDrawable(context, resId)?.mutate()
+                icon?.setTint(theme.textAndIcons)
+                val iconSize = (height * 0.46f).toInt().coerceAtLeast(dpToPx(18f))
+                icon?.setBounds(0, 0, iconSize, iconSize)
+                setCompoundDrawables(null, icon, null, null)
+            }
             background = GradientDrawable().apply {
-                setColor(Color.argb(40, 255, 255, 255))
+                setColor(theme.statusBarButton)
+                setStroke(dpToPx(1f), theme.divider)
                 cornerRadius = dpToPx(6f).toFloat()
             }
             isClickable = true
@@ -1241,6 +1407,77 @@ class StatusBarController(
             setOnClickListener { onClick() }
             layoutParams = LinearLayout.LayoutParams(width, height)
         }
+    }
+
+    private fun createSoftwareSymbolSpaceControl(
+        label: String,
+        height: Int,
+        inputConnection: android.view.inputmethod.InputConnection?
+    ): TextView {
+        val view = createSoftwareSymbolControl(label, height, 0, onClick = {
+            inputConnection?.commitText(" ", 1)
+        })
+        var downX = 0f
+        var lastX = 0f
+        var moved = false
+        val step = dpToPx(18f).toFloat()
+        val handler = android.os.Handler(android.os.Looper.getMainLooper())
+        var longPressTriggered = false
+        val longPressRunnable = Runnable {
+            longPressTriggered = true
+            onLanguageSwitchRequested?.invoke()
+        }
+        view.setOnTouchListener { _, event ->
+            when (event.actionMasked) {
+                android.view.MotionEvent.ACTION_DOWN -> {
+                    downX = event.x
+                    lastX = event.x
+                    moved = false
+                    longPressTriggered = false
+                    handler.postDelayed(longPressRunnable, SettingsManager.getLongPressThreshold(context))
+                    true
+                }
+                android.view.MotionEvent.ACTION_MOVE -> {
+                    val delta = event.x - lastX
+                    if (kotlin.math.abs(delta) >= step) {
+                        handler.removeCallbacks(longPressRunnable)
+                        moved = true
+                        val steps = (delta / step).toInt()
+                        repeat(kotlin.math.abs(steps).coerceAtMost(4)) {
+                            val connection = inputConnection ?: return@repeat
+                            val didMove = if (steps > 0) {
+                                TextSelectionHelper.moveCursorRight(connection)
+                            } else {
+                                TextSelectionHelper.moveCursorLeft(connection)
+                            }
+                            if (didMove) {
+                                onCursorMovedListener?.invoke()
+                            }
+                        }
+                        lastX += steps * step
+                    }
+                    true
+                }
+                android.view.MotionEvent.ACTION_UP -> {
+                    handler.removeCallbacks(longPressRunnable)
+                    if (!moved && !longPressTriggered && kotlin.math.abs(event.x - downX) < step) {
+                        inputConnection?.commitText(" ", 1)
+                    }
+                    true
+                }
+                android.view.MotionEvent.ACTION_CANCEL -> {
+                    handler.removeCallbacks(longPressRunnable)
+                    true
+                }
+                else -> false
+            }
+        }
+        return view
+    }
+
+    private fun sendSoftwareCtrlTap(inputConnection: android.view.inputmethod.InputConnection?) {
+        inputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_CTRL_LEFT))
+        inputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_CTRL_LEFT))
     }
 
     private fun buildSoftwareKeyboardSpacebarLabel(snapshot: StatusSnapshot): String {
@@ -1290,6 +1527,7 @@ class StatusBarController(
      * Crea un placeholder con icona emoji per aprire l'emoji picker (symPage 4).
      */
     private fun createPlaceholderWithEmojiPickerButton(height: Int, page: Int): View {
+        val theme = activeThemeColors()
         val placeholder = FrameLayout(context).apply {
             setPadding(0, 0, 0, 0)
             layoutParams = FrameLayout.LayoutParams(
@@ -1309,7 +1547,7 @@ class StatusBarController(
         val button = ImageView(context).apply {
             background = null
             setImageResource(if (page == 1) R.drawable.ic_emoji_symbols_24 else R.drawable.ic_sentiment_satisfied_24)
-            setColorFilter(Color.WHITE)
+            setColorFilter(theme.textAndIcons)
             contentDescription = context.getString(R.string.status_bar_button_emoji_description)
             scaleType = ImageView.ScaleType.FIT_CENTER
             adjustViewBounds = true
@@ -1341,6 +1579,7 @@ class StatusBarController(
      * Crea un placeholder con icona matita per aprire la schermata di personalizzazione SYM.
      */
     private fun createPlaceholderWithPencilButton(height: Int, page: Int): View {
+        val theme = activeThemeColors()
         val placeholder = FrameLayout(context).apply {
             setPadding(0, 0, 0, 0)
             layoutParams = FrameLayout.LayoutParams(
@@ -1362,7 +1601,7 @@ class StatusBarController(
         val button = ImageView(context).apply {
             background = null
             setImageResource(R.drawable.ic_edit_24)
-            setColorFilter(Color.WHITE) // Bianco
+            setColorFilter(theme.textAndIcons)
             contentDescription = context.getString(R.string.sym_customization_button)
             scaleType = ImageView.ScaleType.FIT_CENTER
             adjustViewBounds = true
@@ -1387,6 +1626,7 @@ class StatusBarController(
     }
 
     private fun createSymEditorButton(height: Int, width: Int, page: Int): View {
+        val theme = activeThemeColors()
         val button = FrameLayout(context).apply {
             layoutParams = LinearLayout.LayoutParams(width, height)
             isClickable = true
@@ -1395,7 +1635,7 @@ class StatusBarController(
         }
         val icon = ImageView(context).apply {
             setImageResource(R.drawable.ic_edit_24)
-            setColorFilter(Color.WHITE)
+            setColorFilter(theme.textAndIcons)
             scaleType = ImageView.ScaleType.CENTER_INSIDE
             val padding = TypedValue.applyDimension(
                 TypedValue.COMPLEX_UNIT_DIP,
@@ -1443,6 +1683,7 @@ class StatusBarController(
      * @param page La pagina attiva (1=emoji, 2=caratteri)
      */
     private fun createEmojiKeyButton(label: String, content: String, height: Int, page: Int): View {
+        val theme = activeThemeColors()
         val keyLayout = FrameLayout(context).apply {
             setPadding(0, 0, 0, 0) // Nessun padding per permettere all'emoji di occupare tutto lo spazio
             layoutParams = FrameLayout.LayoutParams(
@@ -1459,9 +1700,9 @@ class StatusBarController(
             context.resources.displayMetrics
         )
         val drawable = GradientDrawable().apply {
-            setColor(Color.argb(40, 255, 255, 255)) // Bianco semi-trasparente
+            setColor(theme.normalKey)
             setCornerRadius(cornerRadius)
-            // Nessun bordo
+            setStroke(dpToPx(1f), theme.divider)
         }
         keyLayout.background = drawable
         
@@ -1482,7 +1723,7 @@ class StatusBarController(
             gravity = Gravity.CENTER
             // Per pagina 2 (caratteri), rendi bianco e in grassetto
             if (page == 2) {
-                setTextColor(Color.WHITE)
+                setTextColor(theme.textAndIcons)
                 setTypeface(null, android.graphics.Typeface.BOLD)
             }
             // Larghezza e altezza per occupare tutto lo spazio disponibile
@@ -1504,7 +1745,7 @@ class StatusBarController(
         val labelText = TextView(context).apply {
             text = label
             textSize = 12f
-            setTextColor(Color.WHITE) // Bianco 100% opaco
+            setTextColor(theme.textAndIcons)
             gravity = Gravity.END or Gravity.BOTTOM
             layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -1539,9 +1780,9 @@ class StatusBarController(
         }
         val icon = ImageView(context).apply {
             setImageResource(R.drawable.ic_close_24)
-            setColorFilter(Color.WHITE)
+            setColorFilter(hardwareTheme().textAndIcons)
             scaleType = ImageView.ScaleType.CENTER_INSIDE
-            background = createCloseButtonBackground()
+            background = createCloseButtonBackground(hardwareTheme().toKeyboardThemeColors())
             val padding = TypedValue.applyDimension(
                 TypedValue.COMPLEX_UNIT_DIP,
                 4f,
@@ -1612,6 +1853,7 @@ class StatusBarController(
     }
 
     private fun createKeyboardSelectionButton(height: Int, width: Int): View {
+        val theme = activeThemeColors()
         val button = FrameLayout(context).apply {
             layoutParams = LinearLayout.LayoutParams(width, height)
             isClickable = true
@@ -1620,7 +1862,7 @@ class StatusBarController(
         }
         val icon = ImageView(context).apply {
             setImageResource(R.drawable.ic_globe_24)
-            setColorFilter(Color.WHITE)
+            setColorFilter(theme.textAndIcons)
             scaleType = ImageView.ScaleType.CENTER_INSIDE
             layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -1635,15 +1877,25 @@ class StatusBarController(
         return button
     }
 
-    private fun createCloseButtonBackground(): GradientDrawable {
+    private fun createCloseButtonBackground(theme: KeyboardThemeColors? = null): GradientDrawable {
         return GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            setColor(Color.argb(95, 220, 38, 38))
+            setColor(theme?.statusBarButton ?: Color.argb(95, 220, 38, 38))
+            if (theme != null) {
+                setStroke(dpToPx(1f), theme.divider)
+            }
             cornerRadius = TypedValue.applyDimension(
                 TypedValue.COMPLEX_UNIT_DIP,
                 6f,
                 context.resources.displayMetrics
             )
+        }
+    }
+
+    private fun applySurfaceCloseButtonTheme(theme: KeyboardThemeColors) {
+        (symSurfaceCloseButton as? ImageView)?.apply {
+            setColorFilter(theme.textAndIcons)
+            background = createCloseButtonBackground(theme)
         }
     }
 
@@ -1980,7 +2232,7 @@ class StatusBarController(
         // Set background to opaque immediately without animation
         backgroundView?.let { bgView ->
             if (bgView.background !is ColorDrawable) {
-                bgView.background = ColorDrawable(DEFAULT_BACKGROUND)
+                bgView.background = ColorDrawable(activeThemeColors().background)
             }
             (bgView.background as? ColorDrawable)?.alpha = 255
         }
@@ -2043,13 +2295,18 @@ class StatusBarController(
     fun update(snapshot: StatusSnapshot, emojiMapText: String = "", inputConnection: android.view.inputmethod.InputConnection? = null, symMappings: Map<Int, String>? = null) {
         isTitan2Layout = SettingsManager.isTitan2LayoutEnabled(context)
         val isFullSoftwareKeyboardMode =
-            SettingsManager.resolveEffectiveSoftwareKeyboardMode(context) == SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL
+            mode == Mode.FULL &&
+                SettingsManager.resolveEffectiveSoftwareKeyboardMode(context) == SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL
         val isSoftwareKeyboardEmojiPage = isFullSoftwareKeyboardMode && snapshot.symPage == 4
         val isSoftwareKeyboardSymbolPage = isFullSoftwareKeyboardMode && snapshot.symPage in 1..2
         val isSoftwareKeyboardOverlayPage = isSoftwareKeyboardEmojiPage || isSoftwareKeyboardSymbolPage
+        val activeTheme = activeThemeSettings(isFullSoftwareKeyboardMode)
+        val activeColors = activeTheme.toKeyboardThemeColors()
+        val softwareThemeSettings = if (isFullSoftwareKeyboardMode) activeTheme else softwareTheme()
         variationBarView?.onVariationSelectedListener = onVariationSelectedListener
         variationBarView?.onCursorMovedListener = onCursorMovedListener
         variationBarView?.updateInputConnection(inputConnection)
+        variationBarView?.forceVariationAreaVisible = isFullSoftwareKeyboardMode
         variationBarView?.setSymModeActive((snapshot.symPage > 0 && !isSoftwareKeyboardOverlayPage) || snapshot.clipboardOverlay)
         variationBarView?.updateLanguageButtonText()
         updateClipboardCount(snapshot.clipboardCount)
@@ -2060,11 +2317,14 @@ class StatusBarController(
             hideHamburgerMenu()
             lastHamburgerInputConnection = inputConnection
         }
-        if ((snapshot.symPage > 0 && !isFullSoftwareKeyboardMode) || snapshot.clipboardOverlay || forceMinimalUi) {
+        if ((snapshot.symPage > 0 && !isFullSoftwareKeyboardMode) || snapshot.clipboardOverlay || (forceMinimalUi && !isFullSoftwareKeyboardMode)) {
             hideHamburgerMenu()
         }
         
         val layout = ensureLayoutCreated(emojiMapText) ?: return
+        ensureMainChildOrder()
+        applyChromeZOrder()
+        applyKeyboardThemeOverrides(activeColors)
         applyAccessibilitySecondRowReadPreference()
         val modifiersContainerView = modifiersContainer ?: return
         val emojiView = emojiMapTextView ?: return
@@ -2081,38 +2341,44 @@ class StatusBarController(
         applyAccessibilityLiveRegionPreference(layout)
         
         if (layout.background !is ColorDrawable) {
-            layout.background = ColorDrawable(DEFAULT_BACKGROUND)
+            layout.background = ColorDrawable(activeTheme.background)
         } else if (snapshot.symPage == 0) {
             (layout.background as ColorDrawable).alpha = 255
         }
         
         modifiersContainerView.visibility = View.GONE
-        val showLedStrip = !isFullSoftwareKeyboardMode || snapshot.symPage == 4
+        val showLedStrip = !isFullSoftwareKeyboardMode || softwareThemeSettings.showLeds
         ledStatusView.getView()?.visibility = if (showLedStrip) View.VISIBLE else View.GONE
         if (showLedStrip) {
             ledStatusView.update(snapshot)
         }
-        val variationsBar = if (!forceMinimalUi) variationBarView else null
-        val variationsWrapperView = if (!forceMinimalUi) variationsWrapper else null
+        val showSecondRow = !forceMinimalUi && (mode == Mode.FULL || isFullSoftwareKeyboardMode)
+        val variationsBar = if (showSecondRow) variationBarView else null
+        val variationsWrapperView = if (showSecondRow) variationsWrapper else null
+        if (!showSecondRow) {
+            variationBarView?.hideImmediate()
+        }
         val experimentalEnabled = SettingsManager.isExperimentalSuggestionsEnabled(context)
         val suggestionsEnabledSetting = SettingsManager.getSuggestionsEnabled(context)
         // Show full suggestions bar when conditions are met (including minimal UI mode)
         val showFullBar =
-            experimentalEnabled &&
-            suggestionsEnabledSetting &&
-            !snapshot.shouldDisableSuggestions &&
+            (experimentalEnabled || isFullSoftwareKeyboardMode) &&
+            (suggestionsEnabledSetting || isFullSoftwareKeyboardMode) &&
+            (isFullSoftwareKeyboardMode || !snapshot.shouldDisableSuggestions) &&
             (snapshot.symPage == 0 || isSoftwareKeyboardOverlayPage) &&
             !snapshot.clipboardOverlay
+        val suggestionsAnnouncementDelayMs = SettingsManager.getAccessibilitySuggestionsAnnouncementDelayMs(context)
         fullSuggestionsBar?.setAccessibilityAnnouncementConfig(
             liveAnnouncementsEnabled = isAccessibilityLiveAnnouncementsEnabled(),
-            suggestionsAnnouncementDelayMs = SettingsManager.getAccessibilitySuggestionsAnnouncementDelayMs(context)
+            suggestionsAnnouncementDelayMs = suggestionsAnnouncementDelayMs
         )
+        fullSuggestionsBar?.requireDictionaryForSuggestions = !isFullSoftwareKeyboardMode
         fullSuggestionsBar?.update(
             snapshot.suggestions,
             showFullBar,
             inputConnection,
             onVariationSelectedListener,
-            snapshot.shouldDisableSuggestions,
+            if (isFullSoftwareKeyboardMode) false else snapshot.shouldDisableSuggestions,
             snapshot.addWordCandidate,
             onAddUserWord,
             onAddUserWordSubstitutionRequested,
@@ -2121,7 +2387,6 @@ class StatusBarController(
             onDeleteUserSuggestion,
             canDeleteUserSuggestion
         )
-        
         if (snapshot.clipboardOverlay) {
             // Show clipboard as dedicated overlay (not part of SYM pages)
             updateClipboardView(inputConnection)
@@ -2129,7 +2394,7 @@ class StatusBarController(
 
             // Pin background and hide variations while showing clipboard grid
             if (layout.background !is ColorDrawable) {
-                layout.background = ColorDrawable(DEFAULT_BACKGROUND)
+                layout.background = ColorDrawable(activeColors.background)
             }
             (layout.background as? ColorDrawable)?.alpha = 255
             variationsWrapperView?.apply {
@@ -2141,7 +2406,7 @@ class StatusBarController(
 
             val measured = ensureEmojiKeyboardMeasuredHeight(emojiKeyboardView, layout, forceReMeasure = true)
             val animationHeight = if (measured > 0) measured else defaultSymHeightPx
-            emojiKeyboardView.setBackgroundColor(DEFAULT_BACKGROUND)
+            emojiKeyboardView.setBackgroundColor(activeColors.background)
             emojiKeyboardView.visibility = View.VISIBLE
             val surfaceHeight = resolveSurfaceHeightWithOptionalLed(animationHeight, showLedStrip)
             setSurfaceCloseVisible(false)
@@ -2166,19 +2431,28 @@ class StatusBarController(
 
         if (shouldShowSoftwareKeyboard && snapshot.symPage == 0) {
             updateSoftwareKeyboard(snapshot, inputConnection)
-            variationsWrapperView?.apply {
-                visibility = View.VISIBLE
-                isEnabled = true
-                isClickable = true
+            if (showSecondRow) {
+                variationsWrapperView?.apply {
+                    visibility = View.VISIBLE
+                    isEnabled = true
+                    isClickable = true
+                }
+                val snapshotForVariations = snapshot.copy(
+                    suggestions = emptyList(),
+                    addWordCandidate = null,
+                    variations = snapshot.variations.ifEmpty {
+                        SettingsManager.getStaticVariationBasePreset(context)
+                    },
+                    shouldDisableVariations = false
+                )
+                variationsBar?.showVariations(snapshotForVariations, inputConnection)
+            } else {
+                variationBarView?.hideImmediate()
             }
-            val snapshotForVariations = if (snapshot.suggestions.isNotEmpty()) {
-                snapshot.copy(suggestions = emptyList(), addWordCandidate = null)
-            } else snapshot
-            variationsBar?.showVariations(snapshotForVariations, inputConnection)
             val measured = ensureEmojiKeyboardMeasuredHeight(emojiKeyboardView, layout, forceReMeasure = true)
             val keyboardHeight = if (measured > 0) measured else defaultSymHeightPx
             lastSoftwareKeyboardHeight = keyboardHeight
-            emojiKeyboardView.setBackgroundColor(DEFAULT_BACKGROUND)
+            emojiKeyboardView.setBackgroundColor(softwareThemeSettings.background)
             emojiKeyboardView.visibility = View.VISIBLE
             applySymSurfaceLayout(
                 symSurfaceView,
@@ -2202,7 +2476,7 @@ class StatusBarController(
                 // Show emoji picker view
                 updateEmojiPickerView(inputConnection, softwareKeyboardHeight = lastSoftwareKeyboardHeight.takeIf { isFullSoftwareKeyboardMode && it > 0 })
             } else if (isSoftwareKeyboardSymbolPage && symMappings != null) {
-                updateSoftwareSymbolKeyboard(symMappings, snapshot.symPage, inputConnection)
+                updateSoftwareSymbolKeyboard(symMappings, snapshot, inputConnection)
             } else if (symMappings != null) {
                 updateEmojiKeyboard(symMappings, snapshot.symPage, inputConnection)
             }
@@ -2210,7 +2484,7 @@ class StatusBarController(
 
             // Pin background to opaque IME color and hide variations so SYM animates on a solid canvas.
             if (layout.background !is ColorDrawable) {
-                layout.background = ColorDrawable(DEFAULT_BACKGROUND)
+                layout.background = ColorDrawable(activeColors.background)
             }
             (layout.background as? ColorDrawable)?.alpha = 255
             if (isSoftwareKeyboardOverlayPage) {
@@ -2240,7 +2514,7 @@ class StatusBarController(
             )
             val surfaceHeight = resolveSurfaceHeightWithOptionalLed(symHeight, showLedStrip)
             lastSymHeight = surfaceHeight
-            emojiKeyboardView.setBackgroundColor(DEFAULT_BACKGROUND)
+            emojiKeyboardView.setBackgroundColor(activeColors.background)
             emojiKeyboardView.visibility = View.VISIBLE
             applySymSurfaceLayout(symSurfaceView, symSurfaceStackView, emojiKeyboardView, surfaceHeight, reserveLedSpace = showLedStrip)
             setSurfaceCloseVisible(snapshot.symPage in 1..2)

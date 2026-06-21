@@ -60,6 +60,7 @@ class LedStatusView(
     private var altLed: View? = null
 
     var onLongPressListener: (() -> Unit)? = null
+    var themeOverride: KeyboardThemeColors? = null
 
     fun ensureView(): LinearLayout {
         container?.let { return it }
@@ -132,21 +133,23 @@ class LedStatusView(
     }
 
     private fun updateLed(led: View?, isLocked: Boolean, isActive: Boolean = false) {
+        val theme = themeOverride
         val targetColor = when {
-            isLocked -> LED_COLOR_RED_LOCKED
-            isActive -> LED_COLOR_BLUE_ACTIVE
-            else -> LED_COLOR_GRAY_OFF
+            isLocked -> theme?.ledLocked ?: LED_COLOR_RED_LOCKED
+            isActive -> theme?.ledActive ?: LED_COLOR_BLUE_ACTIVE
+            else -> theme?.ledInactive ?: LED_COLOR_GRAY_OFF
         }
         animateLedColor(led, targetColor)
     }
 
     private fun updateSymLed(led: View?, symPage: Int) {
+        val theme = themeOverride
         val targetColor = when (symPage) {
-            1 -> LED_COLOR_BLUE_ACTIVE
-            2 -> LED_COLOR_RED_LOCKED
-            3 -> LED_COLOR_BLUE_ACTIVE
-            4 -> LED_COLOR_BLUE_ACTIVE
-            else -> LED_COLOR_GRAY_OFF
+            1 -> theme?.ledActive ?: LED_COLOR_BLUE_ACTIVE
+            2 -> theme?.ledLocked ?: LED_COLOR_RED_LOCKED
+            3 -> theme?.ledActive ?: LED_COLOR_BLUE_ACTIVE
+            4 -> theme?.ledActive ?: LED_COLOR_BLUE_ACTIVE
+            else -> theme?.ledInactive ?: LED_COLOR_GRAY_OFF
         }
         animateLedColor(led, targetColor)
     }

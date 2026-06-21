@@ -50,6 +50,7 @@ import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarAnimator
 import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonId
 import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonPosition
 import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarCallbacks
+import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonStyles
 
 /**
  * Handles the variations row (suggestions + microphone/language) rendered above the LED strip.
@@ -136,6 +137,35 @@ class VariationBarView(
     // New modular components
     private val statusBarAnimator = StatusBarAnimator()
     private val buttonHost = buttonRegistry?.let { StatusBarButtonHost(context, it) }
+    var forceVariationAreaVisible: Boolean = false
+        set(value) {
+            if (field == value) {
+                return
+            }
+            field = value
+            lastVariationAreaVisible = null
+        }
+    var themeOverride: KeyboardThemeColors? = null
+        set(value) {
+            if (field == value) {
+                return
+            }
+            field = value
+            buttonHost?.themeOverride = value?.let {
+                StatusBarButtonStyles.ThemeOverride(
+                    normalColor = it.statusBarButton,
+                    pressedColor = it.accent,
+                    iconColor = it.textAndIcons,
+                    cornerRadiusRatio = it.keyCornerRadiusRatio,
+                    borderColor = it.divider,
+                    borderWidthPx = dpToPx(1f)
+                )
+            }
+            wrapper?.setBackgroundColor(value?.background ?: Color.TRANSPARENT)
+            container?.setBackgroundColor(value?.background ?: Color.TRANSPARENT)
+            emptyHintView?.setTextColor(colorWithAlpha(value?.textAndIcons ?: Color.WHITE, 120))
+            swipeIndicator?.background = createSwipeIndicatorDrawable()
+        }
 
     fun ensureView(): FrameLayout {
         if (wrapper != null) {
@@ -164,6 +194,7 @@ class VariationBarView(
                 variationsContainerHeight
             )
             visibility = View.GONE
+            setBackgroundColor(themeOverride?.background ?: Color.TRANSPARENT)
         }
         
         // Container for left fixed buttons (clipboard)
@@ -194,6 +225,7 @@ class VariationBarView(
                 variationsContainerHeight
             )
             visibility = View.GONE
+            setBackgroundColor(themeOverride?.background ?: Color.TRANSPARENT)
             addView(container)
         }
 
@@ -305,7 +337,7 @@ class VariationBarView(
 
         // Decide whether to use suggestions, dynamic variations (from cursor) or static utility keys.
         val staticModeEnabled = SettingsManager.isStaticVariationBarModeEnabled(context)
-        val statusBarVariationsEnabled = SettingsManager.areStatusBarVariationsEnabled(context)
+        val statusBarVariationsEnabled = forceVariationAreaVisible || SettingsManager.areStatusBarVariationsEnabled(context)
         // Variations are controlled separately from suggestions
         val canShowVariations = !snapshot.shouldDisableVariations
         val canShowSuggestions = !snapshot.shouldDisableSuggestions
@@ -313,7 +345,8 @@ class VariationBarView(
         val hasDynamicVariations = canShowVariations && snapshot.variations.isNotEmpty()
         val hasSuggestions = canShowSuggestions && snapshot.suggestions.isNotEmpty()
         val useDynamicVariations = statusBarVariationsEnabled && !staticModeEnabled && hasDynamicVariations
-        val allowStaticFallback = statusBarVariationsEnabled && (staticModeEnabled || snapshot.shouldDisableVariations)
+        val allowStaticFallback = statusBarVariationsEnabled &&
+            (forceVariationAreaVisible || staticModeEnabled || snapshot.shouldDisableVariations)
 
         val effectiveVariations: List<String>
         val isStaticContent: Boolean
@@ -333,7 +366,7 @@ class VariationBarView(
                         emailVariations = VariationRepository.loadEmailVariations(context.assets, context)
                     }
                     emailVariations
-                } else if (snapshot.shiftPhysicallyPressed || snapshot.shiftLayerLatched) {
+                } else if (snapshot.shiftPhysicallyPressed || snapshot.shiftOneShot || snapshot.capsLockEnabled || snapshot.shiftLayerLatched) {
                     if (staticVariationsShift.isEmpty()) {
                         val loaded = VariationRepository.loadStaticVariationsShift(context.assets, context)
                         staticVariationsShift = if (loaded.isNotEmpty()) {
@@ -343,7 +376,7 @@ class VariationBarView(
                         }
                     }
                     staticVariationsShift
-                } else if (snapshot.altPhysicallyPressed || snapshot.altLayerLatched) {
+                } else if (snapshot.altPhysicallyPressed || snapshot.altOneShot || snapshot.altLatchActive || snapshot.altLayerLatched) {
                     if (staticVariationsAlt.isEmpty()) {
                         val loaded = VariationRepository.loadStaticVariationsAlt(context.assets, context)
                         staticVariationsAlt = if (loaded.isNotEmpty()) {
@@ -376,8 +409,11 @@ class VariationBarView(
         }
 
         containerView.visibility = View.VISIBLE
+        containerView.alpha = 1f
         wrapperView.visibility = View.VISIBLE
+        wrapperView.alpha = 1f
         overlayView.visibility = if (isSymModeActive) View.GONE else View.VISIBLE
+        overlayView.alpha = 1f
 
         val variationAreaVisible = statusBarVariationsEnabled
         val rawDisplayedVariations = if (variationAreaVisible) effectiveVariations else emptyList()
@@ -391,7 +427,23 @@ class VariationBarView(
             currentVariationsRow?.parent == containerView &&
             currentVariationsRow?.visibility == View.VISIBLE
 
-        if (!variationsChanged && !inputConnectionChanged && !contentModeChanged && !variationAreaVisibilityChanged && (hasExistingRow || !variationAreaVisible)) {
+        if (!variationsChanged &&
+            !inputConnectionChanged &&
+            !contentModeChanged &&
+            !variationAreaVisibilityChanged &&
+            (hasExistingRow || !variationAreaVisible)
+        ) {
+            currentVariationsRow?.let { row ->
+                row.visibility = View.VISIBLE
+                row.alpha = 1f
+                for (index in 0 until row.childCount) {
+                    row.getChildAt(index).visibility = View.VISIBLE
+                    row.getChildAt(index).alpha = 1f
+                }
+            }
+            leftButtonsContainer?.alpha = 1f
+            buttonsContainer?.alpha = 1f
+            buttonHost?.refreshLanguageText()
             return
         }
 
@@ -490,6 +542,8 @@ class VariationBarView(
         val variationsRow = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.START or Gravity.CENTER_VERTICAL
+            alpha = 1f
+            visibility = View.VISIBLE
         }
         currentVariationsRow = if (variationAreaVisible) variationsRow else null
 
@@ -551,6 +605,10 @@ class VariationBarView(
             val params = LinearLayout.LayoutParams(fixedButtonWidth, fixedButtonHeight).apply {
                 marginEnd = if (isLastInGroup) 0 else spacingBetweenButtons
             }
+            hosted.container.visibility = View.VISIBLE
+            hosted.container.alpha = 1f
+            hosted.button.visibility = View.VISIBLE
+            hosted.button.alpha = 1f
             hosted.container.layoutParams = params
             container.addView(hosted.container)
 
@@ -590,6 +648,8 @@ class VariationBarView(
                 isLast,
                 spacingBetweenButtons
             )
+            button.alpha = 1f
+            button.visibility = View.VISIBLE
             variationButtons.add(button)
             variationsRow.addView(button)
         }
@@ -604,9 +664,7 @@ class VariationBarView(
             createAndAddButton(config.id, buttonsContainerView, isLast)
         }
 
-        if (variationAreaVisible && variationsChanged) {
-            animateVariationsIn(variationsRow)
-        } else if (variationAreaVisible) {
+        if (variationAreaVisible) {
             variationsRow.alpha = 1f
             variationsRow.visibility = View.VISIBLE
             buttonHost?.refreshLanguageText()
@@ -906,7 +964,7 @@ class VariationBarView(
     private fun createSwipeHintView(): TextView {
         return TextView(context).apply {
             text = context.getString(R.string.swipe_to_move_cursor)
-            setTextColor(Color.argb(120, 255, 255, 255))
+            setTextColor(colorWithAlpha(themeOverride?.textAndIcons ?: Color.WHITE, 120))
             textSize = 13f
             setTypeface(null, android.graphics.Typeface.BOLD)
             gravity = Gravity.CENTER
@@ -1002,7 +1060,16 @@ class VariationBarView(
         // Keep status bar layout stable; long labels are clipped instead of resizing the row.
         val calculatedWidth = buttonWidth
         
-        val stateListDrawable = VariationButtonStyles.createButtonDrawable(buttonHeight)
+        val stateListDrawable = themeOverride?.let {
+            VariationButtonStyles.createButtonDrawable(
+                heightPx = buttonHeight,
+                normalColor = it.normalKey,
+                pressedColor = it.accent,
+                cornerRadiusRatio = it.chromeCornerRadiusRatio,
+                borderColor = it.divider,
+                borderWidthPx = dpToPx(1f)
+            )
+        } ?: VariationButtonStyles.createButtonDrawable(buttonHeight)
 
         return TextView(context).apply {
             text = variation
@@ -1014,7 +1081,7 @@ class VariationBarView(
                 1,
                 TypedValue.COMPLEX_UNIT_SP
             )
-            setTextColor(Color.WHITE)
+            setTextColor(themeOverride?.textAndIcons ?: Color.WHITE)
             setTypeface(null, android.graphics.Typeface.BOLD)
             gravity = Gravity.CENTER
             maxLines = 1
@@ -1022,7 +1089,7 @@ class VariationBarView(
             setPadding(0, 0, 0, 0) // Testing with 0 padding
             if (isAddCandidate) {
                 val addDrawable = ContextCompat.getDrawable(context, android.R.drawable.ic_input_add)?.mutate()
-                addDrawable?.setTint(Color.YELLOW)
+                addDrawable?.setTint(themeOverride?.accent ?: Color.YELLOW)
                 setCompoundDrawablesWithIntrinsicBounds(null, null, addDrawable, null)
                 compoundDrawablePadding = dp4
             }
@@ -1071,7 +1138,10 @@ class VariationBarView(
         ).toInt()
         val drawable = GradientDrawable().apply {
             setColor(Color.TRANSPARENT)
-            cornerRadius = VariationButtonStyles.cornerRadiusForSize(buttonHeight)
+            cornerRadius = VariationButtonStyles.cornerRadiusForSize(
+                buttonHeight,
+                themeOverride?.chromeCornerRadiusRatio
+            )
         }
         return View(context).apply {
             background = drawable
@@ -1089,14 +1159,7 @@ class VariationBarView(
             32f,
             context.resources.displayMetrics
         ).toInt().coerceAtLeast(12)
-        val drawable = GradientDrawable(
-            GradientDrawable.Orientation.LEFT_RIGHT,
-            intArrayOf(
-                Color.argb(50, 255, 204, 0),
-                Color.argb(170, 255, 221, 0),
-                Color.argb(50, 255, 204, 0)
-            )
-        )
+        val drawable = createSwipeIndicatorDrawable()
         return View(context).apply {
             background = drawable
             alpha = 0f
@@ -1108,6 +1171,21 @@ class VariationBarView(
             }
         }
     }
+
+    private fun createSwipeIndicatorDrawable(): GradientDrawable {
+        val color = themeOverride?.cursorSwipe ?: Color.rgb(255, 221, 0)
+        return GradientDrawable(
+            GradientDrawable.Orientation.LEFT_RIGHT,
+            intArrayOf(
+                colorWithAlpha(color, 50),
+                colorWithAlpha(color, 170),
+                colorWithAlpha(color, 50)
+            )
+        )
+    }
+
+    private fun colorWithAlpha(color: Int, alpha: Int): Int =
+        Color.argb(alpha.coerceIn(0, 255), Color.red(color), Color.green(color), Color.blue(color))
 
     private fun animateVariationsIn(view: View) {
         view.alpha = 0f
