@@ -384,16 +384,15 @@ class StatusBarController(
         )
 
     private fun applyChromeZOrder() {
-        // The software keyboard draws an opaque themed canvas. Keep the chrome
-        // rows above it without assigning competing Z to the surface itself.
-        val chromeZ = 1f
+        // Keep rows in normal child order. A positive translationZ casts a
+        // full-width shadow at the chrome/keyboard boundary in software mode.
         fullSuggestionsBar?.ensureView()?.apply {
             elevation = 0f
-            translationZ = chromeZ
+            translationZ = 0f
         }
         variationsWrapper?.apply {
             elevation = 0f
-            translationZ = chromeZ
+            translationZ = 0f
         }
         symSurfaceContainer?.translationZ = 0f
         symSurfaceStack?.translationZ = 0f
@@ -475,7 +474,7 @@ class StatusBarController(
 
     fun getOrCreateLayout(emojiMapText: String = ""): LinearLayout {
         if (statusBarLayout == null) {
-            statusBarLayout = LinearLayout(context).apply {
+            statusBarLayout = ImeChromeLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
                 clipChildren = true
                 clipToPadding = true
@@ -614,6 +613,7 @@ class StatusBarController(
                 variationsWrapper?.let { addView(it) }
                 addView(symSurfaceContainer)
             }
+            (statusBarLayout as? ImeChromeLayout)?.surfaceView = symSurfaceContainer
             applyChromeZOrder()
             applyAccessibilitySecondRowReadPreference()
             statusBarLayout?.let { ViewCompat.requestApplyInsets(it) }
@@ -2787,5 +2787,31 @@ class StatusBarController(
             dp,
             context.resources.displayMetrics
         ).toInt()
+    }
+
+    private class ImeChromeLayout(context: Context) : LinearLayout(context) {
+        var surfaceView: View? = null
+            set(value) {
+                field = value
+                invalidate()
+            }
+
+        init {
+            setChildrenDrawingOrderEnabled(true)
+        }
+
+        override fun getChildDrawingOrder(childCount: Int, drawingPosition: Int): Int {
+            val surfaceIndex = surfaceView
+                ?.let(::indexOfChild)
+                ?.takeIf { it in 0 until childCount }
+                ?: return super.getChildDrawingOrder(childCount, drawingPosition)
+
+            return if (drawingPosition == 0) {
+                surfaceIndex
+            } else {
+                val shiftedPosition = drawingPosition - 1
+                if (shiftedPosition < surfaceIndex) shiftedPosition else shiftedPosition + 1
+            }
+        }
     }
 }
