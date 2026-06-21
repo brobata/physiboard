@@ -164,6 +164,27 @@ class SymLayoutController(
         }
     }
 
+    fun previewChordMappings(shiftPressed: Boolean): Map<Int, String> {
+        val pageToUse = when (currentPageType()) {
+            SymPage.EMOJI, SymPage.SYMBOLS -> currentPageType()
+            else -> preferredChordPage()
+        } ?: return emptyMap()
+
+        return when (pageToUse) {
+            SymPage.EMOJI -> if (shiftPressed) {
+                altSymManager.getSymMappings() + altSymManager.getSymMappingsUppercase()
+            } else {
+                altSymManager.getSymMappings()
+            }
+            SymPage.SYMBOLS -> if (shiftPressed) {
+                altSymManager.getSymMappings2() + altSymManager.getSymMappings2Uppercase()
+            } else {
+                altSymManager.getSymMappings2()
+            }
+            else -> emptyMap()
+        }
+    }
+
     /**
      * Resolves the character for a physical SYM+key chord without opening
      * the visual SYM layout. If a text SYM page is already active, use it.

@@ -264,6 +264,10 @@ class StatusBarController(
         val shiftLayerLatched: Boolean = false,
         val altLayerLatched: Boolean = false,
         val activeKeyboardLayoutName: String = "qwerty",
+        val softwareSymPreviewLabels: Map<Int, String> = emptyMap(),
+        val softwareCtrlPreviewLabels: Map<Int, String> = emptyMap(),
+        val softwareCtrlPreviewIconRes: Map<Int, Int> = emptyMap(),
+        val softwareCtrlPreviewActive: Boolean = false,
         // Legacy flag for backward compatibility
         val shouldDisableSmartFeatures: Boolean = false
     ) {
@@ -1200,6 +1204,10 @@ class StatusBarController(
         keyboardView.ctrlOneShot = snapshot.ctrlOneShot
         keyboardView.ctrlLocked = snapshot.ctrlLatchActive || snapshot.ctrlLatchFromNavMode
         keyboardView.ctrlPressed = snapshot.ctrlPhysicallyPressed
+        keyboardView.ctrlPreviewActive = snapshot.softwareCtrlPreviewActive
+        keyboardView.symPreviewLabels = snapshot.softwareSymPreviewLabels
+        keyboardView.ctrlPreviewLabels = snapshot.softwareCtrlPreviewLabels
+        keyboardView.ctrlPreviewIconRes = snapshot.softwareCtrlPreviewIconRes
         val symKeySpec = nextSoftwareSymKeySpec(snapshot.symPage)
         keyboardView.symbolsLabel = symKeySpec.label
         keyboardView.symbolsIconRes = symKeySpec.iconRes

@@ -86,6 +86,17 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         )
         private val ENTER_BEHAVIOR_SEND_ACTION_PACKAGES = MESSENGER_ENTER_BEHAVIOR_PACKAGES -
             DISCORD_PACKAGE_NAME
+        private val SOFTWARE_PREVIEW_KEY_CODES = listOf(
+            KeyEvent.KEYCODE_Q, KeyEvent.KEYCODE_W, KeyEvent.KEYCODE_E, KeyEvent.KEYCODE_R,
+            KeyEvent.KEYCODE_T, KeyEvent.KEYCODE_Y, KeyEvent.KEYCODE_U, KeyEvent.KEYCODE_I,
+            KeyEvent.KEYCODE_O, KeyEvent.KEYCODE_P, KeyEvent.KEYCODE_A, KeyEvent.KEYCODE_S,
+            KeyEvent.KEYCODE_D, KeyEvent.KEYCODE_F, KeyEvent.KEYCODE_G, KeyEvent.KEYCODE_H,
+            KeyEvent.KEYCODE_J, KeyEvent.KEYCODE_K, KeyEvent.KEYCODE_L, KeyEvent.KEYCODE_Z,
+            KeyEvent.KEYCODE_X, KeyEvent.KEYCODE_C, KeyEvent.KEYCODE_V, KeyEvent.KEYCODE_B,
+            KeyEvent.KEYCODE_N, KeyEvent.KEYCODE_M, KeyEvent.KEYCODE_COMMA,
+            KeyEvent.KEYCODE_PERIOD, KeyEvent.KEYCODE_SPACE, KeyEvent.KEYCODE_DEL,
+            KeyEvent.KEYCODE_ENTER
+        )
     }
 
     // SharedPreferences for settings
@@ -2008,6 +2019,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     }
 
     private fun handleSoftwareKeyboardKeyStroke(keyCode: Int): Boolean {
+        val consumeCtrlOneShotAfterStroke = ctrlOneShot && !ctrlLatchActive && !ctrlLatchFromNavMode
         val softwareModifierActive =
             symTogglePendingOnKeyUp ||
                 ctrlPressed ||
@@ -2020,6 +2032,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
         val downHandled = dispatchSoftwareKeyboardSyntheticKey(keyCode, KeyEvent.ACTION_DOWN)
         val upHandled = dispatchSoftwareKeyboardSyntheticKey(keyCode, KeyEvent.ACTION_UP)
+        if (consumeCtrlOneShotAfterStroke && (downHandled || upHandled)) {
+            modifierStateController.ctrlOneShot = false
+            updateStatusBarText()
+        }
         return downHandled || upHandled
     }
 
@@ -2346,6 +2362,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             shiftLayerLatched = shiftLayerLatched,
             altLayerLatched = altLayerLatched,
             activeKeyboardLayoutName = activeKeyboardLayoutName,
+            softwareSymPreviewLabels = buildSoftwareSymPreviewLabels(modifierSnapshot),
+            softwareCtrlPreviewLabels = buildSoftwareCtrlPreviewLabels(modifierSnapshot),
+            softwareCtrlPreviewIconRes = buildSoftwareCtrlPreviewIconRes(modifierSnapshot),
+            softwareCtrlPreviewActive = shouldShowSoftwareCtrlPreview(modifierSnapshot),
             // Legacy flag for backward compatibility
             shouldDisableSmartFeatures = shouldDisableSmartFeatures
         )
@@ -2377,6 +2397,152 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             thresholdMs = 16L,
             details = "variation=${variationMs}ms suggestions=${suggestionsMs}ms updateBars=${updateBarsMs}ms pkg=$currentPackageName"
         )
+    }
+
+    private fun buildSoftwareSymPreviewLabels(
+        modifierSnapshot: it.palsoftware.pastiera.core.ModifierStateController.Snapshot
+    ): Map<Int, String> {
+        val shiftActive = modifierSnapshot.capsLockEnabled ||
+            modifierSnapshot.shiftPhysicallyPressed ||
+            modifierSnapshot.shiftOneShot
+        return symLayoutController.previewChordMappings(shiftActive)
+    }
+
+    private fun shouldShowSoftwareCtrlPreview(
+        modifierSnapshot: it.palsoftware.pastiera.core.ModifierStateController.Snapshot
+    ): Boolean {
+        return when {
+            modifierSnapshot.ctrlLatchActive -> true
+            modifierSnapshot.ctrlOneShot -> true
+            modifierSnapshot.ctrlPhysicallyPressed -> SettingsManager.getNavModeCtrlHoldEnabled(this)
+            else -> false
+        }
+    }
+
+    private fun buildSoftwareCtrlPreviewLabels(
+        modifierSnapshot: it.palsoftware.pastiera.core.ModifierStateController.Snapshot
+    ): Map<Int, String> {
+        if (!shouldShowSoftwareCtrlPreview(modifierSnapshot)) {
+            return emptyMap()
+        }
+        return SOFTWARE_PREVIEW_KEY_CODES.mapNotNull { keyCode ->
+            val shortcutKeyCode = resolveSoftwareCtrlPreviewShortcutKeyCode(keyCode)
+            val mapping = ctrlKeyMap[shortcutKeyCode] ?: return@mapNotNull null
+            val label = softwareCtrlPreviewLabel(mapping) ?: return@mapNotNull null
+            keyCode to label
+        }.toMap()
+    }
+
+    private fun buildSoftwareCtrlPreviewIconRes(
+        modifierSnapshot: it.palsoftware.pastiera.core.ModifierStateController.Snapshot
+    ): Map<Int, Int> {
+        if (!shouldShowSoftwareCtrlPreview(modifierSnapshot)) {
+            return emptyMap()
+        }
+        return SOFTWARE_PREVIEW_KEY_CODES.mapNotNull { keyCode ->
+            val shortcutKeyCode = resolveSoftwareCtrlPreviewShortcutKeyCode(keyCode)
+            val mapping = ctrlKeyMap[shortcutKeyCode] ?: return@mapNotNull null
+            val iconRes = softwareCtrlPreviewIconRes(mapping) ?: return@mapNotNull null
+            keyCode to iconRes
+        }.toMap()
+    }
+
+    private fun resolveSoftwareCtrlPreviewShortcutKeyCode(keyCode: Int): Int {
+        if (!SettingsManager.getLayoutAwareCtrlShortcutsEnabled(this)) {
+            return keyCode
+        }
+        val mappedChar = LayoutMappingRepository.getCharacter(keyCode, isShift = false)
+            ?.lowercaseChar()
+            ?: return keyCode
+        return if (mappedChar in 'a'..'z') {
+            KeyEvent.KEYCODE_A + (mappedChar - 'a')
+        } else {
+            keyCode
+        }
+    }
+
+    private fun softwareCtrlPreviewLabel(mapping: KeyMappingLoader.CtrlMapping): String? {
+        return when (mapping.type) {
+            "keycode" -> when (mapping.value) {
+                "DPAD_UP" -> "↑"
+                "DPAD_DOWN" -> "↓"
+                "DPAD_LEFT" -> "←"
+                "DPAD_RIGHT" -> "→"
+                "DPAD_CENTER" -> "OK"
+                "MOVE_HOME" -> "Home"
+                "MOVE_END" -> "End"
+                "PAGE_UP" -> "PgUp"
+                "PAGE_DOWN" -> "PgDn"
+                "ESCAPE" -> "Esc"
+                "TAB" -> "Tab"
+                "FORWARD_DEL" -> "Del"
+                else -> mapping.value.removePrefix("KEYCODE_")
+            }
+            "action" -> when (mapping.value) {
+                "copy" -> "Copy"
+                "paste" -> "Paste"
+                "cut" -> "Cut"
+                "undo" -> "Undo"
+                "select_all" -> "All"
+                "expand_selection_left" -> "Sel ←"
+                "expand_selection_right" -> "Sel →"
+                "move_word_left" -> "← word"
+                "move_word_right" -> "word →"
+                "expand_selection_word_left" -> "Sel word ←"
+                "expand_selection_word_right" -> "Sel word →"
+                "page_start" -> "Start"
+                "page_end" -> "End"
+                "toggle_minimal_ui" -> "Mini"
+                "media_play_pause" -> "Play"
+                "media_previous" -> "Prev"
+                "media_next" -> "Next"
+                else -> mapping.value
+            }
+            "command" -> mapping.value.substringAfterLast('.').replace('_', ' ').takeIf { it.isNotBlank() }
+            "native_ctrl" -> "Ctrl"
+            "none" -> null
+            else -> null
+        }
+    }
+
+    private fun softwareCtrlPreviewIconRes(mapping: KeyMappingLoader.CtrlMapping): Int? {
+        return when (mapping.type) {
+            "keycode" -> when (mapping.value) {
+                "DPAD_UP" -> R.drawable.keyboard_arrow_up_24
+                "DPAD_DOWN" -> R.drawable.keyboard_arrow_down_24
+                "DPAD_LEFT" -> R.drawable.keyboard_arrow_left_24
+                "DPAD_RIGHT" -> R.drawable.keyboard_arrow_right_24
+                "TAB" -> R.drawable.keyboard_tab_24
+                "MOVE_HOME" -> R.drawable.first_page_24
+                "MOVE_END" -> R.drawable.last_page_24
+                "PAGE_UP" -> R.drawable.keyboard_double_arrow_up_24
+                "PAGE_DOWN" -> R.drawable.keyboard_double_arrow_down_24
+                "ESCAPE" -> R.drawable.close_24
+                "FORWARD_DEL" -> R.drawable.delete_24
+                else -> null
+            }
+            "action" -> when (mapping.value) {
+                "copy" -> R.drawable.content_copy_24
+                "paste" -> R.drawable.content_paste_24
+                "cut" -> R.drawable.content_cut_24
+                "undo" -> R.drawable.undo_24
+                "select_all" -> R.drawable.select_all_24
+                "expand_selection_left" -> R.drawable.text_select_move_back_character_filled_24
+                "expand_selection_right" -> R.drawable.text_select_move_forward_character_filled_24
+                "move_word_left" -> R.drawable.text_select_move_back_word_24
+                "move_word_right" -> R.drawable.text_select_move_forward_word_24
+                "expand_selection_word_left" -> R.drawable.text_select_move_back_word_filled_24
+                "expand_selection_word_right" -> R.drawable.text_select_move_forward_word_filled_24
+                "page_start" -> R.drawable.first_page_24
+                "page_end" -> R.drawable.last_page_24
+                "toggle_minimal_ui" -> R.drawable.collapse_content_24
+                "media_play_pause" -> R.drawable.play_pause_24
+                "media_previous" -> R.drawable.skip_previous_24
+                "media_next" -> R.drawable.skip_next_24
+                else -> null
+            }
+            else -> null
+        }
     }
     
     /**

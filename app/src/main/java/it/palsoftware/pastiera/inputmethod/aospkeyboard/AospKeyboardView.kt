@@ -167,6 +167,38 @@ class AospKeyboardView @JvmOverloads constructor(
             field = value
             invalidate()
         }
+    var ctrlPreviewActive: Boolean = false
+        set(value) {
+            if (field == value) {
+                return
+            }
+            field = value
+            invalidate()
+        }
+    var symPreviewLabels: Map<Int, String> = emptyMap()
+        set(value) {
+            if (field == value) {
+                return
+            }
+            field = value
+            invalidate()
+        }
+    var ctrlPreviewLabels: Map<Int, String> = emptyMap()
+        set(value) {
+            if (field == value) {
+                return
+            }
+            field = value
+            invalidate()
+        }
+    var ctrlPreviewIconRes: Map<Int, Int> = emptyMap()
+        set(value) {
+            if (field == value) {
+                return
+            }
+            field = value
+            invalidate()
+        }
     var spacebarLabel: String = "space"
         set(value) {
             val normalized = value.ifBlank { "space" }
@@ -283,24 +315,33 @@ class AospKeyboardView @JvmOverloads constructor(
         } ?: drawDrawable(canvas, keyboardBackground, RectF(0f, 0f, width.toFloat(), height.toFloat()))
         keys.forEach { key ->
             drawDrawable(canvas, backgroundFor(key), key.visualRect)
-            val label = displayLabel(key.spec)
+            val previewIcon = previewIconFor(key)
+            if (previewIcon != null) {
+                drawCenteredIcon(canvas, previewIcon, key.visualRect)
+                return@forEach
+            }
+            val previewLabel = previewLabelFor(key)
+            val label = previewLabel ?: displayLabel(key.spec)
             textPaint.textSize = when (key.spec.type) {
                 KeyType.SPACE -> sp(12f)
                 KeyType.SYMBOLS -> sp(16f)
                 KeyType.ENTER, KeyType.SHIFT, KeyType.BACKSPACE, KeyType.CTRL, KeyType.LANGUAGE -> sp(23f)
                 else -> sp(24f)
             }
+            if (previewLabel != null) {
+                textPaint.textSize = previewTextSize(previewLabel, key.visualRect)
+            }
             textPaint.typeface = if (key.spec.type == KeyType.SPACE) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
             textPaint.color = themeOverride?.textAndIcons
                 ?: if (isFunctional(key.spec.type)) Color.rgb(202, 209, 216) else Color.rgb(238, 238, 238)
-            if (drawFunctionalIcon(canvas, key)) {
+            if (previewLabel == null && drawFunctionalIcon(canvas, key)) {
                 return@forEach
             }
             val baselineOffset = -(textPaint.ascent() + textPaint.descent()) / 2f
             val y = if (key.spec.type == KeyType.SPACE) key.visualRect.centerY() + dp(7f) else key.visualRect.centerY() + baselineOffset
             canvas.drawText(label, key.visualRect.centerX(), y, textPaint)
             val hint = displayHint(key)
-            if (hint.isNotBlank()) {
+            if (previewLabel == null && hint.isNotBlank()) {
                 hintPaint.textSize = sp(10f)
                 hintPaint.color = themeOverride?.textAndIcons?.let { colorWithAlpha(it, 150) }
                     ?: Color.rgb(156, 164, 172)
@@ -360,9 +401,12 @@ class AospKeyboardView @JvmOverloads constructor(
                         heldModifierKey = it
                         heldModifierPointerId = event.getPointerId(pointerIndex)
                         listener?.onModifierKeyDown(soundKeyCodeFor(it))
+                        invalidate()
                     } else {
-                        showPreview(it)
-                        handler.postDelayed(longPressRunnable, longPressTimeoutMs)
+                        if (!isModifierPreviewLayerActive()) {
+                            showPreview(it)
+                            handler.postDelayed(longPressRunnable, longPressTimeoutMs)
+                        }
                     }
                 }
                 return true
@@ -379,7 +423,9 @@ class AospKeyboardView @JvmOverloads constructor(
                 longPressTriggered = false
                 performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                 listener?.onKeyPressSound(soundKeyCodeFor(key))
-                showPreview(key)
+                if (!isModifierPreviewLayerActive()) {
+                    showPreview(key)
+                }
                 invalidate()
                 return true
             }
@@ -413,7 +459,9 @@ class AospKeyboardView @JvmOverloads constructor(
                     invalidate()
                     key?.let {
                         listener?.onKeyPressSound(soundKeyCodeFor(it))
-                        showPreview(it)
+                        if (!isModifierPreviewLayerActive()) {
+                            showPreview(it)
+                        }
                     }
                 }
                 return true
@@ -591,6 +639,45 @@ class AospKeyboardView @JvmOverloads constructor(
         return longPressAlternatesFor(key).firstOrNull().orEmpty()
     }
 
+    private fun previewLabelFor(key: Key): String? {
+        val keyCode = soundKeyCodeFor(key)
+        val heldType = heldModifierKey?.spec?.type
+        return when {
+            heldType == KeyType.SYMBOLS -> symPreviewLabels[keyCode]
+            heldType == KeyType.CTRL || ctrlPreviewActive -> ctrlPreviewLabels[keyCode]
+            else -> null
+        }?.takeIf { it.isNotBlank() }
+    }
+
+    private fun previewIconFor(key: Key): Drawable? {
+        val keyCode = soundKeyCodeFor(key)
+        val heldType = heldModifierKey?.spec?.type
+        if (heldType != KeyType.CTRL && !ctrlPreviewActive) {
+            return null
+        }
+        return ctrlPreviewIconRes[keyCode]?.let(::drawable)
+    }
+
+    private fun isModifierPreviewLayerActive(): Boolean {
+        val heldType = heldModifierKey?.spec?.type
+        return heldType == KeyType.SYMBOLS || heldType == KeyType.CTRL || ctrlPreviewActive
+    }
+
+    private fun previewTextSize(label: String, rect: RectF): Float {
+        var textSize = when {
+            label.length <= 2 -> sp(20f)
+            label.length <= 5 -> sp(14f)
+            else -> sp(11f)
+        }
+        textPaint.textSize = textSize
+        val maxWidth = rect.width() - dp(8f)
+        while (textSize > sp(8f) && textPaint.measureText(label) > maxWidth) {
+            textSize -= sp(1f)
+            textPaint.textSize = textSize
+        }
+        return textSize
+    }
+
     private fun dispatchKey(key: Key) {
         when (key.spec.type) {
             KeyType.CHAR -> {
@@ -626,6 +713,9 @@ class AospKeyboardView @JvmOverloads constructor(
 
     private fun showMoreKeysOrRepeat() {
         val key = pressedKey ?: return
+        if (isModifierPreviewLayerActive()) {
+            return
+        }
         if (key.spec.type == KeyType.BACKSPACE) {
             longPressTriggered = true
             listener?.onKeyPressSound(KeyEvent.KEYCODE_DEL)
@@ -667,6 +757,7 @@ class AospKeyboardView @JvmOverloads constructor(
     }
 
     private fun showPreview(key: Key) {
+        if (isModifierPreviewLayerActive()) return
         if (key.spec.type != KeyType.CHAR && key.spec.type != KeyType.COMMA && key.spec.type != KeyType.PERIOD) return
         val previewWidth = maxOf(key.visualRect.width() + dp(18f), dp(52f).toFloat())
         val previewHeight = dp(72f).toFloat()
