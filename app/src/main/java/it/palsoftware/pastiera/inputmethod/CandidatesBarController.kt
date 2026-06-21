@@ -154,6 +154,27 @@ class CandidatesBarController(
             candidatesStatusBar.onSoftwareKeyboardKeyPressed = value
         }
 
+    var onSoftwareKeyboardModifierKeyDown: ((Int) -> Boolean)? = null
+        set(value) {
+            field = value
+            inputStatusBar.onSoftwareKeyboardModifierKeyDown = value
+            candidatesStatusBar.onSoftwareKeyboardModifierKeyDown = value
+        }
+
+    var onSoftwareKeyboardModifierKeyUp: ((Int) -> Boolean)? = null
+        set(value) {
+            field = value
+            inputStatusBar.onSoftwareKeyboardModifierKeyUp = value
+            candidatesStatusBar.onSoftwareKeyboardModifierKeyUp = value
+        }
+
+    var onSoftwareKeyboardKeyStroke: ((Int, String) -> Boolean)? = null
+        set(value) {
+            field = value
+            inputStatusBar.onSoftwareKeyboardKeyStroke = value
+            candidatesStatusBar.onSoftwareKeyboardKeyStroke = value
+        }
+
     var onSoftwareKeyboardShiftTapped: (() -> Unit)? = null
         set(value) {
             field = value

@@ -151,6 +151,12 @@ class StatusBarController(
 
     var onSoftwareKeyboardKeyPressed: ((Int) -> Unit)? = null
 
+    var onSoftwareKeyboardModifierKeyDown: ((Int) -> Boolean)? = null
+
+    var onSoftwareKeyboardModifierKeyUp: ((Int) -> Boolean)? = null
+
+    var onSoftwareKeyboardKeyStroke: ((Int, String) -> Boolean)? = null
+
     var onSoftwareKeyboardShiftTapped: (() -> Unit)? = null
 
     var onSoftwareKeyboardNonShiftInteraction: (() -> Unit)? = null
@@ -1171,6 +1177,18 @@ class StatusBarController(
 
             override fun onKeyPressSound(keyCode: Int) {
                 onSoftwareKeyboardKeyPressed?.invoke(keyCode)
+            }
+
+            override fun onModifierKeyDown(keyCode: Int): Boolean {
+                return onSoftwareKeyboardModifierKeyDown?.invoke(keyCode) == true
+            }
+
+            override fun onModifierKeyUp(keyCode: Int): Boolean {
+                return onSoftwareKeyboardModifierKeyUp?.invoke(keyCode) == true
+            }
+
+            override fun onKeyStroke(keyCode: Int, text: String): Boolean {
+                return onSoftwareKeyboardKeyStroke?.invoke(keyCode, text) == true
             }
         }
         keyboardView.layoutName = layoutName

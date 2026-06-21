@@ -11,6 +11,7 @@ import it.palsoftware.pastiera.SettingsManager
 import android.inputmethodservice.InputMethodService
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import android.util.Log
 import androidx.core.content.ContextCompat
 import android.view.InputDevice
@@ -245,6 +246,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private var lastAltTapUpTime: Long = 0L
     private var symTogglePendingOnKeyUp: Boolean = false
     private var symChordUsedSinceKeyDown: Boolean = false
+    private var softwareCtrlStartedWithLatch: Boolean = false
     private var nativeTrackpadGestureStart: NativeTrackpadGestureStart? = null
     private var nativeTrackpadLastX: Float = 0f
     private var nativeTrackpadLastY: Float = 0f
@@ -1461,6 +1463,15 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         candidatesBarController.onSoftwareKeyboardKeyPressed = { keyCode ->
             typingSoundPlayer.play(keyCode)
         }
+        candidatesBarController.onSoftwareKeyboardModifierKeyDown = { keyCode ->
+            handleSoftwareKeyboardModifierKeyDown(keyCode)
+        }
+        candidatesBarController.onSoftwareKeyboardModifierKeyUp = { keyCode ->
+            handleSoftwareKeyboardModifierKeyUp(keyCode)
+        }
+        candidatesBarController.onSoftwareKeyboardKeyStroke = { keyCode, _ ->
+            handleSoftwareKeyboardKeyStroke(keyCode)
+        }
         candidatesBarController.onSoftwareKeyboardShiftTapped = {
             val wasShiftOneShot = modifierStateController.shiftOneShot
             val downResult = modifierStateController.handleShiftKeyDown(KeyEvent.KEYCODE_SHIFT_LEFT)
@@ -1939,6 +1950,123 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
         updateStatusBarText()
         return true
+    }
+
+    private fun handleSoftwareKeyboardModifierKeyDown(keyCode: Int): Boolean {
+        return when (keyCode) {
+            KeyEvent.KEYCODE_CTRL_LEFT, KeyEvent.KEYCODE_CTRL_RIGHT -> {
+                softwareCtrlStartedWithLatch = ctrlLatchActive
+                modifierStateBeforeHold = modifierStateController.captureLogicalState()
+                variationInteractedDuringHold = false
+                otherKeyInteractedDuringHold = false
+                modifierDownTimes[keyCode] = SystemClock.uptimeMillis()
+                val result = modifierStateController.handleCtrlKeyDown(
+                    keyCode,
+                    isInputViewActive,
+                    onNavModeDeactivated = {
+                        navModeController.cancelNotification()
+                    }
+                )
+                if (result.shouldUpdateStatusBar || result.shouldRefreshStatusBar) {
+                    updateStatusBarText()
+                }
+                true
+            }
+            KEYCODE_SYM -> dispatchSoftwareKeyboardSyntheticKey(keyCode, KeyEvent.ACTION_DOWN)
+            else -> false
+        }
+    }
+
+    private fun handleSoftwareKeyboardModifierKeyUp(keyCode: Int): Boolean {
+        return when (keyCode) {
+            KeyEvent.KEYCODE_CTRL_LEFT, KeyEvent.KEYCODE_CTRL_RIGHT -> {
+                val downTime = modifierDownTimes[keyCode] ?: 0L
+                val now = SystemClock.uptimeMillis()
+                val holdDuration = if (downTime > 0L) now - downTime else 0L
+                val wasTap = holdDuration < 300L && !otherKeyInteractedDuringHold && !variationInteractedDuringHold
+                val shortcutUsedDuringHold = otherKeyInteractedDuringHold
+
+                val result = modifierStateController.handleCtrlKeyUp(keyCode)
+                if (wasTap && !softwareCtrlStartedWithLatch) {
+                    modifierStateController.ctrlOneShot = false
+                    modifierStateController.ctrlLatchActive = true
+                    modifierStateController.ctrlLatchFromNavMode = false
+                } else if (shortcutUsedDuringHold && ctrlOneShot && !ctrlLatchActive) {
+                    modifierStateController.ctrlOneShot = false
+                }
+                if (result.shouldUpdateStatusBar || wasTap || shortcutUsedDuringHold) {
+                    updateStatusBarText()
+                }
+                modifierDownTimes.remove(keyCode)
+                variationInteractedDuringHold = false
+                otherKeyInteractedDuringHold = false
+                modifierStateBeforeHold = null
+                softwareCtrlStartedWithLatch = false
+                true
+            }
+            KEYCODE_SYM -> {
+                uiHandler.post {
+                    dispatchSoftwareKeyboardSyntheticKey(keyCode, KeyEvent.ACTION_UP)
+                }
+                true
+            }
+            else -> false
+        }
+    }
+
+    private fun handleSoftwareKeyboardKeyStroke(keyCode: Int): Boolean {
+        val softwareModifierActive =
+            symTogglePendingOnKeyUp ||
+                ctrlPressed ||
+                ctrlPhysicallyPressed ||
+                ctrlLatchActive ||
+                ctrlOneShot ||
+                ctrlLatchFromNavMode
+        if (!softwareModifierActive) {
+            return false
+        }
+        val downHandled = dispatchSoftwareKeyboardSyntheticKey(keyCode, KeyEvent.ACTION_DOWN)
+        val upHandled = dispatchSoftwareKeyboardSyntheticKey(keyCode, KeyEvent.ACTION_UP)
+        return downHandled || upHandled
+    }
+
+    private fun dispatchSoftwareKeyboardSyntheticKey(keyCode: Int, action: Int): Boolean {
+        val now = SystemClock.uptimeMillis()
+        val metaState = buildSoftwareKeyboardMetaState(keyCode)
+        val event = KeyEvent(
+            now,
+            now,
+            action,
+            keyCode,
+            0,
+            metaState
+        )
+        return if (action == KeyEvent.ACTION_DOWN) {
+            onKeyDown(keyCode, event)
+        } else {
+            onKeyUp(keyCode, event)
+        }
+    }
+
+    private fun buildSoftwareKeyboardMetaState(keyCode: Int): Int {
+        var metaState = 0
+        val ctrlActive = keyCode == KeyEvent.KEYCODE_CTRL_LEFT ||
+            keyCode == KeyEvent.KEYCODE_CTRL_RIGHT ||
+            ctrlPressed ||
+            ctrlPhysicallyPressed ||
+            ctrlLatchActive ||
+            ctrlOneShot ||
+            ctrlLatchFromNavMode
+        if (ctrlActive) {
+            metaState = metaState or KeyEvent.META_CTRL_ON or KeyEvent.META_CTRL_LEFT_ON
+        }
+        if (shiftPressed || shiftPhysicallyPressed || shiftOneShot || capsLockEnabled) {
+            metaState = metaState or KeyEvent.META_SHIFT_ON or KeyEvent.META_SHIFT_LEFT_ON
+        }
+        if (altPressed || altPhysicallyPressed || altOneShot || altLatchActive) {
+            metaState = metaState or KeyEvent.META_ALT_ON or KeyEvent.META_ALT_LEFT_ON
+        }
+        return metaState
     }
 
     private fun buildTrackpadGestureDetector(): TrackpadGestureDetector {
