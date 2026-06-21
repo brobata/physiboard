@@ -19,6 +19,7 @@ import android.graphics.RectF
 import android.graphics.Typeface
 import android.graphics.ColorFilter
 import android.graphics.drawable.Drawable
+import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.Looper
 import android.util.AttributeSet
@@ -49,12 +50,30 @@ class AospKeyboardView @JvmOverloads constructor(
         fun onEnter()
         fun onShift()
         fun onSymbols()
+        fun onCtrl()
         fun onLanguageSwitch()
         fun onCursorMove(delta: Int)
         fun onKeyPressSound(keyCode: Int)
     }
 
-    private enum class KeyType { CHAR, SHIFT, BACKSPACE, SYMBOLS, COMMA, PERIOD, SPACE, ENTER, LANGUAGE }
+    data class ThemeOverride(
+        val background: Int,
+        val divider: Int,
+        val normalKey: Int,
+        val specialKey: Int,
+        val textAndIcons: Int,
+        val accent: Int,
+        val keyPopup: Int = specialKey,
+        val keyPopupSelected: Int = accent,
+        val keyCornerRadiusRatio: Float = 0.08f,
+        val keyHeightScale: Float = 1f,
+        val keyWidthScale: Float = 1f,
+        val rowGapScale: Float = 1f,
+        val distributeHorizontalSpacing: Boolean = true,
+        val ortholinear: Boolean = false
+    )
+
+    private enum class KeyType { CHAR, SHIFT, BACKSPACE, SYMBOLS, CTRL, COMMA, PERIOD, SPACE, ENTER, LANGUAGE }
 
     private data class KeySpec(
         val type: KeyType,
@@ -93,19 +112,47 @@ class AospKeyboardView @JvmOverloads constructor(
     var listener: Listener? = null
     var layoutName: String = "qwerty"
         set(value) {
-            field = value.trim().lowercase(Locale.ROOT).ifBlank { "qwerty" }
+            val normalized = value.trim().lowercase(Locale.ROOT).ifBlank { "qwerty" }
+            if (field == normalized) {
+                return
+            }
+            field = normalized
             rebuildKeys(width, height)
             invalidate()
         }
     var shifted: Boolean = false
         set(value) {
+            if (field == value) {
+                return
+            }
             field = value
             rebuildKeys(width, height)
             invalidate()
         }
+    var shiftLocked: Boolean = false
+        set(value) {
+            if (field == value) {
+                return
+            }
+            field = value
+            invalidate()
+        }
     var spacebarLabel: String = "space"
         set(value) {
-            field = value.ifBlank { "space" }
+            val normalized = value.ifBlank { "space" }
+            if (field == normalized) {
+                return
+            }
+            field = normalized
+            invalidate()
+        }
+    var symbolsLabel: String = "SYM"
+        set(value) {
+            val normalized = value.ifBlank { "SYM" }
+            if (field == normalized) {
+                return
+            }
+            field = normalized
             invalidate()
         }
     var longPressTimeoutMs: Long = 500L
@@ -113,6 +160,16 @@ class AospKeyboardView @JvmOverloads constructor(
             field = value.coerceIn(50L, 1000L)
         }
     var longPressAlternatesProvider: ((String) -> List<String>)? = null
+    var themeOverride: ThemeOverride? = null
+        set(value) {
+            if (field == value) {
+                return
+            }
+            field = value
+            rebuildKeys(width, height)
+            requestLayout()
+            invalidate()
+        }
 
     private val keys = mutableListOf<Key>()
     private var pressedKey: Key? = null
@@ -136,6 +193,12 @@ class AospKeyboardView @JvmOverloads constructor(
     private val previewBackground = drawable(R.drawable.keyboard_key_feedback_background_lxx_dark)
     private val previewMoreBackground = drawable(R.drawable.keyboard_key_feedback_more_background_lxx_dark)
     private val moreKeysBackground = drawable(R.drawable.keyboard_popup_panel_background_lxx_dark)
+    private val shiftIcon = drawable(R.drawable.shift_24)
+    private val shiftFilledIcon = drawable(R.drawable.shift_filled_24)
+    private val shiftLockIcon = drawable(R.drawable.shift_lock_24)
+    private val backspaceIcon = drawable(R.drawable.backspace_24)
+    private val returnIcon = drawable(R.drawable.keyboard_return_24)
+    private val ctrlIcon = drawable(R.drawable.keyboard_control_key_24)
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.rgb(238, 238, 238)
         textAlign = Paint.Align.CENTER
@@ -150,8 +213,10 @@ class AospKeyboardView @JvmOverloads constructor(
     private val gapPx = dp(2f)
     private val horizontalPaddingPx = 0
     private val verticalPaddingPx = 0
-    private val preferredKeyHeightPx = dp(50f)
-    private val rowGapPx = 0
+    private val preferredKeyHeightPx: Int
+        get() = (dp(50f) * (themeOverride?.keyHeightScale ?: 1f).coerceIn(0.72f, 1.45f)).toInt()
+    private val rowGapPx: Int
+        get() = (dp(6f) * ((themeOverride?.rowGapScale ?: 0f).coerceIn(0f, 2f))).toInt()
 
     init {
         isClickable = true
@@ -171,27 +236,67 @@ class AospKeyboardView @JvmOverloads constructor(
     }
 
     override fun onDraw(canvas: Canvas) {
-        drawDrawable(canvas, keyboardBackground, RectF(0f, 0f, width.toFloat(), height.toFloat()))
+        themeOverride?.let {
+            canvas.drawColor(it.background)
+        } ?: drawDrawable(canvas, keyboardBackground, RectF(0f, 0f, width.toFloat(), height.toFloat()))
         keys.forEach { key ->
             drawDrawable(canvas, backgroundFor(key), key.visualRect)
             val label = displayLabel(key.spec)
             textPaint.textSize = when (key.spec.type) {
                 KeyType.SPACE -> sp(12f)
                 KeyType.SYMBOLS -> sp(16f)
-                KeyType.ENTER, KeyType.SHIFT, KeyType.BACKSPACE, KeyType.LANGUAGE -> sp(23f)
+                KeyType.ENTER, KeyType.SHIFT, KeyType.BACKSPACE, KeyType.CTRL, KeyType.LANGUAGE -> sp(23f)
                 else -> sp(24f)
             }
             textPaint.typeface = if (key.spec.type == KeyType.SPACE) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
-            textPaint.color = if (isFunctional(key.spec.type)) Color.rgb(202, 209, 216) else Color.rgb(238, 238, 238)
+            textPaint.color = themeOverride?.textAndIcons
+                ?: if (isFunctional(key.spec.type)) Color.rgb(202, 209, 216) else Color.rgb(238, 238, 238)
+            if (drawFunctionalIcon(canvas, key)) {
+                return@forEach
+            }
             val baselineOffset = -(textPaint.ascent() + textPaint.descent()) / 2f
             val y = if (key.spec.type == KeyType.SPACE) key.visualRect.centerY() + dp(7f) else key.visualRect.centerY() + baselineOffset
             canvas.drawText(label, key.visualRect.centerX(), y, textPaint)
             val hint = displayHint(key)
             if (hint.isNotBlank()) {
                 hintPaint.textSize = sp(10f)
+                hintPaint.color = themeOverride?.textAndIcons?.let { colorWithAlpha(it, 150) }
+                    ?: Color.rgb(156, 164, 172)
                 canvas.drawText(hint, key.visualRect.right - dp(9f), key.visualRect.top + dp(12f), hintPaint)
             }
         }
+    }
+
+    private fun drawFunctionalIcon(canvas: Canvas, key: Key): Boolean {
+        val icon = when (key.spec.type) {
+            KeyType.SHIFT -> when {
+                shiftLocked -> shiftLockIcon
+                shifted -> shiftFilledIcon
+                else -> shiftIcon
+            }
+            KeyType.BACKSPACE -> backspaceIcon
+            KeyType.ENTER -> returnIcon
+            KeyType.CTRL -> ctrlIcon
+            else -> null
+        } ?: return false
+        drawCenteredIcon(canvas, icon, key.visualRect)
+        return true
+    }
+
+    private fun drawCenteredIcon(canvas: Canvas, source: Drawable, rect: RectF) {
+        val icon = source.constantState?.newDrawable()?.mutate() ?: source.mutate()
+        val color = themeOverride?.textAndIcons ?: Color.rgb(202, 209, 216)
+        icon.setTint(color)
+        val maxSize = minOf(rect.width(), rect.height()) * 0.55f
+        val intrinsicWidth = icon.intrinsicWidth.takeIf { it > 0 } ?: 24
+        val intrinsicHeight = icon.intrinsicHeight.takeIf { it > 0 } ?: 24
+        val scale = minOf(maxSize / intrinsicWidth, maxSize / intrinsicHeight)
+        val iconWidth = intrinsicWidth * scale
+        val iconHeight = intrinsicHeight * scale
+        val left = (rect.centerX() - iconWidth / 2f).toInt()
+        val top = (rect.centerY() - iconHeight / 2f).toInt()
+        icon.setBounds(left, top, (left + iconWidth).toInt(), (top + iconHeight).toInt())
+        icon.draw(canvas)
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -292,18 +397,24 @@ class AospKeyboardView @JvmOverloads constructor(
     private fun rebuildKeys(viewWidth: Int, viewHeight: Int) {
         keys.clear()
         if (viewWidth <= 0 || viewHeight <= 0) return
-        val usableWidth = viewWidth - horizontalPaddingPx * 2
+        val theme = themeOverride
+        val keyWidthScale = (theme?.keyWidthScale ?: 1f).coerceIn(0.72f, 1.12f)
+        val totalWidthScale = if (theme?.distributeHorizontalSpacing == false) keyWidthScale else 1f
+        val usableWidth = ((viewWidth - horizontalPaddingPx * 2) * totalWidthScale).toInt()
+        val horizontalOffset = horizontalPaddingPx + ((viewWidth - horizontalPaddingPx * 2) - usableWidth) / 2f
+        val visualWidthScale = if (theme?.distributeHorizontalSpacing == false) 1f else keyWidthScale
         val rowHeight = (viewHeight - verticalPaddingPx * 2 - rowGapPx * 3) / 4f
         rowsFor(layoutName).forEachIndexed { rowIndex, row ->
             val y = verticalPaddingPx + rowIndex * (rowHeight + rowGapPx)
             row.forEach { spec ->
-                val rawLeft = horizontalPaddingPx + usableWidth * (spec.xPercent / 100f)
-                val rawRight = horizontalPaddingPx + usableWidth * ((spec.xPercent + spec.widthPercent) / 100f)
+                val rawLeft = horizontalOffset + usableWidth * (spec.xPercent / 100f)
+                val rawRight = horizontalOffset + usableWidth * ((spec.xPercent + spec.widthPercent) / 100f)
                 val hit = RectF(rawLeft, y, rawRight, y + rowHeight)
+                val visualInset = hit.width() * (1f - visualWidthScale) / 2f
                 val visual = RectF(
-                    hit.left + gapPx / 2f + usableWidth * (spec.visualInsetLeftPercent / 100f),
+                    hit.left + gapPx / 2f + visualInset + usableWidth * (spec.visualInsetLeftPercent / 100f),
                     hit.top,
-                    hit.right - gapPx / 2f - usableWidth * (spec.visualInsetRightPercent / 100f),
+                    hit.right - gapPx / 2f - visualInset - usableWidth * (spec.visualInsetRightPercent / 100f),
                     hit.bottom
                 )
                 keys.add(Key(spec, hit, visual))
@@ -322,7 +433,7 @@ class AospKeyboardView @JvmOverloads constructor(
         val row1 = rowStrings[0].mapIndexed { index, ch ->
             charSpec(ch, index * row1Width, widthPercent = row1Width)
         }
-        val row2Start = if (layout == "azerty" || layout == "german_multitap_qwertz") 0f else 5f
+        val row2Start = if (themeOverride?.ortholinear == true || layout == "azerty" || layout == "german_multitap_qwertz") 0f else 5f
         val row2Width = if (layout == "german_multitap_qwertz") 100f / rowStrings[1].length else 10f
         val row2 = rowStrings[1].mapIndexed { index, ch -> charSpec(ch, row2Start + index * row2Width, widthPercent = row2Width) }
         val row3Chars = rowStrings[2].mapIndexed { index, ch -> charSpec(ch, 15f + index * 10f) }
@@ -332,11 +443,13 @@ class AospKeyboardView @JvmOverloads constructor(
             KeySpec(KeyType.BACKSPACE, "⌫", xPercent = 85f, widthPercent = 15f, visualInsetLeftPercent = 1f)
         )
         val row4 = listOf(
-            KeySpec(KeyType.SYMBOLS, "?123", xPercent = 0f, widthPercent = 15f),
-            KeySpec(KeyType.COMMA, ",", xPercent = 15f, widthPercent = 10f, moreKeys = listOf("'", "\"", ";", ":")),
-            KeySpec(KeyType.SPACE, "space", output = " ", xPercent = 25f, widthPercent = 50f),
-            KeySpec(KeyType.PERIOD, ".", xPercent = 75f, widthPercent = 10f, moreKeys = listOf("!", "?", ";", ":", "…")),
-            KeySpec(KeyType.ENTER, "↵", output = "\n", xPercent = 85f, widthPercent = 15f)
+            KeySpec(KeyType.SYMBOLS, "SYM", xPercent = 0f, widthPercent = 12f),
+            KeySpec(KeyType.CTRL, "CTRL", xPercent = 12f, widthPercent = 10f),
+            KeySpec(KeyType.COMMA, ",", xPercent = 22f, widthPercent = 8f, moreKeys = listOf("'", "\"", ";", ":")),
+            KeySpec(KeyType.SPACE, "space", output = " ", xPercent = 30f, widthPercent = 40f),
+            KeySpec(KeyType.PERIOD, ".", xPercent = 70f, widthPercent = 8f, moreKeys = listOf("!", "?", ";", ":", "…")),
+            KeySpec(KeyType.CTRL, "CTRL", xPercent = 78f, widthPercent = 10f),
+            KeySpec(KeyType.ENTER, "↵", output = "\n", xPercent = 88f, widthPercent = 12f)
         )
         return listOf(row1, row2, row3, row4)
     }
@@ -371,6 +484,7 @@ class AospKeyboardView @JvmOverloads constructor(
     private fun displayLabel(spec: KeySpec): String = when (spec.type) {
         KeyType.CHAR -> if (shifted && spec.label == "'") "?" else if (shifted) spec.label.uppercase(Locale.ROOT) else spec.label
         KeyType.SPACE -> spacebarLabel
+        KeyType.SYMBOLS -> symbolsLabel
         else -> spec.label
     }
 
@@ -387,6 +501,7 @@ class AospKeyboardView @JvmOverloads constructor(
             KeyType.ENTER -> listener?.onEnter()
             KeyType.SHIFT -> listener?.onShift()
             KeyType.SYMBOLS -> listener?.onSymbols()
+            KeyType.CTRL -> listener?.onCtrl()
             KeyType.LANGUAGE -> listener?.onLanguageSwitch()
         }
     }
@@ -488,6 +603,7 @@ class AospKeyboardView @JvmOverloads constructor(
             KeyType.BACKSPACE -> KeyEvent.KEYCODE_DEL
             KeyType.ENTER -> KeyEvent.KEYCODE_ENTER
             KeyType.SHIFT -> KeyEvent.KEYCODE_SHIFT_LEFT
+            KeyType.CTRL -> KeyEvent.KEYCODE_CTRL_LEFT
             KeyType.SYMBOLS, KeyType.LANGUAGE -> KeyEvent.KEYCODE_SYM
             KeyType.COMMA -> KeyEvent.KEYCODE_COMMA
             KeyType.PERIOD -> KeyEvent.KEYCODE_PERIOD
@@ -516,10 +632,10 @@ class AospKeyboardView @JvmOverloads constructor(
     private fun drawPreviewPopup(canvas: Canvas, offsetX: Float = 0f, offsetY: Float = 0f) {
         val popup = previewPopupState ?: return
         val rect = popup.rect.offsetBy(offsetX, offsetY)
-        drawDrawable(canvas, if (popup.hasMoreKeys) previewMoreBackground else previewBackground, rect)
+        drawDrawable(canvas, themedPopupBackground() ?: if (popup.hasMoreKeys) previewMoreBackground else previewBackground, rect)
         textPaint.textSize = sp(30f)
         textPaint.typeface = Typeface.DEFAULT
-        textPaint.color = Color.rgb(238, 238, 238)
+        textPaint.color = themeOverride?.textAndIcons ?: Color.rgb(238, 238, 238)
         val baselineOffset = -(textPaint.ascent() + textPaint.descent()) / 2f
         canvas.drawText(popup.label, rect.centerX(), rect.centerY() + baselineOffset, textPaint)
     }
@@ -527,17 +643,18 @@ class AospKeyboardView @JvmOverloads constructor(
     private fun drawMoreKeysPanel(canvas: Canvas, offsetX: Float = 0f, offsetY: Float = 0f) {
         val panel = moreKeysPanelState ?: return
         val panelRect = panel.popupRectInView.offsetBy(offsetX, offsetY)
-        drawDrawable(canvas, moreKeysBackground, panelRect)
+        drawDrawable(canvas, themedPopupBackground() ?: moreKeysBackground, panelRect)
         panel.keys.forEachIndexed { index, label ->
             val left = panelRect.left + panel.padding + index * panel.keyWidth
             val top = panelRect.top + panel.padding
             val rect = RectF(left, top, left + panel.keyWidth, top + panel.keyHeight)
             if (index == panel.selectedIndex) {
-                drawDrawable(canvas, normalKeyBackground, rect)
+                drawDrawable(canvas, themedPopupSelectedKeyBackground() ?: normalKeyBackground, rect)
             }
             textPaint.textSize = sp(24f)
             textPaint.typeface = Typeface.DEFAULT
-            textPaint.color = if (index == panel.selectedIndex) Color.BLACK else Color.rgb(238, 238, 238)
+            textPaint.color = themeOverride?.textAndIcons
+                ?: if (index == panel.selectedIndex) Color.BLACK else Color.rgb(238, 238, 238)
             val baselineOffset = -(textPaint.ascent() + textPaint.descent()) / 2f
             canvas.drawText(label, rect.centerX(), rect.centerY() + baselineOffset, textPaint)
         }
@@ -580,6 +697,16 @@ class AospKeyboardView @JvmOverloads constructor(
     }
 
     private fun backgroundFor(key: Key): Drawable? {
+        themeOverride?.let { theme ->
+            val pressed = key == pressedKey
+            val baseColor = if (isFunctional(key.spec.type)) theme.specialKey else theme.normalKey
+            return GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = keyCornerRadius(theme)
+                setColor(if (pressed) blendColors(baseColor, theme.accent, 0.28f) else baseColor)
+                setStroke(dp(1f), theme.divider)
+            }
+        }
         val pressed = key == pressedKey
         val drawable = when {
             key.spec.type == KeyType.SPACE && pressed -> spacebarPressedBackground
@@ -592,6 +719,30 @@ class AospKeyboardView @JvmOverloads constructor(
         return drawable?.constantState?.newDrawable()?.mutate() ?: drawable
     }
 
+    private fun themedPopupBackground(): Drawable? {
+        val theme = themeOverride ?: return null
+        return GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = dp(10f).toFloat()
+            setColor(theme.keyPopup)
+            setStroke(dp(1f), theme.divider)
+        }
+    }
+
+    private fun themedPopupSelectedKeyBackground(): Drawable? {
+        val theme = themeOverride ?: return null
+        return GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = keyCornerRadius(theme)
+            setColor(theme.keyPopupSelected)
+            setStroke(dp(1f), theme.divider)
+        }
+    }
+
+    private fun keyCornerRadius(theme: ThemeOverride): Float {
+        return preferredKeyHeightPx * theme.keyCornerRadiusRatio.coerceIn(0f, 0.35f)
+    }
+
     private fun drawDrawable(canvas: Canvas, drawable: Drawable?, rect: RectF) {
         if (drawable == null) return
         drawable.setBounds(rect.left.toInt(), rect.top.toInt(), rect.right.toInt(), rect.bottom.toInt())
@@ -602,9 +753,22 @@ class AospKeyboardView @JvmOverloads constructor(
         RectF(left + dx, top + dy, right + dx, bottom + dy)
 
     private fun isFunctional(type: KeyType): Boolean =
-        type == KeyType.SHIFT || type == KeyType.BACKSPACE || type == KeyType.SYMBOLS || type == KeyType.ENTER || type == KeyType.LANGUAGE
+        type == KeyType.SHIFT || type == KeyType.BACKSPACE || type == KeyType.SYMBOLS || type == KeyType.CTRL || type == KeyType.ENTER || type == KeyType.LANGUAGE
 
     private fun drawable(resId: Int): Drawable? = ContextCompat.getDrawable(context, resId)
+
+    private fun colorWithAlpha(color: Int, alpha: Int): Int =
+        Color.argb(alpha.coerceIn(0, 255), Color.red(color), Color.green(color), Color.blue(color))
+
+    private fun blendColors(first: Int, second: Int, ratio: Float): Int {
+        val clamped = ratio.coerceIn(0f, 1f)
+        val inverse = 1f - clamped
+        return Color.rgb(
+            (Color.red(first) * inverse + Color.red(second) * clamped).toInt().coerceIn(0, 255),
+            (Color.green(first) * inverse + Color.green(second) * clamped).toInt().coerceIn(0, 255),
+            (Color.blue(first) * inverse + Color.blue(second) * clamped).toInt().coerceIn(0, 255)
+        )
+    }
 
     private fun dp(value: Float): Int = TypedValue.applyDimension(
         TypedValue.COMPLEX_UNIT_DIP,

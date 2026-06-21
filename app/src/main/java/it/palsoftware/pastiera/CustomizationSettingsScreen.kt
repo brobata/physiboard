@@ -587,6 +587,47 @@ fun CustomizationSettingsScreen(
                             }
                         }
 
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(72.dp)
+                                .clickable { navigateTo(CustomizationDestination.KeyboardTheme) }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Keyboard,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = stringResource(R.string.keyboard_theme_title),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.keyboard_theme_description),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1
+                                    )
+                                }
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
                         // Sound Settings
                         Surface(
                             modifier = Modifier
@@ -838,6 +879,13 @@ fun CustomizationSettingsScreen(
                     modifier = modifier,
                     onBack = { navigateBack() },
                     onCustomizeVariations = { navigateTo(CustomizationDestination.Variations) }
+                )
+            }
+
+            CustomizationDestination.KeyboardTheme -> {
+                KeyboardThemeScreen(
+                    modifier = modifier,
+                    onBack = { navigateBack() }
                 )
             }
 
@@ -2296,6 +2344,7 @@ private sealed class CustomizationDestination {
     object LauncherShortcutCosmetic : CustomizationDestination()
     object LauncherShortcutAssignments : CustomizationDestination()
     object StatusBarButtons : CustomizationDestination()
+    object KeyboardTheme : CustomizationDestination()
     object Sounds : CustomizationDestination()
 }
 

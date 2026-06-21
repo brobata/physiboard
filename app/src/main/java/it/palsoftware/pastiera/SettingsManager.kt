@@ -12,6 +12,7 @@ import it.palsoftware.pastiera.commands.CommandSourceId
 import it.palsoftware.pastiera.commands.CommandSurface
 import it.palsoftware.pastiera.commands.PastieraCommandSource
 import it.palsoftware.pastiera.inputmethod.DeviceSpecific
+import it.palsoftware.pastiera.inputmethod.ui.KeyboardThemeColors
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -117,6 +118,9 @@ object SettingsManager {
     private const val KEY_APP_ENTER_BEHAVIOR_ENABLED = "app_enter_behavior_enabled"
     private const val KEY_APP_ENTER_BEHAVIOR_PRESET = "app_enter_behavior_preset"
     private const val KEY_APP_ENTER_BEHAVIOR_OVERRIDES = "app_enter_behavior_overrides"
+    const val KEY_KEYBOARD_THEME_HARDWARE = "keyboard_theme_hardware"
+    const val KEY_KEYBOARD_THEME_SOFTWARE = "keyboard_theme_software"
+    private const val KEY_KEYBOARD_THEME_SAVED_THEMES = "keyboard_theme_saved_themes"
     
     // Status bar button slot configuration keys
     private const val KEY_STATUS_BAR_SLOT_LEFT = "status_bar_slot_left"
@@ -312,6 +316,61 @@ object SettingsManager {
         FORCE_VIRTUAL("force_virtual")
     }
 
+    enum class KeyboardThemeTarget {
+        HARDWARE,
+        SOFTWARE
+    }
+
+    data class KeyboardThemeSettings(
+        val background: Int,
+        val divider: Int,
+        val normalKey: Int,
+        val specialKey: Int,
+        val textAndIcons: Int,
+        val ledInactive: Int,
+        val ledActive: Int,
+        val ledLocked: Int,
+        val accent: Int,
+        val cursorSwipe: Int = accent,
+        val keyPopup: Int = specialKey,
+        val keyPopupSelected: Int = accent,
+        val suggestion: Int = normalKey,
+        val statusBarButton: Int = specialKey,
+        val keyCornerRadiusRatio: Float = 0.08f,
+        val chromeCornerRadiusRatio: Float = 0.08f,
+        val keyHeightScale: Float = 1f,
+        val keyWidthScale: Float = 1f,
+        val rowGapScale: Float = 0f,
+        val distributeHorizontalSpacing: Boolean = true,
+        val ortholinear: Boolean = false,
+        val showLeds: Boolean = true
+    ) {
+        fun toKeyboardThemeColors(): KeyboardThemeColors =
+            KeyboardThemeColors(
+                background = background,
+                divider = divider,
+                normalKey = normalKey,
+                specialKey = specialKey,
+                textAndIcons = textAndIcons,
+                ledInactive = ledInactive,
+                ledActive = ledActive,
+                ledLocked = ledLocked,
+                accent = accent,
+                cursorSwipe = cursorSwipe,
+                keyPopup = keyPopup,
+                keyPopupSelected = keyPopupSelected,
+                suggestion = suggestion,
+                statusBarButton = statusBarButton,
+                keyCornerRadiusRatio = keyCornerRadiusRatio,
+                chromeCornerRadiusRatio = chromeCornerRadiusRatio
+            )
+    }
+
+    data class NamedKeyboardTheme(
+        val name: String,
+        val theme: KeyboardThemeSettings
+    )
+
     /**
      * Returns the SharedPreferences instance for Pastiera.
      */
@@ -368,6 +427,191 @@ object SettingsManager {
             .putString(KEY_SOFTWARE_KEYBOARD_MODE, mode.storageValue)
             .apply()
     }
+
+    fun defaultKeyboardTheme(): KeyboardThemeSettings =
+        KeyboardThemeSettings(
+            background = 0xFFF2F2F2.toInt(),
+            divider = 0xFFB8B8B8.toInt(),
+            normalKey = 0xFFFAFAFA.toInt(),
+            specialKey = 0xFFDDDDDD.toInt(),
+            textAndIcons = 0xFF111111.toInt(),
+            ledInactive = 0xFFB0B0B0.toInt(),
+            ledActive = 0xFF555555.toInt(),
+            ledLocked = 0xFF111111.toInt(),
+            accent = 0xFF3F8C96.toInt(),
+            cursorSwipe = 0xFF3F8C96.toInt(),
+            keyPopup = 0xFFDDDDDD.toInt(),
+            keyPopupSelected = 0xFF3F8C96.toInt(),
+            suggestion = 0xFFFAFAFA.toInt(),
+            statusBarButton = 0xFFDDDDDD.toInt()
+        )
+
+    fun keyboardThemeKeyForTarget(target: KeyboardThemeTarget): String =
+        when (target) {
+            KeyboardThemeTarget.HARDWARE -> KEY_KEYBOARD_THEME_HARDWARE
+            KeyboardThemeTarget.SOFTWARE -> KEY_KEYBOARD_THEME_SOFTWARE
+        }
+
+    fun isKeyboardThemePreferenceKey(key: String?): Boolean {
+        return key == KEY_KEYBOARD_THEME_HARDWARE || key == KEY_KEYBOARD_THEME_SOFTWARE
+    }
+
+    fun getKeyboardTheme(context: Context, target: KeyboardThemeTarget): KeyboardThemeSettings {
+        val defaults = defaultKeyboardTheme()
+        val stored = getPreferences(context).getString(keyboardThemeKeyForTarget(target), null)
+            ?: return defaults
+        return try {
+            val json = JSONObject(stored)
+            KeyboardThemeSettings(
+                background = json.optInt("background", defaults.background),
+                divider = json.optInt("divider", defaults.divider),
+                normalKey = json.optInt("normal_key", defaults.normalKey),
+                specialKey = json.optInt("special_key", defaults.specialKey),
+                textAndIcons = json.optInt("text_and_icons", defaults.textAndIcons),
+                ledInactive = json.optInt("led_inactive", defaults.ledInactive),
+                ledActive = json.optInt("led_active", defaults.ledActive),
+                ledLocked = json.optInt("led_locked", defaults.ledLocked),
+                accent = json.optInt("accent", defaults.accent),
+                cursorSwipe = json.optInt("cursor_swipe", defaults.cursorSwipe),
+                keyPopup = json.optInt("key_popup", defaults.keyPopup),
+                keyPopupSelected = json.optInt("key_popup_selected", defaults.keyPopupSelected),
+                suggestion = json.optInt("suggestion", defaults.suggestion),
+                statusBarButton = json.optInt("status_bar_button", defaults.statusBarButton),
+                keyCornerRadiusRatio = json.optDouble("key_corner_radius_ratio", defaults.keyCornerRadiusRatio.toDouble()).toFloat(),
+                chromeCornerRadiusRatio = json.optDouble("chrome_corner_radius_ratio", defaults.chromeCornerRadiusRatio.toDouble()).toFloat(),
+                keyHeightScale = json.optDouble("key_height_scale", defaults.keyHeightScale.toDouble()).toFloat(),
+                keyWidthScale = json.optDouble("key_width_scale", defaults.keyWidthScale.toDouble()).toFloat(),
+                rowGapScale = json.optDouble("row_gap_scale", defaults.rowGapScale.toDouble()).toFloat(),
+                distributeHorizontalSpacing = json.optBoolean("distribute_horizontal_spacing", defaults.distributeHorizontalSpacing),
+                ortholinear = json.optBoolean("ortholinear", defaults.ortholinear),
+                showLeds = json.optBoolean("show_leds", defaults.showLeds)
+            )
+        } catch (error: Exception) {
+            Log.e(TAG, "Fehler beim Laden des Keyboard-Themes", error)
+            defaults
+        }
+    }
+
+    fun setKeyboardTheme(
+        context: Context,
+        target: KeyboardThemeTarget,
+        theme: KeyboardThemeSettings
+    ) {
+        val json = keyboardThemeToJson(theme)
+        getPreferences(context).edit()
+            .putString(keyboardThemeKeyForTarget(target), json.toString())
+            .apply()
+    }
+
+    fun keyboardThemeToJsonString(theme: KeyboardThemeSettings): String =
+        keyboardThemeToJson(theme).toString()
+
+    fun keyboardThemeFromJsonString(value: String): KeyboardThemeSettings? {
+        return try {
+            keyboardThemeFromJson(JSONObject(value), defaultKeyboardTheme())
+        } catch (error: Exception) {
+            Log.e(TAG, "Fehler beim Importieren des Keyboard-Themes", error)
+            null
+        }
+    }
+
+    fun getSavedKeyboardThemes(context: Context): List<NamedKeyboardTheme> {
+        val stored = getPreferences(context).getString(KEY_KEYBOARD_THEME_SAVED_THEMES, null)
+            ?: return emptyList()
+        return try {
+            val array = JSONArray(stored)
+            buildList {
+                for (index in 0 until array.length()) {
+                    val item = array.optJSONObject(index) ?: continue
+                    val name = item.optString("name").trim()
+                    val themeObject = item.optJSONObject("theme") ?: continue
+                    if (name.isNotEmpty()) {
+                        add(NamedKeyboardTheme(name, keyboardThemeFromJson(themeObject, defaultKeyboardTheme())))
+                    }
+                }
+            }
+        } catch (error: Exception) {
+            Log.e(TAG, "Fehler beim Laden gespeicherter Keyboard-Themes", error)
+            emptyList()
+        }
+    }
+
+    fun saveKeyboardTheme(
+        context: Context,
+        name: String,
+        theme: KeyboardThemeSettings
+    ) {
+        val normalizedName = name.trim().ifEmpty { "Custom" }
+        val themes = getSavedKeyboardThemes(context)
+            .filterNot { it.name.equals(normalizedName, ignoreCase = true) } +
+            NamedKeyboardTheme(normalizedName, theme)
+        val array = JSONArray().apply {
+            themes.forEach { savedTheme ->
+                put(JSONObject().apply {
+                    put("name", savedTheme.name)
+                    put("theme", keyboardThemeToJson(savedTheme.theme))
+                })
+            }
+        }
+        getPreferences(context).edit()
+            .putString(KEY_KEYBOARD_THEME_SAVED_THEMES, array.toString())
+            .apply()
+    }
+
+    private fun keyboardThemeFromJson(
+        json: JSONObject,
+        defaults: KeyboardThemeSettings
+    ): KeyboardThemeSettings =
+        KeyboardThemeSettings(
+            background = json.optInt("background", defaults.background),
+            divider = json.optInt("divider", defaults.divider),
+            normalKey = json.optInt("normal_key", defaults.normalKey),
+            specialKey = json.optInt("special_key", defaults.specialKey),
+            textAndIcons = json.optInt("text_and_icons", defaults.textAndIcons),
+            ledInactive = json.optInt("led_inactive", defaults.ledInactive),
+            ledActive = json.optInt("led_active", defaults.ledActive),
+            ledLocked = json.optInt("led_locked", defaults.ledLocked),
+            accent = json.optInt("accent", defaults.accent),
+            cursorSwipe = json.optInt("cursor_swipe", defaults.cursorSwipe),
+            keyPopup = json.optInt("key_popup", defaults.keyPopup),
+            keyPopupSelected = json.optInt("key_popup_selected", defaults.keyPopupSelected),
+            suggestion = json.optInt("suggestion", defaults.suggestion),
+            statusBarButton = json.optInt("status_bar_button", defaults.statusBarButton),
+            keyCornerRadiusRatio = json.optDouble("key_corner_radius_ratio", defaults.keyCornerRadiusRatio.toDouble()).toFloat(),
+            chromeCornerRadiusRatio = json.optDouble("chrome_corner_radius_ratio", defaults.chromeCornerRadiusRatio.toDouble()).toFloat(),
+            keyHeightScale = json.optDouble("key_height_scale", defaults.keyHeightScale.toDouble()).toFloat(),
+            keyWidthScale = json.optDouble("key_width_scale", defaults.keyWidthScale.toDouble()).toFloat(),
+            rowGapScale = json.optDouble("row_gap_scale", defaults.rowGapScale.toDouble()).toFloat(),
+            distributeHorizontalSpacing = json.optBoolean("distribute_horizontal_spacing", defaults.distributeHorizontalSpacing),
+            ortholinear = json.optBoolean("ortholinear", defaults.ortholinear),
+            showLeds = json.optBoolean("show_leds", defaults.showLeds)
+        )
+
+    private fun keyboardThemeToJson(theme: KeyboardThemeSettings): JSONObject =
+        JSONObject().apply {
+            put("background", theme.background)
+            put("divider", theme.divider)
+            put("normal_key", theme.normalKey)
+            put("special_key", theme.specialKey)
+            put("text_and_icons", theme.textAndIcons)
+            put("led_inactive", theme.ledInactive)
+            put("led_active", theme.ledActive)
+            put("led_locked", theme.ledLocked)
+            put("accent", theme.accent)
+            put("cursor_swipe", theme.cursorSwipe)
+            put("key_popup", theme.keyPopup)
+            put("key_popup_selected", theme.keyPopupSelected)
+            put("suggestion", theme.suggestion)
+            put("status_bar_button", theme.statusBarButton)
+            put("key_corner_radius_ratio", theme.keyCornerRadiusRatio.toDouble())
+            put("chrome_corner_radius_ratio", theme.chromeCornerRadiusRatio.toDouble())
+            put("key_height_scale", theme.keyHeightScale.toDouble())
+            put("key_width_scale", theme.keyWidthScale.toDouble())
+            put("row_gap_scale", theme.rowGapScale.toDouble())
+            put("distribute_horizontal_spacing", theme.distributeHorizontalSpacing)
+            put("ortholinear", theme.ortholinear)
+            put("show_leds", theme.showLeds)
+        }
 
     fun resolveEffectiveSoftwareKeyboardMode(context: Context): SoftwareKeyboardMode {
         val configured = getSoftwareKeyboardMode(context)
