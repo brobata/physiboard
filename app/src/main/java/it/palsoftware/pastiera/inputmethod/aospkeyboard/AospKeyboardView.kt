@@ -937,6 +937,9 @@ class AospKeyboardView @JvmOverloads constructor(
             return
         }
         if (symPageActive) {
+            if (!key.spec.type.canOpenSymbolPicker()) {
+                return
+            }
             val keyCode = soundKeyCodeFor(key)
             if (listener?.onSymbolLongPress(keyCode) == true) {
                 longPressTriggered = true
@@ -1216,6 +1219,9 @@ class AospKeyboardView @JvmOverloads constructor(
         type == KeyType.SHIFT || type == KeyType.BACKSPACE || type == KeyType.SYMBOLS || type == KeyType.CTRL || type == KeyType.ENTER || type == KeyType.LANGUAGE
 
     private fun KeyType.canShowLongPressAlternates(): Boolean =
+        this == KeyType.CHAR || this == KeyType.COMMA || this == KeyType.PERIOD
+
+    private fun KeyType.canOpenSymbolPicker(): Boolean =
         this == KeyType.CHAR || this == KeyType.COMMA || this == KeyType.PERIOD
 
     private fun KeyType.isHoldModifier(): Boolean =

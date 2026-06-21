@@ -30,6 +30,7 @@ class AospKeyboardViewTest {
         var backspaceCount = 0
         var enterCount = 0
         val soundKeyCodes = mutableListOf<Int>()
+        val symbolLongPressKeyCodes = mutableListOf<Int>()
 
         override fun onText(text: String) { texts += text }
         override fun onBackspace() { backspaceCount++ }
@@ -40,6 +41,10 @@ class AospKeyboardViewTest {
         override fun onLanguageSwitch() { languageSwitchCount++ }
         override fun onCursorMove(delta: Int) { cursorDelta += delta }
         override fun onKeyPressSound(keyCode: Int) { soundKeyCodes += keyCode }
+        override fun onSymbolLongPress(keyCode: Int): Boolean {
+            symbolLongPressKeyCodes += keyCode
+            return true
+        }
     }
 
     @Test
@@ -113,6 +118,42 @@ class AospKeyboardViewTest {
         view.dispatchTouchEvent(motion(MotionEvent.ACTION_UP, x, y, 20L))
 
         assertEquals(1, listener.shiftCount)
+    }
+
+    @Test
+    fun symPageShiftLongPress_doesNotOpenSymbolPicker() {
+        val listener = RecordingListener()
+        val view = measuredKeyboard().apply {
+            symPageActive = true
+            longPressTimeoutMs = 50L
+            this.listener = listener
+        }
+        val (x, y) = centerOfLabel(view, "⇧")
+
+        view.dispatchTouchEvent(motion(MotionEvent.ACTION_DOWN, x, y, 0L))
+        Shadows.shadowOf(Looper.getMainLooper()).idleFor(60, TimeUnit.MILLISECONDS)
+        view.dispatchTouchEvent(motion(MotionEvent.ACTION_UP, x, y, 70L))
+
+        assertTrue(listener.symbolLongPressKeyCodes.isEmpty())
+        assertEquals(1, listener.shiftCount)
+    }
+
+    @Test
+    fun symPageCharacterLongPress_opensSymbolPicker() {
+        val listener = RecordingListener()
+        val view = measuredKeyboard().apply {
+            symPageActive = true
+            longPressTimeoutMs = 50L
+            this.listener = listener
+        }
+        val (x, y) = centerOfLabel(view, "a")
+
+        view.dispatchTouchEvent(motion(MotionEvent.ACTION_DOWN, x, y, 0L))
+        Shadows.shadowOf(Looper.getMainLooper()).idleFor(60, TimeUnit.MILLISECONDS)
+        view.dispatchTouchEvent(motion(MotionEvent.ACTION_UP, x, y, 70L))
+
+        assertEquals(listOf(KeyEvent.KEYCODE_A), listener.symbolLongPressKeyCodes)
+        assertEquals(emptyList<String>(), listener.texts)
     }
 
     @Test
