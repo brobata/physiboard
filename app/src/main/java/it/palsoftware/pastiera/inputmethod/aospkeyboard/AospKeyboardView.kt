@@ -599,11 +599,22 @@ class AospKeyboardView @JvmOverloads constructor(
         val row2Start = if (themeOverride?.ortholinear == true || layout == "azerty" || layout == "german_multitap_qwertz") 0f else 5f
         val row2Width = if (layout == "german_multitap_qwertz") 100f / rowStrings[1].length else 10f
         val row2 = rowStrings[1].mapIndexed { index, ch -> charSpec(ch, row2Start + index * row2Width, widthPercent = row2Width) }
-        val row3Chars = rowStrings[2].mapIndexed { index, ch -> charSpec(ch, 15f + index * 10f) }
+        val row3CharWidth = if (layout == "german_multitap_qwertz") row1Width else 10f
+        val row3Start = if (layout == "german_multitap_qwertz") row3CharWidth * 2f else 15f
+        val row3SideKeyWidth = if (layout == "german_multitap_qwertz") row3CharWidth * 2f else 15f
+        val row3Chars = rowStrings[2].mapIndexed { index, ch ->
+            charSpec(ch, row3Start + index * row3CharWidth, widthPercent = row3CharWidth)
+        }
         val row3 = listOf(
-            KeySpec(KeyType.SHIFT, "⇧", xPercent = 0f, widthPercent = 15f, visualInsetRightPercent = 1f)
+            KeySpec(KeyType.SHIFT, "⇧", xPercent = 0f, widthPercent = row3SideKeyWidth, visualInsetRightPercent = 1f)
         ) + row3Chars + listOf(
-            KeySpec(KeyType.BACKSPACE, "⌫", xPercent = 85f, widthPercent = 15f, visualInsetLeftPercent = 1f)
+            KeySpec(
+                KeyType.BACKSPACE,
+                "⌫",
+                xPercent = 100f - row3SideKeyWidth,
+                widthPercent = row3SideKeyWidth,
+                visualInsetLeftPercent = 1f
+            )
         )
         val row4 = listOf(
             KeySpec(KeyType.SYMBOLS, "SYM", xPercent = 0f, widthPercent = 12f),
@@ -981,12 +992,12 @@ class AospKeyboardView @JvmOverloads constructor(
             KeyType.SHIFT -> when {
                 shiftLocked -> theme.ledLocked
                 shifted -> theme.ledActive
-                else -> theme.ledInactive
+                else -> theme.specialKey
             }
             KeyType.CTRL -> when {
                 ctrlLocked -> theme.ledLocked
                 ctrlPressed || ctrlOneShot -> theme.ledActive
-                else -> theme.ledInactive
+                else -> theme.specialKey
             }
             else -> if (isFunctional(type)) theme.specialKey else theme.normalKey
         }
