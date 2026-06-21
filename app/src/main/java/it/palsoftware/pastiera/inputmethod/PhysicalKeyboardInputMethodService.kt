@@ -1981,7 +1981,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 }
                 true
             }
-            KEYCODE_SYM -> dispatchSoftwareKeyboardSyntheticKey(keyCode, KeyEvent.ACTION_DOWN)
+            KEYCODE_SYM -> {
+                modifierDownTimes[keyCode] = SystemClock.uptimeMillis()
+                dispatchSoftwareKeyboardSyntheticKey(keyCode, KeyEvent.ACTION_DOWN)
+            }
             else -> false
         }
     }
@@ -2009,9 +2012,14 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 true
             }
             KEYCODE_SYM -> {
-                uiHandler.post {
-                    dispatchSoftwareKeyboardSyntheticKey(keyCode, KeyEvent.ACTION_UP)
+                val downTime = modifierDownTimes[keyCode] ?: 0L
+                val now = SystemClock.uptimeMillis()
+                val holdDuration = if (downTime > 0L) now - downTime else 0L
+                if (holdDuration >= 300L && symLayoutController.currentSymPage() == 0) {
+                    symChordUsedSinceKeyDown = true
                 }
+                dispatchSoftwareKeyboardSyntheticKey(keyCode, KeyEvent.ACTION_UP)
+                modifierDownTimes.remove(keyCode)
                 true
             }
             else -> false
@@ -2022,6 +2030,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         val consumeCtrlOneShotAfterStroke = ctrlOneShot && !ctrlLatchActive && !ctrlLatchFromNavMode
         val softwareModifierActive =
             symTogglePendingOnKeyUp ||
+                symLayoutController.currentSymPage() in 1..2 ||
                 ctrlPressed ||
                 ctrlPhysicallyPressed ||
                 ctrlLatchActive ||
@@ -2405,7 +2414,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         val shiftActive = modifierSnapshot.capsLockEnabled ||
             modifierSnapshot.shiftPhysicallyPressed ||
             modifierSnapshot.shiftOneShot
-        return symLayoutController.previewChordMappings(shiftActive)
+        return symLayoutController.previewNextSoftwareSymPageMappings(shiftActive)
     }
 
     private fun shouldShowSoftwareCtrlPreview(

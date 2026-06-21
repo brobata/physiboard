@@ -1103,7 +1103,8 @@ class StatusBarController(
 
     private fun updateSoftwareKeyboard(
         snapshot: StatusSnapshot,
-        inputConnection: android.view.inputmethod.InputConnection? = null
+        inputConnection: android.view.inputmethod.InputConnection? = null,
+        symMappings: Map<Int, String>? = null
     ) {
         val container = emojiKeyboardContainer ?: return
         container.setPadding(0, 0, 0, emojiKeyboardBottomPaddingPx)
@@ -1197,6 +1198,15 @@ class StatusBarController(
             override fun onKeyStroke(keyCode: Int, text: String): Boolean {
                 return onSoftwareKeyboardKeyStroke?.invoke(keyCode, text) == true
             }
+
+            override fun onSymbolLongPress(keyCode: Int): Boolean {
+                val page = snapshot.symPage
+                if (page !in 1..2) {
+                    return false
+                }
+                openSymCustomization(page = page, keyCode = keyCode, openPicker = true)
+                return true
+            }
         }
         keyboardView.layoutName = layoutName
         keyboardView.shifted = uppercase
@@ -1205,6 +1215,8 @@ class StatusBarController(
         keyboardView.ctrlLocked = snapshot.ctrlLatchActive || snapshot.ctrlLatchFromNavMode
         keyboardView.ctrlPressed = snapshot.ctrlPhysicallyPressed
         keyboardView.ctrlPreviewActive = snapshot.softwareCtrlPreviewActive
+        keyboardView.symPageActive = snapshot.symPage in 1..2
+        keyboardView.symPageLabels = if (snapshot.symPage in 1..2 && symMappings != null) symMappings else emptyMap()
         keyboardView.symPreviewLabels = snapshot.softwareSymPreviewLabels
         keyboardView.ctrlPreviewLabels = snapshot.softwareCtrlPreviewLabels
         keyboardView.ctrlPreviewIconRes = snapshot.softwareCtrlPreviewIconRes
@@ -1260,7 +1272,7 @@ class StatusBarController(
         }
         return when (nextPage) {
             1 -> SoftwareSymKeySpec("", R.drawable.ic_emoji_emotions_24)
-            2 -> SoftwareSymKeySpec("SYM")
+            2 -> SoftwareSymKeySpec("", R.drawable.ic_emoji_symbols_24)
             3 -> SoftwareSymKeySpec("", R.drawable.ic_content_paste_24)
             4 -> SoftwareSymKeySpec("", R.drawable.ic_emoji_emotions_24)
             else -> SoftwareSymKeySpec("ABC")
@@ -2494,8 +2506,8 @@ class StatusBarController(
             isFullSoftwareKeyboardMode &&
                 !snapshot.clipboardOverlay
 
-        if (shouldShowSoftwareKeyboard && snapshot.symPage == 0) {
-            updateSoftwareKeyboard(snapshot, inputConnection)
+        if (shouldShowSoftwareKeyboard && (snapshot.symPage == 0 || isSoftwareKeyboardSymbolPage)) {
+            updateSoftwareKeyboard(snapshot, inputConnection, symMappings)
             if (showSecondRow) {
                 variationsWrapperView?.apply {
                     visibility = View.VISIBLE
@@ -2527,6 +2539,8 @@ class StatusBarController(
                 reserveLedSpace = showLedStrip
             )
             setSurfaceCloseVisible(false)
+            symShown = snapshot.symPage in 1..2
+            wasSymActive = snapshot.symPage in 1..2
             return
         } else {
             softwareKeyboardShown = false

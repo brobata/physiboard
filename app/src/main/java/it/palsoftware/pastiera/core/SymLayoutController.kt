@@ -170,6 +170,27 @@ class SymLayoutController(
             else -> preferredChordPage()
         } ?: return emptyMap()
 
+        return mappingsForPage(pageToUse, shiftPressed)
+    }
+
+    fun previewNextSoftwareSymPageMappings(shiftPressed: Boolean): Map<Int, String> {
+        val config = SettingsManager.getSymPagesConfig(context)
+        alignSymPageToConfig(config)
+        val pages = buildActivePages(config)
+        if (pages.isEmpty()) {
+            return emptyMap()
+        }
+        val cycle = listOf(null) + pages
+        val currentPage = currentPageType()
+        val currentIndex = cycle.indexOf(currentPage).takeIf { it >= 0 } ?: 0
+        val nextTextPage = (1..cycle.size).asSequence()
+            .map { offset -> cycle[(currentIndex + offset) % cycle.size] }
+            .firstOrNull { it == SymPage.EMOJI || it == SymPage.SYMBOLS }
+            ?: return emptyMap()
+        return mappingsForPage(nextTextPage, shiftPressed)
+    }
+
+    private fun mappingsForPage(pageToUse: SymPage, shiftPressed: Boolean): Map<Int, String> {
         return when (pageToUse) {
             SymPage.EMOJI -> if (shiftPressed) {
                 altSymManager.getSymMappings() + altSymManager.getSymMappingsUppercase()

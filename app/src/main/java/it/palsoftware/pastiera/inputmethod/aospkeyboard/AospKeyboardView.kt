@@ -57,6 +57,7 @@ class AospKeyboardView @JvmOverloads constructor(
         fun onModifierKeyDown(keyCode: Int): Boolean = false
         fun onModifierKeyUp(keyCode: Int): Boolean = false
         fun onKeyStroke(keyCode: Int, text: String): Boolean = false
+        fun onSymbolLongPress(keyCode: Int): Boolean = false
     }
 
     data class ThemeOverride(
@@ -175,7 +176,23 @@ class AospKeyboardView @JvmOverloads constructor(
             field = value
             invalidate()
         }
+    var symPageActive: Boolean = false
+        set(value) {
+            if (field == value) {
+                return
+            }
+            field = value
+            invalidate()
+        }
     var symPreviewLabels: Map<Int, String> = emptyMap()
+        set(value) {
+            if (field == value) {
+                return
+            }
+            field = value
+            invalidate()
+        }
+    var symPageLabels: Map<Int, String> = emptyMap()
         set(value) {
             if (field == value) {
                 return
@@ -321,14 +338,14 @@ class AospKeyboardView @JvmOverloads constructor(
                 return@forEach
             }
             val previewLabel = previewLabelFor(key)
-            val label = previewLabel ?: displayLabel(key.spec)
+            val label = previewLabel ?: symPageLabelFor(key) ?: displayLabel(key.spec)
             textPaint.textSize = when (key.spec.type) {
                 KeyType.SPACE -> sp(12f)
                 KeyType.SYMBOLS -> sp(16f)
                 KeyType.ENTER, KeyType.SHIFT, KeyType.BACKSPACE, KeyType.CTRL, KeyType.LANGUAGE -> sp(23f)
                 else -> sp(24f)
             }
-            if (previewLabel != null) {
+            if (previewLabel != null && heldModifierKey?.spec?.type != KeyType.SYMBOLS) {
                 textPaint.textSize = previewTextSize(previewLabel, key.visualRect)
             }
             textPaint.typeface = if (key.spec.type == KeyType.SPACE) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
@@ -510,11 +527,11 @@ class AospKeyboardView @JvmOverloads constructor(
                 pressedKey = null
                 chordKey = null
                 chordPointerId = -1
-                invalidate()
                 if (releasedHeldModifier) {
                     releaseHeldModifier()
                     return true
                 }
+                invalidate()
                 if (key?.spec?.type == KeyType.SPACE && wasSpaceLongPress && !wasSpaceSwipe) {
                     listener?.onLanguageSwitch()
                     return true
@@ -635,6 +652,7 @@ class AospKeyboardView @JvmOverloads constructor(
     }
 
     private fun displayHint(key: Key): String {
+        if (symPageActive) return ""
         if (key.spec.type !in listOf(KeyType.CHAR, KeyType.COMMA, KeyType.PERIOD)) return ""
         return longPressAlternatesFor(key).firstOrNull().orEmpty()
     }
@@ -643,7 +661,7 @@ class AospKeyboardView @JvmOverloads constructor(
         val keyCode = soundKeyCodeFor(key)
         val heldType = heldModifierKey?.spec?.type
         return when {
-            heldType == KeyType.SYMBOLS -> symPreviewLabels[keyCode]
+            heldType == KeyType.SYMBOLS && !symPageActive -> symPreviewLabels[keyCode]
             heldType == KeyType.CTRL || ctrlPreviewActive -> ctrlPreviewLabels[keyCode]
             else -> null
         }?.takeIf { it.isNotBlank() }
@@ -661,6 +679,12 @@ class AospKeyboardView @JvmOverloads constructor(
     private fun isModifierPreviewLayerActive(): Boolean {
         val heldType = heldModifierKey?.spec?.type
         return heldType == KeyType.SYMBOLS || heldType == KeyType.CTRL || ctrlPreviewActive
+    }
+
+    private fun symPageLabelFor(key: Key): String? {
+        if (!symPageActive) return null
+        if (key.spec.type !in listOf(KeyType.CHAR, KeyType.COMMA, KeyType.PERIOD)) return null
+        return symPageLabels[soundKeyCodeFor(key)]?.takeIf { it.isNotBlank() }
     }
 
     private fun previewTextSize(label: String, rect: RectF): Float {
@@ -730,6 +754,15 @@ class AospKeyboardView @JvmOverloads constructor(
             invalidate()
             return
         }
+        if (symPageActive) {
+            val keyCode = soundKeyCodeFor(key)
+            if (listener?.onSymbolLongPress(keyCode) == true) {
+                longPressTriggered = true
+                dismissPopup()
+                invalidate()
+            }
+            return
+        }
         val resolvedMoreKeys = longPressAlternatesFor(key)
         if (resolvedMoreKeys.isEmpty()) return
         longPressTriggered = true
@@ -764,7 +797,7 @@ class AospKeyboardView @JvmOverloads constructor(
         val popupLeft = (key.visualRect.centerX() - previewWidth / 2f).coerceIn(0f, width - previewWidth)
         val popupTop = key.visualRect.top - previewHeight - dp(8f)
         previewPopupState = PreviewPopupState(
-            label = displayLabel(key.spec),
+            label = symPageLabelFor(key) ?: displayLabel(key.spec),
             rect = RectF(popupLeft, popupTop, popupLeft + previewWidth, popupTop + previewHeight),
             hasMoreKeys = longPressAlternatesFor(key).isNotEmpty()
         )
