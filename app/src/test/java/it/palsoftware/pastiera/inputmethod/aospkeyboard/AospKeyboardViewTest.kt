@@ -31,6 +31,7 @@ class AospKeyboardViewTest {
         var enterCount = 0
         val soundKeyCodes = mutableListOf<Int>()
         val symbolLongPressKeyCodes = mutableListOf<Int>()
+        val symbolTexts = mutableListOf<String>()
 
         override fun onText(text: String) { texts += text }
         override fun onBackspace() { backspaceCount++ }
@@ -43,6 +44,10 @@ class AospKeyboardViewTest {
         override fun onKeyPressSound(keyCode: Int) { soundKeyCodes += keyCode }
         override fun onSymbolLongPress(keyCode: Int): Boolean {
             symbolLongPressKeyCodes += keyCode
+            return true
+        }
+        override fun onSymbolText(text: String): Boolean {
+            symbolTexts += text
             return true
         }
     }
@@ -157,6 +162,45 @@ class AospKeyboardViewTest {
     }
 
     @Test
+    fun symPageTextLabels_commitExactVirtualSymbolText() {
+        val listener = RecordingListener()
+        val view = measuredKeyboard().apply {
+            layoutName = "german_multitap_qwertz"
+            layoutStyle = AospKeyboardView.SoftwareLayoutStyle.EXTENDED_ISO
+            symPageActive = true
+            symPageTextLabels = mapOf("ü" to "🙃")
+            this.listener = listener
+        }
+        val (x, y) = centerOfLabel(view, "ü")
+
+        view.dispatchTouchEvent(motion(MotionEvent.ACTION_DOWN, x, y, 0L))
+        view.dispatchTouchEvent(motion(MotionEvent.ACTION_UP, x, y, 20L))
+
+        assertEquals(listOf("🙃"), listener.symbolTexts)
+        assertEquals(emptyList<String>(), listener.texts)
+    }
+
+    @Test
+    fun ctrlPreviewActive_hidesSymPageTextLabels() {
+        val view = measuredKeyboard().apply {
+            layoutName = "german_multitap_qwertz"
+            layoutStyle = AospKeyboardView.SoftwareLayoutStyle.EXTENDED_ISO
+            symPageActive = true
+            symPageLabels = mapOf(KeyEvent.KEYCODE_U to "❤️")
+            symPageTextLabels = mapOf("ü" to "🙃")
+            ctrlPreviewActive = true
+            ctrlPreviewLabels = mapOf(KeyEvent.KEYCODE_U to "OK")
+        }
+        val uKey = keyForLabel(view, "u")
+        val umlautKey = keyForLabel(view, "ü")
+
+        assertEquals(null, symPageLabel(view, uKey))
+        assertEquals("OK", previewLabel(view, uKey))
+        assertEquals(null, symPageLabel(view, umlautKey))
+        assertEquals(null, previewLabel(view, umlautKey))
+    }
+
+    @Test
     fun displayHint_usesCurrentLongPressProvider_evenWhenShiftedHintMatchesLabel() {
         val view = measuredKeyboard().apply {
             shifted = true
@@ -218,6 +262,18 @@ class AospKeyboardViewTest {
         val method = AospKeyboardView::class.java.getDeclaredMethod("displayHint", key.javaClass)
         method.isAccessible = true
         return method.invoke(view, key) as String
+    }
+
+    private fun symPageLabel(view: AospKeyboardView, key: Any): String? {
+        val method = AospKeyboardView::class.java.getDeclaredMethod("symPageLabelFor", key.javaClass)
+        method.isAccessible = true
+        return method.invoke(view, key) as String?
+    }
+
+    private fun previewLabel(view: AospKeyboardView, key: Any): String? {
+        val method = AospKeyboardView::class.java.getDeclaredMethod("previewLabelFor", key.javaClass)
+        method.isAccessible = true
+        return method.invoke(view, key) as String?
     }
 
     @Suppress("UNCHECKED_CAST")

@@ -74,7 +74,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import it.palsoftware.pastiera.data.mappings.KeyMappingLoader
 import it.palsoftware.pastiera.inputmethod.aospkeyboard.AospKeyboardView
+import it.palsoftware.pastiera.inputmethod.aospkeyboard.SoftwareKeyboardLayoutTemplates
+import it.palsoftware.pastiera.inputmethod.aospkeyboard.SoftwareKeyboardSymLabels
 import it.palsoftware.pastiera.inputmethod.StatusBarController
 import it.palsoftware.pastiera.inputmethod.suggestions.ui.FullSuggestionsBar
 import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonRegistry
@@ -1045,6 +1048,7 @@ private fun createVirtualKeyboardThemePreviewView(
         shifted = false
         spacebarLabel = "space"
         themeOverride = theme.toAospThemeOverride()
+        applyVirtualKeyboardSymPreviewState(context)
     }
     root.addView(
         keyboardView,
@@ -1087,6 +1091,7 @@ private fun updateVirtualKeyboardThemePreviewView(view: android.view.View, theme
         layoutName = SettingsManager.getKeyboardLayout(context)
         layoutStyle = softwareKeyboardPreviewLayoutStyle(context)
         themeOverride = theme.toAospThemeOverride()
+        applyVirtualKeyboardSymPreviewState(context)
         layoutParams = (layoutParams as? LinearLayout.LayoutParams)?.apply {
             height = dpToPx(context, 164f * theme.keyHeightScale.coerceIn(0.72f, 1.45f))
         } ?: LinearLayout.LayoutParams(
@@ -1099,6 +1104,31 @@ private fun updateVirtualKeyboardThemePreviewView(view: android.view.View, theme
         getView()?.visibility = if (theme.showLeds) android.view.View.VISIBLE else android.view.View.GONE
         update(virtualPreviewLedSnapshot())
     }
+}
+
+private fun AospKeyboardView.applyVirtualKeyboardSymPreviewState(context: android.content.Context) {
+    val page = SettingsManager.getPreferences(context).getInt("current_sym_page", 0)
+    symPageActive = page in 1..2
+    if (page !in 1..2) {
+        symPageLabels = emptyMap()
+        symPageTextLabels = emptyMap()
+        return
+    }
+    val mappings = when (page) {
+        1 -> SettingsManager.getSymMappings(context).takeIf { it.isNotEmpty() }
+            ?: KeyMappingLoader.loadSymKeyMappings(context.assets)
+        2 -> SettingsManager.getSymMappingsPage2(context).takeIf { it.isNotEmpty() }
+            ?: KeyMappingLoader.loadSymKeyMappingsPage2(context.assets)
+        else -> emptyMap()
+    }
+    val layout = SettingsManager.getKeyboardLayout(context)
+    val style = softwareKeyboardPreviewLayoutStyle(context)
+    symPageLabels = mappings
+    symPageTextLabels = SoftwareKeyboardSymLabels.buildContentByChar(
+        page = page,
+        rows = SoftwareKeyboardLayoutTemplates.rowTemplateFor(layout, style),
+        symMappings = mappings
+    ).mapKeys { (char, _) -> char.toString() }
 }
 
 private fun softwareKeyboardPreviewLayoutStyle(context: android.content.Context): AospKeyboardView.SoftwareLayoutStyle =

@@ -58,6 +58,7 @@ class AospKeyboardView @JvmOverloads constructor(
         fun onModifierKeyDown(keyCode: Int): Boolean = false
         fun onModifierKeyUp(keyCode: Int): Boolean = false
         fun onKeyStroke(keyCode: Int, text: String): Boolean = false
+        fun onSymbolText(text: String): Boolean = false
         fun onSymbolLongPress(keyCode: Int): Boolean = false
     }
 
@@ -87,8 +88,6 @@ class AospKeyboardView @JvmOverloads constructor(
         FULL_ANSI,
         FULL_ISO
     }
-
-    private enum class LayoutFamily { QWERTY, QWERTZ, AZERTY }
 
     private enum class KeyType { CHAR, SHIFT, BACKSPACE, SYMBOLS, CTRL, COMMA, PERIOD, SPACE, ENTER, LANGUAGE }
 
@@ -212,7 +211,23 @@ class AospKeyboardView @JvmOverloads constructor(
             field = value
             invalidate()
         }
+    var symPreviewTextLabels: Map<String, String> = emptyMap()
+        set(value) {
+            if (field == value) {
+                return
+            }
+            field = value
+            invalidate()
+        }
     var symPageLabels: Map<Int, String> = emptyMap()
+        set(value) {
+            if (field == value) {
+                return
+            }
+            field = value
+            invalidate()
+        }
+    var symPageTextLabels: Map<String, String> = emptyMap()
         set(value) {
             if (field == value) {
                 return
@@ -606,8 +621,8 @@ class AospKeyboardView @JvmOverloads constructor(
     }
 
     private fun rowsFor(layout: String, style: SoftwareLayoutStyle): List<List<KeySpec>> {
-        val family = layoutFamilyFor(layout)
-        val rowStrings = rowTemplateFor(family, style)
+        val family = SoftwareKeyboardLayoutTemplates.familyFor(layout)
+        val rowStrings = SoftwareKeyboardLayoutTemplates.rowTemplateFor(family, style)
         if (style == SoftwareLayoutStyle.FULL_ANSI || style == SoftwareLayoutStyle.FULL_ISO) {
             return fullRowsFor(rowStrings, style)
         }
@@ -617,7 +632,7 @@ class AospKeyboardView @JvmOverloads constructor(
         }
         val row2Start = if (
             themeOverride?.ortholinear == true ||
-            family == LayoutFamily.AZERTY ||
+            family == SoftwareKeyboardLayoutTemplates.Family.AZERTY ||
             style == SoftwareLayoutStyle.EXTENDED_ISO
         ) 0f else 5f
         val row2Width = if (style == SoftwareLayoutStyle.EXTENDED_ISO) {
@@ -738,37 +753,6 @@ class AospKeyboardView @JvmOverloads constructor(
         return listOf(row1, row2, row3, bottomRow(includeEnter = false))
     }
 
-    private fun rowTemplateFor(family: LayoutFamily, style: SoftwareLayoutStyle): List<String> =
-        when (style) {
-            SoftwareLayoutStyle.COMPACT -> when (family) {
-                LayoutFamily.QWERTY -> listOf("qwertyuiop", "asdfghjkl", "zxcvbnm")
-                LayoutFamily.QWERTZ -> listOf("qwertzuiop", "asdfghjkl", "yxcvbnm")
-                LayoutFamily.AZERTY -> listOf("azertyuiop", "qsdfghjklm", "wxcvbn'")
-            }
-            SoftwareLayoutStyle.EXTENDED_ISO -> when (family) {
-                LayoutFamily.QWERTY -> listOf("qwertyuiop[", "asdfghjkl;'", "zxcvbnm")
-                LayoutFamily.QWERTZ -> listOf("qwertzuiopü", "asdfghjklöä", "yxcvbnm")
-                LayoutFamily.AZERTY -> listOf("azertyuiop^", "qsdfghjklmù", "wxcvbn'")
-            }
-            SoftwareLayoutStyle.FULL_ANSI -> when (family) {
-                LayoutFamily.QWERTY -> listOf("qwertyuiop[]", "asdfghjkl;'", "zxcvbnm,./")
-                LayoutFamily.QWERTZ -> listOf("qwertzuiop[]", "asdfghjkl;'", "yxcvbnm,./")
-                LayoutFamily.AZERTY -> listOf("azertyuiop[]", "qsdfghjklm'", "wxcvbn,;:!")
-            }
-            SoftwareLayoutStyle.FULL_ISO -> when (family) {
-                LayoutFamily.QWERTY -> listOf("qwertyuiop[]", "asdfghjkl;'#", "\\zxcvbnm,./")
-                LayoutFamily.QWERTZ -> listOf("qwertzuiopü+", "asdfghjklöä#", "<yxcvbnm,.-")
-                LayoutFamily.AZERTY -> listOf("azertyuiop^$", "qsdfghjklmù*", "<wxcvbn,;:!")
-            }
-        }
-
-    private fun layoutFamilyFor(layout: String): LayoutFamily =
-        when (layout) {
-            "qwertz", "german_multitap_qwertz" -> LayoutFamily.QWERTZ
-            "azerty" -> LayoutFamily.AZERTY
-            else -> LayoutFamily.QWERTY
-        }
-
     private fun bottomRow(includeEnter: Boolean): List<KeySpec> {
         val row = listOf(
             KeySpec(KeyType.SYMBOLS, "SYM", xPercent = 0f, widthPercent = 12f),
@@ -831,8 +815,9 @@ class AospKeyboardView @JvmOverloads constructor(
         val keyCode = soundKeyCodeFor(key)
         val heldType = heldModifierKey?.spec?.type
         return when {
-            heldType == KeyType.SYMBOLS && !symPageActive -> symPreviewLabels[keyCode]
             heldType == KeyType.CTRL || ctrlPreviewActive -> ctrlPreviewLabels[keyCode]
+            heldType == KeyType.SYMBOLS && !symPageActive ->
+                symPreviewTextLabels[key.spec.output] ?: symPreviewLabels[keyCode]
             else -> null
         }?.takeIf { it.isNotBlank() }
     }
@@ -853,7 +838,9 @@ class AospKeyboardView @JvmOverloads constructor(
 
     private fun symPageLabelFor(key: Key): String? {
         if (!symPageActive) return null
+        if (heldModifierKey?.spec?.type == KeyType.CTRL || ctrlPreviewActive) return null
         if (key.spec.type !in listOf(KeyType.CHAR, KeyType.COMMA, KeyType.PERIOD)) return null
+        symPageTextLabels[key.spec.output]?.takeIf { it.isNotBlank() }?.let { return it }
         return symPageLabels[soundKeyCodeFor(key)]?.takeIf { it.isNotBlank() }
     }
 
@@ -875,12 +862,18 @@ class AospKeyboardView @JvmOverloads constructor(
     private fun dispatchKey(key: Key) {
         when (key.spec.type) {
             KeyType.CHAR -> {
+                if (dispatchSymPageTextIfNeeded(key)) {
+                    return
+                }
                 val text = if (shifted && key.spec.output == "'") "?" else if (shifted) key.spec.output.uppercase(Locale.ROOT) else key.spec.output
                 if (listener?.onKeyStroke(soundKeyCodeFor(key), text) != true) {
                     listener?.onText(text)
                 }
             }
             KeyType.COMMA, KeyType.PERIOD, KeyType.SPACE -> {
+                if (dispatchSymPageTextIfNeeded(key)) {
+                    return
+                }
                 if (listener?.onKeyStroke(soundKeyCodeFor(key), key.spec.output) != true) {
                     listener?.onText(key.spec.output)
                 }
@@ -892,6 +885,14 @@ class AospKeyboardView @JvmOverloads constructor(
             KeyType.CTRL -> listener?.onCtrl()
             KeyType.LANGUAGE -> listener?.onLanguageSwitch()
         }
+    }
+
+    private fun dispatchSymPageTextIfNeeded(key: Key): Boolean {
+        if (!symPageActive) {
+            return false
+        }
+        val text = symPageLabelFor(key) ?: return false
+        return listener?.onSymbolText(text) == true
     }
 
     private fun releaseHeldModifier() {
