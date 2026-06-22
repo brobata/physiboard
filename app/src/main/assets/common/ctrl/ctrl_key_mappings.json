@@ -92,7 +92,8 @@
       "action": "paste"
     },
     "KEYCODE_B": {
-      "type": "none"
+      "type": "command",
+      "command": "pastiera.toggle_software_keyboard_mode"
     },
     "KEYCODE_N": {
       "type": "action",

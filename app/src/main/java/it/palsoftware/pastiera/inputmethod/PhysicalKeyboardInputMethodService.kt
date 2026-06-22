@@ -240,6 +240,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private var lastRenderedSymMappings: Map<Int, String>? = null
     private var lastRenderedStatusInputConnection: android.view.inputmethod.InputConnection? = null
     private var lastRenderedMinimalUiActive: Boolean? = null
+    private var lastRenderedSoftwareKeyboardMode: SettingsManager.SoftwareKeyboardMode? = null
     private var suppressedAutoCapContextKey: String? = null
     private var clearAltOnSpaceEnabled: Boolean = false
     private var physicalKeyboardProfileOverride: String = "auto"
@@ -352,6 +353,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         lastRenderedSymMappings = null
         lastRenderedStatusInputConnection = null
         lastRenderedMinimalUiActive = null
+        lastRenderedSoftwareKeyboardMode = null
     }
 
     private fun checkAutoCapitalizeOnSelectionChange(
@@ -1768,6 +1770,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             } else if (key == "pastierina_mode_override") {
                 keyboardVisibilityController.syncMinimalUiOverrideFromSettings()
             } else if (key == "software_keyboard_mode") {
+                invalidateRenderedStatusSnapshot()
                 keyboardVisibilityController.syncMinimalUiOverrideFromSettings()
             } else if (key == "software_keyboard_layout_style" || key == "software_keyboard_number_row_enabled") {
                 Handler(Looper.getMainLooper()).post {
@@ -2348,6 +2351,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         var updateBarsMs = 0L
 
         val minimalUiActive = candidatesBarController.isMinimalUiActive()
+        val effectiveSoftwareKeyboardMode = SettingsManager.resolveEffectiveSoftwareKeyboardMode(this)
         val variationStart = ImePerfLogger.mark()
         val variationSnapshot = if (minimalUiActive) {
             VariationStateController.Snapshot(isActive = false, lastInsertedChar = null, variations = emptyList())
@@ -2414,7 +2418,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 emojiMapText == lastRenderedEmojiMapText &&
                 symMappings == lastRenderedSymMappings &&
                 inputConnection === lastRenderedStatusInputConnection &&
-                minimalUiActive == lastRenderedMinimalUiActive
+                minimalUiActive == lastRenderedMinimalUiActive &&
+                effectiveSoftwareKeyboardMode == lastRenderedSoftwareKeyboardMode
         if (!unchangedRenderedState) {
             val updateBarsStart = ImePerfLogger.mark()
             candidatesBarController.updateStatusBars(snapshot, emojiMapText, inputConnection, symMappings)
@@ -2424,6 +2429,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             lastRenderedSymMappings = symMappings
             lastRenderedStatusInputConnection = inputConnection
             lastRenderedMinimalUiActive = minimalUiActive
+            lastRenderedSoftwareKeyboardMode = effectiveSoftwareKeyboardMode
         }
         ImePerfLogger.logDuration(
             label = "updateStatusBarText",
@@ -2597,10 +2603,18 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 "expand_selection_word_right" -> R.drawable.text_select_move_forward_word_filled_24
                 "page_start" -> R.drawable.first_page_24
                 "page_end" -> R.drawable.last_page_24
-                "toggle_minimal_ui" -> R.drawable.collapse_content_24
+                "toggle_minimal_ui" -> if (SettingsManager.getPastierinaModeActive(this)) {
+                    R.drawable.expand_content_24
+                } else {
+                    R.drawable.collapse_content_24
+                }
                 "media_play_pause" -> R.drawable.play_pause_24
                 "media_previous" -> R.drawable.skip_previous_24
                 "media_next" -> R.drawable.skip_next_24
+                else -> null
+            }
+            "command" -> when (mapping.value) {
+                "pastiera.toggle_software_keyboard_mode" -> R.drawable.expansion_panels_24
                 else -> null
             }
             else -> null

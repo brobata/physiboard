@@ -340,6 +340,10 @@ object KeyMappingLoader {
                             }
                         }
                         "native_ctrl" -> ctrlKeyMap[keyCode] = CtrlMapping("native_ctrl", "")
+                        "command" -> {
+                            val commandId = mappingObject.getString("command")
+                            ctrlKeyMap[keyCode] = CtrlMapping("command", commandId)
+                        }
                         "none" -> Unit
                     }
                 }

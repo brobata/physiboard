@@ -106,4 +106,16 @@ class KeyMappingLoaderTest {
         assertEquals(KeyMappingLoader.CtrlMapping("action", "expand_selection_word_left"), mappings[KeyEvent.KEYCODE_U])
         assertEquals(KeyMappingLoader.CtrlMapping("action", "expand_selection_word_right"), mappings[KeyEvent.KEYCODE_I])
     }
+
+    @Test
+    fun loadCtrlMappings_mapsCtrlBToKeyboardModeToggleCommand() {
+        val context = RuntimeEnvironment.getApplication()
+
+        val mappings = KeyMappingLoader.loadCtrlKeyMappings(context.assets, null)
+
+        assertEquals(
+            KeyMappingLoader.CtrlMapping("command", "pastiera.toggle_software_keyboard_mode"),
+            mappings[KeyEvent.KEYCODE_B]
+        )
+    }
 }

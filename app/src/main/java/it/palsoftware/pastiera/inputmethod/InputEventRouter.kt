@@ -22,6 +22,9 @@ import it.palsoftware.pastiera.core.ModifierStateController
 import it.palsoftware.pastiera.core.AutoSpaceTracker
 import android.view.inputmethod.ExtractedText
 import android.view.inputmethod.ExtractedTextRequest
+import it.palsoftware.pastiera.commands.CommandExecutor
+import it.palsoftware.pastiera.commands.CommandRegistry
+import it.palsoftware.pastiera.commands.CommandSurface
 import it.palsoftware.pastiera.data.layout.LayoutMapping
 import it.palsoftware.pastiera.data.layout.LayoutMappingRepository
 import it.palsoftware.pastiera.data.layout.isRealMultiTap
@@ -1354,6 +1357,26 @@ class InputEventRouter(
                     }
                 }
                 "native_ctrl" -> return passThroughCtrlCombo()
+                "command" -> {
+                    val command = CommandRegistry(context).resolve(ctrlMapping.value)
+                        ?: return callSuper()
+                    if (!command.defaultSurfaces.contains(CommandSurface.NavMode)) {
+                        return callSuper()
+                    }
+                    KeyboardEventTracker.notifyKeyEvent(
+                        keyCode,
+                        event,
+                        "KEY_DOWN",
+                        origin = "ime_router",
+                        outputKeyCode = null,
+                        outputKeyCodeName = ctrlMapping.value
+                    )
+                    return CommandExecutor(
+                        context = context,
+                        navModeController = navModeController,
+                        inputConnectionProvider = { ic }
+                    ).execute(command).isSuccess
+                }
                 "keycode" -> {
                     val mappedKeyCode = when (ctrlMapping.value) {
                         "DPAD_UP" -> KeyEvent.KEYCODE_DPAD_UP

@@ -461,17 +461,43 @@ private fun VirtualKeyboardBehaviorSettingsScreen(
     var softwareKeyboardMode by remember {
         mutableStateOf(SettingsManager.getSoftwareKeyboardMode(context))
     }
+    var effectiveSoftwareKeyboardMode by remember {
+        mutableStateOf(SettingsManager.resolveEffectiveSoftwareKeyboardMode(context))
+    }
     var softwareKeyboardLayoutStyle by remember {
         mutableStateOf(SettingsManager.getSoftwareKeyboardLayoutStyle(context))
     }
     var nearestKeyTouchEnabled by remember {
         mutableStateOf(SettingsManager.getSoftwareKeyboardNearestKeyTouchEnabled(context))
     }
+    var softwareKeyboardModeToggleToastsEnabled by remember {
+        mutableStateOf(SettingsManager.getSoftwareKeyboardModeToggleToastsEnabled(context))
+    }
     var numberRowEnabled by remember {
         mutableStateOf(SettingsManager.getSoftwareKeyboardNumberRowEnabled(context))
     }
     var showSoftwareKeyboardModeMenu by remember { mutableStateOf(false) }
     var showSoftwareKeyboardLayoutStyleMenu by remember { mutableStateOf(false) }
+
+    DisposableEffect(context) {
+        val prefs = SettingsManager.getPreferences(context)
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            when (key) {
+                "software_keyboard_mode" -> {
+                    softwareKeyboardMode = SettingsManager.getSoftwareKeyboardMode(context)
+                    effectiveSoftwareKeyboardMode = SettingsManager.resolveEffectiveSoftwareKeyboardMode(context)
+                }
+                "software_keyboard_mode_toggle_toasts" -> {
+                    softwareKeyboardModeToggleToastsEnabled =
+                        SettingsManager.getSoftwareKeyboardModeToggleToastsEnabled(context)
+                }
+            }
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        onDispose {
+            prefs.unregisterOnSharedPreferenceChangeListener(listener)
+        }
+    }
 
     BackHandler { onBack() }
 
@@ -511,18 +537,17 @@ private fun VirtualKeyboardBehaviorSettingsScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
-            val effectiveSoftwareMode = SettingsManager.resolveEffectiveSoftwareKeyboardMode(context)
             val softwareKeyboardModeLabel = when (softwareKeyboardMode) {
                 SettingsManager.SoftwareKeyboardMode.AUTO -> {
-                    val currentLabel = if (effectiveSoftwareMode == SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL) {
-                        stringResource(R.string.software_keyboard_mode_always_virtual)
+                    val currentLabel = if (effectiveSoftwareKeyboardMode == SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL) {
+                        stringResource(R.string.software_keyboard_mode_virtual)
                     } else {
-                        stringResource(R.string.software_keyboard_mode_always_hardware)
+                        stringResource(R.string.software_keyboard_mode_hardware)
                     }
                     stringResource(R.string.software_keyboard_mode_auto_current, currentLabel)
                 }
-                SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL -> stringResource(R.string.software_keyboard_mode_always_virtual)
-                SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE -> stringResource(R.string.software_keyboard_mode_always_hardware)
+                SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL -> stringResource(R.string.software_keyboard_mode_virtual)
+                SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE -> stringResource(R.string.software_keyboard_mode_hardware)
             }
 
             Surface(
@@ -571,14 +596,16 @@ private fun VirtualKeyboardBehaviorSettingsScreen(
                 ) {
                     listOf(
                         SettingsManager.SoftwareKeyboardMode.AUTO to stringResource(R.string.software_keyboard_mode_auto_short),
-                        SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL to stringResource(R.string.software_keyboard_mode_always_virtual),
-                        SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE to stringResource(R.string.software_keyboard_mode_always_hardware)
+                        SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL to stringResource(R.string.software_keyboard_mode_virtual),
+                        SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE to stringResource(R.string.software_keyboard_mode_hardware)
                     ).forEach { (mode, title) ->
                         DropdownMenuItem(
                             text = { Text(title) },
                             onClick = {
-                                softwareKeyboardMode = mode
                                 SettingsManager.setSoftwareKeyboardMode(context, mode)
+                                softwareKeyboardMode = SettingsManager.getSoftwareKeyboardMode(context)
+                                effectiveSoftwareKeyboardMode =
+                                    SettingsManager.resolveEffectiveSoftwareKeyboardMode(context)
                                 showSoftwareKeyboardModeMenu = false
                             },
                             leadingIcon = {
@@ -590,6 +617,16 @@ private fun VirtualKeyboardBehaviorSettingsScreen(
                     }
                 }
             }
+
+            ModifierTapLatchRow(
+                title = stringResource(R.string.software_keyboard_mode_toggle_toasts_title),
+                description = stringResource(R.string.software_keyboard_mode_toggle_toasts_description),
+                checked = softwareKeyboardModeToggleToastsEnabled,
+                onCheckedChange = { enabled ->
+                    softwareKeyboardModeToggleToastsEnabled = enabled
+                    SettingsManager.setSoftwareKeyboardModeToggleToastsEnabled(context, enabled)
+                }
+            )
 
             val softwareKeyboardLayoutStyleLabel = when (softwareKeyboardLayoutStyle) {
                 SettingsManager.SoftwareKeyboardLayoutStyle.COMPACT ->

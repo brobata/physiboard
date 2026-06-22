@@ -10,9 +10,13 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import it.palsoftware.pastiera.commands.CommandLaunchSpec
+import it.palsoftware.pastiera.commands.CommandExecutor
+import it.palsoftware.pastiera.commands.CommandRegistry
 import it.palsoftware.pastiera.commands.CommandSourceId
 import it.palsoftware.pastiera.commands.CommandSurface
 import it.palsoftware.pastiera.commands.PastieraCommandSource
+import org.robolectric.Robolectric
+import org.robolectric.shadows.ShadowToast
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -25,6 +29,7 @@ class SettingsManagerLayoutSwitchTest {
             .edit()
             .clear()
             .commit()
+        ShadowToast.reset()
     }
 
     @Test
@@ -154,6 +159,17 @@ class SettingsManagerLayoutSwitchTest {
     }
 
     @Test
+    fun softwareKeyboardModeToggleToasts_defaultsEnabled_andPersistsDisabledState() {
+        val context = RuntimeEnvironment.getApplication()
+
+        assertTrue(SettingsManager.getSoftwareKeyboardModeToggleToastsEnabled(context))
+
+        SettingsManager.setSoftwareKeyboardModeToggleToastsEnabled(context, false)
+
+        assertFalse(SettingsManager.getSoftwareKeyboardModeToggleToastsEnabled(context))
+    }
+
+    @Test
     fun softwareKeyboardMode_defaultsAuto_andPersistsVirtualAndHardwareModes() {
         val context = RuntimeEnvironment.getApplication()
 
@@ -180,6 +196,95 @@ class SettingsManagerLayoutSwitchTest {
         assertEquals("auto", SettingsManager.SoftwareKeyboardMode.AUTO.storageValue)
         assertEquals("force_virtual", SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL.storageValue)
         assertEquals("force_hardware", SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE.storageValue)
+    }
+
+    @Test
+    fun softwareKeyboardModeToggle_switchesBetweenForceVirtualAndForceHardware() {
+        val context = RuntimeEnvironment.getApplication()
+
+        SettingsManager.setSoftwareKeyboardMode(context, SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL)
+        assertEquals(
+            SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE,
+            SoftwareKeyboardModeActions.toggleForceMode(context)
+        )
+        assertEquals(
+            SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE,
+            SettingsManager.getSoftwareKeyboardMode(context)
+        )
+
+        assertEquals(
+            SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL,
+            SoftwareKeyboardModeActions.toggleForceMode(context)
+        )
+        assertEquals(
+            SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL,
+            SettingsManager.getSoftwareKeyboardMode(context)
+        )
+    }
+
+    @Test
+    fun softwareKeyboardModeToggle_isExposedToNavModeAndQuickLauncher() {
+        val context = RuntimeEnvironment.getApplication()
+        val registry = CommandRegistry(context)
+
+        assertTrue(
+            registry.getCommands(CommandSurface.NavMode)
+                .any { it.id == PastieraCommandSource.COMMAND_TOGGLE_SOFTWARE_KEYBOARD_MODE }
+        )
+        assertTrue(
+            registry.getCommands(CommandSurface.QuickLauncher)
+                .any { it.id == PastieraCommandSource.COMMAND_TOGGLE_SOFTWARE_KEYBOARD_MODE }
+        )
+    }
+
+    @Test
+    fun softwareKeyboardModeToggle_commandExecutorRunsInternalAction() {
+        val context = RuntimeEnvironment.getApplication()
+        SettingsManager.setSoftwareKeyboardMode(context, SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE)
+
+        val command = CommandRegistry(context)
+            .resolve(PastieraCommandSource.COMMAND_TOGGLE_SOFTWARE_KEYBOARD_MODE)
+        val result = CommandExecutor(context, showToast = false).execute(requireNotNull(command))
+
+        assertTrue(result.isSuccess)
+        assertEquals(
+            SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL,
+            SettingsManager.getSoftwareKeyboardMode(context)
+        )
+    }
+
+    @Test
+    fun softwareKeyboardModeToggle_commandExecutorRespectsToastSetting() {
+        val context = RuntimeEnvironment.getApplication()
+        SettingsManager.setSoftwareKeyboardModeToggleToastsEnabled(context, false)
+        SettingsManager.setSoftwareKeyboardMode(context, SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE)
+
+        val command = CommandRegistry(context)
+            .resolve(PastieraCommandSource.COMMAND_TOGGLE_SOFTWARE_KEYBOARD_MODE)
+        val result = CommandExecutor(context, showToast = true).execute(requireNotNull(command))
+
+        assertTrue(result.isSuccess)
+        assertEquals(
+            SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL,
+            SettingsManager.getSoftwareKeyboardMode(context)
+        )
+        assertEquals(null, ShadowToast.getTextOfLatestToast())
+    }
+
+    @Test
+    fun softwareKeyboardModeActionActivity_runsExternalToggleIntent() {
+        val context = RuntimeEnvironment.getApplication()
+        SettingsManager.setSoftwareKeyboardMode(context, SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL)
+
+        Robolectric.buildActivity(
+            SoftwareKeyboardModeActionActivity::class.java,
+            android.content.Intent(SoftwareKeyboardModeActions.ACTION_TOGGLE)
+        ).create().destroy()
+
+        assertEquals(
+            SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE,
+            SettingsManager.getSoftwareKeyboardMode(context)
+        )
     }
 
     @Test
@@ -283,8 +388,39 @@ class SettingsManagerLayoutSwitchTest {
         assertTrue(SettingsManager.isCommandSourceEnabled(context, CommandSourceId.Apps.storageValue, CommandSurface.AssignedKey))
         assertTrue(SettingsManager.isCommandSourceEnabled(context, CommandSourceId.Apps.storageValue, CommandSurface.QuickLauncher))
         assertTrue(SettingsManager.isCommandSourceEnabled(context, CommandSourceId.Apps.storageValue, CommandSurface.NavMode))
+        assertTrue(SettingsManager.isCommandSourceEnabled(context, CommandSourceId.Pastiera.storageValue, CommandSurface.QuickLauncher))
         assertTrue(SettingsManager.isCommandSourceEnabled(context, CommandSourceId.DeviceControl.storageValue, CommandSurface.AssignedKey))
         assertFalse(SettingsManager.isCommandSourceEnabled(context, CommandSourceId.DeviceControl.storageValue, CommandSurface.QuickLauncher))
         assertTrue(SettingsManager.isCommandSourceEnabled(context, CommandSourceId.DeviceControl.storageValue, CommandSurface.NavMode))
+    }
+
+    @Test
+    fun initializeNavModeMappings_migratesEmptyCtrlBToKeyboardModeToggle() {
+        val context = RuntimeEnvironment.getApplication()
+        SettingsManager.getNavModeMappingsFile(context).writeText(
+            """
+            {
+              "mappings": {
+                "KEYCODE_B": { "type": "none" },
+                "KEYCODE_N": { "type": "action", "action": "custom_action" }
+              }
+            }
+            """.trimIndent()
+        )
+
+        SettingsManager.initializeNavModeMappingsFile(context)
+
+        val mappings = it.palsoftware.pastiera.data.mappings.KeyMappingLoader.loadCtrlKeyMappings(context.assets, context)
+        assertEquals(
+            it.palsoftware.pastiera.data.mappings.KeyMappingLoader.CtrlMapping(
+                "command",
+                PastieraCommandSource.COMMAND_TOGGLE_SOFTWARE_KEYBOARD_MODE
+            ),
+            mappings[android.view.KeyEvent.KEYCODE_B]
+        )
+        assertEquals(
+            it.palsoftware.pastiera.data.mappings.KeyMappingLoader.CtrlMapping("action", "custom_action"),
+            mappings[android.view.KeyEvent.KEYCODE_N]
+        )
     }
 }

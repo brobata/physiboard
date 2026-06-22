@@ -291,7 +291,8 @@ object PreferenceSchemas {
             "alt_shift_layout_switch" to PreferenceValueType.BOOLEAN,
             "ctrl_space_layout_switch" to PreferenceValueType.BOOLEAN,
             "physical_keyboard_currency_symbol" to PreferenceValueType.STRING,
-            "toast_on_layout_switch" to PreferenceValueType.BOOLEAN
+            "toast_on_layout_switch" to PreferenceValueType.BOOLEAN,
+            "software_keyboard_mode_toggle_toasts" to PreferenceValueType.BOOLEAN
         ),
         dynamicKeys = listOf(
             PreferenceFileSchema.DynamicKey(

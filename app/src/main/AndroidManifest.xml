@@ -63,6 +63,21 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".SoftwareKeyboardModeActionActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:finishOnTaskLaunch="true"
+            android:label="@string/software_keyboard_mode_toggle_shortcut_short"
+            android:launchMode="singleTop"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.NoDisplay">
+            <intent-filter>
+                <action android:name="it.palsoftware.pastiera.action.TOGGLE_SOFTWARE_KEYBOARD_MODE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
         
         <!-- Activity per la personalizzazione SYM -->
         <activity

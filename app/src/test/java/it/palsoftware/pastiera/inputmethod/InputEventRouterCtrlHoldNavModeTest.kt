@@ -276,6 +276,39 @@ class InputEventRouterCtrlHoldNavModeTest {
     }
 
     @Test
+    fun heldCtrl_whenMappingIsCommand_executesPastieraCommand() {
+        SettingsManager.setNavModeCtrlHoldEnabled(context, true)
+        SettingsManager.setSoftwareKeyboardMode(context, SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE)
+        val inputConnection = mockInputConnection()
+        val mapping = mapOf(
+            KeyEvent.KEYCODE_B to KeyMappingLoader.CtrlMapping(
+                "command",
+                "pastiera.toggle_software_keyboard_mode"
+            )
+        )
+
+        val handled = router.handleCtrlModifiedKey(
+            keyCode = KeyEvent.KEYCODE_B,
+            event = ctrlKeyDown(KeyEvent.KEYCODE_B),
+            inputConnection = inputConnection,
+            ctrlKeyMap = mapping,
+            ctrlLatchFromNavMode = false,
+            ctrlOneShot = false,
+            ctrlPhysicallyPressed = true,
+            clearCtrlOneShot = {},
+            updateStatusBar = {},
+            callSuper = { false },
+            toggleMinimalUi = {}
+        )
+
+        assertTrue(handled)
+        assertEquals(
+            SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL,
+            SettingsManager.getSoftwareKeyboardMode(context)
+        )
+    }
+
+    @Test
     fun heldCtrl_whenMappingIsNativeCtrl_passesShortcutToApp() {
         SettingsManager.setNavModeCtrlHoldEnabled(context, true)
         val inputConnection = mockInputConnection()

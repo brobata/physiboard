@@ -237,6 +237,8 @@ object SettingsManager {
     private const val DEFAULT_CTRL_SPACE_LAYOUT_SWITCH = true
     private const val KEY_TOAST_ON_LAYOUT_SWITCH = "toast_on_layout_switch"
     private const val DEFAULT_TOAST_ON_LAYOUT_SWITCH = true
+    private const val KEY_SOFTWARE_KEYBOARD_MODE_TOGGLE_TOASTS = "software_keyboard_mode_toggle_toasts"
+    private const val DEFAULT_SOFTWARE_KEYBOARD_MODE_TOGGLE_TOASTS = true
     private const val DEFAULT_PHYSICAL_KEYBOARD_PROFILE_OVERRIDE = "auto"
     private const val DEFAULT_PHYSICAL_KEYBOARD_CURRENCY_SYMBOL = "€"
     private const val DEFAULT_SYM_AUTO_CLOSE = true
@@ -440,6 +442,19 @@ object SettingsManager {
     fun setSoftwareKeyboardMode(context: Context, mode: SoftwareKeyboardMode) {
         getPreferences(context).edit()
             .putString(KEY_SOFTWARE_KEYBOARD_MODE, mode.storageValue)
+            .apply()
+    }
+
+    fun getSoftwareKeyboardModeToggleToastsEnabled(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_SOFTWARE_KEYBOARD_MODE_TOGGLE_TOASTS,
+            DEFAULT_SOFTWARE_KEYBOARD_MODE_TOGGLE_TOASTS
+        )
+    }
+
+    fun setSoftwareKeyboardModeToggleToastsEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_SOFTWARE_KEYBOARD_MODE_TOGGLE_TOASTS, enabled)
             .apply()
     }
 
@@ -2334,7 +2349,7 @@ object SettingsManager {
     private const val KEY_NAV_MODE_CTRL_HOLD_ENABLED = "nav_mode_ctrl_hold_enabled"
     private const val DEFAULT_NAV_MODE_CTRL_HOLD_ENABLED = false
     private const val KEY_NAV_MODE_DEFAULT_MAPPINGS_VERSION = "nav_mode_default_mappings_version"
-    private const val CURRENT_NAV_MODE_DEFAULT_MAPPINGS_VERSION = 2
+    private const val CURRENT_NAV_MODE_DEFAULT_MAPPINGS_VERSION = 3
     private const val NAV_MODE_MAPPINGS_FILE_NAME = "ctrl_key_mappings.json"
     private const val KEY_NAV_MODE_MAPPINGS_UPDATED = "nav_mode_mappings_updated"
     
@@ -2665,7 +2680,7 @@ object SettingsManager {
     private fun defaultCommandSourceVisibility(): List<CommandSourceVisibility> {
         return listOf(
             CommandSourceVisibility(CommandSourceId.Apps.storageValue, quickLauncherEnabled = true),
-            CommandSourceVisibility(CommandSourceId.Pastiera.storageValue, quickLauncherEnabled = false),
+            CommandSourceVisibility(CommandSourceId.Pastiera.storageValue, quickLauncherEnabled = true),
             CommandSourceVisibility(CommandSourceId.AppActions.storageValue, quickLauncherEnabled = false),
             CommandSourceVisibility(CommandSourceId.DeviceControl.storageValue, quickLauncherEnabled = false),
             CommandSourceVisibility(CommandSourceId.NavActions.storageValue, quickLauncherEnabled = false)
@@ -3033,6 +3048,16 @@ object SettingsManager {
                         }
                     )
                 }
+            }
+            val ctrlBExisting = mappingsObject.optJSONObject("KEYCODE_B")
+            if (ctrlBExisting == null || ctrlBExisting.optString("type") == "none") {
+                mappingsObject.put(
+                    "KEYCODE_B",
+                    JSONObject().apply {
+                        put("type", "command")
+                        put("command", "pastiera.toggle_software_keyboard_mode")
+                    }
+                )
             }
 
             mappingsFile.writeText(jsonObject.toString())
