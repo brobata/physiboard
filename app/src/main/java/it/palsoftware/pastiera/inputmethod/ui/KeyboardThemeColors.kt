@@ -16,5 +16,7 @@ data class KeyboardThemeColors(
     val suggestion: Int = normalKey,
     val statusBarButton: Int = specialKey,
     val keyCornerRadiusRatio: Float = 0.08f,
-    val chromeCornerRadiusRatio: Float = 0.08f
+    val chromeCornerRadiusRatio: Float = 0.08f,
+    val suggestionsHeightScale: Float = 1f,
+    val variationsHeightScale: Float = 1f
 )

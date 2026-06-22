@@ -76,6 +76,7 @@ class AospKeyboardView @JvmOverloads constructor(
         val keyPopupSelected: Int = accent,
         val keyCornerRadiusRatio: Float = 0.08f,
         val keyHeightScale: Float = 1f,
+        val numberRowHeightScale: Float = 0.8f,
         val keyWidthScale: Float = 1f,
         val rowGapScale: Float = 1f,
         val distributeHorizontalSpacing: Boolean = true,
@@ -350,7 +351,9 @@ class AospKeyboardView @JvmOverloads constructor(
     private val horizontalPaddingPx = 0
     private val verticalPaddingPx = 0
     private val preferredKeyHeightPx: Int
-        get() = (dp(50f) * (themeOverride?.keyHeightScale ?: 1f).coerceIn(0.72f, 1.45f)).toInt()
+        get() = (dp(50f) * (themeOverride?.keyHeightScale ?: 1f).coerceIn(0.72f, 1.9f)).toInt()
+    private val preferredNumberRowHeightPx: Int
+        get() = (dp(50f) * (themeOverride?.numberRowHeightScale ?: 0.8f).coerceIn(0.45f, 1.4f)).toInt()
     private val rowGapPx: Int
         get() = (dp(6f) * ((themeOverride?.rowGapScale ?: 0f).coerceIn(0f, 2f))).toInt()
 
@@ -363,7 +366,7 @@ class AospKeyboardView @JvmOverloads constructor(
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val width = MeasureSpec.getSize(widthMeasureSpec)
         val rowCount = keyboardRowCount()
-        val desiredHeight = verticalPaddingPx * 2 + preferredKeyHeightPx * rowCount + rowGapPx * (rowCount - 1)
+        val desiredHeight = verticalPaddingPx * 2 + rowHeights(rowCount).sum() + rowGapPx * (rowCount - 1)
         val resolvedHeight = resolveSize(desiredHeight, heightMeasureSpec)
         setMeasuredDimension(width, resolvedHeight)
     }
@@ -434,7 +437,7 @@ class AospKeyboardView @JvmOverloads constructor(
         val icon = source.constantState?.newDrawable()?.mutate() ?: source.mutate()
         val color = themeOverride?.textAndIcons ?: Color.rgb(202, 209, 216)
         icon.setTint(color)
-        val maxSize = minOf(rect.width(), rect.height()) * 0.55f
+        val maxSize = minOf(sp(26f), minOf(rect.width(), rect.height()) * 0.62f)
         val intrinsicWidth = icon.intrinsicWidth.takeIf { it > 0 } ?: 24
         val intrinsicHeight = icon.intrinsicHeight.takeIf { it > 0 } ?: 24
         val scale = minOf(maxSize / intrinsicWidth, maxSize / intrinsicHeight)
@@ -614,9 +617,12 @@ class AospKeyboardView @JvmOverloads constructor(
         val visualWidthScale = if (theme?.distributeHorizontalSpacing == false) 1f else keyWidthScale
         val rows = rowsFor(layoutName, layoutStyle)
         val rowCount = rows.size.coerceAtLeast(1)
-        val rowHeight = (viewHeight - verticalPaddingPx * 2 - rowGapPx * (rowCount - 1)) / rowCount.toFloat()
+        val desiredRowHeights = rowHeights(rowCount).map { it.toFloat() }
+        val availableHeight = viewHeight - verticalPaddingPx * 2 - rowGapPx * (rowCount - 1)
+        val heightScale = availableHeight / desiredRowHeights.sum().coerceAtLeast(1f)
+        var y = verticalPaddingPx.toFloat()
         rows.forEachIndexed { rowIndex, row ->
-            val y = verticalPaddingPx + rowIndex * (rowHeight + rowGapPx)
+            val rowHeight = desiredRowHeights.getOrElse(rowIndex) { preferredKeyHeightPx.toFloat() } * heightScale
             row.forEach { spec ->
                 val rawLeft = horizontalOffset + usableWidth * (spec.xPercent / 100f)
                 val rawRight = horizontalOffset + usableWidth * ((spec.xPercent + spec.widthPercent) / 100f)
@@ -630,10 +636,16 @@ class AospKeyboardView @JvmOverloads constructor(
                 )
                 keys.add(Key(spec, hit, visual))
             }
+            y += rowHeight + rowGapPx
         }
     }
 
     private fun keyboardRowCount(): Int = if (includeNumberRow) 5 else 4
+
+    private fun rowHeights(rowCount: Int): List<Int> =
+        List(rowCount) { rowIndex ->
+            if (includeNumberRow && rowIndex == 0) preferredNumberRowHeightPx else preferredKeyHeightPx
+        }
 
     private fun rowsFor(layout: String, style: SoftwareLayoutStyle): List<List<KeySpec>> {
         val family = SoftwareKeyboardLayoutTemplates.familyFor(layout)

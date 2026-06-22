@@ -50,6 +50,7 @@ class FullSuggestionsBar(
         private val PRESSED_BLUE = Color.rgb(100, 150, 255) // Align with variation bar press state
         private val DEFAULT_SUGGESTION_COLOR = Color.argb(100, 17, 17, 17)
         private const val FLASH_DURATION_MS = 160L
+        private const val BASE_HEIGHT_DP = 36f
     }
 
     private var container: LinearLayout? = null
@@ -79,6 +80,7 @@ class FullSuggestionsBar(
             hamburgerButton?.setColorFilter(value?.textAndIcons ?: Color.WHITE)
             hamburgerMenuView?.themeOverride = value
             if (lastSlots.isNotEmpty()) lastSlots = emptyList()
+            applyHeight()
         }
 
     @Suppress("DEPRECATION")
@@ -86,10 +88,8 @@ class FullSuggestionsBar(
         announceForAccessibility(text)
     }
 
-    private val targetHeightPx: Int by lazy {
-        // Compact row sized around three suggestion pills
-        dpToPx(36f)
-    }
+    private val targetHeightPx: Int
+        get() = dpToPx(BASE_HEIGHT_DP * (themeOverride?.suggestionsHeightScale ?: 1f).coerceIn(0.65f, 1.6f))
 
     /**
      * Sets the assets and IME service class needed for subtype cycling.
@@ -178,6 +178,41 @@ class FullSuggestionsBar(
                 ?: LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, targetHeightPx)
         }
         return frameContainer!!
+    }
+
+    private fun applyHeight() {
+        val height = targetHeightPx
+        frameContainer?.let { frame ->
+            val params = (frame.layoutParams as? LinearLayout.LayoutParams)
+                ?: LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height)
+            if (params.height != height || params.width != ViewGroup.LayoutParams.MATCH_PARENT) {
+                params.width = ViewGroup.LayoutParams.MATCH_PARENT
+                params.height = height
+                frame.layoutParams = params
+            }
+            frame.minimumHeight = height
+        }
+        container?.let { bar ->
+            val params = (bar.layoutParams as? FrameLayout.LayoutParams)
+                ?: FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height)
+            if (params.height != height || params.width != ViewGroup.LayoutParams.MATCH_PARENT) {
+                params.width = ViewGroup.LayoutParams.MATCH_PARENT
+                params.height = height
+                bar.layoutParams = params
+            }
+            bar.minimumHeight = height
+        }
+        hamburgerButton?.let { button ->
+            val buttonSize = (height - dpToPx(4f)).coerceAtLeast(dpToPx(24f))
+            val params = (button.layoutParams as? FrameLayout.LayoutParams)
+                ?: FrameLayout.LayoutParams(buttonSize, buttonSize)
+            if (params.width != buttonSize || params.height != buttonSize) {
+                params.width = buttonSize
+                params.height = buttonSize
+                params.gravity = Gravity.END or Gravity.CENTER_VERTICAL
+                button.layoutParams = params
+            }
+        }
     }
     
     private fun toggleHamburgerMenu() {
@@ -416,7 +451,10 @@ class FullSuggestionsBar(
         bar.minimumHeight = targetHeightPx
         frameContainer?.minimumHeight = targetHeightPx
 
-        val padV = dpToPx(3f) // tighter vertical padding to further reduce height
+        val heightScale = (themeOverride?.suggestionsHeightScale ?: 1f).coerceIn(0.65f, 1.6f)
+        val maxTextSp = (14f * heightScale).coerceIn(12f, 20f).toInt()
+        val minTextSp = (7f * heightScale).coerceIn(7f, 12f).toInt()
+        val padV = dpToPx(3f * heightScale)
         val padH = dpToPx(12f)
 
         val addOnly = addWordCandidate != null &&
@@ -455,11 +493,11 @@ class FullSuggestionsBar(
                 alpha = 1f
                 text = (suggestion ?: "")
                 gravity = Gravity.CENTER
-                textSize = 14f // keep readable while shrinking the bar
+                textSize = maxTextSp.toFloat()
                 TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
                     this,
-                    7,
-                    14,
+                    minTextSp,
+                    maxTextSp,
                     1,
                     TypedValue.COMPLEX_UNIT_SP
                 )

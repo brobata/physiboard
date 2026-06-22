@@ -349,11 +349,14 @@ object SettingsManager {
         val keyCornerRadiusRatio: Float = 0.08f,
         val chromeCornerRadiusRatio: Float = 0.08f,
         val keyHeightScale: Float = 1f,
+        val numberRowHeightScale: Float = 0.8f,
         val keyWidthScale: Float = 1f,
         val rowGapScale: Float = 0f,
         val distributeHorizontalSpacing: Boolean = true,
         val ortholinear: Boolean = false,
-        val showLeds: Boolean = true
+        val showLeds: Boolean = true,
+        val suggestionsHeightScale: Float = 1f,
+        val variationsHeightScale: Float = 1f
     ) {
         fun toKeyboardThemeColors(): KeyboardThemeColors =
             KeyboardThemeColors(
@@ -372,7 +375,9 @@ object SettingsManager {
                 suggestion = suggestion,
                 statusBarButton = statusBarButton,
                 keyCornerRadiusRatio = keyCornerRadiusRatio,
-                chromeCornerRadiusRatio = chromeCornerRadiusRatio
+                chromeCornerRadiusRatio = chromeCornerRadiusRatio,
+                suggestionsHeightScale = suggestionsHeightScale,
+                variationsHeightScale = variationsHeightScale
             )
     }
 
@@ -492,7 +497,17 @@ object SettingsManager {
     private fun defaultKeyboardTheme(target: KeyboardThemeTarget): KeyboardThemeSettings =
         when (target) {
             KeyboardThemeTarget.HARDWARE -> defaultKeyboardTheme()
-            KeyboardThemeTarget.SOFTWARE -> defaultKeyboardTheme().copy(showLeds = false)
+            KeyboardThemeTarget.SOFTWARE -> defaultKeyboardTheme().copy(
+                keyCornerRadiusRatio = SOFTWARE_THEME_DEFAULT_KEY_CORNER_RADIUS,
+                chromeCornerRadiusRatio = SOFTWARE_THEME_DEFAULT_CHROME_CORNER_RADIUS,
+                keyHeightScale = SOFTWARE_THEME_DEFAULT_KEY_HEIGHT,
+                numberRowHeightScale = SOFTWARE_THEME_DEFAULT_NUMBER_ROW_HEIGHT,
+                rowGapScale = SOFTWARE_THEME_DEFAULT_ROW_GAP,
+                ortholinear = true,
+                showLeds = false,
+                suggestionsHeightScale = SOFTWARE_THEME_DEFAULT_SUGGESTIONS_HEIGHT,
+                variationsHeightScale = SOFTWARE_THEME_DEFAULT_VARIATIONS_HEIGHT
+            )
         }
 
     fun keyboardThemeKeyForTarget(target: KeyboardThemeTarget): String =
@@ -529,11 +544,14 @@ object SettingsManager {
                 keyCornerRadiusRatio = json.optDouble("key_corner_radius_ratio", defaults.keyCornerRadiusRatio.toDouble()).toFloat(),
                 chromeCornerRadiusRatio = json.optDouble("chrome_corner_radius_ratio", defaults.chromeCornerRadiusRatio.toDouble()).toFloat(),
                 keyHeightScale = json.optDouble("key_height_scale", defaults.keyHeightScale.toDouble()).toFloat(),
+                numberRowHeightScale = json.optDouble("number_row_height_scale", defaults.numberRowHeightScale.toDouble()).toFloat(),
                 keyWidthScale = json.optDouble("key_width_scale", defaults.keyWidthScale.toDouble()).toFloat(),
                 rowGapScale = json.optDouble("row_gap_scale", defaults.rowGapScale.toDouble()).toFloat(),
                 distributeHorizontalSpacing = json.optBoolean("distribute_horizontal_spacing", defaults.distributeHorizontalSpacing),
                 ortholinear = json.optBoolean("ortholinear", defaults.ortholinear),
-                showLeds = json.optBoolean("show_leds", defaults.showLeds)
+                showLeds = json.optBoolean("show_leds", defaults.showLeds),
+                suggestionsHeightScale = json.optDouble("suggestions_height_scale", defaults.suggestionsHeightScale.toDouble()).toFloat(),
+                variationsHeightScale = json.optDouble("variations_height_scale", defaults.variationsHeightScale.toDouble()).toFloat()
             )
         } catch (error: Exception) {
             Log.e(TAG, "Fehler beim Laden des Keyboard-Themes", error)
@@ -629,11 +647,14 @@ object SettingsManager {
             keyCornerRadiusRatio = json.optDouble("key_corner_radius_ratio", defaults.keyCornerRadiusRatio.toDouble()).toFloat(),
             chromeCornerRadiusRatio = json.optDouble("chrome_corner_radius_ratio", defaults.chromeCornerRadiusRatio.toDouble()).toFloat(),
             keyHeightScale = json.optDouble("key_height_scale", defaults.keyHeightScale.toDouble()).toFloat(),
+            numberRowHeightScale = json.optDouble("number_row_height_scale", defaults.numberRowHeightScale.toDouble()).toFloat(),
             keyWidthScale = json.optDouble("key_width_scale", defaults.keyWidthScale.toDouble()).toFloat(),
             rowGapScale = json.optDouble("row_gap_scale", defaults.rowGapScale.toDouble()).toFloat(),
             distributeHorizontalSpacing = json.optBoolean("distribute_horizontal_spacing", defaults.distributeHorizontalSpacing),
             ortholinear = json.optBoolean("ortholinear", defaults.ortholinear),
-            showLeds = json.optBoolean("show_leds", defaults.showLeds)
+            showLeds = json.optBoolean("show_leds", defaults.showLeds),
+            suggestionsHeightScale = json.optDouble("suggestions_height_scale", defaults.suggestionsHeightScale.toDouble()).toFloat(),
+            variationsHeightScale = json.optDouble("variations_height_scale", defaults.variationsHeightScale.toDouble()).toFloat()
         )
 
     private fun keyboardThemeToJson(theme: KeyboardThemeSettings): JSONObject =
@@ -655,11 +676,14 @@ object SettingsManager {
             put("key_corner_radius_ratio", theme.keyCornerRadiusRatio.toDouble())
             put("chrome_corner_radius_ratio", theme.chromeCornerRadiusRatio.toDouble())
             put("key_height_scale", theme.keyHeightScale.toDouble())
+            put("number_row_height_scale", theme.numberRowHeightScale.toDouble())
             put("key_width_scale", theme.keyWidthScale.toDouble())
             put("row_gap_scale", theme.rowGapScale.toDouble())
             put("distribute_horizontal_spacing", theme.distributeHorizontalSpacing)
             put("ortholinear", theme.ortholinear)
             put("show_leds", theme.showLeds)
+            put("suggestions_height_scale", theme.suggestionsHeightScale.toDouble())
+            put("variations_height_scale", theme.variationsHeightScale.toDouble())
         }
 
     fun resolveEffectiveSoftwareKeyboardMode(context: Context): SoftwareKeyboardMode {

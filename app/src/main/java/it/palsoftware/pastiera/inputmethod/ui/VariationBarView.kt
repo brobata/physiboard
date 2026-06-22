@@ -64,6 +64,8 @@ class VariationBarView(
     companion object {
         private const val TAG = "VariationBarView"
         private const val SWIPE_HINT_SHOW_DELAY_MS = 1000L
+        private const val BASE_HEIGHT_DP = 55f
+        private const val BASE_VERTICAL_PADDING_DP = 8f
     }
 
     var onVariationSelectedListener: VariationButtonHandler.OnVariationSelectedListener? = null
@@ -165,6 +167,7 @@ class VariationBarView(
             container?.setBackgroundColor(value?.background ?: Color.TRANSPARENT)
             emptyHintView?.setTextColor(colorWithAlpha(value?.textAndIcons ?: Color.WHITE, 120))
             swipeIndicator?.background = createSwipeIndicatorDrawable()
+            applyHeight()
         }
 
     fun ensureView(): FrameLayout {
@@ -174,16 +177,8 @@ class VariationBarView(
 
         val leftPadding = 0 // clipboard flush to the left edge
         val rightPadding = 0 // remove trailing gap so language button sits flush to the right
-        val variationsVerticalPadding = TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP,
-            8f,
-            context.resources.displayMetrics
-        ).toInt()
-        val variationsContainerHeight = TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP,
-            55f,
-            context.resources.displayMetrics
-        ).toInt()
+        val variationsVerticalPadding = verticalPaddingPx()
+        val variationsContainerHeight = targetHeightPx()
 
         container = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -248,6 +243,44 @@ class VariationBarView(
         }
 
         return wrapper!!
+    }
+
+    private fun targetHeightPx(): Int =
+        TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            BASE_HEIGHT_DP * (themeOverride?.variationsHeightScale ?: 1f).coerceIn(0.65f, 1.6f),
+            context.resources.displayMetrics
+        ).toInt()
+
+    private fun verticalPaddingPx(): Int =
+        TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            BASE_VERTICAL_PADDING_DP * (themeOverride?.variationsHeightScale ?: 1f).coerceIn(0.65f, 1.6f),
+            context.resources.displayMetrics
+        ).toInt()
+
+    private fun applyHeight() {
+        val height = targetHeightPx()
+        val verticalPadding = verticalPaddingPx()
+        container?.let { view ->
+            val params = (view.layoutParams as? LinearLayout.LayoutParams)
+                ?: LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height)
+            if (params.height != height || params.width != ViewGroup.LayoutParams.MATCH_PARENT) {
+                params.width = ViewGroup.LayoutParams.MATCH_PARENT
+                params.height = height
+                view.layoutParams = params
+            }
+            view.setPadding(view.paddingLeft, verticalPadding, view.paddingRight, verticalPadding)
+        }
+        wrapper?.let { view ->
+            val params = (view.layoutParams as? LinearLayout.LayoutParams)
+                ?: LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height)
+            if (params.height != height || params.width != ViewGroup.LayoutParams.MATCH_PARENT) {
+                params.width = ViewGroup.LayoutParams.MATCH_PARENT
+                params.height = height
+                view.layoutParams = params
+            }
+        }
     }
 
     fun getWrapper(): FrameLayout? = wrapper
@@ -478,18 +511,7 @@ class VariationBarView(
         val reservesVariationArea = variationAreaVisible
         val dynamicSlotCount = SettingsManager.getDynamicVariationBarSlotCount(context)
         val resizeDynamicVariationsToContent = SettingsManager.getDynamicVariationBarResizeToContent(context)
-        val maxButtonHeight = (
-            TypedValue.applyDimension(
-                TypedValue.COMPLEX_UNIT_DIP,
-                55f,
-                context.resources.displayMetrics
-            ).toInt() -
-                2 * TypedValue.applyDimension(
-                TypedValue.COMPLEX_UNIT_DIP,
-                8f,
-                context.resources.displayMetrics
-            ).toInt()
-        ).coerceAtLeast(1)
+        val maxButtonHeight = (targetHeightPx() - 2 * verticalPaddingPx()).coerceAtLeast(1)
 
         val variationSlotsForSizing = when {
             !reservesVariationArea -> 0
@@ -505,7 +527,7 @@ class VariationBarView(
         } else {
             rawFixedButtonSize
         }
-        val fixedButtonHeight = min(rawFixedButtonSize, maxButtonHeight)
+        val fixedButtonHeight = maxButtonHeight
         val fixedButtonsTotalWidth = fixedButtonWidth * totalButtonCount
         // Space only between buttons within each group (no trailing margin).
         val fixedButtonsSpacing = spacingBetweenButtons * (
@@ -531,7 +553,7 @@ class VariationBarView(
         }
         val buttonWidth = baseButtonWidth
         val maxButtonWidth = baseButtonWidth
-        val variationButtonHeight = min(buttonWidth, maxButtonHeight)
+        val variationButtonHeight = maxButtonHeight
         val maxVisibleVariationCount = if (reservesVariationArea && variationsAvailableWidth > 0) {
             ((variationsAvailableWidth + spacingBetweenButtons) / (buttonWidth + spacingBetweenButtons)).coerceAtLeast(0)
         } else {
@@ -550,7 +572,7 @@ class VariationBarView(
         // Variations row takes available space (weight=1)
         val rowLayoutParams = LinearLayout.LayoutParams(
             0,
-            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.MATCH_PARENT,
             1f
         ).apply {
             marginStart = variationToLeftGap

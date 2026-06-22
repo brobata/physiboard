@@ -453,6 +453,7 @@ class StatusBarController(
             keyPopupSelected = keyPopupSelected,
             keyCornerRadiusRatio = keyCornerRadiusRatio,
             keyHeightScale = keyHeightScale,
+            numberRowHeightScale = numberRowHeightScale,
             keyWidthScale = keyWidthScale,
             rowGapScale = rowGapScale,
             distributeHorizontalSpacing = distributeHorizontalSpacing,

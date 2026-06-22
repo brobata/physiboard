@@ -18,8 +18,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -84,6 +86,7 @@ import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonRegistry
 import it.palsoftware.pastiera.inputmethod.ui.LedStatusView
 import it.palsoftware.pastiera.inputmethod.ui.VariationBarView
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.min
@@ -101,7 +104,11 @@ fun KeyboardThemeScreen(
     var savedThemes by remember {
         mutableStateOf(SettingsManager.getSavedKeyboardThemes(context).map { it.toKeyboardThemeOption() })
     }
-    val themeOptions = builtInPresets.map { KeyboardThemeOption("builtin:${it.name}", it, it) } + savedThemes
+    val hardwareThemeOptions = builtInPresets.map { KeyboardThemeOption("builtin:${it.name}", it, it) } + savedThemes
+    val softwareThemeOptions = builtInPresets.map {
+        val softwarePreset = it.withSoftwareKeyboardDefaults()
+        KeyboardThemeOption("builtin:${it.name}", softwarePreset, softwarePreset)
+    } + savedThemes
     val initialPreviewPage = remember {
         if (initialTarget == SettingsManager.KeyboardThemeTarget.SOFTWARE) {
             1
@@ -117,12 +124,18 @@ fun KeyboardThemeScreen(
     }
     val previewPagerState = rememberPagerState(initialPage = initialPreviewPage, pageCount = { 2 })
     var customizationTab by remember { mutableStateOf(0) }
-    var hardwarePreset by remember { mutableStateOf(SettingsManager.getKeyboardTheme(context, SettingsManager.KeyboardThemeTarget.HARDWARE).toKeyboardThemePreset("Custom")) }
-    var softwarePreset by remember { mutableStateOf(SettingsManager.getKeyboardTheme(context, SettingsManager.KeyboardThemeTarget.SOFTWARE).toKeyboardThemePreset("Custom")) }
+    val initialHardwarePreset = remember {
+        SettingsManager.getKeyboardTheme(context, SettingsManager.KeyboardThemeTarget.HARDWARE).toKeyboardThemePreset("Custom")
+    }
+    val initialSoftwarePreset = remember {
+        SettingsManager.getKeyboardTheme(context, SettingsManager.KeyboardThemeTarget.SOFTWARE).toKeyboardThemePreset("Custom")
+    }
+    var hardwarePreset by remember { mutableStateOf(initialHardwarePreset) }
+    var softwarePreset by remember { mutableStateOf(initialSoftwarePreset) }
     var hardwareTheme by remember { mutableStateOf(hardwarePreset) }
     var softwareTheme by remember { mutableStateOf(softwarePreset) }
-    var hardwareSelectionKey by remember { mutableStateOf("custom:hardware") }
-    var softwareSelectionKey by remember { mutableStateOf("custom:software") }
+    var hardwareSelectionKey by remember { mutableStateOf(matchKeyboardThemeOption(hardwareThemeOptions, initialHardwarePreset) ?: "custom:hardware") }
+    var softwareSelectionKey by remember { mutableStateOf(matchKeyboardThemeOption(softwareThemeOptions, initialSoftwarePreset) ?: "custom:software") }
     var exportTheme by remember { mutableStateOf<KeyboardThemePreset?>(null) }
     var showImportDialog by remember { mutableStateOf(false) }
     var showSaveAsDialog by remember { mutableStateOf(false) }
@@ -131,6 +144,7 @@ fun KeyboardThemeScreen(
     val activeTheme = if (activePreviewPage == 0) hardwareTheme else softwareTheme
     val activePreset = if (activePreviewPage == 0) hardwarePreset else softwarePreset
     val activeSelectionKey = if (activePreviewPage == 0) hardwareSelectionKey else softwareSelectionKey
+    val activeThemeOptions = if (activePreviewPage == 0) hardwareThemeOptions else softwareThemeOptions
 
     fun updateActiveTheme(theme: KeyboardThemePreset) {
         if (activePreviewPage == 0) {
@@ -229,25 +243,26 @@ fun KeyboardThemeScreen(
     ) { paddingValues ->
         Column(
             modifier = modifier
-                .fillMaxWidth()
+                .fillMaxSize()
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
                 text = stringResource(R.string.keyboard_theme_preset_title),
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(horizontal = 16.dp)
             )
             LazyRow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(92.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(end = 4.dp)
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp)
             ) {
-                lazyItems(themeOptions) { option ->
+                lazyItems(activeThemeOptions) { option ->
                     KeyboardThemePresetCard(
                         preset = option.preset,
                         selected = activeSelectionKey == option.key,
@@ -256,7 +271,9 @@ fun KeyboardThemeScreen(
                 }
             }
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Button(onClick = { showSaveAsDialog = true }) {
@@ -274,7 +291,7 @@ fun KeyboardThemeScreen(
                 text = stringResource(R.string.keyboard_theme_preview_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(top = 6.dp)
+                modifier = Modifier.padding(start = 16.dp, top = 6.dp, end = 16.dp)
             )
             KeyboardThemePreviewCarousel(
                 theme = if (previewPagerState.currentPage == 0) hardwareTheme else softwareTheme,
@@ -296,9 +313,12 @@ fun KeyboardThemeScreen(
                 text = stringResource(R.string.keyboard_theme_customize_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(top = 6.dp)
+                modifier = Modifier.padding(start = 16.dp, top = 6.dp, end = 16.dp)
             )
-            TabRow(selectedTabIndex = customizationTab) {
+            TabRow(
+                selectedTabIndex = customizationTab,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            ) {
                 Tab(
                     selected = customizationTab == 0,
                     onClick = { customizationTab = 0 },
@@ -310,20 +330,28 @@ fun KeyboardThemeScreen(
                     text = { Text("Tasten") }
                 )
             }
-            if (customizationTab == 0) {
-                KeyboardThemeColorsEditor(
-                    theme = activeTheme,
-                    preset = activePreset,
-                    isSoftware = activePreviewPage == 1,
-                    onThemeChanged = ::updateActiveTheme
-                )
-            } else {
-                KeyboardThemeKeysEditor(
-                    theme = activeTheme,
-                    preset = activePreset,
-                    isSoftware = activePreviewPage == 1,
-                    onThemeChanged = ::updateActiveTheme
-                )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .heightIn(max = 360.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                if (customizationTab == 0) {
+                    KeyboardThemeColorsEditor(
+                        theme = activeTheme,
+                        preset = activePreset,
+                        isSoftware = activePreviewPage == 1,
+                        onThemeChanged = ::updateActiveTheme
+                    )
+                } else {
+                    KeyboardThemeKeysEditor(
+                        theme = activeTheme,
+                        preset = activePreset,
+                        isSoftware = activePreviewPage == 1,
+                        onThemeChanged = ::updateActiveTheme
+                    )
+                }
             }
         }
     }
@@ -397,6 +425,46 @@ private fun KeyboardThemePresetCard(
             }
         }
     }
+}
+
+private fun matchKeyboardThemeOption(
+    options: List<KeyboardThemeOption>,
+    theme: KeyboardThemePreset
+): String? {
+    val target = theme.toSettingsTheme()
+    return options.firstOrNull { keyboardThemesEquivalent(it.preset.toSettingsTheme(), target) }?.key
+}
+
+private fun keyboardThemesEquivalent(
+    left: SettingsManager.KeyboardThemeSettings,
+    right: SettingsManager.KeyboardThemeSettings
+): Boolean {
+    fun close(a: Float, b: Float): Boolean = abs(a - b) < 0.001f
+    return left.background == right.background &&
+        left.divider == right.divider &&
+        left.normalKey == right.normalKey &&
+        left.specialKey == right.specialKey &&
+        left.textAndIcons == right.textAndIcons &&
+        left.ledInactive == right.ledInactive &&
+        left.ledActive == right.ledActive &&
+        left.ledLocked == right.ledLocked &&
+        left.accent == right.accent &&
+        left.cursorSwipe == right.cursorSwipe &&
+        left.keyPopup == right.keyPopup &&
+        left.keyPopupSelected == right.keyPopupSelected &&
+        left.suggestion == right.suggestion &&
+        left.statusBarButton == right.statusBarButton &&
+        close(left.keyCornerRadiusRatio, right.keyCornerRadiusRatio) &&
+        close(left.chromeCornerRadiusRatio, right.chromeCornerRadiusRatio) &&
+        close(left.keyHeightScale, right.keyHeightScale) &&
+        close(left.numberRowHeightScale, right.numberRowHeightScale) &&
+        close(left.keyWidthScale, right.keyWidthScale) &&
+        close(left.rowGapScale, right.rowGapScale) &&
+        left.distributeHorizontalSpacing == right.distributeHorizontalSpacing &&
+        left.ortholinear == right.ortholinear &&
+        left.showLeds == right.showLeds &&
+        close(left.suggestionsHeightScale, right.suggestionsHeightScale) &&
+        close(left.variationsHeightScale, right.variationsHeightScale)
 }
 
 @Composable
@@ -677,6 +745,21 @@ private fun KeyboardThemeKeysEditor(
             valueRange = 0f..0.35f,
             onValueChanged = { onThemeChanged(theme.copy(chromeCornerRadiusRatio = it)) }
         )
+        KeyboardThemeSliderRow(
+            label = "Suggestions height",
+            value = theme.suggestionsHeightScale,
+            presetValue = preset.suggestionsHeightScale,
+            valueRange = 0.65f..1.6f,
+            onValueChanged = { onThemeChanged(theme.copy(suggestionsHeightScale = it)) }
+        )
+        KeyboardThemeSliderRow(
+            label = "Variations height",
+            value = theme.variationsHeightScale,
+            presetValue = preset.variationsHeightScale,
+            valueRange = 0.65f..1.6f,
+            enabled = false,
+            onValueChanged = { onThemeChanged(theme.copy(variationsHeightScale = it)) }
+        )
         if (isSoftware) {
             KeyboardThemeSwitchRow(
                 label = "Show LEDs",
@@ -688,8 +771,15 @@ private fun KeyboardThemeKeysEditor(
                 label = "Key height",
                 value = theme.keyHeightScale,
                 presetValue = preset.keyHeightScale,
-                valueRange = 0.72f..1.45f,
+                valueRange = 0.72f..1.9f,
                 onValueChanged = { onThemeChanged(theme.copy(keyHeightScale = it)) }
+            )
+            KeyboardThemeSliderRow(
+                label = "Number row height",
+                value = theme.numberRowHeightScale,
+                presetValue = preset.numberRowHeightScale,
+                valueRange = 0.45f..1.4f,
+                onValueChanged = { onThemeChanged(theme.copy(numberRowHeightScale = it)) }
             )
             KeyboardThemeSliderRow(
                 label = "Key width",
@@ -774,12 +864,13 @@ private fun KeyboardThemePreviewCarousel(
         border = BorderStroke(1.dp, Color(theme.divider))
     ) {
         Column(
-            modifier = Modifier.padding(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             pageContent()
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -804,7 +895,7 @@ private fun HardwareKeyboardThemePreview(theme: KeyboardThemePreset) {
     AndroidView(
         modifier = Modifier
             .fillMaxWidth()
-            .height(104.dp),
+            .height(hardwareKeyboardPreviewHeightDp(theme).dp),
         factory = { context -> createHardwareKeyboardThemePreviewView(context, theme) },
         update = { view -> updateHardwareKeyboardThemePreviewView(view, theme) }
     )
@@ -1008,7 +1099,7 @@ private fun VirtualKeyboardThemePreview(theme: KeyboardThemePreset) {
     AndroidView(
         modifier = Modifier
             .fillMaxWidth()
-            .height((260f + 58f * (theme.keyHeightScale.coerceIn(0.72f, 1.45f) - 1f)).dp),
+            .height(virtualKeyboardPreviewTotalHeightDp(LocalContext.current, theme).dp),
         factory = { context -> createVirtualKeyboardThemePreviewView(context, theme) },
         update = { view -> updateVirtualKeyboardThemePreviewView(view, theme) }
     )
@@ -1142,9 +1233,33 @@ private fun softwareKeyboardPreviewLayoutStyle(context: android.content.Context)
     }
 
 private fun virtualKeyboardPreviewHeightDp(context: android.content.Context, theme: KeyboardThemePreset): Float {
-    val rows = if (SettingsManager.getSoftwareKeyboardNumberRowEnabled(context)) 5f else 4f
-    return 41f * rows * theme.keyHeightScale.coerceIn(0.72f, 1.45f)
+    val mainRows = 4f
+    val mainRowsHeight = 41f * mainRows * theme.keyHeightScale.coerceIn(0.72f, 1.9f)
+    val numberRowHeight = if (SettingsManager.getSoftwareKeyboardNumberRowEnabled(context)) {
+        41f * theme.numberRowHeightScale.coerceIn(0.45f, 1.4f)
+    } else {
+        0f
+    }
+    return mainRowsHeight + numberRowHeight
 }
+
+private fun hardwareKeyboardPreviewHeightDp(theme: KeyboardThemePreset): Float =
+    suggestionsPreviewHeightDp(theme) + variationsPreviewHeightDp(theme) + 12f
+
+private fun virtualKeyboardPreviewTotalHeightDp(
+    context: android.content.Context,
+    theme: KeyboardThemePreset
+): Float =
+    suggestionsPreviewHeightDp(theme) +
+        variationsPreviewHeightDp(theme) +
+        virtualKeyboardPreviewHeightDp(context, theme) +
+        if (theme.showLeds) 12f else 0f
+
+private fun suggestionsPreviewHeightDp(theme: KeyboardThemePreset): Float =
+    36f * theme.suggestionsHeightScale.coerceIn(0.65f, 1.6f)
+
+private fun variationsPreviewHeightDp(theme: KeyboardThemePreset): Float =
+    55f * theme.variationsHeightScale.coerceIn(0.65f, 1.6f)
 
 private fun showVirtualPreviewVariations(variationBar: VariationBarView) {
     variationBar.showVariations(
@@ -1290,6 +1405,7 @@ private fun KeyboardThemeSliderRow(
     value: Float,
     presetValue: Float,
     valueRange: ClosedFloatingPointRange<Float>,
+    enabled: Boolean = true,
     onValueChanged: (Float) -> Unit
 ) {
     Surface(
@@ -1326,7 +1442,8 @@ private fun KeyboardThemeSliderRow(
             Slider(
                 value = value.coerceIn(valueRange.start, valueRange.endInclusive),
                 onValueChange = { onValueChanged(it.coerceIn(valueRange.start, valueRange.endInclusive)) },
-                valueRange = valueRange
+                valueRange = valueRange,
+                enabled = enabled
             )
         }
     }
