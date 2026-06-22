@@ -13,6 +13,17 @@ The Apache License, Version 2.0 text is included in `assets/common/licenses/Apac
 
 Pastiera does not import AOSP dictionaries.
 
+## Google Material Symbols / Material Icons
+
+Pastiera uses icon artwork from Google Material Symbols / Material Icons for parts of the app UI and keyboard chrome.
+
+- Project: Material Symbols / Material Icons
+- Project page: https://fonts.google.com/icons
+- Source repository: https://github.com/google/material-design-icons
+- License: Apache License, Version 2.0
+
+The Apache License, Version 2.0 text is included in `assets/common/licenses/Apache-2.0.txt` and in the repository under `third_party/licenses/Apache-2.0.txt`.
+
 ## OpenGameArt Typing Sounds
 
 Pastiera includes short typing sound samples derived from CC0 sound effects.

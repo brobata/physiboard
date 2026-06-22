@@ -33,6 +33,11 @@ Pastiera's full virtual keyboard mode uses AOSP LatinIME as a reference for keyb
 
 License: Apache License, Version 2.0. Source: [platform/packages/inputmethods/LatinIME](https://android.googlesource.com/platform/packages/inputmethods/LatinIME) at commit `127336e9f29d69607eab55982324b210279ae8c5`.
 
+#### Google Material Symbols / Material Icons
+Pastiera uses icon artwork from [Google Material Symbols / Material Icons](https://fonts.google.com/icons) for parts of the app UI and keyboard chrome.
+
+License: Apache License, Version 2.0. Source: [google/material-design-icons](https://github.com/google/material-design-icons).
+
 #### OpenGameArt Typing Sounds
 Pastiera includes short typing sound samples derived from CC0 sound effects:
 
