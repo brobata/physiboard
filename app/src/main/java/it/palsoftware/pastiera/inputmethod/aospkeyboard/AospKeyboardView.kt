@@ -117,14 +117,30 @@ class AospKeyboardView @JvmOverloads constructor(
         val visualRect: RectF
     )
 
+    data class LongPressLayerAlternative(
+        val label: String,
+        val output: String
+    )
+
+    private data class MoreKeyChoice(
+        val label: String,
+        val output: String
+    )
+
     private data class MoreKeysPanelState(
         val baseKey: Key,
-        val keys: List<String>,
-        val popupRectInView: RectF,
+        val keys: List<MoreKeyChoice>,
+        val layerKeys: List<MoreKeyChoice>,
+        val popupRectInView: RectF?,
+        val layerPopupRectInView: RectF?,
+        val layerPopupBelowKey: Boolean,
         val keyWidth: Float,
         val keyHeight: Float,
+        val layerKeyWidth: Float,
+        val layerKeyHeight: Float,
         val padding: Float,
-        var selectedIndex: Int = -1
+        var selectedIndex: Int = -1,
+        var selectedLayerIndex: Int = -1
     )
 
     private data class PreviewPopupState(
@@ -340,6 +356,9 @@ class AospKeyboardView @JvmOverloads constructor(
             field = value.coerceIn(50L, 1000L)
         }
     var longPressAlternatesProvider: ((String) -> List<String>)? = null
+    var longPressHintProvider: ((String) -> String?)? = null
+    var longPressLayerAlternatesProvider: ((String) -> List<LongPressLayerAlternative>)? = null
+    var longPressLayerPopupBelowKey: Boolean = true
     var themeOverride: ThemeOverride? = null
         set(value) {
             if (field == value) {
@@ -460,12 +479,22 @@ class AospKeyboardView @JvmOverloads constructor(
             val baselineOffset = -(textPaint.ascent() + textPaint.descent()) / 2f
             val y = if (key.spec.type == KeyType.SPACE) key.visualRect.centerY() + dp(7f) else key.visualRect.centerY() + baselineOffset
             canvas.drawText(label, key.visualRect.centerX(), y, textPaint)
-            val hint = displayHint(key)
-            if (previewLabel == null && hint.isNotBlank()) {
+            val altHint = displayAltHint(key)
+            val longPressHint = displayHint(key)
+            if (previewLabel == null && altHint.isNotBlank()) {
                 hintPaint.textSize = sp(10f)
                 hintPaint.color = themeOverride?.textAndIcons?.let { colorWithAlpha(it, 150) }
                     ?: Color.rgb(156, 164, 172)
-                canvas.drawText(hint, key.visualRect.right - dp(9f), key.visualRect.top + dp(12f), hintPaint)
+                hintPaint.textAlign = Paint.Align.LEFT
+                canvas.drawText(altHint, key.visualRect.left + dp(9f), key.visualRect.bottom - dp(7f), hintPaint)
+            }
+            if (previewLabel == null && longPressHint.isNotBlank()) {
+                hintPaint.textSize = sp(10f)
+                hintPaint.color = themeOverride?.textAndIcons?.let { colorWithAlpha(it, 150) }
+                    ?: Color.rgb(156, 164, 172)
+                hintPaint.textAlign = Paint.Align.RIGHT
+                canvas.drawText(longPressHint, key.visualRect.right - dp(9f), key.visualRect.top + dp(12f), hintPaint)
+                hintPaint.textAlign = Paint.Align.CENTER
             }
         }
     }
@@ -991,6 +1020,15 @@ class AospKeyboardView @JvmOverloads constructor(
         return longPressAlternatesFor(key).firstOrNull().orEmpty()
     }
 
+    private fun displayAltHint(key: Key): String {
+        if (symPageActive) return ""
+        if (key.spec.type !in listOf(KeyType.CHAR, KeyType.COMMA, KeyType.PERIOD)) return ""
+        return longPressHintProvider
+            ?.invoke(key.spec.output)
+            ?.takeIf { it.isNotBlank() }
+            .orEmpty()
+    }
+
     private fun previewLabelFor(key: Key): String? {
         val keyCode = soundKeyCodeFor(key)
         val heldType = heldModifierKey?.spec?.type
@@ -1138,8 +1176,15 @@ class AospKeyboardView @JvmOverloads constructor(
             }
             return
         }
-        val resolvedMoreKeys = longPressAlternatesFor(key)
-        if (resolvedMoreKeys.isEmpty() || themeOverride?.keyAlternatesPopupEnabled == false) {
+        val resolvedMoreKeys = if (themeOverride?.keyAlternatesPopupEnabled == false) {
+            emptyList()
+        } else {
+            longPressAlternatesFor(key)
+        }
+        val layerKeys = longPressLayerAlternatesFor(key).map { alternative ->
+            MoreKeyChoice(label = alternative.label, output = alternative.output)
+        }
+        if (resolvedMoreKeys.isEmpty() && layerKeys.isEmpty()) {
             if (themeOverride?.keyPreviewAfterLongPress == true) {
                 showPreview(key)
             }
@@ -1147,22 +1192,73 @@ class AospKeyboardView @JvmOverloads constructor(
         }
         longPressTriggered = true
         dismissPopup()
-        val moreKeys = resolvedMoreKeys.map { if (shifted && it.length == 1 && it[0].isLetter()) it.uppercase(Locale.ROOT) else it }
+        val moreKeys = resolvedMoreKeys
+            .map { if (shifted && it.length == 1 && it[0].isLetter()) it.uppercase(Locale.ROOT) else it }
+            .map { MoreKeyChoice(label = it, output = it) }
         val itemWidth = dp(42f)
         val itemHeight = dp(52f)
+        val layerItemWidth = dp(48f)
+        val layerItemHeight = dp(42f)
         val padding = dp(6f)
-        val popupWidth = padding * 2 + moreKeys.size * itemWidth
-        val popupHeight = padding * 2 + itemHeight
-        val popupLeft = (key.visualRect.centerX() - popupWidth / 2f).coerceIn(0f, width - popupWidth.toFloat())
-        val popupTop = key.visualRect.top - popupHeight - popupVerticalOffset(themeOverride)
+        val layerPopupWidth = padding * 2 + layerKeys.size * layerItemWidth
+        val layerPopupHeight = padding * 2 + layerItemHeight
+        val popupWidth = if (moreKeys.isNotEmpty()) padding * 2 + moreKeys.size * itemWidth else 0
+        val popupHeight = if (moreKeys.isNotEmpty()) padding * 2 + itemHeight else 0
+        val placeLayerBelowKey = longPressLayerPopupBelowKey && layerKeys.isNotEmpty()
+        val popupStackGap = if (layerKeys.isNotEmpty() && !placeLayerBelowKey) dp(4f) else 0
+        val popupLeft = if (moreKeys.isNotEmpty()) {
+            (key.visualRect.centerX() - popupWidth / 2f).coerceIn(0f, width - popupWidth.toFloat())
+        } else {
+            0f
+        }
+        val popupTop = if (moreKeys.isNotEmpty()) {
+            key.visualRect.top -
+                popupHeight -
+                popupStackGap -
+                (if (layerKeys.isNotEmpty() && !placeLayerBelowKey) layerPopupHeight else 0) -
+                popupVerticalOffset(themeOverride)
+        } else {
+            0f
+        }
+        val layerPopupLeft = (key.visualRect.centerX() - layerPopupWidth / 2f)
+            .coerceIn(0f, width - layerPopupWidth.toFloat())
+        val layerPopupTop = if (placeLayerBelowKey) {
+            key.visualRect.bottom + popupVerticalOffset(themeOverride)
+        } else {
+            if (moreKeys.isNotEmpty()) {
+                popupTop + popupHeight + popupStackGap
+            } else {
+                key.visualRect.top - layerPopupHeight - popupVerticalOffset(themeOverride)
+            }
+        }
+        val layerPopupRect = if (layerKeys.isNotEmpty()) {
+            RectF(
+                layerPopupLeft,
+                layerPopupTop,
+                layerPopupLeft + layerPopupWidth,
+                layerPopupTop + layerPopupHeight
+            )
+        } else {
+            null
+        }
         moreKeysPanelState = MoreKeysPanelState(
             baseKey = key,
             keys = moreKeys,
-            popupRectInView = RectF(popupLeft, popupTop, popupLeft + popupWidth, popupTop + popupHeight),
+            layerKeys = layerKeys,
+            popupRectInView = if (moreKeys.isNotEmpty()) {
+                RectF(popupLeft, popupTop, popupLeft + popupWidth, popupTop + popupHeight)
+            } else {
+                null
+            },
+            layerPopupRectInView = layerPopupRect,
+            layerPopupBelowKey = placeLayerBelowKey,
             keyWidth = itemWidth.toFloat(),
             keyHeight = itemHeight.toFloat(),
+            layerKeyWidth = layerItemWidth.toFloat(),
+            layerKeyHeight = layerItemHeight.toFloat(),
             padding = padding.toFloat(),
-            selectedIndex = 0
+            selectedIndex = if (moreKeys.isNotEmpty()) 0 else -1,
+            selectedLayerIndex = -1
         )
         previewPopupState = null
         updatePopupOverlay()
@@ -1199,27 +1295,53 @@ class AospKeyboardView @JvmOverloads constructor(
 
     private fun updateMoreKeysSelection(x: Float, y: Float) {
         val panel = moreKeysPanelState ?: return
+        val selectedLayer = selectedLayerKeyIndex(x, y, panel)
+        if (selectedLayer >= 0) {
+            if (panel.selectedLayerIndex == selectedLayer && panel.selectedIndex < 0) return
+            panel.selectedLayerIndex = selectedLayer
+            panel.selectedIndex = -1
+            updatePopupOverlay()
+            invalidate()
+            return
+        }
         val selected = selectedMoreKeyIndex(x, y, panel)
         if (selected < 0) {
             return
         }
         if (selected == panel.selectedIndex) return
         panel.selectedIndex = selected
+        panel.selectedLayerIndex = -1
         updatePopupOverlay()
         invalidate()
     }
 
     private fun selectedMoreKey(x: Float, y: Float, panel: MoreKeysPanelState): String? {
+        val layerIndex = selectedLayerKeyIndex(x, y, panel)
+        if (layerIndex >= 0) {
+            return panel.layerKeys.getOrNull(layerIndex)?.output
+        }
+        panel.selectedLayerIndex.takeIf { it >= 0 }?.let { selectedLayerIndex ->
+            return panel.layerKeys.getOrNull(selectedLayerIndex)?.output
+        }
         val index = selectedMoreKeyIndex(x, y, panel).takeIf { it >= 0 } ?: panel.selectedIndex
-        return panel.keys.getOrNull(index)
+        return panel.keys.getOrNull(index)?.output
     }
 
     private fun selectedMoreKeyIndex(x: Float, y: Float, panel: MoreKeysPanelState): Int {
-        val rect = panel.popupRectInView
+        val rect = panel.popupRectInView ?: return -1
+        if (panel.keys.isEmpty()) return -1
         val verticalSlop = dp(24f)
         if (y < rect.top - verticalSlop || y > rect.bottom + verticalSlop) return -1
         val relativeX = (x - rect.left - panel.padding).coerceIn(0f, panel.keys.size * panel.keyWidth - 1f)
         return (relativeX / panel.keyWidth).toInt().coerceIn(0, panel.keys.lastIndex)
+    }
+
+    private fun selectedLayerKeyIndex(x: Float, y: Float, panel: MoreKeysPanelState): Int {
+        val rect = panel.layerPopupRectInView ?: return -1
+        val verticalSlop = dp(20f)
+        if (y < rect.top - verticalSlop || y > rect.bottom + verticalSlop) return -1
+        val relativeX = (x - rect.left - panel.padding).coerceIn(0f, panel.layerKeys.size * panel.layerKeyWidth - 1f)
+        return (relativeX / panel.layerKeyWidth).toInt().coerceIn(0, panel.layerKeys.lastIndex)
     }
 
     private fun findKey(x: Float, y: Float): Key? {
@@ -1279,6 +1401,16 @@ class AospKeyboardView @JvmOverloads constructor(
         return providerAlternates.ifEmpty { key.spec.moreKeys }
     }
 
+    private fun longPressLayerAlternatesFor(key: Key): List<LongPressLayerAlternative> {
+        if (!key.spec.type.canShowLongPressAlternates()) {
+            return emptyList()
+        }
+        return longPressLayerAlternatesProvider
+            ?.invoke(key.spec.output)
+            ?.filter { it.output.isNotBlank() && it.label.isNotBlank() }
+            .orEmpty()
+    }
+
 
     private fun drawPreviewPopup(canvas: Canvas, offsetX: Float = 0f, offsetY: Float = 0f) {
         val popup = previewPopupState ?: return
@@ -1298,37 +1430,70 @@ class AospKeyboardView @JvmOverloads constructor(
 
     private fun drawMoreKeysPanel(canvas: Canvas, offsetX: Float = 0f, offsetY: Float = 0f) {
         val panel = moreKeysPanelState ?: return
-        val panelRect = panel.popupRectInView.offsetBy(offsetX, offsetY)
         val theme = themeOverride
+        panel.popupRectInView?.offsetBy(offsetX, offsetY)?.let { panelRect ->
+            if (theme != null) {
+                drawThemedPopupBackground(
+                    canvas,
+                    theme,
+                    panelRect,
+                    panel.baseKey.visualRect.centerX() + offsetX,
+                    hasTail = shouldDrawPopupTail(theme)
+                )
+            } else {
+                drawDrawable(canvas, moreKeysBackground, panelRect)
+            }
+            panel.keys.forEachIndexed { index, choice ->
+                val left = panelRect.left + panel.padding + index * panel.keyWidth
+                val top = panelRect.top + panel.padding
+                val rect = RectF(left, top, left + panel.keyWidth, top + panel.keyHeight)
+                if (index == panel.selectedIndex) {
+                    if (theme != null) {
+                        drawThemedPopupBackground(canvas, theme, rect, rect.centerX(), hasTail = false, selected = true)
+                    } else {
+                        drawDrawable(canvas, normalKeyBackground, rect)
+                    }
+                }
+                textPaint.textSize = sp(24f)
+                textPaint.typeface = Typeface.DEFAULT
+                textPaint.color = theme?.let {
+                    if (index == panel.selectedIndex) readableTextColor(it.keyPopupSelected) else it.textAndIcons
+                } ?: if (index == panel.selectedIndex) Color.BLACK else Color.rgb(238, 238, 238)
+                val baselineOffset = -(textPaint.ascent() + textPaint.descent()) / 2f
+                canvas.drawText(choice.label, rect.centerX(), rect.centerY() + baselineOffset, textPaint)
+            }
+        }
+        val layerRect = panel.layerPopupRectInView?.offsetBy(offsetX, offsetY) ?: return
         if (theme != null) {
             drawThemedPopupBackground(
                 canvas,
                 theme,
-                panelRect,
+                layerRect,
                 panel.baseKey.visualRect.centerX() + offsetX,
-                hasTail = shouldDrawPopupTail(theme)
+                hasTail = shouldDrawPopupTail(theme),
+                tailOnTop = panel.layerPopupBelowKey
             )
         } else {
-            drawDrawable(canvas, moreKeysBackground, panelRect)
+            drawDrawable(canvas, moreKeysBackground, layerRect)
         }
-        panel.keys.forEachIndexed { index, label ->
-            val left = panelRect.left + panel.padding + index * panel.keyWidth
-            val top = panelRect.top + panel.padding
-            val rect = RectF(left, top, left + panel.keyWidth, top + panel.keyHeight)
-            if (index == panel.selectedIndex) {
+        panel.layerKeys.forEachIndexed { index, choice ->
+            val left = layerRect.left + panel.padding + index * panel.layerKeyWidth
+            val top = layerRect.top + panel.padding
+            val rect = RectF(left, top, left + panel.layerKeyWidth, top + panel.layerKeyHeight)
+            if (index == panel.selectedLayerIndex) {
                 if (theme != null) {
                     drawThemedPopupBackground(canvas, theme, rect, rect.centerX(), hasTail = false, selected = true)
                 } else {
                     drawDrawable(canvas, normalKeyBackground, rect)
                 }
             }
-            textPaint.textSize = sp(24f)
+            textPaint.textSize = previewTextSize(choice.label, rect)
             textPaint.typeface = Typeface.DEFAULT
             textPaint.color = theme?.let {
-                if (index == panel.selectedIndex) readableTextColor(it.keyPopupSelected) else it.textAndIcons
-            } ?: if (index == panel.selectedIndex) Color.BLACK else Color.rgb(238, 238, 238)
+                if (index == panel.selectedLayerIndex) readableTextColor(it.keyPopupSelected) else it.textAndIcons
+            } ?: if (index == panel.selectedLayerIndex) Color.BLACK else Color.rgb(238, 238, 238)
             val baselineOffset = -(textPaint.ascent() + textPaint.descent()) / 2f
-            canvas.drawText(label, rect.centerX(), rect.centerY() + baselineOffset, textPaint)
+            canvas.drawText(choice.label, rect.centerX(), rect.centerY() + baselineOffset, textPaint)
         }
     }
 
@@ -1418,7 +1583,8 @@ class AospKeyboardView @JvmOverloads constructor(
         rect: RectF,
         anchorX: Float,
         hasTail: Boolean,
-        selected: Boolean = false
+        selected: Boolean = false,
+        tailOnTop: Boolean = false
     ) {
         val classic = theme.keyPopupStyle == SettingsManager.KEYBOARD_THEME_POPUP_STYLE_CLASSIC
         val radius = if (selected) {
@@ -1429,7 +1595,7 @@ class AospKeyboardView @JvmOverloads constructor(
             maxOf(dp(16f).toFloat(), keyCornerRadius(theme) * 0.72f)
         }
         val fillColor = if (selected) theme.keyPopupSelected else theme.keyPopup
-        val path = roundedPopupPath(rect, radius, anchorX, hasTail, classic)
+        val path = roundedPopupPath(rect, radius, anchorX, hasTail, classic, tailOnTop)
         val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = colorWithAlpha(Color.BLACK, if (classic) 52 else if (isDarkColor(fillColor)) 80 else 38)
             style = Paint.Style.FILL
@@ -1471,7 +1637,8 @@ class AospKeyboardView @JvmOverloads constructor(
         radius: Float,
         anchorX: Float,
         hasTail: Boolean,
-        classic: Boolean
+        classic: Boolean,
+        tailOnTop: Boolean = false
     ): Path {
         val body = Path().apply {
             addRoundRect(rect, radius, radius, Path.Direction.CW)
@@ -1485,23 +1652,43 @@ class AospKeyboardView @JvmOverloads constructor(
             val centerX = anchorX.coerceIn(rect.left + radius, rect.right - radius)
             val sideCurveDivisor = if (classic) 2.0f else 2.4f
             val tail = Path().apply {
-                moveTo(centerX - tailWidth / 2f, rect.bottom - radius * if (classic) 0.12f else 0.25f)
-                cubicTo(
-                    centerX - tailWidth / sideCurveDivisor,
-                    rect.bottom + tailHeight * 0.34f,
-                    centerX - tailWidth / 3.2f,
-                    rect.bottom + tailHeight,
-                    centerX,
-                    rect.bottom + tailHeight
-                )
-                cubicTo(
-                    centerX + tailWidth / 3.2f,
-                    rect.bottom + tailHeight,
-                    centerX + tailWidth / sideCurveDivisor,
-                    rect.bottom + tailHeight * 0.34f,
-                    centerX + tailWidth / 2f,
-                    rect.bottom - radius * if (classic) 0.12f else 0.25f
-                )
+                if (tailOnTop) {
+                    moveTo(centerX - tailWidth / 2f, rect.top + radius * if (classic) 0.12f else 0.25f)
+                    cubicTo(
+                        centerX - tailWidth / sideCurveDivisor,
+                        rect.top - tailHeight * 0.34f,
+                        centerX - tailWidth / 3.2f,
+                        rect.top - tailHeight,
+                        centerX,
+                        rect.top - tailHeight
+                    )
+                    cubicTo(
+                        centerX + tailWidth / 3.2f,
+                        rect.top - tailHeight,
+                        centerX + tailWidth / sideCurveDivisor,
+                        rect.top - tailHeight * 0.34f,
+                        centerX + tailWidth / 2f,
+                        rect.top + radius * if (classic) 0.12f else 0.25f
+                    )
+                } else {
+                    moveTo(centerX - tailWidth / 2f, rect.bottom - radius * if (classic) 0.12f else 0.25f)
+                    cubicTo(
+                        centerX - tailWidth / sideCurveDivisor,
+                        rect.bottom + tailHeight * 0.34f,
+                        centerX - tailWidth / 3.2f,
+                        rect.bottom + tailHeight,
+                        centerX,
+                        rect.bottom + tailHeight
+                    )
+                    cubicTo(
+                        centerX + tailWidth / 3.2f,
+                        rect.bottom + tailHeight,
+                        centerX + tailWidth / sideCurveDivisor,
+                        rect.bottom + tailHeight * 0.34f,
+                        centerX + tailWidth / 2f,
+                        rect.bottom - radius * if (classic) 0.12f else 0.25f
+                    )
+                }
                 close()
             }
             body.op(tail, Path.Op.UNION)

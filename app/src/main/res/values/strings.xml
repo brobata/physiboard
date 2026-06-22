@@ -881,6 +881,10 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="software_keyboard_number_row_description">Show 1-0 above the virtual keyboard letters.</string>
     <string name="software_keyboard_nearest_key_touch_title">Nearest key touch</string>
     <string name="software_keyboard_nearest_key_touch_description">Touches in the gap between keys go to the nearest likely key.</string>
+    <string name="software_keyboard_long_press_layer_popup_title">Layer alternatives popup</string>
+    <string name="software_keyboard_long_press_layer_popup_description">On long press, show Alt plus the configured Symbol/Emoji page mappings below the held key.</string>
+    <string name="software_keyboard_long_press_layer_popup_below_key_title">Place layer popup below key</string>
+    <string name="software_keyboard_long_press_layer_popup_below_key_description">Show the Alt/Symbol/Emoji popup below the held key instead of stacking it above.</string>
     <string name="software_keyboard_modifier_keys_title">Bottom-row modifier keys</string>
     <string name="software_keyboard_left_modifier_key_title">Left key</string>
     <string name="software_keyboard_right_modifier_key_title">Right key</string>

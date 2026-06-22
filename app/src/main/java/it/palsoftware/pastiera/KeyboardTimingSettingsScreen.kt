@@ -470,6 +470,12 @@ private fun VirtualKeyboardBehaviorSettingsScreen(
     var nearestKeyTouchEnabled by remember {
         mutableStateOf(SettingsManager.getSoftwareKeyboardNearestKeyTouchEnabled(context))
     }
+    var longPressLayerPopupEnabled by remember {
+        mutableStateOf(SettingsManager.getSoftwareKeyboardLongPressLayerPopupEnabled(context))
+    }
+    var longPressLayerPopupBelowKey by remember {
+        mutableStateOf(SettingsManager.getSoftwareKeyboardLongPressLayerPopupBelowKey(context))
+    }
     var softwareKeyboardModeToggleToastsEnabled by remember {
         mutableStateOf(SettingsManager.getSoftwareKeyboardModeToggleToastsEnabled(context))
     }
@@ -502,6 +508,14 @@ private fun VirtualKeyboardBehaviorSettingsScreen(
                 }
                 "software_keyboard_right_modifier_key" -> {
                     rightModifierKey = SettingsManager.getSoftwareKeyboardRightModifierKey(context)
+                }
+                "software_keyboard_long_press_layer_popup_enabled" -> {
+                    longPressLayerPopupEnabled =
+                        SettingsManager.getSoftwareKeyboardLongPressLayerPopupEnabled(context)
+                }
+                "software_keyboard_long_press_layer_popup_below_key" -> {
+                    longPressLayerPopupBelowKey =
+                        SettingsManager.getSoftwareKeyboardLongPressLayerPopupBelowKey(context)
                 }
             }
         }
@@ -797,6 +811,29 @@ private fun VirtualKeyboardBehaviorSettingsScreen(
                     SettingsManager.setSoftwareKeyboardNearestKeyTouchEnabled(context, enabled)
                 }
             )
+
+            ModifierTapLatchRow(
+                title = stringResource(R.string.software_keyboard_long_press_layer_popup_title),
+                description = stringResource(R.string.software_keyboard_long_press_layer_popup_description),
+                checked = longPressLayerPopupEnabled,
+                onCheckedChange = { enabled ->
+                    longPressLayerPopupEnabled = enabled
+                    SettingsManager.setSoftwareKeyboardLongPressLayerPopupEnabled(context, enabled)
+                }
+            )
+
+            if (longPressLayerPopupEnabled) {
+                ModifierTapLatchRow(
+                    title = stringResource(R.string.software_keyboard_long_press_layer_popup_below_key_title),
+                    description = stringResource(R.string.software_keyboard_long_press_layer_popup_below_key_description),
+                    checked = longPressLayerPopupBelowKey,
+                    indent = true,
+                    onCheckedChange = { enabled ->
+                        longPressLayerPopupBelowKey = enabled
+                        SettingsManager.setSoftwareKeyboardLongPressLayerPopupBelowKey(context, enabled)
+                    }
+                )
+            }
 
             Text(
                 text = stringResource(R.string.software_keyboard_modifier_keys_title),

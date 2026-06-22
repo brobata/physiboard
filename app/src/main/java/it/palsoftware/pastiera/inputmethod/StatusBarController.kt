@@ -24,6 +24,7 @@ import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.MainActivity
 import it.palsoftware.pastiera.SymCustomizationActivity
 import it.palsoftware.pastiera.SettingsManager
+import it.palsoftware.pastiera.SymPagesConfig
 import it.palsoftware.pastiera.data.layout.LayoutFileStore
 import it.palsoftware.pastiera.data.mappings.KeyMappingLoader
 import it.palsoftware.pastiera.data.variation.VariationRepository
@@ -1277,6 +1278,14 @@ class StatusBarController(
         keyboardView.longPressAlternatesProvider = { output ->
             resolveSoftwareKeyboardLongPressAlternates(output, snapshot)
         }
+        keyboardView.longPressHintProvider = { output ->
+            resolveSoftwareKeyboardAltLongPressHint(output)
+        }
+        keyboardView.longPressLayerAlternatesProvider = { output ->
+            resolveSoftwareKeyboardLongPressLayerAlternates(output)
+        }
+        keyboardView.longPressLayerPopupBelowKey =
+            SettingsManager.getSoftwareKeyboardLongPressLayerPopupBelowKey(context)
         keyboardView.themeOverride = softwareTheme().toAospThemeOverride()
         (keyboardView.layoutParams as? LinearLayout.LayoutParams)?.let { params ->
             if (
@@ -1357,11 +1366,7 @@ class StatusBarController(
             "shift" -> listOf(output.uppercase()).filter { it != output }
             "sym" -> {
                 val useEmojiFirst = SettingsManager.getSymPagesConfig(context).prefersEmojiLongPressLayer()
-                val map = if (useEmojiFirst) {
-                    KeyMappingLoader.loadSymKeyMappings(context.assets)
-                } else {
-                    KeyMappingLoader.loadSymKeyMappingsPage2(context.assets)
-                }
+                val map = softwareKeyboardLongPressSymMappings(if (useEmojiFirst) 1 else 2)
                 map[keyCode]?.let(::listOf).orEmpty()
             }
             "variations" -> {
@@ -1373,6 +1378,49 @@ class StatusBarController(
                 variations[baseChar] ?: variations[baseChar.lowercaseChar()] ?: emptyList()
             }
             else -> emptyList()
+        }
+    }
+
+    private fun resolveSoftwareKeyboardAltLongPressHint(output: String): String? {
+        if (output.isEmpty()) return null
+        val keyCode = SoftwareKeyboardSymLabels.keyCodeForChar(output.first()) ?: return null
+        return KeyMappingLoader.loadAltKeyMappings(context.assets, context)[keyCode]
+    }
+
+    private fun resolveSoftwareKeyboardLongPressLayerAlternates(
+        output: String
+    ): List<AospKeyboardView.LongPressLayerAlternative> {
+        if (!SettingsManager.getSoftwareKeyboardLongPressLayerPopupEnabled(context) || output.isEmpty()) {
+            return emptyList()
+        }
+        val keyCode = SoftwareKeyboardSymLabels.keyCodeForChar(output.first()) ?: return emptyList()
+        val alternatives = mutableListOf<AospKeyboardView.LongPressLayerAlternative>()
+        KeyMappingLoader.loadAltKeyMappings(context.assets, context)[keyCode]?.takeIf { it.isNotBlank() }?.let { alt ->
+            alternatives += AospKeyboardView.LongPressLayerAlternative(label = alt, output = alt)
+        }
+        SettingsManager.getSymPagesConfig(context)
+            .normalizedOrder()
+            .filter { it == SymPagesConfig.PAGE_EMOJI || it == SymPagesConfig.PAGE_SYMBOLS }
+            .forEach { page ->
+                val mapping = when (page) {
+                    SymPagesConfig.PAGE_EMOJI -> softwareKeyboardLongPressSymMappings(1)
+                    SymPagesConfig.PAGE_SYMBOLS -> softwareKeyboardLongPressSymMappings(2)
+                    else -> emptyMap()
+                }
+                mapping[keyCode]?.takeIf { it.isNotBlank() }?.let { value ->
+                    alternatives += AospKeyboardView.LongPressLayerAlternative(label = value, output = value)
+                }
+            }
+        return alternatives.distinctBy { it.output }
+    }
+
+    private fun softwareKeyboardLongPressSymMappings(page: Int): Map<Int, String> {
+        return when (page) {
+            1 -> SettingsManager.getSymMappings(context).takeIf { it.isNotEmpty() }
+                ?: KeyMappingLoader.loadSymKeyMappings(context.assets)
+            2 -> SettingsManager.getSymMappingsPage2(context).takeIf { it.isNotEmpty() }
+                ?: KeyMappingLoader.loadSymKeyMappingsPage2(context.assets)
+            else -> emptyMap()
         }
     }
 

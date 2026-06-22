@@ -107,6 +107,8 @@ object SettingsManager {
     private const val KEY_SOFTWARE_KEYBOARD_NEAREST_KEY_TOUCH_ENABLED = "software_keyboard_nearest_key_touch_enabled"
     private const val KEY_SOFTWARE_KEYBOARD_LEFT_MODIFIER_KEY = "software_keyboard_left_modifier_key"
     private const val KEY_SOFTWARE_KEYBOARD_RIGHT_MODIFIER_KEY = "software_keyboard_right_modifier_key"
+    private const val KEY_SOFTWARE_KEYBOARD_LONG_PRESS_LAYER_POPUP_ENABLED = "software_keyboard_long_press_layer_popup_enabled"
+    private const val KEY_SOFTWARE_KEYBOARD_LONG_PRESS_LAYER_POPUP_BELOW_KEY = "software_keyboard_long_press_layer_popup_below_key"
     private const val KEY_TITAN2_LAYOUT_ENABLED = "titan2_layout_enabled" // Align OSK with Titan 2 physical layout
     private const val KEY_ACCESSIBILITY_LIVE_ANNOUNCEMENTS_ENABLED = "accessibility_live_announcements_enabled" // Whether status bar accessibility live announcements are enabled
     private const val KEY_ACCESSIBILITY_READ_SECOND_ROW_ENABLED = "accessibility_read_second_row_enabled" // Whether TalkBack should read quick settings/variations row
@@ -246,6 +248,8 @@ object SettingsManager {
     private const val DEFAULT_TOAST_ON_LAYOUT_SWITCH = true
     private const val KEY_SOFTWARE_KEYBOARD_MODE_TOGGLE_TOASTS = "software_keyboard_mode_toggle_toasts"
     private const val DEFAULT_SOFTWARE_KEYBOARD_MODE_TOGGLE_TOASTS = true
+    private const val DEFAULT_SOFTWARE_KEYBOARD_LONG_PRESS_LAYER_POPUP_ENABLED = true
+    private const val DEFAULT_SOFTWARE_KEYBOARD_LONG_PRESS_LAYER_POPUP_BELOW_KEY = true
     private const val DEFAULT_PHYSICAL_KEYBOARD_PROFILE_OVERRIDE = "auto"
     private const val DEFAULT_PHYSICAL_KEYBOARD_CURRENCY_SYMBOL = "€"
     private const val DEFAULT_SYM_AUTO_CLOSE = true
@@ -505,6 +509,30 @@ object SettingsManager {
     fun setSoftwareKeyboardNearestKeyTouchEnabled(context: Context, enabled: Boolean) {
         getPreferences(context).edit()
             .putBoolean(KEY_SOFTWARE_KEYBOARD_NEAREST_KEY_TOUCH_ENABLED, enabled)
+            .apply()
+    }
+
+    fun getSoftwareKeyboardLongPressLayerPopupEnabled(context: Context): Boolean =
+        getPreferences(context).getBoolean(
+            KEY_SOFTWARE_KEYBOARD_LONG_PRESS_LAYER_POPUP_ENABLED,
+            DEFAULT_SOFTWARE_KEYBOARD_LONG_PRESS_LAYER_POPUP_ENABLED
+        )
+
+    fun setSoftwareKeyboardLongPressLayerPopupEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_SOFTWARE_KEYBOARD_LONG_PRESS_LAYER_POPUP_ENABLED, enabled)
+            .apply()
+    }
+
+    fun getSoftwareKeyboardLongPressLayerPopupBelowKey(context: Context): Boolean =
+        getPreferences(context).getBoolean(
+            KEY_SOFTWARE_KEYBOARD_LONG_PRESS_LAYER_POPUP_BELOW_KEY,
+            DEFAULT_SOFTWARE_KEYBOARD_LONG_PRESS_LAYER_POPUP_BELOW_KEY
+        )
+
+    fun setSoftwareKeyboardLongPressLayerPopupBelowKey(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_SOFTWARE_KEYBOARD_LONG_PRESS_LAYER_POPUP_BELOW_KEY, enabled)
             .apply()
     }
 
