@@ -65,7 +65,7 @@ class VariationBarView(
         private const val TAG = "VariationBarView"
         private const val SWIPE_HINT_SHOW_DELAY_MS = 1000L
         private const val BASE_HEIGHT_DP = 55f
-        private const val BASE_VERTICAL_PADDING_DP = 8f
+        private const val BASE_VERTICAL_PADDING_DP = 4f
     }
 
     var onVariationSelectedListener: VariationButtonHandler.OnVariationSelectedListener? = null
@@ -184,7 +184,7 @@ class VariationBarView(
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.START or Gravity.CENTER_VERTICAL
             setPadding(leftPadding, variationsVerticalPadding, rightPadding, variationsVerticalPadding)
-            layoutParams = LinearLayout.LayoutParams(
+            layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 variationsContainerHeight
             )
@@ -255,20 +255,25 @@ class VariationBarView(
     private fun verticalPaddingPx(): Int =
         TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP,
-            BASE_VERTICAL_PADDING_DP * (themeOverride?.variationsHeightScale ?: 1f).coerceIn(0.65f, 1.6f),
+            BASE_VERTICAL_PADDING_DP * min(
+                (themeOverride?.variationsHeightScale ?: 1f).coerceIn(0.65f, 1.6f),
+                1f
+            ),
             context.resources.displayMetrics
         ).toInt()
 
     private fun applyHeight() {
         val height = targetHeightPx()
         val verticalPadding = verticalPaddingPx()
+        var geometryChanged = false
         container?.let { view ->
-            val params = (view.layoutParams as? LinearLayout.LayoutParams)
-                ?: LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height)
+            val params = (view.layoutParams as? FrameLayout.LayoutParams)
+                ?: FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height)
             if (params.height != height || params.width != ViewGroup.LayoutParams.MATCH_PARENT) {
                 params.width = ViewGroup.LayoutParams.MATCH_PARENT
                 params.height = height
                 view.layoutParams = params
+                geometryChanged = true
             }
             view.setPadding(view.paddingLeft, verticalPadding, view.paddingRight, verticalPadding)
         }
@@ -279,7 +284,13 @@ class VariationBarView(
                 params.width = ViewGroup.LayoutParams.MATCH_PARENT
                 params.height = height
                 view.layoutParams = params
+                geometryChanged = true
             }
+        }
+        if (geometryChanged) {
+            lastDisplayedVariations = emptyList()
+            lastIsStaticContent = null
+            lastVariationAreaVisible = null
         }
     }
 

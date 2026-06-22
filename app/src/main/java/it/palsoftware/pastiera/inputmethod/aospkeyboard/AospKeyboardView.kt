@@ -350,7 +350,8 @@ class AospKeyboardView @JvmOverloads constructor(
 
     private val gapPx = dp(2f)
     private val horizontalPaddingPx = 0
-    private val verticalPaddingPx = 0
+    private val verticalPaddingPx: Int
+        get() = gapPx
     private val preferredKeyHeightPx: Int
         get() = (dp(50f) * (themeOverride?.keyHeightScale ?: 1f).coerceIn(0.72f, 1.9f)).toInt()
     private val preferredNumberRowHeightPx: Int
@@ -366,10 +367,14 @@ class AospKeyboardView @JvmOverloads constructor(
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val width = MeasureSpec.getSize(widthMeasureSpec)
-        val rowCount = keyboardRowCount()
-        val desiredHeight = verticalPaddingPx * 2 + rowHeights(rowCount).sum() + rowGapPx * (rowCount - 1)
+        val desiredHeight = preferredKeyboardHeightPx()
         val resolvedHeight = resolveSize(desiredHeight, heightMeasureSpec)
         setMeasuredDimension(width, resolvedHeight)
+    }
+
+    fun preferredKeyboardHeightPx(): Int {
+        val rowCount = keyboardRowCount()
+        return verticalPaddingPx * 2 + rowHeights(rowCount).sum() + rowGapPx * (rowCount - 1)
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -671,7 +676,9 @@ class AospKeyboardView @JvmOverloads constructor(
 
     private fun rebuildKeys(viewWidth: Int, viewHeight: Int) {
         keys.clear()
-        if (viewWidth <= 0 || viewHeight <= 0) return
+        if (viewWidth <= 0 || viewHeight <= 0) {
+            return
+        }
         val theme = themeOverride
         val keyWidthScale = (theme?.keyWidthScale ?: 1f).coerceIn(0.72f, 1.12f)
         val totalWidthScale = if (theme?.distributeHorizontalSpacing == false) keyWidthScale else 1f
@@ -682,10 +689,11 @@ class AospKeyboardView @JvmOverloads constructor(
         val rowCount = rows.size.coerceAtLeast(1)
         val desiredRowHeights = rowHeights(rowCount).map { it.toFloat() }
         val availableHeight = viewHeight - verticalPaddingPx * 2 - rowGapPx * (rowCount - 1)
-        val heightScale = availableHeight / desiredRowHeights.sum().coerceAtLeast(1f)
+        val heightScale = minOf(1f, availableHeight / desiredRowHeights.sum().coerceAtLeast(1f))
         var y = verticalPaddingPx.toFloat()
         rows.forEachIndexed { rowIndex, row ->
             val rowHeight = desiredRowHeights.getOrElse(rowIndex) { preferredKeyHeightPx.toFloat() } * heightScale
+            val visualVerticalInset = minOf(gapPx / 2f, rowHeight / 4f)
             row.forEach { spec ->
                 val rawLeft = horizontalOffset + usableWidth * (spec.xPercent / 100f)
                 val rawRight = horizontalOffset + usableWidth * ((spec.xPercent + spec.widthPercent) / 100f)
@@ -693,9 +701,9 @@ class AospKeyboardView @JvmOverloads constructor(
                 val visualInset = hit.width() * (1f - visualWidthScale) / 2f
                 val visual = RectF(
                     hit.left + gapPx / 2f + visualInset + usableWidth * (spec.visualInsetLeftPercent / 100f),
-                    hit.top,
+                    hit.top + visualVerticalInset,
                     hit.right - gapPx / 2f - visualInset - usableWidth * (spec.visualInsetRightPercent / 100f),
-                    hit.bottom
+                    hit.bottom - visualVerticalInset
                 )
                 keys.add(Key(spec, hit, visual))
             }

@@ -45,9 +45,6 @@ internal const val SOFTWARE_THEME_DEFAULT_KEY_HEIGHT = 1.5489256f
 internal const val SOFTWARE_THEME_DEFAULT_NUMBER_ROW_HEIGHT = 0.8f
 internal const val SOFTWARE_THEME_DEFAULT_ROW_GAP = 0.47933885f
 internal const val SOFTWARE_THEME_DEFAULT_SUGGESTIONS_HEIGHT = 0.8982954f
-// Temporary safe default: the actual SW keyboard currently depends on this row height
-// not stealing pixels from the AOSP surface. Revisit the full chrome/surface measurement
-// path before making Variations height freely editable again.
 internal const val SOFTWARE_THEME_DEFAULT_VARIATIONS_HEIGHT = 0.95914257f
 
 internal fun KeyboardThemePreset.withSoftwareKeyboardDefaults(): KeyboardThemePreset =

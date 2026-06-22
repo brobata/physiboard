@@ -1,8 +1,6 @@
 package it.palsoftware.pastiera
 
 import android.graphics.Color as AndroidColor
-import android.view.ViewGroup
-import android.widget.LinearLayout
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -73,18 +71,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import it.palsoftware.pastiera.data.mappings.KeyMappingLoader
-import it.palsoftware.pastiera.inputmethod.aospkeyboard.AospKeyboardView
-import it.palsoftware.pastiera.inputmethod.aospkeyboard.SoftwareKeyboardLayoutTemplates
-import it.palsoftware.pastiera.inputmethod.aospkeyboard.SoftwareKeyboardSymLabels
-import it.palsoftware.pastiera.inputmethod.StatusBarController
-import it.palsoftware.pastiera.inputmethod.suggestions.ui.FullSuggestionsBar
-import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonRegistry
-import it.palsoftware.pastiera.inputmethod.ui.LedStatusView
-import it.palsoftware.pastiera.inputmethod.ui.VariationBarView
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.atan2
@@ -136,6 +124,9 @@ fun KeyboardThemeScreen(
     var softwareTheme by remember { mutableStateOf(softwarePreset) }
     var hardwareSelectionKey by remember { mutableStateOf(matchKeyboardThemeOption(hardwareThemeOptions, initialHardwarePreset) ?: "custom:hardware") }
     var softwareSelectionKey by remember { mutableStateOf(matchKeyboardThemeOption(softwareThemeOptions, initialSoftwarePreset) ?: "custom:software") }
+    var softwarePreviewViewportScale by remember {
+        mutableStateOf(SettingsManager.getKeyboardThemePreviewViewportScale(context))
+    }
     var exportTheme by remember { mutableStateOf<KeyboardThemePreset?>(null) }
     var showImportDialog by remember { mutableStateOf(false) }
     var showSaveAsDialog by remember { mutableStateOf(false) }
@@ -293,6 +284,20 @@ fun KeyboardThemeScreen(
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(start = 16.dp, top = 6.dp, end = 16.dp)
             )
+            if (previewPagerState.currentPage == 1) {
+                KeyboardThemeSliderRow(
+                    label = "Preview max viewport",
+                    value = softwarePreviewViewportScale,
+                    presetValue = SettingsManager.KEYBOARD_THEME_PREVIEW_VIEWPORT_SCALE_MIN,
+                    valueRange = SettingsManager.KEYBOARD_THEME_PREVIEW_VIEWPORT_SCALE_MIN..
+                        SettingsManager.KEYBOARD_THEME_PREVIEW_VIEWPORT_SCALE_MAX,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    onValueChanged = { value ->
+                        softwarePreviewViewportScale = value
+                        SettingsManager.setKeyboardThemePreviewViewportScale(context, value)
+                    }
+                )
+            }
             KeyboardThemePreviewCarousel(
                 theme = if (previewPagerState.currentPage == 0) hardwareTheme else softwareTheme,
                 currentPage = previewPagerState.currentPage,
@@ -303,7 +308,10 @@ fun KeyboardThemeScreen(
                     ) { page ->
                         when (page) {
                             0 -> HardwareKeyboardThemePreview(theme = hardwareTheme)
-                            else -> VirtualKeyboardThemePreview(theme = softwareTheme)
+                            else -> VirtualKeyboardThemePreview(
+                                theme = softwareTheme,
+                                viewportScale = softwarePreviewViewportScale
+                            )
                         }
                     }
                 }
@@ -757,7 +765,6 @@ private fun KeyboardThemeKeysEditor(
             value = theme.variationsHeightScale,
             presetValue = preset.variationsHeightScale,
             valueRange = 0.65f..1.6f,
-            enabled = false,
             onValueChanged = { onThemeChanged(theme.copy(variationsHeightScale = it)) }
         )
         if (isSoftware) {
@@ -857,6 +864,16 @@ private fun KeyboardThemePreviewCarousel(
     currentPage: Int,
     pageContent: @Composable () -> Unit
 ) {
+    if (currentPage == 1) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(theme.background))
+        ) {
+            pageContent()
+        }
+        return
+    }
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
@@ -888,466 +905,6 @@ private fun KeyboardThemePreviewCarousel(
             }
         }
     }
-}
-
-@Composable
-private fun HardwareKeyboardThemePreview(theme: KeyboardThemePreset) {
-    AndroidView(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(hardwareKeyboardPreviewHeightDp(theme).dp),
-        factory = { context -> createHardwareKeyboardThemePreviewView(context, theme) },
-        update = { view -> updateHardwareKeyboardThemePreviewView(view, theme) }
-    )
-}
-
-@Composable
-private fun PreviewHardwareSuggestion(label: String, theme: KeyboardThemePreset, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .height(42.dp)
-            .background(Color(theme.background)),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.titleMedium,
-            color = Color(theme.textAndIcons),
-            maxLines = 1
-        )
-    }
-}
-
-@Composable
-private fun PreviewHardwareSymbolKey(label: String, theme: KeyboardThemePreset, modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier.height(44.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        PreviewVerticalDivider(theme)
-        Box(
-            modifier = Modifier.weight(1f),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = Color(theme.textAndIcons),
-                maxLines = 1
-            )
-        }
-    }
-}
-
-@Composable
-private fun PreviewHardwareActionKey(label: String, theme: KeyboardThemePreset, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .height(44.dp)
-            .padding(horizontal = 2.dp)
-            .background(Color(theme.specialKey), MaterialTheme.shapes.small)
-            .border(1.dp, Color(theme.divider), MaterialTheme.shapes.small),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.titleLarge,
-            color = Color(theme.textAndIcons),
-            maxLines = 1
-        )
-    }
-}
-
-@Composable
-private fun PreviewVerticalDivider(theme: KeyboardThemePreset) {
-    Box(
-        modifier = Modifier
-            .width(1.dp)
-            .height(34.dp)
-            .background(Color(theme.divider))
-    )
-}
-
-@Composable
-private fun PreviewLedStrip(color: Int, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .height(6.dp)
-            .background(Color(color), MaterialTheme.shapes.extraSmall)
-    )
-}
-
-private fun createHardwareKeyboardThemePreviewView(
-    context: android.content.Context,
-    theme: KeyboardThemePreset
-): LinearLayout {
-    val root = LinearLayout(context).apply {
-        orientation = LinearLayout.VERTICAL
-        setBackgroundColor(theme.background)
-        layoutParams = LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        )
-    }
-    val suggestionsBar = FullSuggestionsBar(context).apply {
-        themeOverride = theme.toKeyboardThemeColors()
-    }
-    root.addView(suggestionsBar.ensureView())
-    suggestionsBar.showPreview(listOf("Werk", "Team", "Park"))
-
-    val registry = StatusBarButtonRegistry()
-    val variationBar = VariationBarView(context, buttonRegistry = registry).apply {
-        themeOverride = theme.toKeyboardThemeColors()
-    }
-    root.addView(variationBar.ensureView())
-    variationBar.showVariations(
-        StatusBarController.StatusSnapshot(
-            capsLockEnabled = false,
-            shiftPhysicallyPressed = false,
-            shiftOneShot = false,
-            ctrlLatchActive = true,
-            ctrlPhysicallyPressed = false,
-            ctrlOneShot = false,
-            ctrlLatchFromNavMode = true,
-            altLatchActive = false,
-            altPhysicallyPressed = false,
-            altOneShot = false,
-            symPage = 1,
-            clipboardCount = 2,
-            variations = listOf("@", "\"", ":", "!", "?", ",", ".")
-        ),
-        inputConnection = null
-    )
-
-    val leds = LedStatusView(context).apply {
-        themeOverride = theme.toKeyboardThemeColors()
-    }
-    root.addView(leds.ensureView())
-    leds.update(
-        StatusBarController.StatusSnapshot(
-            capsLockEnabled = false,
-            shiftPhysicallyPressed = true,
-            shiftOneShot = false,
-            ctrlLatchActive = true,
-            ctrlPhysicallyPressed = false,
-            ctrlOneShot = false,
-            ctrlLatchFromNavMode = true,
-            altLatchActive = false,
-            altPhysicallyPressed = false,
-            altOneShot = false,
-            symPage = 2
-        )
-    )
-    root.setTag(R.id.keyboard_theme_preview_suggestions_bar, suggestionsBar)
-    root.setTag(R.id.keyboard_theme_preview_variation_bar, variationBar)
-    root.setTag(R.id.keyboard_theme_preview_led_view, leds)
-    return root
-}
-
-private fun updateHardwareKeyboardThemePreviewView(view: android.view.View, theme: KeyboardThemePreset) {
-    view.setBackgroundColor(theme.background)
-    val colors = theme.toKeyboardThemeColors()
-    (view.getTag(R.id.keyboard_theme_preview_suggestions_bar) as? FullSuggestionsBar)?.apply {
-        themeOverride = colors
-        showPreview(listOf("Werk", "Team", "Park"))
-    }
-    (view.getTag(R.id.keyboard_theme_preview_variation_bar) as? VariationBarView)?.apply {
-        themeOverride = colors
-        resetVariationsState()
-        showVariations(
-            StatusBarController.StatusSnapshot(
-                capsLockEnabled = false,
-                shiftPhysicallyPressed = false,
-                shiftOneShot = false,
-                ctrlLatchActive = true,
-                ctrlPhysicallyPressed = false,
-                ctrlOneShot = false,
-                ctrlLatchFromNavMode = true,
-                altLatchActive = false,
-                altPhysicallyPressed = false,
-                altOneShot = false,
-                symPage = 1,
-                clipboardCount = 2,
-                variations = listOf("@", "\"", ":", "!", "?", ",", ".")
-            ),
-            inputConnection = null
-        )
-    }
-    (view.getTag(R.id.keyboard_theme_preview_led_view) as? LedStatusView)?.apply {
-        themeOverride = colors
-        update(
-            StatusBarController.StatusSnapshot(
-                capsLockEnabled = false,
-                shiftPhysicallyPressed = true,
-                shiftOneShot = false,
-                ctrlLatchActive = true,
-                ctrlPhysicallyPressed = false,
-                ctrlOneShot = false,
-                ctrlLatchFromNavMode = true,
-                altLatchActive = false,
-                altPhysicallyPressed = false,
-                altOneShot = false,
-                symPage = 2
-            )
-        )
-    }
-}
-
-@Composable
-private fun VirtualKeyboardThemePreview(theme: KeyboardThemePreset) {
-    AndroidView(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(virtualKeyboardPreviewTotalHeightDp(LocalContext.current, theme).dp),
-        factory = { context -> createVirtualKeyboardThemePreviewView(context, theme) },
-        update = { view -> updateVirtualKeyboardThemePreviewView(view, theme) }
-    )
-}
-
-private fun createVirtualKeyboardThemePreviewView(
-    context: android.content.Context,
-    theme: KeyboardThemePreset
-): LinearLayout {
-    val colors = theme.toKeyboardThemeColors()
-    val root = LinearLayout(context).apply {
-        orientation = LinearLayout.VERTICAL
-        setBackgroundColor(theme.background)
-        layoutParams = LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        )
-    }
-
-    val suggestionsBar = FullSuggestionsBar(context).apply {
-        themeOverride = colors
-        requireDictionaryForSuggestions = false
-    }
-    root.addView(suggestionsBar.ensureView())
-    suggestionsBar.showPreview(listOf("Werk", "Team", "Park"))
-
-    val variationBar = VariationBarView(context, buttonRegistry = StatusBarButtonRegistry()).apply {
-        themeOverride = colors
-        forceVariationAreaVisible = true
-    }
-    root.addView(variationBar.ensureView())
-    showVirtualPreviewVariations(variationBar)
-
-    val keyboardView = AospKeyboardView(context).apply {
-        layoutName = SettingsManager.getKeyboardLayout(context)
-        layoutStyle = softwareKeyboardPreviewLayoutStyle(context)
-        includeNumberRow = SettingsManager.getSoftwareKeyboardNumberRowEnabled(context)
-        shifted = false
-        spacebarLabel = "space"
-        themeOverride = theme.toAospThemeOverride()
-        applyVirtualKeyboardSymPreviewState(context)
-    }
-    root.addView(
-        keyboardView,
-        LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            dpToPx(context, virtualKeyboardPreviewHeightDp(context, theme))
-        )
-    )
-
-    val leds = LedStatusView(context).apply {
-        themeOverride = colors
-    }
-    root.addView(leds.ensureView())
-    leds.getView()?.visibility = if (theme.showLeds) android.view.View.VISIBLE else android.view.View.GONE
-    leds.update(virtualPreviewLedSnapshot())
-
-    root.setTag(R.id.keyboard_theme_preview_suggestions_bar, suggestionsBar)
-    root.setTag(R.id.keyboard_theme_preview_variation_bar, variationBar)
-    root.setTag(R.id.keyboard_theme_preview_aosp_keyboard, keyboardView)
-    root.setTag(R.id.keyboard_theme_preview_led_view, leds)
-    return root
-}
-
-private fun updateVirtualKeyboardThemePreviewView(view: android.view.View, theme: KeyboardThemePreset) {
-    val root = view as? LinearLayout ?: return
-    val colors = theme.toKeyboardThemeColors()
-    root.setBackgroundColor(theme.background)
-    (root.getTag(R.id.keyboard_theme_preview_suggestions_bar) as? FullSuggestionsBar)?.apply {
-        themeOverride = colors
-        requireDictionaryForSuggestions = false
-        showPreview(listOf("Werk", "Team", "Park"))
-    }
-    (root.getTag(R.id.keyboard_theme_preview_variation_bar) as? VariationBarView)?.apply {
-        themeOverride = colors
-        forceVariationAreaVisible = true
-        resetVariationsState()
-        showVirtualPreviewVariations(this)
-    }
-    (root.getTag(R.id.keyboard_theme_preview_aosp_keyboard) as? AospKeyboardView)?.apply {
-        layoutName = SettingsManager.getKeyboardLayout(context)
-        layoutStyle = softwareKeyboardPreviewLayoutStyle(context)
-        includeNumberRow = SettingsManager.getSoftwareKeyboardNumberRowEnabled(context)
-        themeOverride = theme.toAospThemeOverride()
-        applyVirtualKeyboardSymPreviewState(context)
-        layoutParams = (layoutParams as? LinearLayout.LayoutParams)?.apply {
-            height = dpToPx(context, virtualKeyboardPreviewHeightDp(context, theme))
-        } ?: LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            dpToPx(context, virtualKeyboardPreviewHeightDp(context, theme))
-        )
-    }
-    (root.getTag(R.id.keyboard_theme_preview_led_view) as? LedStatusView)?.apply {
-        themeOverride = colors
-        getView()?.visibility = if (theme.showLeds) android.view.View.VISIBLE else android.view.View.GONE
-        update(virtualPreviewLedSnapshot())
-    }
-}
-
-private fun AospKeyboardView.applyVirtualKeyboardSymPreviewState(context: android.content.Context) {
-    val page = SettingsManager.getPreferences(context).getInt("current_sym_page", 0)
-    symPageActive = page in 1..2
-    if (page !in 1..2) {
-        symPageLabels = emptyMap()
-        symPageTextLabels = emptyMap()
-        return
-    }
-    val mappings = when (page) {
-        1 -> SettingsManager.getSymMappings(context).takeIf { it.isNotEmpty() }
-            ?: KeyMappingLoader.loadSymKeyMappings(context.assets)
-        2 -> SettingsManager.getSymMappingsPage2(context).takeIf { it.isNotEmpty() }
-            ?: KeyMappingLoader.loadSymKeyMappingsPage2(context.assets)
-        else -> emptyMap()
-    }
-    val layout = SettingsManager.getKeyboardLayout(context)
-    val style = softwareKeyboardPreviewLayoutStyle(context)
-    symPageLabels = mappings
-    symPageTextLabels = SoftwareKeyboardSymLabels.buildContentByChar(
-        page = page,
-        rows = SoftwareKeyboardLayoutTemplates.rowTemplateFor(layout, style),
-        symMappings = mappings
-    ).mapKeys { (char, _) -> char.toString() }
-}
-
-private fun softwareKeyboardPreviewLayoutStyle(context: android.content.Context): AospKeyboardView.SoftwareLayoutStyle =
-    when (SettingsManager.getSoftwareKeyboardLayoutStyle(context)) {
-        SettingsManager.SoftwareKeyboardLayoutStyle.COMPACT -> AospKeyboardView.SoftwareLayoutStyle.COMPACT
-        SettingsManager.SoftwareKeyboardLayoutStyle.EXTENDED_ISO -> AospKeyboardView.SoftwareLayoutStyle.EXTENDED_ISO
-        SettingsManager.SoftwareKeyboardLayoutStyle.FULL_ANSI -> AospKeyboardView.SoftwareLayoutStyle.FULL_ANSI
-        SettingsManager.SoftwareKeyboardLayoutStyle.FULL_ISO -> AospKeyboardView.SoftwareLayoutStyle.FULL_ISO
-    }
-
-private fun virtualKeyboardPreviewHeightDp(context: android.content.Context, theme: KeyboardThemePreset): Float {
-    val mainRows = 4f
-    val mainRowsHeight = 41f * mainRows * theme.keyHeightScale.coerceIn(0.72f, 1.9f)
-    val numberRowHeight = if (SettingsManager.getSoftwareKeyboardNumberRowEnabled(context)) {
-        41f * theme.numberRowHeightScale.coerceIn(0.45f, 1.4f)
-    } else {
-        0f
-    }
-    return mainRowsHeight + numberRowHeight
-}
-
-private fun hardwareKeyboardPreviewHeightDp(theme: KeyboardThemePreset): Float =
-    suggestionsPreviewHeightDp(theme) + variationsPreviewHeightDp(theme) + 12f
-
-private fun virtualKeyboardPreviewTotalHeightDp(
-    context: android.content.Context,
-    theme: KeyboardThemePreset
-): Float =
-    suggestionsPreviewHeightDp(theme) +
-        variationsPreviewHeightDp(theme) +
-        virtualKeyboardPreviewHeightDp(context, theme) +
-        if (theme.showLeds) 12f else 0f
-
-private fun suggestionsPreviewHeightDp(theme: KeyboardThemePreset): Float =
-    36f * theme.suggestionsHeightScale.coerceIn(0.65f, 1.6f)
-
-private fun variationsPreviewHeightDp(theme: KeyboardThemePreset): Float =
-    55f * theme.variationsHeightScale.coerceIn(0.65f, 1.6f)
-
-private fun showVirtualPreviewVariations(variationBar: VariationBarView) {
-    variationBar.showVariations(
-        StatusBarController.StatusSnapshot(
-            capsLockEnabled = false,
-            shiftPhysicallyPressed = false,
-            shiftOneShot = false,
-            ctrlLatchActive = false,
-            ctrlPhysicallyPressed = false,
-            ctrlOneShot = false,
-            ctrlLatchFromNavMode = false,
-            altLatchActive = false,
-            altPhysicallyPressed = false,
-            altOneShot = false,
-            symPage = 0,
-            clipboardCount = 2,
-            variations = listOf("@", "\"", ":", "!", "?", ",", ".")
-        ),
-        inputConnection = null
-    )
-}
-
-private fun virtualPreviewLedSnapshot(): StatusBarController.StatusSnapshot =
-    StatusBarController.StatusSnapshot(
-        capsLockEnabled = false,
-        shiftPhysicallyPressed = true,
-        shiftOneShot = false,
-        ctrlLatchActive = false,
-        ctrlPhysicallyPressed = false,
-        ctrlOneShot = false,
-        ctrlLatchFromNavMode = false,
-        altLatchActive = false,
-        altPhysicallyPressed = false,
-        altOneShot = false,
-        symPage = 0
-    )
-
-private fun dpToPx(context: android.content.Context, dp: Float): Int {
-    return android.util.TypedValue.applyDimension(
-        android.util.TypedValue.COMPLEX_UNIT_DIP,
-        dp,
-        context.resources.displayMetrics
-    ).toInt()
-}
-
-@Composable
-private fun PreviewNormalKey(label: String, theme: KeyboardThemePreset, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .height(42.dp)
-            .background(Color(theme.normalKey), MaterialTheme.shapes.extraSmall)
-            .border(1.dp, Color(theme.divider), MaterialTheme.shapes.extraSmall),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.titleMedium,
-            color = Color(theme.textAndIcons),
-            maxLines = 1
-        )
-    }
-}
-
-@Composable
-private fun PreviewSpecialKey(label: String, theme: KeyboardThemePreset, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .height(42.dp)
-            .background(Color(theme.specialKey), MaterialTheme.shapes.extraSmall)
-            .border(1.dp, Color(theme.divider), MaterialTheme.shapes.extraSmall),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.titleMedium,
-            color = Color(theme.textAndIcons),
-            maxLines = 1
-        )
-    }
-}
-
-@Composable
-private fun PreviewLed(color: Int) {
-    Box(
-        modifier = Modifier
-            .size(width = 12.dp, height = 24.dp)
-            .background(Color(color), MaterialTheme.shapes.extraSmall)
-    )
 }
 
 @Composable
@@ -1406,10 +963,11 @@ private fun KeyboardThemeSliderRow(
     presetValue: Float,
     valueRange: ClosedFloatingPointRange<Float>,
     enabled: Boolean = true,
+    modifier: Modifier = Modifier,
     onValueChanged: (Float) -> Unit
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         tonalElevation = 1.dp,
         shape = MaterialTheme.shapes.medium
     ) {

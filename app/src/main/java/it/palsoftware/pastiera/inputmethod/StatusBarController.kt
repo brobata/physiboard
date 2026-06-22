@@ -632,7 +632,9 @@ class StatusBarController(
                 variationsWrapper?.let { addView(it) }
                 addView(symSurfaceContainer)
             }
-            (statusBarLayout as? ImeChromeLayout)?.surfaceView = symSurfaceContainer
+            (statusBarLayout as? ImeChromeLayout)?.apply {
+                surfaceView = symSurfaceContainer
+            }
             applyChromeZOrder()
             applyAccessibilitySecondRowReadPreference()
             statusBarLayout?.let { ViewCompat.requestApplyInsets(it) }
@@ -1137,7 +1139,8 @@ class StatusBarController(
                 view,
                 LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
+                    0,
+                    1f
                 )
             )
         }
@@ -1263,6 +1266,18 @@ class StatusBarController(
             resolveSoftwareKeyboardLongPressAlternates(output, snapshot)
         }
         keyboardView.themeOverride = softwareTheme().toAospThemeOverride()
+        (keyboardView.layoutParams as? LinearLayout.LayoutParams)?.let { params ->
+            if (
+                params.width != ViewGroup.LayoutParams.MATCH_PARENT ||
+                params.height != 0 ||
+                params.weight != 1f
+            ) {
+                params.width = ViewGroup.LayoutParams.MATCH_PARENT
+                params.height = 0
+                params.weight = 1f
+                keyboardView.layoutParams = params
+            }
+        }
         softwareKeyboardShown = true
         lastSymPageRendered = 0
         lastInputConnectionUsed = inputConnection
@@ -2476,6 +2491,10 @@ class StatusBarController(
             onDeleteUserSuggestion,
             canDeleteUserSuggestion
         )
+        val shouldShowSoftwareKeyboard =
+            isFullSoftwareKeyboardMode &&
+                !snapshot.clipboardOverlay
+        (layout as? ImeChromeLayout)?.softwareKeyboardModeActive = shouldShowSoftwareKeyboard
         if (snapshot.clipboardOverlay) {
             // Show clipboard as dedicated overlay (not part of SYM pages)
             updateClipboardView(
@@ -2517,10 +2536,6 @@ class StatusBarController(
             return
         }
 
-        val shouldShowSoftwareKeyboard =
-            isFullSoftwareKeyboardMode &&
-                !snapshot.clipboardOverlay
-
         if (shouldShowSoftwareKeyboard && (snapshot.symPage == 0 || isSoftwareKeyboardSymbolPage)) {
             updateSoftwareKeyboard(snapshot, inputConnection, symMappings)
             if (showSecondRow) {
@@ -2541,7 +2556,7 @@ class StatusBarController(
             } else {
                 variationBarView?.hideImmediate()
             }
-            val measured = ensureEmojiKeyboardMeasuredHeight(emojiKeyboardView, layout, forceReMeasure = true)
+            val measured = measureSoftwareKeyboardDesiredHeight(emojiKeyboardView, layout)
             val keyboardHeight = if (measured > 0) measured else defaultSymHeightPx
             lastSoftwareKeyboardHeight = keyboardHeight
             emojiKeyboardView.setBackgroundColor(softwareThemeSettings.background)
@@ -2755,6 +2770,14 @@ class StatusBarController(
         return view.measuredHeight
     }
 
+    private fun measureSoftwareKeyboardDesiredHeight(view: View, parent: View): Int {
+        val width = if (parent.width > 0) parent.width else context.resources.displayMetrics.widthPixels
+        val widthSpec = View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY)
+        val heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        view.measure(widthSpec, heightSpec)
+        return view.measuredHeight
+    }
+
     private fun applySymSurfaceLayout(
         surface: FrameLayout,
         stack: LinearLayout,
@@ -2796,8 +2819,8 @@ class StatusBarController(
         updateSurfaceCloseBottomMargin(if (reserveLedSpace) measureLedStripHeight() else 0)
 
         val contentParams = content.layoutParams as? LinearLayout.LayoutParams
-        val targetContentHeight = if (reserveLedSpace) 0 else surfaceHeight
-        val targetContentWeight = if (reserveLedSpace) 1f else 0f
+        val targetContentHeight = 0
+        val targetContentWeight = 1f
         if (contentParams == null) {
             content.layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -2889,11 +2912,48 @@ class StatusBarController(
         var surfaceView: View? = null
             set(value) {
                 field = value
-                invalidate()
+                requestLayout()
+            }
+        var softwareKeyboardModeActive: Boolean = false
+            set(value) {
+                if (field == value) return
+                field = value
+                requestLayout()
             }
 
         init {
             setChildrenDrawingOrderEnabled(true)
+        }
+
+        override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+            val surface = surfaceView
+            if (!softwareKeyboardModeActive || surface == null || surface.visibility == View.GONE) {
+                super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+                return
+            }
+
+            var totalChildHeight = 0
+            var maxWidth = 0
+
+            for (index in 0 until childCount) {
+                val child = getChildAt(index)
+                if (child.visibility == View.GONE) continue
+                measureChildWithMargins(
+                    child,
+                    widthMeasureSpec,
+                    0,
+                    MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED),
+                    0
+                )
+                val params = child.layoutParams as MarginLayoutParams
+                totalChildHeight += child.measuredHeight + params.topMargin + params.bottomMargin
+                maxWidth = maxOf(maxWidth, child.measuredWidth + params.leftMargin + params.rightMargin)
+            }
+
+            val measuredWidth = resolveSize(maxWidth + paddingLeft + paddingRight, widthMeasureSpec)
+            val desiredHeight = paddingTop + paddingBottom + totalChildHeight
+            val measuredHeight = desiredHeight
+            setMeasuredDimension(measuredWidth, measuredHeight)
         }
 
         override fun getChildDrawingOrder(childCount: Int, drawingPosition: Int): Int {

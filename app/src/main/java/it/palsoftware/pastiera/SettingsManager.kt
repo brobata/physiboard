@@ -123,7 +123,10 @@ object SettingsManager {
     private const val KEY_APP_ENTER_BEHAVIOR_OVERRIDES = "app_enter_behavior_overrides"
     const val KEY_KEYBOARD_THEME_HARDWARE = "keyboard_theme_hardware"
     const val KEY_KEYBOARD_THEME_SOFTWARE = "keyboard_theme_software"
+    const val KEYBOARD_THEME_PREVIEW_VIEWPORT_SCALE_MIN = 1f
+    const val KEYBOARD_THEME_PREVIEW_VIEWPORT_SCALE_MAX = 1.8f
     private const val KEY_KEYBOARD_THEME_SAVED_THEMES = "keyboard_theme_saved_themes"
+    private const val KEY_KEYBOARD_THEME_PREVIEW_VIEWPORT_SCALE = "keyboard_theme_preview_viewport_scale"
     
     // Status bar button slot configuration keys
     private const val KEY_STATUS_BAR_SLOT_LEFT = "status_bar_slot_left"
@@ -533,6 +536,23 @@ object SettingsManager {
 
     fun isKeyboardThemePreferenceKey(key: String?): Boolean {
         return key == KEY_KEYBOARD_THEME_HARDWARE || key == KEY_KEYBOARD_THEME_SOFTWARE
+    }
+
+    fun getKeyboardThemePreviewViewportScale(context: Context): Float =
+        getPreferences(context)
+            .getFloat(KEY_KEYBOARD_THEME_PREVIEW_VIEWPORT_SCALE, KEYBOARD_THEME_PREVIEW_VIEWPORT_SCALE_MIN)
+            .coerceIn(KEYBOARD_THEME_PREVIEW_VIEWPORT_SCALE_MIN, KEYBOARD_THEME_PREVIEW_VIEWPORT_SCALE_MAX)
+
+    fun setKeyboardThemePreviewViewportScale(context: Context, scale: Float) {
+        getPreferences(context).edit()
+            .putFloat(
+                KEY_KEYBOARD_THEME_PREVIEW_VIEWPORT_SCALE,
+                scale.coerceIn(
+                    KEYBOARD_THEME_PREVIEW_VIEWPORT_SCALE_MIN,
+                    KEYBOARD_THEME_PREVIEW_VIEWPORT_SCALE_MAX
+                )
+            )
+            .apply()
     }
 
     fun getKeyboardTheme(context: Context, target: KeyboardThemeTarget): KeyboardThemeSettings {
