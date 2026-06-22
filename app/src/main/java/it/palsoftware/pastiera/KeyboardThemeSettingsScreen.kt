@@ -472,7 +472,12 @@ private fun keyboardThemesEquivalent(
         left.ortholinear == right.ortholinear &&
         left.showLeds == right.showLeds &&
         close(left.suggestionsHeightScale, right.suggestionsHeightScale) &&
-        close(left.variationsHeightScale, right.variationsHeightScale)
+        close(left.variationsHeightScale, right.variationsHeightScale) &&
+        left.keyPopupStyle == right.keyPopupStyle &&
+        left.keyPopupAttached == right.keyPopupAttached &&
+        left.keyPopupTailEnabled == right.keyPopupTailEnabled &&
+        left.keyPreviewAfterLongPress == right.keyPreviewAfterLongPress &&
+        left.keyAlternatesPopupEnabled == right.keyAlternatesPopupEnabled
 }
 
 @Composable
@@ -813,6 +818,30 @@ private fun KeyboardThemeKeysEditor(
                 checked = theme.ortholinear,
                 presetChecked = preset.ortholinear,
                 onCheckedChanged = { onThemeChanged(theme.copy(ortholinear = it)) }
+            )
+            KeyboardThemeSwitchRow(
+                label = "Attach popup to key",
+                checked = theme.keyPopupAttached,
+                presetChecked = preset.keyPopupAttached,
+                onCheckedChanged = { onThemeChanged(theme.copy(keyPopupAttached = it)) }
+            )
+            KeyboardThemeSwitchRow(
+                label = "Popup tail connector",
+                checked = theme.keyPopupTailEnabled,
+                presetChecked = preset.keyPopupTailEnabled,
+                onCheckedChanged = { onThemeChanged(theme.copy(keyPopupTailEnabled = it)) }
+            )
+            KeyboardThemeSwitchRow(
+                label = "Show key preview only on hold",
+                checked = theme.keyPreviewAfterLongPress,
+                presetChecked = preset.keyPreviewAfterLongPress,
+                onCheckedChanged = { onThemeChanged(theme.copy(keyPreviewAfterLongPress = it)) }
+            )
+            KeyboardThemeSwitchRow(
+                label = "Long-press character picker",
+                checked = theme.keyAlternatesPopupEnabled,
+                presetChecked = preset.keyAlternatesPopupEnabled,
+                onCheckedChanged = { onThemeChanged(theme.copy(keyAlternatesPopupEnabled = it)) }
             )
         }
     }

@@ -125,6 +125,8 @@ object SettingsManager {
     const val KEY_KEYBOARD_THEME_SOFTWARE = "keyboard_theme_software"
     const val KEYBOARD_THEME_PREVIEW_VIEWPORT_SCALE_MIN = 1f
     const val KEYBOARD_THEME_PREVIEW_VIEWPORT_SCALE_MAX = 1.8f
+    const val KEYBOARD_THEME_POPUP_STYLE_FLOATING = "floating"
+    const val KEYBOARD_THEME_POPUP_STYLE_CLASSIC = "classic"
     private const val KEY_KEYBOARD_THEME_SAVED_THEMES = "keyboard_theme_saved_themes"
     private const val KEY_KEYBOARD_THEME_PREVIEW_VIEWPORT_SCALE = "keyboard_theme_preview_viewport_scale"
     
@@ -361,7 +363,12 @@ object SettingsManager {
         val ortholinear: Boolean = false,
         val showLeds: Boolean = true,
         val suggestionsHeightScale: Float = 1f,
-        val variationsHeightScale: Float = 1f
+        val variationsHeightScale: Float = 1f,
+        val keyPopupStyle: String = KEYBOARD_THEME_POPUP_STYLE_FLOATING,
+        val keyPopupAttached: Boolean = true,
+        val keyPopupTailEnabled: Boolean = true,
+        val keyPreviewAfterLongPress: Boolean = false,
+        val keyAlternatesPopupEnabled: Boolean = true
     ) {
         fun toKeyboardThemeColors(): KeyboardThemeColors =
             KeyboardThemeColors(
@@ -586,7 +593,12 @@ object SettingsManager {
                 ortholinear = json.optBoolean("ortholinear", defaults.ortholinear),
                 showLeds = json.optBoolean("show_leds", defaults.showLeds),
                 suggestionsHeightScale = json.optDouble("suggestions_height_scale", defaults.suggestionsHeightScale.toDouble()).toFloat(),
-                variationsHeightScale = json.optDouble("variations_height_scale", defaults.variationsHeightScale.toDouble()).toFloat()
+                variationsHeightScale = json.optDouble("variations_height_scale", defaults.variationsHeightScale.toDouble()).toFloat(),
+                keyPopupStyle = normalizeKeyboardThemePopupStyle(json.optString("key_popup_style", defaults.keyPopupStyle)),
+                keyPopupAttached = json.optBoolean("key_popup_attached", defaults.keyPopupAttached),
+                keyPopupTailEnabled = json.optBoolean("key_popup_tail_enabled", defaults.keyPopupTailEnabled),
+                keyPreviewAfterLongPress = json.optBoolean("key_preview_after_long_press", defaults.keyPreviewAfterLongPress),
+                keyAlternatesPopupEnabled = json.optBoolean("key_alternates_popup_enabled", defaults.keyAlternatesPopupEnabled)
             )
         } catch (error: Exception) {
             Log.e(TAG, "Fehler beim Laden des Keyboard-Themes", error)
@@ -689,7 +701,12 @@ object SettingsManager {
             ortholinear = json.optBoolean("ortholinear", defaults.ortholinear),
             showLeds = json.optBoolean("show_leds", defaults.showLeds),
             suggestionsHeightScale = json.optDouble("suggestions_height_scale", defaults.suggestionsHeightScale.toDouble()).toFloat(),
-            variationsHeightScale = json.optDouble("variations_height_scale", defaults.variationsHeightScale.toDouble()).toFloat()
+            variationsHeightScale = json.optDouble("variations_height_scale", defaults.variationsHeightScale.toDouble()).toFloat(),
+            keyPopupStyle = normalizeKeyboardThemePopupStyle(json.optString("key_popup_style", defaults.keyPopupStyle)),
+            keyPopupAttached = json.optBoolean("key_popup_attached", defaults.keyPopupAttached),
+            keyPopupTailEnabled = json.optBoolean("key_popup_tail_enabled", defaults.keyPopupTailEnabled),
+            keyPreviewAfterLongPress = json.optBoolean("key_preview_after_long_press", defaults.keyPreviewAfterLongPress),
+            keyAlternatesPopupEnabled = json.optBoolean("key_alternates_popup_enabled", defaults.keyAlternatesPopupEnabled)
         )
 
     private fun keyboardThemeToJson(theme: KeyboardThemeSettings): JSONObject =
@@ -719,6 +736,17 @@ object SettingsManager {
             put("show_leds", theme.showLeds)
             put("suggestions_height_scale", theme.suggestionsHeightScale.toDouble())
             put("variations_height_scale", theme.variationsHeightScale.toDouble())
+            put("key_popup_style", normalizeKeyboardThemePopupStyle(theme.keyPopupStyle))
+            put("key_popup_attached", theme.keyPopupAttached)
+            put("key_popup_tail_enabled", theme.keyPopupTailEnabled)
+            put("key_preview_after_long_press", theme.keyPreviewAfterLongPress)
+            put("key_alternates_popup_enabled", theme.keyAlternatesPopupEnabled)
+        }
+
+    private fun normalizeKeyboardThemePopupStyle(value: String): String =
+        when (value) {
+            KEYBOARD_THEME_POPUP_STYLE_CLASSIC -> KEYBOARD_THEME_POPUP_STYLE_CLASSIC
+            else -> KEYBOARD_THEME_POPUP_STYLE_FLOATING
         }
 
     fun resolveEffectiveSoftwareKeyboardMode(context: Context): SoftwareKeyboardMode {

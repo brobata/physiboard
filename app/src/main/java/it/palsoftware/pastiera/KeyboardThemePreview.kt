@@ -191,6 +191,7 @@ private fun createVirtualKeyboardThemePreviewView(
         includeNumberRow = SettingsManager.getSoftwareKeyboardNumberRowEnabled(context)
         shifted = false
         spacebarLabel = "space"
+        longPressTimeoutMs = SettingsManager.getLongPressThreshold(context)
         themeOverride = theme.toAospThemeOverride()
         applyVirtualKeyboardSymPreviewState(context)
     }
@@ -271,6 +272,7 @@ private fun updateVirtualKeyboardThemePreviewView(view: android.view.View, theme
         layoutName = SettingsManager.getKeyboardLayout(context)
         layoutStyle = softwareKeyboardPreviewLayoutStyle(context)
         includeNumberRow = SettingsManager.getSoftwareKeyboardNumberRowEnabled(context)
+        longPressTimeoutMs = SettingsManager.getLongPressThreshold(context)
         themeOverride = theme.toAospThemeOverride()
         applyVirtualKeyboardSymPreviewState(context)
         ((root as? AdditiveVerticalKeyboardPreviewLayout)?.keyboardSurface?.layoutParams as? LinearLayout.LayoutParams)?.let { params ->

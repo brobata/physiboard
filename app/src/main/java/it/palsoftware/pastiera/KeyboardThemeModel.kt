@@ -29,7 +29,13 @@ internal data class KeyboardThemePreset(
     val ortholinear: Boolean = false,
     val showLeds: Boolean = true,
     val suggestionsHeightScale: Float = 1f,
-    val variationsHeightScale: Float = 1f
+    val variationsHeightScale: Float = 1f,
+    val keepsSoftwareGeometry: Boolean = false,
+    val keyPopupStyle: String = SettingsManager.KEYBOARD_THEME_POPUP_STYLE_FLOATING,
+    val keyPopupAttached: Boolean = true,
+    val keyPopupTailEnabled: Boolean = true,
+    val keyPreviewAfterLongPress: Boolean = false,
+    val keyAlternatesPopupEnabled: Boolean = true
 )
 
 internal data class KeyboardThemeOption(
@@ -48,17 +54,21 @@ internal const val SOFTWARE_THEME_DEFAULT_SUGGESTIONS_HEIGHT = 0.8982954f
 internal const val SOFTWARE_THEME_DEFAULT_VARIATIONS_HEIGHT = 0.95914257f
 
 internal fun KeyboardThemePreset.withSoftwareKeyboardDefaults(): KeyboardThemePreset =
-    copy(
-        keyCornerRadiusRatio = SOFTWARE_THEME_DEFAULT_KEY_CORNER_RADIUS,
-        chromeCornerRadiusRatio = SOFTWARE_THEME_DEFAULT_CHROME_CORNER_RADIUS,
-        keyHeightScale = SOFTWARE_THEME_DEFAULT_KEY_HEIGHT,
-        numberRowHeightScale = SOFTWARE_THEME_DEFAULT_NUMBER_ROW_HEIGHT,
-        rowGapScale = SOFTWARE_THEME_DEFAULT_ROW_GAP,
-        ortholinear = true,
-        showLeds = false,
-        suggestionsHeightScale = SOFTWARE_THEME_DEFAULT_SUGGESTIONS_HEIGHT,
-        variationsHeightScale = SOFTWARE_THEME_DEFAULT_VARIATIONS_HEIGHT
-    )
+    if (keepsSoftwareGeometry) {
+        this
+    } else {
+        copy(
+            keyCornerRadiusRatio = SOFTWARE_THEME_DEFAULT_KEY_CORNER_RADIUS,
+            chromeCornerRadiusRatio = SOFTWARE_THEME_DEFAULT_CHROME_CORNER_RADIUS,
+            keyHeightScale = SOFTWARE_THEME_DEFAULT_KEY_HEIGHT,
+            numberRowHeightScale = SOFTWARE_THEME_DEFAULT_NUMBER_ROW_HEIGHT,
+            rowGapScale = SOFTWARE_THEME_DEFAULT_ROW_GAP,
+            ortholinear = true,
+            showLeds = false,
+            suggestionsHeightScale = SOFTWARE_THEME_DEFAULT_SUGGESTIONS_HEIGHT,
+            variationsHeightScale = SOFTWARE_THEME_DEFAULT_VARIATIONS_HEIGHT
+        )
+    }
 
 internal fun KeyboardThemePreset.toAospThemeOverride(): AospKeyboardView.ThemeOverride =
     AospKeyboardView.ThemeOverride(
@@ -79,7 +89,12 @@ internal fun KeyboardThemePreset.toAospThemeOverride(): AospKeyboardView.ThemeOv
         keyWidthScale = keyWidthScale,
         rowGapScale = rowGapScale,
         distributeHorizontalSpacing = distributeHorizontalSpacing,
-        ortholinear = ortholinear
+        ortholinear = ortholinear,
+        keyPopupStyle = keyPopupStyle,
+        keyPopupAttached = keyPopupAttached,
+        keyPopupTailEnabled = keyPopupTailEnabled,
+        keyPreviewAfterLongPress = keyPreviewAfterLongPress,
+        keyAlternatesPopupEnabled = keyAlternatesPopupEnabled
     )
 
 internal fun KeyboardThemePreset.toKeyboardThemeColors(): KeyboardThemeColors =
@@ -130,7 +145,12 @@ internal fun KeyboardThemePreset.toSettingsTheme(): SettingsManager.KeyboardThem
         ortholinear = ortholinear,
         showLeds = showLeds,
         suggestionsHeightScale = suggestionsHeightScale,
-        variationsHeightScale = variationsHeightScale
+        variationsHeightScale = variationsHeightScale,
+        keyPopupStyle = keyPopupStyle,
+        keyPopupAttached = keyPopupAttached,
+        keyPopupTailEnabled = keyPopupTailEnabled,
+        keyPreviewAfterLongPress = keyPreviewAfterLongPress,
+        keyAlternatesPopupEnabled = keyAlternatesPopupEnabled
     )
 
 internal fun SettingsManager.KeyboardThemeSettings.toKeyboardThemePreset(name: String): KeyboardThemePreset =
@@ -160,7 +180,12 @@ internal fun SettingsManager.KeyboardThemeSettings.toKeyboardThemePreset(name: S
         ortholinear = ortholinear,
         showLeds = showLeds,
         suggestionsHeightScale = suggestionsHeightScale,
-        variationsHeightScale = variationsHeightScale
+        variationsHeightScale = variationsHeightScale,
+        keyPopupStyle = keyPopupStyle,
+        keyPopupAttached = keyPopupAttached,
+        keyPopupTailEnabled = keyPopupTailEnabled,
+        keyPreviewAfterLongPress = keyPreviewAfterLongPress,
+        keyAlternatesPopupEnabled = keyAlternatesPopupEnabled
     )
 
 internal fun SettingsManager.NamedKeyboardTheme.toKeyboardThemeOption(): KeyboardThemeOption {
@@ -196,6 +221,10 @@ internal fun keyboardThemeSwatches(): List<Int> = keyboardThemePresets()
 internal fun keyboardThemePresets(): List<KeyboardThemePreset> = listOf(
     KeyboardThemePreset("Pastiera Dark", 0xFF000000.toInt(), 0xFF2C3136.toInt(), 0xFF15191D.toInt(), 0xFF2B3138.toInt(), 0xFFEFEFEF.toInt(), 0xFF303030.toInt(), 0xFF6496FF.toInt(), 0xFFF76300.toInt(), 0xFF6496FF.toInt()),
     KeyboardThemePreset("Pastiera Light", 0xFFF8FAFC.toInt(), 0xFFC7CDD4.toInt(), 0xFFFFFFFF.toInt(), 0xFFE0E6EE.toInt(), 0xFF171A1F.toInt(), 0xFFD1D5DB.toInt(), 0xFF276EF1.toInt(), 0xFFD65A00.toInt(), 0xFF276EF1.toInt()),
+    KeyboardThemePreset("Cloud Tap", 0xFFE1E3E7.toInt(), 0xFFD4D7DD.toInt(), 0xFFFFFFFF.toInt(), 0xFFFFFFFF.toInt(), 0xFF050505.toInt(), 0xFFC2C6CE.toInt(), 0xFF0A84FF.toInt(), 0xFF0A84FF.toInt(), 0xFF0A84FF.toInt(), 0xFF0A84FF.toInt(), 0xFFFFFFFF.toInt(), 0xFF0A84FF.toInt(), 0xFFDDE0E5.toInt(), 0xFFFFFFFF.toInt(), 0.18186983f, 0.35f, 1.2588017f, 0.971126f, 0.94148767f, 1.05f, true, true, false, 0.9f, 0.88f, true),
+    KeyboardThemePreset("Moon Tap", 0xFF111111.toInt(), 0xFF303030.toInt(), 0xFF3A3A3C.toInt(), 0xFF3A3A3C.toInt(), 0xFFF8F8F8.toInt(), 0xFF303030.toInt(), 0xFF409CFF.toInt(), 0xFF409CFF.toInt(), 0xFF409CFF.toInt(), 0xFF409CFF.toInt(), 0xFF3A3A3C.toInt(), 0xFF409CFF.toInt(), 0xFF171717.toInt(), 0xFF1C1C1E.toInt(), 0.18186983f, 0.35f, 1.2588017f, 0.971126f, 0.94148767f, 1.05f, true, true, false, 0.9f, 0.88f, true),
+    KeyboardThemePreset("Classic Cloud", 0xFFCCD2DC.toInt(), 0xFF9EA5AF.toInt(), 0xFFFFFFFF.toInt(), 0xFFAFB6C2.toInt(), 0xFF000000.toInt(), 0xFFAEB5C0.toInt(), 0xFF007AFF.toInt(), 0xFF007AFF.toInt(), 0xFF007AFF.toInt(), 0xFF007AFF.toInt(), 0xFFFFFFFF.toInt(), 0xFF007AFF.toInt(), 0xFFCCD2DC.toInt(), 0xFFAFB6C2.toInt(), 0.118f, 0.09f, 1.2588017f, 0.971126f, 0.94148767f, 1.05f, true, false, false, 0.9f, 0.88f, true, SettingsManager.KEYBOARD_THEME_POPUP_STYLE_CLASSIC),
+    KeyboardThemePreset("Classic Midnight", 0xFF1C1C1E.toInt(), 0xFF4A4A4D.toInt(), 0xFF3A3A3C.toInt(), 0xFF2C2C2E.toInt(), 0xFFFFFFFF.toInt(), 0xFF404044.toInt(), 0xFF0A84FF.toInt(), 0xFF0A84FF.toInt(), 0xFF0A84FF.toInt(), 0xFF0A84FF.toInt(), 0xFF3A3A3C.toInt(), 0xFF0A84FF.toInt(), 0xFF202124.toInt(), 0xFF2C2C2E.toInt(), 0.118f, 0.09f, 1.2588017f, 0.971126f, 0.94148767f, 1.05f, true, false, false, 0.9f, 0.88f, true, SettingsManager.KEYBOARD_THEME_POPUP_STYLE_CLASSIC),
     KeyboardThemePreset("ePaper", 0xFFF2F2F2.toInt(), 0xFFB8B8B8.toInt(), 0xFFFAFAFA.toInt(), 0xFFDDDDDD.toInt(), 0xFF111111.toInt(), 0xFFB0B0B0.toInt(), 0xFF555555.toInt(), 0xFF111111.toInt(), 0xFF3F8C96.toInt()),
     KeyboardThemePreset("High Contrast", 0xFF000000.toInt(), 0xFFFFFFFF.toInt(), 0xFF0D0D0D.toInt(), 0xFF000000.toInt(), 0xFFFFFFFF.toInt(), 0xFF555555.toInt(), 0xFF00E5FF.toInt(), 0xFFFFEA00.toInt(), 0xFFFFEA00.toInt()),
     KeyboardThemePreset("Warm", 0xFF241F1A.toInt(), 0xFF6F6255.toInt(), 0xFF352E27.toInt(), 0xFF5B4734.toInt(), 0xFFFFF1DD.toInt(), 0xFF665A4E.toInt(), 0xFFE0B05D.toInt(), 0xFFE06A4B.toInt(), 0xFFE0B05D.toInt()),

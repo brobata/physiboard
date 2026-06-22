@@ -14,6 +14,7 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.PixelFormat
 import android.graphics.RectF
 import android.graphics.Typeface
@@ -31,6 +32,7 @@ import android.view.View
 import android.view.inputmethod.InputMethodManager
 import androidx.core.content.ContextCompat
 import it.palsoftware.pastiera.R
+import it.palsoftware.pastiera.SettingsManager
 import java.util.Locale
 import kotlin.math.abs
 
@@ -74,6 +76,11 @@ class AospKeyboardView @JvmOverloads constructor(
         val accent: Int,
         val keyPopup: Int = specialKey,
         val keyPopupSelected: Int = accent,
+        val keyPopupStyle: String = "floating",
+        val keyPopupAttached: Boolean = true,
+        val keyPopupTailEnabled: Boolean = true,
+        val keyPreviewAfterLongPress: Boolean = false,
+        val keyAlternatesPopupEnabled: Boolean = true,
         val keyCornerRadiusRatio: Float = 0.08f,
         val keyHeightScale: Float = 1f,
         val numberRowHeightScale: Float = 0.8f,
@@ -477,7 +484,7 @@ class AospKeyboardView @JvmOverloads constructor(
                         invalidate()
                     } else {
                         if (!isModifierPreviewLayerActive()) {
-                            showPreview(it)
+                            showPreviewIfImmediate(it)
                             handler.postDelayed(longPressRunnable, longPressTimeoutMs)
                         }
                     }
@@ -509,7 +516,7 @@ class AospKeyboardView @JvmOverloads constructor(
                     performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                     listener?.onKeyPressSound(soundKeyCodeFor(key))
                     if (!isModifierPreviewLayerActive()) {
-                        showPreview(key)
+                        showPreviewIfImmediate(key)
                         handler.postDelayed(longPressRunnable, longPressTimeoutMs)
                     }
                     invalidate()
@@ -523,7 +530,7 @@ class AospKeyboardView @JvmOverloads constructor(
                 performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                 listener?.onKeyPressSound(soundKeyCodeFor(key))
                 if (!isModifierPreviewLayerActive()) {
-                    showPreview(key)
+                    showPreviewIfImmediate(key)
                 }
                 invalidate()
                 return true
@@ -556,13 +563,15 @@ class AospKeyboardView @JvmOverloads constructor(
                 }
                 val key = findKey(pointerX, pointerY)
                 if (key != pressedKey) {
+                    handler.removeCallbacks(longPressRunnable)
                     dismissPopup()
                     pressedKey = key
                     invalidate()
                     key?.let {
                         listener?.onKeyPressSound(soundKeyCodeFor(it))
                         if (!isModifierPreviewLayerActive()) {
-                            showPreview(it)
+                            showPreviewIfImmediate(it)
+                            handler.postDelayed(longPressRunnable, longPressTimeoutMs)
                         }
                     }
                 }
@@ -1068,7 +1077,12 @@ class AospKeyboardView @JvmOverloads constructor(
             return
         }
         val resolvedMoreKeys = longPressAlternatesFor(key)
-        if (resolvedMoreKeys.isEmpty()) return
+        if (resolvedMoreKeys.isEmpty() || themeOverride?.keyAlternatesPopupEnabled == false) {
+            if (themeOverride?.keyPreviewAfterLongPress == true) {
+                showPreview(key)
+            }
+            return
+        }
         longPressTriggered = true
         dismissPopup()
         val moreKeys = resolvedMoreKeys.map { if (shifted && it.length == 1 && it[0].isLetter()) it.uppercase(Locale.ROOT) else it }
@@ -1078,7 +1092,7 @@ class AospKeyboardView @JvmOverloads constructor(
         val popupWidth = padding * 2 + moreKeys.size * itemWidth
         val popupHeight = padding * 2 + itemHeight
         val popupLeft = (key.visualRect.centerX() - popupWidth / 2f).coerceIn(0f, width - popupWidth.toFloat())
-        val popupTop = key.visualRect.top - popupHeight - dp(8f)
+        val popupTop = key.visualRect.top - popupHeight - popupVerticalOffset(themeOverride)
         moreKeysPanelState = MoreKeysPanelState(
             baseKey = key,
             keys = moreKeys,
@@ -1099,7 +1113,7 @@ class AospKeyboardView @JvmOverloads constructor(
         val previewWidth = maxOf(key.visualRect.width() + dp(18f), dp(52f).toFloat())
         val previewHeight = dp(72f).toFloat()
         val popupLeft = (key.visualRect.centerX() - previewWidth / 2f).coerceIn(0f, width - previewWidth)
-        val popupTop = key.visualRect.top - previewHeight - dp(8f)
+        val popupTop = key.visualRect.top - previewHeight - popupVerticalOffset(themeOverride)
         previewPopupState = PreviewPopupState(
             label = symPageLabelFor(key) ?: displayLabel(key.spec),
             rect = RectF(popupLeft, popupTop, popupLeft + previewWidth, popupTop + previewHeight),
@@ -1108,6 +1122,11 @@ class AospKeyboardView @JvmOverloads constructor(
         moreKeysPanelState = null
         updatePopupOverlay()
         invalidate()
+    }
+
+    private fun showPreviewIfImmediate(key: Key) {
+        if (themeOverride?.keyPreviewAfterLongPress == true) return
+        showPreview(key)
     }
 
     private fun dismissPopup() {
@@ -1201,7 +1220,12 @@ class AospKeyboardView @JvmOverloads constructor(
     private fun drawPreviewPopup(canvas: Canvas, offsetX: Float = 0f, offsetY: Float = 0f) {
         val popup = previewPopupState ?: return
         val rect = popup.rect.offsetBy(offsetX, offsetY)
-        drawDrawable(canvas, themedPopupBackground() ?: if (popup.hasMoreKeys) previewMoreBackground else previewBackground, rect)
+        val theme = themeOverride
+        if (theme != null) {
+            drawThemedPopupBackground(canvas, theme, rect, rect.centerX(), hasTail = shouldDrawPopupTail(theme))
+        } else {
+            drawDrawable(canvas, if (popup.hasMoreKeys) previewMoreBackground else previewBackground, rect)
+        }
         textPaint.textSize = sp(30f)
         textPaint.typeface = Typeface.DEFAULT
         textPaint.color = themeOverride?.textAndIcons ?: Color.rgb(238, 238, 238)
@@ -1212,18 +1236,34 @@ class AospKeyboardView @JvmOverloads constructor(
     private fun drawMoreKeysPanel(canvas: Canvas, offsetX: Float = 0f, offsetY: Float = 0f) {
         val panel = moreKeysPanelState ?: return
         val panelRect = panel.popupRectInView.offsetBy(offsetX, offsetY)
-        drawDrawable(canvas, themedPopupBackground() ?: moreKeysBackground, panelRect)
+        val theme = themeOverride
+        if (theme != null) {
+            drawThemedPopupBackground(
+                canvas,
+                theme,
+                panelRect,
+                panel.baseKey.visualRect.centerX() + offsetX,
+                hasTail = shouldDrawPopupTail(theme)
+            )
+        } else {
+            drawDrawable(canvas, moreKeysBackground, panelRect)
+        }
         panel.keys.forEachIndexed { index, label ->
             val left = panelRect.left + panel.padding + index * panel.keyWidth
             val top = panelRect.top + panel.padding
             val rect = RectF(left, top, left + panel.keyWidth, top + panel.keyHeight)
             if (index == panel.selectedIndex) {
-                drawDrawable(canvas, themedPopupSelectedKeyBackground() ?: normalKeyBackground, rect)
+                if (theme != null) {
+                    drawThemedPopupBackground(canvas, theme, rect, rect.centerX(), hasTail = false, selected = true)
+                } else {
+                    drawDrawable(canvas, normalKeyBackground, rect)
+                }
             }
             textPaint.textSize = sp(24f)
             textPaint.typeface = Typeface.DEFAULT
-            textPaint.color = themeOverride?.textAndIcons
-                ?: if (index == panel.selectedIndex) Color.BLACK else Color.rgb(238, 238, 238)
+            textPaint.color = theme?.let {
+                if (index == panel.selectedIndex) readableTextColor(it.keyPopupSelected) else it.textAndIcons
+            } ?: if (index == panel.selectedIndex) Color.BLACK else Color.rgb(238, 238, 238)
             val baselineOffset = -(textPaint.ascent() + textPaint.descent()) / 2f
             canvas.drawText(label, rect.centerX(), rect.centerY() + baselineOffset, textPaint)
         }
@@ -1304,24 +1344,110 @@ class AospKeyboardView @JvmOverloads constructor(
         }
     }
 
-    private fun themedPopupBackground(): Drawable? {
-        val theme = themeOverride ?: return null
-        return GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = dp(10f).toFloat()
-            setColor(theme.keyPopup)
-            setStroke(dp(1f), theme.divider)
+    private fun drawThemedPopupBackground(
+        canvas: Canvas,
+        theme: ThemeOverride,
+        rect: RectF,
+        anchorX: Float,
+        hasTail: Boolean,
+        selected: Boolean = false
+    ) {
+        val classic = theme.keyPopupStyle == SettingsManager.KEYBOARD_THEME_POPUP_STYLE_CLASSIC
+        val radius = if (selected) {
+            if (classic) dp(8f).toFloat() else keyCornerRadius(theme)
+        } else if (classic) {
+            dp(13f).toFloat()
+        } else {
+            maxOf(dp(16f).toFloat(), keyCornerRadius(theme) * 0.72f)
+        }
+        val fillColor = if (selected) theme.keyPopupSelected else theme.keyPopup
+        val path = roundedPopupPath(rect, radius, anchorX, hasTail, classic)
+        val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = colorWithAlpha(Color.BLACK, if (classic) 52 else if (isDarkColor(fillColor)) 80 else 38)
+            style = Paint.Style.FILL
+        }
+        canvas.save()
+        canvas.translate(0f, dp(if (classic) 2.5f else 1.5f).toFloat())
+        canvas.drawPath(path, shadowPaint)
+        canvas.restore()
+        val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = fillColor
+            style = Paint.Style.FILL
+        }
+        canvas.drawPath(path, fillPaint)
+        val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = theme.divider
+            style = Paint.Style.STROKE
+            strokeWidth = dp(1f).toFloat()
+        }
+        canvas.drawPath(path, strokePaint)
+    }
+
+    private fun popupVerticalOffset(theme: ThemeOverride?): Float {
+        if (theme == null) return dp(8f).toFloat()
+        return when {
+            shouldDrawPopupTail(theme) -> popupTailHeight(theme)
+            theme.keyPopupAttached -> dp(2f).toFloat()
+            else -> dp(8f).toFloat()
         }
     }
 
-    private fun themedPopupSelectedKeyBackground(): Drawable? {
-        val theme = themeOverride ?: return null
-        return GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = keyCornerRadius(theme)
-            setColor(theme.keyPopupSelected)
-            setStroke(dp(1f), theme.divider)
+    private fun shouldDrawPopupTail(theme: ThemeOverride): Boolean =
+        theme.keyPopupAttached && theme.keyPopupTailEnabled
+
+    private fun popupTailHeight(theme: ThemeOverride): Float =
+        dp(if (theme.keyPopupStyle == SettingsManager.KEYBOARD_THEME_POPUP_STYLE_CLASSIC) 34f else 18f).toFloat()
+
+    private fun roundedPopupPath(
+        rect: RectF,
+        radius: Float,
+        anchorX: Float,
+        hasTail: Boolean,
+        classic: Boolean
+    ): Path {
+        val body = Path().apply {
+            addRoundRect(rect, radius, radius, Path.Direction.CW)
         }
+        if (hasTail) {
+            val tailWidth = minOf(
+                dp(if (classic) 34f else 30f).toFloat(),
+                rect.width() * if (classic) 0.34f else 0.38f
+            )
+            val tailHeight = dp(if (classic) 34f else 18f).toFloat()
+            val centerX = anchorX.coerceIn(rect.left + radius, rect.right - radius)
+            val sideCurveDivisor = if (classic) 2.0f else 2.4f
+            val tail = Path().apply {
+                moveTo(centerX - tailWidth / 2f, rect.bottom - radius * if (classic) 0.12f else 0.25f)
+                cubicTo(
+                    centerX - tailWidth / sideCurveDivisor,
+                    rect.bottom + tailHeight * 0.34f,
+                    centerX - tailWidth / 3.2f,
+                    rect.bottom + tailHeight,
+                    centerX,
+                    rect.bottom + tailHeight
+                )
+                cubicTo(
+                    centerX + tailWidth / 3.2f,
+                    rect.bottom + tailHeight,
+                    centerX + tailWidth / sideCurveDivisor,
+                    rect.bottom + tailHeight * 0.34f,
+                    centerX + tailWidth / 2f,
+                    rect.bottom - radius * if (classic) 0.12f else 0.25f
+                )
+                close()
+            }
+            body.op(tail, Path.Op.UNION)
+        }
+        return body
+    }
+
+    private fun readableTextColor(backgroundColor: Int): Int {
+        return if (isDarkColor(backgroundColor)) Color.WHITE else Color.BLACK
+    }
+
+    private fun isDarkColor(color: Int): Boolean {
+        val luminance = 0.299f * Color.red(color) + 0.587f * Color.green(color) + 0.114f * Color.blue(color)
+        return luminance < 150f
     }
 
     private fun keyCornerRadius(theme: ThemeOverride): Float {
