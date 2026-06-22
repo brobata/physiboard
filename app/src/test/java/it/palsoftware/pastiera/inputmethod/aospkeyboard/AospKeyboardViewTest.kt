@@ -4,6 +4,8 @@ import android.graphics.RectF
 import android.os.Looper
 import android.view.KeyEvent
 import android.view.MotionEvent
+import android.view.MotionEvent.PointerCoords
+import android.view.MotionEvent.PointerProperties
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -244,6 +246,91 @@ class AospKeyboardViewTest {
         assertEquals("-", displayHint(view, key))
     }
 
+    @Test
+    fun secondFingerShortPress_commitsHeldCharacterThenSecondCharacter() {
+        val listener = RecordingListener()
+        val view = measuredKeyboard().apply {
+            longPressTimeoutMs = 50L
+            longPressAlternatesProvider = { output -> if (output == "e") listOf("é") else emptyList() }
+            this.listener = listener
+        }
+        val (kx, ky) = centerOfLabel(view, "k")
+        val (ex, ey) = centerOfLabel(view, "e")
+
+        view.dispatchTouchEvent(motion(MotionEvent.ACTION_DOWN, kx, ky, 0L))
+        Shadows.shadowOf(Looper.getMainLooper()).idleFor(60, TimeUnit.MILLISECONDS)
+        view.dispatchTouchEvent(
+            multiPointerMotion(
+                actionMasked = MotionEvent.ACTION_POINTER_DOWN,
+                actionIndex = 1,
+                coordinates = listOf(kx to ky, ex to ey),
+                offsetMs = 70L
+            )
+        )
+        view.dispatchTouchEvent(
+            multiPointerMotion(
+                actionMasked = MotionEvent.ACTION_MOVE,
+                actionIndex = 0,
+                coordinates = listOf(kx to ky, ex to ey),
+                offsetMs = 80L
+            )
+        )
+        view.dispatchTouchEvent(
+            multiPointerMotion(
+                actionMasked = MotionEvent.ACTION_POINTER_UP,
+                actionIndex = 0,
+                coordinates = listOf(kx to ky, ex to ey),
+                offsetMs = 90L
+            )
+        )
+        view.dispatchTouchEvent(motion(MotionEvent.ACTION_UP, ex, ey, 100L))
+
+        assertEquals(listOf("k", "e"), listener.texts)
+    }
+
+    @Test
+    fun secondFingerLongPress_commitsHeldCharacterThenSecondCharacterVariation() {
+        val listener = RecordingListener()
+        val view = measuredKeyboard().apply {
+            longPressTimeoutMs = 50L
+            longPressAlternatesProvider = { output -> if (output == "e") listOf("é") else emptyList() }
+            this.listener = listener
+        }
+        val (kx, ky) = centerOfLabel(view, "k")
+        val (ex, ey) = centerOfLabel(view, "e")
+
+        view.dispatchTouchEvent(motion(MotionEvent.ACTION_DOWN, kx, ky, 0L))
+        Shadows.shadowOf(Looper.getMainLooper()).idleFor(60, TimeUnit.MILLISECONDS)
+        view.dispatchTouchEvent(
+            multiPointerMotion(
+                actionMasked = MotionEvent.ACTION_POINTER_DOWN,
+                actionIndex = 1,
+                coordinates = listOf(kx to ky, ex to ey),
+                offsetMs = 70L
+            )
+        )
+        view.dispatchTouchEvent(
+            multiPointerMotion(
+                actionMasked = MotionEvent.ACTION_MOVE,
+                actionIndex = 0,
+                coordinates = listOf(kx to ky, ex to ey),
+                offsetMs = 80L
+            )
+        )
+        view.dispatchTouchEvent(
+            multiPointerMotion(
+                actionMasked = MotionEvent.ACTION_POINTER_UP,
+                actionIndex = 0,
+                coordinates = listOf(kx to ky, ex to ey),
+                offsetMs = 90L
+            )
+        )
+        Shadows.shadowOf(Looper.getMainLooper()).idleFor(60, TimeUnit.MILLISECONDS)
+        view.dispatchTouchEvent(motion(MotionEvent.ACTION_UP, ex, ey, 150L))
+
+        assertEquals(listOf("k", "é"), listener.texts)
+    }
+
     private fun measuredKeyboard(): AospKeyboardView {
         val context = RuntimeEnvironment.getApplication()
         val parent = FrameLayout(context)
@@ -264,6 +351,45 @@ class AospKeyboardViewTest {
 
     private fun motion(action: Int, x: Float, y: Float, offsetMs: Long): MotionEvent =
         MotionEvent.obtain(0L, offsetMs, action, x, y, 0)
+
+    private fun multiPointerMotion(
+        actionMasked: Int,
+        actionIndex: Int,
+        coordinates: List<Pair<Float, Float>>,
+        offsetMs: Long
+    ): MotionEvent {
+        val properties = coordinates.indices.map { index ->
+            PointerProperties().apply {
+                id = index
+                toolType = MotionEvent.TOOL_TYPE_FINGER
+            }
+        }.toTypedArray()
+        val coords = coordinates.map { (x, y) ->
+            PointerCoords().apply {
+                this.x = x
+                this.y = y
+                pressure = 1f
+                size = 1f
+            }
+        }.toTypedArray()
+        val action = actionMasked or (actionIndex shl MotionEvent.ACTION_POINTER_INDEX_SHIFT)
+        return MotionEvent.obtain(
+            0L,
+            offsetMs,
+            action,
+            coordinates.size,
+            properties,
+            coords,
+            0,
+            0,
+            1f,
+            1f,
+            0,
+            0,
+            0,
+            0
+        )
+    }
 
     private fun labels(view: AospKeyboardView): List<String> = keys(view).map { key ->
         field<Any>(key, "spec").let { spec -> field<String>(spec, "label") }

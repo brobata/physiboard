@@ -306,6 +306,7 @@ class AospKeyboardView @JvmOverloads constructor(
 
     private val keys = mutableListOf<Key>()
     private var pressedKey: Key? = null
+    private var activePointerId: Int = -1
     private var heldModifierKey: Key? = null
     private var heldModifierPointerId: Int = -1
     private var chordKey: Key? = null
@@ -455,6 +456,7 @@ class AospKeyboardView @JvmOverloads constructor(
                 val pointerIndex = event.actionIndex
                 val key = findKey(event.getX(pointerIndex), event.getY(pointerIndex))
                 pressedKey = key
+                activePointerId = event.getPointerId(pointerIndex)
                 spaceSwipeActive = false
                 spaceSwipeLastX = event.x
                 spaceLongPressArmed = false
@@ -478,10 +480,36 @@ class AospKeyboardView @JvmOverloads constructor(
                 return true
             }
             MotionEvent.ACTION_POINTER_DOWN -> {
-                if (heldModifierKey == null) return true
                 val pointerIndex = event.actionIndex
                 val key = findKey(event.getX(pointerIndex), event.getY(pointerIndex)) ?: return true
                 if (key.spec.type.isHoldModifier()) return true
+                if (heldModifierKey == null) {
+                    val previousKey = pressedKey
+                    if (
+                        previousKey != null &&
+                        moreKeysPanelState == null &&
+                        !longPressTriggered &&
+                        !spaceSwipeActive
+                    ) {
+                        handler.removeCallbacks(longPressRunnable)
+                        dismissPopup()
+                        dispatchKey(previousKey)
+                    }
+                    activePointerId = event.getPointerId(pointerIndex)
+                    pressedKey = key
+                    spaceSwipeActive = false
+                    spaceSwipeLastX = event.getX(pointerIndex)
+                    spaceLongPressArmed = false
+                    longPressTriggered = false
+                    performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                    listener?.onKeyPressSound(soundKeyCodeFor(key))
+                    if (!isModifierPreviewLayerActive()) {
+                        showPreview(key)
+                        handler.postDelayed(longPressRunnable, longPressTimeoutMs)
+                    }
+                    invalidate()
+                    return true
+                }
                 handler.removeCallbacks(longPressRunnable)
                 chordKey = key
                 chordPointerId = event.getPointerId(pointerIndex)
@@ -496,14 +524,17 @@ class AospKeyboardView @JvmOverloads constructor(
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
+                val pointerIndex = activePointerIndex(event).takeIf { it >= 0 } ?: 0
+                val pointerX = event.getX(pointerIndex)
+                val pointerY = event.getY(pointerIndex)
                 if (moreKeysPanelState != null) {
-                    updateMoreKeysSelection(event.x, event.y)
+                    updateMoreKeysSelection(pointerX, pointerY)
                     return true
                 }
                 val pressed = pressedKey
                 if (pressed?.spec?.type == KeyType.SPACE) {
                     val step = dp(18f).toFloat()
-                    val delta = event.x - spaceSwipeLastX
+                    val delta = pointerX - spaceSwipeLastX
                     if (kotlin.math.abs(delta) >= step) {
                         handler.removeCallbacks(longPressRunnable)
                         dismissPopup()
@@ -518,7 +549,7 @@ class AospKeyboardView @JvmOverloads constructor(
                     }
                     return true
                 }
-                val key = findKey(event.x, event.y)
+                val key = findKey(pointerX, pointerY)
                 if (key != pressedKey) {
                     dismissPopup()
                     pressedKey = key
@@ -552,6 +583,36 @@ class AospKeyboardView @JvmOverloads constructor(
                     releaseHeldModifier()
                     return true
                 }
+                if (pointerId == activePointerId) {
+                    handler.removeCallbacks(longPressRunnable)
+                    moreKeysPanelState?.let { panel ->
+                        val selected = selectedMoreKey(event.getX(pointerIndex), event.getY(pointerIndex), panel)
+                        dismissPopup()
+                        pressedKey = null
+                        activePointerId = -1
+                        invalidate()
+                        if (selected != null) {
+                            listener?.onText(selected)
+                        }
+                        return true
+                    }
+                    val key = pressedKey
+                    val wasSpaceSwipe = spaceSwipeActive
+                    val wasSpaceLongPress = spaceLongPressArmed
+                    dismissPopup()
+                    spaceSwipeActive = false
+                    spaceLongPressArmed = false
+                    pressedKey = null
+                    activePointerId = -1
+                    invalidate()
+                    if (key?.spec?.type == KeyType.SPACE && wasSpaceLongPress && !wasSpaceSwipe) {
+                        listener?.onLanguageSwitch()
+                        return true
+                    }
+                    if (key != null && !longPressTriggered && !wasSpaceSwipe) {
+                        dispatchKey(key)
+                    }
+                }
                 return true
             }
             MotionEvent.ACTION_UP -> {
@@ -574,6 +635,7 @@ class AospKeyboardView @JvmOverloads constructor(
                 spaceSwipeActive = false
                 spaceLongPressArmed = false
                 pressedKey = null
+                activePointerId = -1
                 chordKey = null
                 chordPointerId = -1
                 if (releasedHeldModifier) {
@@ -599,6 +661,7 @@ class AospKeyboardView @JvmOverloads constructor(
                 chordKey = null
                 chordPointerId = -1
                 pressedKey = null
+                activePointerId = -1
                 invalidate()
                 return true
             }
@@ -961,6 +1024,7 @@ class AospKeyboardView @JvmOverloads constructor(
         chordKey = null
         chordPointerId = -1
         pressedKey = null
+        activePointerId = -1
         invalidate()
     }
 
@@ -1087,6 +1151,9 @@ class AospKeyboardView @JvmOverloads constructor(
             dx * dx + dy * dy
         }
     }
+
+    private fun activePointerIndex(event: MotionEvent): Int =
+        activePointerId.takeIf { it >= 0 }?.let { event.findPointerIndex(it) } ?: -1
 
     private fun soundKeyCodeFor(key: Key): Int {
         return when (key.spec.type) {
