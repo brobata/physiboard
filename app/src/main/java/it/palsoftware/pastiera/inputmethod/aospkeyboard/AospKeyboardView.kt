@@ -97,7 +97,7 @@ class AospKeyboardView @JvmOverloads constructor(
         FULL_ISO
     }
 
-    private enum class KeyType { CHAR, SHIFT, BACKSPACE, SYMBOLS, CTRL, COMMA, PERIOD, SPACE, ENTER, LANGUAGE }
+    private enum class KeyType { CHAR, SHIFT, BACKSPACE, SYMBOLS, CTRL, ALT, COMMA, PERIOD, SPACE, ENTER, LANGUAGE }
 
     private data class KeySpec(
         val type: KeyType,
@@ -213,6 +213,38 @@ class AospKeyboardView @JvmOverloads constructor(
             field = value
             invalidate()
         }
+    var altOneShot: Boolean = false
+        set(value) {
+            if (field == value) {
+                return
+            }
+            field = value
+            invalidate()
+        }
+    var altLocked: Boolean = false
+        set(value) {
+            if (field == value) {
+                return
+            }
+            field = value
+            invalidate()
+        }
+    var altPressed: Boolean = false
+        set(value) {
+            if (field == value) {
+                return
+            }
+            field = value
+            invalidate()
+        }
+    var altPreviewActive: Boolean = false
+        set(value) {
+            if (field == value) {
+                return
+            }
+            field = value
+            invalidate()
+        }
     var symPageActive: Boolean = false
         set(value) {
             if (field == value) {
@@ -262,6 +294,14 @@ class AospKeyboardView @JvmOverloads constructor(
             invalidate()
         }
     var ctrlPreviewIconRes: Map<Int, Int> = emptyMap()
+        set(value) {
+            if (field == value) {
+                return
+            }
+            field = value
+            invalidate()
+        }
+    var altPreviewLabels: Map<Int, String> = emptyMap()
         set(value) {
             if (field == value) {
                 return
@@ -344,6 +384,7 @@ class AospKeyboardView @JvmOverloads constructor(
     private val backspaceIcon = drawable(R.drawable.backspace_24)
     private val returnIcon = drawable(R.drawable.keyboard_return_24)
     private val ctrlIcon = drawable(R.drawable.keyboard_control_key_24)
+    private val altIcon = drawable(R.drawable.keyboard_option_key_24)
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.rgb(238, 238, 238)
         textAlign = Paint.Align.CENTER
@@ -404,7 +445,7 @@ class AospKeyboardView @JvmOverloads constructor(
             textPaint.textSize = when (key.spec.type) {
                 KeyType.SPACE -> sp(12f)
                 KeyType.SYMBOLS -> sp(16f)
-                KeyType.ENTER, KeyType.SHIFT, KeyType.BACKSPACE, KeyType.CTRL, KeyType.LANGUAGE -> sp(23f)
+                KeyType.ENTER, KeyType.SHIFT, KeyType.BACKSPACE, KeyType.CTRL, KeyType.ALT, KeyType.LANGUAGE -> sp(23f)
                 else -> sp(24f)
             }
             if (previewLabel != null && heldModifierKey?.spec?.type != KeyType.SYMBOLS) {
@@ -439,6 +480,7 @@ class AospKeyboardView @JvmOverloads constructor(
             KeyType.BACKSPACE -> backspaceIcon
             KeyType.ENTER -> returnIcon
             KeyType.CTRL -> ctrlIcon
+            KeyType.ALT -> altIcon
             KeyType.SYMBOLS -> symbolsIconRes?.let(::drawable)
             else -> null
         } ?: return false
@@ -882,11 +924,11 @@ class AospKeyboardView @JvmOverloads constructor(
     private fun bottomRow(includeEnter: Boolean): List<KeySpec> {
         val row = listOf(
             KeySpec(KeyType.SYMBOLS, "SYM", xPercent = 0f, widthPercent = 12f),
-            KeySpec(KeyType.CTRL, "CTRL", xPercent = 12f, widthPercent = 10f),
+            bottomModifierSpec(SettingsManager.getSoftwareKeyboardLeftModifierKey(context), xPercent = 12f),
             KeySpec(KeyType.COMMA, ",", xPercent = 22f, widthPercent = 8f, moreKeys = listOf("'", "\"", ";", ":")),
             KeySpec(KeyType.SPACE, "space", output = " ", xPercent = 30f, widthPercent = 40f),
             KeySpec(KeyType.PERIOD, ".", xPercent = 70f, widthPercent = 8f, moreKeys = listOf("!", "?", ";", ":", "…")),
-            KeySpec(KeyType.CTRL, "CTRL", xPercent = 78f, widthPercent = 10f)
+            bottomModifierSpec(SettingsManager.getSoftwareKeyboardRightModifierKey(context), xPercent = 78f)
         )
         return if (!includeEnter) {
             row
@@ -894,6 +936,18 @@ class AospKeyboardView @JvmOverloads constructor(
             row + listOf(
             KeySpec(KeyType.ENTER, "↵", output = "\n", xPercent = 88f, widthPercent = 12f)
             )
+        }
+    }
+
+    private fun bottomModifierSpec(
+        modifierKey: SettingsManager.SoftwareKeyboardModifierKey,
+        xPercent: Float
+    ): KeySpec {
+        return when (modifierKey) {
+            SettingsManager.SoftwareKeyboardModifierKey.ALT ->
+                KeySpec(KeyType.ALT, "ALT", xPercent = xPercent, widthPercent = 10f)
+            SettingsManager.SoftwareKeyboardModifierKey.CTRL ->
+                KeySpec(KeyType.CTRL, "CTRL", xPercent = xPercent, widthPercent = 10f)
         }
     }
 
@@ -942,6 +996,7 @@ class AospKeyboardView @JvmOverloads constructor(
         val heldType = heldModifierKey?.spec?.type
         return when {
             heldType == KeyType.CTRL || ctrlPreviewActive -> ctrlPreviewLabels[keyCode]
+            heldType == KeyType.ALT || altPreviewActive -> altPreviewLabels[keyCode]
             heldType == KeyType.SYMBOLS && !symPageActive ->
                 symPreviewTextLabels[key.spec.output] ?: symPreviewLabels[keyCode]
             else -> null
@@ -959,7 +1014,11 @@ class AospKeyboardView @JvmOverloads constructor(
 
     private fun isModifierPreviewLayerActive(): Boolean {
         val heldType = heldModifierKey?.spec?.type
-        return heldType == KeyType.SYMBOLS || heldType == KeyType.CTRL || ctrlPreviewActive
+        return heldType == KeyType.SYMBOLS ||
+            heldType == KeyType.CTRL ||
+            heldType == KeyType.ALT ||
+            ctrlPreviewActive ||
+            altPreviewActive
     }
 
     private fun symPageLabelFor(key: Key): String? {
@@ -1009,6 +1068,9 @@ class AospKeyboardView @JvmOverloads constructor(
             KeyType.SHIFT -> listener?.onShift()
             KeyType.SYMBOLS -> listener?.onSymbols()
             KeyType.CTRL -> listener?.onCtrl()
+            KeyType.ALT -> listener?.onModifierKeyDown(KeyEvent.KEYCODE_ALT_LEFT).also {
+                listener?.onModifierKeyUp(KeyEvent.KEYCODE_ALT_LEFT)
+            }
             KeyType.LANGUAGE -> listener?.onLanguageSwitch()
         }
     }
@@ -1189,6 +1251,7 @@ class AospKeyboardView @JvmOverloads constructor(
             KeyType.ENTER -> KeyEvent.KEYCODE_ENTER
             KeyType.SHIFT -> KeyEvent.KEYCODE_SHIFT_LEFT
             KeyType.CTRL -> KeyEvent.KEYCODE_CTRL_LEFT
+            KeyType.ALT -> KeyEvent.KEYCODE_ALT_LEFT
             KeyType.SYMBOLS, KeyType.LANGUAGE -> KeyEvent.KEYCODE_SYM
             KeyType.COMMA -> KeyEvent.KEYCODE_COMMA
             KeyType.PERIOD -> KeyEvent.KEYCODE_PERIOD
@@ -1340,6 +1403,11 @@ class AospKeyboardView @JvmOverloads constructor(
                 ctrlPressed || ctrlOneShot -> theme.ledActive
                 else -> theme.specialKey
             }
+            KeyType.ALT -> when {
+                altLocked -> theme.ledLocked
+                altPressed || altOneShot -> theme.ledActive
+                else -> theme.specialKey
+            }
             else -> if (isFunctional(type)) theme.specialKey else theme.normalKey
         }
     }
@@ -1464,7 +1532,13 @@ class AospKeyboardView @JvmOverloads constructor(
         RectF(left + dx, top + dy, right + dx, bottom + dy)
 
     private fun isFunctional(type: KeyType): Boolean =
-        type == KeyType.SHIFT || type == KeyType.BACKSPACE || type == KeyType.SYMBOLS || type == KeyType.CTRL || type == KeyType.ENTER || type == KeyType.LANGUAGE
+        type == KeyType.SHIFT ||
+            type == KeyType.BACKSPACE ||
+            type == KeyType.SYMBOLS ||
+            type == KeyType.CTRL ||
+            type == KeyType.ALT ||
+            type == KeyType.ENTER ||
+            type == KeyType.LANGUAGE
 
     private fun KeyType.canShowLongPressAlternates(): Boolean =
         this == KeyType.CHAR || this == KeyType.COMMA || this == KeyType.PERIOD
@@ -1473,7 +1547,7 @@ class AospKeyboardView @JvmOverloads constructor(
         this == KeyType.CHAR || this == KeyType.COMMA || this == KeyType.PERIOD
 
     private fun KeyType.isHoldModifier(): Boolean =
-        this == KeyType.CTRL || this == KeyType.SYMBOLS
+        this == KeyType.CTRL || this == KeyType.ALT || this == KeyType.SYMBOLS
 
     private fun drawable(resId: Int): Drawable? = ContextCompat.getDrawable(context, resId)
 

@@ -366,13 +366,13 @@ private fun KeyboardTimingMainContent(
                     )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = stringResource(R.string.virtual_keyboard_behavior_title),
+                            text = stringResource(R.string.virtual_keyboard_behaviour_title),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Medium,
                             maxLines = 1
                         )
                         Text(
-                            text = stringResource(R.string.virtual_keyboard_behavior_description),
+                            text = stringResource(R.string.virtual_keyboard_behaviour_description),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 2
@@ -389,7 +389,7 @@ private fun KeyboardTimingMainContent(
             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
             Text(
-                text = stringResource(R.string.modifier_tap_behavior_title),
+                text = stringResource(R.string.modifier_tap_behaviour_title),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Medium,
@@ -476,6 +476,12 @@ private fun VirtualKeyboardBehaviorSettingsScreen(
     var numberRowEnabled by remember {
         mutableStateOf(SettingsManager.getSoftwareKeyboardNumberRowEnabled(context))
     }
+    var leftModifierKey by remember {
+        mutableStateOf(SettingsManager.getSoftwareKeyboardLeftModifierKey(context))
+    }
+    var rightModifierKey by remember {
+        mutableStateOf(SettingsManager.getSoftwareKeyboardRightModifierKey(context))
+    }
     var showSoftwareKeyboardModeMenu by remember { mutableStateOf(false) }
     var showSoftwareKeyboardLayoutStyleMenu by remember { mutableStateOf(false) }
 
@@ -490,6 +496,12 @@ private fun VirtualKeyboardBehaviorSettingsScreen(
                 "software_keyboard_mode_toggle_toasts" -> {
                     softwareKeyboardModeToggleToastsEnabled =
                         SettingsManager.getSoftwareKeyboardModeToggleToastsEnabled(context)
+                }
+                "software_keyboard_left_modifier_key" -> {
+                    leftModifierKey = SettingsManager.getSoftwareKeyboardLeftModifierKey(context)
+                }
+                "software_keyboard_right_modifier_key" -> {
+                    rightModifierKey = SettingsManager.getSoftwareKeyboardRightModifierKey(context)
                 }
             }
         }
@@ -522,7 +534,7 @@ private fun VirtualKeyboardBehaviorSettingsScreen(
                         )
                     }
                     Text(
-                        text = stringResource(R.string.virtual_keyboard_behavior_title),
+                        text = stringResource(R.string.virtual_keyboard_behaviour_title),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.padding(start = 8.dp)
@@ -785,7 +797,122 @@ private fun VirtualKeyboardBehaviorSettingsScreen(
                     SettingsManager.setSoftwareKeyboardNearestKeyTouchEnabled(context, enabled)
                 }
             )
+
+            Text(
+                text = stringResource(R.string.software_keyboard_modifier_keys_title),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                SoftwareKeyboardModifierSelection(
+                    title = stringResource(R.string.software_keyboard_left_modifier_key_title),
+                    selected = leftModifierKey,
+                    modifier = Modifier.weight(1f),
+                    onSelected = { selected ->
+                        leftModifierKey = selected
+                        SettingsManager.setSoftwareKeyboardLeftModifierKey(context, selected)
+                    }
+                )
+                SoftwareKeyboardModifierSelection(
+                    title = stringResource(R.string.software_keyboard_right_modifier_key_title),
+                    selected = rightModifierKey,
+                    modifier = Modifier.weight(1f),
+                    onSelected = { selected ->
+                        rightModifierKey = selected
+                        SettingsManager.setSoftwareKeyboardRightModifierKey(context, selected)
+                    }
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun SoftwareKeyboardModifierSelection(
+    title: String,
+    selected: SettingsManager.SoftwareKeyboardModifierKey,
+    modifier: Modifier = Modifier,
+    onSelected: (SettingsManager.SoftwareKeyboardModifierKey) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Surface(
+        modifier = modifier
+            .height(82.dp)
+            .clickable { expanded = true },
+        shape = MaterialTheme.shapes.medium,
+        tonalElevation = 1.dp
+    ) {
+        Box {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = softwareKeyboardModifierKeyLabel(selected),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.weight(1f),
+                        maxLines = 1
+                    )
+                    Icon(
+                        imageVector = Icons.Default.ArrowDropDown,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                SettingsManager.SoftwareKeyboardModifierKey.values().forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(softwareKeyboardModifierKeyLabel(option)) },
+                        onClick = {
+                            onSelected(option)
+                            expanded = false
+                        },
+                        leadingIcon = {
+                            if (selected == option) {
+                                Icon(Icons.Default.Check, contentDescription = null)
+                            }
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun softwareKeyboardModifierKeyLabel(
+    modifierKey: SettingsManager.SoftwareKeyboardModifierKey
+): String {
+    return when (modifierKey) {
+        SettingsManager.SoftwareKeyboardModifierKey.CTRL ->
+            stringResource(R.string.software_keyboard_modifier_key_ctrl)
+        SettingsManager.SoftwareKeyboardModifierKey.ALT ->
+            stringResource(R.string.software_keyboard_modifier_key_alt)
     }
 }
 

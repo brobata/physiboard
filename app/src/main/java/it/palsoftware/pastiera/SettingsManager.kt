@@ -105,6 +105,8 @@ object SettingsManager {
     private const val KEY_SOFTWARE_KEYBOARD_LAYOUT_STYLE = "software_keyboard_layout_style" // compact | extended_iso | full_ansi | full_iso
     private const val KEY_SOFTWARE_KEYBOARD_NUMBER_ROW_ENABLED = "software_keyboard_number_row_enabled"
     private const val KEY_SOFTWARE_KEYBOARD_NEAREST_KEY_TOUCH_ENABLED = "software_keyboard_nearest_key_touch_enabled"
+    private const val KEY_SOFTWARE_KEYBOARD_LEFT_MODIFIER_KEY = "software_keyboard_left_modifier_key"
+    private const val KEY_SOFTWARE_KEYBOARD_RIGHT_MODIFIER_KEY = "software_keyboard_right_modifier_key"
     private const val KEY_TITAN2_LAYOUT_ENABLED = "titan2_layout_enabled" // Align OSK with Titan 2 physical layout
     private const val KEY_ACCESSIBILITY_LIVE_ANNOUNCEMENTS_ENABLED = "accessibility_live_announcements_enabled" // Whether status bar accessibility live announcements are enabled
     private const val KEY_ACCESSIBILITY_READ_SECOND_ROW_ENABLED = "accessibility_read_second_row_enabled" // Whether TalkBack should read quick settings/variations row
@@ -333,6 +335,11 @@ object SettingsManager {
         FULL_ISO("full_iso")
     }
 
+    enum class SoftwareKeyboardModifierKey(val storageValue: String) {
+        CTRL("ctrl"),
+        ALT("alt")
+    }
+
     enum class KeyboardThemeTarget {
         HARDWARE,
         SOFTWARE
@@ -499,6 +506,42 @@ object SettingsManager {
         getPreferences(context).edit()
             .putBoolean(KEY_SOFTWARE_KEYBOARD_NEAREST_KEY_TOUCH_ENABLED, enabled)
             .apply()
+    }
+
+    fun getSoftwareKeyboardLeftModifierKey(context: Context): SoftwareKeyboardModifierKey =
+        getSoftwareKeyboardModifierKey(
+            context = context,
+            key = KEY_SOFTWARE_KEYBOARD_LEFT_MODIFIER_KEY,
+            defaultValue = SoftwareKeyboardModifierKey.CTRL
+        )
+
+    fun setSoftwareKeyboardLeftModifierKey(context: Context, modifierKey: SoftwareKeyboardModifierKey) {
+        getPreferences(context).edit()
+            .putString(KEY_SOFTWARE_KEYBOARD_LEFT_MODIFIER_KEY, modifierKey.storageValue)
+            .apply()
+    }
+
+    fun getSoftwareKeyboardRightModifierKey(context: Context): SoftwareKeyboardModifierKey =
+        getSoftwareKeyboardModifierKey(
+            context = context,
+            key = KEY_SOFTWARE_KEYBOARD_RIGHT_MODIFIER_KEY,
+            defaultValue = SoftwareKeyboardModifierKey.ALT
+        )
+
+    fun setSoftwareKeyboardRightModifierKey(context: Context, modifierKey: SoftwareKeyboardModifierKey) {
+        getPreferences(context).edit()
+            .putString(KEY_SOFTWARE_KEYBOARD_RIGHT_MODIFIER_KEY, modifierKey.storageValue)
+            .apply()
+    }
+
+    private fun getSoftwareKeyboardModifierKey(
+        context: Context,
+        key: String,
+        defaultValue: SoftwareKeyboardModifierKey
+    ): SoftwareKeyboardModifierKey {
+        val value = getPreferences(context).getString(key, defaultValue.storageValue)
+        return SoftwareKeyboardModifierKey.values().firstOrNull { it.storageValue == value }
+            ?: defaultValue
     }
 
     fun defaultKeyboardTheme(): KeyboardThemeSettings =

@@ -102,7 +102,7 @@ fun AppEnterBehaviorScreen(
                     )
                 }
                 Text(
-                    text = stringResource(R.string.app_enter_behavior_title),
+                    text = stringResource(R.string.app_enter_behaviour_title),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier
@@ -112,7 +112,7 @@ fun AppEnterBehaviorScreen(
                 IconButton(onClick = { showAddDialog = true }) {
                     Icon(
                         imageVector = Icons.Filled.Add,
-                        contentDescription = stringResource(R.string.app_enter_behavior_add_app)
+                        contentDescription = stringResource(R.string.app_enter_behaviour_add_app)
                     )
                 }
             }
@@ -128,12 +128,12 @@ fun AppEnterBehaviorScreen(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = stringResource(R.string.app_enter_behavior_enable_title),
+                        text = stringResource(R.string.app_enter_behaviour_enable_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Medium
                     )
                     Text(
-                        text = stringResource(R.string.app_enter_behavior_enable_description),
+                        text = stringResource(R.string.app_enter_behaviour_enable_description),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -188,18 +188,18 @@ fun AppEnterBehaviorScreen(
                     Icon(Icons.Filled.WarningAmber, contentDescription = null)
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = stringResource(R.string.app_enter_behavior_sym_enter_conflict_title),
+                            text = stringResource(R.string.app_enter_behaviour_sym_enter_conflict_title),
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Medium
                         )
                         Text(
-                            text = stringResource(R.string.app_enter_behavior_sym_enter_conflict_description),
+                            text = stringResource(R.string.app_enter_behaviour_sym_enter_conflict_description),
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
                     if (onOpenLauncherShortcutAssignments != null) {
                         TextButton(onClick = onOpenLauncherShortcutAssignments) {
-                            Text(stringResource(R.string.app_enter_behavior_sym_enter_conflict_action))
+                            Text(stringResource(R.string.app_enter_behaviour_sym_enter_conflict_action))
                         }
                     }
                 }
@@ -207,7 +207,7 @@ fun AppEnterBehaviorScreen(
         }
 
         Text(
-            text = stringResource(R.string.app_enter_behavior_overrides_title),
+            text = stringResource(R.string.app_enter_behaviour_overrides_title),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurface,
@@ -290,12 +290,12 @@ private fun EnterPresetSelector(
     Surface(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
             Text(
-                text = stringResource(R.string.app_enter_behavior_preset_title),
+                text = stringResource(R.string.app_enter_behaviour_preset_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Medium
             )
             Text(
-                text = stringResource(R.string.app_enter_behavior_preset_description),
+                text = stringResource(R.string.app_enter_behaviour_preset_description),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -344,12 +344,12 @@ private fun EnterAdditionalSendShortcutSelector(
     Surface(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
             Text(
-                text = stringResource(R.string.app_enter_behavior_additional_send_shortcut_label),
+                text = stringResource(R.string.app_enter_behaviour_additional_send_shortcut_label),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Medium
             )
             Text(
-                text = stringResource(R.string.app_enter_behavior_additional_send_shortcut_description),
+                text = stringResource(R.string.app_enter_behaviour_additional_send_shortcut_description),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -434,7 +434,7 @@ private fun EnterBehaviorOverrideRow(
                     IconButton(onClick = onRemove) {
                         Icon(
                             imageVector = Icons.Filled.DeleteOutline,
-                            contentDescription = stringResource(R.string.app_enter_behavior_remove_app),
+                            contentDescription = stringResource(R.string.app_enter_behaviour_remove_app),
                             tint = MaterialTheme.colorScheme.error
                         )
                     }
@@ -445,9 +445,9 @@ private fun EnterBehaviorOverrideRow(
                     ) {
                         Text(
                             if (showCuratedOverrideControls) {
-                                stringResource(R.string.app_enter_behavior_hide_manual_override)
+                                stringResource(R.string.app_enter_behaviour_hide_manual_override)
                             } else {
-                                stringResource(R.string.app_enter_behavior_show_manual_override)
+                                stringResource(R.string.app_enter_behaviour_show_manual_override)
                             }
                         )
                     }
@@ -458,7 +458,7 @@ private fun EnterBehaviorOverrideRow(
                 KnownEnterBehaviorStatus(app.packageName, behavior)
                 if (showCuratedOverrideControls) {
                     Text(
-                        text = stringResource(R.string.app_enter_behavior_manual_override_note),
+                        text = stringResource(R.string.app_enter_behaviour_manual_override_note),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 4.dp)
@@ -476,7 +476,7 @@ private fun EnterBehaviorOverrideRow(
                         value = getEnterBehaviorLabel(behavior),
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text(stringResource(R.string.app_enter_behavior_desired_label)) },
+                        label = { Text(stringResource(R.string.app_enter_behaviour_desired_label)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(behaviorExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -507,7 +507,7 @@ private fun EnterBehaviorOverrideRow(
                         value = getEnterSendStrategyLabel(sendStrategy),
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text(stringResource(R.string.app_enter_behavior_strategy_label)) },
+                        label = { Text(stringResource(R.string.app_enter_behaviour_strategy_label)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(strategyExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -538,7 +538,7 @@ private fun EnterBehaviorOverrideRow(
                         value = getEnterAdditionalSendShortcutLabel(additionalSendShortcut),
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text(stringResource(R.string.app_enter_behavior_additional_send_shortcut_label)) },
+                        label = { Text(stringResource(R.string.app_enter_behaviour_additional_send_shortcut_label)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(additionalShortcutExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -591,11 +591,11 @@ private fun AddEnterBehaviorAppDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.app_enter_behavior_add_app)) },
+        title = { Text(stringResource(R.string.app_enter_behaviour_add_app)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    text = stringResource(R.string.app_enter_behavior_add_app_description),
+                    text = stringResource(R.string.app_enter_behaviour_add_app_description),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -607,7 +607,7 @@ private fun AddEnterBehaviorAppDialog(
                         value = getEnterBehaviorLabel(selectedBehavior),
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text(stringResource(R.string.app_enter_behavior_desired_label)) },
+                        label = { Text(stringResource(R.string.app_enter_behaviour_desired_label)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(behaviorExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -636,7 +636,7 @@ private fun AddEnterBehaviorAppDialog(
                         value = getEnterSendStrategyLabel(selectedStrategy),
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text(stringResource(R.string.app_enter_behavior_strategy_label)) },
+                        label = { Text(stringResource(R.string.app_enter_behaviour_strategy_label)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(strategyExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -665,7 +665,7 @@ private fun AddEnterBehaviorAppDialog(
                         value = getEnterAdditionalSendShortcutLabel(selectedAdditionalShortcut),
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text(stringResource(R.string.app_enter_behavior_additional_send_shortcut_label)) },
+                        label = { Text(stringResource(R.string.app_enter_behaviour_additional_send_shortcut_label)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(additionalShortcutExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -687,7 +687,7 @@ private fun AddEnterBehaviorAppDialog(
                     }
                 }
                 Text(
-                    text = stringResource(R.string.app_enter_behavior_add_app_list_title),
+                    text = stringResource(R.string.app_enter_behaviour_add_app_list_title),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -729,14 +729,14 @@ private fun AddEnterBehaviorAppDialog(
 private fun getEnterPresetLabel(preset: String): String {
     return when (preset) {
         SettingsManager.ENTER_BEHAVIOR_PRESET_ENTER_SEND_SHIFT_NEWLINE ->
-            stringResource(R.string.app_enter_behavior_preset_send_shift_newline)
+            stringResource(R.string.app_enter_behaviour_preset_send_shift_newline)
         SettingsManager.ENTER_BEHAVIOR_PRESET_ENTER_NEWLINE_CTRL_SEND ->
-            stringResource(R.string.app_enter_behavior_preset_newline_ctrl_send)
+            stringResource(R.string.app_enter_behaviour_preset_newline_ctrl_send)
         SettingsManager.ENTER_BEHAVIOR_PRESET_ENTER_NEWLINE_ONLY ->
-            stringResource(R.string.app_enter_behavior_preset_newline_only)
+            stringResource(R.string.app_enter_behaviour_preset_newline_only)
         SettingsManager.ENTER_BEHAVIOR_PRESET_CUSTOM ->
-            stringResource(R.string.app_enter_behavior_preset_custom)
-        else -> stringResource(R.string.app_enter_behavior_preset_app_default)
+            stringResource(R.string.app_enter_behaviour_preset_custom)
+        else -> stringResource(R.string.app_enter_behaviour_preset_app_default)
     }
 }
 
@@ -744,12 +744,12 @@ private fun getEnterPresetLabel(preset: String): String {
 private fun getEnterBehaviorLabel(behavior: String): String {
     return when (behavior) {
         SettingsManager.ENTER_BEHAVIOR_ENTER_NEWLINE ->
-            stringResource(R.string.app_enter_behavior_option_enter_newline)
+            stringResource(R.string.app_enter_behaviour_option_enter_newline)
         SettingsManager.ENTER_BEHAVIOR_ENTER_SEND_SHIFT_NEWLINE ->
-            stringResource(R.string.app_enter_behavior_option_send_shift_newline)
+            stringResource(R.string.app_enter_behaviour_option_send_shift_newline)
         SettingsManager.ENTER_BEHAVIOR_ENTER_NEWLINE_CTRL_SEND ->
-            stringResource(R.string.app_enter_behavior_option_newline_ctrl_send)
-        else -> stringResource(R.string.app_enter_behavior_option_app_default)
+            stringResource(R.string.app_enter_behaviour_option_newline_ctrl_send)
+        else -> stringResource(R.string.app_enter_behaviour_option_app_default)
     }
 }
 
@@ -776,55 +776,55 @@ private fun KnownEnterBehaviorStatus(packageName: String, behavior: String) {
     val strategyLabel = when {
         packageName == DISCORD_PACKAGE_NAME &&
             behavior == SettingsManager.ENTER_BEHAVIOR_ENTER_SEND_SHIFT_NEWLINE ->
-            stringResource(R.string.app_enter_behavior_strategy_none_label)
+            stringResource(R.string.app_enter_behaviour_strategy_none_label)
         packageName == DISCORD_PACKAGE_NAME &&
             behavior == SettingsManager.ENTER_BEHAVIOR_ENTER_NEWLINE_CTRL_SEND ->
-            stringResource(R.string.app_enter_behavior_strategy_plain_enter_label)
+            stringResource(R.string.app_enter_behaviour_strategy_plain_enter_label)
         behavior == SettingsManager.ENTER_BEHAVIOR_APP_DEFAULT ->
-            stringResource(R.string.app_enter_behavior_strategy_none_label)
+            stringResource(R.string.app_enter_behaviour_strategy_none_label)
         packageName in favoriteEnterBehaviorApps ->
-            stringResource(R.string.app_enter_behavior_strategy_app_action_label)
+            stringResource(R.string.app_enter_behaviour_strategy_app_action_label)
         else ->
-            stringResource(R.string.app_enter_behavior_strategy_unconfigured_label)
+            stringResource(R.string.app_enter_behaviour_strategy_unconfigured_label)
     }
     val statusText = when {
         packageName == DISCORD_PACKAGE_NAME &&
             behavior == SettingsManager.ENTER_BEHAVIOR_ENTER_SEND_SHIFT_NEWLINE ->
-            stringResource(R.string.app_enter_behavior_status_native_result)
+            stringResource(R.string.app_enter_behaviour_status_native_result)
         packageName == DISCORD_PACKAGE_NAME &&
             behavior == SettingsManager.ENTER_BEHAVIOR_ENTER_NEWLINE_CTRL_SEND ->
-            stringResource(R.string.app_enter_behavior_status_strategy_result, behaviorText)
+            stringResource(R.string.app_enter_behaviour_status_strategy_result, behaviorText)
         behavior == SettingsManager.ENTER_BEHAVIOR_APP_DEFAULT ->
-            stringResource(R.string.app_enter_behavior_status_native_result)
+            stringResource(R.string.app_enter_behaviour_status_native_result)
         packageName in testedEnterBehaviorPackages ->
-            stringResource(R.string.app_enter_behavior_status_strategy_result, behaviorText)
+            stringResource(R.string.app_enter_behaviour_status_strategy_result, behaviorText)
         packageName in favoriteEnterBehaviorApps ->
-            stringResource(R.string.app_enter_behavior_status_experimental_result, behaviorText)
+            stringResource(R.string.app_enter_behaviour_status_experimental_result, behaviorText)
         else ->
-            stringResource(R.string.app_enter_behavior_status_not_active, behaviorText)
+            stringResource(R.string.app_enter_behaviour_status_not_active, behaviorText)
     }
     val strategyText = when {
         packageName == DISCORD_PACKAGE_NAME &&
             behavior == SettingsManager.ENTER_BEHAVIOR_ENTER_SEND_SHIFT_NEWLINE ->
-            stringResource(R.string.app_enter_behavior_strategy_discord_app_default_detail)
+            stringResource(R.string.app_enter_behaviour_strategy_discord_app_default_detail)
         packageName == DISCORD_PACKAGE_NAME &&
             behavior == SettingsManager.ENTER_BEHAVIOR_ENTER_NEWLINE_CTRL_SEND ->
-            stringResource(R.string.app_enter_behavior_strategy_discord_partial_detail)
+            stringResource(R.string.app_enter_behaviour_strategy_discord_partial_detail)
         behavior == SettingsManager.ENTER_BEHAVIOR_APP_DEFAULT ->
-            stringResource(R.string.app_enter_behavior_strategy_app_default_detail)
+            stringResource(R.string.app_enter_behaviour_strategy_app_default_detail)
         packageName in testedEnterBehaviorPackages &&
             behavior == SettingsManager.ENTER_BEHAVIOR_ENTER_NEWLINE_CTRL_SEND ->
-            stringResource(R.string.app_enter_behavior_strategy_whatsapp_newline_ctrl_send)
+            stringResource(R.string.app_enter_behaviour_strategy_whatsapp_newline_ctrl_send)
         packageName in testedEnterBehaviorPackages &&
             behavior == SettingsManager.ENTER_BEHAVIOR_ENTER_SEND_SHIFT_NEWLINE ->
-            stringResource(R.string.app_enter_behavior_strategy_whatsapp_send_shift_newline)
+            stringResource(R.string.app_enter_behaviour_strategy_whatsapp_send_shift_newline)
         packageName in testedEnterBehaviorPackages &&
             behavior == SettingsManager.ENTER_BEHAVIOR_ENTER_NEWLINE ->
-            stringResource(R.string.app_enter_behavior_strategy_whatsapp_newline_only)
+            stringResource(R.string.app_enter_behaviour_strategy_whatsapp_newline_only)
         packageName in favoriteEnterBehaviorApps ->
-            stringResource(R.string.app_enter_behavior_strategy_experimental_detail)
+            stringResource(R.string.app_enter_behaviour_strategy_experimental_detail)
         else ->
-            stringResource(R.string.app_enter_behavior_strategy_not_tested_detail)
+            stringResource(R.string.app_enter_behaviour_strategy_not_tested_detail)
     }
 
     Surface(
@@ -857,12 +857,12 @@ private fun KnownEnterBehaviorStatus(packageName: String, behavior: String) {
 private fun getEnterSendStrategyLabel(strategy: String): String {
     return when (strategy) {
         SettingsManager.ENTER_SEND_STRATEGY_EDITOR_ACTION ->
-            stringResource(R.string.app_enter_behavior_strategy_editor_action)
+            stringResource(R.string.app_enter_behaviour_strategy_editor_action)
         SettingsManager.ENTER_SEND_STRATEGY_CTRL_ENTER ->
-            stringResource(R.string.app_enter_behavior_strategy_ctrl_enter)
+            stringResource(R.string.app_enter_behaviour_strategy_ctrl_enter)
         SettingsManager.ENTER_SEND_STRATEGY_PLAIN_ENTER ->
-            stringResource(R.string.app_enter_behavior_strategy_plain_enter)
-        else -> stringResource(R.string.app_enter_behavior_strategy_auto)
+            stringResource(R.string.app_enter_behaviour_strategy_plain_enter)
+        else -> stringResource(R.string.app_enter_behaviour_strategy_auto)
     }
 }
 
@@ -879,8 +879,8 @@ private fun enterSendStrategyOptions(): List<String> {
 private fun getEnterAdditionalSendShortcutLabel(shortcut: String): String {
     return when (shortcut) {
         SettingsManager.ENTER_ADDITIONAL_SEND_SHORTCUT_SYM_ENTER ->
-            stringResource(R.string.app_enter_behavior_additional_send_shortcut_sym_enter)
-        else -> stringResource(R.string.app_enter_behavior_additional_send_shortcut_none)
+            stringResource(R.string.app_enter_behaviour_additional_send_shortcut_sym_enter)
+        else -> stringResource(R.string.app_enter_behaviour_additional_send_shortcut_none)
     }
 }
 

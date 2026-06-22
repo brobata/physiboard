@@ -444,13 +444,13 @@ fun CustomizationSettingsScreen(
                                 )
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = stringResource(R.string.app_enter_behavior_title),
+                                        text = stringResource(R.string.app_enter_behaviour_title),
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Medium,
                                         maxLines = 1
                                     )
                                     Text(
-                                        text = stringResource(R.string.app_enter_behavior_description),
+                                        text = stringResource(R.string.app_enter_behaviour_description),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         maxLines = 1
@@ -1023,8 +1023,8 @@ private fun StarterLauncherShortcutsSettingsScreen(
                         modifier = Modifier.size(24.dp)
                     )
                 },
-                title = stringResource(R.string.quick_launcher_behavior_title),
-                description = stringResource(R.string.quick_launcher_behavior_description),
+                title = stringResource(R.string.quick_launcher_behaviour_title),
+                description = stringResource(R.string.quick_launcher_behaviour_description),
                 onClick = onOpenBehavior
             )
 
@@ -1093,7 +1093,7 @@ private fun StarterLauncherBehaviorScreen(
 
     StarterLauncherSubScreen(
         modifier = modifier,
-        title = stringResource(R.string.quick_launcher_behavior_title),
+        title = stringResource(R.string.quick_launcher_behaviour_title),
         onBack = onBack
     ) {
         Surface(

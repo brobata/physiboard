@@ -1772,7 +1772,12 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             } else if (key == "software_keyboard_mode") {
                 invalidateRenderedStatusSnapshot()
                 keyboardVisibilityController.syncMinimalUiOverrideFromSettings()
-            } else if (key == "software_keyboard_layout_style" || key == "software_keyboard_number_row_enabled") {
+            } else if (
+                key == "software_keyboard_layout_style" ||
+                key == "software_keyboard_number_row_enabled" ||
+                key == "software_keyboard_left_modifier_key" ||
+                key == "software_keyboard_right_modifier_key"
+            ) {
                 Handler(Looper.getMainLooper()).post {
                     updateStatusBarText()
                 }
@@ -1995,6 +2000,20 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 }
                 true
             }
+            KeyEvent.KEYCODE_ALT_LEFT, KeyEvent.KEYCODE_ALT_RIGHT -> {
+                modifierStateBeforeHold = modifierStateController.captureLogicalState()
+                variationInteractedDuringHold = false
+                otherKeyInteractedDuringHold = false
+                modifierDownTimes[keyCode] = SystemClock.uptimeMillis()
+                if (symLayoutController.isSymActive()) {
+                    symLayoutController.closeSymPage()
+                }
+                val result = modifierStateController.handleAltKeyDown(keyCode)
+                if (result.shouldUpdateStatusBar || result.shouldRefreshStatusBar) {
+                    updateStatusBarText()
+                }
+                true
+            }
             KEYCODE_SYM -> {
                 modifierDownTimes[keyCode] = SystemClock.uptimeMillis()
                 dispatchSoftwareKeyboardSyntheticKey(keyCode, KeyEvent.ACTION_DOWN)
@@ -2017,6 +2036,17 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                     modifierStateController.ctrlOneShot = false
                 }
                 if (result.shouldUpdateStatusBar || wasTap || shortcutUsedDuringHold) {
+                    updateStatusBarText()
+                }
+                modifierDownTimes.remove(keyCode)
+                variationInteractedDuringHold = false
+                otherKeyInteractedDuringHold = false
+                modifierStateBeforeHold = null
+                true
+            }
+            KeyEvent.KEYCODE_ALT_LEFT, KeyEvent.KEYCODE_ALT_RIGHT -> {
+                val result = modifierStateController.handleAltKeyUp(keyCode)
+                if (result.shouldUpdateStatusBar || result.shouldRefreshStatusBar) {
                     updateStatusBarText()
                 }
                 modifierDownTimes.remove(keyCode)
@@ -2055,6 +2085,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         val softwareModifierActive =
             symTogglePendingOnKeyUp ||
                 symLayoutController.currentSymPage() in 1..4 ||
+                altPressed ||
+                altPhysicallyPressed ||
+                altLatchActive ||
+                altOneShot ||
                 ctrlPressed ||
                 ctrlPhysicallyPressed ||
                 ctrlLatchActive ||
@@ -2404,6 +2438,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             softwareCtrlPreviewLabels = buildSoftwareCtrlPreviewLabels(modifierSnapshot),
             softwareCtrlPreviewIconRes = buildSoftwareCtrlPreviewIconRes(modifierSnapshot),
             softwareCtrlPreviewActive = shouldShowSoftwareCtrlPreview(modifierSnapshot),
+            softwareAltPreviewLabels = buildSoftwareAltPreviewLabels(modifierSnapshot),
+            softwareAltPreviewActive = shouldShowSoftwareAltPreview(modifierSnapshot),
             // Legacy flag for backward compatibility
             shouldDisableSmartFeatures = shouldDisableSmartFeatures
         )
@@ -2512,6 +2548,26 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             val mapping = ctrlKeyMap[shortcutKeyCode] ?: return@mapNotNull null
             val iconRes = softwareCtrlPreviewIconRes(mapping) ?: return@mapNotNull null
             keyCode to iconRes
+        }.toMap()
+    }
+
+    private fun shouldShowSoftwareAltPreview(
+        modifierSnapshot: it.palsoftware.pastiera.core.ModifierStateController.Snapshot
+    ): Boolean =
+        modifierSnapshot.altLatchActive ||
+            modifierSnapshot.altOneShot ||
+            modifierSnapshot.altPhysicallyPressed
+
+    private fun buildSoftwareAltPreviewLabels(
+        modifierSnapshot: it.palsoftware.pastiera.core.ModifierStateController.Snapshot
+    ): Map<Int, String> {
+        if (!shouldShowSoftwareAltPreview(modifierSnapshot)) {
+            return emptyMap()
+        }
+        val altMappings = altSymManager.getAltMappings()
+        return SOFTWARE_PREVIEW_KEY_CODES.mapNotNull { keyCode ->
+            val label = altMappings[keyCode]?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            keyCode to label
         }.toMap()
     }
 

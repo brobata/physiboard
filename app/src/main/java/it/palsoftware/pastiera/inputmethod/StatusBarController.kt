@@ -271,6 +271,8 @@ class StatusBarController(
         val softwareCtrlPreviewLabels: Map<Int, String> = emptyMap(),
         val softwareCtrlPreviewIconRes: Map<Int, Int> = emptyMap(),
         val softwareCtrlPreviewActive: Boolean = false,
+        val softwareAltPreviewLabels: Map<Int, String> = emptyMap(),
+        val softwareAltPreviewActive: Boolean = false,
         // Legacy flag for backward compatibility
         val shouldDisableSmartFeatures: Boolean = false
     ) {
@@ -1247,6 +1249,10 @@ class StatusBarController(
         keyboardView.ctrlLocked = snapshot.ctrlLatchActive || snapshot.ctrlLatchFromNavMode
         keyboardView.ctrlPressed = snapshot.ctrlPhysicallyPressed
         keyboardView.ctrlPreviewActive = snapshot.softwareCtrlPreviewActive
+        keyboardView.altOneShot = snapshot.altOneShot
+        keyboardView.altLocked = snapshot.altLatchActive
+        keyboardView.altPressed = snapshot.altPhysicallyPressed
+        keyboardView.altPreviewActive = snapshot.softwareAltPreviewActive
         keyboardView.symPageActive = snapshot.symPage in 1..2
         keyboardView.symPageLabels = if (snapshot.symPage in 1..2 && symMappings != null) symMappings else emptyMap()
         keyboardView.symPageTextLabels = if (snapshot.symPage in 1..2 && symMappings != null) {
@@ -1262,6 +1268,7 @@ class StatusBarController(
         keyboardView.symPreviewTextLabels = snapshot.softwareSymPreviewTextLabels
         keyboardView.ctrlPreviewLabels = snapshot.softwareCtrlPreviewLabels
         keyboardView.ctrlPreviewIconRes = snapshot.softwareCtrlPreviewIconRes
+        keyboardView.altPreviewLabels = snapshot.softwareAltPreviewLabels
         val symKeySpec = nextSoftwareSymKeySpec(snapshot.symPage)
         keyboardView.symbolsLabel = symKeySpec.label
         keyboardView.symbolsIconRes = symKeySpec.iconRes

@@ -4,6 +4,7 @@
     <item name="keyboard_theme_preview_variation_bar" type="id" />
     <item name="keyboard_theme_preview_led_view" type="id" />
     <item name="keyboard_theme_preview_aosp_keyboard" type="id" />
+    <item name="keyboard_theme_preview_aosp_keyboard_state" type="id" />
     <item name="led_previous_color" type="id" />
     <item name="tag_animator" type="id" />
     <item name="tag_badge_view" type="id" />

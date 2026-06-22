@@ -2,6 +2,7 @@ package it.palsoftware.pastiera
 
 import android.content.Context
 import android.util.TypedValue
+import android.view.KeyEvent
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
@@ -40,6 +41,7 @@ private const val SOFTWARE_PREVIEW_TALL_MAX_HEIGHT_DP = 520f
 private const val SOFTWARE_PREVIEW_SQUARE_MAX_HEIGHT_DP = 500f
 private const val SOFTWARE_PREVIEW_KEYBOARD_BOTTOM_PADDING_DP = 12f
 private const val SOFTWARE_PREVIEW_LED_HEIGHT_DP = 6.5f
+private const val SOFTWARE_PREVIEW_MODIFIER_DOUBLE_TAP_MS = 450L
 
 @Composable
 internal fun HardwareKeyboardThemePreview(theme: KeyboardThemePreset) {
@@ -193,7 +195,7 @@ private fun createVirtualKeyboardThemePreviewView(
         spacebarLabel = "space"
         longPressTimeoutMs = SettingsManager.getLongPressThreshold(context)
         themeOverride = theme.toAospThemeOverride()
-        applyVirtualKeyboardSymPreviewState(context)
+        configureVirtualKeyboardPreviewInteractions(context)
     }
     val keyboardContainer = LinearLayout(context).apply {
         orientation = LinearLayout.VERTICAL
@@ -274,7 +276,7 @@ private fun updateVirtualKeyboardThemePreviewView(view: android.view.View, theme
         includeNumberRow = SettingsManager.getSoftwareKeyboardNumberRowEnabled(context)
         longPressTimeoutMs = SettingsManager.getLongPressThreshold(context)
         themeOverride = theme.toAospThemeOverride()
-        applyVirtualKeyboardSymPreviewState(context)
+        configureVirtualKeyboardPreviewInteractions(context)
         ((root as? AdditiveVerticalKeyboardPreviewLayout)?.keyboardSurface?.layoutParams as? LinearLayout.LayoutParams)?.let { params ->
             params.width = ViewGroup.LayoutParams.MATCH_PARENT
             params.height = virtualKeyboardSurfaceHeightPx(root.context, theme)
@@ -398,21 +400,236 @@ private class AdditiveVerticalKeyboardPreviewLayout(context: Context) : LinearLa
     }
 }
 
-private fun AospKeyboardView.applyVirtualKeyboardSymPreviewState(context: Context) {
-    val page = SettingsManager.getPreferences(context).getInt("current_sym_page", 0)
+private fun AospKeyboardView.configureVirtualKeyboardPreviewInteractions(context: Context) {
+    val state = (getTag(R.id.keyboard_theme_preview_aosp_keyboard_state) as? VirtualKeyboardPreviewState)
+        ?: VirtualKeyboardPreviewState().also {
+            setTag(R.id.keyboard_theme_preview_aosp_keyboard_state, it)
+        }
+
+    fun refreshPreviewLayers() {
+        val ctrlActive = state.ctrlLatched || state.ctrlOneShot || state.ctrlPressed
+        val altActive = state.altLatched || state.altOneShot || state.altPressed
+        val shiftActive = state.shiftLatched || state.shiftOneShot
+        shifted = shiftActive
+        shiftLocked = state.shiftLatched
+        ctrlLocked = state.ctrlLatched
+        ctrlOneShot = state.ctrlOneShot
+        ctrlPressed = state.ctrlPressed
+        ctrlPreviewActive = ctrlActive
+        ctrlPreviewLabels = if (ctrlActive) buildVirtualPreviewCtrlLabels(context) else emptyMap()
+        ctrlPreviewIconRes = if (ctrlActive) buildVirtualPreviewCtrlIconRes(context) else emptyMap()
+        altLocked = state.altLatched
+        altOneShot = state.altOneShot
+        altPressed = state.altPressed
+        altPreviewActive = altActive
+        altPreviewLabels = if (altActive) buildVirtualPreviewAltLabels(context) else emptyMap()
+        applyVirtualKeyboardSymPreviewState(context, state.symPage, shiftActive)
+        val nextSymSpec = previewNextSymKeySpec(context, state.symPage)
+        symbolsLabel = nextSymSpec.label
+        symbolsIconRes = nextSymSpec.iconRes
+    }
+
+    fun latchOrOneShotCtrl() {
+        val now = android.os.SystemClock.uptimeMillis()
+        when {
+            state.ctrlLatched -> state.clearCtrl()
+            state.ctrlOneShot && now - state.lastCtrlTapAt <= SOFTWARE_PREVIEW_MODIFIER_DOUBLE_TAP_MS -> {
+                state.clearAll()
+                state.ctrlLatched = true
+            }
+            else -> {
+                state.clearAll()
+                state.ctrlOneShot = true
+                state.lastCtrlTapAt = now
+            }
+        }
+        refreshPreviewLayers()
+    }
+
+    fun latchOrOneShotAlt() {
+        val now = android.os.SystemClock.uptimeMillis()
+        when {
+            state.altLatched -> state.clearAlt()
+            state.altOneShot && now - state.lastAltTapAt <= SOFTWARE_PREVIEW_MODIFIER_DOUBLE_TAP_MS -> {
+                state.clearAll()
+                state.altLatched = true
+            }
+            else -> {
+                state.clearAll()
+                state.altOneShot = true
+                state.lastAltTapAt = now
+            }
+        }
+        refreshPreviewLayers()
+    }
+
+    fun consumeOneShotPreview() {
+        if (!state.shiftOneShot && !state.ctrlOneShot && !state.altOneShot) {
+            return
+        }
+        state.shiftOneShot = false
+        state.ctrlOneShot = false
+        state.altOneShot = false
+        refreshPreviewLayers()
+    }
+
+    fun latchOrOneShotShift() {
+        val now = android.os.SystemClock.uptimeMillis()
+        when {
+            state.shiftLatched -> state.clearShift()
+            state.shiftOneShot && now - state.lastShiftTapAt <= SOFTWARE_PREVIEW_MODIFIER_DOUBLE_TAP_MS -> {
+                state.clearAll()
+                state.shiftLatched = true
+            }
+            else -> {
+                state.clearAll()
+                state.shiftOneShot = true
+                state.lastShiftTapAt = now
+            }
+        }
+        refreshPreviewLayers()
+    }
+
+    listener = object : AospKeyboardView.Listener {
+        override fun onText(text: String) = Unit
+        override fun onBackspace() = Unit
+        override fun onEnter() = Unit
+        override fun onShift() {
+            latchOrOneShotShift()
+        }
+        override fun onSymbols() {
+            val next = previewNextSymPageValue(context, state.symPage)
+            state.clearAll()
+            state.symPage = next
+            refreshPreviewLayers()
+        }
+        override fun onCtrl() {
+            latchOrOneShotCtrl()
+        }
+        override fun onLanguageSwitch() = Unit
+        override fun onCursorMove(delta: Int) = Unit
+        override fun onKeyPressSound(keyCode: Int) = Unit
+        override fun onModifierKeyDown(keyCode: Int): Boolean {
+            when (keyCode) {
+                KeyEvent.KEYCODE_CTRL_LEFT, KeyEvent.KEYCODE_CTRL_RIGHT -> {
+                    state.symPage = 0
+                    state.clearAlt()
+                    state.ctrlPressed = true
+                }
+                KeyEvent.KEYCODE_ALT_LEFT, KeyEvent.KEYCODE_ALT_RIGHT -> {
+                    state.symPage = 0
+                    state.clearCtrl()
+                    state.altPressed = true
+                }
+                KeyEvent.KEYCODE_SYM -> Unit
+            }
+            refreshPreviewLayers()
+            return true
+        }
+        override fun onModifierKeyUp(keyCode: Int): Boolean {
+            state.ctrlPressed = false
+            state.altPressed = false
+            when (keyCode) {
+                KeyEvent.KEYCODE_CTRL_LEFT, KeyEvent.KEYCODE_CTRL_RIGHT -> latchOrOneShotCtrl()
+                KeyEvent.KEYCODE_ALT_LEFT, KeyEvent.KEYCODE_ALT_RIGHT -> latchOrOneShotAlt()
+                KeyEvent.KEYCODE_SYM -> onSymbols()
+            }
+            return true
+        }
+        override fun onKeyStroke(keyCode: Int, text: String): Boolean {
+            consumeOneShotPreview()
+            return true
+        }
+        override fun onSymbolText(text: String): Boolean = true
+        override fun onSymbolLongPress(keyCode: Int): Boolean = true
+    }
+    refreshPreviewLayers()
+}
+
+private data class VirtualKeyboardPreviewState(
+    var altLatched: Boolean = false,
+    var ctrlLatched: Boolean = false,
+    var altOneShot: Boolean = false,
+    var ctrlOneShot: Boolean = false,
+    var shiftLatched: Boolean = false,
+    var shiftOneShot: Boolean = false,
+    var altPressed: Boolean = false,
+    var ctrlPressed: Boolean = false,
+    var symPage: Int = 0,
+    var lastAltTapAt: Long = 0L,
+    var lastCtrlTapAt: Long = 0L,
+    var lastShiftTapAt: Long = 0L
+) {
+    fun clearAll() {
+        symPage = 0
+        clearAlt()
+        clearCtrl()
+        clearShift()
+    }
+
+    fun clearAlt() {
+        altLatched = false
+        altOneShot = false
+        altPressed = false
+    }
+
+    fun clearCtrl() {
+        ctrlLatched = false
+        ctrlOneShot = false
+        ctrlPressed = false
+    }
+
+    fun clearShift() {
+        shiftLatched = false
+        shiftOneShot = false
+    }
+}
+
+private data class PreviewSymKeySpec(
+    val label: String,
+    val iconRes: Int? = null
+)
+
+private fun previewNextSymPageValue(context: Context, currentPage: Int): Int {
+    val pageValues = previewEnabledSymPageValues(context)
+    if (pageValues.isEmpty()) {
+        return 0
+    }
+    val cycle = listOf(0) + pageValues
+    val currentIndex = cycle.indexOf(currentPage).takeIf { it >= 0 } ?: 0
+    return cycle[(currentIndex + 1) % cycle.size]
+}
+
+private fun previewNextSymKeySpec(context: Context, currentPage: Int): PreviewSymKeySpec {
+    return when (previewNextSymPageValue(context, currentPage)) {
+        1 -> PreviewSymKeySpec("", R.drawable.ic_emoji_emotions_24)
+        2 -> PreviewSymKeySpec("", R.drawable.ic_emoji_symbols_24)
+        3 -> PreviewSymKeySpec("", R.drawable.ic_content_paste_24)
+        4 -> PreviewSymKeySpec("", R.drawable.ic_emoji_emotions_24)
+        else -> PreviewSymKeySpec("ABC")
+    }
+}
+
+private fun previewEnabledSymPageValues(context: Context): List<Int> {
+    return SettingsManager.getSymPagesConfig(context).enabledOrderedPages().mapNotNull { page ->
+        when (page) {
+            SymPagesConfig.PAGE_EMOJI -> 1
+            SymPagesConfig.PAGE_SYMBOLS -> 2
+            SymPagesConfig.PAGE_CLIPBOARD -> 3
+            SymPagesConfig.PAGE_EMOJI_PICKER -> 4
+            else -> null
+        }
+    }
+}
+
+private fun AospKeyboardView.applyVirtualKeyboardSymPreviewState(context: Context, page: Int, shiftActive: Boolean) {
     symPageActive = page in 1..2
     if (page !in 1..2) {
         symPageLabels = emptyMap()
         symPageTextLabels = emptyMap()
         return
     }
-    val mappings = when (page) {
-        1 -> SettingsManager.getSymMappings(context).takeIf { it.isNotEmpty() }
-            ?: KeyMappingLoader.loadSymKeyMappings(context.assets)
-        2 -> SettingsManager.getSymMappingsPage2(context).takeIf { it.isNotEmpty() }
-            ?: KeyMappingLoader.loadSymKeyMappingsPage2(context.assets)
-        else -> emptyMap()
-    }
+    val mappings = previewSymMappings(context, page, shiftActive)
     val layout = SettingsManager.getKeyboardLayout(context)
     val style = softwareKeyboardPreviewLayoutStyle(context)
     symPageLabels = mappings
@@ -422,6 +639,132 @@ private fun AospKeyboardView.applyVirtualKeyboardSymPreviewState(context: Contex
         symMappings = mappings
     ).mapKeys { (char, _) -> char.toString() }
 }
+
+private fun previewSymMappings(context: Context, page: Int, shiftActive: Boolean): Map<Int, String> {
+    return when (page) {
+        1 -> {
+            val base = SettingsManager.getSymMappings(context).takeIf { it.isNotEmpty() }
+                ?: KeyMappingLoader.loadSymKeyMappings(context.assets)
+            if (shiftActive) {
+                base + KeyMappingLoader.loadSymKeyMappingsUppercase(context.assets)
+            } else {
+                base
+            }
+        }
+        2 -> {
+            val base = SettingsManager.getSymMappingsPage2(context).takeIf { it.isNotEmpty() }
+                ?: KeyMappingLoader.loadSymKeyMappingsPage2(context.assets)
+            if (shiftActive) {
+                base + KeyMappingLoader.loadSymKeyMappingsPage2Uppercase(context.assets)
+            } else {
+                base
+            }
+        }
+        else -> emptyMap()
+    }
+}
+
+private fun buildVirtualPreviewAltLabels(context: Context): Map<Int, String> =
+    KeyMappingLoader.loadAltKeyMappings(context.assets, context)
+        .filterKeys { it in VIRTUAL_PREVIEW_KEY_CODES }
+        .filterValues { it.isNotBlank() }
+
+private fun buildVirtualPreviewCtrlLabels(context: Context): Map<Int, String> =
+    KeyMappingLoader.loadCtrlKeyMappings(context.assets, context)
+        .mapNotNull { (keyCode, mapping) ->
+            if (keyCode !in VIRTUAL_PREVIEW_KEY_CODES) {
+                return@mapNotNull null
+            }
+            virtualPreviewCtrlLabel(mapping)?.let { keyCode to it }
+        }
+        .toMap()
+
+private fun buildVirtualPreviewCtrlIconRes(context: Context): Map<Int, Int> =
+    KeyMappingLoader.loadCtrlKeyMappings(context.assets, context)
+        .mapNotNull { (keyCode, mapping) ->
+            if (keyCode !in VIRTUAL_PREVIEW_KEY_CODES) {
+                return@mapNotNull null
+            }
+            virtualPreviewCtrlIconRes(mapping)?.let { keyCode to it }
+        }
+        .toMap()
+
+private fun virtualPreviewCtrlLabel(mapping: KeyMappingLoader.CtrlMapping): String? {
+    return when (mapping.type) {
+        "action" -> when (mapping.value) {
+            "copy" -> "Copy"
+            "paste" -> "Paste"
+            "cut" -> "Cut"
+            "undo" -> "Undo"
+            "redo" -> "Redo"
+            "select_all" -> "All"
+            "move_word_left" -> "Word ←"
+            "move_word_right" -> "Word →"
+            "expand_selection_word_left" -> "Sel ←"
+            "expand_selection_word_right" -> "Sel →"
+            else -> mapping.value.replace('_', ' ').take(8)
+        }
+        "keycode" -> mapping.value.removePrefix("KEYCODE_").replace('_', ' ').take(8)
+        "command" -> "Cmd"
+        "native_ctrl" -> "Ctrl"
+        else -> null
+    }
+}
+
+private fun virtualPreviewCtrlIconRes(mapping: KeyMappingLoader.CtrlMapping): Int? {
+    return when (mapping.type) {
+        "keycode" -> when (mapping.value) {
+            "DPAD_UP" -> R.drawable.keyboard_arrow_up_24
+            "DPAD_DOWN" -> R.drawable.keyboard_arrow_down_24
+            "DPAD_LEFT" -> R.drawable.keyboard_arrow_left_24
+            "DPAD_RIGHT" -> R.drawable.keyboard_arrow_right_24
+            "TAB" -> R.drawable.keyboard_tab_24
+            "MOVE_HOME" -> R.drawable.first_page_24
+            "MOVE_END" -> R.drawable.last_page_24
+            "PAGE_UP" -> R.drawable.keyboard_double_arrow_up_24
+            "PAGE_DOWN" -> R.drawable.keyboard_double_arrow_down_24
+            "ESCAPE" -> R.drawable.close_24
+            "FORWARD_DEL" -> R.drawable.delete_24
+            else -> null
+        }
+        "action" -> when (mapping.value) {
+            "copy" -> R.drawable.content_copy_24
+            "paste" -> R.drawable.content_paste_24
+            "cut" -> R.drawable.content_cut_24
+            "undo" -> R.drawable.undo_24
+            "select_all" -> R.drawable.select_all_24
+            "expand_selection_left" -> R.drawable.text_select_move_back_character_filled_24
+            "expand_selection_right" -> R.drawable.text_select_move_forward_character_filled_24
+            "move_word_left" -> R.drawable.text_select_move_back_word_24
+            "move_word_right" -> R.drawable.text_select_move_forward_word_24
+            "expand_selection_word_left" -> R.drawable.text_select_move_back_word_filled_24
+            "expand_selection_word_right" -> R.drawable.text_select_move_forward_word_filled_24
+            "page_start" -> R.drawable.first_page_24
+            "page_end" -> R.drawable.last_page_24
+            "toggle_minimal_ui" -> R.drawable.collapse_content_24
+            "media_play_pause" -> R.drawable.play_pause_24
+            "media_previous" -> R.drawable.skip_previous_24
+            "media_next" -> R.drawable.skip_next_24
+            else -> null
+        }
+        "command" -> when (mapping.value) {
+            "pastiera.toggle_software_keyboard_mode" -> R.drawable.expansion_panels_24
+            else -> null
+        }
+        else -> null
+    }
+}
+
+private val VIRTUAL_PREVIEW_KEY_CODES: Set<Int> = (
+    (KeyEvent.KEYCODE_A..KeyEvent.KEYCODE_Z).toList() +
+        listOf(
+            KeyEvent.KEYCODE_COMMA,
+            KeyEvent.KEYCODE_PERIOD,
+            KeyEvent.KEYCODE_SPACE,
+            KeyEvent.KEYCODE_DEL,
+            KeyEvent.KEYCODE_ENTER
+        )
+).toSet()
 
 private fun softwareKeyboardPreviewLayoutStyle(context: Context): AospKeyboardView.SoftwareLayoutStyle =
     when (SettingsManager.getSoftwareKeyboardLayoutStyle(context)) {

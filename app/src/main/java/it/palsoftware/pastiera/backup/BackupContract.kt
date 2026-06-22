@@ -278,6 +278,8 @@ object PreferenceSchemas {
             "software_keyboard_layout_style" to PreferenceValueType.STRING,
             "software_keyboard_number_row_enabled" to PreferenceValueType.BOOLEAN,
             "software_keyboard_nearest_key_touch_enabled" to PreferenceValueType.BOOLEAN,
+            "software_keyboard_left_modifier_key" to PreferenceValueType.STRING,
+            "software_keyboard_right_modifier_key" to PreferenceValueType.STRING,
             "sym_auto_close_on_touch" to PreferenceValueType.BOOLEAN,
             "shift_tap_latches" to PreferenceValueType.BOOLEAN,
             "alt_tap_latches" to PreferenceValueType.BOOLEAN,
