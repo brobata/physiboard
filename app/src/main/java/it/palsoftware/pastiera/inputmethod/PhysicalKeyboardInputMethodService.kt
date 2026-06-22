@@ -1945,31 +1945,22 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         val ic = inputConnection ?: return false
 
         if (text == " ") {
-            if (
-                textInputController.handleDoubleSpaceToPeriod(
-                    keyCode = KeyEvent.KEYCODE_SPACE,
-                    inputConnection = ic,
-                    shouldDisableDoubleSpaceToPeriod = snapshot.shouldDisableDoubleSpaceToPeriod,
-                    shouldDisableAutoCapitalize = snapshot.shouldDisableAutoCapitalize,
-                    onStatusBarUpdate = { updateStatusBarText() }
-                )
-            ) {
-                suggestionController.onBoundaryKey(KeyEvent.KEYCODE_SPACE, null, ic)
-                updateStatusBarText()
-                return true
-            }
-
-            val replaceResult = if (!snapshot.shouldDisableSuggestions) {
-                suggestionController.onBoundaryKey(KeyEvent.KEYCODE_SPACE, null, ic)
-            } else {
-                null
-            }
-            if (replaceResult?.committed != true) {
-                markSelectionUpdateSkipAfterCommit()
-                ic.commitText(" ", 1)
-            }
-            updateStatusBarText()
-            return true
+            return SoftwareKeyboardTextInputHandler.handleSpaceInput(
+                textInputController = textInputController,
+                inputConnection = ic,
+                shouldDisableDoubleSpaceToPeriod = snapshot.shouldDisableDoubleSpaceToPeriod,
+                shouldDisableAutoCapitalize = snapshot.shouldDisableAutoCapitalize,
+                shouldDisableSuggestions = snapshot.shouldDisableSuggestions,
+                onDoubleSpaceHandled = { suggestionController.onContextReset() },
+                onNormalBoundary = {
+                    suggestionController.onBoundaryKey(KeyEvent.KEYCODE_SPACE, null, ic).committed
+                },
+                onCommitSpace = {
+                    markSelectionUpdateSkipAfterCommit()
+                    ic.commitText(" ", 1)
+                },
+                onStatusBarUpdate = { updateStatusBarText() }
+            )
         }
 
         markSelectionUpdateSkipAfterCommit()
