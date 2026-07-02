@@ -3787,6 +3787,29 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             return true
         }
 
+        // Handle Alt+Enter for subtype cycling
+        if (
+            hasEditableField &&
+            event != null &&
+            event.repeatCount == 0 &&
+            SettingsManager.isAltEnterLayoutSwitchEnabled(this) &&
+            (keyCode == KeyEvent.KEYCODE_ENTER &&
+                    (event.isAltPressed || altPhysicallyPressed))
+        ) {
+            modifierStateController.clearAltState(resetPressedState = true)
+
+            val showToast = SettingsManager.isToastOnLayoutSwitchEnabled(this)
+            SubtypeCycler.cycleToNextSubtype(
+                context = this,
+                imeServiceClass = PhysicalKeyboardInputMethodService::class.java,
+                assets = assets,
+                showToast = showToast
+            )
+
+            updateStatusBarText()
+            return true
+        }
+
         // Handle Ctrl+Space for subtype cycling
         if (
             hasEditableField &&
