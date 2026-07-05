@@ -3,6 +3,7 @@ package it.palsoftware.pastiera.core.suggestions
 import android.view.KeyEvent
 import android.view.inputmethod.InputConnection
 import it.palsoftware.pastiera.core.AutoSpaceTracker
+import it.palsoftware.pastiera.core.Punctuation
 import android.util.Log
 import java.text.Normalizer
 import java.util.Locale
@@ -20,6 +21,16 @@ class AutoReplaceController(
             ' ' -> DebugCaptureStore.AutoCorrectionTrigger.SPACE
             '\n' -> DebugCaptureStore.AutoCorrectionTrigger.ENTER
             else -> DebugCaptureStore.AutoCorrectionTrigger.OTHER
+        }
+    }
+
+    private fun punctuationBoundaryForKeyCode(keyCode: Int): Char? {
+        return when (keyCode) {
+            KeyEvent.KEYCODE_COMMA -> ','
+            KeyEvent.KEYCODE_PERIOD -> '.'
+            KeyEvent.KEYCODE_SEMICOLON -> ';'
+            KeyEvent.KEYCODE_SLASH -> '/'
+            else -> null
         }
     }
     public data class ReplaceResult(
@@ -220,12 +231,45 @@ class AutoReplaceController(
             return afterKey.endsWith(" ")
         }
 
+        fun commitBoundary(connection: InputConnection, boundary: Char, settings: SuggestionSettings): Boolean {
+            if (
+                settings.frenchPunctuationSpacing &&
+                Punctuation.commitFrenchSpacedPunctuation(connection, boundary)
+            ) {
+                return true
+            }
+            return when (boundary) {
+                ' ' -> ensureTrailingSpace(connection).also { committed ->
+                    if (committed) AutoSpaceTracker.markAutoSpace()
+                }
+                else -> {
+                    connection.commitText(boundary.toString(), 1)
+                    true
+                }
+            }
+        }
+
+        fun commitBoundaryAndReset(
+            tracker: CurrentWordTracker,
+            connection: InputConnection,
+            boundary: Char?,
+            settings: SuggestionSettings
+        ): Boolean {
+            if (boundary != null) {
+                val committed = commitBoundary(connection, boundary, settings)
+                tracker.reset()
+                return committed
+            }
+            tracker.onBoundaryReached(null, connection)
+            return false
+        }
+
         val unicodeChar = event?.unicodeChar ?: 0
         val boundaryChar = when {
             unicodeChar != 0 -> unicodeChar.toChar()
             keyCode == KeyEvent.KEYCODE_SPACE -> ' '
             keyCode == KeyEvent.KEYCODE_ENTER -> '\n'
-            else -> null
+            else -> punctuationBoundaryForKeyCode(keyCode)
         }
         val boundaryCommittedByTracker = boundaryChar != null && inputConnection != null
 
@@ -245,26 +289,26 @@ class AutoReplaceController(
         // If there's a non-word symbol between the last word and cursor (e.g., emoji), skip.
         val textBefore = inputConnection.getTextBeforeCursor(32, 0)?.toString().orEmpty()
         if (hasTrailingHardBoundary(textBefore)) {
-            tracker.onBoundaryReached(boundaryChar, inputConnection)
+            val boundaryCommitted = commitBoundaryAndReset(tracker, inputConnection, boundaryChar, settings)
             DebugCaptureStore.recordAutoCorrectionAttempt(
                 before = tracker.currentWord,
                 trigger = trigger,
                 outcome = DebugCaptureStore.AutoCorrectionOutcome.SKIPPED,
                 reason = "hard_boundary_before_cursor"
             )
-            return ReplaceResult(false, boundaryCommittedByTracker)
+            return ReplaceResult(false, boundaryCommitted)
         }
 
         val word = tracker.currentWord
         if (word.isBlank()) {
-            tracker.onBoundaryReached(boundaryChar, inputConnection)
+            val boundaryCommitted = commitBoundaryAndReset(tracker, inputConnection, boundaryChar, settings)
             DebugCaptureStore.recordAutoCorrectionAttempt(
                 before = word,
                 trigger = trigger,
                 outcome = DebugCaptureStore.AutoCorrectionOutcome.NOT_APPLICABLE,
                 reason = "empty_word"
             )
-            return ReplaceResult(false, boundaryCommittedByTracker)
+            return ReplaceResult(false, boundaryCommitted)
         }
 
         val apostropheSplit = splitApostropheWord(word)
@@ -287,18 +331,7 @@ class AutoReplaceController(
                 inputConnection.endBatchEdit()
                 var boundaryCommitted = false
                 if (shouldAppendBoundary) {
-                    when (boundaryChar) {
-                        ' ' -> {
-                            boundaryCommitted = ensureTrailingSpace(inputConnection)
-                        }
-                        else -> {
-                            inputConnection.commitText(boundaryChar.toString(), 1)
-                            boundaryCommitted = true
-                        }
-                    }
-                }
-                if (boundaryCommitted && boundaryChar == ' ') {
-                    AutoSpaceTracker.markAutoSpace()
+                    boundaryCommitted = commitBoundary(inputConnection, boundaryChar, settings)
                 }
                 DebugCaptureStore.recordAutoCorrectionCommit(
                     before = word,
@@ -314,14 +347,14 @@ class AutoReplaceController(
         }
 
         if (!settings.autoReplaceOnSpaceEnter) {
-            tracker.onBoundaryReached(boundaryChar, inputConnection)
+            val boundaryCommitted = commitBoundaryAndReset(tracker, inputConnection, boundaryChar, settings)
             DebugCaptureStore.recordAutoCorrectionAttempt(
                 before = word,
                 trigger = trigger,
                 outcome = DebugCaptureStore.AutoCorrectionOutcome.NOT_APPLICABLE,
                 reason = "auto_replace_disabled"
             )
-            return ReplaceResult(false, boundaryCommittedByTracker)
+            return ReplaceResult(false, boundaryCommitted)
         }
 
         primaryDictionaryCaseVariant(lookupWord, word)?.let { caseReplacement ->
@@ -340,18 +373,7 @@ class AutoReplaceController(
                 inputConnection.endBatchEdit()
                 var boundaryCommitted = false
                 if (shouldAppendBoundary) {
-                    when (boundaryChar) {
-                        ' ' -> {
-                            boundaryCommitted = ensureTrailingSpace(inputConnection)
-                        }
-                        else -> {
-                            inputConnection.commitText(boundaryChar.toString(), 1)
-                            boundaryCommitted = true
-                        }
-                    }
-                }
-                if (boundaryCommitted && boundaryChar == ' ') {
-                    AutoSpaceTracker.markAutoSpace()
+                    boundaryCommitted = commitBoundary(inputConnection, boundaryChar, settings)
                 }
                 DebugCaptureStore.recordAutoCorrectionCommit(
                     before = word,
@@ -428,8 +450,8 @@ class AutoReplaceController(
 	                    distance = top.distance,
 	                    kind = top.kind.name
 	                )
-	                tracker.onBoundaryReached(boundaryChar, inputConnection)
-	                return ReplaceResult(false, boundaryCommittedByTracker)
+	                val boundaryCommitted = commitBoundaryAndReset(tracker, inputConnection, boundaryChar, settings)
+	                return ReplaceResult(false, boundaryCommitted)
 	            }
 	            val source = top.source.name
 	            inputConnection.beginBatchEdit()
@@ -449,18 +471,7 @@ class AutoReplaceController(
             inputConnection.endBatchEdit()
             var boundaryCommitted = false
             if (shouldAppendBoundary) {
-                when (boundaryChar) {
-                    ' ' -> {
-                        boundaryCommitted = ensureTrailingSpace(inputConnection)
-                    }
-                    else -> {
-                        inputConnection.commitText(boundaryChar.toString(), 1)
-                        boundaryCommitted = true
-                    }
-                }
-            }
-            if (boundaryCommitted && boundaryChar == ' ') {
-                AutoSpaceTracker.markAutoSpace()
+                boundaryCommitted = commitBoundary(inputConnection, boundaryChar, settings)
             }
             val committedSuffix = if (boundaryCommitted && shouldAppendBoundary) boundaryChar.toString() else ""
             DebugCaptureStore.recordAutoCorrectionCommit(
@@ -502,8 +513,8 @@ class AutoReplaceController(
 
         // Clear last replacement if no replacement happened
         lastReplacement = null
-        tracker.onBoundaryReached(boundaryChar, inputConnection)
-        return ReplaceResult(false, boundaryCommittedByTracker)
+        val boundaryCommitted = commitBoundaryAndReset(tracker, inputConnection, boundaryChar, settings)
+        return ReplaceResult(false, boundaryCommitted)
     }
 
     fun handleBackspaceUndo(

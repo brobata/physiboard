@@ -284,6 +284,13 @@ class AltSymManager(
     ): Boolean {
         val altChar = altKeyMap[keyCode]
         return if (altChar != null) {
+            val frenchSpacedPunctuation = altChar.length == 1 &&
+                context?.let { SettingsManager.getFrenchPunctuationSpacing(it) } == true &&
+                it.palsoftware.pastiera.core.Punctuation.commitFrenchSpacedPunctuation(inputConnection, altChar[0])
+            if (frenchSpacedPunctuation) {
+                onAltCharInserted?.invoke(altChar[0])
+                return true
+            }
             val punctuationSet = it.palsoftware.pastiera.core.Punctuation.AUTO_SPACE
             if (altChar.isNotEmpty() && altChar[0] in punctuationSet) {
                 val applied = AutoSpaceTracker.replaceAutoSpaceWithPunctuation(inputConnection, altChar)
@@ -417,6 +424,18 @@ class AltSymManager(
                                 inputConnection.deleteSurroundingText(1, 0)
                             }
 
+                            val frenchSpacedPunctuation = symChar.length == 1 &&
+                                context?.let { SettingsManager.getFrenchPunctuationSpacing(it) } == true &&
+                                it.palsoftware.pastiera.core.Punctuation.commitFrenchSpacedPunctuation(inputConnection, symChar[0])
+                            if (frenchSpacedPunctuation) {
+                                Log.d(TAG, "Long press Sym mapping applied with French spacing for '$symChar'")
+                                onAltCharInserted?.invoke(symChar[0])
+                                insertedNormalChars.remove(keyCode)
+                                keyPressWasShifted.remove(keyCode)
+                                longPressRunnables.remove(keyCode)
+                                return@Runnable
+                            }
+
                             val punctuationSet = it.palsoftware.pastiera.core.Punctuation.AUTO_SPACE
                             if (symChar[0] in punctuationSet) {
                                 val applied = AutoSpaceTracker.replaceAutoSpaceWithPunctuation(inputConnection, symChar)
@@ -484,6 +503,18 @@ class AltSymManager(
 
                             if (insertedChar != null && insertedChar.isNotEmpty()) {
                                 inputConnection.deleteSurroundingText(1, 0)
+                            }
+
+                            val frenchSpacedPunctuation = altChar.length == 1 &&
+                                context?.let { SettingsManager.getFrenchPunctuationSpacing(it) } == true &&
+                                it.palsoftware.pastiera.core.Punctuation.commitFrenchSpacedPunctuation(inputConnection, altChar[0])
+                            if (frenchSpacedPunctuation) {
+                                Log.d(TAG, "Long press Alt mapping applied with French spacing for '$altChar'")
+                                onAltCharInserted?.invoke(altChar[0])
+                                insertedNormalChars.remove(keyCode)
+                                keyPressWasShifted.remove(keyCode)
+                                longPressRunnables.remove(keyCode)
+                                return@Runnable
                             }
 
                             val punctuationSet = it.palsoftware.pastiera.core.Punctuation.AUTO_SPACE

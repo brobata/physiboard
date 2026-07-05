@@ -6,6 +6,7 @@ import android.view.View
 import android.view.inputmethod.BaseInputConnection
 import it.palsoftware.pastiera.SettingsManager
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -395,6 +396,39 @@ class AutoReplaceControllerLogicTest {
         assertTrue(result.replaced)
         assertEquals("qu'on ", inputConnection.text)
         assertEquals("qu'on", result.replacement)
+    }
+
+    @Test
+    fun boundaryCommitAddsFrenchSpacingWhenNoReplacementHappens() {
+        val context = RuntimeEnvironment.getApplication()
+        val repository = FakeDictionaryRepository().apply {
+            isReady = true
+            addTestEntry("bonjour", 100)
+        }
+        val controller = AutoReplaceController(
+            repository = repository,
+            suggestionEngine = SuggestionEngine(repository),
+            settingsProvider = {
+                SuggestionSettings(
+                    autoReplaceOnSpaceEnter = false,
+                    frenchPunctuationSpacing = true
+                )
+            }
+        )
+        val tracker = CurrentWordTracker(onWordChanged = {}, onWordReset = {})
+        tracker.setWord("bonjour")
+        val inputConnection = FakeInputConnection(context, "bonjour")
+
+        val result = controller.handleBoundary(
+            keyCode = KeyEvent.KEYCODE_SEMICOLON,
+            event = KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_SEMICOLON),
+            tracker = tracker,
+            inputConnection = inputConnection
+        )
+
+        assertFalse(result.replaced)
+        assertTrue(result.committed)
+        assertEquals("bonjour ;", inputConnection.text)
     }
 
     @Test

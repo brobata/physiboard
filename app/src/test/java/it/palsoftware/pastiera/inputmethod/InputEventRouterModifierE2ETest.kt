@@ -55,6 +55,7 @@ class InputEventRouterModifierE2ETest {
         SettingsManager.setLongPressModifier(context, "alt")
         SettingsManager.setPhysicalKeyboardCurrencySymbol(context, "€")
         SettingsManager.setAltLatchStaysOnSpace(context, false)
+        SettingsManager.setFrenchPunctuationSpacing(context, false)
         prefs = context.getSharedPreferences("router_e2e_modifier_tests", Context.MODE_PRIVATE)
         prefs.edit().clear().commit()
 
@@ -81,6 +82,7 @@ class InputEventRouterModifierE2ETest {
         SettingsManager.setPhysicalKeyboardCurrencySymbol(context, "€")
         SettingsManager.setAltLatchStaysOnSpace(context, false)
         SettingsManager.setMidWordQuoteToApostrophe(context, false)
+        SettingsManager.setFrenchPunctuationSpacing(context, false)
     }
 
     @Test
@@ -370,6 +372,33 @@ class InputEventRouterModifierE2ETest {
         assertTrue(letterResult is InputEventRouter.EditableFieldRoutingResult.Consume)
         assertEquals(listOf("\"", "w"), inputConnectionRecorder.committedTexts)
         assertEquals("\"w", inputConnectionRecorder.textBeforeCursor)
+        assertEquals(1, callbacks.clearAltOneShotCalls)
+    }
+
+    @Test
+    fun titan2AltQuestion_addsFrenchPunctuationSpacing() {
+        DeviceSpecific.setBuildFingerprintForTests(
+            brand = "unihertz",
+            manufacturer = "unihertz",
+            model = "Titan 2",
+            device = "titan2",
+            product = "titan2"
+        )
+        SettingsManager.setFrenchPunctuationSpacing(context, true)
+        altSymManager.reloadAltMappings()
+        inputConnectionRecorder.textBeforeCursor = "bonjour"
+        val callbacks = TestCallbacks(modifierStateController)
+        modifierStateController.altOneShot = true
+
+        val result = routeKeyDown(
+            keyCode = KeyEvent.KEYCODE_M,
+            event = keyDown(KeyEvent.KEYCODE_M),
+            callbacks = callbacks
+        )
+
+        assertTrue(result is InputEventRouter.EditableFieldRoutingResult.Consume)
+        assertEquals(listOf(" ?"), inputConnectionRecorder.committedTexts)
+        assertEquals("bonjour ?", inputConnectionRecorder.textBeforeCursor)
         assertEquals(1, callbacks.clearAltOneShotCalls)
     }
 

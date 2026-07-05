@@ -71,6 +71,29 @@ class AutoCorrectionManagerTest {
         assertEquals("C'était ", inputConnection.text)
     }
 
+    @Test
+    fun boundaryKeyAppliesFrenchSpacingAfterSubstitution() {
+        SettingsManager.saveCustomAutoCorrections(context, "fr", mapOf("ct" to "c'était"))
+        SettingsManager.setAutoCorrectEnabledLanguages(context, setOf("fr"))
+        SettingsManager.setFrenchPunctuationSpacing(context, true)
+        AutoCorrector.loadCorrections(context.assets, context)
+        val inputConnection = FakeInputConnection(context, "Ct")
+
+        val handled = AutoCorrectionManager(context).handleBoundaryKey(
+            keyCode = KeyEvent.KEYCODE_UNKNOWN,
+            event = null,
+            inputConnection = inputConnection,
+            isAutoCorrectEnabled = true,
+            commitBoundary = true,
+            boundaryCharOverride = '?',
+            isKnownWord = { it.equals("ct", ignoreCase = true) },
+            onStatusBarUpdate = {}
+        )
+
+        assertTrue(handled)
+        assertEquals("C'était ?", inputConnection.text)
+    }
+
     private class FakeInputConnection(
         context: Context,
         initialText: String

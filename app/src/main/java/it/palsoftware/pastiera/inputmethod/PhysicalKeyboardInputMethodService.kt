@@ -501,7 +501,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             maxAutoReplaceDistance = SettingsManager.getMaxAutoReplaceDistance(this),
             maxSuggestions = 3,
             useKeyboardProximity = SettingsManager.getUseKeyboardProximity(this),
-            useEditTypeRanking = SettingsManager.getUseEditTypeRanking(this)
+            useEditTypeRanking = SettingsManager.getUseEditTypeRanking(this),
+            frenchPunctuationSpacing = SettingsManager.getFrenchPunctuationSpacing(this)
         )
     }
 

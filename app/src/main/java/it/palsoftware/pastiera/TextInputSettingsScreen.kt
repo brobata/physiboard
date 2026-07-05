@@ -60,6 +60,10 @@ fun TextInputSettingsScreen(
         mutableStateOf(SettingsManager.getMidWordQuoteToApostrophe(context))
     }
 
+    var frenchPunctuationSpacing by remember {
+        mutableStateOf(SettingsManager.getFrenchPunctuationSpacing(context))
+    }
+
     var smartQuotes by remember {
         mutableStateOf(SettingsManager.getSmartQuotes(context))
     }
@@ -378,6 +382,49 @@ fun TextInputSettingsScreen(
                         onCheckedChange = { enabled ->
                             midWordQuoteToApostrophe = enabled
                             SettingsManager.setMidWordQuoteToApostrophe(context, enabled)
+                        }
+                    )
+                }
+            }
+
+            // French Punctuation Spacing
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(64.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.TextFields,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.french_punctuation_spacing_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1
+                        )
+                        Text(
+                            text = stringResource(R.string.french_punctuation_spacing_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
+                    }
+                    Switch(
+                        checked = frenchPunctuationSpacing,
+                        onCheckedChange = { enabled ->
+                            frenchPunctuationSpacing = enabled
+                            SettingsManager.setFrenchPunctuationSpacing(context, enabled)
                         }
                     )
                 }

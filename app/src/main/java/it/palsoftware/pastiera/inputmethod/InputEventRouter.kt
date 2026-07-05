@@ -1044,6 +1044,15 @@ class InputEventRouter(
             suggestionController?.onContextReset()
             return true
         }
+        if (
+            isPunctuation &&
+            SettingsManager.getFrenchPunctuationSpacing(context) &&
+            inputConnection != null &&
+            it.palsoftware.pastiera.core.Punctuation.commitFrenchSpacedPunctuation(inputConnection, typedChar)
+        ) {
+            suggestionController?.onContextReset()
+            return true
+        }
 
         // Handle suggestions on boundary keys/punctuation (if suggestions enabled)
         if (!shouldDisableSuggestions && inputConnection != null && (isBoundaryKey || isPunctuation) && suggestionController != null) {

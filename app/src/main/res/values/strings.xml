@@ -43,6 +43,8 @@
     <string name="spaced_hyphen_to_en_dash_description">Turns “word - next” into a typographic dash while leaving line-start hyphens alone.</string>
     <string name="mid_word_quote_to_apostrophe_title">Mid-word Apostrophe</string>
     <string name="mid_word_quote_to_apostrophe_description">Replaces double quotes with apostrophes inside words.</string>
+    <string name="french_punctuation_spacing_title">French Punctuation Spacing</string>
+    <string name="french_punctuation_spacing_description">Adds non-breaking spacing before French punctuation marks.</string>
     <string name="smart_quotes_title">Smart Quotes</string>
 
     <!-- Clear Alt on Space Section -->

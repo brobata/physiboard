@@ -289,7 +289,13 @@ class SymLayoutController(
         }
 
         if (symChar != null && inputConnection != null) {
-            inputConnection.commitText(symChar, 1)
+            if (
+                symChar.length != 1 ||
+                !SettingsManager.getFrenchPunctuationSpacing(context) ||
+                !it.palsoftware.pastiera.core.Punctuation.commitFrenchSpacedPunctuation(inputConnection, symChar[0])
+            ) {
+                inputConnection.commitText(symChar, 1)
+            }
             if (autoCloseEnabled) {
                 closeSymAndUpdate(updateStatusBar)
             }

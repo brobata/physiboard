@@ -44,6 +44,7 @@ object SettingsManager {
     private const val KEY_SPACED_HYPHEN_TO_EN_DASH = "spaced_hyphen_to_en_dash"
     private const val KEY_SPACED_HYPHEN_DASH_STYLE = "spaced_hyphen_dash_style"
     private const val KEY_MID_WORD_QUOTE_TO_APOSTROPHE = "mid_word_quote_to_apostrophe"
+    private const val KEY_FRENCH_PUNCTUATION_SPACING = "french_punctuation_spacing"
     private const val KEY_SMART_QUOTES = "smart_quotes"
     private const val KEY_SMART_QUOTES_STYLE = "smart_quotes_style"
     private const val KEY_SWIPE_TO_DELETE = "swipe_to_delete"
@@ -244,6 +245,7 @@ object SettingsManager {
     const val DASH_STYLE_EM = "em_dash"
     private const val DEFAULT_SPACED_HYPHEN_DASH_STYLE = DASH_STYLE_EN
     private const val DEFAULT_MID_WORD_QUOTE_TO_APOSTROPHE = false
+    private const val DEFAULT_FRENCH_PUNCTUATION_SPACING = false
     private const val DEFAULT_SMART_QUOTES = false
     const val SMART_QUOTES_STYLE_GERMAN_GUILLEMETS = "german_guillemets"
     const val SMART_QUOTES_STYLE_FRENCH_GUILLEMETS = "french_guillemets"
@@ -1629,6 +1631,19 @@ object SettingsManager {
     fun setMidWordQuoteToApostrophe(context: Context, enabled: Boolean) {
         getPreferences(context).edit()
             .putBoolean(KEY_MID_WORD_QUOTE_TO_APOSTROPHE, enabled)
+            .apply()
+    }
+
+    fun getFrenchPunctuationSpacing(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_FRENCH_PUNCTUATION_SPACING,
+            DEFAULT_FRENCH_PUNCTUATION_SPACING
+        )
+    }
+
+    fun setFrenchPunctuationSpacing(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_FRENCH_PUNCTUATION_SPACING, enabled)
             .apply()
     }
 

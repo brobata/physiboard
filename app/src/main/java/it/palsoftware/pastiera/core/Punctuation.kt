@@ -4,11 +4,15 @@ package it.palsoftware.pastiera.core
  * Centralized punctuation sets. Apostrophes are intentionally excluded from boundary handling.
  */
 object Punctuation {
+    const val NARROW_NO_BREAK_SPACE: Char = '\u202F'
+
     // Boundary punctuation (no apostrophes).
     const val BOUNDARY: String = ".,;:!?()[]{}\\/\""
 
     // Auto-space punctuation (no apostrophes).
     const val AUTO_SPACE: String = ".,;:!?\\/\""
+
+    const val FRENCH_SPACED_PUNCTUATION: String = "?!;:"
 
     // Normalize curly/variant apostrophes to straight.
     fun normalizeApostrophe(c: Char): Char = when (c) {
@@ -25,5 +29,26 @@ object Punctuation {
             return !prevIsWord
         }
         return !normalized.isLetterOrDigit()
+    }
+
+    fun commitFrenchSpacedPunctuation(
+        inputConnection: android.view.inputmethod.InputConnection,
+        punctuation: Char
+    ): Boolean {
+        if (punctuation !in FRENCH_SPACED_PUNCTUATION) return false
+
+        val before = inputConnection.getTextBeforeCursor(16, 0)?.toString().orEmpty()
+        val existingSpaceCount = before.takeLastWhile { it == ' ' || it == '\u00A0' || it == NARROW_NO_BREAK_SPACE }.length
+        val prefix = before.dropLast(existingSpaceCount)
+        if (prefix.isEmpty() || prefix.last().isWhitespace()) {
+            return false
+        }
+
+        if (existingSpaceCount > 0) {
+            inputConnection.deleteSurroundingText(existingSpaceCount, 0)
+        }
+        inputConnection.commitText("$NARROW_NO_BREAK_SPACE$punctuation", 1)
+        AutoSpaceTracker.clear()
+        return true
     }
 }
