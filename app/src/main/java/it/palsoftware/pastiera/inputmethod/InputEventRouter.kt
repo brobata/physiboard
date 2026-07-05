@@ -1188,7 +1188,6 @@ class InputEventRouter(
         callSuper: () -> Boolean,
         toggleMinimalUi: () -> Unit
     ): Boolean {
-        val ic = inputConnection ?: return false
         val isPhysicalCtrlCombo = event?.isCtrlPressed == true || ctrlPhysicallyPressed
         val useNavModeForHeldCtrl = SettingsManager.getNavModeCtrlHoldEnabled(context)
         val useLayoutAwareCtrlShortcuts = SettingsManager.getLayoutAwareCtrlShortcutsEnabled(context)
@@ -1200,10 +1199,11 @@ class InputEventRouter(
         val ctrlMapping = ctrlKeyMap[shortcutKeyCode]
         val shouldForceContextMenuAction =
             forceBasicContextMenuActions &&
-                ctrlMapping?.type == "action" &&
+            ctrlMapping?.type == "action" &&
                 ctrlMapping.value in restrictedFieldBasicCtrlActions
 
         fun passThroughCtrlCombo(): Boolean {
+            val ic = inputConnection ?: return false
             if (event != null) {
                 ic.sendKeyEvent(event.withKeyCodeAndCtrl(shortcutKeyCode))
             } else {
@@ -1224,6 +1224,29 @@ class InputEventRouter(
             clearCtrlOneShot()
             updateStatusBar()
         }
+
+        if (ctrlMapping?.type == "command") {
+            val command = CommandRegistry(context).resolve(ctrlMapping.value)
+                ?: return callSuper()
+            if (!command.defaultSurfaces.contains(CommandSurface.NavMode)) {
+                return callSuper()
+            }
+            KeyboardEventTracker.notifyKeyEvent(
+                keyCode,
+                event,
+                "KEY_DOWN",
+                origin = "ime_router",
+                outputKeyCode = null,
+                outputKeyCodeName = ctrlMapping.value
+            )
+            return CommandExecutor(
+                context = context,
+                navModeController = navModeController,
+                inputConnectionProvider = { inputConnection }
+            ).execute(command).isSuccess
+        }
+
+        val ic = inputConnection ?: return false
 
         if (ctrlMapping != null) {
             when (ctrlMapping.type) {
@@ -1398,26 +1421,6 @@ class InputEventRouter(
                     }
                 }
                 "native_ctrl" -> return passThroughCtrlCombo()
-                "command" -> {
-                    val command = CommandRegistry(context).resolve(ctrlMapping.value)
-                        ?: return callSuper()
-                    if (!command.defaultSurfaces.contains(CommandSurface.NavMode)) {
-                        return callSuper()
-                    }
-                    KeyboardEventTracker.notifyKeyEvent(
-                        keyCode,
-                        event,
-                        "KEY_DOWN",
-                        origin = "ime_router",
-                        outputKeyCode = null,
-                        outputKeyCodeName = ctrlMapping.value
-                    )
-                    return CommandExecutor(
-                        context = context,
-                        navModeController = navModeController,
-                        inputConnectionProvider = { ic }
-                    ).execute(command).isSuccess
-                }
                 "keycode" -> {
                     val mappedKeyCode = when (ctrlMapping.value) {
                         "DPAD_UP" -> KeyEvent.KEYCODE_DPAD_UP

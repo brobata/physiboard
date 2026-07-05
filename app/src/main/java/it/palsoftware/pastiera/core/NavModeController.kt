@@ -100,22 +100,24 @@ class NavModeController(
             return false
         }
 
-        val inputConnection = inputConnectionProvider() ?: return false
-
         if (keyCode == KeyEvent.KEYCODE_ENTER) {
+            val inputConnection = inputConnectionProvider() ?: return false
             return sendMappedKey(KeyEvent.KEYCODE_DPAD_CENTER, event, inputConnection)
         }
 
         val ctrlMapping = ctrlKeyMap[keyCode] ?: return false
-        return if (ctrlMapping.type == "command") {
+        if (ctrlMapping.type == "command") {
             val command = CommandRegistry(context).resolve(ctrlMapping.value) ?: return false
             if (!command.defaultSurfaces.contains(CommandSurface.NavMode)) return false
-            CommandExecutor(
+            return CommandExecutor(
                 context = context,
                 navModeController = this,
                 inputConnectionProvider = inputConnectionProvider
             ).execute(command).isSuccess
-        } else if (ctrlMapping.type == "native_ctrl") {
+        }
+
+        val inputConnection = inputConnectionProvider() ?: return false
+        return if (ctrlMapping.type == "native_ctrl") {
             sendNativeCtrlKey(keyCode, event, inputConnection)
         } else {
             executeMapping(ctrlMapping.type, ctrlMapping.value, event, inputConnection)

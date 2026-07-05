@@ -3593,6 +3593,7 @@ object SettingsManager {
                     when (mapping.type) {
                         "action" -> mappingObject.put("action", mapping.value)
                         "keycode" -> mappingObject.put("keycode", mapping.value)
+                        "command" -> mappingObject.put("command", mapping.value)
                         "native_ctrl" -> { /* type is already set */ }
                         "none" -> { /* type is already set */ }
                     }

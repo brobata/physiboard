@@ -1,6 +1,7 @@
 package it.palsoftware.pastiera.inputmethod
 
 import android.content.Context
+import android.content.Intent
 import android.view.KeyEvent
 import android.view.inputmethod.InputConnection
 import it.palsoftware.pastiera.SettingsManager
@@ -21,6 +22,7 @@ import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
@@ -306,6 +308,72 @@ class InputEventRouterCtrlHoldNavModeTest {
             SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL,
             SettingsManager.getSoftwareKeyboardMode(context)
         )
+    }
+
+    @Test
+    fun heldCtrl_whenMappingIsDeviceCommand_executesWithoutInputConnection() {
+        SettingsManager.setNavModeCtrlHoldEnabled(context, true)
+        val mapping = mapOf(
+            KeyEvent.KEYCODE_K to KeyMappingLoader.CtrlMapping(
+                "command",
+                "device.home"
+            )
+        )
+
+        val handled = router.handleCtrlModifiedKey(
+            keyCode = KeyEvent.KEYCODE_K,
+            event = ctrlKeyDown(KeyEvent.KEYCODE_K),
+            inputConnection = null,
+            ctrlKeyMap = mapping,
+            ctrlLatchFromNavMode = false,
+            ctrlOneShot = false,
+            ctrlPhysicallyPressed = true,
+            clearCtrlOneShot = {},
+            updateStatusBar = {},
+            callSuper = { false },
+            toggleMinimalUi = {}
+        )
+
+        assertTrue(handled)
+        val intent = shadowOf(RuntimeEnvironment.getApplication()).nextStartedActivity
+        assertEquals(Intent.ACTION_MAIN, intent.action)
+        assertTrue(intent.categories?.contains(Intent.CATEGORY_HOME) == true)
+    }
+
+    @Test
+    fun latchedNavMode_whenMappingIsDeviceCommand_executesWithoutInputConnection() {
+        modifierStateController.ctrlLatchActive = true
+        modifierStateController.ctrlLatchFromNavMode = true
+        val mapping = mapOf(
+            KeyEvent.KEYCODE_K to KeyMappingLoader.CtrlMapping(
+                "command",
+                "device.home"
+            )
+        )
+
+        val handled = router.handleKeyDownWithNoEditableField(
+            keyCode = KeyEvent.KEYCODE_K,
+            event = keyDown(KeyEvent.KEYCODE_K),
+            ctrlKeyMap = mapping,
+            callbacks = InputEventRouter.NoEditableFieldCallbacks(
+                isShortcutKey = { false },
+                isLauncherPackage = { false },
+                handleLauncherShortcut = { false },
+                handlePowerShortcut = { false },
+                togglePowerShortcutMode = { _, _ -> },
+                callSuper = { false },
+                currentInputConnection = { null }
+            ),
+            ctrlLatchActive = true,
+            editorInfo = null,
+            currentPackageName = null,
+            powerShortcutsEnabled = false
+        )
+
+        assertTrue(handled)
+        val intent = shadowOf(RuntimeEnvironment.getApplication()).nextStartedActivity
+        assertEquals(Intent.ACTION_MAIN, intent.action)
+        assertTrue(intent.categories?.contains(Intent.CATEGORY_HOME) == true)
     }
 
     @Test

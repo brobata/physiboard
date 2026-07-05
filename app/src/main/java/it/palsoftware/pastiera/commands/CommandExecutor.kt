@@ -109,6 +109,7 @@ class CommandExecutor(
                 }
             }
             PastieraCommandSource.ACTION_TOGGLE_SOFTWARE_KEYBOARD_MODE -> toggleSoftwareKeyboardMode()
+            DeviceControlCommandSource.ACTION_HOME_SCREEN -> goHome()
             DeviceControlCommandSource.ACTION_MEDIA_PLAY_PAUSE -> dispatchMediaKey(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
             DeviceControlCommandSource.ACTION_MEDIA_PREVIOUS -> dispatchMediaKey(KeyEvent.KEYCODE_MEDIA_PREVIOUS)
             DeviceControlCommandSource.ACTION_MEDIA_NEXT -> dispatchMediaKey(KeyEvent.KEYCODE_MEDIA_NEXT)
@@ -118,6 +119,20 @@ class CommandExecutor(
             DeviceControlCommandSource.ACTION_BRIGHTNESS_UP -> sendShellKeyEvent(KeyEvent.KEYCODE_BRIGHTNESS_UP)
             DeviceControlCommandSource.ACTION_BRIGHTNESS_DOWN -> sendShellKeyEvent(KeyEvent.KEYCODE_BRIGHTNESS_DOWN)
             else -> fail("Unknown action")
+        }
+    }
+
+    private fun goHome(): CommandExecutionResult {
+        return try {
+            val intent = Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_HOME)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+            CommandExecutionResult.Success
+        } catch (error: Exception) {
+            Log.e(TAG, "Failed to go home", error)
+            fail("Could not go home")
         }
     }
 

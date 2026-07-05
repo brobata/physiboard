@@ -1,5 +1,6 @@
 package it.palsoftware.pastiera
 
+import android.content.Intent
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -16,6 +17,7 @@ import it.palsoftware.pastiera.commands.CommandSourceId
 import it.palsoftware.pastiera.commands.CommandSurface
 import it.palsoftware.pastiera.commands.PastieraCommandSource
 import org.robolectric.Robolectric
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.shadows.ShadowToast
 
 @RunWith(RobolectricTestRunner::class)
@@ -272,6 +274,54 @@ class SettingsManagerLayoutSwitchTest {
     }
 
     @Test
+    fun homeScreenCommand_isDeviceControlAndVisibleOnShortcutSurfaces() {
+        val context = RuntimeEnvironment.getApplication()
+        val registry = CommandRegistry(context)
+
+        assertTrue(
+            registry.getCommands(CommandSurface.AssignedKey)
+                .any { it.id == "device.home" && it.source == CommandSourceId.DeviceControl }
+        )
+        assertTrue(
+            registry.getCommands(CommandSurface.NavMode)
+                .any { it.id == "device.home" && it.source == CommandSourceId.DeviceControl }
+        )
+        assertFalse(
+            registry.getCommands(CommandSurface.QuickLauncher)
+                .any { it.id == "device.home" }
+        )
+
+        SettingsManager.setCommandSourceVisibility(
+            context,
+            listOf(
+                SettingsManager.CommandSourceVisibility(CommandSourceId.Apps.storageValue, quickLauncherEnabled = true),
+                SettingsManager.CommandSourceVisibility(CommandSourceId.Pastiera.storageValue, quickLauncherEnabled = true),
+                SettingsManager.CommandSourceVisibility(CommandSourceId.AppActions.storageValue, quickLauncherEnabled = false),
+                SettingsManager.CommandSourceVisibility(CommandSourceId.DeviceControl.storageValue, quickLauncherEnabled = true),
+                SettingsManager.CommandSourceVisibility(CommandSourceId.NavActions.storageValue, quickLauncherEnabled = false)
+            )
+        )
+
+        assertTrue(
+            registry.getCommands(CommandSurface.QuickLauncher)
+                .any { it.id == "device.home" && it.source == CommandSourceId.DeviceControl }
+        )
+    }
+
+    @Test
+    fun homeScreenCommandExecutorStartsAndroidHomeIntent() {
+        val context = RuntimeEnvironment.getApplication()
+        val command = CommandRegistry(context)
+            .resolve("device.home")
+        val result = CommandExecutor(context, showToast = false).execute(requireNotNull(command))
+
+        assertTrue(result.isSuccess)
+        val intent = shadowOf(context).nextStartedActivity
+        assertEquals(Intent.ACTION_MAIN, intent.action)
+        assertTrue(intent.categories?.contains(Intent.CATEGORY_HOME) == true)
+    }
+
+    @Test
     fun softwareKeyboardModeActionActivity_runsExternalToggleIntent() {
         val context = RuntimeEnvironment.getApplication()
         SettingsManager.setSoftwareKeyboardMode(context, SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL)
@@ -421,6 +471,38 @@ class SettingsManagerLayoutSwitchTest {
         assertEquals(
             it.palsoftware.pastiera.data.mappings.KeyMappingLoader.CtrlMapping("action", "custom_action"),
             mappings[android.view.KeyEvent.KEYCODE_N]
+        )
+    }
+
+    @Test
+    fun saveNavModeKeyMappings_preservesCommandMappings() {
+        val context = RuntimeEnvironment.getApplication()
+
+        SettingsManager.saveNavModeKeyMappings(
+            context,
+            mapOf(
+                android.view.KeyEvent.KEYCODE_B to it.palsoftware.pastiera.data.mappings.KeyMappingLoader.CtrlMapping(
+                    "command",
+                    PastieraCommandSource.COMMAND_TOGGLE_SOFTWARE_KEYBOARD_MODE
+                ),
+                android.view.KeyEvent.KEYCODE_K to it.palsoftware.pastiera.data.mappings.KeyMappingLoader.CtrlMapping(
+                    "command",
+                    "device.home"
+                )
+            )
+        )
+
+        val mappings = it.palsoftware.pastiera.data.mappings.KeyMappingLoader.loadCtrlKeyMappings(context.assets, context)
+        assertEquals(
+            it.palsoftware.pastiera.data.mappings.KeyMappingLoader.CtrlMapping(
+                "command",
+                PastieraCommandSource.COMMAND_TOGGLE_SOFTWARE_KEYBOARD_MODE
+            ),
+            mappings[android.view.KeyEvent.KEYCODE_B]
+        )
+        assertEquals(
+            it.palsoftware.pastiera.data.mappings.KeyMappingLoader.CtrlMapping("command", "device.home"),
+            mappings[android.view.KeyEvent.KEYCODE_K]
         )
     }
 }

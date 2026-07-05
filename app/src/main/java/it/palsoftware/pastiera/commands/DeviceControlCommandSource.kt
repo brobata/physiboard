@@ -11,6 +11,7 @@ class DeviceControlCommandSource : CommandSource {
 
     override fun getCommands(context: Context): List<CommandTarget> {
         return buildList {
+            add(deviceAction("device.home", "Home screen", "System", ACTION_HOME_SCREEN))
             add(deviceAction("device.media.play_pause", "Play / pause", "Media", ACTION_MEDIA_PLAY_PAUSE))
             add(deviceAction("device.media.previous", "Previous track", "Media", ACTION_MEDIA_PREVIOUS))
             add(deviceAction("device.media.next", "Next track", "Media", ACTION_MEDIA_NEXT))
@@ -114,6 +115,7 @@ class DeviceControlCommandSource : CommandSource {
     }
 
     companion object {
+        const val ACTION_HOME_SCREEN = "device.home"
         const val ACTION_MEDIA_PLAY_PAUSE = "device.media.play_pause"
         const val ACTION_MEDIA_PREVIOUS = "device.media.previous"
         const val ACTION_MEDIA_NEXT = "device.media.next"
