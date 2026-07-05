@@ -853,4 +853,6 @@ Każdy klawisz można skonfigurować jako Keycode, Akcja, Native Ctrl lub Brak. 
     <string name="dynamic_variation_slot_count_description">Staraj się pokazać %1$d dynamicznych pozycji między przyciskami paska stanu.</string>
     <string name="dynamic_variation_resize_to_content_title">Zmieniaj rozmiar wariacji dynamicznych</string>
     <string name="dynamic_variation_resize_to_content_description">Gdy włączone, dynamiczne pozycje wypełniają dostępny wiersz zależnie od liczby wyświetlanych elementów. Gdy wyłączone, zachowują rozmiar slotu z suwaka i pozostają wyrównane do lewej.</string>
+    <string name="keyboard_theme_tab_colors">Kolory</string>
+    <string name="keyboard_theme_tab_keys">Klawisze</string>
 </resources>

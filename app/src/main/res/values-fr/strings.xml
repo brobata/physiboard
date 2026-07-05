@@ -853,4 +853,6 @@ Chaque touche peut être configurée comme Keycode, Action, Native Ctrl ou Aucun
     <string name="dynamic_variation_slot_count_description">Essayer d’afficher %1$d entrées dynamiques entre les boutons de la barre d’état.</string>
     <string name="dynamic_variation_resize_to_content_title">Redimensionner les variations dynamiques</string>
     <string name="dynamic_variation_resize_to_content_description">Si activé, les entrées dynamiques remplissent la ligne disponible selon leur nombre. Si désactivé, elles conservent la taille d’emplacement du curseur et restent alignées à gauche.</string>
+    <string name="keyboard_theme_tab_colors">Couleurs</string>
+    <string name="keyboard_theme_tab_keys">Touches</string>
 </resources>

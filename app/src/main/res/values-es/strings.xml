@@ -853,4 +853,6 @@ Cada tecla puede configurarse como Keycode, Acción, Native Ctrl o Ninguno. Usa 
     <string name="dynamic_variation_slot_count_description">Intenta mostrar %1$d entradas dinámicas entre los botones de la barra de estado.</string>
     <string name="dynamic_variation_resize_to_content_title">Redimensionar variaciones dinámicas</string>
     <string name="dynamic_variation_resize_to_content_description">Si está activado, las entradas dinámicas llenan la fila disponible según cuántas se muestren. Si está desactivado, conservan el tamaño de espacio del control deslizante y quedan alineadas a la izquierda.</string>
+    <string name="keyboard_theme_tab_colors">Colores</string>
+    <string name="keyboard_theme_tab_keys">Teclas</string>
 </resources>

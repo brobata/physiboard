@@ -853,4 +853,6 @@ Nav Mode использует физическое положение клави
     <string name="dynamic_variation_slot_count_description">Стремиться показывать %1$d динамических элементов между кнопками панели состояния.</string>
     <string name="dynamic_variation_resize_to_content_title">Изменять размер динамических вариантов</string>
     <string name="dynamic_variation_resize_to_content_description">Если включено, динамические элементы заполняют доступную строку в зависимости от их количества. Если выключено, они сохраняют размер слота из ползунка и остаются выровненными слева.</string>
+    <string name="keyboard_theme_tab_colors">Цвета</string>
+    <string name="keyboard_theme_tab_keys">Клавиши</string>
 </resources>

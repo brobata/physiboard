@@ -329,12 +329,12 @@ fun KeyboardThemeScreen(
                 Tab(
                     selected = customizationTab == 0,
                     onClick = { customizationTab = 0 },
-                    text = { Text("Farben") }
+                    text = { Text(stringResource(R.string.keyboard_theme_tab_colors)) }
                 )
                 Tab(
                     selected = customizationTab == 1,
                     onClick = { customizationTab = 1 },
-                    text = { Text("Tasten") }
+                    text = { Text(stringResource(R.string.keyboard_theme_tab_keys)) }
                 )
             }
             Column(

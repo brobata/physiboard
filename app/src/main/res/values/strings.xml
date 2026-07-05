@@ -398,6 +398,8 @@
     <string name="keyboard_theme_preset_title">Choose a preset</string>
     <string name="keyboard_theme_preview_title">Keyboard UI Preview</string>
     <string name="keyboard_theme_customize_title">Customize colors</string>
+    <string name="keyboard_theme_tab_colors">Colors</string>
+    <string name="keyboard_theme_tab_keys">Keys</string>
     <string name="keyboard_theme_selected">Selected</string>
     <string name="keyboard_theme_reset">Reset</string>
     <string name="keyboard_theme_background">Background</string>

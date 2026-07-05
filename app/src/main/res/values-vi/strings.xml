@@ -853,4 +853,6 @@ Mỗi phím có thể cấu hình là Keycode, Action, Native Ctrl hoặc None. 
     <string name="dynamic_variation_slot_count_description">Cố gắng hiển thị %1$d mục động giữa các nút thanh trạng thái.</string>
     <string name="dynamic_variation_resize_to_content_title">Đổi kích thước biến thể động</string>
     <string name="dynamic_variation_resize_to_content_description">Khi bật, các mục động lấp đầy hàng còn trống dựa trên số mục đang hiển thị. Khi tắt, chúng giữ kích thước ô từ thanh trượt và căn trái.</string>
+    <string name="keyboard_theme_tab_colors">Màu sắc</string>
+    <string name="keyboard_theme_tab_keys">Phím</string>
 </resources>

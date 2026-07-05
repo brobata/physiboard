@@ -973,4 +973,6 @@ Ogni tasto può essere configurato come Keycode, Azione, Native Ctrl o Nessuno. 
     <string name="software_keyboard_mode_always_virtual">Sempre tastiera virtuale</string>
     <string name="software_keyboard_mode_always_hardware">Sempre tastiera hardware</string>
     <string name="software_keyboard_mode_auto_short">Auto (PKB: hardware, altrimenti virtuale)</string>
+    <string name="keyboard_theme_tab_colors">Colori</string>
+    <string name="keyboard_theme_tab_keys">Tasti</string>
 </resources>

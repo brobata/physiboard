@@ -853,4 +853,6 @@ Nav Mode-ը օգտագործում է ստեղնի ֆիզիկական դիրքը
     <string name="dynamic_variation_slot_count_description">Փորձել ցույց տալ %1$d դինամիկ տարր կարգավիճակի գոտու կոճակների միջև։</string>
     <string name="dynamic_variation_resize_to_content_title">Փոխել դինամիկ տարբերակների չափը</string>
     <string name="dynamic_variation_resize_to_content_description">Միացված լինելու դեպքում դինամիկ տարրերը լրացնում են հասանելի շարքը՝ ըստ ցուցադրվող քանակի։ Անջատված լինելու դեպքում դրանք պահում են սահիկի տեղամասի չափը և մնում ձախից հավասարեցված։</string>
+    <string name="keyboard_theme_tab_colors">Գույներ</string>
+    <string name="keyboard_theme_tab_keys">Ստեղներ</string>
 </resources>
