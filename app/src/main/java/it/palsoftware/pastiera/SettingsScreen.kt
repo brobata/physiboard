@@ -57,6 +57,7 @@ sealed class SettingsDestination {
     object Accessibility : SettingsDestination()
     object AutoCorrection : SettingsDestination()
     object Customization : SettingsDestination()
+    object NavMode : SettingsDestination()
     object Advanced : SettingsDestination()
     object About : SettingsDestination()
     object CustomInputStyles : SettingsDestination()
@@ -180,7 +181,8 @@ fun SettingsScreen(
             is SettingsDestination.TextInput -> {
                 TextInputSettingsScreen(
                     modifier = modifier,
-                    onBack = { navigateBack() }
+                    onBack = { navigateBack() },
+                    onNavModeSettingsClick = { navigateTo(SettingsDestination.NavMode) }
                 )
             }
             is SettingsDestination.Accessibility -> {
@@ -201,6 +203,12 @@ fun SettingsScreen(
                     onBack = { navigateBack() },
                     initialDestination = initialCustomizationDestination,
                     initialKeyboardThemeTarget = initialKeyboardThemeTarget
+                )
+            }
+            is SettingsDestination.NavMode -> {
+                NavModeSettingsScreen(
+                    modifier = modifier,
+                    onBack = { navigateBack() }
                 )
             }
             is SettingsDestination.Advanced -> {

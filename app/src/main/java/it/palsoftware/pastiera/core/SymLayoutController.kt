@@ -291,7 +291,7 @@ class SymLayoutController(
         if (symChar != null && inputConnection != null) {
             if (
                 symChar.length != 1 ||
-                !SettingsManager.getFrenchPunctuationSpacing(context) ||
+                !SettingsManager.shouldApplyFrenchPunctuationSpacing(context) ||
                 !it.palsoftware.pastiera.core.Punctuation.commitFrenchSpacedPunctuation(inputConnection, symChar[0])
             ) {
                 inputConnection.commitText(symChar, 1)

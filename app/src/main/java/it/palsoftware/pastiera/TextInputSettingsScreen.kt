@@ -1,6 +1,7 @@
 package it.palsoftware.pastiera
 
 import androidx.compose.foundation.clickable
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -32,7 +33,8 @@ import it.palsoftware.pastiera.core.Punctuation
 @Composable
 fun TextInputSettingsScreen(
     modifier: Modifier = Modifier,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onNavModeSettingsClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
     
@@ -64,6 +66,10 @@ fun TextInputSettingsScreen(
 
     var frenchPunctuationSpacing by remember {
         mutableStateOf(SettingsManager.getFrenchPunctuationSpacing(context))
+    }
+
+    var frenchPunctuationOnlyFrenchLayouts by remember {
+        mutableStateOf(SettingsManager.getFrenchPunctuationOnlyFrenchLayouts(context))
     }
 
     var commaSpace by remember {
@@ -225,615 +231,175 @@ fun TextInputSettingsScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Auto Capitalize
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(64.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.TextFields,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.auto_capitalize_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1
-                        )
-                    }
-                    Switch(
-                        checked = autoCapitalizeFirstLetter,
-                        onCheckedChange = { enabled ->
-                            autoCapitalizeFirstLetter = enabled
-                            SettingsManager.setAutoCapitalizeFirstLetter(context, enabled)
-                        }
-                    )
+            SettingsSectionHeader(text = stringResource(R.string.text_input_section_capitalization))
+            SettingsSwitchRow(
+                title = stringResource(R.string.auto_capitalize_title),
+                description = stringResource(R.string.auto_capitalize_description),
+                checked = autoCapitalizeFirstLetter,
+                onCheckedChange = { enabled ->
+                    autoCapitalizeFirstLetter = enabled
+                    SettingsManager.setAutoCapitalizeFirstLetter(context, enabled)
                 }
+            )
+            SettingsSwitchRow(
+                title = stringResource(R.string.auto_capitalize_after_period_title),
+                description = stringResource(R.string.auto_capitalize_after_period_description),
+                checked = autoCapitalizeAfterPeriod,
+                onCheckedChange = { enabled ->
+                    autoCapitalizeAfterPeriod = enabled
+                    SettingsManager.setAutoCapitalizeAfterPeriod(context, enabled)
+                }
+            )
+
+            SettingsSectionHeader(text = stringResource(R.string.text_input_section_spacing_punctuation))
+            SettingsSwitchRow(
+                title = stringResource(R.string.double_space_to_period_title),
+                description = stringResource(R.string.double_space_to_period_description),
+                checked = doubleSpaceToPeriod,
+                onCheckedChange = { enabled ->
+                    doubleSpaceToPeriod = enabled
+                    SettingsManager.setDoubleSpaceToPeriod(context, enabled)
+                }
+            )
+            SettingsNavigationRow(
+                title = stringResource(R.string.auto_space_punctuation_title),
+                description = autoSpacePunctuationSummary(
+                    punctuation = autoSpacePunctuation,
+                    chooseLabel = stringResource(R.string.auto_space_punctuation_choose),
+                    offLabel = stringResource(R.string.auto_space_punctuation_choose_off)
+                ),
+                onClick = { autoSpacePunctuationDialogVisible = true }
+            )
+            SettingsSwitchRow(
+                title = stringResource(R.string.comma_space_title),
+                description = stringResource(R.string.comma_space_description),
+                checked = commaSpace,
+                onCheckedChange = { enabled ->
+                    commaSpace = enabled
+                    SettingsManager.setCommaSpace(context, enabled)
+                }
+            )
+            SettingsSwitchRow(
+                title = stringResource(R.string.french_punctuation_spacing_title),
+                description = stringResource(R.string.french_punctuation_spacing_description),
+                checked = frenchPunctuationSpacing,
+                onCheckedChange = { enabled ->
+                    frenchPunctuationSpacing = enabled
+                    SettingsManager.setFrenchPunctuationSpacing(context, enabled)
+                }
+            )
+            AnimatedVisibility(visible = frenchPunctuationSpacing) {
+                SettingsSwitchRow(
+                    title = stringResource(R.string.french_punctuation_only_french_title),
+                    description = stringResource(R.string.french_punctuation_only_french_description),
+                    checked = frenchPunctuationOnlyFrenchLayouts,
+                    inset = 52.dp,
+                    onCheckedChange = { enabled ->
+                        frenchPunctuationOnlyFrenchLayouts = enabled
+                        SettingsManager.setFrenchPunctuationOnlyFrenchLayouts(context, enabled)
+                    }
+                )
             }
 
-            // Auto Capitalize After Period
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(64.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.TextFields,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.auto_capitalize_after_period_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1
-                        )
-                        Text(
-                            text = stringResource(R.string.auto_capitalize_after_period_description),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1
-                        )
+            SettingsSectionHeader(text = stringResource(R.string.text_input_section_typography))
+            SettingsDropdownSwitchRow(
+                title = stringResource(R.string.spaced_hyphen_to_en_dash_title),
+                checked = spacedHyphenToEnDash,
+                onCheckedChange = { enabled ->
+                    spacedHyphenToEnDash = enabled
+                    SettingsManager.setSpacedHyphenToEnDash(context, enabled)
+                    if (!enabled) {
+                        spacedHyphenDashExpanded = false
                     }
-                    Switch(
-                        checked = autoCapitalizeAfterPeriod,
-                        onCheckedChange = { enabled ->
-                            autoCapitalizeAfterPeriod = enabled
-                            SettingsManager.setAutoCapitalizeAfterPeriod(context, enabled)
-                        }
-                    )
+                },
+                expanded = spacedHyphenDashExpanded,
+                onExpandedChange = { spacedHyphenDashExpanded = it },
+                value = dashStyleLabel(spacedHyphenDashStyle),
+                options = dashStyleOptions(),
+                optionLabel = ::dashStyleLabel,
+                onOptionSelected = { style ->
+                    spacedHyphenDashStyle = style
+                    SettingsManager.setSpacedHyphenDashStyle(context, style)
+                    spacedHyphenDashExpanded = false
                 }
-            }
-
-            // Double Space to Period
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(64.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.TextFields,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.double_space_to_period_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1
-                        )
-                        Text(
-                            text = stringResource(R.string.double_space_to_period_description),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1
-                        )
+            )
+            SettingsSwitchRow(
+                title = stringResource(R.string.mid_word_quote_to_apostrophe_title),
+                description = stringResource(R.string.mid_word_quote_to_apostrophe_description),
+                checked = midWordQuoteToApostrophe,
+                onCheckedChange = { enabled ->
+                    midWordQuoteToApostrophe = enabled
+                    SettingsManager.setMidWordQuoteToApostrophe(context, enabled)
+                }
+            )
+            SettingsDropdownSwitchRow(
+                title = stringResource(R.string.smart_quotes_title),
+                checked = smartQuotes,
+                onCheckedChange = { enabled ->
+                    smartQuotes = enabled
+                    SettingsManager.setSmartQuotes(context, enabled)
+                    if (!enabled) {
+                        smartQuotesExpanded = false
                     }
-                    Switch(
-                        checked = doubleSpaceToPeriod,
-                        onCheckedChange = { enabled ->
-                            doubleSpaceToPeriod = enabled
-                            SettingsManager.setDoubleSpaceToPeriod(context, enabled)
-                        }
-                    )
+                },
+                expanded = smartQuotesExpanded,
+                onExpandedChange = { smartQuotesExpanded = it },
+                value = smartQuotesStyleLabel(smartQuotesStyle),
+                options = smartQuoteStyleOptions(),
+                optionLabel = ::smartQuotesStyleLabel,
+                onOptionSelected = { style ->
+                    smartQuotesStyle = style
+                    SettingsManager.setSmartQuotesStyle(context, style)
+                    smartQuotesExpanded = false
                 }
-            }
+            )
 
-            // Spaced Hyphen to Dash
+            SettingsSectionHeader(text = stringResource(R.string.text_input_section_keyboard_behavior))
+            SettingsSwitchRow(
+                title = stringResource(R.string.clear_alt_on_space_title),
+                description = stringResource(R.string.clear_alt_on_space_description),
+                checked = clearAltOnSpace,
+                onCheckedChange = { enabled ->
+                    clearAltOnSpace = enabled
+                    SettingsManager.setClearAltOnSpace(context, enabled)
+                }
+            )
+            SettingsSwitchRow(
+                title = stringResource(R.string.auto_show_keyboard_title),
+                description = stringResource(R.string.auto_show_keyboard_description),
+                checked = autoShowKeyboard,
+                onCheckedChange = { enabled ->
+                    autoShowKeyboard = enabled
+                    SettingsManager.setAutoShowKeyboard(context, enabled)
+                }
+            )
+            SettingsSwitchRow(
+                title = stringResource(R.string.alt_ctrl_speech_shortcut_title),
+                description = stringResource(R.string.alt_ctrl_speech_shortcut_description),
+                checked = altCtrlSpeechShortcut,
+                onCheckedChange = { enabled ->
+                    altCtrlSpeechShortcut = enabled
+                    SettingsManager.setAltCtrlSpeechShortcutEnabled(context, enabled)
+                }
+            )
+
+            SettingsSectionHeader(text = stringResource(R.string.text_input_section_delete))
             Surface(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(72.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.TextFields,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.spaced_hyphen_to_en_dash_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1
-                        )
-                        ExposedDropdownMenuBox(
-                            expanded = spacedHyphenDashExpanded,
-                            onExpandedChange = { spacedHyphenDashExpanded = !spacedHyphenDashExpanded }
-                        ) {
-                            OutlinedTextField(
-                                value = dashStyleLabel(spacedHyphenDashStyle),
-                                onValueChange = {},
-                                readOnly = true,
-                                singleLine = true,
-                                enabled = spacedHyphenToEnDash,
-                                textStyle = MaterialTheme.typography.bodySmall,
-                                trailingIcon = {
-                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = spacedHyphenDashExpanded)
-                                },
-                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(48.dp)
-                                    .menuAnchor(
-                                        type = MenuAnchorType.PrimaryNotEditable,
-                                        enabled = spacedHyphenToEnDash
-                                    )
-                            )
-                            ExposedDropdownMenu(
-                                expanded = spacedHyphenDashExpanded,
-                                onDismissRequest = { spacedHyphenDashExpanded = false }
-                            ) {
-                                dashStyleOptions().forEach { style ->
-                                    DropdownMenuItem(
-                                        text = { Text(dashStyleLabel(style)) },
-                                        onClick = {
-                                            spacedHyphenDashStyle = style
-                                            SettingsManager.setSpacedHyphenDashStyle(context, style)
-                                            spacedHyphenDashExpanded = false
-                                        },
-                                        enabled = spacedHyphenToEnDash
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    Switch(
-                        checked = spacedHyphenToEnDash,
-                        onCheckedChange = { enabled ->
-                            spacedHyphenToEnDash = enabled
-                            SettingsManager.setSpacedHyphenToEnDash(context, enabled)
-                            if (!enabled) {
-                                spacedHyphenDashExpanded = false
-                            }
-                        }
-                    )
-                }
-            }
-
-            // Mid-word Quote to Apostrophe
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(64.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.TextFields,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.mid_word_quote_to_apostrophe_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1
-                        )
-                        Text(
-                            text = stringResource(R.string.mid_word_quote_to_apostrophe_description),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1
-                        )
-                    }
-                    Switch(
-                        checked = midWordQuoteToApostrophe,
-                        onCheckedChange = { enabled ->
-                            midWordQuoteToApostrophe = enabled
-                            SettingsManager.setMidWordQuoteToApostrophe(context, enabled)
-                        }
-                    )
-                }
-            }
-
-            // French Punctuation Spacing
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(64.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.TextFields,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.french_punctuation_spacing_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1
-                        )
-                        Text(
-                            text = stringResource(R.string.french_punctuation_spacing_description),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1
-                        )
-                    }
-                    Switch(
-                        checked = frenchPunctuationSpacing,
-                        onCheckedChange = { enabled ->
-                            frenchPunctuationSpacing = enabled
-                            SettingsManager.setFrenchPunctuationSpacing(context, enabled)
-                        }
-                    )
-                }
-            }
-
-            // Comma Space
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(64.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.TextFields,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.comma_space_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1
-                        )
-                        Text(
-                            text = stringResource(R.string.comma_space_description),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1
-                        )
-                    }
-                    Switch(
-                        checked = commaSpace,
-                        onCheckedChange = { enabled ->
-                            commaSpace = enabled
-                            SettingsManager.setCommaSpace(context, enabled)
-                        }
-                    )
-                }
-            }
-
-            // Auto-space punctuation
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(64.dp)
-                    .clickable { autoSpacePunctuationDialogVisible = true }
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.TextFields,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.auto_space_punctuation_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1
-                        )
-                        Text(
-                            text = autoSpacePunctuationSummary(
-                                punctuation = autoSpacePunctuation,
-                                chooseLabel = stringResource(R.string.auto_space_punctuation_choose),
-                                offLabel = stringResource(R.string.auto_space_punctuation_choose_off)
-                            ),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1
-                        )
-                    }
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-
-            // Smart Quotes
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(72.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.TextFields,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.smart_quotes_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1
-                        )
-                        ExposedDropdownMenuBox(
-                            expanded = smartQuotesExpanded,
-                            onExpandedChange = { smartQuotesExpanded = !smartQuotesExpanded }
-                        ) {
-                            OutlinedTextField(
-                                value = smartQuotesStyleLabel(smartQuotesStyle),
-                                onValueChange = {},
-                                readOnly = true,
-                                singleLine = true,
-                                enabled = smartQuotes,
-                                textStyle = MaterialTheme.typography.bodySmall,
-                                trailingIcon = {
-                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = smartQuotesExpanded)
-                                },
-                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(48.dp)
-                                    .menuAnchor(
-                                        type = MenuAnchorType.PrimaryNotEditable,
-                                        enabled = smartQuotes
-                                    )
-                            )
-                            ExposedDropdownMenu(
-                                expanded = smartQuotesExpanded,
-                                onDismissRequest = { smartQuotesExpanded = false }
-                            ) {
-                                smartQuoteStyleOptions().forEach { style ->
-                                    DropdownMenuItem(
-                                        text = { Text(smartQuotesStyleLabel(style)) },
-                                        onClick = {
-                                            smartQuotesStyle = style
-                                            SettingsManager.setSmartQuotesStyle(context, style)
-                                            smartQuotesExpanded = false
-                                        },
-                                        enabled = smartQuotes
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    Switch(
-                        checked = smartQuotes,
-                        onCheckedChange = { enabled ->
-                            smartQuotes = enabled
-                            SettingsManager.setSmartQuotes(context, enabled)
-                            if (!enabled) {
-                                smartQuotesExpanded = false
-                            }
-                        }
-                    )
-                }
-            }
-
-            // Clear Alt on Space
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(64.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.TextFields,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.clear_alt_on_space_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1
-                        )
-                        Text(
-                            text = stringResource(R.string.clear_alt_on_space_description),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1
-                        )
-                    }
-                    Switch(
-                        checked = clearAltOnSpace,
-                        onCheckedChange = { enabled ->
-                            clearAltOnSpace = enabled
-                            SettingsManager.setClearAltOnSpace(context, enabled)
-                        }
-                    )
-                }
-            }
-
-            // Auto Show Keyboard
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(64.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.TextFields,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.auto_show_keyboard_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1
-                        )
-                    }
-                    Switch(
-                        checked = autoShowKeyboard,
-                        onCheckedChange = { enabled ->
-                            autoShowKeyboard = enabled
-                            SettingsManager.setAutoShowKeyboard(context, enabled)
-                        }
-                    )
-                }
-            }
-
-            // Alt+Ctrl Speech Recognition Shortcut
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(64.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.TextFields,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.alt_ctrl_speech_shortcut_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1
-                        )
-                        Text(
-                            text = stringResource(R.string.alt_ctrl_speech_shortcut_description),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1
-                        )
-                    }
-                    Switch(
-                        checked = altCtrlSpeechShortcut,
-                        onCheckedChange = { enabled ->
-                            altCtrlSpeechShortcut = enabled
-                            SettingsManager.setAltCtrlSpeechShortcutEnabled(context, enabled)
-                        }
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                tonalElevation = 2.dp,
-                shape = MaterialTheme.shapes.medium
+                    .fillMaxWidth(),
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp)
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
                 ) {
                     Text(
-                        text = stringResource(R.string.delete_alternatives_title),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
                         text = stringResource(R.string.delete_alternatives_description),
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -905,6 +471,13 @@ fun TextInputSettingsScreen(
                         fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                     )
                     Spacer(modifier = Modifier.height(6.dp))
+                    SettingsNavigationRow(
+                        title = stringResource(R.string.delete_alternatives_nav_mode_title),
+                        description = stringResource(R.string.settings_nav_mode_configure),
+                        iconInset = 0.dp,
+                        onClick = onNavModeSettingsClick
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
                     Text(
                         text = stringResource(R.string.delete_alternatives_selection_hint),
                         style = MaterialTheme.typography.bodySmall,
@@ -916,6 +489,194 @@ fun TextInputSettingsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
         }
+    }
+}
+
+@Composable
+private fun SettingsSectionHeader(text: String) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Spacer(modifier = Modifier.height(12.dp))
+        HorizontalDivider()
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(start = 16.dp, top = 14.dp, bottom = 6.dp)
+        )
+    }
+}
+
+@Composable
+private fun SettingsRowFrame(
+    modifier: Modifier = Modifier,
+    minHeight: androidx.compose.ui.unit.Dp = 64.dp,
+    inset: androidx.compose.ui.unit.Dp = 16.dp,
+    content: @Composable RowScope.() -> Unit
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = minHeight)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = inset, end = 16.dp, top = 10.dp, bottom = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            content = content
+        )
+    }
+}
+
+@Composable
+private fun SettingsSwitchRow(
+    title: String,
+    description: String? = null,
+    checked: Boolean,
+    inset: androidx.compose.ui.unit.Dp = 16.dp,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    SettingsRowFrame(inset = inset, minHeight = if (description == null) 64.dp else 72.dp) {
+        Icon(
+            imageVector = Icons.Filled.TextFields,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(24.dp)
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium,
+                maxLines = 2
+            )
+            if (description != null) {
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2
+                )
+            }
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange
+        )
+    }
+}
+
+@Composable
+private fun SettingsNavigationRow(
+    title: String,
+    description: String,
+    iconInset: androidx.compose.ui.unit.Dp = 16.dp,
+    onClick: () -> Unit
+) {
+    SettingsRowFrame(
+        modifier = Modifier.clickable(onClick = onClick),
+        minHeight = 72.dp,
+        inset = iconInset
+    ) {
+        Icon(
+            imageVector = Icons.Filled.TextFields,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(24.dp)
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium,
+                maxLines = 2
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2
+            )
+        }
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(20.dp)
+        )
+    }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun SettingsDropdownSwitchRow(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    value: String,
+    options: List<String>,
+    optionLabel: (String) -> String,
+    onOptionSelected: (String) -> Unit
+) {
+    SettingsRowFrame(minHeight = 88.dp) {
+        Icon(
+            imageVector = Icons.Filled.TextFields,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(24.dp)
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium,
+                maxLines = 2
+            )
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { onExpandedChange(!expanded) }
+            ) {
+                OutlinedTextField(
+                    value = value,
+                    onValueChange = {},
+                    readOnly = true,
+                    singleLine = true,
+                    enabled = checked,
+                    textStyle = MaterialTheme.typography.bodySmall,
+                    trailingIcon = {
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                    },
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .menuAnchor(
+                            type = MenuAnchorType.PrimaryNotEditable,
+                            enabled = checked
+                        )
+                )
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { onExpandedChange(false) }
+                ) {
+                    options.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(optionLabel(option)) },
+                            onClick = { onOptionSelected(option) },
+                            enabled = checked
+                        )
+                    }
+                }
+            }
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange
+        )
     }
 }
 
@@ -943,6 +704,9 @@ private fun smartQuoteStyleOptions(): List<String> {
     )
 }
 
+// These labels intentionally use explicit quote pairs instead of generic placeholders.
+// Change them only with care: quotation marks are interpreted visually and some
+// combinations render ambiguously in Android text fields and dropdowns.
 private fun smartQuotesStyleLabel(style: String): String {
     return when (style) {
         SettingsManager.SMART_QUOTES_STYLE_FRENCH_GUILLEMETS -> "«...»"

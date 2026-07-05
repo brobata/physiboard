@@ -7,6 +7,7 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import android.util.Log
 import android.view.KeyEvent
+import android.view.inputmethod.InputMethodManager
 import it.palsoftware.pastiera.commands.CommandJson
 import it.palsoftware.pastiera.commands.CommandLaunchSpec
 import it.palsoftware.pastiera.commands.CommandSourceId
@@ -14,6 +15,8 @@ import it.palsoftware.pastiera.commands.CommandSurface
 import it.palsoftware.pastiera.commands.PastieraCommandSource
 import it.palsoftware.pastiera.core.Punctuation
 import it.palsoftware.pastiera.inputmethod.DeviceSpecific
+import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils
+import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils.localeString
 import it.palsoftware.pastiera.inputmethod.ui.KeyboardThemeColors
 import org.json.JSONArray
 import org.json.JSONObject
@@ -46,6 +49,7 @@ object SettingsManager {
     private const val KEY_SPACED_HYPHEN_DASH_STYLE = "spaced_hyphen_dash_style"
     private const val KEY_MID_WORD_QUOTE_TO_APOSTROPHE = "mid_word_quote_to_apostrophe"
     private const val KEY_FRENCH_PUNCTUATION_SPACING = "french_punctuation_spacing"
+    private const val KEY_FRENCH_PUNCTUATION_ONLY_FRENCH = "french_punctuation_only_french"
     private const val KEY_COMMA_SPACE = "comma_space"
     private const val KEY_AUTO_SPACE_PUNCTUATION = "auto_space_punctuation"
     private const val KEY_SMART_QUOTES = "smart_quotes"
@@ -258,6 +262,7 @@ object SettingsManager {
     private const val DEFAULT_SPACED_HYPHEN_DASH_STYLE = DASH_STYLE_EN
     private const val DEFAULT_MID_WORD_QUOTE_TO_APOSTROPHE = false
     private const val DEFAULT_FRENCH_PUNCTUATION_SPACING = false
+    private const val DEFAULT_FRENCH_PUNCTUATION_ONLY_FRENCH = false
     private const val DEFAULT_COMMA_SPACE = false
     private const val DEFAULT_AUTO_SPACE_PUNCTUATION = Punctuation.DEFAULT_AUTO_SPACE
     private const val DEFAULT_SMART_QUOTES = false
@@ -1663,6 +1668,43 @@ object SettingsManager {
         getPreferences(context).edit()
             .putBoolean(KEY_FRENCH_PUNCTUATION_SPACING, enabled)
             .apply()
+    }
+
+    fun getFrenchPunctuationOnlyFrenchLayouts(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_FRENCH_PUNCTUATION_ONLY_FRENCH,
+            DEFAULT_FRENCH_PUNCTUATION_ONLY_FRENCH
+        )
+    }
+
+    fun setFrenchPunctuationOnlyFrenchLayouts(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_FRENCH_PUNCTUATION_ONLY_FRENCH, enabled)
+            .apply()
+    }
+
+    fun shouldApplyFrenchPunctuationSpacing(context: Context): Boolean {
+        if (!getFrenchPunctuationSpacing(context)) return false
+        if (!getFrenchPunctuationOnlyFrenchLayouts(context)) return true
+        return currentImeLanguage(context) == "fr"
+    }
+
+    private fun currentImeLanguage(context: Context): String? {
+        val imm = context.getSystemService(InputMethodManager::class.java) ?: return null
+        val localeString = imm.currentInputMethodSubtype?.localeString() ?: return null
+        return try {
+            AdditionalSubtypeUtils.localeFromSubtypeString(localeString)
+                .language
+                .lowercase()
+                .takeIf { it.isNotBlank() }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to parse current IME locale: $localeString", e)
+            localeString
+                .replace('_', '-')
+                .substringBefore('-')
+                .lowercase()
+                .takeIf { it.isNotBlank() }
+        }
     }
 
     fun getCommaSpace(context: Context): Boolean {

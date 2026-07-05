@@ -26,39 +26,48 @@
     <string name="long_press_description">Wait time before a long press is recognized. A lower value makes long press more responsive, while a higher value requires a longer press.</string>
     <string name="setting_applied_immediately">Setting applied immediately</string>
     
+    <!-- Text Input Sections -->
+    <string name="text_input_section_capitalization">Capitalization</string>
+    <string name="text_input_section_spacing_punctuation">Spacing &amp; punctuation</string>
+    <string name="text_input_section_typography">Typography</string>
+    <string name="text_input_section_keyboard_behavior">Keyboard behavior</string>
+    <string name="text_input_section_delete">Delete</string>
+
     <!-- Auto Capitalize Section -->
-    <string name="auto_capitalize_title">Auto-Capitalize First Letter</string>
-    <string name="auto_capitalize_description">Automatically capitalizes the first letter when starting to type in an empty text field.</string>
+    <string name="auto_capitalize_title">Capitalize at text start</string>
+    <string name="auto_capitalize_description">Capitalize the first letter when starting in an empty text field.</string>
 
     <!-- Auto Capitalize After Period Section -->
-    <string name="auto_capitalize_after_period_title">Auto-Capitalize After Period</string>
-    <string name="auto_capitalize_after_period_description">Automatically capitalizes the next letter after typing a period followed by a space (end of sentence).</string>
+    <string name="auto_capitalize_after_period_title">Capitalize after sentence end</string>
+    <string name="auto_capitalize_after_period_description">Capitalize the next letter after a period and space.</string>
 
     <!-- Double Space to Period Section -->
-    <string name="double_space_to_period_title">Double Space to Period</string>
-    <string name="double_space_to_period_description">Double tap space to insert a period followed by a space and capitalize the next letter.</string>
+    <string name="double_space_to_period_title">Double Space inserts period</string>
+    <string name="double_space_to_period_description">Press Space twice to insert a period and a space.</string>
 
     <!-- Smart punctuation Section -->
-    <string name="spaced_hyphen_to_en_dash_title">Spaced Hyphen to Dash</string>
-    <string name="spaced_hyphen_to_en_dash_description">Turns “word - next” into a typographic dash while leaving line-start hyphens alone.</string>
-    <string name="mid_word_quote_to_apostrophe_title">Mid-word Apostrophe</string>
-    <string name="mid_word_quote_to_apostrophe_description">Replaces double quotes with apostrophes inside words.</string>
-    <string name="french_punctuation_spacing_title">French Punctuation Spacing</string>
-    <string name="french_punctuation_spacing_description">Adds non-breaking spacing before French punctuation marks.</string>
-    <string name="comma_space_title">Comma Space</string>
-    <string name="comma_space_description">Adds a space after commas and replaces a preceding space.</string>
-    <string name="auto_space_punctuation_title">Auto-space Punctuation</string>
+    <string name="spaced_hyphen_to_en_dash_title">Hyphen to dash</string>
+    <string name="spaced_hyphen_to_en_dash_description">Turn “word - word” into a dash.</string>
+    <string name="mid_word_quote_to_apostrophe_title">Quotes inside words</string>
+    <string name="mid_word_quote_to_apostrophe_description">Turn straight quotes inside words into an apostrophe.</string>
+    <string name="french_punctuation_spacing_title">French punctuation spacing</string>
+    <string name="french_punctuation_spacing_description">Insert non-breaking spacing before ; : ! ? and guillemets.</string>
+    <string name="french_punctuation_only_french_title">Only for French layouts</string>
+    <string name="french_punctuation_only_french_description">Apply this spacing only while the active input language is French.</string>
+    <string name="comma_space_title">Space after comma</string>
+    <string name="comma_space_description">Add a space after commas and replace a preceding space.</string>
+    <string name="auto_space_punctuation_title">Replace auto-space before punctuation</string>
     <string name="auto_space_punctuation_selected">Selected:</string>
     <string name="auto_space_punctuation_none_selected">none</string>
-    <string name="auto_space_punctuation_dialog_instruction">Tap any punctuation mark to choose whether it replaces an automatic trailing space with punctuation plus a following space.</string>
-    <string name="auto_space_punctuation_choose">Tap to choose:</string>
-    <string name="auto_space_punctuation_choose_off">Tap to choose: Off</string>
+    <string name="auto_space_punctuation_dialog_instruction">Choose which characters may replace an automatically inserted space.</string>
+    <string name="auto_space_punctuation_choose">Selected:</string>
+    <string name="auto_space_punctuation_choose_off">Off</string>
     <string name="auto_space_punctuation_reset">Reset</string>
-    <string name="smart_quotes_title">Smart Quotes</string>
+    <string name="smart_quotes_title">Quotation mark style</string>
 
     <!-- Clear Alt on Space Section -->
-    <string name="clear_alt_on_space_title">Clear Alt on Space</string>
-    <string name="clear_alt_on_space_description">Automatically disable Alt or Alt-Lock when pressing Space.</string>
+    <string name="clear_alt_on_space_title">Release Alt with Space</string>
+    <string name="clear_alt_on_space_description">End Alt or Alt-Lock when Space is pressed.</string>
     
     <!-- Swipe to Delete Section -->
     <string name="swipe_to_delete_title">Enable Swipe to Delete</string>
@@ -70,6 +79,7 @@
     <!-- Delete Alternatives Section -->
     <string name="delete_alternatives_title">Delete</string>
     <string name="delete_alternatives_description">Alternative methods to delete characters to the right of cursor</string>
+    <string name="delete_alternatives_nav_mode_title">Open Nav Mode settings</string>
     <string name="shift_backspace_delete_title">Shift + Backspace</string>
     <string name="alt_backspace_delete_title">Alt + Backspace</string>
     <string name="backspace_at_start_delete_title">Backspace at line start</string>
@@ -81,11 +91,12 @@
     <string name="swipe_incremental_threshold_description">Distance required to move cursor one position. Lower values make the cursor move faster.</string>
     
     <!-- Auto Show Keyboard Section -->
-    <string name="auto_show_keyboard_title">Auto Show Keyboard</string>
+    <string name="auto_show_keyboard_title">Show keyboard automatically</string>
+    <string name="auto_show_keyboard_description">Show the on-screen keyboard automatically in text fields.</string>
     
     <!-- Alt+Ctrl Speech Recognition Shortcut Section -->
-    <string name="alt_ctrl_speech_shortcut_title">Alt+Ctrl Speech Recognition</string>
-    <string name="alt_ctrl_speech_shortcut_description">Enable Alt+Ctrl keyboard shortcut to start speech recognition</string>
+    <string name="alt_ctrl_speech_shortcut_title">Alt+Ctrl for speech input</string>
+    <string name="alt_ctrl_speech_shortcut_description">Start speech input with Alt+Ctrl.</string>
 
     <!-- Static Variation Bar Mode -->
     <string name="static_variation_bar_mode_title">Static Variation Bar</string>

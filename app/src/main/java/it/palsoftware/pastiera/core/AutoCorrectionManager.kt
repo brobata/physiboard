@@ -198,7 +198,7 @@ class AutoCorrectionManager(
                 isEnterBoundary -> inputConnection.commitText("\n", 1)
                 isPunctuationBoundary -> {
                     if (
-                        !it.palsoftware.pastiera.SettingsManager.getFrenchPunctuationSpacing(context) ||
+                        !it.palsoftware.pastiera.SettingsManager.shouldApplyFrenchPunctuationSpacing(context) ||
                         !Punctuation.commitFrenchSpacedPunctuation(inputConnection, boundaryChar)
                     ) {
                         if (

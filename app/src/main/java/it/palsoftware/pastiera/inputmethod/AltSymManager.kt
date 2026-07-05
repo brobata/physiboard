@@ -291,7 +291,7 @@ class AltSymManager(
         val altChar = altKeyMap[keyCode]
         return if (altChar != null) {
             val frenchSpacedPunctuation = altChar.length == 1 &&
-                context?.let { SettingsManager.getFrenchPunctuationSpacing(it) } == true &&
+                context?.let { SettingsManager.shouldApplyFrenchPunctuationSpacing(it) } == true &&
                 it.palsoftware.pastiera.core.Punctuation.commitFrenchSpacedPunctuation(inputConnection, altChar[0])
             if (frenchSpacedPunctuation) {
                 onAltCharInserted?.invoke(altChar[0])
@@ -434,7 +434,7 @@ class AltSymManager(
                             }
 
                             val frenchSpacedPunctuation = symChar.length == 1 &&
-                                context?.let { SettingsManager.getFrenchPunctuationSpacing(it) } == true &&
+                                context?.let { SettingsManager.shouldApplyFrenchPunctuationSpacing(it) } == true &&
                                 it.palsoftware.pastiera.core.Punctuation.commitFrenchSpacedPunctuation(inputConnection, symChar[0])
                             if (frenchSpacedPunctuation) {
                                 Log.d(TAG, "Long press Sym mapping applied with French spacing for '$symChar'")
@@ -515,7 +515,7 @@ class AltSymManager(
                             }
 
                             val frenchSpacedPunctuation = altChar.length == 1 &&
-                                context?.let { SettingsManager.getFrenchPunctuationSpacing(it) } == true &&
+                                context?.let { SettingsManager.shouldApplyFrenchPunctuationSpacing(it) } == true &&
                                 it.palsoftware.pastiera.core.Punctuation.commitFrenchSpacedPunctuation(inputConnection, altChar[0])
                             if (frenchSpacedPunctuation) {
                                 Log.d(TAG, "Long press Alt mapping applied with French spacing for '$altChar'")

@@ -1046,7 +1046,7 @@ class InputEventRouter(
         }
         if (
             isPunctuation &&
-            SettingsManager.getFrenchPunctuationSpacing(context) &&
+            SettingsManager.shouldApplyFrenchPunctuationSpacing(context) &&
             inputConnection != null &&
             it.palsoftware.pastiera.core.Punctuation.commitFrenchSpacedPunctuation(inputConnection, typedChar)
         ) {
