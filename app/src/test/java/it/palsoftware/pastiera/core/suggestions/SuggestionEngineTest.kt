@@ -68,6 +68,17 @@ class SuggestionEngineTest {
     }
 
     @Test
+    fun accentlessFrenchWordSuggestsAccentedDictionaryEntry() {
+        fakeRepo.isReady = true
+        fakeRepo.addTestEntry("derrière", 200)
+
+        val results = engine.suggest("derriere", includeAccentMatching = true)
+
+        assertEquals("derrière", results.firstOrNull()?.candidate)
+        assertEquals(0, results.firstOrNull()?.distance)
+    }
+
+    @Test
     fun testCaseOnlyVariantIsSuggestedForLowercaseInput() {
         fakeRepo.isReady = true
         fakeRepo.addTestEntry("Problem", 200)

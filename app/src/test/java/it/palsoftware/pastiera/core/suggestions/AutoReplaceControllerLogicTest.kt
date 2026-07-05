@@ -16,6 +16,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
+import java.util.Locale
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -396,6 +397,40 @@ class AutoReplaceControllerLogicTest {
         assertTrue(result.replaced)
         assertEquals("qu'on ", inputConnection.text)
         assertEquals("qu'on", result.replacement)
+    }
+
+    @Test
+    fun autoReplaceOnSpaceAppliesAccentOnlyDictionaryVariant() {
+        val context = RuntimeEnvironment.getApplication()
+        val repository = FakeDictionaryRepository().apply {
+            isReady = true
+            addTestEntry("derrière", 200)
+        }
+        val controller = AutoReplaceController(
+            repository = repository,
+            suggestionEngine = SuggestionEngine(repository, locale = Locale.FRENCH),
+            settingsProvider = {
+                SuggestionSettings(
+                    autoReplaceOnSpaceEnter = true,
+                    accentMatching = true,
+                    maxAutoReplaceDistance = 1
+                )
+            }
+        )
+        val tracker = CurrentWordTracker(onWordChanged = {}, onWordReset = {})
+        tracker.setWord("derriere")
+        val inputConnection = FakeInputConnection(context, "derriere")
+
+        val result = controller.handleBoundary(
+            keyCode = KeyEvent.KEYCODE_SPACE,
+            event = KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_SPACE),
+            tracker = tracker,
+            inputConnection = inputConnection
+        )
+
+        assertTrue(result.replaced)
+        assertEquals("derrière ", inputConnection.text)
+        assertEquals("derrière", result.replacement)
     }
 
     @Test
