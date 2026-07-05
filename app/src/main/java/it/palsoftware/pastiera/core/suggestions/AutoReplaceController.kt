@@ -238,6 +238,12 @@ class AutoReplaceController(
             ) {
                 return true
             }
+            if (
+                settings.commaSpace &&
+                Punctuation.commitCommaSpace(connection, boundary)
+            ) {
+                return true
+            }
             return when (boundary) {
                 ' ' -> ensureTrailingSpace(connection).also { committed ->
                     if (committed) AutoSpaceTracker.markAutoSpace()

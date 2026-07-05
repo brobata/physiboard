@@ -349,6 +349,17 @@ class SettingsManagerLayoutSwitchTest {
     }
 
     @Test
+    fun commaSpace_defaultsDisabled_andPersistsEnabledState() {
+        val context = RuntimeEnvironment.getApplication()
+
+        assertFalse(SettingsManager.getCommaSpace(context))
+
+        SettingsManager.setCommaSpace(context, true)
+
+        assertTrue(SettingsManager.getCommaSpace(context))
+    }
+
+    @Test
     fun layoutAwareCtrlShortcuts_defaultsDisabled_andPersistsEnabledState() {
         val context = RuntimeEnvironment.getApplication()
 

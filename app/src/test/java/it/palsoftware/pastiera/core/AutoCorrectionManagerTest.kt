@@ -94,6 +94,101 @@ class AutoCorrectionManagerTest {
         assertEquals("C'était ?", inputConnection.text)
     }
 
+    @Test
+    fun commaSpaceAddsTrailingSpaceWithoutAutoCorrect() {
+        SettingsManager.setCommaSpace(context, true)
+        val inputConnection = FakeInputConnection(context, "Hi")
+
+        val handled = AutoCorrectionManager(context).handleBoundaryKey(
+            keyCode = KeyEvent.KEYCODE_COMMA,
+            event = KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_COMMA),
+            inputConnection = inputConnection,
+            isAutoCorrectEnabled = false,
+            commitBoundary = true,
+            boundaryCharOverride = ',',
+            onStatusBarUpdate = {}
+        )
+
+        assertTrue(handled)
+        assertEquals("Hi, ", inputConnection.text)
+    }
+
+    @Test
+    fun commaSpaceReplacesPrecedingSpace() {
+        SettingsManager.setCommaSpace(context, true)
+        val inputConnection = FakeInputConnection(context, "Hi ")
+
+        val handled = AutoCorrectionManager(context).handleBoundaryKey(
+            keyCode = KeyEvent.KEYCODE_COMMA,
+            event = KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_COMMA),
+            inputConnection = inputConnection,
+            isAutoCorrectEnabled = false,
+            commitBoundary = true,
+            boundaryCharOverride = ',',
+            onStatusBarUpdate = {}
+        )
+
+        assertTrue(handled)
+        assertEquals("Hi, ", inputConnection.text)
+    }
+
+    @Test
+    fun commaSpaceDoesNotDuplicateAlreadyCommittedComma() {
+        SettingsManager.setCommaSpace(context, true)
+        val inputConnection = FakeInputConnection(context, "Hi,")
+
+        val handled = AutoCorrectionManager(context).handleBoundaryKey(
+            keyCode = KeyEvent.KEYCODE_COMMA,
+            event = KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_COMMA),
+            inputConnection = inputConnection,
+            isAutoCorrectEnabled = false,
+            commitBoundary = true,
+            boundaryCharOverride = ',',
+            onStatusBarUpdate = {}
+        )
+
+        assertTrue(handled)
+        assertEquals("Hi, ", inputConnection.text)
+    }
+
+    @Test
+    fun commaSpaceCleansSpaceBeforeAlreadyCommittedComma() {
+        SettingsManager.setCommaSpace(context, true)
+        val inputConnection = FakeInputConnection(context, "Hi ,")
+
+        val handled = AutoCorrectionManager(context).handleBoundaryKey(
+            keyCode = KeyEvent.KEYCODE_COMMA,
+            event = KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_COMMA),
+            inputConnection = inputConnection,
+            isAutoCorrectEnabled = false,
+            commitBoundary = true,
+            boundaryCharOverride = ',',
+            onStatusBarUpdate = {}
+        )
+
+        assertTrue(handled)
+        assertEquals("Hi, ", inputConnection.text)
+    }
+
+    @Test
+    fun commaSpaceDoesNotAffectPeriod() {
+        SettingsManager.setCommaSpace(context, true)
+        val inputConnection = FakeInputConnection(context, "Hi")
+
+        val handled = AutoCorrectionManager(context).handleBoundaryKey(
+            keyCode = KeyEvent.KEYCODE_PERIOD,
+            event = KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_PERIOD),
+            inputConnection = inputConnection,
+            isAutoCorrectEnabled = false,
+            commitBoundary = true,
+            boundaryCharOverride = '.',
+            onStatusBarUpdate = {}
+        )
+
+        assertEquals(false, handled)
+        assertEquals("Hi", inputConnection.text)
+    }
+
     private class FakeInputConnection(
         context: Context,
         initialText: String

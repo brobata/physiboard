@@ -13,6 +13,7 @@ object Punctuation {
     const val AUTO_SPACE: String = ".,;:!?\\/\""
 
     const val FRENCH_SPACED_PUNCTUATION: String = "?!;:"
+    const val COMMA_SPACE_PUNCTUATION: Char = ','
 
     // Normalize curly/variant apostrophes to straight.
     fun normalizeApostrophe(c: Char): Char = when (c) {
@@ -49,6 +50,38 @@ object Punctuation {
         }
         inputConnection.commitText("$NARROW_NO_BREAK_SPACE$punctuation", 1)
         AutoSpaceTracker.clear()
+        return true
+    }
+
+    fun commitCommaSpace(
+        inputConnection: android.view.inputmethod.InputConnection,
+        punctuation: Char
+    ): Boolean {
+        if (punctuation != COMMA_SPACE_PUNCTUATION) return false
+
+        val before = inputConnection.getTextBeforeCursor(16, 0)?.toString().orEmpty()
+        if (before.endsWith("$punctuation ")) {
+            AutoSpaceTracker.markAutoSpace()
+            return true
+        }
+        if (before.endsWith(punctuation)) {
+            val beforeComma = before.dropLast(1)
+            val preCommaSpaceCount = beforeComma.takeLastWhile { it == ' ' }.length
+            if (preCommaSpaceCount > 0) {
+                inputConnection.deleteSurroundingText(preCommaSpaceCount + 1, 0)
+                inputConnection.commitText("$punctuation ", 1)
+            } else {
+                inputConnection.commitText(" ", 1)
+            }
+            AutoSpaceTracker.markAutoSpace()
+            return true
+        }
+        val existingSpaceCount = before.takeLastWhile { it == ' ' }.length
+        if (existingSpaceCount > 0) {
+            inputConnection.deleteSurroundingText(existingSpaceCount, 0)
+        }
+        inputConnection.commitText("$punctuation ", 1)
+        AutoSpaceTracker.markAutoSpace()
         return true
     }
 }

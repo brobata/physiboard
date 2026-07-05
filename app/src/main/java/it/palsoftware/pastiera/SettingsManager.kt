@@ -45,6 +45,7 @@ object SettingsManager {
     private const val KEY_SPACED_HYPHEN_DASH_STYLE = "spaced_hyphen_dash_style"
     private const val KEY_MID_WORD_QUOTE_TO_APOSTROPHE = "mid_word_quote_to_apostrophe"
     private const val KEY_FRENCH_PUNCTUATION_SPACING = "french_punctuation_spacing"
+    private const val KEY_COMMA_SPACE = "comma_space"
     private const val KEY_SMART_QUOTES = "smart_quotes"
     private const val KEY_SMART_QUOTES_STYLE = "smart_quotes_style"
     private const val KEY_SWIPE_TO_DELETE = "swipe_to_delete"
@@ -246,6 +247,7 @@ object SettingsManager {
     private const val DEFAULT_SPACED_HYPHEN_DASH_STYLE = DASH_STYLE_EN
     private const val DEFAULT_MID_WORD_QUOTE_TO_APOSTROPHE = false
     private const val DEFAULT_FRENCH_PUNCTUATION_SPACING = false
+    private const val DEFAULT_COMMA_SPACE = false
     private const val DEFAULT_SMART_QUOTES = false
     const val SMART_QUOTES_STYLE_GERMAN_GUILLEMETS = "german_guillemets"
     const val SMART_QUOTES_STYLE_FRENCH_GUILLEMETS = "french_guillemets"
@@ -1644,6 +1646,19 @@ object SettingsManager {
     fun setFrenchPunctuationSpacing(context: Context, enabled: Boolean) {
         getPreferences(context).edit()
             .putBoolean(KEY_FRENCH_PUNCTUATION_SPACING, enabled)
+            .apply()
+    }
+
+    fun getCommaSpace(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_COMMA_SPACE,
+            DEFAULT_COMMA_SPACE
+        )
+    }
+
+    fun setCommaSpace(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_COMMA_SPACE, enabled)
             .apply()
     }
 

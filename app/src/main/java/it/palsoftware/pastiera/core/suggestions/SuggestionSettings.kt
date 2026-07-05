@@ -8,5 +8,6 @@ data class SuggestionSettings(
     val maxSuggestions: Int = 3,
     val useKeyboardProximity: Boolean = false,
     val useEditTypeRanking: Boolean = false,
-    val frenchPunctuationSpacing: Boolean = false
+    val frenchPunctuationSpacing: Boolean = false,
+    val commaSpace: Boolean = false
 )

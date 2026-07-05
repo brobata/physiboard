@@ -467,6 +467,39 @@ class AutoReplaceControllerLogicTest {
     }
 
     @Test
+    fun boundaryCommitAddsCommaSpaceWhenNoReplacementHappens() {
+        val context = RuntimeEnvironment.getApplication()
+        val repository = FakeDictionaryRepository().apply {
+            isReady = true
+            addTestEntry("hello", 100)
+        }
+        val controller = AutoReplaceController(
+            repository = repository,
+            suggestionEngine = SuggestionEngine(repository),
+            settingsProvider = {
+                SuggestionSettings(
+                    autoReplaceOnSpaceEnter = false,
+                    commaSpace = true
+                )
+            }
+        )
+        val tracker = CurrentWordTracker(onWordChanged = {}, onWordReset = {})
+        tracker.setWord("hello")
+        val inputConnection = FakeInputConnection(context, "hello")
+
+        val result = controller.handleBoundary(
+            keyCode = KeyEvent.KEYCODE_COMMA,
+            event = KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_COMMA),
+            tracker = tracker,
+            inputConnection = inputConnection
+        )
+
+        assertFalse(result.replaced)
+        assertTrue(result.committed)
+        assertEquals("hello, ", inputConnection.text)
+    }
+
+    @Test
     fun softwareSpaceBoundaryReportsCommittedWhenNoReplacementHappens() {
         val context = RuntimeEnvironment.getApplication()
         val repository = FakeDictionaryRepository().apply {

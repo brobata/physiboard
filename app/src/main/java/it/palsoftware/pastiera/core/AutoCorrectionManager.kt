@@ -88,7 +88,7 @@ class AutoCorrectionManager(
                     "commitBoundary=$commitBoundary, isAutoCorrectEnabled=$isAutoCorrectEnabled, " +
                     "eventKeyCode=${event?.keyCode}"
         )
-        if (!isAutoCorrectEnabled || inputConnection == null) {
+        if (inputConnection == null) {
             return false
         }
 
@@ -119,6 +119,16 @@ class AutoCorrectionManager(
             return false
         }
 
+        fun commitCommaSpaceIfEnabled(): Boolean {
+            return commitBoundary &&
+                it.palsoftware.pastiera.SettingsManager.getCommaSpace(context) &&
+                Punctuation.commitCommaSpace(inputConnection, boundaryChar)
+        }
+
+        if (!isAutoCorrectEnabled) {
+            return commitCommaSpaceIfEnabled()
+        }
+
         val punctuationChars = it.palsoftware.pastiera.core.Punctuation.BOUNDARY
         val isSpaceBoundary = boundaryChar == ' '
         val isEnterBoundary = boundaryChar == '\n'
@@ -126,6 +136,12 @@ class AutoCorrectionManager(
 
         if (isPunctuationBoundary && AutoSpaceTracker.isPending()) {
             val bracketSet = "()[]{}"
+            if (
+                it.palsoftware.pastiera.SettingsManager.getCommaSpace(context) &&
+                Punctuation.commitCommaSpace(inputConnection, boundaryChar)
+            ) {
+                return true
+            }
             if (boundaryChar in it.palsoftware.pastiera.core.Punctuation.AUTO_SPACE) {
                 val applied = AutoSpaceTracker.replaceAutoSpaceWithPunctuation(
                     inputConnection,
@@ -147,11 +163,11 @@ class AutoCorrectionManager(
             textBeforeCursor,
             context = context,
             isKnownWord = isKnownWord
-        ) ?: return false
+        ) ?: return commitCommaSpaceIfEnabled()
 
         val (wordToReplace, correctedWord) = correction
         if (correctedWord == wordToReplace) {
-            return false
+            return commitCommaSpaceIfEnabled()
         }
         val boundaryAtEnd = textBeforeCursor?.lastOrNull() == boundaryChar
         var deleteCount = wordToReplace.length
@@ -185,7 +201,12 @@ class AutoCorrectionManager(
                         !it.palsoftware.pastiera.SettingsManager.getFrenchPunctuationSpacing(context) ||
                         !Punctuation.commitFrenchSpacedPunctuation(inputConnection, boundaryChar)
                     ) {
-                        inputConnection.commitText(boundaryChar.toString(), 1)
+                        if (
+                            !it.palsoftware.pastiera.SettingsManager.getCommaSpace(context) ||
+                            !Punctuation.commitCommaSpace(inputConnection, boundaryChar)
+                        ) {
+                            inputConnection.commitText(boundaryChar.toString(), 1)
+                        }
                     }
                 }
             }
