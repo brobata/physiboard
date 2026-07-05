@@ -65,7 +65,7 @@ object SubtypeCycler {
             Log.d(TAG, "Found IME: $imeId")
             
             // Get all enabled subtypes
-            val enabledSubtypes = dedupeSubtypesByLocaleAndLayout(
+            val enabledSubtypes = getCycleableSubtypes(
                 context = context,
                 assets = assets,
                 subtypes = imm.getEnabledInputMethodSubtypeList(inputMethodInfo, true)
@@ -196,7 +196,7 @@ object SubtypeCycler {
         }
     }
 
-    private fun dedupeSubtypesByLocaleAndLayout(
+    fun getCycleableSubtypes(
         context: Context,
         assets: AssetManager,
         subtypes: List<InputMethodSubtype>
@@ -212,7 +212,7 @@ object SubtypeCycler {
         }
     }
 
-    private fun resolveSubtypeCycleLayout(
+    fun resolveSubtypeCycleLayout(
         assets: AssetManager,
         context: Context,
         subtype: InputMethodSubtype?

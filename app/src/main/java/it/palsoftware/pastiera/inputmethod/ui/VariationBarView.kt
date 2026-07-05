@@ -129,6 +129,7 @@ class VariationBarView(
     private var lastInputConnectionUsed: android.view.inputmethod.InputConnection? = null
     private var lastIsStaticContent: Boolean? = null
     private var lastVariationAreaVisible: Boolean? = null
+    private var lastThemeSignature: Int? = null
     private var pressedView: View? = null
     private var longPressHandler: Handler? = null
     private var longPressRunnable: Runnable? = null
@@ -168,6 +169,7 @@ class VariationBarView(
             emptyHintView?.setTextColor(colorWithAlpha(value?.textAndIcons ?: Color.WHITE, 120))
             swipeIndicator?.background = createSwipeIndicatorDrawable()
             applyHeight()
+            lastThemeSignature = null
         }
 
     fun ensureView(): FrameLayout {
@@ -467,6 +469,8 @@ class VariationBarView(
         val inputConnectionChanged = lastInputConnectionUsed !== inputConnection
         val contentModeChanged = lastIsStaticContent != isStaticContent
         val variationAreaVisibilityChanged = lastVariationAreaVisible != variationAreaVisible
+        val themeSignature = themeOverride.signature()
+        val themeChanged = lastThemeSignature != themeSignature
         val hasExistingRow = currentVariationsRow != null &&
             currentVariationsRow?.parent == containerView &&
             currentVariationsRow?.visibility == View.VISIBLE
@@ -475,6 +479,7 @@ class VariationBarView(
             !inputConnectionChanged &&
             !contentModeChanged &&
             !variationAreaVisibilityChanged &&
+            !themeChanged &&
             (hasExistingRow || !variationAreaVisible)
         ) {
             currentVariationsRow?.let { row ->
@@ -603,6 +608,7 @@ class VariationBarView(
         lastInputConnectionUsed = inputConnection
         lastIsStaticContent = isStaticContent
         lastVariationAreaVisible = variationAreaVisible
+        lastThemeSignature = themeSignature
         
         // Create a single callbacks object with all available callbacks.
         // Each button factory will extract only the callbacks it needs.
@@ -1313,4 +1319,23 @@ class VariationBarView(
             context.resources.displayMetrics
         ).toInt()
     }
+
+    private fun KeyboardThemeColors?.signature(): Int =
+        if (this == null) {
+            0
+        } else {
+            listOf(
+                background,
+                divider,
+                normalKey,
+                specialKey,
+                textAndIcons,
+                accent,
+                cursorSwipe,
+                suggestion,
+                statusBarButton,
+                chromeCornerRadiusRatio,
+                variationsHeightScale
+            ).hashCode()
+        }
 }

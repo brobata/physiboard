@@ -352,11 +352,37 @@ class StatusBarController(
         )
     }
 
-    private fun hardwareTheme(): SettingsManager.KeyboardThemeSettings =
-        SettingsManager.getKeyboardTheme(context, SettingsManager.KeyboardThemeTarget.HARDWARE)
+    private fun activeInputStyle(): Pair<String?, String?> {
+        val subtype = (context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager)
+            ?.currentInputMethodSubtype
+        val locale = subtype?.localeString()
+        val layout = if (assets != null) {
+            AdditionalSubtypeUtils.resolveInputStyleLayout(assets, context, subtype)
+        } else {
+            SettingsManager.getKeyboardLayout(context)
+        }
+        return locale to layout
+    }
 
-    private fun softwareTheme(): SettingsManager.KeyboardThemeSettings =
-        SettingsManager.getKeyboardTheme(context, SettingsManager.KeyboardThemeTarget.SOFTWARE)
+    private fun hardwareTheme(): SettingsManager.KeyboardThemeSettings {
+        val (locale, layout) = activeInputStyle()
+        return SettingsManager.getEffectiveKeyboardTheme(
+            context,
+            SettingsManager.KeyboardThemeTarget.HARDWARE,
+            locale,
+            layout
+        )
+    }
+
+    private fun softwareTheme(): SettingsManager.KeyboardThemeSettings {
+        val (locale, layout) = activeInputStyle()
+        return SettingsManager.getEffectiveKeyboardTheme(
+            context,
+            SettingsManager.KeyboardThemeTarget.SOFTWARE,
+            locale,
+            layout
+        )
+    }
 
     private fun activeThemeSettings(
         isFullSoftwareKeyboardMode: Boolean =
