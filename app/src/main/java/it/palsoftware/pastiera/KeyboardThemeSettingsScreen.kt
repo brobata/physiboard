@@ -9,11 +9,11 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,8 +25,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items as lazyItems
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -54,11 +52,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -246,14 +244,15 @@ fun KeyboardThemeScreen(
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
-            LazyRow(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(92.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp)
+                    .height(92.dp)
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                lazyItems(activeThemeOptions) { option ->
+                activeThemeOptions.forEach { option ->
                     KeyboardThemePresetCard(
                         preset = option.preset,
                         selected = activeSelectionKey == option.key,
@@ -1100,7 +1099,7 @@ private fun KeyboardThemeSwatchButton(
         )
         if (expanded) {
             KeyboardThemeColorPickerDialog(
-                initialColor = pickerColor,
+                initialColor = color,
                 onDismiss = { expanded = false },
                 onColorSelected = {
                     expanded = false
@@ -1208,6 +1207,11 @@ private fun KeyboardThemeColorPickerDialog(
     }
 }
 
+private enum class KeyboardThemeColorWheelTarget {
+    Hue,
+    SaturationValue
+}
+
 @Composable
 private fun KeyboardThemeColorWheel(
     hue: Float,
@@ -1216,35 +1220,77 @@ private fun KeyboardThemeColorWheel(
     onColorChanged: (Float, Float, Float) -> Unit
 ) {
     var canvasSize by remember { mutableStateOf(Size.Zero) }
+    val currentHue by rememberUpdatedState(hue)
+    val currentSaturation by rememberUpdatedState(saturation)
+    val currentValue by rememberUpdatedState(value)
+    val currentOnColorChanged by rememberUpdatedState(onColorChanged)
 
-    fun handlePosition(offset: Offset) {
+    fun resolveTarget(
+        offset: Offset,
+        center: Offset,
+        ringCenterRadius: Float,
+        ringStroke: Float,
+        squareLeft: Float,
+        squareTop: Float,
+        squareRight: Float,
+        squareBottom: Float
+    ): KeyboardThemeColorWheelTarget? {
+        if (offset.x in squareLeft..squareRight && offset.y in squareTop..squareBottom) {
+            return KeyboardThemeColorWheelTarget.SaturationValue
+        }
+
+        val dx = offset.x - center.x
+        val dy = offset.y - center.y
+        val distance = sqrt(dx * dx + dy * dy)
+        return if (distance in (ringCenterRadius - ringStroke)..(ringCenterRadius + ringStroke)) {
+            KeyboardThemeColorWheelTarget.Hue
+        } else {
+            null
+        }
+    }
+
+    fun handlePosition(offset: Offset, preferredTarget: KeyboardThemeColorWheelTarget? = null): KeyboardThemeColorWheelTarget? {
         val side = min(canvasSize.width, canvasSize.height)
-        if (side <= 0f) return
+        if (side <= 0f) return null
         val center = Offset(canvasSize.width / 2f, canvasSize.height / 2f)
         val radius = side / 2f
         val ringStroke = radius * 0.18f
         val ringCenterRadius = radius - ringStroke / 2f
         val dx = offset.x - center.x
         val dy = offset.y - center.y
-        val distance = sqrt(dx * dx + dy * dy)
         val squareSide = radius * 1.18f
         val squareLeft = center.x - squareSide / 2f
         val squareTop = center.y - squareSide / 2f
         val squareRight = squareLeft + squareSide
         val squareBottom = squareTop + squareSide
+        val target = preferredTarget ?: resolveTarget(
+            offset = offset,
+            center = center,
+            ringCenterRadius = ringCenterRadius,
+            ringStroke = ringStroke,
+            squareLeft = squareLeft,
+            squareTop = squareTop,
+            squareRight = squareRight,
+            squareBottom = squareBottom
+        )
 
-        if (distance in (ringCenterRadius - ringStroke)..(ringCenterRadius + ringStroke)) {
+        if (target == KeyboardThemeColorWheelTarget.Hue) {
             val angle = (atan2(dy, dx) * 180f / PI.toFloat() + 360f) % 360f
-            onColorChanged(angle, saturation, value)
-            return
+            currentOnColorChanged(angle, currentSaturation, currentValue)
+            return target
+        }
+        if (target == null) {
+            return null
         }
 
-        if (offset.x in squareLeft..squareRight && offset.y in squareTop..squareBottom) {
-            val newSaturation = ((offset.x - squareLeft) / squareSide).coerceIn(0f, 1f)
-            val newValue = (1f - ((offset.y - squareTop) / squareSide)).coerceIn(0f, 1f)
-            onColorChanged(hue, newSaturation, newValue)
-        }
+        val newSaturation = ((offset.x.coerceIn(squareLeft, squareRight) - squareLeft) / squareSide)
+            .coerceIn(0f, 1f)
+        val newValue = (1f - ((offset.y.coerceIn(squareTop, squareBottom) - squareTop) / squareSide))
+            .coerceIn(0f, 1f)
+        currentOnColorChanged(currentHue, newSaturation, newValue)
+        return target
     }
+    val currentHandlePosition by rememberUpdatedState(::handlePosition)
 
     Canvas(
         modifier = Modifier
@@ -1253,11 +1299,24 @@ private fun KeyboardThemeColorWheel(
             .onSizeChanged {
                 canvasSize = Size(it.width.toFloat(), it.height.toFloat())
             }
-            .pointerInput(hue, saturation, value, canvasSize) {
-                detectTapGestures { offset -> handlePosition(offset) }
+            .pointerInput(canvasSize) {
+                detectTapGestures { offset -> currentHandlePosition(offset, null) }
             }
-            .pointerInput(hue, saturation, value, canvasSize) {
-                detectDragGestures { change, _ -> handlePosition(change.position) }
+            .pointerInput(canvasSize) {
+                var dragTarget: KeyboardThemeColorWheelTarget? = null
+                detectDragGestures(
+                    onDragStart = { offset ->
+                        dragTarget = currentHandlePosition(offset, null)
+                    },
+                    onDragEnd = { dragTarget = null },
+                    onDragCancel = { dragTarget = null },
+                    onDrag = { change, _ ->
+                        dragTarget?.let { target ->
+                            change.consume()
+                            dragTarget = currentHandlePosition(change.position, target)
+                        }
+                    }
+                )
             }
     ) {
         val side = min(size.width, size.height)
