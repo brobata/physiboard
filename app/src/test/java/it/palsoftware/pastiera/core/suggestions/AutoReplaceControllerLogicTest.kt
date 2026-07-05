@@ -293,6 +293,56 @@ class AutoReplaceControllerLogicTest {
     }
 
     @Test
+    fun bundledFrenchAccentSubstitutionsCoverApostropheKnownWordsAndCommonAccents() {
+        val context = RuntimeEnvironment.getApplication()
+        SettingsManager.setAutoCorrectEnabledLanguages(context, setOf("fr"))
+        AutoCorrector.loadCorrections(context.assets, context)
+
+        val examples = mapOf(
+            "jespere" to "j'espère",
+            "paraitre" to "paraître",
+            "epee" to "épée",
+            "etre" to "être",
+            "tres" to "très",
+            "francais" to "français",
+            "ecole" to "école",
+            "probleme" to "problème",
+            "Noel" to "Noël",
+            "jai" to "j'ai",
+            "daccord" to "d'accord",
+            "quon" to "qu'on",
+            "quelquun" to "quelqu'un",
+            "aujourdhui" to "aujourd'hui",
+            "quil" to "qu'il",
+            "jusqua" to "jusqu'à",
+            "lequipe" to "l'équipe",
+            "premiere" to "première",
+            "pres" to "près",
+            "lhistoire" to "l'histoire",
+            "detre" to "d'être",
+            "sagit" to "s'agit",
+            "cestadire" to "c'est-à-dire",
+            "luimeme" to "lui-même",
+            "recoit" to "reçoit",
+            "theatre" to "théâtre",
+            "leau" to "l'eau"
+        )
+
+        examples.forEach { (input, expected) ->
+            val correction = AutoCorrector.processText(
+                textBeforeCursor = "$input ",
+                locale = "fr",
+                context = context,
+                isKnownWord = { it.equals(input, ignoreCase = true) }
+            )
+
+            assertNotNull("$input should be corrected", correction)
+            assertEquals(input, correction!!.first)
+            assertEquals(expected, correction.second)
+        }
+    }
+
+    @Test
     fun exactReplacementRunsBeforeSuggestionSafetyChecks() {
         val context = RuntimeEnvironment.getApplication()
         val repository = FakeDictionaryRepository().apply {
