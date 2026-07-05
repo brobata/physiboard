@@ -29,9 +29,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
@@ -1440,123 +1437,147 @@ private fun KeyboardThemeColorsEditor(
     isSoftware: Boolean,
     onThemeChanged: (KeyboardThemePreset) -> Unit
 ) {
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(if (isSoftware) 672.dp else 504.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        userScrollEnabled = false
-    ) {
-        item {
-            KeyboardThemeColorRow(
+    val colorItems = buildList {
+        add(
+            KeyboardThemeColorEditorItem(
                 label = stringResource(R.string.keyboard_theme_background),
                 color = theme.background,
                 presetColor = preset.background,
                 onColorChanged = { onThemeChanged(theme.copy(background = it)) }
             )
-        }
-        item {
-            KeyboardThemeColorRow(
+        )
+        add(
+            KeyboardThemeColorEditorItem(
                 label = stringResource(R.string.keyboard_theme_dividers),
                 color = theme.divider,
                 presetColor = preset.divider,
                 onColorChanged = { onThemeChanged(theme.copy(divider = it)) }
             )
-        }
-        item {
-            KeyboardThemeColorRow(
+        )
+        add(
+            KeyboardThemeColorEditorItem(
                 label = stringResource(R.string.keyboard_theme_normal_keys),
                 color = theme.normalKey,
                 presetColor = preset.normalKey,
                 onColorChanged = { onThemeChanged(theme.copy(normalKey = it, suggestion = it)) }
             )
-        }
-        item {
-            KeyboardThemeColorRow(
+        )
+        add(
+            KeyboardThemeColorEditorItem(
                 label = stringResource(R.string.keyboard_theme_special_keys),
                 color = theme.specialKey,
                 presetColor = preset.specialKey,
                 onColorChanged = { onThemeChanged(theme.copy(specialKey = it, statusBarButton = it)) }
             )
-        }
-        item {
-            KeyboardThemeColorRow(
+        )
+        add(
+            KeyboardThemeColorEditorItem(
                 label = stringResource(R.string.keyboard_theme_text_icons),
                 color = theme.textAndIcons,
                 presetColor = preset.textAndIcons,
                 onColorChanged = { onThemeChanged(theme.copy(textAndIcons = it)) }
             )
-        }
-        item {
-            KeyboardThemeColorRow(
+        )
+        add(
+            KeyboardThemeColorEditorItem(
                 label = "Suggestions",
                 color = theme.suggestion,
                 presetColor = preset.suggestion,
                 onColorChanged = { onThemeChanged(theme.copy(suggestion = it)) }
             )
-        }
-        item {
-            KeyboardThemeColorRow(
+        )
+        add(
+            KeyboardThemeColorEditorItem(
                 label = "Status bar buttons",
                 color = theme.statusBarButton,
                 presetColor = preset.statusBarButton,
                 onColorChanged = { onThemeChanged(theme.copy(statusBarButton = it)) }
             )
-        }
-        item {
-            KeyboardThemeColorRow(
+        )
+        add(
+            KeyboardThemeColorEditorItem(
                 label = "Cursor swipe",
                 color = theme.cursorSwipe,
                 presetColor = preset.cursorSwipe,
                 onColorChanged = { onThemeChanged(theme.copy(cursorSwipe = it)) }
             )
-        }
+        )
         if (isSoftware) {
-            item {
-                KeyboardThemeColorRow(
+            add(
+                KeyboardThemeColorEditorItem(
                     label = "Key popup",
                     color = theme.keyPopup,
                     presetColor = preset.keyPopup,
                     onColorChanged = { onThemeChanged(theme.copy(keyPopup = it)) }
                 )
-            }
-            item {
-                KeyboardThemeColorRow(
+            )
+            add(
+                KeyboardThemeColorEditorItem(
                     label = "Selected popup key",
                     color = theme.keyPopupSelected,
                     presetColor = preset.keyPopupSelected,
                     onColorChanged = { onThemeChanged(theme.copy(keyPopupSelected = it)) }
                 )
-            }
+            )
         }
-        item {
-            KeyboardThemeColorRow(
+        add(
+            KeyboardThemeColorEditorItem(
                 label = stringResource(R.string.keyboard_theme_led_inactive),
                 color = theme.ledInactive,
                 presetColor = preset.ledInactive,
                 onColorChanged = { onThemeChanged(theme.copy(ledInactive = it)) }
             )
-        }
-        item {
-            KeyboardThemeColorRow(
+        )
+        add(
+            KeyboardThemeColorEditorItem(
                 label = stringResource(R.string.keyboard_theme_led_active),
                 color = theme.ledActive,
                 presetColor = preset.ledActive,
                 onColorChanged = { onThemeChanged(theme.copy(ledActive = it)) }
             )
-        }
-        item {
-            KeyboardThemeColorRow(
+        )
+        add(
+            KeyboardThemeColorEditorItem(
                 label = stringResource(R.string.keyboard_theme_led_locked),
                 color = theme.ledLocked,
                 presetColor = preset.ledLocked,
                 onColorChanged = { onThemeChanged(theme.copy(ledLocked = it)) }
             )
+        )
+    }
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        colorItems.chunked(2).forEach { rowItems ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                rowItems.forEach { item ->
+                    KeyboardThemeColorRow(
+                        label = item.label,
+                        color = item.color,
+                        presetColor = item.presetColor,
+                        onColorChanged = item.onColorChanged,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                if (rowItems.size == 1) {
+                    Box(modifier = Modifier.weight(1f))
+                }
+            }
         }
     }
 }
+
+private data class KeyboardThemeColorEditorItem(
+    val label: String,
+    val color: Int,
+    val presetColor: Int,
+    val onColorChanged: (Int) -> Unit
+)
 
 @Composable
 private fun KeyboardThemeKeysEditor(
@@ -1765,10 +1786,11 @@ private fun KeyboardThemeColorRow(
     label: String,
     color: Int,
     presetColor: Int,
-    onColorChanged: (Int) -> Unit
+    onColorChanged: (Int) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         tonalElevation = 1.dp,
         shape = MaterialTheme.shapes.medium
     ) {
