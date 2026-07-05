@@ -2,6 +2,7 @@ package it.palsoftware.pastiera.inputmethod
 
 import android.view.KeyEvent
 import it.palsoftware.pastiera.SettingsManager
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -17,6 +18,7 @@ class QuickLauncherActivityTest {
 
     @Test
     fun backClosesOnKeyUpSoReleaseIsNotForwardedToUnderlyingApp() {
+        SettingsManager.setQuickLauncherAnimationDurationMs(RuntimeEnvironment.getApplication(), 0)
         val activity = Robolectric.buildActivity(QuickLauncherActivity::class.java)
             .setup()
             .get()
@@ -36,6 +38,7 @@ class QuickLauncherActivityTest {
             RuntimeEnvironment.getApplication(),
             KeyEvent.KEYCODE_SPACE
         )
+        SettingsManager.setQuickLauncherAnimationDurationMs(RuntimeEnvironment.getApplication(), 0)
         val activity = Robolectric.buildActivity(QuickLauncherActivity::class.java)
             .setup()
             .get()
@@ -101,5 +104,16 @@ class QuickLauncherActivityTest {
         )
 
         assertTrue(activity.onKeyDown(KeyEvent.KEYCODE_A, event))
+    }
+
+    @Test
+    fun quickLauncherIntentsSuppressSystemActivityAnimation() {
+        val context = RuntimeEnvironment.getApplication()
+
+        val toggleFlags = QuickLauncherActivity.createToggleIntent(context).flags
+        val openFlags = QuickLauncherActivity.createOpenIntent(context).flags
+
+        assertNotEquals(0, toggleFlags and android.content.Intent.FLAG_ACTIVITY_NO_ANIMATION)
+        assertNotEquals(0, openFlags and android.content.Intent.FLAG_ACTIVITY_NO_ANIMATION)
     }
 }

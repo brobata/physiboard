@@ -21,7 +21,9 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -93,6 +95,7 @@ import it.palsoftware.pastiera.data.layout.LayoutMappingRepository
 import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils
 import it.palsoftware.pastiera.ui.theme.PastieraTheme
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -120,6 +123,8 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
     private var keyboardLayout: Map<Int, LayoutMapping> = emptyMap()
     private var enterHandledOnKeyDown = false
     private var pendingDismissKeyCode: Int? = null
+    private var dismissRequestId by mutableStateOf(0)
+    private var dismissInProgress = false
     private var quickLauncherPrefsListener: SharedPreferences.OnSharedPreferenceChangeListener? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -159,7 +164,7 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .clickable { finish() },
+                        .clickable { requestAnimatedDismiss() },
                     contentAlignment = Alignment.BottomCenter
                 ) {
                     QuickLauncherSheet(
@@ -178,11 +183,13 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
                         staticTopHighlight = staticTopHighlight,
                         staticTopHighlightColor = staticTopHighlightColor,
                         animationDurationMs = animationDurationMs,
+                        dismissRequestId = dismissRequestId,
                         onCommandSelected = { launchCommand(it) },
                         onCustomizationChanged = { updateCommandCustomization(it) },
                         onCustomizationsReloadRequested = { reloadCommandCustomizations() },
                         onMoveFavorite = { commandId, direction -> moveFavorite(commandId, direction) },
-                        onDismiss = { finish() }
+                        onDismiss = { requestAnimatedDismiss() },
+                        onDismissAnimationFinished = { finish() }
                     )
                 }
             }
@@ -195,7 +202,7 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         if (intent.getBooleanExtra(EXTRA_TOGGLE_REQUEST, false)) {
-            finish()
+            requestAnimatedDismiss()
         }
     }
 
@@ -342,9 +349,19 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
         val shouldDismiss = pendingDismissKeyCode == keyCode && event?.isCanceled != true
         pendingDismissKeyCode = null
         if (shouldDismiss) {
-            finish()
+            requestAnimatedDismiss()
         }
         return true
+    }
+
+    private fun requestAnimatedDismiss() {
+        if (dismissInProgress) return
+        dismissInProgress = true
+        if (animationDurationMs <= 0) {
+            finish()
+        } else {
+            dismissRequestId += 1
+        }
     }
 
     private fun isDismissKey(keyCode: Int): Boolean {
@@ -476,6 +493,7 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
                 addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
                 addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY)
                 addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
                 putExtra(EXTRA_TOGGLE_REQUEST, true)
             }
         }
@@ -486,6 +504,7 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
                 addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
                 addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY)
                 addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
             }
         }
     }
@@ -508,16 +527,25 @@ private fun QuickLauncherSheet(
     staticTopHighlight: Boolean,
     staticTopHighlightColor: Int,
     animationDurationMs: Int,
+    dismissRequestId: Int,
     onCommandSelected: (CommandTarget) -> Unit,
     onCustomizationChanged: (SettingsManager.QuickLauncherCommandCustomization) -> Unit,
     onCustomizationsReloadRequested: () -> Unit,
     onMoveFavorite: (String, Int) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onDismissAnimationFinished: () -> Unit
 ) {
     val maxSheetHeight = LocalConfiguration.current.screenHeightDp.dp * 0.78f
     val visible = remember { MutableTransitionState(false) }
     LaunchedEffect(Unit) {
         visible.targetState = true
+    }
+    LaunchedEffect(dismissRequestId) {
+        if (dismissRequestId > 0) {
+            visible.targetState = false
+            delay(animationDurationMs.toLong().coerceAtLeast(0L))
+            onDismissAnimationFinished()
+        }
     }
     val isCollapsedPill = pillMode && query.isBlank()
     val widthFraction = if (isCollapsedPill) 0.72f else widthPercent.coerceIn(50, 100) / 100f
@@ -555,7 +583,11 @@ private fun QuickLauncherSheet(
         enter = slideInVertically(
             initialOffsetY = { it },
             animationSpec = tween(durationMillis = animationDurationMs)
-        ) + fadeIn(animationSpec = tween(durationMillis = (animationDurationMs / 2).coerceAtLeast(0)))
+        ) + fadeIn(animationSpec = tween(durationMillis = (animationDurationMs / 2).coerceAtLeast(0))),
+        exit = slideOutVertically(
+            targetOffsetY = { it },
+            animationSpec = tween(durationMillis = animationDurationMs)
+        ) + fadeOut(animationSpec = tween(durationMillis = (animationDurationMs / 2).coerceAtLeast(0)))
     ) {
         Surface(
             modifier = Modifier

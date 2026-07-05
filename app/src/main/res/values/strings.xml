@@ -415,7 +415,7 @@
     <string name="quick_launcher_ranking_info_body">Results are ranked in this order: exact app name, app name prefix, word prefix, abbreviation/subsequence match, typo-tolerant app name match, then package-name match. Typo tolerance is ignored for very short queries.</string>
     <string name="quick_launcher_behaviour_title">Behaviour</string>
     <string name="quick_launcher_behaviour_description">Launcher provider, search/ranking rules, and SYM+Space from text fields.</string>
-    <string name="quick_launcher_animation_duration_title">Opening animation</string>
+    <string name="quick_launcher_animation_duration_title">Animation duration</string>
     <string name="quick_launcher_animation_duration_value">%1$d ms</string>
     <string name="quick_launcher_cosmetic_title">Appearance</string>
     <string name="quick_launcher_cosmetic_description">Width, pill mode, shown command sources, favorites, aliases, and entry colors.</string>
