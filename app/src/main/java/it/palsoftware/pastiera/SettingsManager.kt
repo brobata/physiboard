@@ -12,6 +12,7 @@ import it.palsoftware.pastiera.commands.CommandLaunchSpec
 import it.palsoftware.pastiera.commands.CommandSourceId
 import it.palsoftware.pastiera.commands.CommandSurface
 import it.palsoftware.pastiera.commands.PastieraCommandSource
+import it.palsoftware.pastiera.core.Punctuation
 import it.palsoftware.pastiera.inputmethod.DeviceSpecific
 import it.palsoftware.pastiera.inputmethod.ui.KeyboardThemeColors
 import org.json.JSONArray
@@ -46,6 +47,7 @@ object SettingsManager {
     private const val KEY_MID_WORD_QUOTE_TO_APOSTROPHE = "mid_word_quote_to_apostrophe"
     private const val KEY_FRENCH_PUNCTUATION_SPACING = "french_punctuation_spacing"
     private const val KEY_COMMA_SPACE = "comma_space"
+    private const val KEY_AUTO_SPACE_PUNCTUATION = "auto_space_punctuation"
     private const val KEY_SMART_QUOTES = "smart_quotes"
     private const val KEY_SMART_QUOTES_STYLE = "smart_quotes_style"
     private const val KEY_SWIPE_TO_DELETE = "swipe_to_delete"
@@ -248,6 +250,7 @@ object SettingsManager {
     private const val DEFAULT_MID_WORD_QUOTE_TO_APOSTROPHE = false
     private const val DEFAULT_FRENCH_PUNCTUATION_SPACING = false
     private const val DEFAULT_COMMA_SPACE = false
+    private const val DEFAULT_AUTO_SPACE_PUNCTUATION = Punctuation.DEFAULT_AUTO_SPACE
     private const val DEFAULT_SMART_QUOTES = false
     const val SMART_QUOTES_STYLE_GERMAN_GUILLEMETS = "german_guillemets"
     const val SMART_QUOTES_STYLE_FRENCH_GUILLEMETS = "french_guillemets"
@@ -1659,6 +1662,27 @@ object SettingsManager {
     fun setCommaSpace(context: Context, enabled: Boolean) {
         getPreferences(context).edit()
             .putBoolean(KEY_COMMA_SPACE, enabled)
+            .apply()
+    }
+
+    fun getAutoSpacePunctuation(context: Context): String {
+        val stored = getPreferences(context).getString(
+            KEY_AUTO_SPACE_PUNCTUATION,
+            DEFAULT_AUTO_SPACE_PUNCTUATION
+        ) ?: DEFAULT_AUTO_SPACE_PUNCTUATION
+        return stored
+            .filter { it in Punctuation.AUTO_SPACE_CANDIDATES }
+            .toSet()
+            .let { selected -> Punctuation.AUTO_SPACE_CANDIDATES.filter { it in selected } }
+    }
+
+    fun setAutoSpacePunctuation(context: Context, punctuation: String) {
+        val normalized = punctuation
+            .filter { it in Punctuation.AUTO_SPACE_CANDIDATES }
+            .toSet()
+            .let { selected -> Punctuation.AUTO_SPACE_CANDIDATES.filter { it in selected } }
+        getPreferences(context).edit()
+            .putString(KEY_AUTO_SPACE_PUNCTUATION, normalized)
             .apply()
     }
 

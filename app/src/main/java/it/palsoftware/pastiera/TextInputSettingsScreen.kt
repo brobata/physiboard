@@ -1,11 +1,12 @@
 package it.palsoftware.pastiera
 
-import android.content.Context
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material3.*
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.activity.compose.BackHandler
 import it.palsoftware.pastiera.R
+import it.palsoftware.pastiera.core.Punctuation
 
 /**
  * Text Input settings screen.
@@ -68,6 +70,12 @@ fun TextInputSettingsScreen(
         mutableStateOf(SettingsManager.getCommaSpace(context))
     }
 
+    var autoSpacePunctuation by remember {
+        mutableStateOf(SettingsManager.getAutoSpacePunctuation(context))
+    }
+
+    var autoSpacePunctuationDialogVisible by remember { mutableStateOf(false) }
+
     var smartQuotes by remember {
         mutableStateOf(SettingsManager.getSmartQuotes(context))
     }
@@ -108,6 +116,78 @@ fun TextInputSettingsScreen(
     
     // Handle system back button
     BackHandler { onBack() }
+
+    if (autoSpacePunctuationDialogVisible) {
+        AlertDialog(
+            onDismissRequest = { autoSpacePunctuationDialogVisible = false },
+            title = { Text(stringResource(R.string.auto_space_punctuation_title)) },
+            text = {
+                Column {
+                    Text(
+                        text = autoSpacePunctuationDialogDescription(
+                            punctuation = autoSpacePunctuation,
+                            selectedLabel = stringResource(R.string.auto_space_punctuation_selected),
+                            noneLabel = stringResource(R.string.auto_space_punctuation_none_selected),
+                            instruction = stringResource(R.string.auto_space_punctuation_dialog_instruction)
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Column {
+                        autoSpacePunctuationOptions().forEach { punctuation ->
+                            val selected = punctuation in autoSpacePunctuation
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(48.dp)
+                                    .clickable {
+                                        autoSpacePunctuation = toggleAutoSpacePunctuation(
+                                            current = autoSpacePunctuation,
+                                            punctuation = punctuation
+                                        )
+                                        SettingsManager.setAutoSpacePunctuation(context, autoSpacePunctuation)
+                                    },
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Checkbox(
+                                    checked = selected,
+                                    onCheckedChange = { checked ->
+                                        autoSpacePunctuation = if (checked) {
+                                            addAutoSpacePunctuation(autoSpacePunctuation, punctuation)
+                                        } else {
+                                            autoSpacePunctuation.filterNot { it == punctuation }
+                                        }
+                                        SettingsManager.setAutoSpacePunctuation(context, autoSpacePunctuation)
+                                    }
+                                )
+                                Text(
+                                    text = autoSpacePunctuationLabel(punctuation),
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { autoSpacePunctuationDialogVisible = false }) {
+                    Text(stringResource(android.R.string.ok))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        autoSpacePunctuation = Punctuation.DEFAULT_AUTO_SPACE
+                        SettingsManager.setAutoSpacePunctuation(context, autoSpacePunctuation)
+                    }
+                ) {
+                    Text(stringResource(R.string.auto_space_punctuation_reset))
+                }
+            }
+        )
+    }
     
     Scaffold(
         topBar = {
@@ -477,6 +557,53 @@ fun TextInputSettingsScreen(
                 }
             }
 
+            // Auto-space punctuation
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(64.dp)
+                    .clickable { autoSpacePunctuationDialogVisible = true }
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.TextFields,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.auto_space_punctuation_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1
+                        )
+                        Text(
+                            text = autoSpacePunctuationSummary(
+                                punctuation = autoSpacePunctuation,
+                                chooseLabel = stringResource(R.string.auto_space_punctuation_choose),
+                                offLabel = stringResource(R.string.auto_space_punctuation_choose_off)
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
             // Smart Quotes
             Surface(
                 modifier = Modifier
@@ -823,5 +950,51 @@ private fun smartQuotesStyleLabel(style: String): String {
         SettingsManager.SMART_QUOTES_STYLE_GERMAN_LOW_HIGH -> "„...“"
         SettingsManager.SMART_QUOTES_STYLE_ENGLISH_CURLY -> "“...”"
         else -> "»...«"
+    }
+}
+
+private fun autoSpacePunctuationOptions(): List<Char> {
+    return Punctuation.AUTO_SPACE_CANDIDATES.toList()
+}
+
+private fun autoSpacePunctuationSummary(punctuation: String, chooseLabel: String, offLabel: String): String {
+    return punctuation.takeIf { it.isNotEmpty() }
+        ?.map { autoSpacePunctuationLabel(it) }
+        ?.joinToString(" ")
+        ?.let { selected -> "$chooseLabel $selected" }
+        ?: offLabel
+}
+
+private fun autoSpacePunctuationDialogDescription(
+    punctuation: String,
+    selectedLabel: String,
+    noneLabel: String,
+    instruction: String
+): String {
+    val selected = punctuation.takeIf { it.isNotEmpty() }
+        ?.map { autoSpacePunctuationLabel(it) }
+        ?.joinToString(" ")
+        ?: noneLabel
+    return "$selectedLabel $selected. $instruction"
+}
+
+private fun autoSpacePunctuationLabel(punctuation: Char): String {
+    return when (punctuation) {
+        '\\' -> "\\"
+        '"' -> "\""
+        else -> punctuation.toString()
+    }
+}
+
+private fun addAutoSpacePunctuation(current: String, punctuation: Char): String {
+    val selected = current.toSet() + punctuation
+    return Punctuation.AUTO_SPACE_CANDIDATES.filter { it in selected }
+}
+
+private fun toggleAutoSpacePunctuation(current: String, punctuation: Char): String {
+    return if (punctuation in current) {
+        current.filterNot { it == punctuation }
+    } else {
+        addAutoSpacePunctuation(current, punctuation)
     }
 }

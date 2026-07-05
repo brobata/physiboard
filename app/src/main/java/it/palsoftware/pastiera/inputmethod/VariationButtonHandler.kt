@@ -4,8 +4,8 @@ import android.content.Context
 import android.util.Log
 import android.view.View
 import android.view.inputmethod.InputConnection
+import it.palsoftware.pastiera.SettingsManager
 import it.palsoftware.pastiera.core.AutoSpaceTracker
-import it.palsoftware.pastiera.core.Punctuation
 
 /**
  * Handles clicks on variation buttons.
@@ -42,7 +42,7 @@ object VariationButtonHandler {
                 return@OnClickListener
             }
 
-            val punctuationSet = Punctuation.AUTO_SPACE
+            val punctuationSet = SettingsManager.getAutoSpacePunctuation(context)
             val bracketSet = "()[]{}"
             if (variation.isNotEmpty() && variation[0] in punctuationSet) {
                 val applied = AutoSpaceTracker.replaceAutoSpaceWithPunctuation(inputConnection, variation)
@@ -98,7 +98,7 @@ object VariationButtonHandler {
                 return@OnClickListener
             }
 
-            val punctuationSet = Punctuation.AUTO_SPACE
+            val punctuationSet = SettingsManager.getAutoSpacePunctuation(context)
             val bracketSet = "()[]{}"
             if (variation.isNotEmpty() && variation[0] in punctuationSet) {
                 val applied = AutoSpaceTracker.replaceAutoSpaceWithPunctuation(inputConnection, variation)

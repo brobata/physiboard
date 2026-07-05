@@ -503,7 +503,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             useKeyboardProximity = SettingsManager.getUseKeyboardProximity(this),
             useEditTypeRanking = SettingsManager.getUseEditTypeRanking(this),
             frenchPunctuationSpacing = SettingsManager.getFrenchPunctuationSpacing(this),
-            commaSpace = SettingsManager.getCommaSpace(this)
+            commaSpace = SettingsManager.getCommaSpace(this),
+            autoSpacePunctuation = SettingsManager.getAutoSpacePunctuation(this)
         )
     }
 

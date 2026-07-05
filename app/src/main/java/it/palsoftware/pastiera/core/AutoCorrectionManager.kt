@@ -142,7 +142,7 @@ class AutoCorrectionManager(
             ) {
                 return true
             }
-            if (boundaryChar in it.palsoftware.pastiera.core.Punctuation.AUTO_SPACE) {
+            if (boundaryChar in it.palsoftware.pastiera.SettingsManager.getAutoSpacePunctuation(context)) {
                 val applied = AutoSpaceTracker.replaceAutoSpaceWithPunctuation(
                     inputConnection,
                     boundaryChar.toString()

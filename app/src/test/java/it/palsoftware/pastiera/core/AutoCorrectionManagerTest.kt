@@ -28,6 +28,7 @@ class AutoCorrectionManagerTest {
             .edit()
             .clear()
             .commit()
+        AutoSpaceTracker.clear()
     }
 
     @Test
@@ -187,6 +188,75 @@ class AutoCorrectionManagerTest {
 
         assertEquals(false, handled)
         assertEquals("Hi", inputConnection.text)
+    }
+
+    @Test
+    fun pendingAutoSpaceBeforeColonThenParenKeepsSmileySpacingByDefault() {
+        val inputConnection = FakeInputConnection(context, "text ")
+        AutoSpaceTracker.markAutoSpace()
+
+        val colonHandled = AutoCorrectionManager(context).handleBoundaryKey(
+            keyCode = KeyEvent.KEYCODE_UNKNOWN,
+            event = null,
+            inputConnection = inputConnection,
+            isAutoCorrectEnabled = true,
+            commitBoundary = true,
+            boundaryCharOverride = ':',
+            onStatusBarUpdate = {}
+        )
+        if (!colonHandled) {
+            inputConnection.commitText(":", 1)
+        }
+        val parenHandled = AutoCorrectionManager(context).handleBoundaryKey(
+            keyCode = KeyEvent.KEYCODE_UNKNOWN,
+            event = null,
+            inputConnection = inputConnection,
+            isAutoCorrectEnabled = true,
+            commitBoundary = true,
+            boundaryCharOverride = ')',
+            onStatusBarUpdate = {}
+        )
+        if (!parenHandled) {
+            inputConnection.commitText(")", 1)
+        }
+
+        assertEquals(false, colonHandled)
+        assertEquals("text :)", inputConnection.text)
+    }
+
+    @Test
+    fun pendingAutoSpaceBeforeColonThenParenCanUseUserEnabledColonSpacing() {
+        SettingsManager.setAutoSpacePunctuation(
+            context,
+            SettingsManager.getAutoSpacePunctuation(context) + ":"
+        )
+        val inputConnection = FakeInputConnection(context, "text ")
+        AutoSpaceTracker.markAutoSpace()
+
+        val colonHandled = AutoCorrectionManager(context).handleBoundaryKey(
+            keyCode = KeyEvent.KEYCODE_UNKNOWN,
+            event = null,
+            inputConnection = inputConnection,
+            isAutoCorrectEnabled = true,
+            commitBoundary = true,
+            boundaryCharOverride = ':',
+            onStatusBarUpdate = {}
+        )
+        val parenHandled = AutoCorrectionManager(context).handleBoundaryKey(
+            keyCode = KeyEvent.KEYCODE_UNKNOWN,
+            event = null,
+            inputConnection = inputConnection,
+            isAutoCorrectEnabled = true,
+            commitBoundary = true,
+            boundaryCharOverride = ')',
+            onStatusBarUpdate = {}
+        )
+        if (!parenHandled) {
+            inputConnection.commitText(")", 1)
+        }
+
+        assertTrue(colonHandled)
+        assertEquals("text: )", inputConnection.text)
     }
 
     private class FakeInputConnection(

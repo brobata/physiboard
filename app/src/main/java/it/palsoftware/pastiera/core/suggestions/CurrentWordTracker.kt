@@ -7,6 +7,9 @@ import it.palsoftware.pastiera.core.AutoSpaceTracker
 class CurrentWordTracker(
     private val onWordChanged: (String) -> Unit,
     private val onWordReset: () -> Unit,
+    private val autoSpacePunctuationProvider: () -> String = {
+        it.palsoftware.pastiera.core.Punctuation.DEFAULT_AUTO_SPACE
+    },
     private val maxLength: Int = 48
 ) {
 
@@ -73,7 +76,7 @@ class CurrentWordTracker(
     fun onBoundaryReached(boundaryChar: Char? = null, inputConnection: InputConnection? = null) {
         if (boundaryChar != null) {
             // If an auto-space is pending, replace it with "<punctuation> " when punctuation is pressed.
-            val punctuationSet = it.palsoftware.pastiera.core.Punctuation.AUTO_SPACE
+            val punctuationSet = autoSpacePunctuationProvider()
             if (inputConnection != null && boundaryChar in punctuationSet) {
                 val replaced = AutoSpaceTracker.replaceAutoSpaceWithPunctuation(
                     inputConnection,

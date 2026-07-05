@@ -360,6 +360,28 @@ class SettingsManagerLayoutSwitchTest {
     }
 
     @Test
+    fun autoSpacePunctuation_defaultsWithoutColon_andPersistsSelection() {
+        val context = RuntimeEnvironment.getApplication()
+
+        assertEquals(".,!?\\/\"", SettingsManager.getAutoSpacePunctuation(context))
+
+        SettingsManager.setAutoSpacePunctuation(context, ".;:")
+
+        assertEquals(".;:", SettingsManager.getAutoSpacePunctuation(context))
+    }
+
+    @Test
+    fun autoSpacePunctuation_storedDefaultWithoutSemicolonStaysWithoutSemicolon() {
+        val context = RuntimeEnvironment.getApplication()
+        context.getSharedPreferences("pastiera_prefs", android.content.Context.MODE_PRIVATE)
+            .edit()
+            .putString("auto_space_punctuation", ".,!?\\/\"")
+            .commit()
+
+        assertEquals(".,!?\\/\"", SettingsManager.getAutoSpacePunctuation(context))
+    }
+
+    @Test
     fun layoutAwareCtrlShortcuts_defaultsDisabled_andPersistsEnabledState() {
         val context = RuntimeEnvironment.getApplication()
 
@@ -426,6 +448,24 @@ class SettingsManagerLayoutSwitchTest {
         assertEquals(android.view.KeyEvent.KEYCODE_SPACE, SettingsManager.getQuickLauncherShortcutKey(context))
         assertTrue(SettingsManager.isQuickLauncherShortcut(context, android.view.KeyEvent.KEYCODE_SPACE))
         assertFalse(SettingsManager.isQuickLauncherShortcut(context, android.view.KeyEvent.KEYCODE_ENTER))
+    }
+
+    @Test
+    fun tutorialQuickLauncherCheck_acceptsCommandBasedSpaceShortcut() {
+        val context = RuntimeEnvironment.getApplication()
+
+        SettingsManager.setQuickLauncherShortcut(context, android.view.KeyEvent.KEYCODE_SPACE)
+
+        assertFalse(shouldShowQuickLauncherMappingConflict(context))
+    }
+
+    @Test
+    fun tutorialQuickLauncherCheck_flagsNonQuickLauncherSpaceShortcut() {
+        val context = RuntimeEnvironment.getApplication()
+
+        SettingsManager.setLauncherShortcut(context, android.view.KeyEvent.KEYCODE_SPACE, "com.example.app", "Example")
+
+        assertTrue(shouldShowQuickLauncherMappingConflict(context))
     }
 
     @Test

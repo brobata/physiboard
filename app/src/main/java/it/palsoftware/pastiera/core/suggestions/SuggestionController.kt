@@ -55,7 +55,8 @@ class SuggestionController(
             latestSuggestions.set(emptyList())
             pendingAddUserWord = null
             suggestionsListener?.invoke(emptyList())
-        }
+        },
+        autoSpacePunctuationProvider = { settingsProvider().autoSpacePunctuation }
     )
     private var autoReplaceController = createAutoReplaceController()
     private val nextWordPredictor = nextWordPredictorOverride ?: NextWordPredictor(UserNGramStore(appContext))
@@ -140,7 +141,8 @@ class SuggestionController(
                 latestSuggestions.set(emptyList())
                 pendingAddUserWord = null
                 suggestionsListener?.invoke(emptyList())
-            }
+            },
+            autoSpacePunctuationProvider = { settingsProvider().autoSpacePunctuation }
         )
         
         // Reload dictionary in background and refresh the current word when ready.

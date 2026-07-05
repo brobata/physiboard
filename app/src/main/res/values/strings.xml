@@ -47,6 +47,13 @@
     <string name="french_punctuation_spacing_description">Adds non-breaking spacing before French punctuation marks.</string>
     <string name="comma_space_title">Comma Space</string>
     <string name="comma_space_description">Adds a space after commas and replaces a preceding space.</string>
+    <string name="auto_space_punctuation_title">Auto-space Punctuation</string>
+    <string name="auto_space_punctuation_selected">Selected:</string>
+    <string name="auto_space_punctuation_none_selected">none</string>
+    <string name="auto_space_punctuation_dialog_instruction">Tap any punctuation mark to choose whether it replaces an automatic trailing space with punctuation plus a following space.</string>
+    <string name="auto_space_punctuation_choose">Tap to choose:</string>
+    <string name="auto_space_punctuation_choose_off">Tap to choose: Off</string>
+    <string name="auto_space_punctuation_reset">Reset</string>
     <string name="smart_quotes_title">Smart Quotes</string>
 
     <!-- Clear Alt on Space Section -->

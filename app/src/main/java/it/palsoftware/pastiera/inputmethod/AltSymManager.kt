@@ -34,6 +34,11 @@ class AltSymManager(
         private const val TAG = "AltSymManager"
     }
 
+    private fun autoSpacePunctuation(): String {
+        return context?.let { SettingsManager.getAutoSpacePunctuation(it) }
+            ?: it.palsoftware.pastiera.core.Punctuation.DEFAULT_AUTO_SPACE
+    }
+
     private val handler = Handler(Looper.getMainLooper())
 
     private val altKeyMap = mutableMapOf<Int, String>()
@@ -292,7 +297,7 @@ class AltSymManager(
                 onAltCharInserted?.invoke(altChar[0])
                 return true
             }
-            val punctuationSet = it.palsoftware.pastiera.core.Punctuation.AUTO_SPACE
+            val punctuationSet = autoSpacePunctuation()
             if (altChar.isNotEmpty() && altChar[0] in punctuationSet) {
                 val applied = AutoSpaceTracker.replaceAutoSpaceWithPunctuation(inputConnection, altChar)
                 if (applied) {
@@ -440,7 +445,7 @@ class AltSymManager(
                                 return@Runnable
                             }
 
-                            val punctuationSet = it.palsoftware.pastiera.core.Punctuation.AUTO_SPACE
+                            val punctuationSet = autoSpacePunctuation()
                             if (symChar[0] in punctuationSet) {
                                 val applied = AutoSpaceTracker.replaceAutoSpaceWithPunctuation(inputConnection, symChar)
                                 if (applied) {
@@ -521,7 +526,7 @@ class AltSymManager(
                                 return@Runnable
                             }
 
-                            val punctuationSet = it.palsoftware.pastiera.core.Punctuation.AUTO_SPACE
+                            val punctuationSet = autoSpacePunctuation()
                             if (altChar.isNotEmpty() && altChar[0] in punctuationSet) {
                                 val applied = AutoSpaceTracker.replaceAutoSpaceWithPunctuation(inputConnection, altChar)
                                 if (applied) {

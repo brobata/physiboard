@@ -1389,8 +1389,7 @@ fun TutorialQuickLauncherPageContent(
     var spaceShortcut by remember {
         mutableStateOf(SettingsManager.getLauncherShortcut(context, KeyEvent.KEYCODE_SPACE))
     }
-    val blocksSymSpace = spaceShortcut != null &&
-        spaceShortcut?.type != SettingsManager.LauncherShortcut.TYPE_QUICK_LAUNCHER
+    val blocksSymSpace = shouldShowQuickLauncherMappingConflict(context)
     TutorialFeaturePageContent(
         title = stringResource(R.string.tutorial_quick_launcher_title),
         description = stringResource(R.string.tutorial_quick_launcher_description),
@@ -1419,6 +1418,11 @@ fun TutorialQuickLauncherPageContent(
             )
         }
     }
+}
+
+internal fun shouldShowQuickLauncherMappingConflict(context: Context): Boolean {
+    val spaceShortcut = SettingsManager.getLauncherShortcut(context, KeyEvent.KEYCODE_SPACE)
+    return spaceShortcut != null && !SettingsManager.isQuickLauncherShortcut(context, KeyEvent.KEYCODE_SPACE)
 }
 
 @Composable

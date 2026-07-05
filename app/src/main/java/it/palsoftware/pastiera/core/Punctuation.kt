@@ -9,8 +9,11 @@ object Punctuation {
     // Boundary punctuation (no apostrophes).
     const val BOUNDARY: String = ".,;:!?()[]{}\\/\""
 
-    // Auto-space punctuation (no apostrophes).
-    const val AUTO_SPACE: String = ".,;:!?\\/\""
+    // Auto-space punctuation (no apostrophes). Colon and semicolon are available
+    // but disabled by default so ASCII smileys like ":)" stay easy to type.
+    const val AUTO_SPACE_CANDIDATES: String = ".,;:!?\\/\""
+    const val DEFAULT_AUTO_SPACE: String = ".,!?\\/\""
+    const val AUTO_SPACE: String = DEFAULT_AUTO_SPACE
 
     const val FRENCH_SPACED_PUNCTUATION: String = "?!;:"
     const val COMMA_SPACE_PUNCTUATION: Char = ','

@@ -25,6 +25,13 @@
     <string name="double_space_to_period_description">Doppeltippen auf Leerzeichen, um einen Punkt gefolgt von einem Leerzeichen einzufügen und den nächsten Buchstaben großzuschreiben.</string>
     <string name="spaced_hyphen_to_en_dash_title">Bindestrich mit Leerzeichen zu Strich</string>
     <string name="spaced_hyphen_to_en_dash_description">Macht aus „Wort - weiter“ automatisch einen typografischen Strich, aber nicht am Zeilenanfang.</string>
+    <string name="auto_space_punctuation_title">Auto-Leerzeichen bei Satzzeichen</string>
+    <string name="auto_space_punctuation_selected">Ausgewählt:</string>
+    <string name="auto_space_punctuation_none_selected">keine</string>
+    <string name="auto_space_punctuation_dialog_instruction">Tippe ein Satzzeichen an, um festzulegen, ob ein automatisch gesetztes Leerzeichen durch Satzzeichen plus folgendes Leerzeichen ersetzt wird.</string>
+    <string name="auto_space_punctuation_choose">Antippen zum Auswählen:</string>
+    <string name="auto_space_punctuation_choose_off">Antippen zum Auswählen: Aus</string>
+    <string name="auto_space_punctuation_reset">Zurücksetzen</string>
     <string name="smart_quotes_title">Typografische Anführungszeichen</string>
     <string name="clear_alt_on_space_title">Alt bei Leerzeichen löschen</string>
     <string name="clear_alt_on_space_description">Deaktiviert automatisch Alt oder Alt-Lock beim Drücken der Leertaste.</string>

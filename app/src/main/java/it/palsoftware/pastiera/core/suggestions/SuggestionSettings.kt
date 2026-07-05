@@ -9,5 +9,6 @@ data class SuggestionSettings(
     val useKeyboardProximity: Boolean = false,
     val useEditTypeRanking: Boolean = false,
     val frenchPunctuationSpacing: Boolean = false,
-    val commaSpace: Boolean = false
+    val commaSpace: Boolean = false,
+    val autoSpacePunctuation: String = it.palsoftware.pastiera.core.Punctuation.DEFAULT_AUTO_SPACE
 )
