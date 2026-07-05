@@ -554,6 +554,22 @@ class InputEventRouter(
             else -> ""
         }
         if (
+            controllers.textInputController.handlePendingMidWordQuoteToApostrophe(
+                typedText = smartReplacementText,
+                inputConnection = ic,
+                shouldDisableSmartPunctuation = params.shouldDisableSmartFeatures
+            )
+        ) {
+            suggestionController?.onCharacterCommitted("'", ic)
+            if (smartReplacementText.isNotEmpty()) {
+                suggestionController?.onCharacterCommitted(smartReplacementText, ic)
+            }
+            Handler(Looper.getMainLooper()).postDelayed({
+                callbacks.updateStatusBar()
+            }, params.cursorUpdateDelayMs)
+            return EditableFieldRoutingResult.Consume
+        }
+        if (
             controllers.textInputController.handleSmartQuoteReplacement(
                 typedText = smartReplacementText,
                 inputConnection = ic,
@@ -881,9 +897,25 @@ class InputEventRouter(
             return true
         }
 
+        val smartReplacementTextForPipeline =
+            if (isSpaceKey) " " else event?.unicodeChar?.takeIf { it != 0 }?.toChar()?.toString().orEmpty()
+        if (
+            textInputController.handlePendingMidWordQuoteToApostrophe(
+                typedText = smartReplacementTextForPipeline,
+                inputConnection = inputConnection,
+                shouldDisableSmartPunctuation = inputContextState?.shouldDisableSmartFeatures == true
+            )
+        ) {
+            suggestionController?.onCharacterCommitted("'", inputConnection)
+            if (smartReplacementTextForPipeline.isNotEmpty()) {
+                suggestionController?.onCharacterCommitted(smartReplacementTextForPipeline, inputConnection)
+            }
+            return true
+        }
+
         if (
             textInputController.handleSmartQuoteReplacement(
-                typedText = if (isSpaceKey) " " else event?.unicodeChar?.takeIf { it != 0 }?.toChar()?.toString().orEmpty(),
+                typedText = smartReplacementTextForPipeline,
                 inputConnection = inputConnection,
                 shouldDisableSmartPunctuation = inputContextState?.shouldDisableSmartFeatures == true
             )

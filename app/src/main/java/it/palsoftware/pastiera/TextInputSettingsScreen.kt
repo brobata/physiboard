@@ -56,6 +56,10 @@ fun TextInputSettingsScreen(
 
     var spacedHyphenDashExpanded by remember { mutableStateOf(false) }
 
+    var midWordQuoteToApostrophe by remember {
+        mutableStateOf(SettingsManager.getMidWordQuoteToApostrophe(context))
+    }
+
     var smartQuotes by remember {
         mutableStateOf(SettingsManager.getSmartQuotes(context))
     }
@@ -331,6 +335,49 @@ fun TextInputSettingsScreen(
                             if (!enabled) {
                                 spacedHyphenDashExpanded = false
                             }
+                        }
+                    )
+                }
+            }
+
+            // Mid-word Quote to Apostrophe
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(64.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.TextFields,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.mid_word_quote_to_apostrophe_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1
+                        )
+                        Text(
+                            text = stringResource(R.string.mid_word_quote_to_apostrophe_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
+                    }
+                    Switch(
+                        checked = midWordQuoteToApostrophe,
+                        onCheckedChange = { enabled ->
+                            midWordQuoteToApostrophe = enabled
+                            SettingsManager.setMidWordQuoteToApostrophe(context, enabled)
                         }
                     )
                 }

@@ -186,6 +186,7 @@ object PreferenceSchemas {
             "double_space_to_period" to PreferenceValueType.BOOLEAN,
             "spaced_hyphen_to_en_dash" to PreferenceValueType.BOOLEAN,
             "spaced_hyphen_dash_style" to PreferenceValueType.STRING,
+            "mid_word_quote_to_apostrophe" to PreferenceValueType.BOOLEAN,
             "smart_quotes" to PreferenceValueType.BOOLEAN,
             "smart_quotes_style" to PreferenceValueType.STRING,
             "swipe_to_delete" to PreferenceValueType.BOOLEAN,

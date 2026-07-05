@@ -183,6 +183,131 @@ class TextInputControllerTest {
     }
 
     @Test
+    fun midWordQuoteToApostrophe_enabled_waitsForFollowingLetter() {
+        SettingsManager.setMidWordQuoteToApostrophe(context, true)
+        val inputConnection = FakeInputConnection(context, "qu")
+
+        val handled = controller.handlePendingMidWordQuoteToApostrophe(
+            typedText = "\"",
+            inputConnection = inputConnection,
+            shouldDisableSmartPunctuation = false
+        )
+        if (!handled) inputConnection.commitText("\"", 1)
+
+        assertFalse(handled)
+        assertEquals("qu\"", inputConnection.text)
+    }
+
+    @Test
+    fun midWordQuoteToApostrophe_enabled_replacesPendingQuoteBeforeLetter() {
+        SettingsManager.setMidWordQuoteToApostrophe(context, true)
+        val inputConnection = FakeInputConnection(context, "qu\"")
+
+        val handled = controller.handlePendingMidWordQuoteToApostrophe(
+            typedText = "o",
+            inputConnection = inputConnection,
+            shouldDisableSmartPunctuation = false
+        )
+
+        assertTrue(handled)
+        assertEquals("qu'o", inputConnection.text)
+    }
+
+    @Test
+    fun midWordQuoteToApostrophe_enabled_keepsOpeningQuote() {
+        SettingsManager.setMidWordQuoteToApostrophe(context, true)
+        val inputConnection = FakeInputConnection(context, "\"")
+
+        val handled = controller.handlePendingMidWordQuoteToApostrophe(
+            typedText = "w",
+            inputConnection = inputConnection,
+            shouldDisableSmartPunctuation = false
+        )
+        if (!handled) inputConnection.commitText("w", 1)
+
+        assertFalse(handled)
+        assertEquals("\"w", inputConnection.text)
+    }
+
+    @Test
+    fun midWordQuoteToApostrophe_enabled_keepsQuoteBeforePunctuation() {
+        SettingsManager.setMidWordQuoteToApostrophe(context, true)
+        val inputConnection = FakeInputConnection(context, "qu\"")
+
+        val handled = controller.handlePendingMidWordQuoteToApostrophe(
+            typedText = ",",
+            inputConnection = inputConnection,
+            shouldDisableSmartPunctuation = false
+        )
+        if (!handled) inputConnection.commitText(",", 1)
+
+        assertFalse(handled)
+        assertEquals("qu\",", inputConnection.text)
+    }
+
+    @Test
+    fun midWordQuoteToApostrophe_enabled_supportsUnicodeLetters() {
+        SettingsManager.setMidWordQuoteToApostrophe(context, true)
+        val inputConnection = FakeInputConnection(context, "dé\"")
+
+        val handled = controller.handlePendingMidWordQuoteToApostrophe(
+            typedText = "à",
+            inputConnection = inputConnection,
+            shouldDisableSmartPunctuation = false
+        )
+
+        assertTrue(handled)
+        assertEquals("dé'à", inputConnection.text)
+    }
+
+    @Test
+    fun midWordQuoteToApostrophe_settingDisabled_keepsQuote() {
+        SettingsManager.setMidWordQuoteToApostrophe(context, false)
+        val inputConnection = FakeInputConnection(context, "qu\"")
+
+        val handled = controller.handlePendingMidWordQuoteToApostrophe(
+            typedText = "o",
+            inputConnection = inputConnection,
+            shouldDisableSmartPunctuation = false
+        )
+        if (!handled) inputConnection.commitText("o", 1)
+
+        assertFalse(handled)
+        assertEquals("qu\"o", inputConnection.text)
+    }
+
+    @Test
+    fun midWordQuoteToApostrophe_fieldDisabled_keepsQuoteEvenWhenSettingEnabled() {
+        SettingsManager.setMidWordQuoteToApostrophe(context, true)
+        val inputConnection = FakeInputConnection(context, "qu\"")
+
+        val handled = controller.handlePendingMidWordQuoteToApostrophe(
+            typedText = "o",
+            inputConnection = inputConnection,
+            shouldDisableSmartPunctuation = true
+        )
+        if (!handled) inputConnection.commitText("o", 1)
+
+        assertFalse(handled)
+        assertEquals("qu\"o", inputConnection.text)
+    }
+
+    @Test
+    fun midWordQuoteToApostrophe_enabled_replacesQuoteBeforeLetterWhenEditing() {
+        SettingsManager.setMidWordQuoteToApostrophe(context, true)
+        val inputConnection = FakeInputConnection(context, "qu\"", "n")
+
+        val handled = controller.handlePendingMidWordQuoteToApostrophe(
+            typedText = "o",
+            inputConnection = inputConnection,
+            shouldDisableSmartPunctuation = false
+        )
+
+        assertTrue(handled)
+        assertEquals("qu'on", inputConnection.text)
+    }
+
+    @Test
     fun smartQuotes_enabled_commitsConfiguredOpeningAndClosingQuotes() {
         SettingsManager.setSmartQuotes(context, true)
         SettingsManager.setSmartQuotesStyle(context, SettingsManager.SMART_QUOTES_STYLE_GERMAN_GUILLEMETS)
@@ -358,20 +483,29 @@ class TextInputControllerTest {
 
     private class FakeInputConnection(
         context: Context,
-        initialText: String
+        initialText: String,
+        initialAfterCursor: String = ""
     ) : BaseInputConnection(View(context), true) {
         private val buffer = StringBuilder(initialText)
+        private val afterCursor = StringBuilder(initialAfterCursor)
 
         val text: String
-            get() = buffer.toString()
+            get() = buffer.toString() + afterCursor.toString()
 
         override fun getTextBeforeCursor(n: Int, flags: Int): CharSequence {
             return buffer.takeLast(n)
         }
 
+        override fun getTextAfterCursor(n: Int, flags: Int): CharSequence {
+            return afterCursor.take(n)
+        }
+
         override fun deleteSurroundingText(beforeLength: Int, afterLength: Int): Boolean {
             val deleteStart = (buffer.length - beforeLength).coerceAtLeast(0)
             buffer.delete(deleteStart, buffer.length)
+            if (afterLength > 0) {
+                afterCursor.delete(0, afterLength.coerceAtMost(afterCursor.length))
+            }
             return true
         }
 

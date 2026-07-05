@@ -363,6 +363,41 @@ class AutoReplaceControllerLogicTest {
     }
 
     @Test
+    fun exactReplacementSupportsApostropheWords() {
+        val context = RuntimeEnvironment.getApplication()
+        val repository = FakeDictionaryRepository().apply {
+            isReady = true
+        }
+        val controller = AutoReplaceController(
+            repository = repository,
+            suggestionEngine = SuggestionEngine(repository),
+            settingsProvider = {
+                SuggestionSettings(
+                    autoReplaceOnSpaceEnter = false,
+                    maxAutoReplaceDistance = 1
+                )
+            },
+            exactReplacementProvider = { word, _ ->
+                if (word == "qu'on") "qu'on" else null
+            }
+        )
+        val tracker = CurrentWordTracker(onWordChanged = {}, onWordReset = {})
+        tracker.setWord("qu'on")
+        val inputConnection = FakeInputConnection(context, "qu'on")
+
+        val result = controller.handleBoundary(
+            keyCode = KeyEvent.KEYCODE_SPACE,
+            event = KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_SPACE),
+            tracker = tracker,
+            inputConnection = inputConnection
+        )
+
+        assertTrue(result.replaced)
+        assertEquals("qu'on ", inputConnection.text)
+        assertEquals("qu'on", result.replacement)
+    }
+
+    @Test
     fun softwareSpaceBoundaryReportsCommittedWhenNoReplacementHappens() {
         val context = RuntimeEnvironment.getApplication()
         val repository = FakeDictionaryRepository().apply {

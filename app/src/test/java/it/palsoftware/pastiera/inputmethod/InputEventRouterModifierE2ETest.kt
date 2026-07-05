@@ -80,6 +80,7 @@ class InputEventRouterModifierE2ETest {
         SettingsManager.setLongPressModifier(context, "alt")
         SettingsManager.setPhysicalKeyboardCurrencySymbol(context, "€")
         SettingsManager.setAltLatchStaysOnSpace(context, false)
+        SettingsManager.setMidWordQuoteToApostrophe(context, false)
     }
 
     @Test
@@ -304,6 +305,72 @@ class InputEventRouterModifierE2ETest {
         val sentEvent = inputConnectionRecorder.sentKeyEvents.single()
         assertEquals(KeyEvent.KEYCODE_V, sentEvent.keyCode)
         assertTrue(sentEvent.isCtrlPressed)
+    }
+
+    @Test
+    fun titan2AltQuote_midWordQuoteToApostrophe_replacesAfterFollowingLetter() {
+        DeviceSpecific.setBuildFingerprintForTests(
+            brand = "unihertz",
+            manufacturer = "unihertz",
+            model = "Titan 2",
+            device = "titan2",
+            product = "titan2"
+        )
+        SettingsManager.setMidWordQuoteToApostrophe(context, true)
+        altSymManager.reloadAltMappings()
+        inputConnectionRecorder.textBeforeCursor = "qu"
+        val callbacks = TestCallbacks(modifierStateController)
+        modifierStateController.altOneShot = true
+
+        val quoteResult = routeKeyDown(
+            keyCode = KeyEvent.KEYCODE_K,
+            event = keyDown(KeyEvent.KEYCODE_K),
+            callbacks = callbacks
+        )
+        val letterResult = routeKeyDown(
+            keyCode = KeyEvent.KEYCODE_O,
+            event = keyDown(KeyEvent.KEYCODE_O),
+            callbacks = callbacks
+        )
+
+        assertTrue(quoteResult is InputEventRouter.EditableFieldRoutingResult.Consume)
+        assertTrue(letterResult is InputEventRouter.EditableFieldRoutingResult.Consume)
+        assertEquals(listOf("\"", "'o"), inputConnectionRecorder.committedTexts)
+        assertEquals("qu'o", inputConnectionRecorder.textBeforeCursor)
+        assertEquals(1, callbacks.clearAltOneShotCalls)
+    }
+
+    @Test
+    fun titan2AltQuote_midWordQuoteToApostrophe_keepsOpeningQuoteBeforeFollowingLetter() {
+        DeviceSpecific.setBuildFingerprintForTests(
+            brand = "unihertz",
+            manufacturer = "unihertz",
+            model = "Titan 2",
+            device = "titan2",
+            product = "titan2"
+        )
+        SettingsManager.setMidWordQuoteToApostrophe(context, true)
+        altSymManager.reloadAltMappings()
+        inputConnectionRecorder.textBeforeCursor = ""
+        val callbacks = TestCallbacks(modifierStateController)
+        modifierStateController.altOneShot = true
+
+        val quoteResult = routeKeyDown(
+            keyCode = KeyEvent.KEYCODE_K,
+            event = keyDown(KeyEvent.KEYCODE_K),
+            callbacks = callbacks
+        )
+        val letterResult = routeKeyDown(
+            keyCode = KeyEvent.KEYCODE_W,
+            event = keyDown(KeyEvent.KEYCODE_W),
+            callbacks = callbacks
+        )
+
+        assertTrue(quoteResult is InputEventRouter.EditableFieldRoutingResult.Consume)
+        assertTrue(letterResult is InputEventRouter.EditableFieldRoutingResult.Consume)
+        assertEquals(listOf("\"", "w"), inputConnectionRecorder.committedTexts)
+        assertEquals("\"w", inputConnectionRecorder.textBeforeCursor)
+        assertEquals(1, callbacks.clearAltOneShotCalls)
     }
 
     @Test
@@ -863,7 +930,7 @@ class InputEventRouterModifierE2ETest {
     private class RecordingInputConnection {
         var commitTextCalls = 0
         var deleteSurroundingTextCalls = 0
-        var textBeforeCursor: CharSequence = ""
+        var textBeforeCursor: String = ""
         val committedTexts = mutableListOf<String>()
         val sentKeyEvents = mutableListOf<KeyEvent>()
         val contextMenuActions = mutableListOf<Int>()
@@ -879,11 +946,17 @@ class InputEventRouterModifierE2ETest {
                         val text = args?.getOrNull(0)?.toString()
                         if (text != null) {
                             committedTexts += text
+                            textBeforeCursor += text
                         }
                         true
                     }
                     "deleteSurroundingText" -> {
                         deleteSurroundingTextCalls++
+                        val before = (args?.getOrNull(0) as? Int) ?: 0
+                        if (before > 0 && textBeforeCursor.isNotEmpty()) {
+                            val keep = (textBeforeCursor.length - before).coerceAtLeast(0)
+                            textBeforeCursor = textBeforeCursor.take(keep)
+                        }
                         true
                     }
                     "sendKeyEvent" -> {
@@ -901,6 +974,7 @@ class InputEventRouterModifierE2ETest {
                         true
                     }
                     "getTextBeforeCursor" -> textBeforeCursor
+                    "getTextAfterCursor" -> ""
                     "getExtractedText" -> ExtractedText().apply {
                         selectionStart = 0
                         selectionEnd = 0

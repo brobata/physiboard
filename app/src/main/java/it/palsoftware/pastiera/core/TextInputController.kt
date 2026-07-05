@@ -174,6 +174,40 @@ class TextInputController(
         return true
     }
 
+    fun handlePendingMidWordQuoteToApostrophe(
+        typedText: String,
+        inputConnection: InputConnection?,
+        shouldDisableSmartPunctuation: Boolean
+    ): Boolean {
+        if (
+            typedText.isEmpty() ||
+            typedText.any { it.isWhitespace() } ||
+            inputConnection == null ||
+            shouldDisableSmartPunctuation ||
+            !SettingsManager.getMidWordQuoteToApostrophe(context)
+        ) {
+            return false
+        }
+
+        val next = typedText.first()
+        if (!next.isLetter()) {
+            return false
+        }
+
+        val before = inputConnection.getTextBeforeCursor(2, 0)?.toString().orEmpty()
+        if (before.lastOrNull() != '"') {
+            return false
+        }
+        val previous = before.dropLast(1).lastOrNull() ?: return false
+        if (!previous.isLetter()) {
+            return false
+        }
+
+        inputConnection.deleteSurroundingText(1, 0)
+        inputConnection.commitText("'$typedText", 1)
+        return true
+    }
+
     fun handleSmartQuoteReplacement(
         typedText: String,
         inputConnection: InputConnection?,
