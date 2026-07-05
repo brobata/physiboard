@@ -2176,6 +2176,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         speechRecognitionManager = null
 
         // Cleanup ClipboardHistoryManager
+        if (::suggestionController.isInitialized) {
+            suggestionController.destroy()
+        }
         clipboardHistoryManager.setHistoryChangeListener(null)
         clipboardHistoryManager.onDestroy()
         typingSoundPlayer.release()

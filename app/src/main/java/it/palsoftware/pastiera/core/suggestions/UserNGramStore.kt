@@ -5,12 +5,20 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 
+interface UserNGramRepository {
+    fun learn(locale: String, prefix: String, nextWord: String, nowMs: Long = System.currentTimeMillis())
+    fun predict(locale: String, prefix: String, limit: Int): List<UserNGramStore.Prediction>
+    fun delete(locale: String, prefix: String, nextWord: String): Int
+    fun deleteNextWord(locale: String, nextWord: String): Int
+    fun clearAll()
+}
+
 class UserNGramStore(context: Context) : SQLiteOpenHelper(
     context.applicationContext,
     DATABASE_NAME,
     null,
     DATABASE_VERSION
-) {
+), UserNGramRepository {
 
     data class Prediction(
         val word: String,
@@ -44,34 +52,40 @@ class UserNGramStore(context: Context) : SQLiteOpenHelper(
         }
     }
 
-    fun learn(locale: String, prefix: String, nextWord: String, nowMs: Long = System.currentTimeMillis()) {
+    override fun learn(locale: String, prefix: String, nextWord: String, nowMs: Long) {
         val db = writableDatabase
-        val updated = db.update(
-            TABLE_BIGRAMS,
-            ContentValues().apply {
-                put(COL_COUNT, currentCount(db, locale, prefix, nextWord) + 1)
-                put(COL_LAST_USED, nowMs)
-            },
-            "$COL_LOCALE = ? AND $COL_PREFIX = ? AND $COL_NEXT_WORD = ?",
-            arrayOf(locale, prefix, nextWord)
-        )
-        if (updated > 0) return
-
-        db.insertWithOnConflict(
-            TABLE_BIGRAMS,
-            null,
-            ContentValues().apply {
-                put(COL_LOCALE, locale)
-                put(COL_PREFIX, prefix)
-                put(COL_NEXT_WORD, nextWord)
-                put(COL_COUNT, 1)
-                put(COL_LAST_USED, nowMs)
-            },
-            SQLiteDatabase.CONFLICT_IGNORE
-        )
+        db.beginTransaction()
+        try {
+            db.insertWithOnConflict(
+                TABLE_BIGRAMS,
+                null,
+                ContentValues().apply {
+                    put(COL_LOCALE, locale)
+                    put(COL_PREFIX, prefix)
+                    put(COL_NEXT_WORD, nextWord)
+                    put(COL_COUNT, 0)
+                    put(COL_LAST_USED, nowMs)
+                },
+                SQLiteDatabase.CONFLICT_IGNORE
+            )
+            db.execSQL(
+                """
+                UPDATE $TABLE_BIGRAMS
+                SET $COL_COUNT = $COL_COUNT + 1,
+                    $COL_LAST_USED = ?
+                WHERE $COL_LOCALE = ?
+                    AND $COL_PREFIX = ?
+                    AND $COL_NEXT_WORD = ?
+                """.trimIndent(),
+                arrayOf(nowMs, locale, prefix, nextWord)
+            )
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
     }
 
-    fun predict(locale: String, prefix: String, limit: Int): List<Prediction> {
+    override fun predict(locale: String, prefix: String, limit: Int): List<Prediction> {
         if (limit <= 0) return emptyList()
         val cursor = readableDatabase.query(
             TABLE_BIGRAMS,
@@ -101,7 +115,7 @@ class UserNGramStore(context: Context) : SQLiteOpenHelper(
         }
     }
 
-    fun delete(locale: String, prefix: String, nextWord: String): Int {
+    override fun delete(locale: String, prefix: String, nextWord: String): Int {
         return writableDatabase.delete(
             TABLE_BIGRAMS,
             "$COL_LOCALE = ? AND $COL_PREFIX = ? AND $COL_NEXT_WORD = ? COLLATE NOCASE",
@@ -109,7 +123,7 @@ class UserNGramStore(context: Context) : SQLiteOpenHelper(
         )
     }
 
-    fun deleteNextWord(locale: String, nextWord: String): Int {
+    override fun deleteNextWord(locale: String, nextWord: String): Int {
         return writableDatabase.delete(
             TABLE_BIGRAMS,
             "$COL_LOCALE = ? AND $COL_NEXT_WORD = ? COLLATE NOCASE",
@@ -117,24 +131,8 @@ class UserNGramStore(context: Context) : SQLiteOpenHelper(
         )
     }
 
-    internal fun clearAll() {
+    override fun clearAll() {
         writableDatabase.delete(TABLE_BIGRAMS, null, null)
-    }
-
-    private fun currentCount(db: SQLiteDatabase, locale: String, prefix: String, nextWord: String): Int {
-        val cursor = db.query(
-            TABLE_BIGRAMS,
-            arrayOf(COL_COUNT),
-            "$COL_LOCALE = ? AND $COL_PREFIX = ? AND $COL_NEXT_WORD = ?",
-            arrayOf(locale, prefix, nextWord),
-            null,
-            null,
-            null,
-            "1"
-        )
-        cursor.use {
-            return if (it.moveToFirst()) it.getInt(0) else 0
-        }
     }
 
     companion object {

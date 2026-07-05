@@ -24,6 +24,7 @@ class SuggestionControllerNextWordTest {
     private lateinit var store: UserNGramStore
     private lateinit var fakeRepository: FakeDictionaryRepository
     private val snapshots = mutableListOf<List<SuggestionResult>>()
+    private val controllers = mutableListOf<SuggestionController>()
 
     @Before
     fun setUp() {
@@ -34,10 +35,15 @@ class SuggestionControllerNextWordTest {
             addTestEntry("bar", 200)
         }
         snapshots.clear()
+        controllers.clear()
     }
 
     @After
     fun tearDown() {
+        controllers.forEach { controller ->
+            controller.flushNextWordLearningForTests()
+            controller.destroy()
+        }
         store.clearAll()
         store.close()
     }
@@ -68,6 +74,7 @@ class SuggestionControllerNextWordTest {
         pressSpace(controller)
         typeWord(controller, "das")
         pressSpace(controller)
+        controller.flushNextWordLearningForTests()
 
         val predictions = store.predict("de-DE", "teste", limit = 3)
         assertEquals(listOf("das"), predictions.map { it.word })
@@ -83,6 +90,7 @@ class SuggestionControllerNextWordTest {
         pressPeriod(controller)
         typeWord(controller, "morgen")
         pressSpace(controller)
+        controller.flushNextWordLearningForTests()
 
         assertEquals(listOf("bin"), store.predict("de-DE", "ich", limit = 3).map { it.word })
         assertTrue(store.predict("de-DE", "bin", limit = 3).isEmpty())
@@ -129,6 +137,7 @@ class SuggestionControllerNextWordTest {
             nextWordPredictorOverride = NextWordPredictor(store),
             activeSuggestionLocalesProvider = { listOf(Locale.ENGLISH) }
         )
+        controllers.add(controller)
 
         typeWord(controller, "eng")
 
@@ -212,6 +221,7 @@ class SuggestionControllerNextWordTest {
         pressSpace(controller)
 
         controller.dismissSuggestion("bin")
+        controller.flushNextWordLearningForTests()
 
         val latest = snapshots.last()
         assertEquals(listOf("ich", "dann", "bar"), latest.map { it.candidate })
@@ -248,7 +258,7 @@ class SuggestionControllerNextWordTest {
             currentLocale = Locale.GERMANY,
             dictionaryRepositoryFactory = { _, _, _, _, _ -> fakeRepository },
             nextWordPredictorOverride = NextWordPredictor(store)
-        )
+        ).also { controllers.add(it) }
     }
 
     private fun typeWord(controller: SuggestionController, word: String) {

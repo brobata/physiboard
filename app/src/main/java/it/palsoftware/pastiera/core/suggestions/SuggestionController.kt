@@ -536,6 +536,17 @@ class SuggestionController(
         previousCompletedWord = null
     }
 
+    internal fun flushNextWordLearningForTests() {
+        nextWordPredictor.flushLearningForTests()
+    }
+
+    fun destroy() {
+        currentLoadJob?.cancel()
+        suggestionJob?.cancel()
+        cursorRunnable?.let { cursorHandler.removeCallbacks(it) }
+        nextWordPredictor.destroy()
+    }
+
     private fun handleCompletedWordBoundary(completedWord: String?, boundaryChar: Char?) {
         val settings = settingsProvider()
         if (!settings.suggestionsEnabled) {
