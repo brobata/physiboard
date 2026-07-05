@@ -1854,6 +1854,7 @@ class StatusBarController(
             putExtra(SymCustomizationActivity.EXTRA_INITIAL_PAGE, page)
             keyCode?.let { putExtra(SymCustomizationActivity.EXTRA_INITIAL_KEY_CODE, it) }
             putExtra(SymCustomizationActivity.EXTRA_OPEN_PICKER, openPicker)
+            putExtra(SymCustomizationActivity.EXTRA_RETURN_AFTER_PICKER, openPicker && keyCode != null)
         }
         try {
             context.startActivity(intent)

@@ -13,6 +13,7 @@ class SymCustomizationActivity : LocalizedComponentActivity() {
         const val EXTRA_INITIAL_PAGE = "it.palsoftware.pastiera.extra.INITIAL_SYM_PAGE"
         const val EXTRA_INITIAL_KEY_CODE = "it.palsoftware.pastiera.extra.INITIAL_SYM_KEY_CODE"
         const val EXTRA_OPEN_PICKER = "it.palsoftware.pastiera.extra.OPEN_SYM_PICKER"
+        const val EXTRA_RETURN_AFTER_PICKER = "it.palsoftware.pastiera.extra.RETURN_AFTER_PICKER"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,6 +29,11 @@ class SymCustomizationActivity : LocalizedComponentActivity() {
                     initialPage = intent.getIntExtra(EXTRA_INITIAL_PAGE, 0),
                     initialKeyCode = intent.getIntExtra(EXTRA_INITIAL_KEY_CODE, 0).takeIf { it > 0 },
                     openInitialPicker = intent.getBooleanExtra(EXTRA_OPEN_PICKER, false),
+                    returnAfterInitialPicker = intent.getBooleanExtra(EXTRA_RETURN_AFTER_PICKER, false),
+                    onInitialPickerClosed = {
+                        SettingsManager.confirmPendingRestoreSymPage(this@SymCustomizationActivity)
+                        finish()
+                    },
                     onBack = {
                         // This is only called from the UI back button (arrow icon)
                         SettingsManager.confirmPendingRestoreSymPage(this@SymCustomizationActivity)

@@ -42,6 +42,8 @@ fun SymCustomizationScreen(
     initialPage: Int = 0,
     initialKeyCode: Int? = null,
     openInitialPicker: Boolean = false,
+    returnAfterInitialPicker: Boolean = false,
+    onInitialPickerClosed: () -> Unit = {},
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -178,6 +180,7 @@ fun SymCustomizationScreen(
     var showCharacterPicker by remember { mutableStateOf(false) }
     var selectedKeyCode by remember { mutableStateOf<Int?>(null) }
     var initialPickerHandled by remember { mutableStateOf(false) }
+    var initialPickerActive by remember { mutableStateOf(false) }
     
     // State for reset confirmation dialog
     var showResetConfirmDialog by remember { mutableStateOf(false) }
@@ -229,6 +232,7 @@ fun SymCustomizationScreen(
         val keyCode = initialKeyCode ?: return@LaunchedEffect
         if (!openInitialPicker) return@LaunchedEffect
         selectedKeyCode = keyCode
+        initialPickerActive = returnAfterInitialPicker
         if (initialPage == 2) {
             showCharacterPicker = true
         } else {
@@ -829,10 +833,18 @@ fun SymCustomizationScreen(
                     SettingsManager.saveSymMappings(context, symMappingsPage1)
                     showEmojiPicker = false
                     selectedKeyCode = null
+                    if (initialPickerActive) {
+                        initialPickerActive = false
+                        onInitialPickerClosed()
+                    }
                 },
                 onDismiss = {
                     showEmojiPicker = false
                     selectedKeyCode = null
+                    if (initialPickerActive) {
+                        initialPickerActive = false
+                        onInitialPickerClosed()
+                    }
                 }
             )
         }
@@ -859,10 +871,18 @@ fun SymCustomizationScreen(
                     SettingsManager.saveSymMappingsPage2(context, symMappingsPage2)
                     showCharacterPicker = false
                     selectedKeyCode = null
+                    if (initialPickerActive) {
+                        initialPickerActive = false
+                        onInitialPickerClosed()
+                    }
                 },
                 onDismiss = {
                     showCharacterPicker = false
                     selectedKeyCode = null
+                    if (initialPickerActive) {
+                        initialPickerActive = false
+                        onInitialPickerClosed()
+                    }
                 }
             )
         }
