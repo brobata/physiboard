@@ -1694,12 +1694,14 @@ private fun KeyboardThemeKeysEditor(
 
 @Composable
 private fun KeyboardThemeMiniPreview(preset: KeyboardThemePreset) {
+    val keyShape = MaterialTheme.shapes.extraSmall
+    val dividerColor = Color(preset.divider)
     Column(
         modifier = Modifier
             .width(56.dp)
             .height(42.dp)
-            .background(Color(preset.background), MaterialTheme.shapes.extraSmall)
-            .border(1.dp, Color(preset.divider), MaterialTheme.shapes.extraSmall)
+            .background(Color(preset.background), keyShape)
+            .border(1.dp, dividerColor, keyShape)
             .padding(4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
@@ -1709,7 +1711,8 @@ private fun KeyboardThemeMiniPreview(preset: KeyboardThemePreset) {
                     modifier = Modifier
                         .height(8.dp)
                         .weight(1f)
-                        .background(Color(preset.normalKey), MaterialTheme.shapes.extraSmall)
+                        .background(Color(preset.normalKey), keyShape)
+                        .border(1.dp, dividerColor, keyShape)
                 )
             }
         }
@@ -1719,14 +1722,16 @@ private fun KeyboardThemeMiniPreview(preset: KeyboardThemePreset) {
                     modifier = Modifier
                         .height(18.dp)
                         .weight(1f)
-                        .background(Color(preset.normalKey), MaterialTheme.shapes.extraSmall)
+                        .background(Color(preset.normalKey), keyShape)
+                        .border(1.dp, dividerColor, keyShape)
                 )
             }
             Box(
                 modifier = Modifier
                     .height(18.dp)
                     .weight(1f)
-                    .background(Color(preset.specialKey), MaterialTheme.shapes.extraSmall)
+                    .background(Color(preset.specialKey), keyShape)
+                    .border(1.dp, dividerColor, keyShape)
             )
         }
     }
