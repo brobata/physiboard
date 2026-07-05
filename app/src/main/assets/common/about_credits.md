@@ -50,3 +50,6 @@ Emoji search keywords are generated from [Unicode CLDR](https://github.com/unico
 
 #### Leipzig Corpora Collection / Wortschatz Leipzig
 Bundled base dictionaries are frequency-list derivatives built mainly from [Leipzig Corpora Collection / Wortschatz Leipzig](https://corpora.uni-leipzig.de/) word-frequency data, with Pastiera-specific filtering, normalization, and additions. Downloadable dictionary assets are maintained in the companion [pastiera-dict](https://github.com/palsoftware/pastiera-dict) repository.
+
+#### eellak GSOC 2019 Greek Morphological Dictionary
+The downloadable Greek base dictionary is derived from the top frequency-ranked entries in the [eellak GSOC 2019 Greek spelling dictionary](https://github.com/eellak/gsoc2019-greek-morpho), with Pastiera-specific filtering and normalization. The project source code is GPLv3; the produced morphological database is documented as CC BY-SA 3.0.

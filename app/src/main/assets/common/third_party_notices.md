@@ -81,3 +81,14 @@ and their manifests.
 Provenance note: the maintained dictionary pipeline and current maintainer-provided sources point
 mainly to Leipzig/Wortschatz frequency data. Some older bundled entries predate the current
 documentation trail, so their exact upstream corpus IDs are not fully reconstructed here.
+
+## eellak GSOC 2019 Greek Morphological Dictionary
+
+- Project: GSOC 2019 - Development of a Greek open source Morphological dictionary and application of it to Greek spelling tools
+- Source repository: https://github.com/eellak/gsoc2019-greek-morpho
+- Source data used for `el_base.dict`: `data/spell_dict_with_freq.dic`
+- License: GPLv3 for source code; CC BY-SA 3.0 for the produced morphological database
+
+The downloadable Greek base dictionary distributed through the companion `pastiera-dict`
+repository is derived from the top frequency-ranked, letter-only entries in the eellak
+Greek spelling dictionary with Pastiera-specific filtering, truncation, and normalization.
