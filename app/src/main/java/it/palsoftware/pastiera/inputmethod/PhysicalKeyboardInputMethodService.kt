@@ -1140,7 +1140,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 context = this,
                 imeServiceClass = PhysicalKeyboardInputMethodService::class.java,
                 assets = assets,
-                showToast = true // show toast "LANGUAGE - LAYOUT"
+                showToast = SettingsManager.isToastOnLayoutSwitchEnabled(this)
             )
 
             // Reset flag; keep a short delay when a switch happened to avoid rapid repeats
