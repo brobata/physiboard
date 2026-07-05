@@ -1,0 +1,27 @@
+[
+  {
+    "id": "distilgpt2",
+    "label": "distilgpt2",
+    "languages": ["en"]
+  },
+  {
+    "id": "dbmdz/german-gpt2",
+    "label": "german-gpt2",
+    "languages": ["de"]
+  },
+  {
+    "id": "benjamin/gerpt2",
+    "label": "gerpt2",
+    "languages": ["de"]
+  },
+  {
+    "id": "yongzx/gpt2-finetuned-oscar-fr",
+    "label": "gpt2-oscar-fr",
+    "languages": ["fr"]
+  },
+  {
+    "id": "Qwen/Qwen2.5-0.5B",
+    "label": "qwen2.5-0.5b",
+    "languages": ["en", "de", "fr"]
+  }
+]

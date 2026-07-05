@@ -1,0 +1,9 @@
+{"id":"en_mail_short","language":"en","text":"I can send the updated draft tomorrow morning if the meeting stays on schedule.","notes":"Work message with common planning vocabulary."}
+{"id":"en_casual_chat","language":"en","text":"That sounds good to me, but I would rather check the train times before we leave.","notes":"Casual chat with contractions avoided for stable tokenization."}
+{"id":"en_keyboard_context","language":"en","text":"Please remind me to buy coffee, bread, and batteries on the way home.","notes":"Short reminder-like keyboard input."}
+{"id":"de_mail_short","language":"de","text":"Ich schicke dir morgen frueh die neue Version, wenn der Termin heute ruhig bleibt.","notes":"German work message, ASCII umlaut style to compare tokenizers fairly."}
+{"id":"de_casual_chat","language":"de","text":"Das klingt gut, aber ich wuerde vorher noch kurz die Verbindung pruefen.","notes":"Casual German chat with predictable modal structure."}
+{"id":"de_keyboard_context","language":"de","text":"Bitte erinnere mich daran, Kaffee, Brot und Batterien auf dem Heimweg zu kaufen.","notes":"German reminder-like keyboard input."}
+{"id":"fr_mail_short","language":"fr","text":"Je peux envoyer la nouvelle version demain matin si la reunion reste courte.","notes":"French work message without accents for tokenizer comparability."}
+{"id":"fr_casual_chat","language":"fr","text":"Ca me va bien, mais je prefere verifier les horaires du train avant de partir.","notes":"Casual French chat."}
+{"id":"fr_keyboard_context","language":"fr","text":"Rappelle-moi d acheter du cafe, du pain et des piles en rentrant ce soir.","notes":"French reminder-like keyboard input."}

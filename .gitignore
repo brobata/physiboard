@@ -35,3 +35,6 @@ app/build.properties
 # Local F-Droid repo workspace
 .fdroid/
 debug-logs/
+
+# Local prediction benchmark workspace
+.prediction-bench/
