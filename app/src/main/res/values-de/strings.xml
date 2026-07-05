@@ -511,8 +511,8 @@ Jede Taste kann als Keycode, Aktion, Native Ctrl oder Keine konfiguriert werden.
     <string name="tutorial_page_enable_description">Um zu beginnen, müssen Sie Pastiera als Eingabemethode in den Android-Einstellungen aktivieren. Tippen Sie auf die Schaltfläche unten, um die Einstellungen zu öffnen.</string>
     <string name="tutorial_page_select_title">Pastiera auswählen</string>
     <string name="tutorial_page_select_description">Um Pastiera zu verwenden, wähle sie unter den Eingabemethoden aus. Im nächsten Schritt legst du fest, ob Pastiera eine virtuelle Tastatur oder den Hardware-Tastaturmodus verwenden soll.</string>
-    <string name="tutorial_page_led_title">LED-Anzeige</string>
-    <string name="tutorial_page_led_description">Um Pastiera optimal zu nutzen, stelle in den Systemeinstellungen die Fn-Taste auf Ctrl um. Die IME-Leiste zeigt vier LEDs: Sie leuchten blau, wenn der Modifikator als One-Shot aktiv ist, und orange, wenn er gelockt ist. Die SYM-Layout-LED ist blau auf der Emoji-Seite und orange auf der Symbols-Seite.</string>
+    <string name="tutorial_page_led_title">Modifier-Anzeigen</string>
+    <string name="tutorial_page_led_description">Um Pastiera optimal zu nutzen, stelle in den Systemeinstellungen die Fn-Taste auf Ctrl um. Pastiera kann Modifier-Zustände im Bottom Strip, in der Menüleiste oder in der Pastiera-Statusbar anzeigen: One-Shot-Zustände nutzen die aktive Farbe, gelockte Zustände die Locked-Farbe.</string>
     <string name="tutorial_page_nav_mode_title">Nav-Modus</string>
     <string name="tutorial_page_nav_mode_description">Der Nav-Modus lässt dich mit Kürzeln wie IJKL oder ESDF durch die Geräteoberfläche navigieren.\nSo aktivierst du ihn:\n• Drücke Ctrl zweimal schnell\n• Buchstabentasten werden zu Navigationstasten\n• Drücke Ctrl erneut, um zu beenden\nJede Zuordnung kann in den erweiterten Einstellungen angepasst werden.</string>
     <string name="tutorial_nav_mode_bullet_selection">Auswahlaktionen erweitern markierten Text nach links, rechts oder wortweise.</string>
@@ -706,6 +706,15 @@ Jede Taste kann als Keycode, Aktion, Native Ctrl oder Keine konfiguriert werden.
     <string name="dynamic_variation_slot_count_description">Versucht, %1$d dynamische Einträge zwischen den Statusleisten-Buttons anzuzeigen.</string>
     <string name="dynamic_variation_resize_to_content_title">Dynamische Variationen skalieren</string>
     <string name="dynamic_variation_resize_to_content_description">Wenn aktiviert, füllen dynamische Einträge die verfügbare Zeile anhand der aktuell angezeigten Anzahl. Wenn deaktiviert, behalten Einträge die Slotgröße des Sliders und bleiben linksbündig.</string>
+    <string name="modifier_indicators_title">Modifier-Anzeigen</string>
+    <string name="modifier_indicators_description">Wähle, wo Shift-, Ctrl-, Alt- und SYM-Zustand für die Hardwaretastatur erscheinen.</string>
+    <string name="modifier_indicators_bottom_strip">Bottom Strip</string>
+    <string name="modifier_indicators_bottom_strip_description">Dünner Indikatorstreifen unter Pastiera.</string>
+    <string name="modifier_indicators_menu_bar">Menüleiste</string>
+    <string name="modifier_indicators_menu_bar_description">Ein kompaktes Icon in Androids oberer Statusbar.</string>
+    <string name="modifier_indicators_status_bar">Statusbar</string>
+    <string name="modifier_indicators_status_bar_description">Kompakte Symbole links am Rand der Pastiera-Statusbar.</string>
+    <string name="modifier_indicators_off_state">Alle Modifier-Anzeigen sind aus.</string>
     <string name="status_bar_button_close_menu_description">Schnellaktionen schließen</string>
     <string name="status_bar_state_on">Ein</string>
     <string name="status_bar_state_off">Aus</string>

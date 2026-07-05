@@ -203,6 +203,7 @@ object PreferenceSchemas {
             "keyboard_theme_dark_software" to PreferenceValueType.STRING,
             "keyboard_theme_layout_overrides_hardware" to PreferenceValueType.STRING,
             "keyboard_theme_layout_overrides_software" to PreferenceValueType.STRING,
+            "modifier_indicator_mode" to PreferenceValueType.STRING,
             "auto_show_keyboard" to PreferenceValueType.BOOLEAN,
             "accessibility_live_announcements_enabled" to PreferenceValueType.BOOLEAN,
             "accessibility_read_second_row_enabled" to PreferenceValueType.BOOLEAN,

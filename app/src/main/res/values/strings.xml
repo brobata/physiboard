@@ -842,8 +842,8 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="tutorial_software_keyboard_auto_profile">Detected profile: %1$s / %2$s</string>
     <string name="tutorial_software_keyboard_auto_reason_physical">Reason: this profile is treated as a physical-keyboard device, so Auto uses hardware-keyboard mode.</string>
     <string name="tutorial_software_keyboard_auto_reason_touch">Reason: this profile is not recognized as a physical-keyboard device, so Auto uses virtual-keyboard mode.</string>
-    <string name="tutorial_page_led_title">LED Indicator</string>
-    <string name="tutorial_page_led_description">To get the most out of Pastiera, set the Fn key to act as Ctrl from Android system settings. The IME bar shows four LEDs: they turn blue when the modifier is active one-shot and orange when it is locked. The SYM layout LED is blue on the emoji page and orange on the symbols page.</string>
+    <string name="tutorial_page_led_title">Modifier indicators</string>
+    <string name="tutorial_page_led_description">To get the most out of Pastiera, set the Fn key to act as Ctrl from Android system settings. Pastiera can show modifier state in the bottom strip, menu bar, or Pastiera statusbar: active one-shot states use the active color, locked states use the locked color.</string>
     <string name="tutorial_page_nav_mode_title">Nav Mode</string>
     <string name="tutorial_page_nav_mode_description">Nav Mode turns letter keys into navigation and editing controls. Press Ctrl twice to latch it, or enable Ctrl-hold navigation below.</string>
     <string name="tutorial_nav_mode_bullet_selection">Selection actions can extend text selection left, right, or word by word.</string>
@@ -1124,6 +1124,15 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="dynamic_variation_slot_count_description">Aim to show %1$d dynamic entries between the status bar buttons.</string>
     <string name="dynamic_variation_resize_to_content_title">Resize dynamic variations</string>
     <string name="dynamic_variation_resize_to_content_description">When enabled, dynamic entries fill the available row based on how many are shown. When off, entries keep the slot size from the slider and stay left-aligned.</string>
+    <string name="modifier_indicators_title">Modifier indicators</string>
+    <string name="modifier_indicators_description">Choose where Shift, Ctrl, Alt, and SYM state appears for the hardware keyboard.</string>
+    <string name="modifier_indicators_bottom_strip">Bottom strip</string>
+    <string name="modifier_indicators_bottom_strip_description">Thin indicator strip below Pastiera.</string>
+    <string name="modifier_indicators_menu_bar">Menu bar</string>
+    <string name="modifier_indicators_menu_bar_description">One compact icon in Android\'s top statusbar.</string>
+    <string name="modifier_indicators_status_bar">Statusbar</string>
+    <string name="modifier_indicators_status_bar_description">Compact symbols at the left edge of the Pastiera statusbar.</string>
+    <string name="modifier_indicators_off_state">All modifier indicators are off.</string>
     <string name="status_bar_state_on">On</string>
     <string name="status_bar_state_off">Off</string>
     <string name="status_bar_button_clipboard_state_empty">Empty</string>

@@ -214,7 +214,8 @@ class SettingsManagerKeyboardThemeAssignmentTest {
             "keyboard_theme_dark_hardware",
             "keyboard_theme_dark_software",
             "keyboard_theme_layout_overrides_hardware",
-            "keyboard_theme_layout_overrides_software"
+            "keyboard_theme_layout_overrides_software",
+            "modifier_indicator_mode"
         ).forEach { key ->
             assertEquals(
                 PreferenceValueType.STRING,

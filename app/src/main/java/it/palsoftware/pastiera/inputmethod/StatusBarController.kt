@@ -883,6 +883,116 @@ class StatusBarController(
             }
         }
     }
+
+    private fun updateMenuBarModifierIndicators(
+        container: LinearLayout,
+        snapshot: StatusSnapshot,
+        show: Boolean,
+        theme: KeyboardThemeColors
+    ) {
+        container.removeAllViews()
+        if (!show) {
+            container.visibility = View.GONE
+            return
+        }
+
+        val indicators = buildMenuBarModifierIndicators(snapshot)
+        if (indicators.isEmpty()) {
+            container.visibility = View.GONE
+            return
+        }
+
+        indicators.forEachIndexed { index, indicator ->
+            val view = when (indicator) {
+                is MenuBarModifierIndicator.Icon -> ImageView(context).apply {
+                    setImageResource(indicator.resId)
+                    setColorFilter(if (indicator.locked) theme.ledLocked else theme.ledActive)
+                    scaleType = ImageView.ScaleType.CENTER
+                    contentDescription = indicator.description
+                }
+                is MenuBarModifierIndicator.Text -> TextView(context).apply {
+                    text = indicator.label
+                    textSize = 12f
+                    typeface = android.graphics.Typeface.DEFAULT_BOLD
+                    gravity = Gravity.CENTER
+                    setTextColor(if (indicator.locked) theme.ledLocked else theme.ledActive)
+                    contentDescription = indicator.description
+                }
+            }
+            container.addView(
+                view,
+                LinearLayout.LayoutParams(dpToPx(26f), dpToPx(26f)).apply {
+                    if (index != indicators.lastIndex) marginEnd = dpToPx(2f)
+                }
+            )
+        }
+        container.visibility = View.VISIBLE
+    }
+
+    private fun buildMenuBarModifierIndicators(snapshot: StatusSnapshot): List<MenuBarModifierIndicator> {
+        val indicators = mutableListOf<MenuBarModifierIndicator>()
+        val shiftLocked = snapshot.capsLockEnabled
+        val shiftActive = (snapshot.shiftPhysicallyPressed || snapshot.shiftOneShot) && !shiftLocked
+        if (shiftLocked || shiftActive) {
+            indicators.add(
+                MenuBarModifierIndicator.Icon(
+                    resId = if (shiftLocked) R.drawable.shift_filled_24 else R.drawable.shift_24,
+                    locked = shiftLocked,
+                    description = "Shift"
+                )
+            )
+        }
+
+        val ctrlLocked = snapshot.ctrlLatchActive
+        val ctrlActive = (snapshot.ctrlPhysicallyPressed || snapshot.ctrlOneShot) && !ctrlLocked
+        if (ctrlLocked || ctrlActive) {
+            indicators.add(
+                MenuBarModifierIndicator.Icon(
+                    resId = R.drawable.keyboard_control_key_24,
+                    locked = ctrlLocked,
+                    description = "Ctrl"
+                )
+            )
+        }
+
+        val altLocked = snapshot.altLatchActive
+        val altActive = (snapshot.altPhysicallyPressed || snapshot.altOneShot) && !altLocked
+        if (altLocked || altActive) {
+            indicators.add(
+                MenuBarModifierIndicator.Icon(
+                    resId = R.drawable.keyboard_option_key_24,
+                    locked = altLocked,
+                    description = "Alt"
+                )
+            )
+        }
+
+        if (snapshot.symPage > 0) {
+            indicators.add(
+                MenuBarModifierIndicator.Text(
+                    label = "SYM",
+                    locked = snapshot.symPage == 2,
+                    description = "SYM"
+                )
+            )
+        }
+
+        return indicators
+    }
+
+    private sealed class MenuBarModifierIndicator(open val locked: Boolean, open val description: String) {
+        data class Icon(
+            val resId: Int,
+            override val locked: Boolean,
+            override val description: String
+        ) : MenuBarModifierIndicator(locked, description)
+
+        data class Text(
+            val label: String,
+            override val locked: Boolean,
+            override val description: String
+        ) : MenuBarModifierIndicator(locked, description)
+    }
     
     /**
      * Updates the clipboard history view inline in the keyboard container.
@@ -2538,7 +2648,24 @@ class StatusBarController(
         }
         
         modifiersContainerView.visibility = View.GONE
-        val showLedStrip = !isFullSoftwareKeyboardMode || softwareThemeSettings.showLeds
+        val showHardwareBottomIndicators = SettingsManager.getModifierIndicatorShowsBottomStrip(context)
+        val showHardwareStatusBarIndicators = SettingsManager.getModifierIndicatorShowsStatusBar(context)
+        fullSuggestionsBar?.setModifierMenuIndicatorsEnabled(
+            !isFullSoftwareKeyboardMode && showHardwareStatusBarIndicators
+        )
+        fullSuggestionsBar?.updateModifierIndicators(snapshot)
+        updateMenuBarModifierIndicators(
+            container = modifiersContainerView,
+            snapshot = snapshot,
+            show = false,
+            theme = activeColors
+        )
+
+        val showLedStrip = if (isFullSoftwareKeyboardMode) {
+            softwareThemeSettings.showLeds
+        } else {
+            showHardwareBottomIndicators
+        }
         ledStatusView.getView()?.visibility = if (showLedStrip) View.VISIBLE else View.GONE
         if (showLedStrip) {
             ledStatusView.update(snapshot)

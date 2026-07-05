@@ -1,6 +1,7 @@
 package it.palsoftware.pastiera
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -58,6 +59,9 @@ fun StatusBarButtonsScreen(
     var dynamicVariationsResizeToContent by remember {
         mutableStateOf(SettingsManager.getDynamicVariationBarResizeToContent(context))
     }
+    var modifierIndicators by remember {
+        mutableStateOf(SettingsManager.getModifierIndicators(context))
+    }
     
     BackHandler { onBack() }
     
@@ -105,6 +109,11 @@ fun StatusBarButtonsScreen(
                         variationsVisible = SettingsManager.areStatusBarVariationsEnabled(context)
                         dynamicVariationSlotCount = SettingsManager.getDynamicVariationBarSlotCount(context)
                         dynamicVariationsResizeToContent = SettingsManager.getDynamicVariationBarResizeToContent(context)
+                        SettingsManager.setModifierIndicators(
+                            context,
+                            setOf(SettingsManager.MODIFIER_INDICATOR_BOTTOM_STRIP)
+                        )
+                        modifierIndicators = SettingsManager.getModifierIndicators(context)
                     }
                 ) {
                     Icon(
@@ -210,6 +219,36 @@ fun StatusBarButtonsScreen(
                     onCheckedChange = { visible ->
                         variationsVisible = visible
                         SettingsManager.setStatusBarVariationsEnabled(context, visible)
+                    }
+                )
+            }
+        }
+
+        Surface(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = stringResource(R.string.modifier_indicators_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = stringResource(R.string.modifier_indicators_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                ModifierIndicatorMultiSelect(
+                    modifier = Modifier.fillMaxWidth(),
+                    selectedIndicators = modifierIndicators,
+                    onIndicatorsSelected = { indicators ->
+                        modifierIndicators = indicators
+                        SettingsManager.setModifierIndicators(context, indicators)
                     }
                 )
             }
@@ -584,6 +623,91 @@ private fun SlotGroup(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ModifierIndicatorMultiSelect(
+    modifier: Modifier = Modifier,
+    selectedIndicators: Set<String>,
+    onIndicatorsSelected: (Set<String>) -> Unit
+) {
+    val options = listOf(
+        SettingsManager.MODIFIER_INDICATOR_BOTTOM_STRIP,
+        SettingsManager.MODIFIER_INDICATOR_MENU_BAR,
+        SettingsManager.MODIFIER_INDICATOR_STATUS_BAR
+    )
+    Column(modifier = modifier) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            options.forEach { indicator ->
+                val selected = indicator in selectedIndicators
+                Surface(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(42.dp)
+                        .clickable {
+                            onIndicatorsSelected(
+                                if (selected) selectedIndicators - indicator else selectedIndicators + indicator
+                            )
+                        },
+                    color = if (selected) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+                    },
+                    contentColor = if (selected) {
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    shape = MaterialTheme.shapes.small,
+                    border = BorderStroke(
+                        1.dp,
+                        if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+                    )
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = getModifierIndicatorLabel(indicator),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                            maxLines = 1
+                        )
+                    }
+                }
+            }
+        }
+        if (selectedIndicators.isEmpty()) {
+            Text(
+                text = stringResource(R.string.modifier_indicators_off_state),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 4.dp, top = 4.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun getModifierIndicatorLabel(indicator: String): String {
+    return when (indicator) {
+        SettingsManager.MODIFIER_INDICATOR_BOTTOM_STRIP -> stringResource(R.string.modifier_indicators_bottom_strip)
+        SettingsManager.MODIFIER_INDICATOR_MENU_BAR -> stringResource(R.string.modifier_indicators_menu_bar)
+        SettingsManager.MODIFIER_INDICATOR_STATUS_BAR -> stringResource(R.string.modifier_indicators_status_bar)
+        else -> indicator
+    }
+}
+
+@Composable
+private fun getModifierIndicatorDescription(indicator: String): String {
+    return when (indicator) {
+        SettingsManager.MODIFIER_INDICATOR_BOTTOM_STRIP -> stringResource(R.string.modifier_indicators_bottom_strip_description)
+        SettingsManager.MODIFIER_INDICATOR_MENU_BAR -> stringResource(R.string.modifier_indicators_menu_bar_description)
+        SettingsManager.MODIFIER_INDICATOR_STATUS_BAR -> stringResource(R.string.modifier_indicators_status_bar_description)
+        else -> ""
     }
 }
 

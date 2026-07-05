@@ -32,6 +32,7 @@ import it.palsoftware.pastiera.inputmethod.ui.VariationBarView
 
 private const val HARDWARE_PREVIEW_MAX_CHROME_SCALE = 1.6f
 private const val HARDWARE_PREVIEW_EXTRA_HEIGHT_DP = 12f
+private const val HARDWARE_PREVIEW_BOTTOM_INDICATOR_HEIGHT_DP = 6.5f
 private const val SUGGESTIONS_PREVIEW_BASE_HEIGHT_DP = 36f
 private const val VARIATIONS_PREVIEW_BASE_HEIGHT_DP = 55f
 private const val SOFTWARE_PREVIEW_TALL_SCREEN_HEIGHT_FRACTION = 0.46f
@@ -46,8 +47,10 @@ private const val SOFTWARE_PREVIEW_MODIFIER_DOUBLE_TAP_MS = 450L
 
 @Composable
 internal fun HardwareKeyboardThemePreview(theme: KeyboardThemePreset) {
-    val previewHeightDp = hardwareKeyboardPreviewHeightDp(theme)
-    val viewportHeightDp = hardwareKeyboardPreviewViewportHeightDp()
+    val context = LocalContext.current
+    val showBottomIndicators = SettingsManager.getModifierIndicatorShowsBottomStrip(context)
+    val previewHeightDp = hardwareKeyboardPreviewHeightDp(theme, showBottomIndicators)
+    val viewportHeightDp = hardwareKeyboardPreviewViewportHeightDp(showBottomIndicators)
 
     Box(
         modifier = Modifier
@@ -61,7 +64,7 @@ internal fun HardwareKeyboardThemePreview(theme: KeyboardThemePreset) {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(previewHeightDp.dp),
-            factory = { context -> createHardwareKeyboardThemePreviewView(context, theme) },
+            factory = { viewContext -> createHardwareKeyboardThemePreviewView(viewContext, theme) },
             update = { view -> updateHardwareKeyboardThemePreviewView(view, theme) }
         )
     }
@@ -117,6 +120,8 @@ private fun createHardwareKeyboardThemePreviewView(
     }
     root.addView(suggestionsBar.ensureView())
     suggestionsBar.showPreview(listOf("Werk", "Team", "Park"))
+    suggestionsBar.setModifierMenuIndicatorsEnabled(SettingsManager.getModifierIndicatorShowsStatusBar(context))
+    suggestionsBar.updateModifierIndicators(hardwarePreviewLedSnapshot())
 
     val variationBar = VariationBarView(context, buttonRegistry = StatusBarButtonRegistry()).apply {
         themeOverride = theme.toKeyboardThemeColors()
@@ -127,8 +132,10 @@ private fun createHardwareKeyboardThemePreviewView(
     val leds = LedStatusView(context).apply {
         themeOverride = theme.toKeyboardThemeColors()
     }
-    root.addView(leds.ensureView())
-    leds.update(hardwarePreviewLedSnapshot())
+    if (SettingsManager.getModifierIndicatorShowsBottomStrip(context)) {
+        root.addView(leds.ensureView())
+        leds.update(hardwarePreviewLedSnapshot())
+    }
 
     root.setTag(R.id.keyboard_theme_preview_suggestions_bar, suggestionsBar)
     root.setTag(R.id.keyboard_theme_preview_variation_bar, variationBar)
@@ -142,6 +149,8 @@ private fun updateHardwareKeyboardThemePreviewView(view: android.view.View, them
     (view.getTag(R.id.keyboard_theme_preview_suggestions_bar) as? FullSuggestionsBar)?.apply {
         themeOverride = colors
         showPreview(listOf("Werk", "Team", "Park"))
+        setModifierMenuIndicatorsEnabled(SettingsManager.getModifierIndicatorShowsStatusBar(view.context))
+        updateModifierIndicators(hardwarePreviewLedSnapshot())
     }
     (view.getTag(R.id.keyboard_theme_preview_variation_bar) as? VariationBarView)?.apply {
         themeOverride = colors
@@ -150,7 +159,15 @@ private fun updateHardwareKeyboardThemePreviewView(view: android.view.View, them
     }
     (view.getTag(R.id.keyboard_theme_preview_led_view) as? LedStatusView)?.apply {
         themeOverride = colors
-        update(hardwarePreviewLedSnapshot())
+        val ledView = ensureView()
+        if (SettingsManager.getModifierIndicatorShowsBottomStrip(view.context)) {
+            if (ledView.parent !== view && view is LinearLayout) {
+                view.addView(ledView)
+            }
+            update(hardwarePreviewLedSnapshot())
+        } else if (ledView.parent === view && view is LinearLayout) {
+            view.removeView(ledView)
+        }
     }
 }
 
@@ -852,13 +869,20 @@ private fun softwareKeyboardPreviewLayoutStyle(context: Context): AospKeyboardVi
         SettingsManager.SoftwareKeyboardLayoutStyle.FULL_ISO -> AospKeyboardView.SoftwareLayoutStyle.FULL_ISO
     }
 
-private fun hardwareKeyboardPreviewHeightDp(theme: KeyboardThemePreset): Float =
-    suggestionsPreviewHeightDp(theme) + variationsPreviewHeightDp(theme) + HARDWARE_PREVIEW_EXTRA_HEIGHT_DP
+private fun hardwareKeyboardPreviewHeightDp(
+    theme: KeyboardThemePreset,
+    showBottomIndicators: Boolean
+): Float =
+    suggestionsPreviewHeightDp(theme) +
+        variationsPreviewHeightDp(theme) +
+        HARDWARE_PREVIEW_EXTRA_HEIGHT_DP -
+        if (showBottomIndicators) 0f else HARDWARE_PREVIEW_BOTTOM_INDICATOR_HEIGHT_DP
 
-private fun hardwareKeyboardPreviewViewportHeightDp(): Float =
+private fun hardwareKeyboardPreviewViewportHeightDp(showBottomIndicators: Boolean): Float =
     SUGGESTIONS_PREVIEW_BASE_HEIGHT_DP * HARDWARE_PREVIEW_MAX_CHROME_SCALE +
         VARIATIONS_PREVIEW_BASE_HEIGHT_DP * HARDWARE_PREVIEW_MAX_CHROME_SCALE +
-        HARDWARE_PREVIEW_EXTRA_HEIGHT_DP
+        HARDWARE_PREVIEW_EXTRA_HEIGHT_DP -
+        if (showBottomIndicators) 0f else HARDWARE_PREVIEW_BOTTOM_INDICATOR_HEIGHT_DP
 
 private fun softwareKeyboardPreviewViewportHeightDp(
     screenWidthDp: Int,

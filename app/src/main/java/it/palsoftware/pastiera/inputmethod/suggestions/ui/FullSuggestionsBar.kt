@@ -27,6 +27,8 @@ import it.palsoftware.pastiera.inputmethod.suggestions.SuggestionButtonHandler
 import it.palsoftware.pastiera.inputmethod.VariationButtonHandler
 import it.palsoftware.pastiera.inputmethod.ui.HamburgerMenuView
 import it.palsoftware.pastiera.inputmethod.ui.KeyboardThemeColors
+import it.palsoftware.pastiera.inputmethod.ui.ModifierIndicatorView
+import it.palsoftware.pastiera.inputmethod.StatusBarController
 import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonHost
 import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonId
 import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonRegistry
@@ -59,12 +61,15 @@ class FullSuggestionsBar(
     private var frameContainer: FrameLayout? = null
     private var minimalLeftButtonsContainer: LinearLayout? = null
     private var minimalRightButtonsContainer: LinearLayout? = null
+    private var modifierIndicatorsContainer: LinearLayout? = null
     private var hamburgerMenuView: HamburgerMenuView? = null
+    private var modifierIndicatorView: ModifierIndicatorView? = null
     private var lastMinimalUiActive: Boolean? = null
     private var lastSlots: List<String?> = emptyList()
     private var assets: AssetManager? = null
     private var imeServiceClass: Class<*>? = null
     private var showMinimalUiButtons: Boolean = false
+    private var showModifierMenuIndicators: Boolean = false
     private val buttonHost = buttonRegistry?.let { StatusBarButtonHost(context, it) }
     private val suggestionButtons: MutableList<TextView> = mutableListOf()
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -82,6 +87,7 @@ class FullSuggestionsBar(
             }
             field = value
             hamburgerMenuView?.themeOverride = value
+            modifierIndicatorView?.themeOverride = value
             buttonHost?.themeOverride = value?.let {
                 StatusBarButtonStyles.ThemeOverride(
                     normalColor = it.statusBarButton,
@@ -171,8 +177,21 @@ class FullSuggestionsBar(
                     gravity = Gravity.END or Gravity.CENTER_VERTICAL
                 }
             }
+
+            modifierIndicatorView = ModifierIndicatorView(context).apply {
+                themeOverride = this@FullSuggestionsBar.themeOverride
+            }
+            modifierIndicatorsContainer = modifierIndicatorView?.ensureView()?.apply {
+                layoutParams = FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    targetHeightPx
+                ).apply {
+                    gravity = Gravity.START or Gravity.CENTER_VERTICAL
+                }
+            }
             
             frameContainer?.addView(container)
+            modifierIndicatorsContainer?.let { frameContainer?.addView(it) }
             minimalLeftButtonsContainer?.let { frameContainer?.addView(it) }
             minimalRightButtonsContainer?.let { frameContainer?.addView(it) }
             
@@ -223,6 +242,14 @@ class FullSuggestionsBar(
             if (params.height != height) {
                 params.height = height
                 buttons.layoutParams = params
+            }
+        }
+        modifierIndicatorsContainer?.let { indicators ->
+            val params = (indicators.layoutParams as? FrameLayout.LayoutParams)
+                ?: FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, height)
+            if (params.height != height) {
+                params.height = height
+                indicators.layoutParams = params
             }
         }
     }
@@ -277,6 +304,22 @@ class FullSuggestionsBar(
         showMinimalUiButtons = isActive
         renderMinimalUiButtons()
         hamburgerMenuView?.setMinimalUiActive(isActive)
+    }
+
+    fun setModifierMenuIndicatorsEnabled(enabled: Boolean) {
+        showModifierMenuIndicators = enabled
+        if (!enabled) {
+            modifierIndicatorsContainer?.visibility = View.GONE
+        }
+        applyContainerInsetsForMinimalButtons()
+        frameContainer?.requestLayout()
+    }
+
+    fun updateModifierIndicators(snapshot: StatusBarController.StatusSnapshot) {
+        val visible = showModifierMenuIndicators && modifierIndicatorView?.update(snapshot) == true
+        modifierIndicatorsContainer?.visibility = if (visible) View.VISIBLE else View.GONE
+        applyContainerInsetsForMinimalButtons()
+        frameContainer?.requestLayout()
     }
 
     fun isHamburgerMenuVisible(): Boolean = hamburgerMenuView?.isVisible() == true
@@ -485,7 +528,12 @@ class FullSuggestionsBar(
     private fun applyContainerInsetsForMinimalButtons() {
         val bar = container ?: return
         val spacing = dpToPx(3f)
-        val leftInset = if (showMinimalUiButtons) {
+        val indicatorInset = modifierIndicatorsContainer?.takeIf {
+            showModifierMenuIndicators && it.visibility == View.VISIBLE
+        }?.let {
+            modifierIndicatorsWidthPx(it) + spacing
+        } ?: 0
+        val minimalLeftInset = if (showMinimalUiButtons) {
             minimalLeftButtonsContainer?.takeIf { it.visibility == View.VISIBLE }?.let {
                 it.childCount * (targetHeightPx - dpToPx(4f)).coerceAtLeast(dpToPx(24f)) +
                     (it.childCount - 1).coerceAtLeast(0) * spacing +
@@ -494,6 +542,17 @@ class FullSuggestionsBar(
         } else {
             0
         }
+        minimalLeftButtonsContainer?.let { buttons ->
+            val params = (buttons.layoutParams as? FrameLayout.LayoutParams)
+                ?: FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, targetHeightPx).apply {
+                    gravity = Gravity.START or Gravity.CENTER_VERTICAL
+                }
+            if (params.marginStart != indicatorInset) {
+                params.marginStart = indicatorInset
+                buttons.layoutParams = params
+            }
+        }
+        val leftInset = indicatorInset + minimalLeftInset
         val rightInset = if (showMinimalUiButtons) {
             minimalRightButtonsContainer?.takeIf { it.visibility == View.VISIBLE }?.let {
                 it.childCount * (targetHeightPx - dpToPx(4f)).coerceAtLeast(dpToPx(24f)) +
@@ -516,14 +575,29 @@ class FullSuggestionsBar(
         if (params.marginStart != leftInset) {
             params.marginStart = leftInset
             changed = true
+            lastSlots = emptyList()
         }
         if (params.marginEnd != rightInset) {
             params.marginEnd = rightInset
             changed = true
+            lastSlots = emptyList()
         }
         if (changed || bar.layoutParams !is FrameLayout.LayoutParams) {
             bar.layoutParams = params
         }
+    }
+
+    private fun modifierIndicatorsWidthPx(indicators: LinearLayout): Int {
+        val childCount = indicators.childCount
+        if (childCount <= 0) {
+            return 0
+        }
+        val chipWidth = dpToPx(26f)
+        val chipGap = dpToPx(2f)
+        return indicators.paddingLeft +
+            indicators.paddingRight +
+            childCount * chipWidth +
+            (childCount - 1).coerceAtLeast(0) * chipGap
     }
 
     private fun renderSlots(

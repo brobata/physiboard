@@ -68,6 +68,69 @@ class SettingsManagerLayoutSwitchTest {
     }
 
     @Test
+    fun modifierIndicators_defaultToBottomStripAndPersistMultipleTargets() {
+        val context = RuntimeEnvironment.getApplication()
+
+        assertEquals(
+            setOf(SettingsManager.MODIFIER_INDICATOR_BOTTOM_STRIP),
+            SettingsManager.getModifierIndicators(context)
+        )
+        assertTrue(SettingsManager.getModifierIndicatorShowsBottomStrip(context))
+        assertFalse(SettingsManager.getModifierIndicatorShowsMenuBar(context))
+        assertFalse(SettingsManager.getModifierIndicatorShowsStatusBar(context))
+
+        SettingsManager.setModifierIndicators(
+            context,
+            setOf(
+                SettingsManager.MODIFIER_INDICATOR_MENU_BAR,
+                SettingsManager.MODIFIER_INDICATOR_STATUS_BAR
+            )
+        )
+
+        assertEquals(
+            setOf(
+                SettingsManager.MODIFIER_INDICATOR_MENU_BAR,
+                SettingsManager.MODIFIER_INDICATOR_STATUS_BAR
+            ),
+            SettingsManager.getModifierIndicators(context)
+        )
+        assertFalse(SettingsManager.getModifierIndicatorShowsBottomStrip(context))
+        assertTrue(SettingsManager.getModifierIndicatorShowsMenuBar(context))
+        assertTrue(SettingsManager.getModifierIndicatorShowsStatusBar(context))
+    }
+
+    @Test
+    fun modifierIndicators_fallBackToBottomStripForUnknownStoredValue() {
+        val context = RuntimeEnvironment.getApplication()
+
+        SettingsManager.getPreferences(context).edit()
+            .putString(SettingsManager.KEY_MODIFIER_INDICATOR_MODE, "weird")
+            .commit()
+
+        assertEquals(
+            setOf(SettingsManager.MODIFIER_INDICATOR_BOTTOM_STRIP),
+            SettingsManager.getModifierIndicators(context)
+        )
+    }
+
+    @Test
+    fun modifierIndicators_migrateOldCombinedModeToBottomAndStatusbar() {
+        val context = RuntimeEnvironment.getApplication()
+
+        SettingsManager.getPreferences(context).edit()
+            .putString(SettingsManager.KEY_MODIFIER_INDICATOR_MODE, SettingsManager.MODIFIER_INDICATOR_MODE_BOTTOM_AND_MENU)
+            .commit()
+
+        assertEquals(
+            setOf(
+                SettingsManager.MODIFIER_INDICATOR_BOTTOM_STRIP,
+                SettingsManager.MODIFIER_INDICATOR_STATUS_BAR
+            ),
+            SettingsManager.getModifierIndicators(context)
+        )
+    }
+
+    @Test
     fun trackpadSwipeThresholds_fallBackToLegacyValue() {
         val context = RuntimeEnvironment.getApplication()
 

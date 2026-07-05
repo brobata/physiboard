@@ -75,6 +75,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         private const val TAG = "PastieraInputMethod"
         private const val TRACKPAD_DEBUG_TAG = "TrackpadDebug"
         private const val NATIVE_TRACKPAD_MIN_SWIPE_VELOCITY_PX_PER_MS = 2f
+        private const val MODIFIER_ICON_OFF = 0
+        private const val MODIFIER_ICON_ACTIVE = 1
+        private const val MODIFIER_ICON_LOCKED = 2
         private const val DISCORD_PACKAGE_NAME = "com.discord"
         private val MESSENGER_ENTER_BEHAVIOR_PACKAGES = setOf(
             "com.whatsapp",
@@ -241,6 +244,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private var lastRenderedStatusInputConnection: android.view.inputmethod.InputConnection? = null
     private var lastRenderedMinimalUiActive: Boolean? = null
     private var lastRenderedSoftwareKeyboardMode: SettingsManager.SoftwareKeyboardMode? = null
+    private var lastRenderedModifierIndicators: Set<String>? = null
     private var suppressedAutoCapContextKey: String? = null
     private var clearAltOnSpaceEnabled: Boolean = false
     private var physicalKeyboardProfileOverride: String = "auto"
@@ -277,6 +281,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private val bounceKeyFilter = BounceKeyFilter()
     private val uiHandler = Handler(Looper.getMainLooper())
     private var pendingStatusBarUpdate: Runnable? = null
+    private var lastSystemStatusIconResId: Int? = null
     private var pendingSelectionAutoCapCheck: Runnable? = null
     private val clipboardCleanupIntervalMs = 60_000L
     private val clipboardCleanupRunnable = object : Runnable {
@@ -321,9 +326,103 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // Deprecated but still works on current Android versions; use for quick nav mode indicator.
         if (isActive) {
             showStatusIcon(R.drawable.ic_nav_mode_status)
+            lastSystemStatusIconResId = R.drawable.ic_nav_mode_status
+        } else {
+            hideStatusIcon()
+            lastSystemStatusIconResId = null
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun updateSystemStatusModifierIcon(
+        snapshot: StatusBarController.StatusSnapshot,
+        effectiveSoftwareKeyboardMode: SettingsManager.SoftwareKeyboardMode
+    ) {
+        if (snapshot.navModeActive) {
+            if (lastSystemStatusIconResId != R.drawable.ic_nav_mode_status) {
+                showStatusIcon(R.drawable.ic_nav_mode_status)
+                lastSystemStatusIconResId = R.drawable.ic_nav_mode_status
+            }
+            return
+        }
+
+        val iconResId = if (
+            SettingsManager.getModifierIndicatorShowsMenuBar(this) &&
+            effectiveSoftwareKeyboardMode != SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL
+        ) {
+            systemStatusModifierIconResId(snapshot)
+        } else {
+            null
+        }
+
+        if (iconResId == lastSystemStatusIconResId) {
+            return
+        }
+
+        if (iconResId != null) {
+            showStatusIcon(iconResId)
         } else {
             hideStatusIcon()
         }
+        lastSystemStatusIconResId = iconResId
+    }
+
+    private fun systemStatusModifierIconResId(snapshot: StatusBarController.StatusSnapshot): Int? {
+        val shiftState = when {
+            snapshot.capsLockEnabled -> MODIFIER_ICON_LOCKED
+            snapshot.shiftPhysicallyPressed || snapshot.shiftOneShot -> MODIFIER_ICON_ACTIVE
+            else -> MODIFIER_ICON_OFF
+        }
+        val ctrlState = when {
+            snapshot.ctrlLatchActive -> MODIFIER_ICON_LOCKED
+            snapshot.ctrlPhysicallyPressed || snapshot.ctrlOneShot -> MODIFIER_ICON_ACTIVE
+            else -> MODIFIER_ICON_OFF
+        }
+        val altState = when {
+            snapshot.altLatchActive -> MODIFIER_ICON_LOCKED
+            snapshot.altPhysicallyPressed || snapshot.altOneShot -> MODIFIER_ICON_ACTIVE
+            else -> MODIFIER_ICON_OFF
+        }
+
+        return modifierCombinationStatusIconResId(
+            shiftState = shiftState,
+            ctrlState = ctrlState,
+            altState = altState
+        ) ?: if (snapshot.symPage > 0) R.drawable.ic_status_modifier_sym else null
+    }
+
+    private fun modifierCombinationStatusIconResId(
+        shiftState: Int,
+        ctrlState: Int,
+        altState: Int
+    ): Int? = when ("$shiftState$ctrlState$altState") {
+        "001" -> R.drawable.ic_status_modifiers_s0_c0_a1
+        "002" -> R.drawable.ic_status_modifiers_s0_c0_a2
+        "010" -> R.drawable.ic_status_modifiers_s0_c1_a0
+        "011" -> R.drawable.ic_status_modifiers_s0_c1_a1
+        "012" -> R.drawable.ic_status_modifiers_s0_c1_a2
+        "020" -> R.drawable.ic_status_modifiers_s0_c2_a0
+        "021" -> R.drawable.ic_status_modifiers_s0_c2_a1
+        "022" -> R.drawable.ic_status_modifiers_s0_c2_a2
+        "100" -> R.drawable.ic_status_modifiers_s1_c0_a0
+        "101" -> R.drawable.ic_status_modifiers_s1_c0_a1
+        "102" -> R.drawable.ic_status_modifiers_s1_c0_a2
+        "110" -> R.drawable.ic_status_modifiers_s1_c1_a0
+        "111" -> R.drawable.ic_status_modifiers_s1_c1_a1
+        "112" -> R.drawable.ic_status_modifiers_s1_c1_a2
+        "120" -> R.drawable.ic_status_modifiers_s1_c2_a0
+        "121" -> R.drawable.ic_status_modifiers_s1_c2_a1
+        "122" -> R.drawable.ic_status_modifiers_s1_c2_a2
+        "200" -> R.drawable.ic_status_modifiers_s2_c0_a0
+        "201" -> R.drawable.ic_status_modifiers_s2_c0_a1
+        "202" -> R.drawable.ic_status_modifiers_s2_c0_a2
+        "210" -> R.drawable.ic_status_modifiers_s2_c1_a0
+        "211" -> R.drawable.ic_status_modifiers_s2_c1_a1
+        "212" -> R.drawable.ic_status_modifiers_s2_c1_a2
+        "220" -> R.drawable.ic_status_modifiers_s2_c2_a0
+        "221" -> R.drawable.ic_status_modifiers_s2_c2_a1
+        "222" -> R.drawable.ic_status_modifiers_s2_c2_a2
+        else -> null
     }
 
     private fun refreshStatusBar() {
@@ -354,6 +453,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         lastRenderedStatusInputConnection = null
         lastRenderedMinimalUiActive = null
         lastRenderedSoftwareKeyboardMode = null
+        lastRenderedModifierIndicators = null
     }
 
     private fun checkAutoCapitalizeOnSelectionChange(
@@ -1792,6 +1892,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 Handler(Looper.getMainLooper()).post {
                     updateStatusBarText()
                 }
+            } else if (SettingsManager.isModifierIndicatorPreferenceKey(key)) {
+                Handler(Looper.getMainLooper()).post {
+                    updateStatusBarText()
+                }
             } else if (
                 key == SettingsManager.KEY_TYPING_SOUND_MODE ||
                 key == SettingsManager.KEY_TYPING_SOUND_OUTPUT_MODE ||
@@ -2440,6 +2544,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             // Legacy flag for backward compatibility
             shouldDisableSmartFeatures = shouldDisableSmartFeatures
         )
+        updateSystemStatusModifierIcon(snapshot, effectiveSoftwareKeyboardMode)
+        val modifierIndicators = SettingsManager.getModifierIndicators(this)
         // Passa anche la mappa emoji quando SYM è attivo (solo pagina 1)
         val emojiMapText = symLayoutController.emojiMapText()
         // Passa le mappature SYM per la griglia emoji/caratteri
@@ -2452,7 +2558,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 symMappings == lastRenderedSymMappings &&
                 inputConnection === lastRenderedStatusInputConnection &&
                 minimalUiActive == lastRenderedMinimalUiActive &&
-                effectiveSoftwareKeyboardMode == lastRenderedSoftwareKeyboardMode
+                effectiveSoftwareKeyboardMode == lastRenderedSoftwareKeyboardMode &&
+                modifierIndicators == lastRenderedModifierIndicators
         if (!unchangedRenderedState) {
             val updateBarsStart = ImePerfLogger.mark()
             candidatesBarController.updateStatusBars(snapshot, emojiMapText, inputConnection, symMappings)
@@ -2463,6 +2570,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             lastRenderedStatusInputConnection = inputConnection
             lastRenderedMinimalUiActive = minimalUiActive
             lastRenderedSoftwareKeyboardMode = effectiveSoftwareKeyboardMode
+            lastRenderedModifierIndicators = modifierIndicators
         }
         ImePerfLogger.logDuration(
             label = "updateStatusBarText",
@@ -2854,6 +2962,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         if (navModeWasActiveBeforeEditableField) {
             navModeController.enterNavMode()
             navModeWasActiveBeforeEditableField = false
+        } else if (!navModeController.isNavModeActive()) {
+            hideStatusIcon()
+            lastSystemStatusIconResId = null
         }
     }
     
@@ -2868,6 +2979,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             multiTapController.cancelAll()
             resetModifierStates(preserveNavMode = true)
             suggestionController.onContextReset()
+            if (!navModeController.isNavModeActive()) {
+                hideStatusIcon()
+                lastSystemStatusIconResId = null
+            }
         }
     }
 

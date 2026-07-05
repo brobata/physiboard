@@ -163,6 +163,7 @@ object SettingsManager {
     private const val KEY_STATUS_BAR_VARIATIONS_VISIBLE = "status_bar_variations_visible"
     private const val KEY_DYNAMIC_VARIATION_BAR_SLOT_COUNT = "dynamic_variation_bar_slot_count"
     private const val KEY_DYNAMIC_VARIATION_BAR_RESIZE_TO_CONTENT = "dynamic_variation_bar_resize_to_content"
+    const val KEY_MODIFIER_INDICATOR_MODE = "modifier_indicator_mode"
     
     // Public constants for button IDs
     const val STATUS_BAR_BUTTON_NONE = "none"
@@ -175,6 +176,13 @@ object SettingsManager {
     const val STATUS_BAR_BUTTON_SYMBOLS = "symbols"
     const val STATUS_BAR_BUTTON_UNDO = "undo"
     const val STATUS_BAR_BUTTON_REDO = "redo"
+    const val MODIFIER_INDICATOR_BOTTOM_STRIP = "bottom_strip"
+    const val MODIFIER_INDICATOR_MENU_BAR = "menu_bar"
+    const val MODIFIER_INDICATOR_STATUS_BAR = "status_bar"
+    const val MODIFIER_INDICATOR_MODE_BOTTOM = "bottom"
+    const val MODIFIER_INDICATOR_MODE_BOTTOM_AND_MENU = "bottom_and_menu"
+    const val MODIFIER_INDICATOR_MODE_MENU = "menu"
+    const val MODIFIER_INDICATOR_MODE_OFF = "off"
 
     const val STATIC_VARIATION_PRESET_OFF = "off"
     const val STATIC_VARIATION_PRESET_SYMBOLS = "symbols"
@@ -209,6 +217,7 @@ object SettingsManager {
     private const val DEFAULT_STATUS_BAR_VARIATIONS_VISIBLE = true
     private const val DEFAULT_DYNAMIC_VARIATION_BAR_SLOT_COUNT = 7
     private const val DEFAULT_DYNAMIC_VARIATION_BAR_RESIZE_TO_CONTENT = false
+    private val DEFAULT_MODIFIER_INDICATORS = setOf(MODIFIER_INDICATOR_BOTTOM_STRIP)
     const val MIN_DYNAMIC_VARIATION_BAR_SLOT_COUNT = 1
     const val MAX_DYNAMIC_VARIATION_BAR_SLOT_COUNT = 9
 
@@ -730,6 +739,10 @@ object SettingsManager {
 
     fun isKeyboardThemePreferenceKey(key: String?): Boolean {
         return key == KEY_KEYBOARD_THEME_HARDWARE || key == KEY_KEYBOARD_THEME_SOFTWARE
+    }
+
+    fun isModifierIndicatorPreferenceKey(key: String?): Boolean {
+        return key == KEY_MODIFIER_INDICATOR_MODE
     }
 
     fun getKeyboardThemePreviewViewportScale(context: Context): Float =
@@ -5020,6 +5033,76 @@ object SettingsManager {
         getPreferences(context).edit()
             .putBoolean(KEY_DYNAMIC_VARIATION_BAR_RESIZE_TO_CONTENT, enabled)
             .apply()
+    }
+
+    fun getModifierIndicators(context: Context): Set<String> {
+        return normalizeModifierIndicators(
+            getPreferences(context).getString(
+                KEY_MODIFIER_INDICATOR_MODE,
+                encodeModifierIndicators(DEFAULT_MODIFIER_INDICATORS)
+            )
+        )
+    }
+
+    fun setModifierIndicators(context: Context, indicators: Set<String>) {
+        getPreferences(context).edit()
+            .putString(KEY_MODIFIER_INDICATOR_MODE, encodeModifierIndicators(normalizeModifierIndicators(indicators)))
+            .apply()
+    }
+
+    fun getModifierIndicatorShowsBottomStrip(context: Context): Boolean {
+        return MODIFIER_INDICATOR_BOTTOM_STRIP in getModifierIndicators(context)
+    }
+
+    fun getModifierIndicatorShowsMenuBar(context: Context): Boolean {
+        return MODIFIER_INDICATOR_MENU_BAR in getModifierIndicators(context)
+    }
+
+    fun getModifierIndicatorShowsStatusBar(context: Context): Boolean {
+        return MODIFIER_INDICATOR_STATUS_BAR in getModifierIndicators(context)
+    }
+
+    private fun normalizeModifierIndicators(stored: String?): Set<String> {
+        return when (stored) {
+            MODIFIER_INDICATOR_MODE_OFF -> emptySet()
+            MODIFIER_INDICATOR_MODE_BOTTOM -> setOf(MODIFIER_INDICATOR_BOTTOM_STRIP)
+            MODIFIER_INDICATOR_MODE_BOTTOM_AND_MENU -> setOf(
+                MODIFIER_INDICATOR_BOTTOM_STRIP,
+                MODIFIER_INDICATOR_STATUS_BAR
+            )
+            MODIFIER_INDICATOR_MODE_MENU -> setOf(MODIFIER_INDICATOR_STATUS_BAR)
+            else -> normalizeModifierIndicators(
+                stored
+                    ?.split(",")
+                    ?.map { it.trim() }
+                    ?.filter { it.isNotEmpty() }
+                    ?.toSet()
+                    ?: DEFAULT_MODIFIER_INDICATORS
+            )
+        }
+    }
+
+    private fun normalizeModifierIndicators(indicators: Set<String>): Set<String> {
+        val allowed = setOf(
+            MODIFIER_INDICATOR_BOTTOM_STRIP,
+            MODIFIER_INDICATOR_MENU_BAR,
+            MODIFIER_INDICATOR_STATUS_BAR
+        )
+        val normalized = indicators.filter { it in allowed }.toSet()
+        return if (normalized.isEmpty() && indicators.isNotEmpty()) {
+            DEFAULT_MODIFIER_INDICATORS
+        } else {
+            normalized
+        }
+    }
+
+    private fun encodeModifierIndicators(indicators: Set<String>): String {
+        val order = listOf(
+            MODIFIER_INDICATOR_BOTTOM_STRIP,
+            MODIFIER_INDICATOR_MENU_BAR,
+            MODIFIER_INDICATOR_STATUS_BAR
+        )
+        return order.filter { it in indicators }.joinToString(",")
     }
     
     /**
