@@ -635,6 +635,10 @@
     <string name="typing_sound_docs_title">Ձայնային փաթեթի ձևաչափ</string>
     <string name="typing_sound_docs_description">Բացել ներմուծման ուղեցույցը pastiera.eu-ում</string>
     <string name="typing_sound_docs_url">https://pastiera.eu/guides/typing-soundpacks/</string>
+    <string name="tap_haptic_system_title">Հպման թրթռում</string>
+    <string name="tap_haptic_system_description">Օգտագործել Android ստեղնաշարի հապտիկ արձագանքը առաջարկների և տարբերակների համար համատեղելի սարքերում։</string>
+    <string name="tap_haptic_duration_title">Հատուկ թրթռում՝ %1$d մվ</string>
+    <string name="tap_haptic_duration_description">Օգտագործվում է, երբ Android ստեղնաշարի հապտիկ արձագանքն անջատված է։</string>
     <string name="alt_shift_layout_switch_title">Alt+Shift դասավորության փոխում</string>
     <string name="alt_shift_layout_switch_description">Փոխել լեզուները/դասավորությունները Alt+Shift-ով։</string>
     <string name="toast_on_layout_switch_title">Toast դասավորությունը փոխելիս</string>
@@ -770,8 +774,8 @@ Nav Mode-ը օգտագործում է ստեղնի ֆիզիկական դիրքը
     <string name="app_enter_behaviour_sym_enter_conflict_title">SYM + Enter-ը արդեն օգտագործվում է QuickLauncher-ի կողմից</string>
     <string name="app_enter_behaviour_sym_enter_conflict_description">QuickLauncher-ի գործարկիչը տեղափոխեք այլ ստեղնի վրա՝ նախքան SYM + Enter-ը որպես լրացուցիչ ուղարկման դյուրանցում օգտագործելը։</string>
     <string name="app_enter_behaviour_sym_enter_conflict_action">Փոխել գործարկիչը</string>
-    <string name="settings_category_sounds">Ձայներ</string>
-    <string name="settings_sounds_description">Մուտքագրման ձայներ և ձայնային փաթեթների ներմուծում</string>
+    <string name="settings_category_sounds">Ձայներ և հապտիկա</string>
+    <string name="settings_sounds_description">Մուտքագրման ձայներ, թրթռում և ձայնային փաթեթների ներմուծում</string>
     <string name="debug_recorder_record">Գրանցել</string>
     <string name="debug_recorder_stop">Կանգնեցնել</string>
     <string name="debug_recorder_copy">Պատճենել</string>

@@ -635,6 +635,10 @@
     <string name="typing_sound_docs_title">Format pakietu dźwięków</string>
     <string name="typing_sound_docs_description">Otwórz przewodnik importu na pastiera.eu</string>
     <string name="typing_sound_docs_url">https://pastiera.eu/guides/typing-soundpacks/</string>
+    <string name="tap_haptic_system_title">Wibracja dotknięcia</string>
+    <string name="tap_haptic_system_description">Używaj haptyki klawiatury Androida dla sugestii i wariantów na zgodnych urządzeniach.</string>
+    <string name="tap_haptic_duration_title">Własna wibracja: %1$d ms</string>
+    <string name="tap_haptic_duration_description">Używana, gdy haptyka klawiatury Androida jest wyłączona.</string>
     <string name="alt_shift_layout_switch_title">Przełączanie układu Alt+Shift</string>
     <string name="alt_shift_layout_switch_description">Przełączaj języki/układy za pomocą Alt+Shift.</string>
     <string name="toast_on_layout_switch_title">Toast przy zmianie układu</string>
@@ -770,8 +774,8 @@ Każdy klawisz można skonfigurować jako Keycode, Akcja, Native Ctrl lub Brak. 
     <string name="app_enter_behaviour_sym_enter_conflict_title">SYM + Enter jest już używany przez QuickLauncher</string>
     <string name="app_enter_behaviour_sym_enter_conflict_description">Przenieś wyzwalacz QuickLauncher na inny klawisz, zanim użyjesz SYM + Enter jako dodatkowego skrótu wysyłania.</string>
     <string name="app_enter_behaviour_sym_enter_conflict_action">Zmień wyzwalacz</string>
-    <string name="settings_category_sounds">Dźwięki</string>
-    <string name="settings_sounds_description">Dźwięki pisania i import pakietów dźwięków</string>
+    <string name="settings_category_sounds">Dźwięki i haptyka</string>
+    <string name="settings_sounds_description">Dźwięki pisania, wibracje i import pakietów dźwięków</string>
     <string name="debug_recorder_record">Nagrywaj</string>
     <string name="debug_recorder_stop">Zatrzymaj</string>
     <string name="debug_recorder_copy">Kopiuj</string>

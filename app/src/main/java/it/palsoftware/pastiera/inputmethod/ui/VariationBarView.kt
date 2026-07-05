@@ -1132,27 +1132,29 @@ class VariationBarView(
             }
             isClickable = true
             isFocusable = true
-            setOnClickListener(
-                if (isAddCandidate) {
-                    View.OnClickListener {
-                        onAddUserWord?.invoke(variation)
-                    }
-                } else if (isStatic) {
-                    VariationButtonHandler.createStaticVariationClickListener(
-                        variation,
-                        inputConnection,
-                        context,
-                        onVariationSelectedListener
-                    )
-                } else {
-                    VariationButtonHandler.createVariationClickListener(
-                        variation,
-                        inputConnection,
-                        context,
-                        onVariationSelectedListener
-                    )
+            val clickListener = if (isAddCandidate) {
+                View.OnClickListener {
+                    onAddUserWord?.invoke(variation)
                 }
-            )
+            } else if (isStatic) {
+                VariationButtonHandler.createStaticVariationClickListener(
+                    variation,
+                    inputConnection,
+                    context,
+                    onVariationSelectedListener
+                )
+            } else {
+                VariationButtonHandler.createVariationClickListener(
+                    variation,
+                    inputConnection,
+                    context,
+                    onVariationSelectedListener
+                )
+            }
+            setOnClickListener { view ->
+                NotificationHelper.triggerTapHapticFeedback(view)
+                clickListener.onClick(view)
+            }
             if (isAddCandidate) {
                 setOnLongClickListener {
                     performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)

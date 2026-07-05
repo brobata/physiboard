@@ -36,6 +36,8 @@ object SettingsManager {
     const val KEY_TYPING_SOUND_CUSTOM_FILE_NAME = "typing_sound_custom_file_name"
     const val KEY_TYPING_SOUND_CUSTOM_DISPLAY_NAME = "typing_sound_custom_display_name"
     const val KEY_TYPING_SOUND_UPDATED_AT = "typing_sound_updated_at"
+    private const val KEY_TAP_HAPTIC_USE_SYSTEM = "tap_haptic_use_system"
+    private const val KEY_TAP_HAPTIC_DURATION_MS = "tap_haptic_duration_ms"
     private const val KEY_AUTO_CAPITALIZE_FIRST_LETTER = "auto_capitalize_first_letter"
     private const val KEY_DOUBLE_SPACE_TO_PERIOD = "double_space_to_period"
     private const val KEY_SPACED_HYPHEN_TO_EN_DASH = "spaced_hyphen_to_en_dash"
@@ -203,6 +205,10 @@ object SettingsManager {
     const val TYPING_SOUND_OUTPUT_NOTIFICATION = "notification"
     private const val DEFAULT_TYPING_SOUND_MODE = TYPING_SOUND_MODE_OFF
     private const val DEFAULT_TYPING_SOUND_OUTPUT_MODE = TYPING_SOUND_OUTPUT_MEDIA
+    private const val DEFAULT_TAP_HAPTIC_USE_SYSTEM = true
+    private const val DEFAULT_TAP_HAPTIC_DURATION_MS = 25L
+    private const val MIN_TAP_HAPTIC_DURATION_MS = 5L
+    private const val MAX_TAP_HAPTIC_DURATION_MS = 80L
     private const val TYPING_SOUND_CUSTOM_DIR = "typing_sounds"
     private const val TYPING_SOUND_CUSTOM_PACK_DIR = "custom_pack"
     private const val TYPING_SOUND_MAX_FILE_BYTES = 2L * 1024L * 1024L
@@ -1004,6 +1010,33 @@ object SettingsManager {
             .putString(KEY_TYPING_SOUND_OUTPUT_MODE, normalized)
             .apply()
     }
+
+    fun getTapHapticUseSystem(context: Context): Boolean =
+        getPreferences(context).getBoolean(KEY_TAP_HAPTIC_USE_SYSTEM, DEFAULT_TAP_HAPTIC_USE_SYSTEM)
+
+    fun setTapHapticUseSystem(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_TAP_HAPTIC_USE_SYSTEM, enabled)
+            .apply()
+    }
+
+    fun getTapHapticDurationMs(context: Context): Long =
+        getPreferences(context)
+            .getLong(KEY_TAP_HAPTIC_DURATION_MS, DEFAULT_TAP_HAPTIC_DURATION_MS)
+            .coerceIn(MIN_TAP_HAPTIC_DURATION_MS, MAX_TAP_HAPTIC_DURATION_MS)
+
+    fun setTapHapticDurationMs(context: Context, durationMs: Long) {
+        getPreferences(context).edit()
+            .putLong(
+                KEY_TAP_HAPTIC_DURATION_MS,
+                durationMs.coerceIn(MIN_TAP_HAPTIC_DURATION_MS, MAX_TAP_HAPTIC_DURATION_MS)
+            )
+            .apply()
+    }
+
+    fun getMinTapHapticDurationMs(): Long = MIN_TAP_HAPTIC_DURATION_MS
+
+    fun getMaxTapHapticDurationMs(): Long = MAX_TAP_HAPTIC_DURATION_MS
 
     fun getTypingSoundCustomDisplayName(context: Context): String? {
         return getPreferences(context)

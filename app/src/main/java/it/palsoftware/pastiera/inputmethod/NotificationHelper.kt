@@ -17,11 +17,14 @@ import android.os.DeadSystemException
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.view.HapticFeedbackConstants
+import android.view.View
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.IconCompat
 import it.palsoftware.pastiera.R
+import it.palsoftware.pastiera.SettingsManager
 import it.palsoftware.pastiera.update.GITHUB_RELEASES_PAGE
 
 /**
@@ -62,6 +65,16 @@ object NotificationHelper {
                 return
             }
 
+            triggerFixedDurationHapticFeedback(context, durationMs)
+        } catch (e: DeadSystemException) {
+            android.util.Log.w("NotificationHelper", "Haptic skipped: system is dead", e)
+        } catch (e: Exception) {
+            android.util.Log.w("NotificationHelper", "Unable to trigger haptic feedback", e)
+        }
+    }
+
+    fun triggerFixedDurationHapticFeedback(context: Context, durationMs: Long) {
+        try {
             val vibrator: Vibrator? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 val vm = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
                 vm?.defaultVibrator
@@ -85,6 +98,15 @@ object NotificationHelper {
             android.util.Log.w("NotificationHelper", "Haptic skipped: system is dead", e)
         } catch (e: Exception) {
             android.util.Log.w("NotificationHelper", "Unable to trigger haptic feedback", e)
+        }
+    }
+
+    fun triggerTapHapticFeedback(view: View) {
+        val context = view.context.applicationContext
+        if (SettingsManager.getTapHapticUseSystem(context)) {
+            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+        } else {
+            triggerFixedDurationHapticFeedback(context, SettingsManager.getTapHapticDurationMs(context))
         }
     }
 

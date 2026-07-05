@@ -635,6 +635,10 @@
     <string name="typing_sound_docs_title">Formato del paquete de sonido</string>
     <string name="typing_sound_docs_description">Abrir la guía de importación en pastiera.eu</string>
     <string name="typing_sound_docs_url">https://pastiera.eu/guides/typing-soundpacks/</string>
+    <string name="tap_haptic_system_title">Vibración al tocar</string>
+    <string name="tap_haptic_system_description">Usa la háptica del teclado de Android para sugerencias y variaciones en dispositivos compatibles.</string>
+    <string name="tap_haptic_duration_title">Vibración personalizada: %1$d ms</string>
+    <string name="tap_haptic_duration_description">Se usa cuando la háptica del teclado de Android está desactivada.</string>
     <string name="alt_shift_layout_switch_title">Cambio de layout Alt+Shift</string>
     <string name="alt_shift_layout_switch_description">Cambia idiomas/layouts con Alt+Shift.</string>
     <string name="toast_on_layout_switch_title">Toast al cambiar layout</string>
@@ -770,8 +774,8 @@ Cada tecla puede configurarse como Keycode, Acción, Native Ctrl o Ninguno. Usa 
     <string name="app_enter_behaviour_sym_enter_conflict_title">SYM + Intro ya lo usa QuickLauncher</string>
     <string name="app_enter_behaviour_sym_enter_conflict_description">Mueve el activador de QuickLauncher a otra tecla antes de usar SYM + Intro como atajo de envío adicional.</string>
     <string name="app_enter_behaviour_sym_enter_conflict_action">Cambiar activador</string>
-    <string name="settings_category_sounds">Sonidos</string>
-    <string name="settings_sounds_description">Sonidos de escritura e importación de paquetes de sonido</string>
+    <string name="settings_category_sounds">Sonidos y háptica</string>
+    <string name="settings_sounds_description">Sonidos de escritura, vibración e importación de paquetes de sonido</string>
     <string name="debug_recorder_record">Grabar</string>
     <string name="debug_recorder_stop">Detener</string>
     <string name="debug_recorder_copy">Copiar</string>

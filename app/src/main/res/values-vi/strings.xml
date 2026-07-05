@@ -635,6 +635,10 @@
     <string name="typing_sound_docs_title">Định dạng gói âm thanh</string>
     <string name="typing_sound_docs_description">Mở hướng dẫn nhập trên pastiera.eu</string>
     <string name="typing_sound_docs_url">https://pastiera.eu/guides/typing-soundpacks/</string>
+    <string name="tap_haptic_system_title">Rung khi chạm</string>
+    <string name="tap_haptic_system_description">Dùng phản hồi xúc giác bàn phím Android cho gợi ý và biến thể trên thiết bị tương thích.</string>
+    <string name="tap_haptic_duration_title">Rung tùy chỉnh: %1$d ms</string>
+    <string name="tap_haptic_duration_description">Dùng khi phản hồi xúc giác bàn phím Android bị tắt.</string>
     <string name="alt_shift_layout_switch_title">Chuyển bố cục Alt+Shift</string>
     <string name="alt_shift_layout_switch_description">Chuyển ngôn ngữ/bố cục bằng Alt+Shift.</string>
     <string name="toast_on_layout_switch_title">Toast khi chuyển bố cục</string>
@@ -770,8 +774,8 @@ Mỗi phím có thể cấu hình là Keycode, Action, Native Ctrl hoặc None. 
     <string name="app_enter_behaviour_sym_enter_conflict_title">SYM + Enter đã được QuickLauncher dùng</string>
     <string name="app_enter_behaviour_sym_enter_conflict_description">Chuyển trình kích hoạt QuickLauncher sang phím khác trước khi dùng SYM + Enter làm phím tắt gửi bổ sung.</string>
     <string name="app_enter_behaviour_sym_enter_conflict_action">Đổi trình kích hoạt</string>
-    <string name="settings_category_sounds">Âm thanh</string>
-    <string name="settings_sounds_description">Âm thanh gõ phím và nhập gói âm thanh</string>
+    <string name="settings_category_sounds">Âm thanh và rung</string>
+    <string name="settings_sounds_description">Âm thanh gõ phím, rung và nhập gói âm thanh</string>
     <string name="debug_recorder_record">Ghi</string>
     <string name="debug_recorder_stop">Dừng</string>
     <string name="debug_recorder_copy">Sao chép</string>

@@ -283,6 +283,10 @@
     <string name="typing_sound_docs_title">Sound pack format</string>
     <string name="typing_sound_docs_description">Open the import guide on pastiera.eu</string>
     <string name="typing_sound_docs_url">https://pastiera.eu/guides/typing-soundpacks/</string>
+    <string name="tap_haptic_system_title">Tap vibration</string>
+    <string name="tap_haptic_system_description">Use Android keyboard haptics for suggestions and variations on compatible devices.</string>
+    <string name="tap_haptic_duration_title">Custom vibration: %1$d ms</string>
+    <string name="tap_haptic_duration_description">Used when Android keyboard haptics are disabled.</string>
     
     <!-- Keyboard Layout Section -->
     <string name="keyboard_layout_title">Keyboard Layout</string>
@@ -632,8 +636,8 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="settings_category_accessibility">Accessibility</string>
     <string name="settings_category_auto_correction">Auto-correction</string>
     <string name="settings_category_customization">Customization</string>
-    <string name="settings_category_sounds">Sounds</string>
-    <string name="settings_sounds_description">Typing sounds and sound pack import</string>
+    <string name="settings_category_sounds">Sound &amp; Haptics</string>
+    <string name="settings_sounds_description">Typing sounds, vibration, and sound pack import</string>
     <string name="settings_category_advanced">Advanced</string>
     <string name="settings_accessibility_live_read_title">Live reading for status bar changes</string>
     <string name="settings_accessibility_live_read_description">When enabled, TalkBack can announce language/layout and status bar changes automatically.</string>

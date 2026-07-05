@@ -54,9 +54,6 @@ object VariationButtonHandler {
                 // For punctuation variations, skip deleting the previous character; just commit punctuation as-is.
                 val committed = inputConnection.commitText(variation, 1)
                 Log.d(TAG, "Variation '$variation' inserted (committed=$committed)")
-                if (committed) {
-                    NotificationHelper.triggerHapticFeedback(context)
-                }
                 listener?.onVariationSelected(variation)
                 return@OnClickListener
             } else if (variation.isNotEmpty() && variation[0] in bracketSet) {
@@ -64,9 +61,6 @@ object VariationButtonHandler {
                 AutoSpaceTracker.clear()
                 val committed = inputConnection.commitText(variation, 1)
                 Log.d(TAG, "Variation bracket '$variation' inserted (committed=$committed)")
-                if (committed) {
-                    NotificationHelper.triggerHapticFeedback(context)
-                }
                 listener?.onVariationSelected(variation)
                 return@OnClickListener
             }
@@ -80,9 +74,6 @@ object VariationButtonHandler {
 
             val committed = inputConnection.commitText(variation, 1)
             Log.d(TAG, "Variation '$variation' inserted (committed=$committed)")
-            if (committed) {
-                NotificationHelper.triggerHapticFeedback(context)
-            }
             
             // Notify listener if present
             listener?.onVariationSelected(variation)
@@ -121,9 +112,6 @@ object VariationButtonHandler {
                 AutoSpaceTracker.clear()
                 val committed = inputConnection.commitText(variation, 1)
                 Log.d(TAG, "Static variation bracket '$variation' inserted (committed=$committed)")
-                if (committed) {
-                    NotificationHelper.triggerHapticFeedback(context)
-                }
                 listener?.onVariationSelected(variation)
                 return@OnClickListener
             }
@@ -131,9 +119,6 @@ object VariationButtonHandler {
             // Insert variation without deleting previous character
             val committed = inputConnection.commitText(variation, 1)
             Log.d(TAG, "Static variation '$variation' inserted (committed=$committed)")
-            if (committed) {
-                NotificationHelper.triggerHapticFeedback(context)
-            }
 
             // Notify listener if present
             listener?.onVariationSelected(variation)

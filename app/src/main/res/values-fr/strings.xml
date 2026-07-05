@@ -636,6 +636,10 @@
     <string name="typing_sound_docs_title">Format du pack de sons</string>
     <string name="typing_sound_docs_description">Ouvrir le guide d’importation sur pastiera.eu</string>
     <string name="typing_sound_docs_url">https://pastiera.eu/guides/typing-soundpacks/</string>
+    <string name="tap_haptic_system_title">Vibration au toucher</string>
+    <string name="tap_haptic_system_description">Utilise le retour haptique du clavier Android pour les suggestions et variations sur les appareils compatibles.</string>
+    <string name="tap_haptic_duration_title">Vibration personnalisée : %1$d ms</string>
+    <string name="tap_haptic_duration_description">Utilisée lorsque le retour haptique du clavier Android est désactivé.</string>
     <string name="alt_shift_layout_switch_title">Changement de disposition Alt+Maj</string>
     <string name="alt_shift_layout_switch_description">Changer de langue/disposition avec Alt+Maj.</string>
     <string name="toast_on_layout_switch_title">Toast au changement de disposition</string>
@@ -770,8 +774,8 @@ Chaque touche peut être configurée comme Keycode, Action, Native Ctrl ou Aucun
     <string name="app_enter_behaviour_sym_enter_conflict_title">SYM + Entrée est déjà utilisé par QuickLauncher</string>
     <string name="app_enter_behaviour_sym_enter_conflict_description">Déplacez le déclencheur QuickLauncher vers une autre touche avant d’utiliser SYM + Entrée comme raccourci d’envoi supplémentaire.</string>
     <string name="app_enter_behaviour_sym_enter_conflict_action">Changer le déclencheur</string>
-    <string name="settings_category_sounds">Sons</string>
-    <string name="settings_sounds_description">Sons de frappe et importation de packs de sons</string>
+    <string name="settings_category_sounds">Sons et haptique</string>
+    <string name="settings_sounds_description">Sons de frappe, vibration et importation de packs de sons</string>
     <string name="debug_recorder_record">Enregistrer</string>
     <string name="debug_recorder_stop">Arrêter</string>
     <string name="debug_recorder_copy">Copier</string>

@@ -636,6 +636,10 @@
     <string name="typing_sound_docs_title">Формат звукового пакета</string>
     <string name="typing_sound_docs_description">Открыть руководство по импорту на pastiera.eu</string>
     <string name="typing_sound_docs_url">https://pastiera.eu/guides/typing-soundpacks/</string>
+    <string name="tap_haptic_system_title">Вибрация касания</string>
+    <string name="tap_haptic_system_description">Использовать тактильный отклик клавиатуры Android для подсказок и вариантов на совместимых устройствах.</string>
+    <string name="tap_haptic_duration_title">Своя вибрация: %1$d мс</string>
+    <string name="tap_haptic_duration_description">Используется, когда тактильный отклик клавиатуры Android отключён.</string>
     <string name="alt_shift_layout_switch_title">Переключение раскладки Alt+Shift</string>
     <string name="alt_shift_layout_switch_description">Переключайте языки/раскладки с Alt+Shift.</string>
     <string name="toast_on_layout_switch_title">Toast при смене раскладки</string>
@@ -770,8 +774,8 @@ Nav Mode использует физическое положение клави
     <string name="app_enter_behaviour_sym_enter_conflict_title">SYM + Enter уже используется QuickLauncher</string>
     <string name="app_enter_behaviour_sym_enter_conflict_description">Переместите триггер QuickLauncher на другую клавишу, прежде чем использовать SYM + Enter как дополнительный ярлык отправки.</string>
     <string name="app_enter_behaviour_sym_enter_conflict_action">Изменить триггер</string>
-    <string name="settings_category_sounds">Звуки</string>
-    <string name="settings_sounds_description">Звуки набора и импорт звуковых пакетов</string>
+    <string name="settings_category_sounds">Звуки и вибрация</string>
+    <string name="settings_sounds_description">Звуки набора, вибрация и импорт звуковых пакетов</string>
     <string name="debug_recorder_record">Запись</string>
     <string name="debug_recorder_stop">Стоп</string>
     <string name="debug_recorder_copy">Копировать</string>

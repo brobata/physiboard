@@ -248,6 +248,10 @@
     <string name="typing_sound_docs_title">Formato pacchetto audio</string>
     <string name="typing_sound_docs_description">Apri la guida all\'importazione su pastiera.eu</string>
     <string name="typing_sound_docs_url">https://pastiera.eu/guides/typing-soundpacks/</string>
+    <string name="tap_haptic_system_title">Vibrazione al tocco</string>
+    <string name="tap_haptic_system_description">Usa il feedback aptico della tastiera Android per suggerimenti e variazioni sui dispositivi compatibili.</string>
+    <string name="tap_haptic_duration_title">Vibrazione personalizzata: %1$d ms</string>
+    <string name="tap_haptic_duration_description">Usata quando il feedback aptico della tastiera Android è disattivato.</string>
     
     <!-- Keyboard Layout Section -->
     <string name="keyboard_layout_title">Layout Tastiera</string>
@@ -579,8 +583,8 @@ Ogni tasto può essere configurato come Keycode, Azione, Native Ctrl o Nessuno. 
     <string name="settings_category_accessibility">Accessibilità</string>
     <string name="settings_category_auto_correction">Auto-correzione</string>
     <string name="settings_category_customization">Personalizzazione</string>
-    <string name="settings_category_sounds">Suoni</string>
-    <string name="settings_sounds_description">Suoni di digitazione e importazione pacchetti audio</string>
+    <string name="settings_category_sounds">Suoni e feedback aptico</string>
+    <string name="settings_sounds_description">Suoni di digitazione, vibrazione e importazione pacchetti audio</string>
     <string name="settings_category_advanced">Avanzate</string>
     <string name="settings_accessibility_live_read_title">Lettura live dei cambiamenti nella barra di stato</string>
     <string name="settings_accessibility_live_read_description">Se attivo, TalkBack può annunciare automaticamente lingua/layout e cambiamenti della barra di stato.</string>

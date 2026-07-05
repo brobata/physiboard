@@ -190,6 +190,8 @@ object PreferenceSchemas {
             "smart_quotes_style" to PreferenceValueType.STRING,
             "swipe_to_delete" to PreferenceValueType.BOOLEAN,
             "swipe_to_delete_provider" to PreferenceValueType.STRING,
+            "tap_haptic_use_system" to PreferenceValueType.BOOLEAN,
+            "tap_haptic_duration_ms" to PreferenceValueType.LONG,
             "auto_show_keyboard" to PreferenceValueType.BOOLEAN,
             "accessibility_live_announcements_enabled" to PreferenceValueType.BOOLEAN,
             "accessibility_read_second_row_enabled" to PreferenceValueType.BOOLEAN,

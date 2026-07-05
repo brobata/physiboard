@@ -22,6 +22,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.widget.TextViewCompat
 import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.SettingsActivity
+import it.palsoftware.pastiera.inputmethod.NotificationHelper
 import it.palsoftware.pastiera.inputmethod.suggestions.SuggestionButtonHandler
 import it.palsoftware.pastiera.inputmethod.VariationButtonHandler
 import it.palsoftware.pastiera.inputmethod.SubtypeCycler
@@ -524,9 +525,10 @@ class FullSuggestionsBar(
                         addDrawable?.setBounds(0, 0, dpToPx(18f), dpToPx(18f))
                         setCompoundDrawables(null, null, addDrawable, null)
                         compoundDrawablePadding = dpToPx(6f)
-                        setOnClickListener {
+                        setOnClickListener { view ->
                             resetActionMode()
                             flashSlot(slotIndex)
+                            NotificationHelper.triggerTapHapticFeedback(view)
                             onAddUserWord?.invoke(suggestion)
                         }
                         setOnLongClickListener {
@@ -546,6 +548,7 @@ class FullSuggestionsBar(
                         setOnClickListener { view ->
                             resetActionMode()
                             flashSlot(slotIndex)
+                            NotificationHelper.triggerTapHapticFeedback(view)
                             clickListener.onClick(view)
                         }
                         setOnLongClickListener {

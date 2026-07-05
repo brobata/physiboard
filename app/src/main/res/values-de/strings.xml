@@ -179,6 +179,10 @@
     <string name="typing_sound_docs_title">Soundpack-Format</string>
     <string name="typing_sound_docs_description">Import-Anleitung auf pastiera.eu öffnen</string>
     <string name="typing_sound_docs_url">https://pastiera.eu/de/guides/typing-soundpacks/</string>
+    <string name="tap_haptic_system_title">Tipp-Vibration</string>
+    <string name="tap_haptic_system_description">Android-Tastaturhaptik für Vorschläge und Variationen auf kompatiblen Geräten verwenden.</string>
+    <string name="tap_haptic_duration_title">Eigene Vibration: %1$d ms</string>
+    <string name="tap_haptic_duration_description">Wird verwendet, wenn Android-Tastaturhaptik deaktiviert ist.</string>
     <string name="about_github">GitHub</string>
     <string name="about_build_info">Pastiera IME - Palsoftware 2026</string>
     <string name="settings_device_keyboard_info">Gerät: %1$s; Tastatur: %2$s</string>
@@ -411,8 +415,8 @@ Jede Taste kann als Keycode, Aktion, Native Ctrl oder Keine konfiguriert werden.
     <string name="settings_category_accessibility">Barrierefreiheit</string>
     <string name="settings_category_auto_correction">Autokorrektur</string>
     <string name="settings_category_customization">Anpassung</string>
-    <string name="settings_category_sounds">Töne</string>
-    <string name="settings_sounds_description">Tastentöne und Soundpack-Import</string>
+    <string name="settings_category_sounds">Töne &amp; Haptik</string>
+    <string name="settings_sounds_description">Tastentöne, Vibration und Soundpack-Import</string>
     <string name="settings_category_advanced">Erweitert</string>
     <string name="settings_accessibility_live_read_title">Live-Vorlesen bei Statusleisten-Änderungen</string>
     <string name="settings_accessibility_live_read_description">Wenn aktiviert, kann TalkBack Sprache/Layout und Statusleisten-Änderungen automatisch ansagen.</string>
