@@ -144,6 +144,20 @@ class InputEventRouter(
             )
         }
 
+        if (
+            !ctrlLatchActive &&
+            event?.isSymPressed == true &&
+            SettingsManager.getQuickLauncherTextFieldShortcuts(context) &&
+            SettingsManager.isQuickLauncherShortcut(context, keyCode)
+        ) {
+            if (powerShortcutsEnabled && callbacks.handlePowerShortcut(keyCode)) {
+                return true
+            }
+            if (callbacks.handleLauncherShortcut(keyCode)) {
+                return true
+            }
+        }
+
         // Gestisci Power Shortcuts (SYM premuto + tasto alfabetico)
         if (!ctrlLatchActive && powerShortcutsEnabled) {
             if (callbacks.isShortcutKey(keyCode)) {

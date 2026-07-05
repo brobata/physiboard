@@ -3737,7 +3737,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
 
         if (
             hasEditableField &&
-            symTogglePendingOnKeyUp &&
+            (symTogglePendingOnKeyUp || event?.isSymPressed == true) &&
             SettingsManager.getQuickLauncherTextFieldShortcuts(this) &&
             SettingsManager.isQuickLauncherShortcut(this, keyCode) &&
             event?.repeatCount == 0

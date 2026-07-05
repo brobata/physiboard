@@ -136,6 +136,9 @@ fun CustomizationSettingsScreen(
     var quickLauncherBehavior by remember {
         mutableStateOf(SettingsManager.getQuickLauncherBehavior(context))
     }
+    var quickLauncherAnimationDurationMs by remember {
+        mutableStateOf(SettingsManager.getQuickLauncherAnimationDurationMs(context))
+    }
     var commandSourceVisibility by remember {
         mutableStateOf(SettingsManager.getCommandSourceVisibility(context))
     }
@@ -229,6 +232,9 @@ fun CustomizationSettingsScreen(
                 }
                 "quick_launcher_behavior" -> {
                     quickLauncherBehavior = SettingsManager.getQuickLauncherBehavior(context)
+                }
+                "quick_launcher_animation_duration_ms" -> {
+                    quickLauncherAnimationDurationMs = SettingsManager.getQuickLauncherAnimationDurationMs(context)
                 }
                 "command_surface_sources" -> {
                     commandSourceVisibility = SettingsManager.getCommandSourceVisibility(context)
@@ -814,6 +820,11 @@ fun CustomizationSettingsScreen(
                     onQuickLauncherBehaviorChanged = { behavior ->
                         quickLauncherBehavior = behavior
                         SettingsManager.setQuickLauncherBehavior(context, behavior)
+                    },
+                    quickLauncherAnimationDurationMs = quickLauncherAnimationDurationMs,
+                    onQuickLauncherAnimationDurationChanged = { durationMs ->
+                        quickLauncherAnimationDurationMs = durationMs
+                        SettingsManager.setQuickLauncherAnimationDurationMs(context, durationMs)
                     }
                 )
             }
@@ -1082,7 +1093,9 @@ private fun StarterLauncherBehaviorScreen(
     quickLauncherTypoTolerantRanking: Boolean,
     onQuickLauncherTypoTolerantRankingChanged: (Boolean) -> Unit,
     quickLauncherBehavior: String,
-    onQuickLauncherBehaviorChanged: (String) -> Unit
+    onQuickLauncherBehaviorChanged: (String) -> Unit,
+    quickLauncherAnimationDurationMs: Int,
+    onQuickLauncherAnimationDurationChanged: (Int) -> Unit
 ) {
     var showRankingInfo by remember { mutableStateOf(false) }
     var behaviorMenuExpanded by remember { mutableStateOf(false) }
@@ -1195,6 +1208,40 @@ private fun StarterLauncherBehaviorScreen(
             )
             Spacer(modifier = Modifier.width(6.dp))
             Text(stringResource(R.string.quick_launcher_ranking_info_button))
+        }
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            tonalElevation = 1.dp,
+            shape = MaterialTheme.shapes.medium
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.quick_launcher_animation_duration_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = stringResource(
+                        R.string.quick_launcher_animation_duration_value,
+                        quickLauncherAnimationDurationMs
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Slider(
+                    value = quickLauncherAnimationDurationMs.toFloat(),
+                    onValueChange = { value ->
+                        val rounded = (value / 20f).toInt() * 20
+                        onQuickLauncherAnimationDurationChanged(rounded)
+                    },
+                    valueRange = SettingsManager.QUICK_LAUNCHER_ANIMATION_DURATION_MIN_MS.toFloat()..
+                        SettingsManager.QUICK_LAUNCHER_ANIMATION_DURATION_MAX_MS.toFloat(),
+                    steps = 15
+                )
+            }
         }
         Surface(
             modifier = Modifier.fillMaxWidth(),

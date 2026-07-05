@@ -344,7 +344,33 @@ class PhysicalKeyboardInputMethodServiceDeviceBehaviorTest {
         assertTrue(symHandled)
         assertTrue(spaceHandled)
         assertEquals(QuickLauncherActivity::class.java.name, startedIntent.component?.className)
+        assertTrue(startedIntent.getBooleanExtra(QuickLauncherActivity.EXTRA_TOGGLE_REQUEST, false))
         assertFalse("Space should not be committed when opening QuickLauncher", recorder.committedTexts.contains(" "))
+    }
+
+    @Test
+    fun heldSymPlusQuickLauncherShortcut_reopensFromEditableFieldAfterLauncherCloses() {
+        val context = RuntimeEnvironment.getApplication()
+        SettingsManager.setQuickLauncherTextFieldShortcuts(context, true)
+        SettingsManager.setQuickLauncherShortcut(context, KeyEvent.KEYCODE_SPACE)
+        val t0 = 4_600L
+
+        val handled = service.onKeyDown(
+            KeyEvent.KEYCODE_SPACE,
+            keyEvent(
+                KeyEvent.ACTION_DOWN,
+                KeyEvent.KEYCODE_SPACE,
+                t0,
+                t0 + 40L,
+                KeyEvent.META_SYM_ON
+            )
+        )
+
+        val startedIntent = shadowOf(RuntimeEnvironment.getApplication()).nextStartedActivity
+        assertTrue(handled)
+        assertEquals(QuickLauncherActivity::class.java.name, startedIntent.component?.className)
+        assertTrue(startedIntent.getBooleanExtra(QuickLauncherActivity.EXTRA_TOGGLE_REQUEST, false))
+        assertFalse("Space should not be committed when reopening QuickLauncher", recorder.committedTexts.contains(" "))
     }
 
     @Test

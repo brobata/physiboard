@@ -21,12 +21,7 @@ object QuickLauncherOpener {
 
     private fun openPastieraQuickLauncher(context: Context): Boolean {
         return try {
-            val intent = Intent(context, QuickLauncherActivity::class.java).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
-                addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY)
-                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            }
+            val intent = QuickLauncherActivity.createToggleIntent(context)
             context.startActivity(intent)
             true
         } catch (error: Exception) {

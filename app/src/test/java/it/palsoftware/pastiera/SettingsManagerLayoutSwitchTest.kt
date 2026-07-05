@@ -423,10 +423,10 @@ class SettingsManagerLayoutSwitchTest {
     }
 
     @Test
-    fun autoSpacePunctuation_defaultsWithoutColon_andPersistsSelection() {
+    fun autoSpacePunctuation_defaultsOff_andPersistsSelection() {
         val context = RuntimeEnvironment.getApplication()
 
-        assertEquals(".,!?\\/\"", SettingsManager.getAutoSpacePunctuation(context))
+        assertEquals("", SettingsManager.getAutoSpacePunctuation(context))
 
         SettingsManager.setAutoSpacePunctuation(context, ".;:")
 
@@ -434,7 +434,7 @@ class SettingsManagerLayoutSwitchTest {
     }
 
     @Test
-    fun autoSpacePunctuation_storedDefaultWithoutSemicolonStaysWithoutSemicolon() {
+    fun autoSpacePunctuation_legacyStoredDefaultWithoutSemicolonStaysWithoutSemicolon() {
         val context = RuntimeEnvironment.getApplication()
         context.getSharedPreferences("pastiera_prefs", android.content.Context.MODE_PRIVATE)
             .edit()

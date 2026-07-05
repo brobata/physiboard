@@ -2907,6 +2907,7 @@ object SettingsManager {
     private const val KEY_QUICK_LAUNCHER_WIDTH_PERCENT = "quick_launcher_width_percent"
     private const val KEY_QUICK_LAUNCHER_PILL_MODE = "quick_launcher_pill_mode"
     private const val KEY_QUICK_LAUNCHER_BEHAVIOR = "quick_launcher_behavior"
+    private const val KEY_QUICK_LAUNCHER_ANIMATION_DURATION_MS = "quick_launcher_animation_duration_ms"
     private const val KEY_COMMAND_SURFACE_SOURCES = "command_surface_sources"
     private const val KEY_QUICK_LAUNCHER_COMMAND_CUSTOMIZATIONS = "quick_launcher_command_customizations"
     private const val KEY_QUICK_LAUNCHER_HIGHLIGHT_FAVORITES = "quick_launcher_highlight_favorites"
@@ -2923,11 +2924,14 @@ object SettingsManager {
     private const val DEFAULT_QUICK_LAUNCHER_TYPO_TOLERANT_RANKING = true
     private const val DEFAULT_QUICK_LAUNCHER_WIDTH_PERCENT = 100
     private const val DEFAULT_QUICK_LAUNCHER_PILL_MODE = false
+    private const val DEFAULT_QUICK_LAUNCHER_ANIMATION_DURATION_MS = 120
     const val QUICK_LAUNCHER_DYNAMIC_FAVORITE_COLOR = Int.MIN_VALUE
     private const val DEFAULT_QUICK_LAUNCHER_FAVORITE_COLOR = QUICK_LAUNCHER_DYNAMIC_FAVORITE_COLOR
     private const val DEFAULT_QUICK_LAUNCHER_STATIC_TOP_HIGHLIGHT_COLOR = 0x7A4285F4
     const val QUICK_LAUNCHER_BEHAVIOR_PASTIERA = "pastiera"
     const val QUICK_LAUNCHER_BEHAVIOR_NIAGARA = "niagara"
+    const val QUICK_LAUNCHER_ANIMATION_DURATION_MIN_MS = 0
+    const val QUICK_LAUNCHER_ANIMATION_DURATION_MAX_MS = 320
     
     // Nav mode settings
     private const val KEY_NAV_MODE_ENABLED = "nav_mode_enabled"
@@ -3496,6 +3500,24 @@ object SettingsManager {
     fun setQuickLauncherPillMode(context: Context, enabled: Boolean) {
         getPreferences(context).edit()
             .putBoolean(KEY_QUICK_LAUNCHER_PILL_MODE, enabled)
+            .apply()
+    }
+
+    fun getQuickLauncherAnimationDurationMs(context: Context): Int {
+        return getPreferences(context)
+            .getInt(KEY_QUICK_LAUNCHER_ANIMATION_DURATION_MS, DEFAULT_QUICK_LAUNCHER_ANIMATION_DURATION_MS)
+            .coerceIn(QUICK_LAUNCHER_ANIMATION_DURATION_MIN_MS, QUICK_LAUNCHER_ANIMATION_DURATION_MAX_MS)
+    }
+
+    fun setQuickLauncherAnimationDurationMs(context: Context, durationMs: Int) {
+        getPreferences(context).edit()
+            .putInt(
+                KEY_QUICK_LAUNCHER_ANIMATION_DURATION_MS,
+                durationMs.coerceIn(
+                    QUICK_LAUNCHER_ANIMATION_DURATION_MIN_MS,
+                    QUICK_LAUNCHER_ANIMATION_DURATION_MAX_MS
+                )
+            )
             .apply()
     }
 

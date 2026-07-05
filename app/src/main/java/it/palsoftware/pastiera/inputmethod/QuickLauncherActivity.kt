@@ -1,21 +1,24 @@
 package it.palsoftware.pastiera.inputmethod
 
-import android.os.Bundle
+import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color as AndroidColor
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Drawable
+import android.os.Bundle
 import android.util.Log
 import android.view.KeyEvent
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Color as AndroidColor
-import android.graphics.drawable.BitmapDrawable
-import android.graphics.drawable.Drawable
 import androidx.activity.compose.setContent
 import androidx.lifecycle.lifecycleScope
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
@@ -111,10 +114,12 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
     private var showAliasFirst by mutableStateOf(true)
     private var staticTopHighlight by mutableStateOf(false)
     private var staticTopHighlightColor by mutableStateOf(0x7A4285F4)
+    private var animationDurationMs by mutableStateOf(120)
     private var loadingApps by mutableStateOf(false)
     private var launchedAutomatically = false
     private var keyboardLayout: Map<Int, LayoutMapping> = emptyMap()
     private var enterHandledOnKeyDown = false
+    private var pendingDismissKeyCode: Int? = null
     private var quickLauncherPrefsListener: SharedPreferences.OnSharedPreferenceChangeListener? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -142,6 +147,7 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
         showAliasFirst = SettingsManager.getQuickLauncherShowAliasFirst(this)
         staticTopHighlight = SettingsManager.getQuickLauncherStaticTopHighlight(this)
         staticTopHighlightColor = SettingsManager.getQuickLauncherStaticTopHighlightColor(this)
+        animationDurationMs = SettingsManager.getQuickLauncherAnimationDurationMs(this)
         keyboardLayout = if (respectKeyboardLayout) loadActiveKeyboardLayout() else emptyMap()
         commands = quickLauncherCommandsFromCachedApps()
         loadingApps = commands.isEmpty()
@@ -171,6 +177,7 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
                         showAliasFirst = showAliasFirst,
                         staticTopHighlight = staticTopHighlight,
                         staticTopHighlightColor = staticTopHighlightColor,
+                        animationDurationMs = animationDurationMs,
                         onCommandSelected = { launchCommand(it) },
                         onCustomizationChanged = { updateCommandCustomization(it) },
                         onCustomizationsReloadRequested = { reloadCommandCustomizations() },
@@ -184,6 +191,14 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
         reloadCommandsFromRegistry()
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.getBooleanExtra(EXTRA_TOGGLE_REQUEST, false)) {
+            finish()
+        }
+    }
+
     override fun onDestroy() {
         quickLauncherPrefsListener?.let { listener ->
             SettingsManager.getPreferences(this).unregisterOnSharedPreferenceChangeListener(listener)
@@ -192,17 +207,47 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
         super.onDestroy()
     }
 
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        return when (event.action) {
+            KeyEvent.ACTION_DOWN -> {
+                if (handleQuickLauncherKeyDown(event.keyCode, event)) {
+                    true
+                } else {
+                    super.dispatchKeyEvent(event)
+                }
+            }
+            KeyEvent.ACTION_UP -> {
+                if (handleQuickLauncherKeyUp(event.keyCode, event)) {
+                    true
+                } else {
+                    super.dispatchKeyEvent(event)
+                }
+            }
+            else -> super.dispatchKeyEvent(event)
+        }
+    }
+
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        return handleQuickLauncherKeyDown(keyCode, event) || super.onKeyDown(keyCode, event)
+    }
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+        return handleQuickLauncherKeyUp(keyCode, event) || super.onKeyUp(keyCode, event)
+    }
+
+    private fun handleQuickLauncherKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        if (isSymQuickLauncherToggle(keyCode, event)) {
+            return handleDismissKeyDown(keyCode, event)
+        }
+
         when (keyCode) {
             KeyEvent.KEYCODE_ENTER -> {
                 enterHandledOnKeyDown = true
                 launchTopMatch()
                 return true
             }
-            KeyEvent.KEYCODE_BACK -> {
-                finish()
-                return true
-            }
+            KeyEvent.KEYCODE_BACK,
+            KeyEvent.KEYCODE_ESCAPE -> return handleDismissKeyDown(keyCode, event)
             KeyEvent.KEYCODE_DEL -> {
                 if (query.isNotEmpty()) {
                     query = query.dropLast(1)
@@ -211,13 +256,9 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
                 }
                 return true
             }
-            KeyEvent.KEYCODE_ESCAPE -> {
-                finish()
-                return true
-            }
         }
 
-        if (event?.isCtrlPressed != true && event?.isAltPressed != true) {
+        if (event?.isCtrlPressed != true) {
             val text = resolveTypedText(keyCode, event)
             if (!text.isNullOrEmpty()) {
                 query += text
@@ -227,10 +268,18 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
             }
         }
 
-        return super.onKeyDown(keyCode, event)
+        return false
     }
 
-    override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+    private fun handleQuickLauncherKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+        if (pendingDismissKeyCode == keyCode) {
+            return handleDismissKeyUp(keyCode, event)
+        }
+
+        if (isSymQuickLauncherToggle(keyCode, event)) {
+            return true
+        }
+
         if (keyCode == KeyEvent.KEYCODE_ENTER) {
             if (!enterHandledOnKeyDown && event?.isCanceled != true) {
                 launchTopMatch()
@@ -239,7 +288,11 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
             return true
         }
 
-        return super.onKeyUp(keyCode, event)
+        if (isDismissKey(keyCode)) {
+            return handleDismissKeyUp(keyCode, event)
+        }
+
+        return false
     }
 
     override fun finish() {
@@ -276,6 +329,31 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
         } else {
             Log.w(TAG, "Command failed: ${command.id}")
         }
+    }
+
+    private fun handleDismissKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        if (event == null || event.repeatCount == 0) {
+            pendingDismissKeyCode = keyCode
+        }
+        return true
+    }
+
+    private fun handleDismissKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+        val shouldDismiss = pendingDismissKeyCode == keyCode && event?.isCanceled != true
+        pendingDismissKeyCode = null
+        if (shouldDismiss) {
+            finish()
+        }
+        return true
+    }
+
+    private fun isDismissKey(keyCode: Int): Boolean {
+        return keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_ESCAPE
+    }
+
+    private fun isSymQuickLauncherToggle(keyCode: Int, event: KeyEvent?): Boolean {
+        return SettingsManager.isQuickLauncherShortcut(this, keyCode) &&
+            event?.isSymPressed == true
     }
 
     private fun updateCommandCustomization(customization: SettingsManager.QuickLauncherCommandCustomization) {
@@ -388,8 +466,28 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
     }
 
     companion object {
+        const val EXTRA_TOGGLE_REQUEST = "it.palsoftware.pastiera.inputmethod.extra.TOGGLE_QUICK_LAUNCHER"
         private const val TAG = "QuickLauncher"
         private const val PREF_COMMAND_SURFACE_SOURCES = "command_surface_sources"
+
+        fun createToggleIntent(context: Context): Intent {
+            return Intent(context, QuickLauncherActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
+                addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY)
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                putExtra(EXTRA_TOGGLE_REQUEST, true)
+            }
+        }
+
+        fun createOpenIntent(context: Context): Intent {
+            return Intent(context, QuickLauncherActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
+                addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY)
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            }
+        }
     }
 }
 
@@ -409,6 +507,7 @@ private fun QuickLauncherSheet(
     showAliasFirst: Boolean,
     staticTopHighlight: Boolean,
     staticTopHighlightColor: Int,
+    animationDurationMs: Int,
     onCommandSelected: (CommandTarget) -> Unit,
     onCustomizationChanged: (SettingsManager.QuickLauncherCommandCustomization) -> Unit,
     onCustomizationsReloadRequested: () -> Unit,
@@ -416,7 +515,10 @@ private fun QuickLauncherSheet(
     onDismiss: () -> Unit
 ) {
     val maxSheetHeight = LocalConfiguration.current.screenHeightDp.dp * 0.78f
-    val visible = remember { mutableStateOf(true) }
+    val visible = remember { MutableTransitionState(false) }
+    LaunchedEffect(Unit) {
+        visible.targetState = true
+    }
     val isCollapsedPill = pillMode && query.isBlank()
     val widthFraction = if (isCollapsedPill) 0.72f else widthPercent.coerceIn(50, 100) / 100f
     val entries = remember(commands, query, customizations, customizationRevision) {
@@ -449,11 +551,11 @@ private fun QuickLauncherSheet(
     }
 
     AnimatedVisibility(
-        visible = visible.value,
+        visibleState = visible,
         enter = slideInVertically(
             initialOffsetY = { it },
-            animationSpec = tween(durationMillis = 120)
-        ) + fadeIn(animationSpec = tween(durationMillis = 60))
+            animationSpec = tween(durationMillis = animationDurationMs)
+        ) + fadeIn(animationSpec = tween(durationMillis = (animationDurationMs / 2).coerceAtLeast(0)))
     ) {
         Surface(
             modifier = Modifier

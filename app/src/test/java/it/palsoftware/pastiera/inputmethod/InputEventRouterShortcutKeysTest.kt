@@ -87,6 +87,60 @@ class InputEventRouterShortcutKeysTest {
         assertEquals(0, callbacks.callSuperCalls)
     }
 
+    @Test
+    fun noEditableField_routesConfiguredSymQuickLauncherShortcutOutsideLauncherApps() {
+        SettingsManager.setQuickLauncherTextFieldShortcuts(context, true)
+        SettingsManager.setQuickLauncherShortcut(context, KeyEvent.KEYCODE_K)
+        val callbacks = RecordingCallbacks(
+            shortcutKeys = specialShortcutKeys + KeyEvent.KEYCODE_K,
+            launcherShortcutResult = true,
+            launcherPackageResult = false
+        )
+
+        val handled = router.handleKeyDownWithNoEditableField(
+            keyCode = KeyEvent.KEYCODE_K,
+            event = keyDown(KeyEvent.KEYCODE_K, KeyEvent.META_SYM_ON),
+            ctrlKeyMap = emptyMap(),
+            callbacks = callbacks.asRouterCallbacks(),
+            ctrlLatchActive = false,
+            editorInfo = null,
+            currentPackageName = "com.example.app",
+            powerShortcutsEnabled = false
+        )
+
+        assertTrue(handled)
+        assertEquals(listOf(KeyEvent.KEYCODE_K), callbacks.launcherShortcutKeys)
+        assertEquals(emptyList<Int>(), callbacks.powerShortcutKeys)
+        assertEquals(0, callbacks.callSuperCalls)
+    }
+
+    @Test
+    fun noEditableField_symQuickLauncherShortcutResetsPowerShortcutModeBeforeToast() {
+        SettingsManager.setQuickLauncherTextFieldShortcuts(context, true)
+        SettingsManager.setQuickLauncherShortcut(context, KeyEvent.KEYCODE_K)
+        val callbacks = RecordingCallbacks(
+            shortcutKeys = specialShortcutKeys + KeyEvent.KEYCODE_K,
+            powerShortcutResult = true,
+            launcherPackageResult = false
+        )
+
+        val handled = router.handleKeyDownWithNoEditableField(
+            keyCode = KeyEvent.KEYCODE_K,
+            event = keyDown(KeyEvent.KEYCODE_K, KeyEvent.META_SYM_ON),
+            ctrlKeyMap = emptyMap(),
+            callbacks = callbacks.asRouterCallbacks(),
+            ctrlLatchActive = false,
+            editorInfo = null,
+            currentPackageName = "com.example.app",
+            powerShortcutsEnabled = true
+        )
+
+        assertTrue(handled)
+        assertEquals(listOf(KeyEvent.KEYCODE_K), callbacks.powerShortcutKeys)
+        assertEquals(emptyList<Int>(), callbacks.launcherShortcutKeys)
+        assertEquals(0, callbacks.callSuperCalls)
+    }
+
     private class RecordingCallbacks(
         private val shortcutKeys: List<Int>,
         private val launcherShortcutResult: Boolean = false,
@@ -126,8 +180,8 @@ class InputEventRouterShortcutKeysTest {
             KeyEvent.KEYCODE_DEL
         )
 
-        fun keyDown(keyCode: Int): KeyEvent {
-            return KeyEvent(KeyEvent.ACTION_DOWN, keyCode)
+        fun keyDown(keyCode: Int, metaState: Int = 0): KeyEvent {
+            return KeyEvent(0L, 0L, KeyEvent.ACTION_DOWN, keyCode, 0, metaState)
         }
     }
 }
