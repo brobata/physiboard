@@ -150,9 +150,26 @@ class StatusBarButtonRegistry {
      * @return List of enabled button configurations, sorted for display
      */
     fun getEnabledButtons(context: Context): List<StatusBarButtonConfig> {
+        return getEnabledButtons(
+            leftSlots = SettingsManager.getStatusBarSlotsLeft(context),
+            rightSlots = SettingsManager.getStatusBarSlotsRight(context)
+        )
+    }
+
+    fun getEnabledPastierinaButtons(context: Context): List<StatusBarButtonConfig> {
+        return getEnabledButtons(
+            leftSlots = SettingsManager.getPastierinaStatusBarSlotsLeft(context),
+            rightSlots = SettingsManager.getPastierinaStatusBarSlotsRight(context)
+        )
+    }
+
+    fun getEnabledButtons(
+        leftSlots: List<String>,
+        rightSlots: List<String>
+    ): List<StatusBarButtonConfig> {
         val enabledButtons = mutableListOf<StatusBarButtonConfig>()
         
-        SettingsManager.getStatusBarSlotsLeft(context).forEachIndexed { index, button ->
+        leftSlots.forEachIndexed { index, button ->
             buttonIdFromString(button)?.let { id ->
                 enabledButtons.add(StatusBarButtonConfig(
                     id = id,
@@ -163,7 +180,7 @@ class StatusBarButtonRegistry {
             }
         }
         
-        SettingsManager.getStatusBarSlotsRight(context).forEachIndexed { index, button ->
+        rightSlots.forEachIndexed { index, button ->
             buttonIdFromString(button)?.let { id ->
                 enabledButtons.add(StatusBarButtonConfig(
                     id = id,

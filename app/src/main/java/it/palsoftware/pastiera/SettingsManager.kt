@@ -153,6 +153,8 @@ object SettingsManager {
     private const val KEY_STATUS_BAR_SLOT_RIGHT_2 = "status_bar_slot_right_2"
     private const val KEY_STATUS_BAR_SLOTS_LEFT = "status_bar_slots_left"
     private const val KEY_STATUS_BAR_SLOTS_RIGHT = "status_bar_slots_right"
+    private const val KEY_PASTIERINA_STATUS_BAR_SLOTS_LEFT = "pastierina_status_bar_slots_left"
+    private const val KEY_PASTIERINA_STATUS_BAR_SLOTS_RIGHT = "pastierina_status_bar_slots_right"
     private const val KEY_STATUS_BAR_VARIATIONS_VISIBLE = "status_bar_variations_visible"
     private const val KEY_DYNAMIC_VARIATION_BAR_SLOT_COUNT = "dynamic_variation_bar_slot_count"
     private const val KEY_DYNAMIC_VARIATION_BAR_RESIZE_TO_CONTENT = "dynamic_variation_bar_resize_to_content"
@@ -197,6 +199,8 @@ object SettingsManager {
     private const val DEFAULT_SLOT_LEFT = STATUS_BAR_BUTTON_HAMBURGER
     private const val DEFAULT_SLOT_RIGHT_1 = STATUS_BAR_BUTTON_EMOJI
     private const val DEFAULT_SLOT_RIGHT_2 = STATUS_BAR_BUTTON_MICROPHONE
+    private const val DEFAULT_PASTIERINA_SLOT_LEFT = STATUS_BAR_BUTTON_LANGUAGE
+    private const val DEFAULT_PASTIERINA_SLOT_RIGHT = STATUS_BAR_BUTTON_HAMBURGER
     private const val DEFAULT_STATUS_BAR_VARIATIONS_VISIBLE = true
     private const val DEFAULT_DYNAMIC_VARIATION_BAR_SLOT_COUNT = 7
     private const val DEFAULT_DYNAMIC_VARIATION_BAR_RESIZE_TO_CONTENT = false
@@ -4780,6 +4784,45 @@ object SettingsManager {
             .putString(KEY_STATUS_BAR_SLOTS_RIGHT, statusBarSlotsToJson(normalized))
             .putString(KEY_STATUS_BAR_SLOT_RIGHT_1, normalized.getOrNull(0) ?: STATUS_BAR_BUTTON_NONE)
             .putString(KEY_STATUS_BAR_SLOT_RIGHT_2, normalized.getOrNull(1) ?: STATUS_BAR_BUTTON_NONE)
+            .apply()
+    }
+
+    fun getDefaultPastierinaStatusBarSlotsLeft(): List<String> = listOf(DEFAULT_PASTIERINA_SLOT_LEFT)
+
+    fun getDefaultPastierinaStatusBarSlotsRight(): List<String> = listOf(DEFAULT_PASTIERINA_SLOT_RIGHT)
+
+    fun resetPastierinaStatusBarSlotsToDefault(context: Context) {
+        setPastierinaStatusBarSlotsLeft(context, getDefaultPastierinaStatusBarSlotsLeft())
+        setPastierinaStatusBarSlotsRight(context, getDefaultPastierinaStatusBarSlotsRight())
+    }
+
+    fun getPastierinaStatusBarSlotsLeft(context: Context): List<String> {
+        return getStatusBarSlotsList(
+            context = context,
+            key = KEY_PASTIERINA_STATUS_BAR_SLOTS_LEFT,
+            fallback = getDefaultPastierinaStatusBarSlotsLeft()
+        )
+    }
+
+    fun setPastierinaStatusBarSlotsLeft(context: Context, buttonIds: List<String>) {
+        val normalized = normalizeStatusBarSlots(buttonIds)
+        getPreferences(context).edit()
+            .putString(KEY_PASTIERINA_STATUS_BAR_SLOTS_LEFT, statusBarSlotsToJson(normalized))
+            .apply()
+    }
+
+    fun getPastierinaStatusBarSlotsRight(context: Context): List<String> {
+        return getStatusBarSlotsList(
+            context = context,
+            key = KEY_PASTIERINA_STATUS_BAR_SLOTS_RIGHT,
+            fallback = getDefaultPastierinaStatusBarSlotsRight()
+        )
+    }
+
+    fun setPastierinaStatusBarSlotsRight(context: Context, buttonIds: List<String>) {
+        val normalized = normalizeStatusBarSlots(buttonIds)
+        getPreferences(context).edit()
+            .putString(KEY_PASTIERINA_STATUS_BAR_SLOTS_RIGHT, statusBarSlotsToJson(normalized))
             .apply()
     }
     

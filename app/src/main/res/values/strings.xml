@@ -1076,6 +1076,10 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="status_bar_slot_right_2">Right Slot 2</string>
     <string name="status_bar_slots_left">Left buttons</string>
     <string name="status_bar_slots_right">Right buttons</string>
+    <string name="pastierina_status_bar_buttons_title">Pastierina mode</string>
+    <string name="pastierina_status_bar_buttons_description">Choose which buttons appear on the left and right edges of the compact Pastierina row.</string>
+    <string name="pastierina_status_bar_slots_left">Pastierina left buttons</string>
+    <string name="pastierina_status_bar_slots_right">Pastierina right buttons</string>
     <string name="status_bar_slot_add">Add status bar button</string>
     <string name="status_bar_slot_remove">Remove status bar button</string>
     <string name="status_bar_button_none">None</string>

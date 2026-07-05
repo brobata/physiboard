@@ -25,21 +25,22 @@ import it.palsoftware.pastiera.SettingsActivity
 import it.palsoftware.pastiera.inputmethod.NotificationHelper
 import it.palsoftware.pastiera.inputmethod.suggestions.SuggestionButtonHandler
 import it.palsoftware.pastiera.inputmethod.VariationButtonHandler
-import it.palsoftware.pastiera.inputmethod.SubtypeCycler
 import it.palsoftware.pastiera.inputmethod.ui.HamburgerMenuView
 import it.palsoftware.pastiera.inputmethod.ui.KeyboardThemeColors
+import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonHost
+import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonId
 import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonRegistry
 import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarCallbacks
+import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonPosition
+import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonStyles
 import android.view.inputmethod.InputMethodManager
-import android.inputmethodservice.InputMethodService
-import it.palsoftware.pastiera.core.suggestions.DictionaryRepository
 import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils.languageCode
 
 /**
  * Renders the full-width suggestion bar with up to 3 items. Always occupies
  * a row (with placeholders) so the UI stays stable. Hidden when minimal UI
  * is forced or smart features are disabled by the caller.
- * Includes a hamburger menu button on the right that opens the hamburger menu.
+ * Includes configurable Pastierina mode buttons on the left/right edges.
  */
 class FullSuggestionsBar(
     private val context: Context,
@@ -56,13 +57,15 @@ class FullSuggestionsBar(
 
     private var container: LinearLayout? = null
     private var frameContainer: FrameLayout? = null
-    private var hamburgerButton: ImageView? = null
+    private var minimalLeftButtonsContainer: LinearLayout? = null
+    private var minimalRightButtonsContainer: LinearLayout? = null
     private var hamburgerMenuView: HamburgerMenuView? = null
     private var lastMinimalUiActive: Boolean? = null
     private var lastSlots: List<String?> = emptyList()
     private var assets: AssetManager? = null
     private var imeServiceClass: Class<*>? = null
-    private var showHamburgerButton: Boolean = false // Control visibility of hamburger button
+    private var showMinimalUiButtons: Boolean = false
+    private val buttonHost = buttonRegistry?.let { StatusBarButtonHost(context, it) }
     private val suggestionButtons: MutableList<TextView> = mutableListOf()
     private val mainHandler = Handler(Looper.getMainLooper())
     private var reenableSuggestionsAccessibilityRunnable: Runnable? = null
@@ -78,8 +81,17 @@ class FullSuggestionsBar(
                 return
             }
             field = value
-            hamburgerButton?.setColorFilter(value?.textAndIcons ?: Color.WHITE)
             hamburgerMenuView?.themeOverride = value
+            buttonHost?.themeOverride = value?.let {
+                StatusBarButtonStyles.ThemeOverride(
+                    normalColor = it.statusBarButton,
+                    pressedColor = it.accent,
+                    iconColor = it.textAndIcons,
+                    cornerRadiusRatio = it.keyCornerRadiusRatio,
+                    borderColor = it.divider,
+                    borderWidthPx = dpToPx(1f)
+                )
+            }
             if (lastSlots.isNotEmpty()) lastSlots = emptyList()
             applyHeight()
         }
@@ -136,31 +148,33 @@ class FullSuggestionsBar(
                 accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_NONE
             }
             
-            // Create hamburger menu button positioned absolutely on the right
-            hamburgerButton = ImageView(context).apply {
-                setImageResource(R.drawable.ic_menu_24)
-                setColorFilter(themeOverride?.textAndIcons ?: Color.WHITE)
-                contentDescription = context.getString(R.string.status_bar_button_hamburger_description)
-                scaleType = ImageView.ScaleType.CENTER
-                background = null
-                val buttonSize = dpToPx(32f)
+            minimalLeftButtonsContainer = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.START or Gravity.CENTER_VERTICAL
+                visibility = View.GONE
                 layoutParams = FrameLayout.LayoutParams(
-                    buttonSize,
-                    buttonSize
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    targetHeightPx
+                ).apply {
+                    gravity = Gravity.START or Gravity.CENTER_VERTICAL
+                }
+            }
+
+            minimalRightButtonsContainer = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.END or Gravity.CENTER_VERTICAL
+                visibility = View.GONE
+                layoutParams = FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    targetHeightPx
                 ).apply {
                     gravity = Gravity.END or Gravity.CENTER_VERTICAL
-                    marginEnd = 0
-                }
-                setPadding(0, 0, 0, 0)
-                isClickable = true
-                isFocusable = true
-                setOnClickListener {
-                    toggleHamburgerMenu()
                 }
             }
             
             frameContainer?.addView(container)
-            hamburgerButton?.let { frameContainer?.addView(it) }
+            minimalLeftButtonsContainer?.let { frameContainer?.addView(it) }
+            minimalRightButtonsContainer?.let { frameContainer?.addView(it) }
             
             // Create hamburger menu view if buttonRegistry and callbacks are available
             frameContainer?.let { frame ->
@@ -170,9 +184,9 @@ class FullSuggestionsBar(
                             themeOverride = this@FullSuggestionsBar.themeOverride
                         }
                     }
-                    hamburgerMenuView?.attachTo(frame)
-                    lastMinimalUiActive?.let { hamburgerMenuView?.setMinimalUiActive(it) }
                 }
+                hamburgerMenuView?.attachTo(frame)
+                lastMinimalUiActive?.let { hamburgerMenuView?.setMinimalUiActive(it) }
             }
             // Ensure the outer layout (when attached to parent LinearLayout) keeps the target height
             frameContainer?.layoutParams = (frameContainer?.layoutParams as? LinearLayout.LayoutParams)
@@ -203,15 +217,12 @@ class FullSuggestionsBar(
             }
             bar.minimumHeight = height
         }
-        hamburgerButton?.let { button ->
-            val buttonSize = (height - dpToPx(4f)).coerceAtLeast(dpToPx(24f))
-            val params = (button.layoutParams as? FrameLayout.LayoutParams)
-                ?: FrameLayout.LayoutParams(buttonSize, buttonSize)
-            if (params.width != buttonSize || params.height != buttonSize) {
-                params.width = buttonSize
-                params.height = buttonSize
-                params.gravity = Gravity.END or Gravity.CENTER_VERTICAL
-                button.layoutParams = params
+        listOfNotNull(minimalLeftButtonsContainer, minimalRightButtonsContainer).forEach { buttons ->
+            val params = (buttons.layoutParams as? FrameLayout.LayoutParams)
+                ?: FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, height)
+            if (params.height != height) {
+                params.height = height
+                buttons.layoutParams = params
             }
         }
     }
@@ -223,7 +234,6 @@ class FullSuggestionsBar(
         if (menu.isVisible()) {
             menu.hide()
         } else {
-            hamburgerButton?.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
             menu.show(callbacks) {
                 menu.hide()
             }
@@ -235,6 +245,7 @@ class FullSuggestionsBar(
      */
     fun setMicrophoneButtonActive(isActive: Boolean) {
         hamburgerMenuView?.setMicrophoneActive(isActive)
+        buttonHost?.setMicrophoneActive(isActive)
     }
     
     /**
@@ -242,6 +253,7 @@ class FullSuggestionsBar(
      */
     fun updateMicrophoneAudioLevel(rmsdB: Float) {
         hamburgerMenuView?.updateMicrophoneAudioLevel(rmsdB)
+        buttonHost?.updateMicrophoneAudioLevel(rmsdB)
     }
     
     /**
@@ -249,6 +261,7 @@ class FullSuggestionsBar(
      */
     fun updateClipboardCount(count: Int) {
         hamburgerMenuView?.updateClipboardCount(count)
+        buttonHost?.updateClipboardCount(count)
     }
     
     /**
@@ -256,12 +269,13 @@ class FullSuggestionsBar(
      */
     fun refreshLanguageText() {
         hamburgerMenuView?.refreshLanguageText()
+        buttonHost?.refreshLanguageText()
     }
 
     fun setMinimalUiActive(isActive: Boolean) {
         lastMinimalUiActive = isActive
-        showHamburgerButton = isActive
-        hamburgerButton?.visibility = if (isActive) View.VISIBLE else View.GONE
+        showMinimalUiButtons = isActive
+        renderMinimalUiButtons()
         hamburgerMenuView?.setMinimalUiActive(isActive)
     }
 
@@ -309,15 +323,16 @@ class FullSuggestionsBar(
         val bar = container ?: return
         val frame = frameContainer ?: return
         
-        // Hide bar if shouldShow is false or if no dictionary exists for current subtype
+        // Hide suggestions when unavailable, but keep Pastierina buttons visible.
         val hasDictionary = !requireDictionaryForSuggestions || hasDictionaryForCurrentSubtype()
-        if (!shouldShow || !hasDictionary) {
+        val canShowSuggestions = shouldShow && hasDictionary
+        if (!canShowSuggestions && !showMinimalUiButtons) {
             cancelPendingSuggestionsAccessibilityEnable()
             suggestionButtons.clear()
             frame.visibility = View.GONE
             bar.visibility = View.GONE
             bar.removeAllViews()
-            hamburgerButton?.visibility = View.GONE
+            renderMinimalUiButtons()
             lastSlots = emptyList()
             lastAnnouncedSlots = emptyList()
             actionCandidate = null
@@ -328,9 +343,20 @@ class FullSuggestionsBar(
         frame.visibility = View.VISIBLE
         frame.alpha = 1f
         bar.alpha = 1f
-        // Show or hide hamburger button based on showHamburgerButton flag
-        hamburgerButton?.visibility = if (showHamburgerButton) View.VISIBLE else View.GONE
-        applyContainerInsetsForHamburger()
+        renderMinimalUiButtons()
+        applyContainerInsetsForMinimalButtons()
+
+        if (!canShowSuggestions) {
+            cancelPendingSuggestionsAccessibilityEnable()
+            suggestionButtons.clear()
+            bar.visibility = View.GONE
+            bar.removeAllViews()
+            lastSlots = emptyList()
+            lastAnnouncedSlots = emptyList()
+            actionCandidate = null
+            actionSlots = emptyList()
+            return
+        }
 
         val slots = buildSlots(suggestions, addWordCandidate)
         applySuggestionsAccessibilityThrottle(slots)
@@ -371,8 +397,9 @@ class FullSuggestionsBar(
         val bar = container ?: return
         frame.visibility = View.VISIBLE
         bar.visibility = View.VISIBLE
-        hamburgerButton?.visibility = if (showStatusButton) View.VISIBLE else View.GONE
-        applyContainerInsetsForHamburger()
+        showMinimalUiButtons = showStatusButton
+        renderMinimalUiButtons()
+        applyContainerInsetsForMinimalButtons()
         renderSlots(
             bar = bar,
             slots = listOf(suggestions.getOrNull(2), suggestions.getOrNull(0), suggestions.getOrNull(1)),
@@ -401,9 +428,81 @@ class FullSuggestionsBar(
         }
     }
 
-    private fun applyContainerInsetsForHamburger() {
+    private fun renderMinimalUiButtons() {
+        val leftContainer = minimalLeftButtonsContainer ?: return
+        val rightContainer = minimalRightButtonsContainer ?: return
+        val registry = buttonRegistry ?: return
+        val host = buttonHost ?: return
+
+        leftContainer.removeAllViews()
+        rightContainer.removeAllViews()
+        if (!showMinimalUiButtons) {
+            leftContainer.visibility = View.GONE
+            rightContainer.visibility = View.GONE
+            applyContainerInsetsForMinimalButtons()
+            return
+        }
+
+        val buttonSize = (targetHeightPx - dpToPx(4f)).coerceAtLeast(dpToPx(24f))
+        val spacing = dpToPx(3f)
+        val callbacks = (callbacksProvider?.invoke() ?: StatusBarCallbacks())
+            .copy(onHamburgerMenuRequested = { toggleHamburgerMenu() })
+
+        fun addButton(buttonId: StatusBarButtonId, target: LinearLayout, isLast: Boolean) {
+            val hosted = host.getOrCreateButton(
+                id = buttonId,
+                size = buttonSize,
+                callbacks = callbacks,
+                width = buttonSize,
+                height = buttonSize
+            ) ?: return
+            hosted.container.layoutParams = LinearLayout.LayoutParams(buttonSize, buttonSize).apply {
+                marginEnd = if (isLast) 0 else spacing
+            }
+            target.addView(hosted.container)
+        }
+
+        val enabledButtons = registry.getEnabledPastierinaButtons(context)
+        val leftButtons = enabledButtons
+            .filter { it.position == StatusBarButtonPosition.LEFT }
+            .sortedBy { it.order }
+        val rightButtons = enabledButtons
+            .filter { it.position == StatusBarButtonPosition.RIGHT }
+            .sortedBy { it.order }
+
+        leftButtons.forEachIndexed { index, config ->
+            addButton(config.id, leftContainer, index == leftButtons.lastIndex)
+        }
+        rightButtons.forEachIndexed { index, config ->
+            addButton(config.id, rightContainer, index == rightButtons.lastIndex)
+        }
+
+        leftContainer.visibility = if (leftButtons.isEmpty()) View.GONE else View.VISIBLE
+        rightContainer.visibility = if (rightButtons.isEmpty()) View.GONE else View.VISIBLE
+        applyContainerInsetsForMinimalButtons()
+    }
+
+    private fun applyContainerInsetsForMinimalButtons() {
         val bar = container ?: return
-        val rightInset = if (showHamburgerButton) dpToPx(35f) else 0
+        val spacing = dpToPx(3f)
+        val leftInset = if (showMinimalUiButtons) {
+            minimalLeftButtonsContainer?.takeIf { it.visibility == View.VISIBLE }?.let {
+                it.childCount * (targetHeightPx - dpToPx(4f)).coerceAtLeast(dpToPx(24f)) +
+                    (it.childCount - 1).coerceAtLeast(0) * spacing +
+                    spacing
+            } ?: 0
+        } else {
+            0
+        }
+        val rightInset = if (showMinimalUiButtons) {
+            minimalRightButtonsContainer?.takeIf { it.visibility == View.VISIBLE }?.let {
+                it.childCount * (targetHeightPx - dpToPx(4f)).coerceAtLeast(dpToPx(24f)) +
+                    (it.childCount - 1).coerceAtLeast(0) * spacing +
+                    spacing
+            } ?: 0
+        } else {
+            0
+        }
         val params = (bar.layoutParams as? FrameLayout.LayoutParams)
             ?: FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -412,6 +511,10 @@ class FullSuggestionsBar(
         var changed = false
         if (params.height != targetHeightPx) {
             params.height = targetHeightPx
+            changed = true
+        }
+        if (params.marginStart != leftInset) {
+            params.marginStart = leftInset
             changed = true
         }
         if (params.marginEnd != rightInset) {
@@ -444,7 +547,7 @@ class FullSuggestionsBar(
         frameContainer?.alpha = 1f
 
         // Force bar and frame to the target height to avoid fallback to wrap_content.
-        applyContainerInsetsForHamburger()
+        applyContainerInsetsForMinimalButtons()
         (frameContainer?.layoutParams as? ViewGroup.LayoutParams)?.let { lp ->
             lp.height = targetHeightPx
             frameContainer?.layoutParams = lp

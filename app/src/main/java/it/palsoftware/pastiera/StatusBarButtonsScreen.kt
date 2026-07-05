@@ -43,6 +43,12 @@ fun StatusBarButtonsScreen(
     // Load slot assignments from settings
     var leftSlots by remember { mutableStateOf(SettingsManager.getStatusBarSlotsLeft(context)) }
     var rightSlots by remember { mutableStateOf(SettingsManager.getStatusBarSlotsRight(context)) }
+    var pastierinaLeftSlots by remember {
+        mutableStateOf(SettingsManager.getPastierinaStatusBarSlotsLeft(context))
+    }
+    var pastierinaRightSlots by remember {
+        mutableStateOf(SettingsManager.getPastierinaStatusBarSlotsRight(context))
+    }
     var variationsVisible by remember {
         mutableStateOf(SettingsManager.areStatusBarVariationsEnabled(context))
     }
@@ -93,6 +99,9 @@ fun StatusBarButtonsScreen(
                         val defaults = SettingsManager.resetStatusBarSlotsToDefault(context)
                         leftSlots = listOf(defaults.left)
                         rightSlots = listOf(defaults.right1, defaults.right2)
+                        SettingsManager.resetPastierinaStatusBarSlotsToDefault(context)
+                        pastierinaLeftSlots = SettingsManager.getPastierinaStatusBarSlotsLeft(context)
+                        pastierinaRightSlots = SettingsManager.getPastierinaStatusBarSlotsRight(context)
                         variationsVisible = SettingsManager.areStatusBarVariationsEnabled(context)
                         dynamicVariationSlotCount = SettingsManager.getDynamicVariationBarSlotCount(context)
                         dynamicVariationsResizeToContent = SettingsManager.getDynamicVariationBarResizeToContent(context)
@@ -413,6 +422,98 @@ fun StatusBarButtonsScreen(
             onRemoveSlot = { index ->
                 rightSlots = rightSlots.toMutableList().also { it.removeAt(index) }
                 SettingsManager.setStatusBarSlotsRight(context, rightSlots)
+            }
+        )
+
+        HorizontalDivider()
+
+        Surface(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.pastierina_status_bar_buttons_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = stringResource(R.string.pastierina_status_bar_buttons_description),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        fun selectButtonForPastierinaSlot(
+            buttonId: String,
+            targetSide: String,
+            targetIndex: Int,
+            updateState: (String) -> Unit
+        ) {
+            if (buttonId == SettingsManager.STATUS_BAR_BUTTON_NONE) {
+                updateState(buttonId)
+                return
+            }
+
+            pastierinaLeftSlots = pastierinaLeftSlots.mapIndexed { index, current ->
+                if (current == buttonId && !(targetSide == "left" && targetIndex == index)) {
+                    SettingsManager.STATUS_BAR_BUTTON_NONE
+                } else {
+                    current
+                }
+            }
+            pastierinaRightSlots = pastierinaRightSlots.mapIndexed { index, current ->
+                if (current == buttonId && !(targetSide == "right" && targetIndex == index)) {
+                    SettingsManager.STATUS_BAR_BUTTON_NONE
+                } else {
+                    current
+                }
+            }
+            SettingsManager.setPastierinaStatusBarSlotsLeft(context, pastierinaLeftSlots)
+            SettingsManager.setPastierinaStatusBarSlotsRight(context, pastierinaRightSlots)
+
+            updateState(buttonId)
+        }
+
+        SlotGroup(
+            title = stringResource(R.string.pastierina_status_bar_slots_left),
+            slots = pastierinaLeftSlots,
+            slotPrefix = "L",
+            onSlotSelected = { index, buttonId ->
+                selectButtonForPastierinaSlot(buttonId, "left", index) {
+                    pastierinaLeftSlots = pastierinaLeftSlots.toMutableList().also { it[index] = buttonId }
+                    SettingsManager.setPastierinaStatusBarSlotsLeft(context, pastierinaLeftSlots)
+                }
+            },
+            onAddSlot = {
+                pastierinaLeftSlots = pastierinaLeftSlots + SettingsManager.STATUS_BAR_BUTTON_NONE
+                SettingsManager.setPastierinaStatusBarSlotsLeft(context, pastierinaLeftSlots)
+            },
+            onRemoveSlot = { index ->
+                pastierinaLeftSlots = pastierinaLeftSlots.toMutableList().also { it.removeAt(index) }
+                SettingsManager.setPastierinaStatusBarSlotsLeft(context, pastierinaLeftSlots)
+            }
+        )
+
+        SlotGroup(
+            title = stringResource(R.string.pastierina_status_bar_slots_right),
+            slots = pastierinaRightSlots,
+            slotPrefix = "R",
+            onSlotSelected = { index, buttonId ->
+                selectButtonForPastierinaSlot(buttonId, "right", index) {
+                    pastierinaRightSlots = pastierinaRightSlots.toMutableList().also { it[index] = buttonId }
+                    SettingsManager.setPastierinaStatusBarSlotsRight(context, pastierinaRightSlots)
+                }
+            },
+            onAddSlot = {
+                pastierinaRightSlots = pastierinaRightSlots + SettingsManager.STATUS_BAR_BUTTON_NONE
+                SettingsManager.setPastierinaStatusBarSlotsRight(context, pastierinaRightSlots)
+            },
+            onRemoveSlot = { index ->
+                pastierinaRightSlots = pastierinaRightSlots.toMutableList().also { it.removeAt(index) }
+                SettingsManager.setPastierinaStatusBarSlotsRight(context, pastierinaRightSlots)
             }
         )
         
