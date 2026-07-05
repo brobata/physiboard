@@ -7,6 +7,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.KeyEvent
+import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
 import it.palsoftware.pastiera.SettingsManager
 import it.palsoftware.pastiera.data.layout.LayoutMappingRepository
@@ -386,8 +387,11 @@ class AltSymManager(
                                 val firstVariation = variations.first()
                                 longPressActivated[keyCode] = true
 
-                                inputConnection.deleteSurroundingText(1, 0)
-                                inputConnection.commitText(firstVariation, 1)
+                                replacePreviousCharWithVariation(
+                                    inputConnection = inputConnection,
+                                    expectedChar = insertedChar[0],
+                                    variation = firstVariation
+                                )
 
                                 insertedNormalChars.remove(keyCode)
                                 keyPressWasShifted.remove(keyCode)
@@ -547,5 +551,32 @@ class AltSymManager(
 
         longPressRunnables[keyCode] = runnable
         handler.postDelayed(runnable, longPressThreshold)
+    }
+
+    private fun replacePreviousCharWithVariation(
+        inputConnection: InputConnection,
+        expectedChar: Char,
+        variation: String
+    ) {
+        val extracted = inputConnection.getExtractedText(ExtractedTextRequest(), 0)
+        val selectionStart = extracted?.selectionStart ?: -1
+        val selectionEnd = extracted?.selectionEnd ?: -1
+        val text = extracted?.text
+        val canReplaceByRegion = text != null &&
+            selectionStart == selectionEnd &&
+            selectionStart > 0 &&
+            selectionStart <= text.length &&
+            text[selectionStart - 1] == expectedChar
+
+        inputConnection.finishComposingText()
+        inputConnection.beginBatchEdit()
+        if (canReplaceByRegion) {
+            inputConnection.setComposingRegion(selectionStart - 1, selectionStart)
+            inputConnection.commitText(variation, 1)
+        } else {
+            inputConnection.deleteSurroundingText(1, 0)
+            inputConnection.commitText(variation, 1)
+        }
+        inputConnection.endBatchEdit()
     }
 }
