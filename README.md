@@ -1,5 +1,17 @@
+Donate to the current maintainer:
 
+Account holder | Patrick Alexander Zauner |
+|---|---|
+IBAN | DE25660702130058075300
+BIC | DEUTDESMP12
+
+Or, for everyone who sees an IBAN and quietly gives up:\
+[via PayPal](https://www.paypal.me/zaunerpa)\
+`<OpenCollective Profile coming soon>`
+
+Donate to the original developer:\
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/C0C31OHWF2)
+
 # Pastiera
 
 Input method for physical keyboards android devices (e.g. Unihertz Titan 2), designed to make typing faster through shortcuts, gestures, and customization.
