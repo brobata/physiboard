@@ -260,6 +260,27 @@ class AutoCorrectionManagerTest {
     }
 
     @Test
+    fun pendingAutoSpaceBeforeSelectedClosingParen_movesSpaceAfterParen() {
+        SettingsManager.setAutoSpacePunctuation(context, ")")
+        val inputConnection = FakeInputConnection(context, "da wären wir ")
+        AutoSpaceTracker.markAutoSpace()
+
+        val handled = AutoCorrectionManager(context).handleBoundaryKey(
+            keyCode = KeyEvent.KEYCODE_UNKNOWN,
+            event = null,
+            inputConnection = inputConnection,
+            isAutoCorrectEnabled = true,
+            commitBoundary = true,
+            boundaryCharOverride = ')',
+            onStatusBarUpdate = {}
+        )
+
+        assertTrue(handled)
+        assertEquals("da wären wir) ", inputConnection.text)
+        assertEquals(false, AutoSpaceTracker.isPending())
+    }
+
+    @Test
     fun pendingAutoSpaceBeforeOpeningQuote_keepsSpaceBeforeQuote() {
         SettingsManager.setAutoSpacePunctuation(context, "\"")
         val inputConnection = FakeInputConnection(context, "Ceci est un guillemet ")

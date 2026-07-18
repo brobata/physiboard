@@ -13,4 +13,12 @@ class TextInputSettingsScreenTest {
         assertEquals("\"", toggleAutoSpacePunctuation("", '"'))
         assertEquals("", toggleAutoSpacePunctuation("\"", '"'))
     }
+
+    @Test
+    fun closingBracketsAreVisibleWithoutOfferingOpeningBrackets() {
+        val options = autoSpacePunctuationOptions()
+
+        assertTrue(listOf(')', ']', '}').all { it in options })
+        assertTrue(listOf('(', '[', '{').none { it in options })
+    }
 }
