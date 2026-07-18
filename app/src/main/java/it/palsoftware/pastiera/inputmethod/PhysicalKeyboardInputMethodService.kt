@@ -138,6 +138,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private var lastLayoutToastTime: Long = 0
     private var suppressNextLayoutReload: Boolean = false
     private var activeKeyboardLayoutName: String = "qwerty"
+    private var consumeAltEnterUntilKeyUp: Boolean = false
     
     // Aggiungi per Power Shortcuts
     private var powerShortcutToast: android.widget.Toast? = null
@@ -3908,6 +3909,40 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             return true
         }
 
+        if (keyCode == KeyEvent.KEYCODE_ENTER && event?.repeatCount == 0) {
+            // Recover if a previous chord lost its key-up while the input context changed.
+            consumeAltEnterUntilKeyUp = false
+        }
+
+        // Keep repeats from a consumed Alt+Enter chord away from the editor.
+        if (keyCode == KeyEvent.KEYCODE_ENTER && consumeAltEnterUntilKeyUp) {
+            return true
+        }
+
+        // Handle Alt+Enter for subtype cycling
+        if (
+            hasEditableField &&
+            event != null &&
+            event.repeatCount == 0 &&
+            SettingsManager.isAltEnterLayoutSwitchEnabled(this) &&
+            (keyCode == KeyEvent.KEYCODE_ENTER &&
+                    (event.isAltPressed || altPhysicallyPressed))
+        ) {
+            consumeAltEnterUntilKeyUp = true
+            modifierStateController.clearAltState(resetPressedState = true)
+
+            val showToast = SettingsManager.isToastOnLayoutSwitchEnabled(this)
+            SubtypeCycler.cycleToNextSubtype(
+                context = this,
+                imeServiceClass = PhysicalKeyboardInputMethodService::class.java,
+                assets = assets,
+                showToast = showToast
+            )
+
+            updateStatusBarText()
+            return true
+        }
+
         // Handle Ctrl+Space for subtype cycling
         if (
             hasEditableField &&
@@ -4131,6 +4166,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
 
     override fun onKeyUp(keyCode_: Int, event_: KeyEvent?): Boolean {
         val (keyCode, event) = remapHardwareEvent(keyCode_, event_)
+        if (keyCode == KeyEvent.KEYCODE_ENTER && consumeAltEnterUntilKeyUp) {
+            consumeAltEnterUntilKeyUp = false
+            return true
+        }
         bounceKeyFilter.shouldConsumeKeyUp(keyCode, event)?.let { suppressed ->
             notifyDebugKeyEvent(
                 keyCode = keyCode,

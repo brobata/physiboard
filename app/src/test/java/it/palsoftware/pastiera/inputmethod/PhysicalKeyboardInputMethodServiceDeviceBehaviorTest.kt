@@ -305,6 +305,136 @@ class PhysicalKeyboardInputMethodServiceDeviceBehaviorTest {
     }
 
     @Test
+    fun altEnterLayoutSwitch_consumesShortcutAndClearsModifiers_whenEnabled() {
+        val context = RuntimeEnvironment.getApplication()
+        SettingsManager.setAltEnterLayoutSwitchEnabled(context, true)
+        val t0 = 3_900L
+
+        service.onKeyDown(
+            KeyEvent.KEYCODE_ALT_LEFT,
+            keyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ALT_LEFT, t0, t0)
+        )
+        assertTrue(modifierController().altPressed)
+
+        val handled = service.onKeyDown(
+            KeyEvent.KEYCODE_ENTER,
+            keyEvent(
+                action = KeyEvent.ACTION_DOWN,
+                keyCode = KeyEvent.KEYCODE_ENTER,
+                downTime = t0,
+                eventTime = t0 + 80L,
+                metaState = KeyEvent.META_ALT_ON or KeyEvent.META_ALT_LEFT_ON
+            )
+        )
+
+        val modifier = modifierController()
+        assertTrue(handled)
+        assertFalse(modifier.altPressed)
+        assertFalse(modifier.altPhysicallyPressed)
+        assertFalse(modifier.altOneShot)
+        assertFalse(modifier.altLatchActive)
+
+        val keyUpHandled = service.onKeyUp(
+            KeyEvent.KEYCODE_ENTER,
+            keyEvent(
+                action = KeyEvent.ACTION_UP,
+                keyCode = KeyEvent.KEYCODE_ENTER,
+                downTime = t0,
+                eventTime = t0 + 100L,
+                metaState = KeyEvent.META_ALT_ON or KeyEvent.META_ALT_LEFT_ON
+            )
+        )
+        assertTrue(keyUpHandled)
+    }
+
+    @Test
+    fun altEnterLayoutSwitch_doesNotConsumeWhenDisabled() {
+        val context = RuntimeEnvironment.getApplication()
+        SettingsManager.setAltEnterLayoutSwitchEnabled(context, false)
+        setField(service, "clearAltOnSpaceEnabled", false)
+        val t0 = 3_920L
+
+        service.onKeyDown(
+            KeyEvent.KEYCODE_ALT_LEFT,
+            keyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ALT_LEFT, t0, t0)
+        )
+        service.onKeyDown(
+            KeyEvent.KEYCODE_ENTER,
+            keyEvent(
+                action = KeyEvent.ACTION_DOWN,
+                keyCode = KeyEvent.KEYCODE_ENTER,
+                downTime = t0,
+                eventTime = t0 + 80L,
+                metaState = KeyEvent.META_ALT_ON or KeyEvent.META_ALT_LEFT_ON
+            )
+        )
+
+        assertTrue(modifierController().altPhysicallyPressed)
+    }
+
+    @Test
+    fun altEnterLayoutSwitch_consumesKeyRepeatsUntilKeyUp() {
+        val context = RuntimeEnvironment.getApplication()
+        SettingsManager.setAltEnterLayoutSwitchEnabled(context, true)
+        val t0 = 3_940L
+
+        service.onKeyDown(
+            KeyEvent.KEYCODE_ALT_LEFT,
+            keyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ALT_LEFT, t0, t0)
+        )
+        service.onKeyDown(
+            KeyEvent.KEYCODE_ENTER,
+            keyEvent(
+                action = KeyEvent.ACTION_DOWN,
+                keyCode = KeyEvent.KEYCODE_ENTER,
+                downTime = t0,
+                eventTime = t0 + 80L,
+                metaState = KeyEvent.META_ALT_ON or KeyEvent.META_ALT_LEFT_ON
+            )
+        )
+
+        val repeatedHandled = service.onKeyDown(
+            KeyEvent.KEYCODE_ENTER,
+            keyEvent(
+                action = KeyEvent.ACTION_DOWN,
+                keyCode = KeyEvent.KEYCODE_ENTER,
+                downTime = t0,
+                eventTime = t0 + 160L,
+                metaState = KeyEvent.META_ALT_ON or KeyEvent.META_ALT_LEFT_ON,
+                repeatCount = 1
+            )
+        )
+
+        assertTrue(repeatedHandled)
+        assertFalse(recorder.committedTexts.contains("\n"))
+        assertTrue(recorder.sentKeyEvents.isEmpty())
+    }
+
+    @Test
+    fun altEnterLayoutSwitch_doesNotTriggerWhenEnterIsPressedFirst() {
+        val context = RuntimeEnvironment.getApplication()
+        SettingsManager.setAltEnterLayoutSwitchEnabled(context, true)
+        val t0 = 3_960L
+
+        service.onKeyDown(
+            KeyEvent.KEYCODE_ENTER,
+            keyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER, t0, t0)
+        )
+        service.onKeyDown(
+            KeyEvent.KEYCODE_ALT_LEFT,
+            keyEvent(
+                action = KeyEvent.ACTION_DOWN,
+                keyCode = KeyEvent.KEYCODE_ALT_LEFT,
+                downTime = t0 + 80L,
+                eventTime = t0 + 80L
+            )
+        )
+
+        assertTrue(modifierController().altPressed)
+        assertTrue(modifierController().altPhysicallyPressed)
+    }
+
+    @Test
     fun deviceSanity_symATogglesEmojiThenSymbols_exactMappings() {
         val t0 = 4_000L
 
@@ -488,9 +618,10 @@ class PhysicalKeyboardInputMethodServiceDeviceBehaviorTest {
         keyCode: Int,
         downTime: Long,
         eventTime: Long,
-        metaState: Int = 0
+        metaState: Int = 0,
+        repeatCount: Int = 0
     ): KeyEvent {
-        return KeyEvent(downTime, eventTime, action, keyCode, 0, metaState)
+        return KeyEvent(downTime, eventTime, action, keyCode, repeatCount, metaState)
     }
 
     private fun modifierController(): ModifierStateController {

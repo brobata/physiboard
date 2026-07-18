@@ -381,6 +381,9 @@ private fun LayoutSwitchShortcutsCard() {
     var altShiftLayoutSwitch by remember {
         mutableStateOf(SettingsManager.isAltShiftLayoutSwitchEnabled(context))
     }
+    var altEnterLayoutSwitch by remember {
+        mutableStateOf(SettingsManager.isAltEnterLayoutSwitchEnabled(context))
+    }
     var ctrlSpaceLayoutSwitch by remember {
         mutableStateOf(SettingsManager.isCtrlSpaceLayoutSwitchEnabled(context))
     }
@@ -418,6 +421,16 @@ private fun LayoutSwitchShortcutsCard() {
                 onCheckedChange = { enabled ->
                     altShiftLayoutSwitch = enabled
                     SettingsManager.setAltShiftLayoutSwitchEnabled(context, enabled)
+                }
+            )
+
+            LayoutSwitchShortcutRow(
+                title = stringResource(R.string.alt_enter_layout_switch_title),
+                description = stringResource(R.string.alt_enter_layout_switch_description),
+                checked = altEnterLayoutSwitch,
+                onCheckedChange = { enabled ->
+                    altEnterLayoutSwitch = enabled
+                    SettingsManager.setAltEnterLayoutSwitchEnabled(context, enabled)
                 }
             )
 

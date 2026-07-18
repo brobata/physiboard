@@ -334,6 +334,8 @@
     <string name="keyboard_layout_mode_manual_description">OFF: use one manually selected layout for all locales.</string>
     <string name="alt_shift_layout_switch_title">Alt+Shift Layout Switch</string>
     <string name="alt_shift_layout_switch_description">Cycle languages/layouts with Alt+Shift.</string>
+    <string name="alt_enter_layout_switch_title">Alt+Enter Layout Switch</string>
+    <string name="alt_enter_layout_switch_description">Cycle languages/layouts with Alt+Enter.</string>
     <string name="ctrl_space_layout_switch_title">Ctrl+Space Layout Switch</string>
     <string name="ctrl_space_layout_switch_description">Cycle languages/layouts with Ctrl+Space.</string>
     <string name="layout_switch_shortcuts_title">Layout Switch Shortcuts</string>

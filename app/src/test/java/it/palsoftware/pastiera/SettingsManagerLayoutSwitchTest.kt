@@ -46,6 +46,21 @@ class SettingsManagerLayoutSwitchTest {
     }
 
     @Test
+    fun altEnterLayoutSwitch_defaultsDisabled_andPersistsState() {
+        val context = RuntimeEnvironment.getApplication()
+
+        assertFalse(SettingsManager.isAltEnterLayoutSwitchEnabled(context))
+
+        SettingsManager.setAltEnterLayoutSwitchEnabled(context, true)
+
+        assertTrue(SettingsManager.isAltEnterLayoutSwitchEnabled(context))
+
+        SettingsManager.setAltEnterLayoutSwitchEnabled(context, false)
+
+        assertFalse(SettingsManager.isAltEnterLayoutSwitchEnabled(context))
+    }
+
+    @Test
     fun ctrlSpaceLayoutSwitch_defaultsEnabled_andPersistsDisabledState() {
         val context = RuntimeEnvironment.getApplication()
 
