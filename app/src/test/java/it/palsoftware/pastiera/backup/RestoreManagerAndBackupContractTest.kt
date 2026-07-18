@@ -63,6 +63,18 @@ class RestoreManagerAndBackupContractTest {
     }
 
     @Test
+    fun punctuationSpacingPreferences_areRecognizedForRestore() {
+        assertEquals(
+            PreferenceValueType.STRING,
+            PreferenceSchemas.expectedType("pastiera_prefs", "auto_space_punctuation")
+        )
+        assertEquals(
+            PreferenceValueType.STRING,
+            PreferenceSchemas.expectedType("pastiera_prefs", "space_after_punctuation")
+        )
+    }
+
+    @Test
     fun statusBarAndVariationPreferences_areRecognizedForRestore() {
         assertEquals(
             PreferenceValueType.STRING,

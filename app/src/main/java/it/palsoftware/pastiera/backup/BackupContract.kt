@@ -190,6 +190,8 @@ object PreferenceSchemas {
             "french_punctuation_spacing" to PreferenceValueType.BOOLEAN,
             "french_punctuation_only_french" to PreferenceValueType.BOOLEAN,
             "comma_space" to PreferenceValueType.BOOLEAN,
+            "auto_space_punctuation" to PreferenceValueType.STRING,
+            "space_after_punctuation" to PreferenceValueType.STRING,
             "smart_quotes" to PreferenceValueType.BOOLEAN,
             "smart_quotes_style" to PreferenceValueType.STRING,
             "swipe_to_delete" to PreferenceValueType.BOOLEAN,

@@ -6,6 +6,7 @@ import android.view.View
 import android.view.inputmethod.InputConnection
 import it.palsoftware.pastiera.SettingsManager
 import it.palsoftware.pastiera.core.AutoSpaceTracker
+import it.palsoftware.pastiera.core.DeferredPunctuationSpaceTracker
 
 /**
  * Handles clicks on variation buttons.
@@ -41,6 +42,7 @@ object VariationButtonHandler {
                 Log.w(TAG, "No inputConnection available to insert variation")
                 return@OnClickListener
             }
+            DeferredPunctuationSpaceTracker.prepareForTextCommit(context, inputConnection, variation)
 
             val punctuationSet = SettingsManager.getAutoSpacePunctuation(context)
             val bracketSet = "()[]{}"
@@ -97,6 +99,7 @@ object VariationButtonHandler {
                 Log.w(TAG, "No inputConnection available to insert static variation")
                 return@OnClickListener
             }
+            DeferredPunctuationSpaceTracker.prepareForTextCommit(context, inputConnection, variation)
 
             val punctuationSet = SettingsManager.getAutoSpacePunctuation(context)
             val bracketSet = "()[]{}"

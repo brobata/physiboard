@@ -1189,6 +1189,8 @@ private fun buildKeyboardDebugReport(
         appendLine("resolved_mid_word_quote_to_apostrophe=${SettingsManager.getMidWordQuoteToApostrophe(context)}")
         appendLine("resolved_french_punctuation_spacing=${SettingsManager.getFrenchPunctuationSpacing(context)}")
         appendLine("resolved_comma_space=${SettingsManager.getCommaSpace(context)}")
+        appendLine("resolved_auto_space_punctuation=${SettingsManager.getAutoSpacePunctuation(context)}")
+        appendLine("resolved_space_after_punctuation=${SettingsManager.getSpaceAfterPunctuation(context)}")
         appendLine()
         appendLine("[autocorrections]")
         if (autoCorrections.isEmpty()) {

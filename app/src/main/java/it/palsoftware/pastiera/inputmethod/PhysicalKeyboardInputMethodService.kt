@@ -34,6 +34,7 @@ import android.widget.Toast
 import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.inputmethod.NotificationHelper
 import it.palsoftware.pastiera.core.AutoCorrectionManager
+import it.palsoftware.pastiera.core.DeferredPunctuationSpaceTracker
 import it.palsoftware.pastiera.core.InputContextState
 import it.palsoftware.pastiera.core.ModifierStateController
 import it.palsoftware.pastiera.core.NavModeController
@@ -1654,6 +1655,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // Register callback to be notified when an Alt character is inserted after long press.
         // Variations are updated automatically by updateStatusBarText().
         altSymManager.onAltCharInserted = { char ->
+            DeferredPunctuationSpaceTracker.onTextCommitted(this, char.toString())
             updateStatusBarText()
             val ic = currentInputConnection
             // Apostrophe is never a boundary: use centralized punctuation set.
@@ -2053,6 +2055,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         val ic = inputConnection ?: return false
 
         if (text == " ") {
+            DeferredPunctuationSpaceTracker.prepareForTextCommit(this, ic, text)
             return SoftwareKeyboardTextInputHandler.handleSpaceInput(
                 textInputController = textInputController,
                 inputConnection = ic,
@@ -2072,6 +2075,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
 
         markSelectionUpdateSkipAfterCommit()
+        if (DeferredPunctuationSpaceTracker.prepareForTextCommit(this, ic, text)) {
+            suggestionController.onContextReset()
+        }
         ic.commitText(text, 1)
         if (!snapshot.shouldDisableSuggestions) {
             suggestionController.onCharacterCommitted(text, ic)
@@ -2795,6 +2801,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
 
     override fun onStartInput(info: EditorInfo?, restarting: Boolean) {
         super.onStartInput(info, restarting)
+        DeferredPunctuationSpaceTracker.clear()
         bounceKeyFilter.reset()
         cancelPendingSelectionDrivenUiWork()
         invalidateRenderedStatusSnapshot()
@@ -3531,6 +3538,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
         
         if (cursorPositionChanged && collapsedSelection && !shouldSkipForCommit) {
+            if (!forwardByOne) {
+                DeferredPunctuationSpaceTracker.clear()
+            }
             // Update suggestions on cursor movement (if suggestions enabled)
             if (!state.shouldDisableSuggestions) {
                 suggestionController.onCursorMoved(currentInputConnection)
@@ -4001,6 +4011,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         val ic = currentInputConnection
         val state = inputContextState
         val isAutoCorrectEnabled = SettingsManager.getAutoCorrectEnabled(this) && !state.shouldDisableAutoCorrect
+        if (keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_DEL) {
+            DeferredPunctuationSpaceTracker.clear()
+        }
 
         clearAltOnBoundaryIfNeeded(keyCode) { updateStatusBarText() }
         if (keyCode == KeyEvent.KEYCODE_ENTER && modifierStateController.consumeShiftOneShot()) {
@@ -4042,6 +4055,33 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             ctrlLatchActive ||
             ctrlOneShot ||
             ctrlLatchFromNavMode
+        when {
+            keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_DEL -> {
+                DeferredPunctuationSpaceTracker.clear()
+            }
+            !altActiveNow && !ctrlActiveNow && ic != null -> {
+                val typedText = when {
+                    keyCode == KeyEvent.KEYCODE_SPACE -> " "
+                    event?.unicodeChar?.takeIf { it != 0 } != null -> event.unicodeChar.toChar().toString()
+                    else -> ""
+                }
+                val insertedDeferredSpace =
+                    DeferredPunctuationSpaceTracker.prepareForTextCommit(this, ic, typedText)
+                if (insertedDeferredSpace) {
+                    suggestionController.onContextReset()
+                    if (typedText.firstOrNull()?.isLetter() == true) {
+                        AutoCapitalizeHelper.enableAfterPunctuation(
+                            context = this,
+                            inputConnection = ic,
+                            shouldDisableAutoCapitalize = state.shouldDisableAutoCapitalize,
+                            onEnableShift = { modifierStateController.requestShiftOneShotFromAutoCap() },
+                            disableShift = { modifierStateController.consumeShiftOneShot() },
+                            onUpdateStatusBar = { updateStatusBarText() }
+                        )
+                    }
+                }
+            }
+        }
         if (
             inputEventRouter.handleConfiguredForwardDeleteAlternatives(
                 context = this,

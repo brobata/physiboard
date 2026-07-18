@@ -458,6 +458,17 @@ class SettingsManagerLayoutSwitchTest {
     }
 
     @Test
+    fun spaceAfterPunctuation_defaultsOffAndNormalizesSelection() {
+        val context = RuntimeEnvironment.getApplication()
+
+        assertEquals("", SettingsManager.getSpaceAfterPunctuation(context))
+
+        SettingsManager.setSpaceAfterPunctuation(context, "!?x?!")
+
+        assertEquals("!?", SettingsManager.getSpaceAfterPunctuation(context))
+    }
+
+    @Test
     fun autoSpacePunctuation_legacyStoredDefaultWithoutSemicolonStaysWithoutSemicolon() {
         val context = RuntimeEnvironment.getApplication()
         context.getSharedPreferences("pastiera_prefs", android.content.Context.MODE_PRIVATE)

@@ -14,6 +14,7 @@ import it.palsoftware.pastiera.data.layout.LayoutMappingRepository
 import it.palsoftware.pastiera.data.mappings.KeyMappingLoader
 import it.palsoftware.pastiera.data.variation.VariationRepository
 import it.palsoftware.pastiera.core.AutoSpaceTracker
+import it.palsoftware.pastiera.core.DeferredPunctuationSpaceTracker
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -290,6 +291,9 @@ class AltSymManager(
     ): Boolean {
         val altChar = altKeyMap[keyCode]
         return if (altChar != null) {
+            context?.let {
+                DeferredPunctuationSpaceTracker.prepareForTextCommit(it, inputConnection, altChar)
+            }
             val frenchSpacedPunctuation = altChar.length == 1 &&
                 context?.let { SettingsManager.shouldApplyFrenchPunctuationSpacing(it) } == true &&
                 it.palsoftware.pastiera.core.Punctuation.commitFrenchSpacedPunctuation(inputConnection, altChar[0])
