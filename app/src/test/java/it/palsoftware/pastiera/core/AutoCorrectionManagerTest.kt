@@ -259,6 +259,75 @@ class AutoCorrectionManagerTest {
         assertEquals("text: )", inputConnection.text)
     }
 
+    @Test
+    fun pendingAutoSpaceBeforeOpeningQuote_keepsSpaceBeforeQuote() {
+        SettingsManager.setAutoSpacePunctuation(context, "\"")
+        val inputConnection = FakeInputConnection(context, "Ceci est un guillemet ")
+        AutoSpaceTracker.markAutoSpace()
+
+        val handled = AutoCorrectionManager(context).handleBoundaryKey(
+            keyCode = KeyEvent.KEYCODE_UNKNOWN,
+            event = null,
+            inputConnection = inputConnection,
+            isAutoCorrectEnabled = true,
+            commitBoundary = true,
+            boundaryCharOverride = '"',
+            onStatusBarUpdate = {}
+        )
+        if (!handled) {
+            inputConnection.commitText("\"", 1)
+        }
+
+        assertEquals(false, handled)
+        assertEquals("Ceci est un guillemet \"", inputConnection.text)
+        assertEquals(false, AutoSpaceTracker.isPending())
+    }
+
+    @Test
+    fun pendingAutoSpaceBeforeClosingQuote_movesSpaceAfterQuote() {
+        SettingsManager.setAutoSpacePunctuation(context, "\"")
+        val inputConnection = FakeInputConnection(context, "\"bonjour ")
+        AutoSpaceTracker.markAutoSpace()
+
+        val handled = AutoCorrectionManager(context).handleBoundaryKey(
+            keyCode = KeyEvent.KEYCODE_UNKNOWN,
+            event = null,
+            inputConnection = inputConnection,
+            isAutoCorrectEnabled = true,
+            commitBoundary = true,
+            boundaryCharOverride = '"',
+            onStatusBarUpdate = {}
+        )
+
+        assertTrue(handled)
+        assertEquals("\"bonjour\" ", inputConnection.text)
+        assertEquals(false, AutoSpaceTracker.isPending())
+    }
+
+    @Test
+    fun attachedStrayQuote_doesNotTurnFollowingOpeningQuoteIntoClosingQuote() {
+        SettingsManager.setAutoSpacePunctuation(context, "\"")
+        val inputConnection = FakeInputConnection(context, "Erster Versuch\" Zweiter Versuch ")
+        AutoSpaceTracker.markAutoSpace()
+
+        val handled = AutoCorrectionManager(context).handleBoundaryKey(
+            keyCode = KeyEvent.KEYCODE_UNKNOWN,
+            event = null,
+            inputConnection = inputConnection,
+            isAutoCorrectEnabled = true,
+            commitBoundary = true,
+            boundaryCharOverride = '"',
+            onStatusBarUpdate = {}
+        )
+        if (!handled) {
+            inputConnection.commitText("\"", 1)
+        }
+
+        assertEquals(false, handled)
+        assertEquals("Erster Versuch\" Zweiter Versuch \"", inputConnection.text)
+        assertEquals(false, AutoSpaceTracker.isPending())
+    }
+
     private class FakeInputConnection(
         context: Context,
         initialText: String

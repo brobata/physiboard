@@ -10,6 +10,7 @@ import it.palsoftware.pastiera.core.ModifierStateController
 import it.palsoftware.pastiera.core.NavModeController
 import it.palsoftware.pastiera.core.SymLayoutController
 import it.palsoftware.pastiera.core.TextInputController
+import it.palsoftware.pastiera.core.AutoSpaceTracker
 import it.palsoftware.pastiera.SettingsManager
 import it.palsoftware.pastiera.SymPagesConfig
 import it.palsoftware.pastiera.data.layout.LayoutMapping
@@ -56,6 +57,7 @@ class InputEventRouterModifierE2ETest {
         SettingsManager.setPhysicalKeyboardCurrencySymbol(context, "€")
         SettingsManager.setAltLatchStaysOnSpace(context, false)
         SettingsManager.setFrenchPunctuationSpacing(context, false)
+        AutoSpaceTracker.clear()
         prefs = context.getSharedPreferences("router_e2e_modifier_tests", Context.MODE_PRIVATE)
         prefs.edit().clear().commit()
 
@@ -82,7 +84,9 @@ class InputEventRouterModifierE2ETest {
         SettingsManager.setPhysicalKeyboardCurrencySymbol(context, "€")
         SettingsManager.setAltLatchStaysOnSpace(context, false)
         SettingsManager.setMidWordQuoteToApostrophe(context, false)
+        SettingsManager.setAutoSpacePunctuation(context, "")
         SettingsManager.setFrenchPunctuationSpacing(context, false)
+        AutoSpaceTracker.clear()
     }
 
     @Test
@@ -319,6 +323,7 @@ class InputEventRouterModifierE2ETest {
             product = "titan2"
         )
         SettingsManager.setMidWordQuoteToApostrophe(context, true)
+        SettingsManager.setAutoSpacePunctuation(context, "\"")
         altSymManager.reloadAltMappings()
         inputConnectionRecorder.textBeforeCursor = "qu"
         val callbacks = TestCallbacks(modifierStateController)

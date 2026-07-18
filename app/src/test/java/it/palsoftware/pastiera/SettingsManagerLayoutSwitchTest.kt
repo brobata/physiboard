@@ -449,6 +449,15 @@ class SettingsManagerLayoutSwitchTest {
     }
 
     @Test
+    fun autoSpacePunctuation_quoteRoundTripsWithoutEscapingArtifacts() {
+        val context = RuntimeEnvironment.getApplication()
+
+        SettingsManager.setAutoSpacePunctuation(context, "\"")
+
+        assertEquals("\"", SettingsManager.getAutoSpacePunctuation(context))
+    }
+
+    @Test
     fun autoSpacePunctuation_legacyStoredDefaultWithoutSemicolonStaysWithoutSemicolon() {
         val context = RuntimeEnvironment.getApplication()
         context.getSharedPreferences("pastiera_prefs", android.content.Context.MODE_PRIVATE)

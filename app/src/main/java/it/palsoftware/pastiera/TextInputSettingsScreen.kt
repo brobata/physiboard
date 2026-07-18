@@ -128,7 +128,11 @@ fun TextInputSettingsScreen(
             onDismissRequest = { autoSpacePunctuationDialogVisible = false },
             title = { Text(stringResource(R.string.auto_space_punctuation_title)) },
             text = {
-                Column {
+                Column(
+                    modifier = Modifier
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
                     Text(
                         text = autoSpacePunctuationDialogDescription(
                             punctuation = autoSpacePunctuation,
@@ -717,7 +721,7 @@ private fun smartQuotesStyleLabel(style: String): String {
     }
 }
 
-private fun autoSpacePunctuationOptions(): List<Char> {
+internal fun autoSpacePunctuationOptions(): List<Char> {
     return Punctuation.AUTO_SPACE_CANDIDATES.toList()
 }
 
@@ -742,7 +746,7 @@ private fun autoSpacePunctuationDialogDescription(
     return "$selectedLabel $selected. $instruction"
 }
 
-private fun autoSpacePunctuationLabel(punctuation: Char): String {
+internal fun autoSpacePunctuationLabel(punctuation: Char): String {
     return when (punctuation) {
         '\\' -> "\\"
         '"' -> "\""
@@ -755,7 +759,7 @@ private fun addAutoSpacePunctuation(current: String, punctuation: Char): String 
     return Punctuation.AUTO_SPACE_CANDIDATES.filter { it in selected }
 }
 
-private fun toggleAutoSpacePunctuation(current: String, punctuation: Char): String {
+internal fun toggleAutoSpacePunctuation(current: String, punctuation: Char): String {
     return if (punctuation in current) {
         current.filterNot { it == punctuation }
     } else {

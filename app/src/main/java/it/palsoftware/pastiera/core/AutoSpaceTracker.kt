@@ -10,6 +10,7 @@ import android.view.inputmethod.InputConnection
  */
 object AutoSpaceTracker {
     private const val TAG = "AutoSpaceTracker"
+    private const val QUOTE_CONTEXT_LOOKBACK = 240
     @Volatile
     private var autoSpacePending: Boolean = false
 
@@ -52,6 +53,11 @@ object AutoSpaceTracker {
         if (!lastIsSpace || !prevIsWordChar) {
             return false
         }
+        if (punctuation == "\"" && !hasUnclosedStraightDoubleQuote(inputConnection)) {
+            autoSpacePending = false
+            Log.d(TAG, "Keeping auto-space before opening quote")
+            return false
+        }
         autoSpacePending = false
         inputConnection.beginBatchEdit()
         inputConnection.deleteSurroundingText(1, 0)
@@ -59,5 +65,30 @@ object AutoSpaceTracker {
         inputConnection.endBatchEdit()
         Log.d(TAG, "replaceAutoSpaceWithPunctuation -> '$punctuation '")
         return true
+    }
+
+    private fun hasUnclosedStraightDoubleQuote(inputConnection: InputConnection): Boolean {
+        val before = inputConnection.getTextBeforeCursor(QUOTE_CONTEXT_LOOKBACK, 0)
+            ?.toString()
+            .orEmpty()
+            .dropLast(1)
+            .substringAfterLast('\n')
+        var quoteOpen = false
+        before.forEachIndexed { index, char ->
+            if (char != '"') return@forEachIndexed
+            if (quoteOpen) {
+                quoteOpen = false
+            } else if (isOpeningQuoteContext(before, index)) {
+                quoteOpen = true
+            }
+        }
+        return quoteOpen
+    }
+
+    private fun isOpeningQuoteContext(text: String, quoteIndex: Int): Boolean {
+        if (quoteIndex == 0) return true
+        val previous = text[quoteIndex - 1]
+        return previous.isWhitespace() ||
+            previous in setOf('(', '[', '{', '<', '«', '‹', '„', '“', '”', '»', '›', '-', '–', '—')
     }
 }
