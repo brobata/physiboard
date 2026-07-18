@@ -2058,11 +2058,14 @@ private fun KeyboardThemeColorPickerDialog(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .heightIn(max = 380.dp)
                     .padding(12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Column(
-                    modifier = Modifier.weight(0.9f),
+                    modifier = Modifier
+                        .weight(0.9f)
+                        .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
