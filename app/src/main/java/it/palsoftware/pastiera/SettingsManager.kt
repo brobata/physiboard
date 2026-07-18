@@ -3413,7 +3413,7 @@ object SettingsManager {
     }
 
     /**
-     * Enables/disables Alt+Shift shortcut for keyboard layout cycling.
+     * Enables/disables Alt+Enter shortcut for keyboard layout cycling.
      */
     fun setAltEnterLayoutSwitchEnabled(context: Context, enabled: Boolean) {
         getPreferences(context).edit()
