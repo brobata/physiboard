@@ -177,6 +177,7 @@ fun KeyboardThemeScreen(
     var exportTheme by remember { mutableStateOf<KeyboardThemePreset?>(null) }
     var showImportDialog by remember { mutableStateOf(false) }
     var showSaveAsDialog by remember { mutableStateOf(false) }
+    var deleteThemeRequest by remember { mutableStateOf<String?>(null) }
     var themePickerRequest by remember { mutableStateOf<KeyboardThemePickerRequest?>(null) }
     var assignmentScreenTarget by remember { mutableStateOf<SettingsManager.KeyboardThemeTarget?>(null) }
     var overrideEditorRequest by remember { mutableStateOf<KeyboardThemeOverrideEditorRequest?>(null) }
@@ -267,6 +268,22 @@ fun KeyboardThemeScreen(
             softwareSelectionKey = "saved:$normalizedName"
             softwarePreset = savedPreset
             softwareTheme = savedPreset
+        }
+    }
+
+    fun deleteSavedTheme(name: String) {
+        SettingsManager.deleteKeyboardTheme(context, name)
+        savedThemes = SettingsManager.getSavedKeyboardThemes(context).map { it.toKeyboardThemeOption() }
+        val selectionKey = "saved:$name"
+        if (hardwareSelectionKey == selectionKey) {
+            hardwareSelectionKey = "custom:hardware"
+            hardwarePreset = hardwareTheme.copy(name = "Custom")
+            hardwareTheme = hardwarePreset
+        }
+        if (softwareSelectionKey == selectionKey) {
+            softwareSelectionKey = "custom:software"
+            softwarePreset = softwareTheme.copy(name = "Custom")
+            softwareTheme = softwarePreset
         }
     }
 
@@ -414,6 +431,7 @@ fun KeyboardThemeScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -426,6 +444,19 @@ fun KeyboardThemeScreen(
                 Button(onClick = { showImportDialog = true }) {
                     Text("Import")
                 }
+                activeSelectionKey.removePrefix("saved:")
+                    .takeIf { activeSelectionKey.startsWith("saved:") }
+                    ?.let { savedName ->
+                        Button(
+                            onClick = { deleteThemeRequest = savedName },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer,
+                                contentColor = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        ) {
+                            Text("Delete")
+                        }
+                    }
             }
 
             KeyboardThemeAssignmentSummaryRow(
@@ -555,6 +586,28 @@ fun KeyboardThemeScreen(
             onSave = { name ->
                 showSaveAsDialog = false
                 saveActiveThemeAs(name)
+            }
+        )
+    }
+    deleteThemeRequest?.let { name ->
+        AlertDialog(
+            onDismissRequest = { deleteThemeRequest = null },
+            title = { Text("Delete theme?") },
+            text = { Text("Delete ‘$name’? The currently applied colors will be kept.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        deleteThemeRequest = null
+                        deleteSavedTheme(name)
+                    }
+                ) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteThemeRequest = null }) {
+                    Text("Cancel")
+                }
             }
         )
     }
@@ -1977,12 +2030,23 @@ private fun KeyboardThemeColorPickerDialog(
     var hue by remember(initialColor) { mutableStateOf(hsv[0]) }
     var saturation by remember(initialColor) { mutableStateOf(hsv[1]) }
     var value by remember(initialColor) { mutableStateOf(hsv[2]) }
+    var hexValue by remember(initialColor) { mutableStateOf(initialColor.toHexColorLabel()) }
 
     fun updateColor(newHue: Float = hue, newSaturation: Float = saturation, newValue: Float = value) {
         hue = newHue
         saturation = newSaturation
         value = newValue
         color = AndroidColor.HSVToColor(floatArrayOf(hue, saturation, value))
+        hexValue = color.toHexColorLabel()
+        onPreviewColorChanged(color)
+    }
+
+    fun updateColorFromHex(newColor: Int) {
+        color = newColor
+        val newHsv = FloatArray(3).also { AndroidColor.colorToHSV(newColor, it) }
+        hue = newHsv[0]
+        saturation = newHsv[1]
+        value = newHsv[2]
         onPreviewColorChanged(color)
     }
 
@@ -2044,12 +2108,27 @@ private fun KeyboardThemeColorPickerDialog(
                             updateColor(newHue, newSaturation, newValue)
                         }
                     )
-                    Text(color.toHexColorLabel(), style = MaterialTheme.typography.bodyMedium)
+                    OutlinedTextField(
+                        value = hexValue,
+                        onValueChange = { input ->
+                            if (input.length <= 7) {
+                                hexValue = input.uppercase(Locale.ROOT)
+                                parseKeyboardThemeHexColor(input)?.let(::updateColorFromHex)
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        label = { Text("Hex color") },
+                        isError = hexValue.isNotEmpty() && parseKeyboardThemeHexColor(hexValue) == null
+                    )
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End
                     ) {
-                        Button(onClick = { onColorSelected(color) }) {
+                        Button(
+                            enabled = parseKeyboardThemeHexColor(hexValue) != null,
+                            onClick = { onColorSelected(color) }
+                        ) {
                             Text("Apply")
                         }
                     }
@@ -2237,3 +2316,9 @@ private fun KeyboardThemeColorWheel(
 }
 
 private fun Int.toHexColorLabel(): String = "#${toUInt().toString(16).uppercase().takeLast(6)}"
+
+internal fun parseKeyboardThemeHexColor(value: String): Int? {
+    val hex = value.trim().removePrefix("#")
+    if (hex.length != 6 || hex.any { it.digitToIntOrNull(16) == null }) return null
+    return (0xFF000000L or hex.toLong(16)).toInt()
+}

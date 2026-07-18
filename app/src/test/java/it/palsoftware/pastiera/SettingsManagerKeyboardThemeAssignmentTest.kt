@@ -205,6 +205,21 @@ class SettingsManagerKeyboardThemeAssignmentTest {
     }
 
     @Test
+    fun deletingSavedTheme_isCaseInsensitiveAndKeepsOtherThemes() {
+        val context = RuntimeEnvironment.getApplication()
+        val first = theme(0xFF123456.toInt())
+        val second = theme(0xFFABCDEF.toInt())
+        SettingsManager.saveKeyboardTheme(context, "First", first)
+        SettingsManager.saveKeyboardTheme(context, "Second", second)
+
+        SettingsManager.deleteKeyboardTheme(context, " first ")
+
+        val savedThemes = SettingsManager.getSavedKeyboardThemes(context)
+        assertEquals(listOf("Second"), savedThemes.map { it.name })
+        assertEquals(second, savedThemes.single().theme)
+    }
+
+    @Test
     fun keyboardThemeAssignmentPreferences_areRecognizedForRestore() {
         listOf(
             "keyboard_theme_assignment_mode_hardware",

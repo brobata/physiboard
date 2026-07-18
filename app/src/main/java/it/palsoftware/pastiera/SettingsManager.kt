@@ -1075,6 +1075,22 @@ object SettingsManager {
         val themes = getSavedKeyboardThemes(context)
             .filterNot { it.name.equals(normalizedName, ignoreCase = true) } +
             NamedKeyboardTheme(normalizedName, theme)
+        persistSavedKeyboardThemes(context, themes)
+    }
+
+    fun deleteKeyboardTheme(context: Context, name: String) {
+        val normalizedName = name.trim()
+        if (normalizedName.isEmpty()) return
+
+        val themes = getSavedKeyboardThemes(context)
+            .filterNot { it.name.equals(normalizedName, ignoreCase = true) }
+        persistSavedKeyboardThemes(context, themes)
+    }
+
+    private fun persistSavedKeyboardThemes(
+        context: Context,
+        themes: List<NamedKeyboardTheme>
+    ) {
         val array = JSONArray().apply {
             themes.forEach { savedTheme ->
                 put(JSONObject().apply {
