@@ -177,6 +177,49 @@ class PhysicalKeyboardInputMethodServiceDeviceBehaviorTest {
     }
 
     @Test
+    fun shiftEnter_consumesManualShift_whenAutoCapitalizeAtLineStartIsDisabled() {
+        val context = RuntimeEnvironment.getApplication()
+        SettingsManager.setAutoCapitalizeFirstLetter(context, false)
+        SettingsManager.setAutoCapitalizeAfterPeriod(context, false)
+        editorInfo.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
+        setField(service, "mInputEditorInfo", editorInfo)
+        setField(service, "inputContextState", InputContextState.fromEditorInfo(editorInfo))
+        val t0 = 2_700L
+
+        service.onKeyDown(
+            KeyEvent.KEYCODE_SHIFT_LEFT,
+            keyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_SHIFT_LEFT, t0, t0)
+        )
+        service.onKeyDown(
+            KeyEvent.KEYCODE_ENTER,
+            keyEvent(
+                action = KeyEvent.ACTION_DOWN,
+                keyCode = KeyEvent.KEYCODE_ENTER,
+                downTime = t0,
+                eventTime = t0 + 80L,
+                metaState = KeyEvent.META_SHIFT_ON or KeyEvent.META_SHIFT_LEFT_ON
+            )
+        )
+        service.onKeyUp(
+            KeyEvent.KEYCODE_SHIFT_LEFT,
+            keyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_SHIFT_LEFT, t0, t0 + 120L)
+        )
+
+        val modifier = modifierController()
+        assertFalse(modifier.shiftPressed)
+        assertFalse(modifier.shiftPhysicallyPressed)
+        assertFalse(modifier.shiftOneShot)
+        assertFalse(modifier.capsLockEnabled)
+
+        service.onKeyDown(
+            KeyEvent.KEYCODE_A,
+            keyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_A, t0 + 200L, t0 + 200L)
+        )
+        assertTrue("commits=${recorder.committedTexts}", recorder.committedTexts.contains("a"))
+        assertFalse("commits=${recorder.committedTexts}", recorder.committedTexts.contains("A"))
+    }
+
+    @Test
     fun deviceSanity_ctrlLatch_canBeDisabledByAnotherCtrlTap() {
         val t0 = 3_000L
         tapCtrl(t0)

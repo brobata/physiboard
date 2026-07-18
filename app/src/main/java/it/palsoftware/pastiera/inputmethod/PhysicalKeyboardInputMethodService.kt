@@ -4003,6 +4003,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         val isAutoCorrectEnabled = SettingsManager.getAutoCorrectEnabled(this) && !state.shouldDisableAutoCorrect
 
         clearAltOnBoundaryIfNeeded(keyCode) { updateStatusBarText() }
+        if (keyCode == KeyEvent.KEYCODE_ENTER && modifierStateController.consumeShiftOneShot()) {
+            updateStatusBarText()
+        }
 
         if (handleEnterAsEditorAction(
                 keyCode,
