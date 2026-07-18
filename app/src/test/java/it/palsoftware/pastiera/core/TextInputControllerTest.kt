@@ -104,6 +104,38 @@ class TextInputControllerTest {
     }
 
     @Test
+    fun autoCapAfterEnter_requestsFreshShiftAfterNewline_whenEnabled() {
+        SettingsManager.setAutoCapitalizeFirstLetter(context, true)
+        SettingsManager.setAutoCapitalizeAfterPeriod(context, false)
+        val inputConnection = FakeInputConnection(context, "hello\n")
+
+        controller.handleAutoCapAfterEnter(
+            keyCode = KeyEvent.KEYCODE_ENTER,
+            inputConnection = inputConnection,
+            shouldDisableAutoCapitalize = false,
+            onStatusBarUpdate = {}
+        )
+
+        assertTrue(modifierStateController.shiftOneShot)
+    }
+
+    @Test
+    fun autoCapAfterEnter_keepsShiftOffAfterNewline_whenDisabled() {
+        SettingsManager.setAutoCapitalizeFirstLetter(context, false)
+        SettingsManager.setAutoCapitalizeAfterPeriod(context, false)
+        val inputConnection = FakeInputConnection(context, "hello\n")
+
+        controller.handleAutoCapAfterEnter(
+            keyCode = KeyEvent.KEYCODE_ENTER,
+            inputConnection = inputConnection,
+            shouldDisableAutoCapitalize = false,
+            onStatusBarUpdate = {}
+        )
+
+        assertFalse(modifierStateController.shiftOneShot)
+    }
+
+    @Test
     fun spacedHyphenToEnDash_enabled_replacesMidSentenceHyphenWhenSpaceIsPressed() {
         SettingsManager.setSpacedHyphenToEnDash(context, true)
         val inputConnection = FakeInputConnection(context, "hello -")
