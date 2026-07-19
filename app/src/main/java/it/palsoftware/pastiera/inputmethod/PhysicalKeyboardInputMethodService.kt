@@ -143,6 +143,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private var suppressNextLayoutReload: Boolean = false
     private var activeKeyboardLayoutName: String = "qwerty"
     private var consumeAltEnterUntilKeyUp: Boolean = false
+    private var dispatchingSoftwareKeyboardKey: Boolean = false
     
     // Aggiungi per Power Shortcuts
     private var powerShortcutToast: android.widget.Toast? = null
@@ -1858,6 +1859,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 Log.d(TAG, "SYM mappings page 1 changed, reloading...")
                 // Reload SYM mappings for page 1
                 altSymManager.reloadSymMappings()
+                altSymManager.reloadAltMappings()
                 // Update status bar to reflect new mappings
                 Handler(Looper.getMainLooper()).post {
                     updateStatusBarText()
@@ -1866,15 +1868,21 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 Log.d(TAG, "SYM mappings page 2 changed, reloading...")
                 // Reload SYM mappings for page 2
                 altSymManager.reloadSymMappings2()
+                altSymManager.reloadAltMappings()
                 // Update status bar to reflect new mappings
                 Handler(Looper.getMainLooper()).post {
                     updateStatusBarText()
                 }
             } else if (key == "sym_pages_config") {
                 Log.d(TAG, "SYM pages configuration changed, refreshing status bar...")
+                altSymManager.reloadAltMappings()
                 Handler(Looper.getMainLooper()).post {
                     updateStatusBarText()
                 }
+            } else if (key == SettingsManager.KEY_ALT_CHARACTER_LAYER_BINDING) {
+                Log.d(TAG, "Alt character layer binding changed, reloading mappings...")
+                altSymManager.reloadAltMappings()
+                Handler(Looper.getMainLooper()).post { updateStatusBarText() }
             } else if (key == "clear_alt_on_space") {
                 clearAltOnSpaceEnabled = SettingsManager.getClearAltOnSpace(this)
             } else if (key == "shift_tap_latches" || key == "alt_tap_latches" || key == "ctrl_tap_latches") {
@@ -2318,8 +2326,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         if (!softwareModifierActive) {
             return false
         }
-        val downHandled = dispatchSoftwareKeyboardSyntheticKey(keyCode, KeyEvent.ACTION_DOWN)
-        val upHandled = dispatchSoftwareKeyboardSyntheticKey(keyCode, KeyEvent.ACTION_UP)
+        val (downHandled, upHandled) = try {
+            dispatchingSoftwareKeyboardKey = true
+            dispatchSoftwareKeyboardSyntheticKey(keyCode, KeyEvent.ACTION_DOWN) to
+                dispatchSoftwareKeyboardSyntheticKey(keyCode, KeyEvent.ACTION_UP)
+        } finally {
+            dispatchingSoftwareKeyboardKey = false
+        }
         if ((downHandled || upHandled) && SettingsManager.isQuickLauncherShortcut(this, keyCode)) {
             candidatesBarController.cancelSoftwareKeyboardTouchState()
         }
@@ -2734,7 +2747,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 activeKeyboardLayoutName,
                 softwareKeyboardLayoutStyle()
             ),
-            symMappings = mappings
+            symMappings = mappings,
+            layoutName = activeKeyboardLayoutName
         ).mapKeys { (char, _) -> char.toString() }
     }
 
@@ -2764,7 +2778,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             return emptyMap()
         }
         return SOFTWARE_PREVIEW_KEY_CODES.mapNotNull { keyCode ->
-            val shortcutKeyCode = resolveSoftwareCtrlPreviewShortcutKeyCode(keyCode)
+            val shortcutKeyCode = resolveSoftwareCtrlPreviewShortcutKeyCode(keyCode, modifierSnapshot)
             val mapping = ctrlKeyMap[shortcutKeyCode] ?: return@mapNotNull null
             val label = softwareCtrlPreviewLabel(mapping) ?: return@mapNotNull null
             keyCode to label
@@ -2778,7 +2792,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             return emptyMap()
         }
         return SOFTWARE_PREVIEW_KEY_CODES.mapNotNull { keyCode ->
-            val shortcutKeyCode = resolveSoftwareCtrlPreviewShortcutKeyCode(keyCode)
+            val shortcutKeyCode = resolveSoftwareCtrlPreviewShortcutKeyCode(keyCode, modifierSnapshot)
             val mapping = ctrlKeyMap[shortcutKeyCode] ?: return@mapNotNull null
             val iconRes = softwareCtrlPreviewIconRes(mapping) ?: return@mapNotNull null
             keyCode to iconRes
@@ -2798,14 +2812,22 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         if (!shouldShowSoftwareAltPreview(modifierSnapshot)) {
             return emptyMap()
         }
-        val altMappings = altSymManager.getAltMappings()
+        val altMappings = KeyMappingLoader.loadVirtualAltKeyMappings(assets, this)
         return SOFTWARE_PREVIEW_KEY_CODES.mapNotNull { keyCode ->
             val label = altMappings[keyCode]?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
             keyCode to label
         }.toMap()
     }
 
-    private fun resolveSoftwareCtrlPreviewShortcutKeyCode(keyCode: Int): Int {
+    private fun resolveSoftwareCtrlPreviewShortcutKeyCode(
+        keyCode: Int,
+        modifierSnapshot: it.palsoftware.pastiera.core.ModifierStateController.Snapshot
+    ): Int {
+        val usesPhysicalNavGrid = modifierSnapshot.ctrlLatchFromNavMode ||
+            (modifierSnapshot.ctrlPhysicallyPressed && SettingsManager.getNavModeCtrlHoldEnabled(this))
+        if (usesPhysicalNavGrid) {
+            return keyCode
+        }
         if (!SettingsManager.getLayoutAwareCtrlShortcutsEnabled(this)) {
             return keyCode
         }
@@ -3874,12 +3896,28 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         if (
             hasEditableField &&
             (symTogglePendingOnKeyUp || event?.isSymPressed == true) &&
+            SettingsManager.getPowerShortcutsEnabled(this) &&
             SettingsManager.getQuickLauncherTextFieldShortcuts(this) &&
-            SettingsManager.isQuickLauncherShortcut(this, keyCode) &&
+            SettingsManager.getLauncherShortcut(this, keyCode) != null &&
             event?.repeatCount == 0
         ) {
             symChordUsedSinceKeyDown = true
-            if (openQuickLauncher()) {
+            if (launcherShortcutController.handleLauncherShortcut(keyCode)) {
+                return true
+            }
+        }
+
+        if (
+            hasEditableField &&
+            event?.repeatCount == 0 &&
+            SettingsManager.getQuickLauncherAltShortcutsOutsideTextFields(this) &&
+            SettingsManager.getQuickLauncherAltSpaceInTextFields(this) &&
+            SettingsManager.getLauncherShortcut(this, keyCode) != null &&
+            (event.isAltPressed || altPressed || altPhysicallyPressed || altLatchActive || altOneShot)
+        ) {
+            modifierStateController.clearAltState()
+            updateStatusBarText()
+            if (launcherShortcutController.handleLauncherShortcut(keyCode)) {
                 return true
             }
         }
@@ -3946,7 +3984,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             if ((keyCode == KeyEvent.KEYCODE_ALT_LEFT || keyCode == KeyEvent.KEYCODE_ALT_RIGHT) && altLayerLatched) {
                 altLayerLatched = false
                 lastAltTapUpTime = 0L
-                // Tapping ALT while the visual Alt layer is latched should fully disable Alt.
+                // Tapping ALT while the visual Device SYM layer is latched should fully disable Alt.
                 // Restoring the pre-hold snapshot here can resurrect stale one-shot/latch state.
                 modifierStateController.clearAltState(resetPressedState = true)
                 modifierStateBeforeHold = null
@@ -4267,6 +4305,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 shiftOneShot = shiftOneShot,
                 capsLockEnabled = capsLockEnabled,
                 cursorUpdateDelayMs = CURSOR_UPDATE_DELAY,
+                altMappingsOverride = if (dispatchingSoftwareKeyboardKey) {
+                    KeyMappingLoader.loadVirtualAltKeyMappings(assets, this)
+                } else {
+                    null
+                },
                 shouldDisableSmartFeatures = shouldDisableSmartFeatures
             ),
             controllers = InputEventRouter.EditableFieldKeyDownControllers(

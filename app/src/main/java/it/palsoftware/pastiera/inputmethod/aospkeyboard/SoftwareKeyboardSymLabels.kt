@@ -6,7 +6,8 @@ internal object SoftwareKeyboardSymLabels {
     fun buildContentByChar(
         page: Int,
         rows: List<String>,
-        symMappings: Map<Int, String>
+        symMappings: Map<Int, String>,
+        layoutName: String
     ): Map<Char, String> {
         val contentByChar = linkedMapOf<Char, String>()
         val usedContent = symMappings.values.toMutableSet()
@@ -15,7 +16,7 @@ internal object SoftwareKeyboardSymLabels {
             .iterator()
 
         rows.flatMap { it.toList() }.distinct().forEach { char ->
-            val keyCode = keyCodeForChar(char)
+            val keyCode = keyCodeForChar(char, layoutName)
             val isSupplementalLetter = char.isLetter() && char.lowercaseChar() !in 'a'..'z'
             val content = if (isSupplementalLetter) {
                 supplementalContent.nextOrNull()
@@ -31,7 +32,18 @@ internal object SoftwareKeyboardSymLabels {
         return contentByChar
     }
 
-    fun keyCodeForChar(char: Char): Int? = when (char.lowercaseChar()) {
+    fun keyCodeForChar(char: Char, layoutName: String): Int? {
+        val normalizedChar = char.lowercaseChar()
+        if (SoftwareKeyboardLayoutTemplates.familyFor(layoutName) == SoftwareKeyboardLayoutTemplates.Family.QWERTZ) {
+            when (normalizedChar) {
+                'z' -> return KeyEvent.KEYCODE_Y
+                'y' -> return KeyEvent.KEYCODE_Z
+            }
+        }
+        return keyCodeForQwertyPosition(normalizedChar)
+    }
+
+    private fun keyCodeForQwertyPosition(char: Char): Int? = when (char) {
         'q' -> KeyEvent.KEYCODE_Q
         'w' -> KeyEvent.KEYCODE_W
         'e' -> KeyEvent.KEYCODE_E

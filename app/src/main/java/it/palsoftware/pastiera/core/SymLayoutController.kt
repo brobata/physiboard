@@ -21,6 +21,7 @@ class SymLayoutController(
     }
 
     private enum class SymPage {
+        DEVICE,
         EMOJI,
         SYMBOLS,
         CLIPBOARD,
@@ -154,6 +155,7 @@ class SymLayoutController(
 
     fun currentSymMappings(): Map<Int, String>? {
         return when (currentPageType()) {
+            SymPage.DEVICE -> altSymManager.getDeviceSymMappings()
             SymPage.EMOJI -> altSymManager.getSymMappings()
             SymPage.SYMBOLS -> altSymManager.getSymMappings2()
             SymPage.CLIPBOARD -> null // Clipboard doesn't use mappings
@@ -164,7 +166,7 @@ class SymLayoutController(
 
     fun previewChordMappings(shiftPressed: Boolean): Map<Int, String> {
         val pageToUse = when (currentPageType()) {
-            SymPage.EMOJI, SymPage.SYMBOLS -> currentPageType()
+            SymPage.DEVICE, SymPage.EMOJI, SymPage.SYMBOLS -> currentPageType()
             else -> preferredChordPage()
         } ?: return emptyMap()
 
@@ -192,7 +194,7 @@ class SymLayoutController(
         val currentIndex = cycle.indexOf(currentPage).takeIf { it >= 0 } ?: 0
         return (1..cycle.size).asSequence()
             .map { offset -> cycle[(currentIndex + offset) % cycle.size] }
-            .firstOrNull { it == SymPage.EMOJI || it == SymPage.SYMBOLS }
+            .firstOrNull { it == SymPage.DEVICE || it == SymPage.EMOJI || it == SymPage.SYMBOLS }
     }
 
     private fun nextSymPageValue(pages: List<SymPage>): Int {
@@ -208,6 +210,7 @@ class SymLayoutController(
 
     private fun mappingsForPage(pageToUse: SymPage, shiftPressed: Boolean): Map<Int, String> {
         return when (pageToUse) {
+            SymPage.DEVICE -> altSymManager.getDeviceSymMappings()
             SymPage.EMOJI -> if (shiftPressed) {
                 altSymManager.getSymMappings() + altSymManager.getSymMappingsUppercase()
             } else {
@@ -229,11 +232,12 @@ class SymLayoutController(
      */
     fun resolveChordSymbol(keyCode: Int, shiftPressed: Boolean): String? {
         val pageToUse = when (currentPageType()) {
-            SymPage.EMOJI, SymPage.SYMBOLS -> currentPageType()
+            SymPage.DEVICE, SymPage.EMOJI, SymPage.SYMBOLS -> currentPageType()
             else -> preferredChordPage()
         } ?: return null
 
         return when (pageToUse) {
+            SymPage.DEVICE -> altSymManager.getDeviceSymMappings()[keyCode]
             SymPage.EMOJI -> {
                 if (shiftPressed) {
                     altSymManager.getSymMappingsUppercase()[keyCode] ?: altSymManager.getSymMappings()[keyCode]
@@ -281,6 +285,7 @@ class SymLayoutController(
         }
 
         val symChar = when (page) {
+            SymPage.DEVICE -> altSymManager.getDeviceSymMappings()[keyCode]
             SymPage.EMOJI -> altSymManager.getSymMappings()[keyCode]
             SymPage.SYMBOLS -> altSymManager.getSymMappings2()[keyCode]
             SymPage.CLIPBOARD -> null // Clipboard doesn't use key mappings
@@ -320,6 +325,7 @@ class SymLayoutController(
     private fun buildActivePages(config: SymPagesConfig = SettingsManager.getSymPagesConfig(context)): List<SymPage> {
         return config.enabledOrderedPages().mapNotNull { pageId ->
             when (pageId) {
+                SymPagesConfig.PAGE_DEVICE -> SymPage.DEVICE
                 SymPagesConfig.PAGE_EMOJI -> SymPage.EMOJI
                 SymPagesConfig.PAGE_SYMBOLS -> SymPage.SYMBOLS
                 SymPagesConfig.PAGE_CLIPBOARD -> SymPage.CLIPBOARD
@@ -330,12 +336,15 @@ class SymLayoutController(
     }
 
     private fun preferredChordPage(config: SymPagesConfig = SettingsManager.getSymPagesConfig(context)): SymPage? {
-        return buildActivePages(config).firstOrNull { it == SymPage.EMOJI || it == SymPage.SYMBOLS }
+        return buildActivePages(config).firstOrNull {
+            it == SymPage.DEVICE || it == SymPage.EMOJI || it == SymPage.SYMBOLS
+        }
     }
 
     private fun currentPageType(): SymPage? {
         alignSymPageToConfig()
         return when (symPage) {
+            5 -> SymPage.DEVICE
             1 -> SymPage.EMOJI
             2 -> SymPage.SYMBOLS
             3 -> SymPage.CLIPBOARD
@@ -345,6 +354,7 @@ class SymLayoutController(
     }
 
     private fun SymPage.toPrefValue(): Int = when (this) {
+        SymPage.DEVICE -> 5
         SymPage.EMOJI -> 1
         SymPage.SYMBOLS -> 2
         SymPage.CLIPBOARD -> 3
@@ -354,7 +364,7 @@ class SymLayoutController(
     private fun alignSymPageToConfig(config: SymPagesConfig = SettingsManager.getSymPagesConfig(context)) {
         val allowedValues = buildActivePages(config).map { it.toPrefValue() }
         if (allowedValues.isEmpty()) {
-            if (symPage != 0 && symPage != 2 && symPage != 3 && symPage != 4) {
+            if (symPage != 0 && symPage !in 2..5) {
                 // Allow symbols page (2), clipboard page (3) and emoji picker page (4) even if all cycling pages are disabled
                 symPage = 0
                 persistSymPage()
@@ -367,7 +377,7 @@ class SymLayoutController(
         }
 
         // Allow symbols page (2), clipboard page (3) and emoji picker page (4) to remain active even if disabled in cycling settings
-        if (symPage == 2 || symPage == 3 || symPage == 4) {
+        if (symPage in 2..5) {
             return
         }
 

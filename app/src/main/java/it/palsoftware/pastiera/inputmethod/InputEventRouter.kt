@@ -158,6 +158,16 @@ class InputEventRouter(
             }
         }
 
+        if (
+            !ctrlLatchActive &&
+            event?.isAltPressed == true &&
+            SettingsManager.getQuickLauncherAltShortcutsOutsideTextFields(context) &&
+            callbacks.isShortcutKey(keyCode) &&
+            callbacks.handleLauncherShortcut(keyCode)
+        ) {
+            return true
+        }
+
         // Gestisci Power Shortcuts (SYM premuto + tasto alfabetico)
         if (!ctrlLatchActive && powerShortcutsEnabled) {
             if (callbacks.isShortcutKey(keyCode)) {
@@ -255,6 +265,7 @@ class InputEventRouter(
         val shiftOneShot: Boolean,
         val capsLockEnabled: Boolean,
         val cursorUpdateDelayMs: Long,
+        val altMappingsOverride: Map<Int, String>? = null,
         val shouldDisableSmartFeatures: Boolean = false
     )
 
@@ -449,6 +460,7 @@ class InputEventRouter(
                 ctrlLatchFromNavMode = params.ctrlLatchFromNavMode,
                 ctrlOneShot = params.ctrlOneShot,
                 altLatchActive = altLatchActive,
+                altMappingsOverride = params.altMappingsOverride,
                 cursorUpdateDelayMs = params.cursorUpdateDelayMs,
                 updateStatusBar = callbacks.updateStatusBar,
                 callSuper = callbacks.callSuper
@@ -475,6 +487,7 @@ class InputEventRouter(
                     event = event,
                     inputConnection = ic,
                     altSymManager = controllers.altSymManager,
+                    altMappingsOverride = params.altMappingsOverride,
                     updateStatusBar = callbacks.updateStatusBar,
                     callSuperWithKey = callbacks.callSuperWithKey
                 )
@@ -536,7 +549,7 @@ class InputEventRouter(
         val hasLongPressSupport = when (longPressMode) {
             "shift" -> !longPressSuppressed && event != null && event.unicodeChar != 0 && event.unicodeChar.toChar().isLetter()
             "variations" -> !longPressSuppressed && charForLongPress != null && controllers.variationStateController.hasVariationsFor(charForLongPress)
-            "sym" -> !longPressSuppressed && controllers.altSymManager.hasSymLongPressMapping(
+            "sym", "sym_symbols", "sym_emoji" -> !longPressSuppressed && controllers.altSymManager.hasSymLongPressMapping(
                 keyCode = keyCode,
                 shiftPressed = effectiveShiftForLongPress
             )
@@ -1095,6 +1108,7 @@ class InputEventRouter(
         ctrlLatchFromNavMode: Boolean,
         ctrlOneShot: Boolean,
         altLatchActive: Boolean,
+        altMappingsOverride: Map<Int, String>? = null,
         cursorUpdateDelayMs: Long,
         updateStatusBar: () -> Unit,
         callSuper: () -> Boolean
@@ -1111,7 +1125,7 @@ class InputEventRouter(
                 ctrlPhysicallyPressed ||
                 ctrlLatchFromNavMode
             if (!isCtrlActive) {
-                val altChar = altSymManager.getAltMappings()[keyCode]
+                val altChar = (altMappingsOverride ?: altSymManager.getAltMappings())[keyCode]
                 if (altChar != null) {
                     ic.commitText(altChar, 1)
                     Handler(Looper.getMainLooper()).postDelayed({
@@ -1155,6 +1169,7 @@ class InputEventRouter(
         event: KeyEvent?,
         inputConnection: InputConnection?,
         altSymManager: AltSymManager,
+        altMappingsOverride: Map<Int, String>? = null,
         updateStatusBar: () -> Unit,
         callSuperWithKey: (Int, KeyEvent?) -> Boolean
     ): Boolean {
@@ -1170,7 +1185,8 @@ class InputEventRouter(
         val result = altSymManager.handleAltCombination(
             keyCode,
             ic,
-            event
+            event,
+            mappingsOverride = altMappingsOverride
         ) { defaultKeyCode, defaultEvent ->
             // Fallback: delegate to caller (typically super.onKeyDown)
             callSuperWithKey(defaultKeyCode, defaultEvent)
@@ -1210,7 +1226,10 @@ class InputEventRouter(
         } else {
             keyCode
         }
-        val ctrlMapping = ctrlKeyMap[shortcutKeyCode]
+        val usesPhysicalNavGrid = ctrlLatchFromNavMode ||
+            (isPhysicalCtrlCombo && useNavModeForHeldCtrl)
+        val mappingKeyCode = if (usesPhysicalNavGrid) keyCode else shortcutKeyCode
+        val ctrlMapping = ctrlKeyMap[mappingKeyCode]
         val shouldForceContextMenuAction =
             forceBasicContextMenuActions &&
             ctrlMapping?.type == "action" &&

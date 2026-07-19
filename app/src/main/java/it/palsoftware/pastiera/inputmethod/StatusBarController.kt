@@ -1397,13 +1397,14 @@ class StatusBarController(
         keyboardView.altLocked = snapshot.altLatchActive
         keyboardView.altPressed = snapshot.altPhysicallyPressed
         keyboardView.altPreviewActive = snapshot.softwareAltPreviewActive
-        keyboardView.symPageActive = snapshot.symPage in 1..2
-        keyboardView.symPageLabels = if (snapshot.symPage in 1..2 && symMappings != null) symMappings else emptyMap()
-        keyboardView.symPageTextLabels = if (snapshot.symPage in 1..2 && symMappings != null) {
+        keyboardView.symPageActive = snapshot.symPage in listOf(1, 2, 5)
+        keyboardView.symPageLabels = if (snapshot.symPage in listOf(1, 2, 5) && symMappings != null) symMappings else emptyMap()
+        keyboardView.symPageTextLabels = if (snapshot.symPage in listOf(1, 2, 5) && symMappings != null) {
             SoftwareKeyboardSymLabels.buildContentByChar(
                 page = snapshot.symPage,
                 rows = SoftwareKeyboardLayoutTemplates.rowTemplateFor(layoutName, softwareKeyboardLayoutStyle()),
-                symMappings = symMappings
+                symMappings = symMappings,
+                layoutName = layoutName
             ).mapKeys { (char, _) -> char.toString() }
         } else {
             emptyMap()
@@ -1422,10 +1423,10 @@ class StatusBarController(
             resolveSoftwareKeyboardLongPressAlternates(output, snapshot)
         }
         keyboardView.longPressHintProvider = { output ->
-            resolveSoftwareKeyboardAltLongPressHint(output)
+            resolveSoftwareKeyboardAltLongPressHint(output, snapshot)
         }
         keyboardView.longPressLayerAlternatesProvider = { output ->
-            resolveSoftwareKeyboardLongPressLayerAlternates(output)
+            resolveSoftwareKeyboardLongPressLayerAlternates(output, snapshot)
         }
         keyboardView.longPressLayerPopupBelowKey =
             SettingsManager.getSoftwareKeyboardLongPressLayerPopupBelowKey(context)
@@ -1475,6 +1476,7 @@ class StatusBarController(
                 it.palsoftware.pastiera.SymPagesConfig.PAGE_SYMBOLS -> 2
                 it.palsoftware.pastiera.SymPagesConfig.PAGE_CLIPBOARD -> 3
                 it.palsoftware.pastiera.SymPagesConfig.PAGE_EMOJI_PICKER -> 4
+                it.palsoftware.pastiera.SymPagesConfig.PAGE_DEVICE -> 5
                 else -> null
             }
         }
@@ -1503,13 +1505,15 @@ class StatusBarController(
     private fun resolveSoftwareKeyboardLongPressAlternates(output: String, snapshot: StatusSnapshot): List<String> {
         if (output.isEmpty()) return emptyList()
         val baseChar = output.first()
-        val keyCode = SoftwareKeyboardSymLabels.keyCodeForChar(baseChar) ?: return emptyList()
+        val keyCode = SoftwareKeyboardSymLabels.keyCodeForChar(
+            baseChar,
+            resolveSoftwareKeyboardLayoutName(snapshot)
+        ) ?: return emptyList()
         return when (SettingsManager.getLongPressModifier(context)) {
-            "alt" -> KeyMappingLoader.loadAltKeyMappings(context.assets, context)[keyCode]?.let(::listOf).orEmpty()
+            "alt" -> KeyMappingLoader.loadVirtualAltKeyMappings(context.assets, context)[keyCode]?.let(::listOf).orEmpty()
             "shift" -> listOf(output.uppercase()).filter { it != output }
-            "sym" -> {
-                val useEmojiFirst = SettingsManager.getSymPagesConfig(context).prefersEmojiLongPressLayer()
-                val map = softwareKeyboardLongPressSymMappings(if (useEmojiFirst) 1 else 2)
+            "sym", "sym_symbols", "sym_emoji" -> {
+                val map = softwareKeyboardLongPressSymMappings(SettingsManager.resolveLongPressSymPage(context))
                 map[keyCode]?.let(::listOf).orEmpty()
             }
             "variations" -> {
@@ -1524,21 +1528,28 @@ class StatusBarController(
         }
     }
 
-    private fun resolveSoftwareKeyboardAltLongPressHint(output: String): String? {
+    private fun resolveSoftwareKeyboardAltLongPressHint(output: String, snapshot: StatusSnapshot): String? {
         if (output.isEmpty()) return null
-        val keyCode = SoftwareKeyboardSymLabels.keyCodeForChar(output.first()) ?: return null
-        return KeyMappingLoader.loadAltKeyMappings(context.assets, context)[keyCode]
+        val keyCode = SoftwareKeyboardSymLabels.keyCodeForChar(
+            output.first(),
+            resolveSoftwareKeyboardLayoutName(snapshot)
+        ) ?: return null
+        return KeyMappingLoader.loadVirtualAltKeyMappings(context.assets, context)[keyCode]
     }
 
     private fun resolveSoftwareKeyboardLongPressLayerAlternates(
-        output: String
+        output: String,
+        snapshot: StatusSnapshot
     ): List<AospKeyboardView.LongPressLayerAlternative> {
         if (!SettingsManager.getSoftwareKeyboardLongPressLayerPopupEnabled(context) || output.isEmpty()) {
             return emptyList()
         }
-        val keyCode = SoftwareKeyboardSymLabels.keyCodeForChar(output.first()) ?: return emptyList()
+        val keyCode = SoftwareKeyboardSymLabels.keyCodeForChar(
+            output.first(),
+            resolveSoftwareKeyboardLayoutName(snapshot)
+        ) ?: return emptyList()
         val alternatives = mutableListOf<AospKeyboardView.LongPressLayerAlternative>()
-        KeyMappingLoader.loadAltKeyMappings(context.assets, context)[keyCode]?.takeIf { it.isNotBlank() }?.let { alt ->
+        KeyMappingLoader.loadVirtualAltKeyMappings(context.assets, context)[keyCode]?.takeIf { it.isNotBlank() }?.let { alt ->
             alternatives += AospKeyboardView.LongPressLayerAlternative(label = alt, output = alt)
         }
         SettingsManager.getSymPagesConfig(context)
@@ -1593,7 +1604,12 @@ class StatusBarController(
         emojiKeyButtons.clear()
 
         val rows = SoftwareKeyboardLayoutTemplates.rowTemplateFor(layoutName, layoutStyle)
-        val softwareSymContentByChar = SoftwareKeyboardSymLabels.buildContentByChar(page, rows, symMappings)
+        val softwareSymContentByChar = SoftwareKeyboardSymLabels.buildContentByChar(
+            page = page,
+            rows = rows,
+            symMappings = symMappings,
+            layoutName = layoutName
+        )
         val keySpacing = dpToPx(2f)
         val keyHeight = ((lastSoftwareKeyboardHeight.takeIf { it > 0 } ?: dpToPx(200f)) - emojiKeyboardBottomPaddingPx) / 4
         val screenWidth = context.resources.displayMetrics.widthPixels
@@ -1966,7 +1982,15 @@ class StatusBarController(
             SettingsManager.setPendingRestoreSymPage(context, currentSymPage)
         }
 
-        val intent = Intent(context, SymCustomizationActivity::class.java).apply {
+        val intent = if (page == 5) {
+            Intent(context, SettingsActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra(
+                    SettingsActivity.EXTRA_DESTINATION,
+                    SettingsActivity.DESTINATION_DEVICE_SYM_LAYER_EDITOR
+                )
+            }
+        } else Intent(context, SymCustomizationActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra(SymCustomizationActivity.EXTRA_INITIAL_PAGE, page)
             keyCode?.let { putExtra(SymCustomizationActivity.EXTRA_INITIAL_KEY_CODE, it) }
@@ -2604,7 +2628,7 @@ class StatusBarController(
                 SettingsManager.resolveEffectiveSoftwareKeyboardMode(context) == SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL
         val isSoftwareKeyboardClipboardPage = isFullSoftwareKeyboardMode && snapshot.symPage == 3
         val isSoftwareKeyboardEmojiPage = isFullSoftwareKeyboardMode && snapshot.symPage == 4
-        val isSoftwareKeyboardSymbolPage = isFullSoftwareKeyboardMode && snapshot.symPage in 1..2
+        val isSoftwareKeyboardSymbolPage = isFullSoftwareKeyboardMode && snapshot.symPage in listOf(1, 2, 5)
         val isSoftwareKeyboardOverlayPage =
             isSoftwareKeyboardSymbolPage || isSoftwareKeyboardClipboardPage || isSoftwareKeyboardEmojiPage
         val activeTheme = activeThemeSettings(isFullSoftwareKeyboardMode)
@@ -2790,8 +2814,8 @@ class StatusBarController(
                 reserveLedSpace = showLedStrip
             )
             setSurfaceCloseVisible(false)
-            symShown = snapshot.symPage in 1..2
-            wasSymActive = snapshot.symPage in 1..2
+            symShown = snapshot.symPage in listOf(1, 2, 5)
+            wasSymActive = snapshot.symPage in listOf(1, 2, 5)
             return
         } else {
             softwareKeyboardShown = false
@@ -2850,7 +2874,7 @@ class StatusBarController(
             emojiKeyboardView.setBackgroundColor(activeColors.background)
             emojiKeyboardView.visibility = View.VISIBLE
             applySymSurfaceLayout(symSurfaceView, symSurfaceStackView, emojiKeyboardView, surfaceHeight, reserveLedSpace = showLedStrip)
-            setSurfaceCloseVisible(snapshot.symPage in 1..2)
+            setSurfaceCloseVisible(snapshot.symPage in listOf(1, 2, 5))
             if (!symShown && !wasSymActive) {
                 emojiKeyboardView.alpha = 1f // keep black visible immediately
                 emojiKeyboardView.translationY = surfaceHeight.toFloat()

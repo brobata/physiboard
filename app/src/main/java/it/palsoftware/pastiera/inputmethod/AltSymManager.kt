@@ -43,6 +43,7 @@ class AltSymManager(
     private val handler = Handler(Looper.getMainLooper())
 
     private val altKeyMap = mutableMapOf<Int, String>()
+    private val deviceSymKeyMap = mutableMapOf<Int, String>()
     private val symKeyMap = mutableMapOf<Int, String>()
     private val symKeyMap2 = mutableMapOf<Int, String>()
     private val symKeyMapUppercase = mutableMapOf<Int, String>()
@@ -58,6 +59,7 @@ class AltSymManager(
 
     init {
         altKeyMap.putAll(KeyMappingLoader.loadAltKeyMappings(assets, context))
+        context?.let { deviceSymKeyMap.putAll(KeyMappingLoader.loadDeviceSymKeyMappings(assets, it)) }
         symKeyMap.putAll(KeyMappingLoader.loadSymKeyMappings(assets))
         symKeyMap2.putAll(KeyMappingLoader.loadSymKeyMappingsPage2(assets))
         symKeyMapUppercase.putAll(KeyMappingLoader.loadSymKeyMappingsUppercase(assets))
@@ -72,9 +74,13 @@ class AltSymManager(
     fun reloadAltMappings() {
         altKeyMap.clear()
         altKeyMap.putAll(KeyMappingLoader.loadAltKeyMappings(assets, context))
+        deviceSymKeyMap.clear()
+        context?.let { deviceSymKeyMap.putAll(KeyMappingLoader.loadDeviceSymKeyMappings(assets, it)) }
     }
 
     fun getAltMappings(): Map<Int, String> = altKeyMap
+
+    fun getDeviceSymMappings(): Map<Int, String> = deviceSymKeyMap
 
     fun getSymMappings(): Map<Int, String> = symKeyMap
     
@@ -131,10 +137,8 @@ class AltSymManager(
     fun hasAltMapping(keyCode: Int): Boolean = altKeyMap.containsKey(keyCode)
 
     fun hasSymLongPressMapping(keyCode: Int, shiftPressed: Boolean): Boolean {
-        val useEmojiFirst = context?.let {
-            SettingsManager.getSymPagesConfig(it).prefersEmojiLongPressLayer()
-        } ?: true
-        return if (useEmojiFirst) {
+        val page = context?.let(SettingsManager::resolveLongPressSymPage) ?: 1
+        return if (page == 1) {
             if (shiftPressed && symKeyMapUppercase.containsKey(keyCode)) {
                 true
             } else {
@@ -268,7 +272,7 @@ class AltSymManager(
                     variations[normalChar.firstOrNull()]?.isNotEmpty() == true
                 }
             }
-            "sym" -> hasSymLongPressMapping(
+            "sym", "sym_symbols", "sym_emoji" -> hasSymLongPressMapping(
                 keyCode = keyCode,
                 shiftPressed = keyPressWasShifted[keyCode] == true
             )
@@ -287,9 +291,10 @@ class AltSymManager(
         keyCode: Int,
         inputConnection: InputConnection,
         event: KeyEvent?,
+        mappingsOverride: Map<Int, String>? = null,
         defaultHandler: (Int, KeyEvent?) -> Boolean
     ): Boolean {
-        val altChar = altKeyMap[keyCode]
+        val altChar = (mappingsOverride ?: altKeyMap)[keyCode]
         return if (altChar != null) {
             context?.let {
                 DeferredPunctuationSpaceTracker.prepareForTextCommit(it, inputConnection, altChar)
@@ -411,12 +416,10 @@ class AltSymManager(
                         }
                     }
 
-                    "sym" -> {
-                        val useEmojiFirst = context?.let { ctx ->
-                            SettingsManager.getSymPagesConfig(ctx).prefersEmojiLongPressLayer()
-                        } ?: true
+                    "sym", "sym_symbols", "sym_emoji" -> {
+                        val page = context?.let(SettingsManager::resolveLongPressSymPage) ?: 1
                         val wasShifted = keyPressWasShifted[keyCode] ?: false
-                        val symChar = if (useEmojiFirst) {
+                        val symChar = if (page == 1) {
                             if (wasShifted && symKeyMapUppercase.containsKey(keyCode)) {
                                 symKeyMapUppercase[keyCode]
                             } else {

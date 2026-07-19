@@ -22,7 +22,12 @@ class StatusBarControllerSoftwareSymTest {
             KeyEvent.KEYCODE_O to "😡",
             KeyEvent.KEYCODE_U to "❤️"
         )
-        val content = SoftwareKeyboardSymLabels.buildContentByChar(page = 1, rows, mappings)
+        val content = SoftwareKeyboardSymLabels.buildContentByChar(
+            page = 1,
+            rows = rows,
+            symMappings = mappings,
+            layoutName = "qwertz"
+        )
 
         assertEquals("🙃", content['ü'])
         assertEquals("🧐", content['ö'])
@@ -36,12 +41,40 @@ class StatusBarControllerSoftwareSymTest {
     @Test
     fun softwareSymExtraLettersExposeOwnSymbolDefaults() {
         val rows = listOf("qwertzuiopü+", "asdfghjklöä#", "<yxcvbnm,.-")
-        val content = SoftwareKeyboardSymLabels.buildContentByChar(page = 2, rows, emptyMap())
+        val content = SoftwareKeyboardSymLabels.buildContentByChar(
+            page = 2,
+            rows = rows,
+            symMappings = emptyMap(),
+            layoutName = "qwertz"
+        )
 
         assertEquals("€", content['ü'])
         assertEquals("@", content['ö'])
         assertEquals("#", content['ä'])
         assertEquals("+", content['+'])
         assertEquals("<", content['<'])
+    }
+
+    @Test
+    fun qwertzSoftwareSymLayerKeepsHardwareKeyPositions() {
+        val rows = listOf("qwertzuiop", "asdfghjkl", "yxcvbnm")
+        val mappings = mapOf(
+            KeyEvent.KEYCODE_T to "[",
+            KeyEvent.KEYCODE_Y to "]",
+            KeyEvent.KEYCODE_Z to "»",
+            KeyEvent.KEYCODE_X to "«"
+        )
+
+        val content = SoftwareKeyboardSymLabels.buildContentByChar(
+            page = 2,
+            rows = rows,
+            symMappings = mappings,
+            layoutName = "qwertz"
+        )
+
+        assertEquals("[", content['t'])
+        assertEquals("]", content['z'])
+        assertEquals("»", content['y'])
+        assertEquals("«", content['x'])
     }
 }

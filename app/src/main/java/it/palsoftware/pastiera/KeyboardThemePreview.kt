@@ -674,7 +674,8 @@ private fun AospKeyboardView.applyVirtualKeyboardSymPreviewState(context: Contex
     symPageTextLabels = SoftwareKeyboardSymLabels.buildContentByChar(
         page = page,
         rows = SoftwareKeyboardLayoutTemplates.rowTemplateFor(layout, style),
-        symMappings = mappings
+        symMappings = mappings,
+        layoutName = layout
     ).mapKeys { (char, _) -> char.toString() }
 }
 
@@ -705,12 +706,15 @@ private fun previewSymMappings(context: Context, page: Int, shiftActive: Boolean
 private fun resolveVirtualPreviewLongPressAlternates(context: Context, output: String): List<String> {
     if (output.isEmpty()) return emptyList()
     val baseChar = output.first()
-    val keyCode = SoftwareKeyboardSymLabels.keyCodeForChar(baseChar) ?: return emptyList()
+    val keyCode = SoftwareKeyboardSymLabels.keyCodeForChar(
+        baseChar,
+        SettingsManager.getKeyboardLayout(context)
+    ) ?: return emptyList()
     return when (SettingsManager.getLongPressModifier(context)) {
-        "alt" -> KeyMappingLoader.loadAltKeyMappings(context.assets, context)[keyCode]?.let(::listOf).orEmpty()
+        "alt" -> KeyMappingLoader.loadVirtualAltKeyMappings(context.assets, context)[keyCode]?.let(::listOf).orEmpty()
         "shift" -> listOf(output.uppercase()).filter { it != output }
-        "sym" -> {
-            val page = if (SettingsManager.getSymPagesConfig(context).prefersEmojiLongPressLayer()) 1 else 2
+        "sym", "sym_symbols", "sym_emoji" -> {
+            val page = SettingsManager.resolveLongPressSymPage(context)
             previewSymMappings(context, page, shiftActive = false)[keyCode]?.let(::listOf).orEmpty()
         }
         "variations" -> {
@@ -727,8 +731,11 @@ private fun resolveVirtualPreviewLongPressAlternates(context: Context, output: S
 
 private fun resolveVirtualPreviewAltHint(context: Context, output: String): String? {
     if (output.isEmpty()) return null
-    val keyCode = SoftwareKeyboardSymLabels.keyCodeForChar(output.first()) ?: return null
-    return KeyMappingLoader.loadAltKeyMappings(context.assets, context)[keyCode]
+    val keyCode = SoftwareKeyboardSymLabels.keyCodeForChar(
+        output.first(),
+        SettingsManager.getKeyboardLayout(context)
+    ) ?: return null
+    return KeyMappingLoader.loadVirtualAltKeyMappings(context.assets, context)[keyCode]
 }
 
 private fun resolveVirtualPreviewLongPressLayerAlternates(
@@ -738,9 +745,12 @@ private fun resolveVirtualPreviewLongPressLayerAlternates(
     if (!SettingsManager.getSoftwareKeyboardLongPressLayerPopupEnabled(context) || output.isEmpty()) {
         return emptyList()
     }
-    val keyCode = SoftwareKeyboardSymLabels.keyCodeForChar(output.first()) ?: return emptyList()
+    val keyCode = SoftwareKeyboardSymLabels.keyCodeForChar(
+        output.first(),
+        SettingsManager.getKeyboardLayout(context)
+    ) ?: return emptyList()
     val alternatives = mutableListOf<AospKeyboardView.LongPressLayerAlternative>()
-    KeyMappingLoader.loadAltKeyMappings(context.assets, context)[keyCode]?.takeIf { it.isNotBlank() }?.let { alt ->
+    KeyMappingLoader.loadVirtualAltKeyMappings(context.assets, context)[keyCode]?.takeIf { it.isNotBlank() }?.let { alt ->
         alternatives += AospKeyboardView.LongPressLayerAlternative(label = alt, output = alt)
     }
     SettingsManager.getSymPagesConfig(context)
@@ -760,7 +770,7 @@ private fun resolveVirtualPreviewLongPressLayerAlternates(
 }
 
 private fun buildVirtualPreviewAltLabels(context: Context): Map<Int, String> =
-    KeyMappingLoader.loadAltKeyMappings(context.assets, context)
+    KeyMappingLoader.loadVirtualAltKeyMappings(context.assets, context)
         .filterKeys { it in VIRTUAL_PREVIEW_KEY_CODES }
         .filterValues { it.isNotBlank() }
 

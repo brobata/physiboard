@@ -1377,8 +1377,14 @@ class AospKeyboardView @JvmOverloads constructor(
             KeyType.SYMBOLS, KeyType.LANGUAGE -> KeyEvent.KEYCODE_SYM
             KeyType.COMMA -> KeyEvent.KEYCODE_COMMA
             KeyType.PERIOD -> KeyEvent.KEYCODE_PERIOD
-            KeyType.CHAR -> keyCodeForText(key.spec.output)
+            KeyType.CHAR -> physicalKeyCodeForText(key.spec.output)
         }
+    }
+
+    private fun physicalKeyCodeForText(text: String): Int {
+        val char = text.firstOrNull() ?: return KeyEvent.KEYCODE_UNKNOWN
+        return SoftwareKeyboardSymLabels.keyCodeForChar(char, layoutName)
+            ?: keyCodeForText(text)
     }
 
     private fun keyCodeForText(text: String): Int {

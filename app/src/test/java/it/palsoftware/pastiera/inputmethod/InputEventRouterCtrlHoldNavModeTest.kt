@@ -195,6 +195,65 @@ class InputEventRouterCtrlHoldNavModeTest {
     }
 
     @Test
+    fun heldCtrlNavGrid_staysPhysicalWhenLayoutAwareShortcutsAreEnabled() {
+        SettingsManager.setNavModeCtrlHoldEnabled(context, true)
+        SettingsManager.setLayoutAwareCtrlShortcutsEnabled(context, true)
+        LayoutMappingRepository.loadLayout(context.assets, "qwertz", context)
+        val inputConnection = mockInputConnection()
+        val mapping = mapOf(
+            KeyEvent.KEYCODE_Y to KeyMappingLoader.CtrlMapping("keycode", "PAGE_UP"),
+            KeyEvent.KEYCODE_Z to KeyMappingLoader.CtrlMapping("keycode", "PAGE_DOWN")
+        )
+
+        val handled = router.handleCtrlModifiedKey(
+            keyCode = KeyEvent.KEYCODE_Y,
+            event = ctrlKeyDown(KeyEvent.KEYCODE_Y),
+            inputConnection = inputConnection,
+            ctrlKeyMap = mapping,
+            ctrlLatchFromNavMode = false,
+            ctrlOneShot = false,
+            ctrlPhysicallyPressed = true,
+            clearCtrlOneShot = {},
+            updateStatusBar = {},
+            callSuper = { false },
+            toggleMinimalUi = {}
+        )
+
+        assertTrue(handled)
+        val sentEvents = captureSentKeyEvents(inputConnection, expectedCount = 2)
+        assertEquals(listOf(KeyEvent.KEYCODE_PAGE_UP, KeyEvent.KEYCODE_PAGE_UP), sentEvents.map { it.keyCode })
+    }
+
+    @Test
+    fun latchedNavGrid_staysPhysicalWhenLayoutAwareShortcutsAreEnabled() {
+        SettingsManager.setLayoutAwareCtrlShortcutsEnabled(context, true)
+        LayoutMappingRepository.loadLayout(context.assets, "qwertz", context)
+        val inputConnection = mockInputConnection()
+        val mapping = mapOf(
+            KeyEvent.KEYCODE_Y to KeyMappingLoader.CtrlMapping("keycode", "PAGE_UP"),
+            KeyEvent.KEYCODE_Z to KeyMappingLoader.CtrlMapping("keycode", "PAGE_DOWN")
+        )
+
+        val handled = router.handleCtrlModifiedKey(
+            keyCode = KeyEvent.KEYCODE_Y,
+            event = keyDown(KeyEvent.KEYCODE_Y),
+            inputConnection = inputConnection,
+            ctrlKeyMap = mapping,
+            ctrlLatchFromNavMode = true,
+            ctrlOneShot = false,
+            ctrlPhysicallyPressed = false,
+            clearCtrlOneShot = {},
+            updateStatusBar = {},
+            callSuper = { false },
+            toggleMinimalUi = {}
+        )
+
+        assertTrue(handled)
+        val sentEvents = captureSentKeyEvents(inputConnection, expectedCount = 2)
+        assertEquals(listOf(KeyEvent.KEYCODE_PAGE_UP, KeyEvent.KEYCODE_PAGE_UP), sentEvents.map { it.keyCode })
+    }
+
+    @Test
     fun heldCtrl_whenEnabledAndShiftHeld_sendsSelectionNavKey() {
         SettingsManager.setNavModeCtrlHoldEnabled(context, true)
         val inputConnection = mockInputConnection()

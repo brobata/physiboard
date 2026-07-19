@@ -79,7 +79,7 @@ object VariationRepository {
     }
 
     /**
-     * Loads static utility variations for Alt layer.
+     * Loads static utility variations for the Device SYM layer.
      */
     fun loadStaticVariationsAlt(assets: AssetManager, context: Context? = null): List<String> {
         return loadVariationsArray(assets, context, "staticVariationsAlt")

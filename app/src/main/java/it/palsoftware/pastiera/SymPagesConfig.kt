@@ -4,6 +4,7 @@ package it.palsoftware.pastiera
  * Configuration for SYM pages order and visibility.
  */
 data class SymPagesConfig(
+    val deviceEnabled: Boolean = false,
     val emojiEnabled: Boolean = true,
     val symbolsEnabled: Boolean = true,
     val clipboardEnabled: Boolean = false,
@@ -11,11 +12,12 @@ data class SymPagesConfig(
     val symPageOrder: List<String> = DEFAULT_ORDER
 ) {
     companion object {
+        const val PAGE_DEVICE = "device"
         const val PAGE_EMOJI = "emoji"
         const val PAGE_SYMBOLS = "symbols"
         const val PAGE_CLIPBOARD = "clipboard"
         const val PAGE_EMOJI_PICKER = "emoji_picker"
-        val DEFAULT_ORDER = listOf(PAGE_EMOJI, PAGE_SYMBOLS, PAGE_CLIPBOARD, PAGE_EMOJI_PICKER)
+        val DEFAULT_ORDER = listOf(PAGE_DEVICE, PAGE_EMOJI, PAGE_SYMBOLS, PAGE_CLIPBOARD, PAGE_EMOJI_PICKER)
     }
 
     fun normalizedOrder(): List<String> {
@@ -34,6 +36,7 @@ data class SymPagesConfig(
     }
 
     fun isPageEnabled(pageId: String): Boolean = when (pageId) {
+        PAGE_DEVICE -> deviceEnabled
         PAGE_EMOJI -> emojiEnabled
         PAGE_SYMBOLS -> symbolsEnabled
         PAGE_CLIPBOARD -> clipboardEnabled
@@ -56,4 +59,8 @@ data class SymPagesConfig(
             else -> emojiIndex <= symbolsIndex
         }
     }
+
+    fun firstKeyLayer(): String = normalizedOrder().firstOrNull {
+        it == PAGE_DEVICE || it == PAGE_EMOJI || it == PAGE_SYMBOLS
+    } ?: PAGE_DEVICE
 }

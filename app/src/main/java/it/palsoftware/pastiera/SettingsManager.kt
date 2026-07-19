@@ -87,6 +87,7 @@ object SettingsManager {
     private const val KEY_RESTORE_SYM_PAGE = "restore_sym_page" // SYM page to restore when returning from settings
     private const val KEY_PENDING_RESTORE_SYM_PAGE = "pending_restore_sym_page" // Temporary SYM page state saved when opening settings
     private const val KEY_SYM_PAGES_CONFIG = "sym_pages_config" // Order/enabled pages for SYM
+    const val KEY_ALT_CHARACTER_LAYER_BINDING = "alt_character_layer_binding"
     private const val KEY_SYM_AUTO_CLOSE = "sym_auto_close" // Auto-close SYM layout after key press
     private const val KEY_SYM_AUTO_CLOSE_ON_TOUCH = "sym_auto_close_on_touch" // Auto-close SYM layout after tapping on-screen SYM keys
     private const val KEY_SHIFT_TAP_LATCHES = "shift_tap_latches"
@@ -2890,25 +2891,27 @@ object SettingsManager {
     }
     
     /**
-     * Returns the long-press modifier type ("alt", "shift", "variations", or "sym").
+     * Returns the long-press action, including optional fixed SYM key layers.
      */
     fun getLongPressModifier(context: Context): String {
         val stored = getPreferences(context).getString(KEY_LONG_PRESS_MODIFIER, DEFAULT_LONG_PRESS_MODIFIER)
             ?: DEFAULT_LONG_PRESS_MODIFIER
         return when (stored) {
-            "alt", "shift", "variations", "sym" -> stored
+            "alt", "shift", "variations", "sym", "sym_symbols", "sym_emoji" -> stored
             else -> DEFAULT_LONG_PRESS_MODIFIER
         }
     }
     
     /**
-     * Sets the long-press modifier type ("alt", "shift", "variations", or "sym").
+     * Sets the long-press action.
      */
     fun setLongPressModifier(context: Context, modifier: String) {
         val validModifier = when (modifier) {
             "shift" -> "shift"
             "variations" -> "variations"
             "sym" -> "sym"
+            "sym_symbols" -> "sym_symbols"
+            "sym_emoji" -> "sym_emoji"
             else -> "alt"
         }
         getPreferences(context).edit()
@@ -2935,7 +2938,14 @@ object SettingsManager {
      * Returns true if long press uses Sym mode.
      */
     fun isLongPressSym(context: Context): Boolean {
-        return getLongPressModifier(context) == "sym"
+        return getLongPressModifier(context).startsWith("sym")
+    }
+
+    /** Returns 1 for Emoji and 2 for Symbols. */
+    fun resolveLongPressSymPage(context: Context): Int = when (getLongPressModifier(context)) {
+        "sym_emoji" -> 1
+        "sym_symbols" -> 2
+        else -> if (getSymPagesConfig(context).prefersEmojiLongPressLayer()) 1 else 2
     }
     
     /**
@@ -2970,6 +2980,8 @@ object SettingsManager {
     private const val KEY_QUICK_LAUNCHER_AUTO_START_SINGLE = "quick_launcher_auto_start_single"
     private const val KEY_QUICK_LAUNCHER_LIMIT_RESULTS = "quick_launcher_limit_results"
     private const val KEY_QUICK_LAUNCHER_TEXT_FIELD_SHORTCUTS = "quick_launcher_text_field_shortcuts"
+    private const val KEY_QUICK_LAUNCHER_ALT_SPACE_IN_TEXT_FIELDS = "quick_launcher_alt_space_in_text_fields"
+    private const val KEY_QUICK_LAUNCHER_ALT_SHORTCUTS_OUTSIDE_TEXT_FIELDS = "quick_launcher_alt_shortcuts_outside_text_fields"
     private const val KEY_QUICK_LAUNCHER_RESPECT_KEYBOARD_LAYOUT = "quick_launcher_respect_keyboard_layout"
     private const val KEY_QUICK_LAUNCHER_TYPO_TOLERANT_RANKING = "quick_launcher_typo_tolerant_ranking"
     private const val KEY_QUICK_LAUNCHER_WIDTH_PERCENT = "quick_launcher_width_percent"
@@ -2988,6 +3000,8 @@ object SettingsManager {
     private const val DEFAULT_QUICK_LAUNCHER_AUTO_START_SINGLE = false
     private const val DEFAULT_QUICK_LAUNCHER_LIMIT_RESULTS = false
     private const val DEFAULT_QUICK_LAUNCHER_TEXT_FIELD_SHORTCUTS = true
+    private const val DEFAULT_QUICK_LAUNCHER_ALT_SPACE_IN_TEXT_FIELDS = false
+    private const val DEFAULT_QUICK_LAUNCHER_ALT_SHORTCUTS_OUTSIDE_TEXT_FIELDS = false
     private const val DEFAULT_QUICK_LAUNCHER_RESPECT_KEYBOARD_LAYOUT = true
     private const val DEFAULT_QUICK_LAUNCHER_TYPO_TOLERANT_RANKING = true
     private const val DEFAULT_QUICK_LAUNCHER_WIDTH_PERCENT = 100
@@ -3517,6 +3531,32 @@ object SettingsManager {
     fun setQuickLauncherTextFieldShortcuts(context: Context, enabled: Boolean) {
         getPreferences(context).edit()
             .putBoolean(KEY_QUICK_LAUNCHER_TEXT_FIELD_SHORTCUTS, enabled)
+            .apply()
+    }
+
+    fun getQuickLauncherAltSpaceInTextFields(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_QUICK_LAUNCHER_ALT_SPACE_IN_TEXT_FIELDS,
+            DEFAULT_QUICK_LAUNCHER_ALT_SPACE_IN_TEXT_FIELDS
+        )
+    }
+
+    fun setQuickLauncherAltSpaceInTextFields(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_QUICK_LAUNCHER_ALT_SPACE_IN_TEXT_FIELDS, enabled)
+            .apply()
+    }
+
+    fun getQuickLauncherAltShortcutsOutsideTextFields(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_QUICK_LAUNCHER_ALT_SHORTCUTS_OUTSIDE_TEXT_FIELDS,
+            DEFAULT_QUICK_LAUNCHER_ALT_SHORTCUTS_OUTSIDE_TEXT_FIELDS
+        )
+    }
+
+    fun setQuickLauncherAltShortcutsOutsideTextFields(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_QUICK_LAUNCHER_ALT_SHORTCUTS_OUTSIDE_TEXT_FIELDS, enabled)
             .apply()
     }
 
@@ -4259,6 +4299,7 @@ object SettingsManager {
 
         return try {
             val jsonObject = JSONObject(jsonString)
+            val deviceEnabled = jsonObject.optBoolean("deviceEnabled", false)
             val emojiEnabled = jsonObject.optBoolean("emojiEnabled", true)
             val symbolsEnabled = jsonObject.optBoolean("symbolsEnabled", true)
             val clipboardEnabled = jsonObject.optBoolean("clipboardEnabled", false)
@@ -4291,6 +4332,7 @@ object SettingsManager {
             }
 
             SymPagesConfig(
+                deviceEnabled = deviceEnabled,
                 emojiEnabled = emojiEnabled,
                 symbolsEnabled = symbolsEnabled,
                 clipboardEnabled = clipboardEnabled,
@@ -4309,6 +4351,7 @@ object SettingsManager {
     fun setSymPagesConfig(context: Context, config: SymPagesConfig) {
         try {
             val jsonObject = JSONObject().apply {
+                put("deviceEnabled", config.deviceEnabled)
                 put("emojiEnabled", config.emojiEnabled)
                 put("symbolsEnabled", config.symbolsEnabled)
                 put("clipboardEnabled", config.clipboardEnabled)
@@ -4326,6 +4369,21 @@ object SettingsManager {
         } catch (e: Exception) {
             Log.e(TAG, "Error saving SYM pages config", e)
         }
+    }
+
+    fun getAltCharacterLayerBinding(context: Context): String =
+        getPreferences(context).getString(KEY_ALT_CHARACTER_LAYER_BINDING, "device:auto")
+            ?: "device:auto"
+
+    fun setAltCharacterLayerBinding(context: Context, binding: String) {
+        val normalized = when {
+            binding == "first" || binding == "emoji" || binding == "symbols" -> binding
+            binding.startsWith("device:") -> binding
+            else -> "device:auto"
+        }
+        getPreferences(context).edit()
+            .putString(KEY_ALT_CHARACTER_LAYER_BINDING, normalized)
+            .apply()
     }
     
     /**
