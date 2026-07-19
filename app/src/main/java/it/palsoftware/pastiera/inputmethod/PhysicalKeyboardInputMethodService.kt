@@ -2153,8 +2153,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         
         Log.d(TAG, "Broadcast receiver registered for additional subtypes updates")
 
-        // Update additional subtypes on startup
-        updateAdditionalSubtypes()
         // Start trackpad gesture detection
         if (shouldStartShizukuTrackpadDetector()) {
             Log.d(TRACKPAD_DEBUG_TAG, "onCreate: Calling initial Shizuku trackpadGestureDetector.start()...")

@@ -10,6 +10,7 @@ import android.view.inputmethod.InputMethodManager
 import android.view.inputmethod.InputMethodSubtype
 import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.SettingsManager
+import it.palsoftware.pastiera.data.layout.LayoutFileStore
 import it.palsoftware.pastiera.data.layout.LayoutMappingRepository
 import it.palsoftware.pastiera.inputmethod.PhysicalKeyboardInputMethodService
 import org.json.JSONObject
@@ -125,7 +126,7 @@ object AdditionalSubtypeUtils {
                 }
                 
                 // Create subtype
-                val subtype = createSubtype(localeStr, layoutName, extra)
+                val subtype = createSubtype(localeStr, layoutName, extra, assets, context)
                 if (subtype != null) {
                     subtypes.add(subtype)
                 }
@@ -170,7 +171,9 @@ object AdditionalSubtypeUtils {
     private fun createSubtype(
         localeStr: String,
         layoutName: String,
-        extra: String
+        extra: String,
+        assets: AssetManager,
+        context: Context
     ): InputMethodSubtype? {
         return try {
             // Parse locale
@@ -200,19 +203,57 @@ object AdditionalSubtypeUtils {
             // Get name resource ID for locale
             val nameResId = getLocaleNameResId(localeStr)
             
-            // Create subtype
-            InputMethodSubtype.InputMethodSubtypeBuilder()
-                .setSubtypeNameResId(nameResId)
+            val supportsNameOverride = Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
+            val builder = InputMethodSubtype.InputMethodSubtypeBuilder()
+                .setSubtypeNameResId(if (supportsNameOverride) 0 else nameResId)
                 .setSubtypeLocale(localeStr)
+                .setLanguageTag(locale.toLanguageTag())
                 .setSubtypeMode("keyboard")
                 .setSubtypeExtraValue(extraValue)
+                .setSubtypeId(stableSubtypeId(localeStr, layoutName))
                 .setIsAuxiliary(false)
                 .setOverridesImplicitlyEnabledSubtype(false)
-                .build()
+
+            if (supportsNameOverride) {
+                builder.setSubtypeNameOverride(
+                    buildSubtypeDisplayName(context, assets, locale, localeStr, layoutName)
+                )
+            }
+
+            builder.build()
         } catch (e: Exception) {
             Log.e(TAG, "Error creating subtype for $localeStr:$layoutName", e)
             null
         }
+    }
+
+    private fun buildSubtypeDisplayName(
+        context: Context,
+        assets: AssetManager,
+        locale: Locale,
+        localeStr: String,
+        layoutName: String
+    ): String {
+        val languageLabel = getLocaleNameResId(localeStr)
+            .takeIf { it != 0 }
+            ?.let(context::getString)
+            ?: locale.getDisplayLanguage(context.resources.configuration.locales[0])
+                .replaceFirstChar { character ->
+                    if (character.isLowerCase()) character.titlecase() else character.toString()
+                }
+        val layoutLabel = (
+            LayoutFileStore.getLayoutMetadataFromAssets(assets, layoutName)
+                ?: LayoutFileStore.getLayoutMetadata(context, layoutName)
+            )?.name
+            ?.takeIf { it.isNotBlank() }
+            ?.substringBefore(" | ")
+            ?: layoutName
+
+        return "$languageLabel · $layoutLabel"
+    }
+
+    private fun stableSubtypeId(locale: String, layout: String): Int {
+        return "pastiera-subtype-v2|$locale|$layout".hashCode().takeUnless { it == 0 } ?: 1
     }
     
     /**
