@@ -443,7 +443,7 @@
     <string name="backup_failed">Sao lưu thất bại: %1$s</string>
     <string name="restore_failed">Khôi phục thất bại: %1$s</string>
     <string name="dip_unit">DIP</string>
-    <string name="custom_input_styles_title">Ngôn ngữ và bố cục</string>
+    <string name="custom_input_styles_title">Ngôn ngữ nhập liệu</string>
     <string name="custom_input_styles_description">Thêm ngôn ngữ và bố cục bàn phím không gắn với locale hệ thống</string>
     <string name="custom_input_styles_add">Thêm kiểu nhập</string>
     <string name="custom_input_styles_empty">Chưa có kiểu nhập tùy chỉnh nào. Nhấn nút + để thêm.</string>

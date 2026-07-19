@@ -371,7 +371,7 @@
     <string name="update_dialog_open_github">Ouvrir GitHub</string>
     <string name="update_dialog_later">Plus tard</string>
     <string name="update_dialog_download_apk">Télécharger l\'APK</string>
-    <string name="custom_input_styles_title">Langues et dispositions</string>
+    <string name="custom_input_styles_title">Langues de saisie</string>
     <string name="custom_input_styles_description">Ajouter des langues supplémentaires et des dispositions de clavier qui ne sont pas liées à la locale système</string>
     <string name="custom_input_styles_language_label">Langue</string>
     <string name="custom_input_styles_locale_display">%1$s (%2$s)</string>

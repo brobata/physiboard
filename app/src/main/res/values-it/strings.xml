@@ -812,7 +812,7 @@ Ogni tasto può essere configurato come Keycode, Azione, Native Ctrl o Nessuno. 
     <string name="update_dialog_download_apk">Scarica APK</string>
     
     <!-- Custom Input Styles -->
-    <string name="custom_input_styles_title">Lingue e mappe</string>
+    <string name="custom_input_styles_title">Lingue di input</string>
     <string name="custom_input_styles_description">Aggiungi lingue aggiuntive e layout tastiera che non sono legati alla locale di sistema</string>
     <string name="app_language_title">Lingua app</string>
     <string name="app_language_description">Scegli la lingua usata per i testi dell\'interfaccia dell\'app.</string>

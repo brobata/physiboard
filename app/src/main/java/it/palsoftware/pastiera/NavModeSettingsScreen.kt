@@ -56,7 +56,8 @@ import kotlin.math.min
 @Composable
 fun NavModeSettingsScreen(
     modifier: Modifier = Modifier,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    initialKeyCode: Int? = null
 ) {
     val context = LocalContext.current
     
@@ -79,7 +80,7 @@ fun NavModeSettingsScreen(
     }
     
     // Dialog state for key configuration
-    var selectedKeyCode by remember { mutableStateOf<Int?>(null) }
+    var selectedKeyCode by remember(initialKeyCode) { mutableStateOf(initialKeyCode) }
     
     // Load default mappings for comparison
     val defaultMappings = remember {

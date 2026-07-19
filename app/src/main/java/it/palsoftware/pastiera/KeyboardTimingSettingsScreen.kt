@@ -75,34 +75,7 @@ fun KeyboardTimingSettingsScreen(
         mutableStateOf(SettingsManager.getCtrlLatchStaysOnSpace(context))
     }
 
-    var destination by rememberSaveable { mutableStateOf(KeyboardTimingDestination.Main) }
-
-    AnimatedContent(
-        targetState = destination,
-        transitionSpec = {
-            val direction = if (targetState == KeyboardTimingDestination.Main) -1 else 1
-            (slideInHorizontally(
-                animationSpec = tween(220),
-                initialOffsetX = { fullWidth -> direction * fullWidth }
-            ) + fadeIn(animationSpec = tween(160))).togetherWith(
-                slideOutHorizontally(
-                    animationSpec = tween(220),
-                    targetOffsetX = { fullWidth -> -direction * fullWidth }
-                ) + fadeOut(animationSpec = tween(120))
-            ).using(SizeTransform(clip = false))
-        },
-        label = "keyboardTimingSubscreen"
-    ) { currentDestination ->
-        when (currentDestination) {
-            KeyboardTimingDestination.VirtualKeyboard -> VirtualKeyboardBehaviorSettingsScreen(
-                modifier = modifier,
-                onBack = { destination = KeyboardTimingDestination.Main }
-            )
-            KeyboardTimingDestination.HardwareKeyboards -> HardwareKeyboardSettingsScreen(
-                modifier = modifier,
-                onBack = { destination = KeyboardTimingDestination.Main }
-            )
-            KeyboardTimingDestination.Main -> KeyboardTimingMainContent(
+    KeyboardTimingMainContent(
                 modifier = modifier,
                 onBack = onBack,
                 longPressThreshold = longPressThreshold,
@@ -118,18 +91,8 @@ fun KeyboardTimingSettingsScreen(
                 altLatchStaysOnSpace = altLatchStaysOnSpace,
                 onAltLatchStaysOnSpaceChange = { altLatchStaysOnSpace = it },
                 ctrlLatchStaysOnSpace = ctrlLatchStaysOnSpace,
-                onCtrlLatchStaysOnSpaceChange = { ctrlLatchStaysOnSpace = it },
-                onVirtualKeyboardSettingsClick = { destination = KeyboardTimingDestination.VirtualKeyboard },
-                onHardwareKeyboardSettingsClick = { destination = KeyboardTimingDestination.HardwareKeyboards }
-            )
-        }
-    }
-}
-
-private enum class KeyboardTimingDestination {
-    Main,
-    VirtualKeyboard,
-    HardwareKeyboards
+                onCtrlLatchStaysOnSpaceChange = { ctrlLatchStaysOnSpace = it }
+    )
 }
 
 @Composable
@@ -149,9 +112,7 @@ private fun KeyboardTimingMainContent(
     altLatchStaysOnSpace: Boolean,
     onAltLatchStaysOnSpaceChange: (Boolean) -> Unit,
     ctrlLatchStaysOnSpace: Boolean,
-    onCtrlLatchStaysOnSpaceChange: (Boolean) -> Unit,
-    onVirtualKeyboardSettingsClick: () -> Unit,
-    onHardwareKeyboardSettingsClick: () -> Unit
+    onCtrlLatchStaysOnSpaceChange: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
 
@@ -358,88 +319,6 @@ private fun KeyboardTimingMainContent(
                 }
             }
 
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(74.dp)
-                    .clickable { onVirtualKeyboardSettingsClick() }
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Language,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.virtual_keyboard_behaviour_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1
-                        )
-                        Text(
-                            text = stringResource(R.string.virtual_keyboard_behaviour_description),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2
-                        )
-                    }
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(74.dp)
-                    .clickable { onHardwareKeyboardSettingsClick() }
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.SettingsInputComponent,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.hardware_keyboards_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1
-                        )
-                        Text(
-                            text = stringResource(R.string.hardware_keyboards_description),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2
-                        )
-                    }
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
             Text(
@@ -507,17 +386,11 @@ private fun KeyboardTimingMainContent(
 }
 
 @Composable
-private fun VirtualKeyboardBehaviorSettingsScreen(
+internal fun VirtualKeyboardBehaviorSettingsScreen(
     modifier: Modifier = Modifier,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
-    var softwareKeyboardMode by remember {
-        mutableStateOf(SettingsManager.getSoftwareKeyboardMode(context))
-    }
-    var effectiveSoftwareKeyboardMode by remember {
-        mutableStateOf(SettingsManager.resolveEffectiveSoftwareKeyboardMode(context))
-    }
     var softwareKeyboardLayoutStyle by remember {
         mutableStateOf(SettingsManager.getSoftwareKeyboardLayoutStyle(context))
     }
@@ -530,9 +403,6 @@ private fun VirtualKeyboardBehaviorSettingsScreen(
     var longPressLayerPopupBelowKey by remember {
         mutableStateOf(SettingsManager.getSoftwareKeyboardLongPressLayerPopupBelowKey(context))
     }
-    var softwareKeyboardModeToggleToastsEnabled by remember {
-        mutableStateOf(SettingsManager.getSoftwareKeyboardModeToggleToastsEnabled(context))
-    }
     var numberRowEnabled by remember {
         mutableStateOf(SettingsManager.getSoftwareKeyboardNumberRowEnabled(context))
     }
@@ -542,21 +412,12 @@ private fun VirtualKeyboardBehaviorSettingsScreen(
     var rightModifierKey by remember {
         mutableStateOf(SettingsManager.getSoftwareKeyboardRightModifierKey(context))
     }
-    var showSoftwareKeyboardModeMenu by remember { mutableStateOf(false) }
     var showSoftwareKeyboardLayoutStyleMenu by remember { mutableStateOf(false) }
 
     DisposableEffect(context) {
         val prefs = SettingsManager.getPreferences(context)
         val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
             when (key) {
-                "software_keyboard_mode" -> {
-                    softwareKeyboardMode = SettingsManager.getSoftwareKeyboardMode(context)
-                    effectiveSoftwareKeyboardMode = SettingsManager.resolveEffectiveSoftwareKeyboardMode(context)
-                }
-                "software_keyboard_mode_toggle_toasts" -> {
-                    softwareKeyboardModeToggleToastsEnabled =
-                        SettingsManager.getSoftwareKeyboardModeToggleToastsEnabled(context)
-                }
                 "software_keyboard_left_modifier_key" -> {
                     leftModifierKey = SettingsManager.getSoftwareKeyboardLeftModifierKey(context)
                 }
@@ -617,97 +478,7 @@ private fun VirtualKeyboardBehaviorSettingsScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
-            val softwareKeyboardModeLabel = when (softwareKeyboardMode) {
-                SettingsManager.SoftwareKeyboardMode.AUTO -> {
-                    val currentLabel = if (effectiveSoftwareKeyboardMode == SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL) {
-                        stringResource(R.string.software_keyboard_mode_virtual)
-                    } else {
-                        stringResource(R.string.software_keyboard_mode_hardware)
-                    }
-                    stringResource(R.string.software_keyboard_mode_auto_current, currentLabel)
-                }
-                SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL -> stringResource(R.string.software_keyboard_mode_virtual)
-                SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE -> stringResource(R.string.software_keyboard_mode_hardware)
-            }
-
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(82.dp)
-                    .clickable { showSoftwareKeyboardModeMenu = true }
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Language,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.software_keyboard_mode_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1
-                        )
-                        Text(
-                            text = softwareKeyboardModeLabel,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2
-                        )
-                    }
-                    Icon(
-                        imageVector = Icons.Default.ArrowDropDown,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                DropdownMenu(
-                    expanded = showSoftwareKeyboardModeMenu,
-                    onDismissRequest = { showSoftwareKeyboardModeMenu = false }
-                ) {
-                    listOf(
-                        SettingsManager.SoftwareKeyboardMode.AUTO to stringResource(R.string.software_keyboard_mode_auto_short),
-                        SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL to stringResource(R.string.software_keyboard_mode_virtual),
-                        SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE to stringResource(R.string.software_keyboard_mode_hardware)
-                    ).forEach { (mode, title) ->
-                        DropdownMenuItem(
-                            text = { Text(title) },
-                            onClick = {
-                                SettingsManager.setSoftwareKeyboardMode(context, mode)
-                                softwareKeyboardMode = SettingsManager.getSoftwareKeyboardMode(context)
-                                effectiveSoftwareKeyboardMode =
-                                    SettingsManager.resolveEffectiveSoftwareKeyboardMode(context)
-                                showSoftwareKeyboardModeMenu = false
-                            },
-                            leadingIcon = {
-                                if (softwareKeyboardMode == mode) {
-                                    Icon(Icons.Default.Check, contentDescription = null)
-                                }
-                            }
-                        )
-                    }
-                }
-            }
-
-            ModifierTapLatchRow(
-                title = stringResource(R.string.software_keyboard_mode_toggle_toasts_title),
-                description = stringResource(R.string.software_keyboard_mode_toggle_toasts_description),
-                checked = softwareKeyboardModeToggleToastsEnabled,
-                onCheckedChange = { enabled ->
-                    softwareKeyboardModeToggleToastsEnabled = enabled
-                    SettingsManager.setSoftwareKeyboardModeToggleToastsEnabled(context, enabled)
-                }
-            )
-
+            VirtualKeyboardSectionTitle(stringResource(R.string.on_screen_keyboard_section_layout))
             val softwareKeyboardLayoutStyleLabel = when (softwareKeyboardLayoutStyle) {
                 SettingsManager.SoftwareKeyboardLayoutStyle.COMPACT ->
                     stringResource(R.string.software_keyboard_layout_style_compact)
@@ -789,63 +560,6 @@ private fun VirtualKeyboardBehaviorSettingsScreen(
                 }
             }
 
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(74.dp)
-                    .clickable {
-                        context.startActivity(
-                            Intent(context, SettingsActivity::class.java)
-                                .putExtra(
-                                    SettingsActivity.EXTRA_DESTINATION,
-                                    SettingsActivity.DESTINATION_CUSTOMIZATION
-                                )
-                                .putExtra(
-                                    SettingsActivity.EXTRA_CUSTOMIZATION_DESTINATION,
-                                    SettingsActivity.CUSTOMIZATION_DESTINATION_KEYBOARD_THEME
-                                )
-                                .putExtra(
-                                    SettingsActivity.EXTRA_KEYBOARD_THEME_TARGET,
-                                    SettingsActivity.KEYBOARD_THEME_TARGET_SOFTWARE
-                                )
-                        )
-                    }
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Keyboard,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.software_keyboard_theme_link_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1
-                        )
-                        Text(
-                            text = stringResource(R.string.software_keyboard_theme_link_description),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2
-                        )
-                    }
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
             ModifierTapLatchRow(
                 title = stringResource(R.string.software_keyboard_number_row_title),
                 description = stringResource(R.string.software_keyboard_number_row_description),
@@ -855,39 +569,6 @@ private fun VirtualKeyboardBehaviorSettingsScreen(
                     SettingsManager.setSoftwareKeyboardNumberRowEnabled(context, enabled)
                 }
             )
-
-            ModifierTapLatchRow(
-                title = stringResource(R.string.software_keyboard_nearest_key_touch_title),
-                description = stringResource(R.string.software_keyboard_nearest_key_touch_description),
-                checked = nearestKeyTouchEnabled,
-                onCheckedChange = { enabled ->
-                    nearestKeyTouchEnabled = enabled
-                    SettingsManager.setSoftwareKeyboardNearestKeyTouchEnabled(context, enabled)
-                }
-            )
-
-            ModifierTapLatchRow(
-                title = stringResource(R.string.software_keyboard_long_press_layer_popup_title),
-                description = stringResource(R.string.software_keyboard_long_press_layer_popup_description),
-                checked = longPressLayerPopupEnabled,
-                onCheckedChange = { enabled ->
-                    longPressLayerPopupEnabled = enabled
-                    SettingsManager.setSoftwareKeyboardLongPressLayerPopupEnabled(context, enabled)
-                }
-            )
-
-            if (longPressLayerPopupEnabled) {
-                ModifierTapLatchRow(
-                    title = stringResource(R.string.software_keyboard_long_press_layer_popup_below_key_title),
-                    description = stringResource(R.string.software_keyboard_long_press_layer_popup_below_key_description),
-                    checked = longPressLayerPopupBelowKey,
-                    indent = true,
-                    onCheckedChange = { enabled ->
-                        longPressLayerPopupBelowKey = enabled
-                        SettingsManager.setSoftwareKeyboardLongPressLayerPopupBelowKey(context, enabled)
-                    }
-                )
-            }
 
             Text(
                 text = stringResource(R.string.software_keyboard_modifier_keys_title),
@@ -922,8 +603,82 @@ private fun VirtualKeyboardBehaviorSettingsScreen(
                     }
                 )
             }
+
+            VirtualKeyboardSectionTitle(stringResource(R.string.on_screen_keyboard_section_touch))
+
+            ModifierTapLatchRow(
+                title = stringResource(R.string.software_keyboard_nearest_key_touch_title),
+                description = stringResource(R.string.software_keyboard_nearest_key_touch_description),
+                checked = nearestKeyTouchEnabled,
+                onCheckedChange = { enabled ->
+                    nearestKeyTouchEnabled = enabled
+                    SettingsManager.setSoftwareKeyboardNearestKeyTouchEnabled(context, enabled)
+                }
+            )
+
+            ModifierTapLatchRow(
+                title = stringResource(R.string.software_keyboard_long_press_layer_popup_title),
+                description = stringResource(R.string.software_keyboard_long_press_layer_popup_description),
+                checked = longPressLayerPopupEnabled,
+                onCheckedChange = { enabled ->
+                    longPressLayerPopupEnabled = enabled
+                    SettingsManager.setSoftwareKeyboardLongPressLayerPopupEnabled(context, enabled)
+                }
+            )
+
+            if (longPressLayerPopupEnabled) {
+                ModifierTapLatchRow(
+                    title = stringResource(R.string.software_keyboard_long_press_layer_popup_below_key_title),
+                    description = stringResource(R.string.software_keyboard_long_press_layer_popup_below_key_description),
+                    checked = longPressLayerPopupBelowKey,
+                    indent = true,
+                    onCheckedChange = { enabled ->
+                        longPressLayerPopupBelowKey = enabled
+                        SettingsManager.setSoftwareKeyboardLongPressLayerPopupBelowKey(context, enabled)
+                    }
+                )
+            }
+
+            VirtualKeyboardSectionTitle(stringResource(R.string.on_screen_keyboard_section_appearance))
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(74.dp)
+                    .clickable {
+                        context.startActivity(
+                            Intent(context, SettingsActivity::class.java)
+                                .putExtra(SettingsActivity.EXTRA_DESTINATION, SettingsActivity.DESTINATION_CUSTOMIZATION)
+                                .putExtra(SettingsActivity.EXTRA_CUSTOMIZATION_DESTINATION, SettingsActivity.CUSTOMIZATION_DESTINATION_KEYBOARD_THEME)
+                                .putExtra(SettingsActivity.EXTRA_KEYBOARD_THEME_TARGET, SettingsActivity.KEYBOARD_THEME_TARGET_SOFTWARE)
+                        )
+                    }
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(Icons.Filled.Keyboard, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(stringResource(R.string.software_keyboard_theme_link_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
+                        Text(stringResource(R.string.software_keyboard_theme_link_description), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
         }
     }
+}
+
+@Composable
+private fun VirtualKeyboardSectionTitle(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+    )
 }
 
 @Composable

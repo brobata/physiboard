@@ -31,6 +31,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -163,10 +164,6 @@ fun CustomInputStylesScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            item {
-                AppLanguageSelectorCard()
-            }
-
             item {
                 LanguageLayoutModeCard()
             }
@@ -538,7 +535,7 @@ private fun LayoutSwitchShortcutRow(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AppLanguageSelectorCard() {
+internal fun AppLanguageSelectorCard() {
     val context = LocalContext.current
     var expanded by remember { mutableStateOf(false) }
     var selectedTag by remember { mutableStateOf(getCurrentAppLanguageTag(context)) }
@@ -577,7 +574,7 @@ private fun AppLanguageSelectorCard() {
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Filled.Language,
+                    painter = painterResource(R.drawable.translate_24),
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary
                 )
@@ -1146,11 +1143,11 @@ private fun getLayoutDisplayName(context: Context, layoutName: String): String {
         ?: layoutName
 }
 
-private fun getCurrentAppLanguageTag(context: Context): String? {
+internal fun getCurrentAppLanguageTag(context: Context): String? {
     return SettingsManager.getAppLanguageTag(context)
 }
 
-private fun getLanguageOptionLabel(context: Context, languageTag: String): String {
+internal fun getLanguageOptionLabel(context: Context, languageTag: String): String {
     return try {
         val languageLocale = Locale.forLanguageTag(languageTag)
         val uiLocale = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -1173,7 +1170,7 @@ private fun getLanguageOptionLabel(context: Context, languageTag: String): Strin
     }
 }
 
-private fun setApplicationLanguage(context: Context, languageTag: String?) {
+internal fun setApplicationLanguage(context: Context, languageTag: String?) {
     SettingsManager.setAppLanguageTag(context, languageTag)
     (context as? Activity)?.recreate()
 }

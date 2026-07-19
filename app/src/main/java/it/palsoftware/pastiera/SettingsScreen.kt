@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.size
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -60,6 +61,7 @@ import it.palsoftware.pastiera.update.shouldUseGithubUpdateChecks
  */
 enum class SettingsDestination {
     Main,
+    KeyboardsDevices,
     KeyboardTiming,
     TextInput,
     Accessibility,
@@ -68,7 +70,8 @@ enum class SettingsDestination {
     NavMode,
     Advanced,
     About,
-    CustomInputStyles
+    CustomInputStyles,
+    AppLanguage
 }
 
 private val settingsNavigationStackSaver =
@@ -99,6 +102,7 @@ fun SettingsScreen(
     var requestedCustomizationDestination by rememberSaveable {
         mutableStateOf(initialCustomizationDestination)
     }
+    var requestedNavModeKeyCode by rememberSaveable { mutableStateOf<Int?>(null) }
     val navigationStack = rememberSaveable(saver = settingsNavigationStackSaver) {
         mutableStateListOf<SettingsDestination>().apply {
             if (initialDestination == SettingsActivity.DESTINATION_CUSTOMIZATION) {
@@ -188,6 +192,7 @@ fun SettingsScreen(
                     checkingForUpdates = checkingForUpdates,
                     onCheckingForUpdatesChange = { checkingForUpdates = it },
                     onKeyboardTimingClick = { navigateTo(SettingsDestination.KeyboardTiming) },
+                    onKeyboardsDevicesClick = { navigateTo(SettingsDestination.KeyboardsDevices) },
                     onTextInputClick = { navigateTo(SettingsDestination.TextInput) },
                     onAccessibilityClick = { navigateTo(SettingsDestination.Accessibility) },
                     onAutoCorrectionClick = { navigateTo(SettingsDestination.AutoCorrection) },
@@ -198,14 +203,28 @@ fun SettingsScreen(
                     onQuickLauncherClick = {
                         openCustomization(SettingsActivity.CUSTOMIZATION_DESTINATION_LAUNCHER_SHORTCUTS)
                     },
-                    onNavModeClick = { navigateTo(SettingsDestination.NavMode) },
+                    onNavModeClick = {
+                        requestedNavModeKeyCode = null
+                        navigateTo(SettingsDestination.NavMode)
+                    },
                     onEnterBehaviorClick = {
                         openCustomization(SettingsActivity.CUSTOMIZATION_DESTINATION_APP_ENTER_BEHAVIOR)
                     },
                     onAdvancedClick = { navigateTo(SettingsDestination.Advanced) },
                     onAboutClick = { navigateTo(SettingsDestination.About) },
                     onBackClick = { navigateBack() },
-                    onCustomInputStylesClick = { navigateTo(SettingsDestination.CustomInputStyles) }
+                    onCustomInputStylesClick = { navigateTo(SettingsDestination.CustomInputStyles) },
+                    onAppLanguageClick = { navigateTo(SettingsDestination.AppLanguage) }
+                )
+            }
+            SettingsDestination.KeyboardsDevices -> {
+                KeyboardsDevicesSettingsScreen(
+                    modifier = modifier,
+                    onBack = { navigateBack() },
+                    onNavModeSettingsClick = { keyCode ->
+                        requestedNavModeKeyCode = keyCode
+                        navigateTo(SettingsDestination.NavMode)
+                    }
                 )
             }
             SettingsDestination.KeyboardTiming -> {
@@ -246,7 +265,8 @@ fun SettingsScreen(
             SettingsDestination.NavMode -> {
                 NavModeSettingsScreen(
                     modifier = modifier,
-                    onBack = { navigateBack() }
+                    onBack = { navigateBack() },
+                    initialKeyCode = requestedNavModeKeyCode
                 )
             }
             SettingsDestination.Advanced -> {
@@ -267,6 +287,9 @@ fun SettingsScreen(
                     onBack = { navigateBack() }
                 )
             }
+            SettingsDestination.AppLanguage -> {
+                AppLanguageSettingsScreen(modifier = modifier, onBack = { navigateBack() })
+            }
         }
     }
 }
@@ -283,6 +306,7 @@ private fun SettingsMainScreen(
     checkingForUpdates: Boolean,
     onCheckingForUpdatesChange: (Boolean) -> Unit,
     onKeyboardTimingClick: () -> Unit,
+    onKeyboardsDevicesClick: () -> Unit,
     onTextInputClick: () -> Unit,
     onAccessibilityClick: () -> Unit,
     onAutoCorrectionClick: () -> Unit,
@@ -294,7 +318,8 @@ private fun SettingsMainScreen(
     onAdvancedClick: () -> Unit,
     onAboutClick: () -> Unit,
     onBackClick: () -> Unit,
-    onCustomInputStylesClick: () -> Unit
+    onCustomInputStylesClick: () -> Unit,
+    onAppLanguageClick: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -332,10 +357,15 @@ private fun SettingsMainScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
-            SettingsGroupDivider(stringResource(R.string.settings_group_keyboard))
+            SettingsGroupDivider(stringResource(R.string.settings_group_typing))
 
             SettingsCategoryRow(
                 icon = Icons.Filled.Keyboard,
+                title = stringResource(R.string.keyboards_devices_title),
+                onClick = onKeyboardsDevicesClick
+            )
+            SettingsCategoryRow(
+                icon = Icons.Filled.Timer,
                 title = stringResource(R.string.settings_category_keyboard_timing),
                 onClick = onKeyboardTimingClick
             )
@@ -345,7 +375,7 @@ private fun SettingsMainScreen(
                 onClick = onCustomInputStylesClick
             )
 
-            SettingsGroupDivider(stringResource(R.string.settings_group_typing))
+            SettingsGroupDivider(stringResource(R.string.settings_group_smart_features))
 
             SettingsCategoryRow(
                 icon = Icons.Filled.TextFields,
@@ -370,6 +400,12 @@ private fun SettingsMainScreen(
                 title = stringResource(R.string.keyboard_theme_title),
                 description = stringResource(R.string.keyboard_theme_description),
                 onClick = onKeyboardThemeClick
+            )
+            SettingsCategoryRow(
+                icon = ImageVector.vectorResource(R.drawable.translate_24),
+                title = stringResource(R.string.app_language_title),
+                description = currentAppLanguageLabel(context),
+                onClick = onAppLanguageClick
             )
 
             SettingsGroupDivider(stringResource(R.string.settings_group_utility))

@@ -1,5 +1,6 @@
 package it.palsoftware.pastiera
 
+import android.view.InputDevice
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -40,6 +41,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import it.palsoftware.pastiera.inputmethod.DeviceSpecific
 
 @Composable
 fun ClicksPowerKeyboardSettingsStubScreen(
@@ -49,6 +51,11 @@ fun ClicksPowerKeyboardSettingsStubScreen(
     val context = LocalContext.current
     var closeInputOnDisconnect by remember {
         mutableStateOf(SettingsManager.getClicksCloseInputOnDisconnect(context))
+    }
+    val connectedDevice = remember {
+        InputDevice.getDeviceIds().asSequence()
+            .mapNotNull { InputDevice.getDevice(it) }
+            .firstOrNull { DeviceSpecific.isClicksPowerKeyboard(it) }
     }
     HardwareProfileScaffold(
         modifier = modifier,
@@ -60,7 +67,12 @@ fun ClicksPowerKeyboardSettingsStubScreen(
         PlannedSettingsRow(
             icon = Icons.Filled.Bluetooth,
             title = stringResource(R.string.clicks_device_status_title),
-            description = stringResource(R.string.clicks_device_status_description)
+            description = connectedDevice?.let {
+                stringResource(
+                    R.string.clicks_device_status_connected,
+                    it.name.substringAfterLast('-', missingDelimiterValue = "?")
+                )
+            } ?: stringResource(R.string.clicks_device_status_disconnected)
         )
 
         StubSection(stringResource(R.string.clicks_section_keyboard_behavior))
@@ -154,38 +166,6 @@ private fun ClicksSettingsSwitchRow(
             }
             Switch(checked = checked, onCheckedChange = onCheckedChange)
         }
-    }
-}
-
-@Composable
-fun CuratedHardwareProfileStubScreen(
-    modifier: Modifier = Modifier,
-    title: String,
-    description: String,
-    onBack: () -> Unit
-) {
-    HardwareProfileScaffold(
-        modifier = modifier,
-        title = title,
-        description = description,
-        onBack = onBack
-    ) {
-        StubSection(stringResource(R.string.hardware_profile_stub_section))
-        PlannedSettingsRow(
-            icon = Icons.Filled.Bluetooth,
-            title = stringResource(R.string.hardware_profile_detection_title),
-            description = stringResource(R.string.hardware_profile_detection_description)
-        )
-        PlannedSettingsRow(
-            icon = Icons.Filled.Keyboard,
-            title = stringResource(R.string.hardware_profile_key_events_title),
-            description = stringResource(R.string.hardware_profile_key_events_description)
-        )
-        PlannedSettingsRow(
-            icon = Icons.Filled.Settings,
-            title = stringResource(R.string.hardware_profile_device_controls_title),
-            description = stringResource(R.string.hardware_profile_device_controls_description)
-        )
     }
 }
 

@@ -584,13 +584,6 @@ fun CustomizationSettingsScreen(
                 )
             }
             
-            CustomizationDestination.NavMode -> {
-                NavModeSettingsScreen(
-                    modifier = modifier,
-                    onBack = { navigateBack() }
-                )
-            }
-
             CustomizationDestination.LauncherShortcuts -> {
                 StarterLauncherShortcutsSettingsScreen(
                     modifier = modifier,
@@ -2229,7 +2222,6 @@ private enum class CustomizationDestination {
     Main,
     Variations,
     AppEnterBehavior,
-    NavMode,
     LauncherShortcuts,
     LauncherShortcutBehavior,
     LauncherShortcutCosmetic,

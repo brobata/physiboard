@@ -33,6 +33,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,8 +54,7 @@ private val hardwareKeyboardProfiles = listOf(
     "titan" to R.string.keyboard_profile_option_titan,
     "titan2" to R.string.keyboard_profile_option_titan2,
     "titan2elite_qwerty" to R.string.keyboard_profile_option_titan2elite_qwerty,
-    "mp01" to R.string.keyboard_profile_option_mp01,
-    "clicks_power" to R.string.clicks_power_keyboard_title
+    "mp01" to R.string.keyboard_profile_option_mp01
 )
 
 @Composable
@@ -68,12 +68,7 @@ fun HardwareKeyboardSettingsScreen(
         HardwareKeyboardDestination.Main -> HardwareKeyboardListScreen(
             modifier = modifier,
             onBack = onBack,
-            onClicksPowerKeyboard = { destination = HardwareKeyboardDestination.ClicksPowerKeyboard },
             onAltKeyEditor = { destination = HardwareKeyboardDestination.AltKeyEditor }
-        )
-        HardwareKeyboardDestination.ClicksPowerKeyboard -> ClicksPowerKeyboardSettingsStubScreen(
-            modifier = modifier,
-            onBack = { destination = HardwareKeyboardDestination.Main }
         )
         HardwareKeyboardDestination.AltKeyEditor -> AltKeyEditorStubScreen(
             modifier = modifier,
@@ -84,7 +79,6 @@ fun HardwareKeyboardSettingsScreen(
 
 private enum class HardwareKeyboardDestination {
     Main,
-    ClicksPowerKeyboard,
     AltKeyEditor
 }
 
@@ -93,12 +87,20 @@ private enum class HardwareKeyboardDestination {
 private fun HardwareKeyboardListScreen(
     modifier: Modifier = Modifier,
     onBack: () -> Unit,
-    onClicksPowerKeyboard: () -> Unit,
     onAltKeyEditor: () -> Unit
 ) {
     val context = LocalContext.current
     var selectedProfile by remember {
-        mutableStateOf(SettingsManager.getPhysicalKeyboardProfileOverride(context))
+        mutableStateOf(
+            SettingsManager.getPhysicalKeyboardProfileOverride(context)
+                .takeUnless { it == "clicks_power" }
+                ?: "auto"
+        )
+    }
+    LaunchedEffect(Unit) {
+        if (SettingsManager.getPhysicalKeyboardProfileOverride(context) == "clicks_power") {
+            SettingsManager.setPhysicalKeyboardProfileOverride(context, "auto")
+        }
     }
     var profileMenuExpanded by remember { mutableStateOf(false) }
     var currencySymbol by remember {
@@ -164,6 +166,21 @@ private fun HardwareKeyboardListScreen(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
             )
 
+            HardwareKeyboardSectionDivider(stringResource(R.string.hardware_keyboard_detected_device_title))
+
+            Text(
+                text = stringResource(R.string.hardware_keyboard_detected_device_summary, DeviceSpecific.deviceName(), detectedProfile),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+            Text(
+                text = stringResource(R.string.hardware_keyboard_device_bound),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+
             HardwareKeyboardSectionDivider(stringResource(R.string.hardware_keyboard_curated_profiles_title))
 
             val selectedProfileLabel = hardwareKeyboardProfiles
@@ -180,18 +197,6 @@ private fun HardwareKeyboardListScreen(
                     onValueChange = {},
                     readOnly = true,
                     label = { Text(stringResource(R.string.hardware_keyboard_profile_select_label)) },
-                    leadingIcon = if (selectedProfile == "clicks_power") {
-                        {
-                            Icon(
-                                imageVector = FeatureStatusIcons.Construction,
-                                contentDescription = stringResource(
-                                    R.string.feature_status_construction_content_description
-                                )
-                            )
-                        }
-                    } else {
-                        null
-                    },
                     trailingIcon = {
                         ExposedDropdownMenuDefaults.TrailingIcon(expanded = profileMenuExpanded)
                     },
@@ -206,18 +211,6 @@ private fun HardwareKeyboardListScreen(
                     hardwareKeyboardProfiles.forEach { (profile, labelRes) ->
                         DropdownMenuItem(
                             text = { Text(stringResource(labelRes)) },
-                            leadingIcon = if (profile == "clicks_power") {
-                                {
-                                    Icon(
-                                        imageVector = FeatureStatusIcons.Construction,
-                                        contentDescription = stringResource(
-                                            R.string.feature_status_construction_content_description
-                                        )
-                                    )
-                                }
-                            } else {
-                                null
-                            },
                             onClick = {
                                 selectedProfile = profile
                                 SettingsManager.setPhysicalKeyboardProfileOverride(context, profile)
@@ -239,13 +232,8 @@ private fun HardwareKeyboardListScreen(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
             )
 
-            HardwareKeyboardNavigationRow(
-                title = stringResource(R.string.clicks_power_keyboard_title),
-                description = stringResource(R.string.clicks_power_keyboard_summary),
-                icon = Icons.Filled.Keyboard,
-                status = FeatureStatus.Construction,
-                onClick = onClicksPowerKeyboard
-            )
+            HardwareKeyboardPlannedProfileRow(stringResource(R.string.keyboard_profile_option_clicks_razr))
+            HardwareKeyboardPlannedProfileRow(stringResource(R.string.keyboard_profile_option_clicks_pixel))
 
             HardwareKeyboardSectionDivider(stringResource(R.string.hardware_keyboard_custom_profiles_title))
             Text(
@@ -329,6 +317,21 @@ private fun HardwareKeyboardSectionTitle(text: String) {
         fontWeight = FontWeight.Medium,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
     )
+}
+
+@Composable
+private fun HardwareKeyboardPlannedProfileRow(title: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Icon(Icons.Filled.Keyboard, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+        FeatureStatusIcon(FeatureStatus.Construction)
+    }
 }
 
 @Composable

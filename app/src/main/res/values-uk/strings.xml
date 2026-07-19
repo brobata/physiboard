@@ -399,7 +399,7 @@
     <string name="backup_failed">Резервна копія не вдалася: %1$s</string>
     <string name="restore_failed">Відновлення не вдалося: %1$s</string>
     <string name="dip_unit">DIP</string>
-    <string name="custom_input_styles_title">Мови та розкладки</string>
+    <string name="custom_input_styles_title">Мови введення</string>
     <string name="custom_input_styles_description">Додати додаткові мови та розкладки клавіатури, які не прив\'язані до системної локалі</string>
     <string name="custom_input_styles_add">Додати стиль введення</string>
     <string name="custom_input_styles_empty">Ще не додано жодного власного стилю введення. Натисніть +, щоб додати.</string>

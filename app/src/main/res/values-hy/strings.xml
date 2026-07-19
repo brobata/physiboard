@@ -329,7 +329,7 @@
     <string name="update_dialog_open_github">Բացել GitHub-ը</string>
     <string name="update_dialog_later">Հետո</string>
     <string name="update_dialog_download_apk">Ներբեռնել APK</string>
-    <string name="custom_input_styles_title">Լեզուներ և դասավորություններ</string>
+    <string name="custom_input_styles_title">Մուտքագրման լեզուներ</string>
     <string name="custom_input_styles_description">Ավելացնել լրացուցիչ լեզուներ և ստեղնաշարի դասավորություններ, որոնք չեն կապված համակարգի տեղակայման հետ</string>
     <string name="custom_input_styles_language_label">Լեզու</string>
     <string name="custom_input_styles_locale_display">%1$s (%2$s)</string>

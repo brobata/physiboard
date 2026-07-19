@@ -374,7 +374,7 @@
     <string name="update_dialog_open_github">Otwórz GitHub</string>
     <string name="update_dialog_later">Później</string>
     <string name="update_dialog_download_apk">Pobierz APK</string>
-    <string name="custom_input_styles_title">Języki i mapowania</string>
+    <string name="custom_input_styles_title">Języki wprowadzania</string>
     <string name="custom_input_styles_description">Dodaj dodatkowe języki i układy klawiatury, które nie są powiązane z ustawieniami regionalnymi systemu</string>
     <string name="custom_input_styles_language_label">Język</string>
     <string name="custom_input_styles_locale_display">%1$s (%2$s)</string>

@@ -412,7 +412,7 @@
     <string name="backup_failed">Резервное копирование не удалось: %1$s</string>
     <string name="restore_failed">Восстановление не удалось: %1$s</string>
     <string name="dip_unit">DIP</string>
-    <string name="custom_input_styles_title">Языки и раскладки</string>
+    <string name="custom_input_styles_title">Языки ввода</string>
     <string name="custom_input_styles_description">Добавить дополнительные языки и раскладки клавиатуры, которые не привязаны к системной локали</string>
     <string name="custom_input_styles_add">Добавить стиль ввода</string>
     <string name="custom_input_styles_empty">Пользовательские стили ввода пока не добавлены. Нажмите +, чтобы добавить.</string>
