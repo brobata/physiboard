@@ -326,6 +326,55 @@ class DeviceSpecificTest {
     }
 
     @Test
+    fun clicksPowerScanCodes_restorePhysicalLetterPositionsAfterAndroidLayoutMapping() {
+        val physicalYReportedAsZ = keyEvent(
+            action = KeyEvent.ACTION_DOWN,
+            keyCode = KeyEvent.KEYCODE_Z,
+            metaState = 0,
+            scanCode = 21
+        )
+        val yRemapped = DeviceSpecific.remapHardwareKeyEvent(
+            keyCode = KeyEvent.KEYCODE_Z,
+            event = physicalYReportedAsZ,
+            physicalProfileOverride = "clicks_power"
+        )
+        assertEquals(KeyEvent.KEYCODE_Y, yRemapped.keyCode)
+        assertEquals(KeyEvent.KEYCODE_Y, yRemapped.event?.keyCode)
+
+        val physicalZReportedAsY = keyEvent(
+            action = KeyEvent.ACTION_DOWN,
+            keyCode = KeyEvent.KEYCODE_Y,
+            metaState = 0,
+            scanCode = 44
+        )
+        val zRemapped = DeviceSpecific.remapHardwareKeyEvent(
+            keyCode = KeyEvent.KEYCODE_Y,
+            event = physicalZReportedAsY,
+            physicalProfileOverride = "clicks_power"
+        )
+        assertEquals(KeyEvent.KEYCODE_Z, zRemapped.keyCode)
+        assertEquals(KeyEvent.KEYCODE_Z, zRemapped.event?.keyCode)
+    }
+
+    @Test
+    fun clicksPowerNonLetterScanCode_staysUnchanged() {
+        val input = keyEvent(
+            action = KeyEvent.ACTION_DOWN,
+            keyCode = KeyEvent.KEYCODE_SLASH,
+            metaState = 0,
+            scanCode = 53
+        )
+        val remapped = DeviceSpecific.remapHardwareKeyEvent(
+            keyCode = KeyEvent.KEYCODE_SLASH,
+            event = input,
+            physicalProfileOverride = "clicks_power"
+        )
+
+        assertEquals(KeyEvent.KEYCODE_SLASH, remapped.keyCode)
+        assertSame(input, remapped.event)
+    }
+
+    @Test
     fun clicksPowerAccessory_isDetectedPerInputDevice() {
         val profile = DeviceSpecific.resolveInputProfile(
             identity = keyboardIdentity(
