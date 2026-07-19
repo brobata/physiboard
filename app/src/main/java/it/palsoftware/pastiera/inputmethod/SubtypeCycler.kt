@@ -13,6 +13,7 @@ import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils.locale
 import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils.setInputMethodAndSubtypeCompat
 import it.palsoftware.pastiera.data.layout.LayoutFileStore
 import it.palsoftware.pastiera.SettingsManager
+import java.util.Locale
 
 /**
  * Utility class for cycling between IME subtypes.
@@ -145,23 +146,11 @@ object SubtypeCycler {
         }
     }
     
-    /**
-     * Shows a unified toast with subtype name and layout (e.g., "Italiano - Qwerty").
-     */
+    /** Shows layout, primary language, and optional additional suggestion languages. */
     private fun showUnifiedSubtypeToast(context: Context, subtype: InputMethodSubtype, assets: AssetManager) {
         Handler(Looper.getMainLooper()).post {
             try {
-                // Get subtype display name (language)
-                val appInfo = context.packageManager.getApplicationInfo(context.packageName, 0)
-                val subtypeName = subtype.getDisplayName(
-                    context,
-                    context.packageName,
-                    appInfo
-                )
-                
                 val layoutName = resolveSubtypeCycleLayout(assets, context, subtype)
-                
-                // Get layout display name from metadata
                 val layoutMetadata = try {
                     LayoutFileStore.getLayoutMetadataFromAssets(assets, layoutName)
                         ?: LayoutFileStore.getLayoutMetadata(context, layoutName)
@@ -169,11 +158,30 @@ object SubtypeCycler {
                     Log.w(TAG, "Error getting layout metadata", e)
                     null
                 }
-                
-                val layoutDisplayName = layoutMetadata?.name ?: layoutName
-                
-                // Show unified toast: "Language - Layout"
-                val toastText = "$subtypeName - $layoutDisplayName"
+
+                val layoutDisplayName = layoutMetadata?.name
+                    ?.substringBefore(" | ")
+                    ?.takeIf { it.isNotBlank() }
+                    ?: layoutName
+                val primaryLanguage = languageAbbreviation(subtype.localeString())
+                val additionalLanguages = SettingsManager
+                    .getAdditionalSuggestionLocalesForInputStyle(
+                        context,
+                        subtype.localeString(),
+                        layoutName
+                    )
+                    .map(::languageAbbreviation)
+                    .filterNot { it == primaryLanguage }
+                    .distinct()
+                val toastText = buildString {
+                    append(layoutDisplayName)
+                    append(" | ")
+                    append(primaryLanguage)
+                    if (additionalLanguages.isNotEmpty()) {
+                        append(" | ")
+                        append(additionalLanguages.joinToString(", "))
+                    }
+                }
                 unifiedSubtypeToast?.cancel()
                 unifiedSubtypeToast = Toast.makeText(
                     context.applicationContext,
@@ -195,6 +203,13 @@ object SubtypeCycler {
             }
         }
     }
+
+    private fun languageAbbreviation(locale: String): String = locale
+        .trim()
+        .replace('_', '-')
+        .substringBefore('-')
+        .ifBlank { "?" }
+        .uppercase(Locale.ROOT)
 
     fun getCycleableSubtypes(
         context: Context,
