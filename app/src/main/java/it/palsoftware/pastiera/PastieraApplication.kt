@@ -10,6 +10,7 @@ import android.os.Build
 class PastieraApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+        SettingsManager.initializeAltShiftLayoutSwitchDefault(this)
         AppPackageChangeMonitor.register(this)
         publishSoftwareKeyboardModeShortcut()
     }

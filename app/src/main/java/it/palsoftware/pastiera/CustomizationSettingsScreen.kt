@@ -87,8 +87,8 @@ fun CustomizationSettingsScreen(
     val prefs = remember { SettingsManager.getPreferences(context) }
     var pastierinaModeEnabled by remember {
         mutableStateOf(
-            SettingsManager.getPastierinaModeOverride(context) ==
-                SettingsManager.PastierinaModeOverride.FORCE_MINIMAL
+            SettingsManager.getStatusBarPresentationMode(context) ==
+                SettingsManager.StatusBarPresentationMode.PASTIERINA
         )
     }
     var launcherShortcutsEnabled by remember {
@@ -185,8 +185,8 @@ fun CustomizationSettingsScreen(
             when (key) {
                 "pastierina_mode_override" -> {
                     pastierinaModeEnabled =
-                        SettingsManager.getPastierinaModeOverride(context) ==
-                            SettingsManager.PastierinaModeOverride.FORCE_MINIMAL
+                        SettingsManager.getStatusBarPresentationMode(context) ==
+                            SettingsManager.StatusBarPresentationMode.PASTIERINA
                 }
                 "launcher_shortcuts_enabled" -> {
                     launcherShortcutsEnabled = SettingsManager.getLauncherShortcutsEnabled(context)
@@ -552,12 +552,12 @@ fun CustomizationSettingsScreen(
                                     checked = pastierinaModeEnabled,
                                     onCheckedChange = { checked ->
                                         pastierinaModeEnabled = checked
-                                        val override = if (checked) {
-                                            SettingsManager.PastierinaModeOverride.FORCE_MINIMAL
+                                        val mode = if (checked) {
+                                            SettingsManager.StatusBarPresentationMode.PASTIERINA
                                         } else {
-                                            SettingsManager.PastierinaModeOverride.FORCE_FULL
+                                            SettingsManager.StatusBarPresentationMode.FULL_STATUS_BAR
                                         }
-                                        SettingsManager.setPastierinaModeOverride(context, override)
+                                        SettingsManager.setStatusBarPresentationMode(context, mode)
                                     }
                                 )
                             }

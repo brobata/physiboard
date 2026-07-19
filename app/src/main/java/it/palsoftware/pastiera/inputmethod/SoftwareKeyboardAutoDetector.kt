@@ -5,15 +5,28 @@ import it.palsoftware.pastiera.SettingsManager
 
 /**
  * Resolves AUTO software-keyboard behavior.
- * Physical-keyboard devices default to hardware-keyboard mode, all others to virtual-keyboard mode.
+ * Uses the currently available hardware keyboards rather than a manually selected mapping profile.
  */
 object SoftwareKeyboardAutoDetector {
 
+    @Volatile
+    private var systemInputViewDecision: Boolean? = null
+
+    fun updateSystemInputViewDecision(shouldShowInputView: Boolean) {
+        systemInputViewDecision = shouldShowInputView
+    }
+
+    fun onInputDevicesChanged() {
+        systemInputViewDecision = null
+    }
+
     fun resolve(context: Context): SettingsManager.SoftwareKeyboardMode {
-        return if (DeviceSpecific.isPhysicalKeyboardDevice(SettingsManager.getPhysicalKeyboardProfileOverride(context))) {
-            SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE
-        } else {
+        val shouldShowVirtualKeyboard =
+            systemInputViewDecision ?: !DeviceSpecific.hasConnectedHardwareKeyboard()
+        return if (shouldShowVirtualKeyboard) {
             SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL
+        } else {
+            SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE
         }
     }
 }

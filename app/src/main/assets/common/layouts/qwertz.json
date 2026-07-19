@@ -1,5 +1,5 @@
 {
-  "name": "QWERTZ",
+  "name": "QWERTZ | Deutsch",
   "description": "German/Austrian/Swiss QWERTZ keyboard layout (Z and Y swapped compared to QWERTY)",
   "mappings": {
     "KEYCODE_Q": { "lowercase": "q", "uppercase": "Q" },
@@ -30,5 +30,4 @@
     "KEYCODE_M": { "lowercase": "m", "uppercase": "M" }
   }
 }
-
 

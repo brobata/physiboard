@@ -1,9 +1,33 @@
 package it.palsoftware.pastiera.inputmethod
 
 import android.os.Build
+import android.view.InputDevice
 import android.view.KeyEvent
 
 object DeviceSpecific {
+    enum class InputDeviceKind {
+        BUILT_IN,
+        ACCESSORY,
+        UNKNOWN
+    }
+
+    data class KeyboardInputIdentity(
+        val name: String,
+        val descriptor: String,
+        val vendorId: Int,
+        val productId: Int,
+        val sources: Int,
+        val keyboardType: Int,
+        val isExternal: Boolean,
+        val isVirtual: Boolean
+    )
+
+    data class ResolvedInputProfile(
+        val profileId: String,
+        val kind: InputDeviceKind,
+        val autoDetected: Boolean
+    )
+
     data class RemappedHardwareEvent(
         val keyCode: Int,
         val event: KeyEvent?
@@ -76,7 +100,7 @@ object DeviceSpecific {
         event: KeyEvent?,
         physicalProfileOverride: String? = null
     ): RemappedHardwareEvent {
-        return when (resolveKeyboardModel(physicalProfileOverride)) {
+        return when (resolveKeyboardModel(event, physicalProfileOverride)) {
             KeyboardModel.Q25 -> remapQ25KeyEvent(keyCode, event)
             KeyboardModel.KEY2 -> remapKey2KeyEvent(keyCode, event)
             else -> RemappedHardwareEvent(keyCode, event)
@@ -305,8 +329,8 @@ object DeviceSpecific {
 
     private fun currentDeviceProfile(): DeviceProfile = resolveDeviceProfile()
 
-    private fun resolveKeyboardModel(physicalProfileOverride: String?): KeyboardModel {
-        return when (normalizePhysicalProfileOverride(physicalProfileOverride)) {
+    private fun keyboardModelForProfile(profileId: String?): KeyboardModel {
+        return when (normalizePhysicalProfileOverride(profileId)) {
             "key2" -> KeyboardModel.KEY2
             "q25" -> KeyboardModel.Q25
             "titan2elite_qwerty" -> KeyboardModel.TITAN_2_ELITE_QWERTY
@@ -316,6 +340,130 @@ object DeviceSpecific {
             "clicks_power" -> KeyboardModel.CLICKS_POWER
             else -> currentDeviceProfile().model
         }
+    }
+
+    private fun resolveKeyboardModel(
+        event: KeyEvent?,
+        physicalProfileOverride: String?
+    ): KeyboardModel {
+        return keyboardModelForProfile(
+            resolveInputProfile(event, physicalProfileOverride).profileId
+        )
+    }
+
+    fun resolveInputProfile(
+        event: KeyEvent?,
+        physicalProfileOverride: String? = null
+    ): ResolvedInputProfile {
+        val identity = event
+            ?.takeIf { it.deviceId >= 0 }
+            ?.let { InputDevice.getDevice(it.deviceId) }
+            ?.let(::keyboardInputIdentity)
+        return resolveInputProfile(identity, physicalProfileOverride)
+    }
+
+    fun resolveInputProfile(
+        device: InputDevice,
+        physicalProfileOverride: String? = null
+    ): ResolvedInputProfile {
+        return resolveInputProfile(keyboardInputIdentity(device), physicalProfileOverride)
+    }
+
+    fun isClicksPowerKeyboard(device: InputDevice): Boolean {
+        return isClicksPowerKeyboard(keyboardInputIdentity(device))
+    }
+
+    internal fun resolveInputProfile(
+        identity: KeyboardInputIdentity?,
+        physicalProfileOverride: String? = null
+    ): ResolvedInputProfile {
+        val kind = when {
+            identity == null -> InputDeviceKind.UNKNOWN
+            identity.isExternal -> InputDeviceKind.ACCESSORY
+            else -> InputDeviceKind.BUILT_IN
+        }
+
+        if (identity != null && isClicksPowerKeyboard(identity)) {
+            return ResolvedInputProfile(
+                profileId = "clicks_power",
+                kind = InputDeviceKind.ACCESSORY,
+                autoDetected = true
+            )
+        }
+
+        val manualProfile = normalizePhysicalProfileOverride(physicalProfileOverride)
+        if (manualProfile != null) {
+            return ResolvedInputProfile(
+                profileId = manualProfile,
+                kind = kind,
+                autoDetected = false
+            )
+        }
+
+        return ResolvedInputProfile(
+            profileId = currentDeviceProfile().physicalLayoutName,
+            kind = kind,
+            autoDetected = currentDeviceProfile().model != KeyboardModel.UNKNOWN
+        )
+    }
+
+    fun detectedInputProfiles(): List<ResolvedInputProfile> {
+        val profiles = mutableListOf<ResolvedInputProfile>()
+        val builtIn = currentDeviceProfile()
+        if (builtIn.model != KeyboardModel.UNKNOWN) {
+            profiles += ResolvedInputProfile(
+                profileId = builtIn.physicalLayoutName,
+                kind = InputDeviceKind.BUILT_IN,
+                autoDetected = true
+            )
+        }
+        InputDevice.getDeviceIds().forEach { deviceId ->
+            val device = InputDevice.getDevice(deviceId) ?: return@forEach
+            val identity = keyboardInputIdentity(device)
+            if (!identity.isVirtual && isKeyboardLike(identity) && isClicksPowerKeyboard(identity)) {
+                profiles += resolveInputProfile(identity)
+            }
+        }
+        return profiles.distinctBy { it.kind to it.profileId }
+    }
+
+    fun hasConnectedHardwareKeyboard(): Boolean {
+        if (currentDeviceProfile().model != KeyboardModel.UNKNOWN) {
+            return true
+        }
+        return InputDevice.getDeviceIds().any { deviceId ->
+            val device = InputDevice.getDevice(deviceId) ?: return@any false
+            val identity = keyboardInputIdentity(device)
+            !identity.isVirtual &&
+                isKeyboardLike(identity) &&
+                identity.keyboardType == InputDevice.KEYBOARD_TYPE_ALPHABETIC
+        }
+    }
+
+    private fun keyboardInputIdentity(device: InputDevice): KeyboardInputIdentity {
+        return KeyboardInputIdentity(
+            name = device.name.orEmpty(),
+            descriptor = device.descriptor.orEmpty(),
+            vendorId = device.vendorId,
+            productId = device.productId,
+            sources = device.sources,
+            keyboardType = device.keyboardType,
+            isExternal = device.isExternal,
+            isVirtual = device.isVirtual
+        )
+    }
+
+    private fun isKeyboardLike(identity: KeyboardInputIdentity): Boolean {
+        return (identity.sources and InputDevice.SOURCE_KEYBOARD) == InputDevice.SOURCE_KEYBOARD ||
+            identity.keyboardType != InputDevice.KEYBOARD_TYPE_NONE
+    }
+
+    private fun isClicksPowerKeyboard(identity: KeyboardInputIdentity): Boolean {
+        return identity.isExternal &&
+            !identity.isVirtual &&
+            isKeyboardLike(identity) &&
+            identity.vendorId == 2007 &&
+            identity.name.trim().startsWith("Power Keyboard-", ignoreCase = true)
     }
 
     private fun normalizePhysicalProfileOverride(physicalProfileOverride: String?): String? {
@@ -429,11 +577,11 @@ object DeviceSpecific {
     }
 
     fun isMinimalPhoneDevice(physicalProfileOverride: String? = null): Boolean {
-        return resolveKeyboardModel(physicalProfileOverride) == KeyboardModel.MINIMAL_PHONE
+        return keyboardModelForProfile(physicalProfileOverride) == KeyboardModel.MINIMAL_PHONE
     }
 
     fun isPhysicalKeyboardDevice(physicalProfileOverride: String? = null): Boolean {
-        return when (resolveKeyboardModel(physicalProfileOverride)) {
+        return when (keyboardModelForProfile(physicalProfileOverride)) {
             KeyboardModel.Q25,
             KeyboardModel.KEY2,
             KeyboardModel.TITAN_2_ELITE_QWERTY,

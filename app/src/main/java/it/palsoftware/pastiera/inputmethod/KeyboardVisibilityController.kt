@@ -25,18 +25,9 @@ class KeyboardVisibilityController(
     private val refreshStatusBar: () -> Unit
 ) {
 
-    private enum class MinimalUiOverride {
-        FOLLOW_SYSTEM,
-        FORCE_MINIMAL,
-        FORCE_FULL
-    }
+    private var statusBarPresentationMode: SettingsManager.StatusBarPresentationMode =
+        SettingsManager.getStatusBarPresentationMode(context)
 
-    private var systemRequestsMinimalUi: Boolean = false
-    private var minimalUiOverride: MinimalUiOverride = MinimalUiOverride.FOLLOW_SYSTEM
-
-    init {
-        minimalUiOverride = resolveOverrideFromSettings()
-    }
     fun onCreateInputView(): View {
         val layout = candidatesBarController.getInputView(symLayoutController.emojiMapTextForLayout())
         detachFromParent(layout)
@@ -52,8 +43,8 @@ class KeyboardVisibilityController(
     }
 
     fun onEvaluateInputViewShown(shouldShowInputView: Boolean): Boolean {
-        systemRequestsMinimalUi = !shouldShowInputView
-        applyMinimalUiState(requestFullInputView = false)
+        SoftwareKeyboardAutoDetector.updateSystemInputViewDecision(shouldShowInputView)
+        refreshStatusBar()
         setCandidatesViewShown(false)
         return true
     }
@@ -82,63 +73,39 @@ class KeyboardVisibilityController(
         }
     }
 
-    fun toggleUserMinimalUi() {
-        minimalUiOverride = when (minimalUiOverride) {
-            MinimalUiOverride.FORCE_MINIMAL,
-            MinimalUiOverride.FORCE_FULL -> MinimalUiOverride.FOLLOW_SYSTEM
-            MinimalUiOverride.FOLLOW_SYSTEM -> {
-                if (isMinimalUiActive()) {
-                    MinimalUiOverride.FORCE_FULL
-                } else {
-                    MinimalUiOverride.FORCE_MINIMAL
-                }
-            }
+    fun togglePastierinaMode() {
+        statusBarPresentationMode = when (statusBarPresentationMode) {
+            SettingsManager.StatusBarPresentationMode.PASTIERINA ->
+                SettingsManager.StatusBarPresentationMode.FULL_STATUS_BAR
+            SettingsManager.StatusBarPresentationMode.FULL_STATUS_BAR ->
+                SettingsManager.StatusBarPresentationMode.PASTIERINA
         }
-        persistOverride(minimalUiOverride)
-        applyMinimalUiState(requestFullInputView = true)
+        SettingsManager.setStatusBarPresentationMode(context, statusBarPresentationMode)
+        applyStatusBarPresentationMode()
     }
 
-    private fun applyMinimalUiState(requestFullInputView: Boolean) {
-        candidatesBarController.setForceMinimalUi(isMinimalUiActive())
-        SettingsManager.setPastierinaModeActive(context, isMinimalUiActive())
-        if (requestFullInputView && !isMinimalUiActive()) {
-            try {
-                requestShowInputView()
-            } catch (_: Exception) {
-                // System can reject this request in some states; keep UI stable.
-            }
-        }
+    private fun applyStatusBarPresentationMode() {
+        val pastierinaModeActive =
+            statusBarPresentationMode == SettingsManager.StatusBarPresentationMode.PASTIERINA
+        candidatesBarController.setPastierinaModeActive(pastierinaModeActive)
+        SettingsManager.setPastierinaModeActive(context, pastierinaModeActive)
         refreshStatusBar()
     }
 
-    fun syncMinimalUiOverrideFromSettings() {
-        minimalUiOverride = resolveOverrideFromSettings()
-        applyMinimalUiState(requestFullInputView = true)
+    fun syncStatusBarPresentationModeFromSettings() {
+        statusBarPresentationMode = SettingsManager.getStatusBarPresentationMode(context)
+        applyStatusBarPresentationMode()
     }
 
-    private fun isMinimalUiActive(): Boolean {
-        return when (minimalUiOverride) {
-            MinimalUiOverride.FORCE_MINIMAL -> true
-            MinimalUiOverride.FORCE_FULL -> false
-            MinimalUiOverride.FOLLOW_SYSTEM -> systemRequestsMinimalUi
+    fun onSoftwareKeyboardModeChanged(showVirtualKeyboard: Boolean) {
+        refreshStatusBar()
+        if (showVirtualKeyboard && !isInputViewShown()) {
+            try {
+                requestShowInputView()
+            } catch (_: Exception) {
+                // The editor may disappear during the same device transition.
+            }
         }
-    }
-
-    private fun resolveOverrideFromSettings(): MinimalUiOverride {
-        return when (SettingsManager.getPastierinaModeOverride(context)) {
-            SettingsManager.PastierinaModeOverride.FORCE_MINIMAL -> MinimalUiOverride.FORCE_MINIMAL
-            SettingsManager.PastierinaModeOverride.FORCE_FULL -> MinimalUiOverride.FORCE_FULL
-            SettingsManager.PastierinaModeOverride.FOLLOW_SYSTEM -> MinimalUiOverride.FOLLOW_SYSTEM
-        }
-    }
-
-    private fun persistOverride(override: MinimalUiOverride) {
-        val mapped = when (override) {
-            MinimalUiOverride.FORCE_MINIMAL -> SettingsManager.PastierinaModeOverride.FORCE_MINIMAL
-            MinimalUiOverride.FORCE_FULL -> SettingsManager.PastierinaModeOverride.FORCE_FULL
-            MinimalUiOverride.FOLLOW_SYSTEM -> SettingsManager.PastierinaModeOverride.FOLLOW_SYSTEM
-        }
-        SettingsManager.setPastierinaModeOverride(context, mapped)
     }
 
     private fun detachFromParent(view: View) {

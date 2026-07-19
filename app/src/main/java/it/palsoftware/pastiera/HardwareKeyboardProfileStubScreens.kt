@@ -26,10 +26,16 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -40,6 +46,10 @@ fun ClicksPowerKeyboardSettingsStubScreen(
     modifier: Modifier = Modifier,
     onBack: () -> Unit
 ) {
+    val context = LocalContext.current
+    var closeInputOnDisconnect by remember {
+        mutableStateOf(SettingsManager.getClicksCloseInputOnDisconnect(context))
+    }
     HardwareProfileScaffold(
         modifier = modifier,
         title = stringResource(R.string.clicks_power_keyboard_title),
@@ -102,11 +112,48 @@ fun ClicksPowerKeyboardSettingsStubScreen(
         )
 
         StubSection(stringResource(R.string.clicks_section_automation))
+        ClicksSettingsSwitchRow(
+            title = stringResource(R.string.clicks_close_input_on_disconnect_title),
+            description = stringResource(R.string.clicks_close_input_on_disconnect_description),
+            checked = closeInputOnDisconnect,
+            onCheckedChange = { enabled ->
+                closeInputOnDisconnect = enabled
+                SettingsManager.setClicksCloseInputOnDisconnect(context, enabled)
+            }
+        )
         PlannedSettingsRow(
             icon = Icons.Filled.Settings,
             title = stringResource(R.string.clicks_connection_automation_title),
             description = stringResource(R.string.clicks_connection_automation_description)
         )
+    }
+}
+
+@Composable
+private fun ClicksSettingsSwitchRow(
+    title: String,
+    description: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Surface(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = title, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(checked = checked, onCheckedChange = onCheckedChange)
+        }
     }
 }
 

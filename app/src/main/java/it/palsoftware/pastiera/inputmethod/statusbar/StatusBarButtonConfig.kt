@@ -13,6 +13,7 @@ sealed class StatusBarButtonId(val key: String) {
     object Emoji : StatusBarButtonId("emoji")
     object Hamburger : StatusBarButtonId("hamburger")
     object MinimalUi : StatusBarButtonId("minimal_ui")
+    object SoftwareKeyboardMode : StatusBarButtonId("software_keyboard_mode")
     object Settings : StatusBarButtonId("settings")
     object Symbols : StatusBarButtonId("symbols")
     object Undo : StatusBarButtonId("undo")
@@ -82,8 +83,11 @@ data class StatusBarCallbacks(
     /** Called when hamburger menu button is clicked */
     val onHamburgerMenuRequested: (() -> Unit)? = null,
 
-    /** Called when minimal UI (pastierina) mode is requested */
+    /** Called when the Pastierina status-bar presentation is toggled. */
     val onMinimalUiToggleRequested: (() -> Unit)? = null,
+
+    /** Called when the hardware/virtual keyboard mode override is requested */
+    val onSoftwareKeyboardModeToggleRequested: (() -> Unit)? = null,
     
     /** Called when language button is long-pressed (opens settings) */
     val onOpenSettings: (() -> Unit)? = null,
@@ -125,7 +129,7 @@ sealed class ButtonState {
     data class LanguageState(val languageCode: String) : ButtonState()
 
     /**
-     * State for minimal UI button - active/inactive.
+     * State for the Pastierina button - active/inactive.
      */
     data class MinimalUiState(val isActive: Boolean) : ButtonState()
 }

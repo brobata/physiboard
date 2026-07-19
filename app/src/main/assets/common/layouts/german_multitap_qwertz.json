@@ -1,5 +1,5 @@
 {
-  "name": "German (QWERTZ, multi-tap)",
+  "name": "QWERTZ Multi-Tap",
   "description": "QWERTZ layout with multi-tap access to German umlauts and Eszett.",
   "mappings": {
     "KEYCODE_Q": { "lowercase": "q", "uppercase": "Q" },

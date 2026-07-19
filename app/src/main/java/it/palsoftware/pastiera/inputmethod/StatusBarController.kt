@@ -59,13 +59,13 @@ import it.palsoftware.pastiera.SettingsActivity
  */
 class StatusBarController(
     private val context: Context,
-    private val mode: Mode = Mode.FULL,
+    private val mode: Mode = Mode.INPUT_VIEW,
     private val clipboardHistoryManager: it.palsoftware.pastiera.clipboard.ClipboardHistoryManager? = null,
     private val assets: AssetManager? = null,
     private val imeServiceClass: Class<*>? = null
 ) {
     enum class Mode {
-        FULL,
+        INPUT_VIEW,
         CANDIDATES_ONLY
     }
 
@@ -176,6 +176,12 @@ class StatusBarController(
         set(value) {
             field = value
             variationBarView?.onMinimalUiToggleRequested = value
+        }
+
+    var onSoftwareKeyboardModeToggleRequested: (() -> Unit)? = null
+        set(value) {
+            field = value
+            variationBarView?.onSoftwareKeyboardModeToggleRequested = value
         }
     
     // Callback for speech recognition state changes (active/inactive)
@@ -309,10 +315,10 @@ class StatusBarController(
     private val ledStatusView = LedStatusView(context)
     private val buttonRegistry = StatusBarButtonRegistry()
     private val variationBarView: VariationBarView? =
-        if (mode == Mode.FULL) VariationBarView(context, assets, imeServiceClass, buttonRegistry) else null
+        if (mode == Mode.INPUT_VIEW) VariationBarView(context, assets, imeServiceClass, buttonRegistry) else null
     private var variationsWrapper: View? = null
     private var hamburgerMenuView: HamburgerMenuView? = null
-    private var forceMinimalUi: Boolean = false
+    private var pastierinaModeActive: Boolean = false
     private var fullSuggestionsBar: FullSuggestionsBar? = null
     private var baseBottomPadding: Int = 0
     private var lastHamburgerInputConnection: android.view.inputmethod.InputConnection? = null
@@ -386,14 +392,14 @@ class StatusBarController(
 
     private fun activeThemeSettings(
         isFullSoftwareKeyboardMode: Boolean =
-            mode == Mode.FULL &&
+            mode == Mode.INPUT_VIEW &&
                 SettingsManager.resolveEffectiveSoftwareKeyboardMode(context) == SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL
     ): SettingsManager.KeyboardThemeSettings =
         if (isFullSoftwareKeyboardMode) softwareTheme() else hardwareTheme()
 
     private fun activeThemeColors(
         isFullSoftwareKeyboardMode: Boolean =
-            mode == Mode.FULL &&
+            mode == Mode.INPUT_VIEW &&
                 SettingsManager.resolveEffectiveSoftwareKeyboardMode(context) == SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL
     ): KeyboardThemeColors =
         activeThemeSettings(isFullSoftwareKeyboardMode).toKeyboardThemeColors()
@@ -420,6 +426,7 @@ class StatusBarController(
             onLanguageSwitchRequested = onLanguageSwitchRequested,
             onHamburgerMenuRequested = onHamburgerMenuRequested,
             onMinimalUiToggleRequested = { handleMinimalUiToggleFromMenu() },
+            onSoftwareKeyboardModeToggleRequested = onSoftwareKeyboardModeToggleRequested,
             onOpenSettings = { openSettings() },
             onSymbolsPageRequested = onSymbolsPageRequested,
             onUndoRequested = onUndoRequested,
@@ -494,19 +501,19 @@ class StatusBarController(
             ortholinear = ortholinear
         )
 
-    fun setForceMinimalUi(force: Boolean) {
-        if (forceMinimalUi == force) {
+    fun setPastierinaModeActive(active: Boolean) {
+        if (pastierinaModeActive == active) {
             return
         }
-        forceMinimalUi = force
-        updateMinimalUiState()
-        if (force) {
+        pastierinaModeActive = active
+        updatePastierinaModeState()
+        if (active) {
             variationBarView?.hideImmediate()
             hideHamburgerMenu()
         }
     }
 
-    fun isMinimalUiActive(): Boolean = forceMinimalUi
+    fun isPastierinaModeActive(): Boolean = pastierinaModeActive
 
     fun getLayout(): LinearLayout? = statusBarLayout
 
@@ -729,14 +736,14 @@ class StatusBarController(
         }
     }
 
-    private fun updateMinimalUiState() {
-        hamburgerMenuView?.setMinimalUiActive(forceMinimalUi)
-        fullSuggestionsBar?.setMinimalUiActive(forceMinimalUi)
+    private fun updatePastierinaModeState() {
+        hamburgerMenuView?.setMinimalUiActive(pastierinaModeActive)
+        fullSuggestionsBar?.setMinimalUiActive(pastierinaModeActive)
     }
 
     private fun handleMinimalUiToggleFromMenu() {
         onMinimalUiToggleRequested?.invoke()
-        if (!forceMinimalUi) {
+        if (!pastierinaModeActive) {
             hideHamburgerMenu()
         }
     }
@@ -1011,7 +1018,7 @@ class StatusBarController(
             onSymCloseRequested?.invoke()
         }.also { clipboardHistoryView = it }
         view.themeOverride = (if (
-            mode == Mode.FULL &&
+            mode == Mode.INPUT_VIEW &&
                 SettingsManager.resolveEffectiveSoftwareKeyboardMode(context) == SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL
         ) softwareTheme() else hardwareTheme()).toKeyboardThemeColors()
         if (view.parent !== container) {
@@ -1048,7 +1055,7 @@ class StatusBarController(
             onSymCloseRequested?.invoke()
         }.also { emojiPickerView = it }
         view.themeOverride = (if (
-            mode == Mode.FULL &&
+            mode == Mode.INPUT_VIEW &&
                 SettingsManager.resolveEffectiveSoftwareKeyboardMode(context) == SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL
         ) softwareTheme() else hardwareTheme()).toKeyboardThemeColors()
         val wasJustAdded = view.parent !== container
@@ -2593,7 +2600,7 @@ class StatusBarController(
     fun update(snapshot: StatusSnapshot, emojiMapText: String = "", inputConnection: android.view.inputmethod.InputConnection? = null, symMappings: Map<Int, String>? = null) {
         isTitan2Layout = SettingsManager.isTitan2LayoutEnabled(context)
         val isFullSoftwareKeyboardMode =
-            mode == Mode.FULL &&
+            mode == Mode.INPUT_VIEW &&
                 SettingsManager.resolveEffectiveSoftwareKeyboardMode(context) == SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL
         val isSoftwareKeyboardClipboardPage = isFullSoftwareKeyboardMode && snapshot.symPage == 3
         val isSoftwareKeyboardEmojiPage = isFullSoftwareKeyboardMode && snapshot.symPage == 4
@@ -2612,12 +2619,12 @@ class StatusBarController(
         updateClipboardCount(snapshot.clipboardCount)
         hamburgerMenuView?.refreshLanguageText()
         fullSuggestionsBar?.refreshLanguageText()
-        updateMinimalUiState()
+        updatePastierinaModeState()
         if (inputConnection !== lastHamburgerInputConnection) {
             hideHamburgerMenu()
             lastHamburgerInputConnection = inputConnection
         }
-        if ((snapshot.symPage > 0 && !isFullSoftwareKeyboardMode) || snapshot.clipboardOverlay || (forceMinimalUi && !isFullSoftwareKeyboardMode)) {
+        if ((snapshot.symPage > 0 && !isFullSoftwareKeyboardMode) || snapshot.clipboardOverlay || (pastierinaModeActive && !isFullSoftwareKeyboardMode)) {
             hideHamburgerMenu()
         }
         
@@ -2670,7 +2677,7 @@ class StatusBarController(
         if (showLedStrip) {
             ledStatusView.update(snapshot)
         }
-        val showSecondRow = !forceMinimalUi && (mode == Mode.FULL || isFullSoftwareKeyboardMode)
+        val showSecondRow = !pastierinaModeActive && (mode == Mode.INPUT_VIEW || isFullSoftwareKeyboardMode)
         val variationsBar = if (showSecondRow) variationBarView else null
         val variationsWrapperView = if (showSecondRow) variationsWrapper else null
         if (!showSecondRow) {
@@ -2678,7 +2685,7 @@ class StatusBarController(
         }
         val experimentalEnabled = SettingsManager.isExperimentalSuggestionsEnabled(context)
         val suggestionsEnabledSetting = SettingsManager.getSuggestionsEnabled(context)
-        // Show full suggestions bar when conditions are met (including minimal UI mode)
+        // Keep the suggestion/status row stable in both full-status-bar and Pastierina mode.
         val showFullBar =
             (experimentalEnabled || isFullSoftwareKeyboardMode) &&
             (suggestionsEnabledSetting || isFullSoftwareKeyboardMode) &&

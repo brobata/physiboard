@@ -15,7 +15,11 @@ object SoftwareKeyboardModeActions {
             SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE,
             SettingsManager.SoftwareKeyboardMode.AUTO -> SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL
         }
-        SettingsManager.setSoftwareKeyboardMode(context, next)
+        if (configured == SettingsManager.SoftwareKeyboardMode.AUTO) {
+            SettingsManager.setSoftwareKeyboardModeRuntimeOverride(context, next)
+        } else {
+            SettingsManager.setSoftwareKeyboardMode(context, next)
+        }
         return next
     }
 }

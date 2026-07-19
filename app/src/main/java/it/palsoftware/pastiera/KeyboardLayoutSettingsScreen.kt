@@ -91,10 +91,22 @@ fun KeyboardLayoutSettingsScreen(
     }
     
     // Get all keyboard layouts (assets + custom, excluding qwerty as it's the default)
-    val allLayouts = remember(refreshTrigger) {
+    val allLayouts = remember(refreshTrigger, locale) {
         LayoutMappingRepository.getAvailableLayouts(context.assets, context)
             .filter { it != "qwerty" }
-            .sorted()
+            .sortedWith(
+                compareBy<String> { layout ->
+                    if (locale.startsWith("de", ignoreCase = true)) {
+                        when (layout) {
+                            "qwertz" -> 0
+                            "german_multitap_qwertz" -> 1
+                            else -> 2
+                        }
+                    } else {
+                        0
+                    }
+                }.thenBy { it }
+            )
     }
     
     // Snackbar host state for showing messages

@@ -313,6 +313,7 @@ object PreferenceSchemas {
             "alt_shift_layout_switch" to PreferenceValueType.BOOLEAN,
             "ctrl_space_layout_switch" to PreferenceValueType.BOOLEAN,
             "physical_keyboard_currency_symbol" to PreferenceValueType.STRING,
+            "clicks_close_input_on_disconnect" to PreferenceValueType.BOOLEAN,
             "toast_on_layout_switch" to PreferenceValueType.BOOLEAN,
             "software_keyboard_mode_toggle_toasts" to PreferenceValueType.BOOLEAN,
             "alt_enter_layout_switch" to PreferenceValueType.BOOLEAN

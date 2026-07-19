@@ -8,7 +8,9 @@ import android.content.SharedPreferences
 import android.content.res.Configuration
 import it.palsoftware.pastiera.AppBroadcastActions
 import it.palsoftware.pastiera.SettingsManager
+import it.palsoftware.pastiera.SoftwareKeyboardModeActions
 import android.inputmethodservice.InputMethodService
+import android.hardware.input.InputManager
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
@@ -109,6 +111,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     // SharedPreferences for settings
     private lateinit var prefs: SharedPreferences
     private var prefsListener: SharedPreferences.OnSharedPreferenceChangeListener? = null
+    private var lastSystemLocalesSignature: String = ""
 
     private lateinit var altSymManager: AltSymManager
     
@@ -244,7 +247,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private var lastRenderedEmojiMapText: String? = null
     private var lastRenderedSymMappings: Map<Int, String>? = null
     private var lastRenderedStatusInputConnection: android.view.inputmethod.InputConnection? = null
-    private var lastRenderedMinimalUiActive: Boolean? = null
+    private var lastRenderedPastierinaModeActive: Boolean? = null
     private var lastRenderedSoftwareKeyboardMode: SettingsManager.SoftwareKeyboardMode? = null
     private var lastRenderedModifierIndicators: Set<String>? = null
     private var suppressedAutoCapContextKey: String? = null
@@ -282,6 +285,37 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     )
     private val bounceKeyFilter = BounceKeyFilter()
     private val uiHandler = Handler(Looper.getMainLooper())
+    private var inputManager: InputManager? = null
+    private var lastObservedAutoSoftwareKeyboardMode: SettingsManager.SoftwareKeyboardMode? = null
+    private var pendingInputDeviceModeRefresh: Runnable? = null
+    private var clicksDisconnectPending: Boolean = false
+    private val connectedClicksInputDeviceIds = mutableSetOf<Int>()
+    private val inputDeviceListener = object : InputManager.InputDeviceListener {
+        override fun onInputDeviceAdded(deviceId: Int) {
+            SoftwareKeyboardAutoDetector.onInputDevicesChanged()
+            InputDevice.getDevice(deviceId)
+                ?.takeIf(DeviceSpecific::isClicksPowerKeyboard)
+                ?.let { connectedClicksInputDeviceIds += deviceId }
+            scheduleInputDeviceModeRefresh()
+        }
+
+        override fun onInputDeviceRemoved(deviceId: Int) {
+            SoftwareKeyboardAutoDetector.onInputDevicesChanged()
+            val clicksDisconnected = connectedClicksInputDeviceIds.remove(deviceId)
+            scheduleInputDeviceModeRefresh(clicksDisconnected = clicksDisconnected)
+        }
+
+        override fun onInputDeviceChanged(deviceId: Int) {
+            SoftwareKeyboardAutoDetector.onInputDevicesChanged()
+            val device = InputDevice.getDevice(deviceId)
+            if (device != null && DeviceSpecific.isClicksPowerKeyboard(device)) {
+                connectedClicksInputDeviceIds += deviceId
+            } else {
+                connectedClicksInputDeviceIds -= deviceId
+            }
+            scheduleInputDeviceModeRefresh()
+        }
+    }
     private var pendingStatusBarUpdate: Runnable? = null
     private var lastSystemStatusIconResId: Int? = null
     private var pendingSelectionAutoCapCheck: Runnable? = null
@@ -431,6 +465,65 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         updateStatusBarText()
     }
 
+    private fun scheduleInputDeviceModeRefresh(clicksDisconnected: Boolean = false) {
+        clicksDisconnectPending = clicksDisconnectPending || clicksDisconnected
+        pendingInputDeviceModeRefresh?.let { uiHandler.removeCallbacks(it) }
+        val refresh = Runnable {
+            pendingInputDeviceModeRefresh = null
+            val didClicksDisconnect = clicksDisconnectPending
+            clicksDisconnectPending = false
+            refreshSoftwareKeyboardModeForConnectedDevices(clicksDisconnected = didClicksDisconnect)
+        }
+        pendingInputDeviceModeRefresh = refresh
+        uiHandler.postDelayed(refresh, 120L)
+    }
+
+    private fun refreshSoftwareKeyboardModeForConnectedDevices(clicksDisconnected: Boolean) {
+        val autoMode = SoftwareKeyboardAutoDetector.resolve(this)
+        val previousAutoMode = lastObservedAutoSoftwareKeyboardMode
+        lastObservedAutoSoftwareKeyboardMode = autoMode
+        val configuredMode = SettingsManager.getSoftwareKeyboardMode(this)
+        val effectiveMode = if (configuredMode == SettingsManager.SoftwareKeyboardMode.AUTO) {
+            autoMode
+        } else {
+            configuredMode
+        }
+        val autoModeChanged =
+            configuredMode == SettingsManager.SoftwareKeyboardMode.AUTO && autoMode != previousAutoMode
+        if (autoModeChanged) {
+            SettingsManager.setSoftwareKeyboardModeRuntimeOverride(this, null)
+        }
+        if (!autoModeChanged && !clicksDisconnected) {
+            return
+        }
+        val closeInputOnDisconnect =
+            clicksDisconnected && SettingsManager.getClicksCloseInputOnDisconnect(this)
+        invalidateRenderedStatusSnapshot()
+        keyboardVisibilityController.onSoftwareKeyboardModeChanged(
+            showVirtualKeyboard =
+                effectiveMode == SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL &&
+                    !closeInputOnDisconnect
+        )
+        if (closeInputOnDisconnect) {
+            requestHideSelf(0)
+        }
+    }
+
+    private fun toggleSoftwareKeyboardModeFromStatusBar() {
+        val next = SoftwareKeyboardModeActions.toggleForceMode(this)
+        if (SettingsManager.getSoftwareKeyboardModeToggleToastsEnabled(this)) {
+            val message = when (next) {
+                SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL ->
+                    getString(R.string.software_keyboard_mode_toggle_now_virtual)
+                SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE ->
+                    getString(R.string.software_keyboard_mode_toggle_now_hardware)
+                SettingsManager.SoftwareKeyboardMode.AUTO ->
+                    getString(R.string.software_keyboard_mode_auto_short)
+            }
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+        }
+    }
+
     private fun scheduleStatusBarTextUpdate(delayMs: Long = CURSOR_UPDATE_DELAY) {
         pendingStatusBarUpdate?.let { uiHandler.removeCallbacks(it) }
         val runnable = Runnable {
@@ -453,7 +546,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         lastRenderedEmojiMapText = null
         lastRenderedSymMappings = null
         lastRenderedStatusInputConnection = null
-        lastRenderedMinimalUiActive = null
+        lastRenderedPastierinaModeActive = null
         lastRenderedSoftwareKeyboardMode = null
         lastRenderedModifierIndicators = null
     }
@@ -1375,6 +1468,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
 
     override fun onCreate() {
         super.onCreate()
+        lastSystemLocalesSignature = resources.configuration.locales.toLanguageTags()
         prefs = getSharedPreferences("pastiera_prefs", Context.MODE_PRIVATE)
         clearAltOnSpaceEnabled = SettingsManager.getClearAltOnSpace(this)
         physicalKeyboardProfileOverride = SettingsManager.getPhysicalKeyboardProfileOverride(this)
@@ -1623,7 +1717,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             handled
         }
         candidatesBarController.onMinimalUiToggleRequested = {
-            keyboardVisibilityController.toggleUserMinimalUi()
+            keyboardVisibilityController.togglePastierinaMode()
+        }
+        candidatesBarController.onSoftwareKeyboardModeToggleRequested = {
+            toggleSoftwareKeyboardModeFromStatusBar()
         }
         val postClipboardBadgeUpdate: () -> Unit = {
             val count = clipboardHistoryManager.getHistorySize()
@@ -1710,6 +1807,14 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             requestShowInputView = { requestShowSelf(0) },
             refreshStatusBar = { refreshStatusBar() }
         )
+        inputManager = getSystemService(InputManager::class.java)
+        InputDevice.getDeviceIds().forEach { deviceId ->
+            InputDevice.getDevice(deviceId)
+                ?.takeIf(DeviceSpecific::isClicksPowerKeyboard)
+                ?.let { connectedClicksInputDeviceIds += deviceId }
+        }
+        lastObservedAutoSoftwareKeyboardMode = SoftwareKeyboardAutoDetector.resolve(this)
+        inputManager?.registerInputDeviceListener(inputDeviceListener, uiHandler)
         launcherShortcutController = LauncherShortcutController(this)
         // Configura callbacks per gestire nav mode durante power shortcuts
         launcherShortcutController.setNavModeCallbacks(
@@ -1726,7 +1831,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         variationStateController = VariationStateController(
             VariationRepository.loadVariations(assets, this, activeKeyboardLayoutName)
         )
-        keyboardVisibilityController.syncMinimalUiOverrideFromSettings()
+        keyboardVisibilityController.syncStatusBarPresentationModeFromSettings()
         
         // Load auto-correction rules
         AutoCorrector.loadCorrections(assets, this)
@@ -1874,10 +1979,16 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 }
                 attachTrackpadDecorViewMotionHook("provider_changed")
             } else if (key == "pastierina_mode_override") {
-                keyboardVisibilityController.syncMinimalUiOverrideFromSettings()
-            } else if (key == "software_keyboard_mode") {
+                keyboardVisibilityController.syncStatusBarPresentationModeFromSettings()
+            } else if (
+                key == "software_keyboard_mode" ||
+                key == SettingsManager.KEY_SOFTWARE_KEYBOARD_MODE_RUNTIME_OVERRIDE
+            ) {
                 invalidateRenderedStatusSnapshot()
-                keyboardVisibilityController.syncMinimalUiOverrideFromSettings()
+                val effectiveMode = SettingsManager.resolveEffectiveSoftwareKeyboardMode(this)
+                keyboardVisibilityController.onSoftwareKeyboardModeChanged(
+                    showVirtualKeyboard = effectiveMode == SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL
+                )
             } else if (
                 key == "software_keyboard_layout_style" ||
                 key == "software_keyboard_number_row_enabled" ||
@@ -2279,6 +2390,12 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     
     override fun onDestroy() {
         super.onDestroy()
+        pendingInputDeviceModeRefresh?.let { uiHandler.removeCallbacks(it) }
+        pendingInputDeviceModeRefresh = null
+        clicksDisconnectPending = false
+        connectedClicksInputDeviceIds.clear()
+        inputManager?.unregisterInputDeviceListener(inputDeviceListener)
+        inputManager = null
         stopClipboardCleanupTimer()
         // Remove listener when service is destroyed
         prefsListener?.let {
@@ -2492,10 +2609,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         var suggestionsMs = 0L
         var updateBarsMs = 0L
 
-        val minimalUiActive = candidatesBarController.isMinimalUiActive()
+        val pastierinaModeActive = candidatesBarController.isPastierinaModeActive()
         val effectiveSoftwareKeyboardMode = SettingsManager.resolveEffectiveSoftwareKeyboardMode(this)
         val variationStart = ImePerfLogger.mark()
-        val variationSnapshot = if (minimalUiActive) {
+        val variationSnapshot = if (pastierinaModeActive) {
             VariationStateController.Snapshot(isActive = false, lastInsertedChar = null, variations = emptyList())
         } else {
             variationStateController.refreshFromCursor(
@@ -2564,7 +2681,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 emojiMapText == lastRenderedEmojiMapText &&
                 symMappings == lastRenderedSymMappings &&
                 inputConnection === lastRenderedStatusInputConnection &&
-                minimalUiActive == lastRenderedMinimalUiActive &&
+                pastierinaModeActive == lastRenderedPastierinaModeActive &&
                 effectiveSoftwareKeyboardMode == lastRenderedSoftwareKeyboardMode &&
                 modifierIndicators == lastRenderedModifierIndicators
         if (!unchangedRenderedState) {
@@ -2575,7 +2692,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             lastRenderedEmojiMapText = emojiMapText
             lastRenderedSymMappings = symMappings
             lastRenderedStatusInputConnection = inputConnection
-            lastRenderedMinimalUiActive = minimalUiActive
+            lastRenderedPastierinaModeActive = pastierinaModeActive
             lastRenderedSoftwareKeyboardMode = effectiveSoftwareKeyboardMode
             lastRenderedModifierIndicators = modifierIndicators
         }
@@ -2887,12 +3004,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         super.onStartInputView(info, restarting)
         updateDebugImeContextSnapshot(info)
         attachTrackpadDecorViewMotionHook("onStartInputView")
-
-        // Register additional subtypes when IME becomes active
-        // This ensures dynamic languages are loaded even if service was already created
-        if (!restarting) {
-            registerAdditionalSubtypes()
-        }
 
         updateInputContextState(info)
         initializeInputContext(restarting)
@@ -3481,10 +3592,17 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        
-        // Re-register subtypes when configuration changes (including when new system locales are added)
-        // This ensures new system locales are available in IME picker without restarting IME
-        Log.d(TAG, "Configuration changed, re-registering subtypes to pick up new system locales")
+
+        val systemLocalesSignature = newConfig.locales.toLanguageTags()
+        if (systemLocalesSignature == lastSystemLocalesSignature) {
+            Log.d(TAG, "Configuration changed without locale changes; keeping IME subtypes and editor session")
+            return
+        }
+        lastSystemLocalesSignature = systemLocalesSignature
+
+        // Only locale changes require subtype registration. Physical-keyboard connect/disconnect
+        // also changes Configuration and must not restart the active editor session.
+        Log.d(TAG, "System locales changed, re-registering IME subtypes")
         Handler(Looper.getMainLooper()).postDelayed({
             // First, remove system locales without dictionary that are no longer in system
             // (only when configuration changes, not when manually adding styles)
@@ -3701,7 +3819,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 clearCtrlOneShot = { ctrlOneShot = false },
                 updateStatusBar = { updateStatusBarText() },
                 callSuper = { false },
-                toggleMinimalUi = { keyboardVisibilityController.toggleUserMinimalUi() }
+                toggleMinimalUi = { keyboardVisibilityController.togglePastierinaMode() }
             )
             if (handled) {
                 updateEmojiSearchExternalSelectionSnapshot(initialInputConnection)
@@ -4175,7 +4293,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 isLongPressSuppressed = { code ->
                     multiTapController.isLongPressSuppressed(code)
                 },
-                toggleMinimalUi = { keyboardVisibilityController.toggleUserMinimalUi() },
+                toggleMinimalUi = { keyboardVisibilityController.togglePastierinaMode() },
                 onShiftOneShotToggledOff = { suppressAutoCapRenderingAtCursorIfNeeded() }
             )
         )

@@ -18,7 +18,7 @@ class CandidatesBarController(
     imeServiceClass: Class<*>? = null
 ) {
 
-    private val inputStatusBar = StatusBarController(context, StatusBarController.Mode.FULL, clipboardHistoryManager, assets, imeServiceClass)
+    private val inputStatusBar = StatusBarController(context, StatusBarController.Mode.INPUT_VIEW, clipboardHistoryManager, assets, imeServiceClass)
     private val candidatesStatusBar = StatusBarController(context, StatusBarController.Mode.CANDIDATES_ONLY, clipboardHistoryManager, assets, imeServiceClass)
 
     var onVariationSelectedListener: VariationButtonHandler.OnVariationSelectedListener? = null
@@ -203,6 +203,13 @@ class CandidatesBarController(
             candidatesStatusBar.onMinimalUiToggleRequested = value
         }
 
+    var onSoftwareKeyboardModeToggleRequested: (() -> Unit)? = null
+        set(value) {
+            field = value
+            inputStatusBar.onSoftwareKeyboardModeToggleRequested = value
+            candidatesStatusBar.onSoftwareKeyboardModeToggleRequested = value
+        }
+
     fun getInputView(emojiMapText: String = ""): LinearLayout {
         return inputStatusBar.getOrCreateLayout(emojiMapText)
     }
@@ -215,9 +222,9 @@ class CandidatesBarController(
         }
     }
 
-    fun setForceMinimalUi(force: Boolean) {
-        inputStatusBar.setForceMinimalUi(force)
-        candidatesStatusBar.setForceMinimalUi(force)
+    fun setPastierinaModeActive(active: Boolean) {
+        inputStatusBar.setPastierinaModeActive(active)
+        candidatesStatusBar.setPastierinaModeActive(active)
     }
 
     fun handleBackPressed(): Boolean {
@@ -253,7 +260,7 @@ class CandidatesBarController(
             ?: candidatesStatusBar.createEmojiPickerSearchInputConnection()
     }
 
-    fun isMinimalUiActive(): Boolean = inputStatusBar.isMinimalUiActive()
+    fun isPastierinaModeActive(): Boolean = inputStatusBar.isPastierinaModeActive()
     
     fun invalidateStaticVariations() {
         inputStatusBar.invalidateStaticVariations()

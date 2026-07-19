@@ -51,7 +51,6 @@ import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.inputmethod.DebugCaptureStore
 import it.palsoftware.pastiera.inputmethod.KeyboardEventTracker
 import it.palsoftware.pastiera.inputmethod.NotificationHelper
-import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils
 import it.palsoftware.pastiera.ui.CustomTopBar
 import it.palsoftware.pastiera.ui.theme.PastieraTheme
 import it.palsoftware.pastiera.BuildConfig
@@ -209,10 +208,6 @@ class MainActivity : LocalizedComponentActivity() {
             finish()
             return
         }
-        
-        // Register additional subtypes (custom input styles) when app starts
-        // This ensures dynamic languages are available when IME is enabled
-        AdditionalSubtypeUtils.registerAdditionalSubtypes(applicationContext)
         
         if (shouldUseGithubUpdateChecks(this)) {
             // Schedule periodic background update checks (every 24 hours).

@@ -13,7 +13,7 @@ import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarCallbacks
 import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonStyles
 
 /**
- * Factory for creating the minimal UI (pastierina) toggle button.
+ * Factory for creating the Pastierina presentation toggle button.
  */
 class MinimalUiButtonFactory : StatusBarButtonFactory {
 

@@ -1,6 +1,7 @@
 package it.palsoftware.pastiera.inputmethod
 
 import android.view.KeyEvent
+import android.view.InputDevice
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -322,6 +323,69 @@ class DeviceSpecificTest {
 
         assertEquals(KeyEvent.KEYCODE_CTRL_LEFT, remapped.keyCode)
         assertEquals(KeyEvent.KEYCODE_CTRL_LEFT, remapped.event?.keyCode)
+    }
+
+    @Test
+    fun clicksPowerAccessory_isDetectedPerInputDevice() {
+        val profile = DeviceSpecific.resolveInputProfile(
+            identity = keyboardIdentity(
+                name = "Power Keyboard-A0FC-1",
+                vendorId = 2007,
+                isExternal = true
+            )
+        )
+
+        assertEquals("clicks_power", profile.profileId)
+        assertEquals(DeviceSpecific.InputDeviceKind.ACCESSORY, profile.kind)
+        assertTrue(profile.autoDetected)
+    }
+
+    @Test
+    fun similarlyNamedBuiltInKeyboard_isNotDetectedAsClicksAccessory() {
+        val profile = DeviceSpecific.resolveInputProfile(
+            identity = keyboardIdentity(
+                name = "Power Keyboard-A0FC-1",
+                vendorId = 2007,
+                isExternal = false
+            )
+        )
+
+        assertEquals("unknown", profile.profileId)
+        assertEquals(DeviceSpecific.InputDeviceKind.BUILT_IN, profile.kind)
+        assertFalse(profile.autoDetected)
+    }
+
+    @Test
+    fun clicksAccessoryDetection_winsOverBuiltInManualProfileForItsEvents() {
+        val profile = DeviceSpecific.resolveInputProfile(
+            identity = keyboardIdentity(
+                name = "Power Keyboard-A0FC-1",
+                vendorId = 2007,
+                isExternal = true
+            ),
+            physicalProfileOverride = "key2"
+        )
+
+        assertEquals("clicks_power", profile.profileId)
+        assertEquals(DeviceSpecific.InputDeviceKind.ACCESSORY, profile.kind)
+        assertTrue(profile.autoDetected)
+    }
+
+    private fun keyboardIdentity(
+        name: String,
+        vendorId: Int,
+        isExternal: Boolean
+    ): DeviceSpecific.KeyboardInputIdentity {
+        return DeviceSpecific.KeyboardInputIdentity(
+            name = name,
+            descriptor = "test-descriptor",
+            vendorId = vendorId,
+            productId = 0,
+            sources = InputDevice.SOURCE_KEYBOARD,
+            keyboardType = InputDevice.KEYBOARD_TYPE_ALPHABETIC,
+            isExternal = isExternal,
+            isVirtual = false
+        )
     }
 
     private fun keyEvent(action: Int, keyCode: Int, metaState: Int, scanCode: Int = 1): KeyEvent {

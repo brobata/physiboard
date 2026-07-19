@@ -107,7 +107,17 @@ private fun HardwareKeyboardListScreen(
     var titan2LayoutEnabled by remember {
         mutableStateOf(SettingsManager.isTitan2LayoutEnabled(context))
     }
-    val detectedProfile = remember { DeviceSpecific.physicalKeyboardName() }
+    val detectedProfiles = remember { DeviceSpecific.detectedInputProfiles() }
+    val detectedProfileLabels = detectedProfiles
+        .map { it.profileId }
+        .ifEmpty { listOf(DeviceSpecific.physicalKeyboardName()) }
+        .map { profileId ->
+            hardwareKeyboardProfiles
+                .firstOrNull { it.first.equals(profileId, ignoreCase = true) }
+                ?.let { stringResource(it.second) }
+                ?: profileId
+        }
+    val detectedProfile = detectedProfileLabels.joinToString(", ")
 
     BackHandler { onBack() }
 

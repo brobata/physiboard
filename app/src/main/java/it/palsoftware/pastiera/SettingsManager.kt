@@ -76,10 +76,12 @@ object SettingsManager {
     const val KEY_KEYBOARD_LAYOUT_AUTO_MAPPING_UPDATED = "keyboard_layout_auto_mapping_updated"
     private const val KEY_KEYBOARD_LAYOUT_LIST = "keyboard_layout_list" // JSON array of layout ids for cycling
     private const val KEY_ALT_SHIFT_LAYOUT_SWITCH = "alt_shift_layout_switch" // Enable Alt+Shift shortcut for layout cycling
+    private const val KEY_ALT_SHIFT_DEFAULT_INITIALIZED = "alt_shift_default_initialized"
     private const val KEY_ALT_ENTER_LAYOUT_SWITCH = "alt_enter_layout_switch" // Enable Alt+Enter shortcut for layout cycling
     private const val KEY_CTRL_SPACE_LAYOUT_SWITCH = "ctrl_space_layout_switch" // Enable Ctrl+Space shortcut for layout cycling
     private const val KEY_PHYSICAL_KEYBOARD_PROFILE_OVERRIDE = "physical_keyboard_profile_override" // auto | key2 | Q25 | titan | titan2 | titan2elite_qwerty | mp01 | clicks_power
     private const val KEY_PHYSICAL_KEYBOARD_CURRENCY_SYMBOL = "physical_keyboard_currency_symbol" // Currency symbol for dedicated hardware keys
+    private const val KEY_CLICKS_CLOSE_INPUT_ON_DISCONNECT = "clicks_close_input_on_disconnect"
     private const val KEY_RESTORE_SYM_PAGE = "restore_sym_page" // SYM page to restore when returning from settings
     private const val KEY_PENDING_RESTORE_SYM_PAGE = "pending_restore_sym_page" // Temporary SYM page state saved when opening settings
     private const val KEY_SYM_PAGES_CONFIG = "sym_pages_config" // Order/enabled pages for SYM
@@ -113,9 +115,10 @@ object SettingsManager {
     private const val KEY_SHIFT_BACKSPACE_DELETE = "shift_backspace_delete" // Shift + Backspace performs forward delete
     private const val KEY_ALT_BACKSPACE_DELETE = "alt_backspace_delete" // Alt + Backspace performs forward delete
     private const val KEY_BACKSPACE_AT_START_DELETE = "backspace_at_start_delete" // Backspace at line start performs forward delete
-    private const val KEY_PASTIERINA_MODE_OVERRIDE = "pastierina_mode_override" // follow_system | force_minimal | force_full
+    private const val KEY_PASTIERINA_MODE_OVERRIDE = "pastierina_mode_override" // pastierina | full_status_bar
     private const val KEY_PASTIERINA_MODE_ACTIVE = "pastierina_mode_active" // Current effective state
     private const val KEY_SOFTWARE_KEYBOARD_MODE = "software_keyboard_mode" // auto | force_hardware | force_virtual
+    const val KEY_SOFTWARE_KEYBOARD_MODE_RUNTIME_OVERRIDE = "software_keyboard_mode_runtime_override"
     private const val KEY_SOFTWARE_KEYBOARD_LAYOUT_STYLE = "software_keyboard_layout_style" // compact | extended_iso | full_ansi | full_iso
     private const val KEY_SOFTWARE_KEYBOARD_NUMBER_ROW_ENABLED = "software_keyboard_number_row_enabled"
     private const val KEY_SOFTWARE_KEYBOARD_NEAREST_KEY_TOUCH_ENABLED = "software_keyboard_nearest_key_touch_enabled"
@@ -178,6 +181,8 @@ object SettingsManager {
     const val STATUS_BAR_BUTTON_EMOJI = "emoji"
     const val STATUS_BAR_BUTTON_LANGUAGE = "language"
     const val STATUS_BAR_BUTTON_HAMBURGER = "hamburger"
+    const val STATUS_BAR_BUTTON_MINIMAL_UI = "minimal_ui"
+    const val STATUS_BAR_BUTTON_SOFTWARE_KEYBOARD_MODE = "software_keyboard_mode"
     const val STATUS_BAR_BUTTON_SETTINGS = "settings"
     const val STATUS_BAR_BUTTON_SYMBOLS = "symbols"
     const val STATUS_BAR_BUTTON_UNDO = "undo"
@@ -289,7 +294,7 @@ object SettingsManager {
     private const val DEFAULT_LONG_PRESS_MODIFIER = "alt"
     private const val DEFAULT_KEYBOARD_LAYOUT = "qwerty"
     private const val DEFAULT_KEYBOARD_LAYOUT_AUTO_BY_LOCALE = true
-    private const val DEFAULT_ALT_SHIFT_LAYOUT_SWITCH = true
+    private const val DEFAULT_ALT_SHIFT_LAYOUT_SWITCH = false
     private const val DEFAULT_ALT_ENTER_LAYOUT_SWITCH = false
     private const val DEFAULT_CTRL_SPACE_LAYOUT_SWITCH = true
     private const val KEY_TOAST_ON_LAYOUT_SWITCH = "toast_on_layout_switch"
@@ -300,6 +305,7 @@ object SettingsManager {
     private const val DEFAULT_SOFTWARE_KEYBOARD_LONG_PRESS_LAYER_POPUP_BELOW_KEY = true
     private const val DEFAULT_PHYSICAL_KEYBOARD_PROFILE_OVERRIDE = "auto"
     private const val DEFAULT_PHYSICAL_KEYBOARD_CURRENCY_SYMBOL = "€"
+    private const val DEFAULT_CLICKS_CLOSE_INPUT_ON_DISCONNECT = false
     private const val DEFAULT_SYM_AUTO_CLOSE = true
     private const val DEFAULT_SYM_AUTO_CLOSE_ON_TOUCH = true
     private const val DEFAULT_MODIFIER_TAP_LATCHES = false
@@ -368,10 +374,9 @@ object SettingsManager {
     private val STATIC_VARIATION_SHIFT_PRESET_DEFAULT = listOf("{", "}", "€", "=", "~", ";", "¿")
     private val STATIC_VARIATION_ALT_PRESET_DEFAULT = listOf("<", ">", "¥", "|", "`", "´", "°")
 
-    enum class PastierinaModeOverride(val storageValue: String) {
-        FOLLOW_SYSTEM("follow_system"),
-        FORCE_MINIMAL("force_minimal"),
-        FORCE_FULL("force_full")
+    enum class StatusBarPresentationMode(val storageValue: String) {
+        PASTIERINA("pastierina"),
+        FULL_STATUS_BAR("full_status_bar")
     }
 
     enum class SoftwareKeyboardMode(val storageValue: String) {
@@ -480,18 +485,21 @@ object SettingsManager {
             .apply()
     }
 
-    fun getPastierinaModeOverride(context: Context): PastierinaModeOverride {
+    fun getStatusBarPresentationMode(context: Context): StatusBarPresentationMode {
         val value = getPreferences(context).getString(
             KEY_PASTIERINA_MODE_OVERRIDE,
-            PastierinaModeOverride.FOLLOW_SYSTEM.storageValue
+            StatusBarPresentationMode.FULL_STATUS_BAR.storageValue
         )
-        return PastierinaModeOverride.values().firstOrNull { it.storageValue == value }
-            ?: PastierinaModeOverride.FOLLOW_SYSTEM
+        return when (value) {
+            StatusBarPresentationMode.PASTIERINA.storageValue,
+            "force_minimal" -> StatusBarPresentationMode.PASTIERINA
+            else -> StatusBarPresentationMode.FULL_STATUS_BAR
+        }
     }
 
-    fun setPastierinaModeOverride(context: Context, override: PastierinaModeOverride) {
+    fun setStatusBarPresentationMode(context: Context, mode: StatusBarPresentationMode) {
         getPreferences(context).edit()
-            .putString(KEY_PASTIERINA_MODE_OVERRIDE, override.storageValue)
+            .putString(KEY_PASTIERINA_MODE_OVERRIDE, mode.storageValue)
             .apply()
     }
 
@@ -517,7 +525,30 @@ object SettingsManager {
     fun setSoftwareKeyboardMode(context: Context, mode: SoftwareKeyboardMode) {
         getPreferences(context).edit()
             .putString(KEY_SOFTWARE_KEYBOARD_MODE, mode.storageValue)
+            .remove(KEY_SOFTWARE_KEYBOARD_MODE_RUNTIME_OVERRIDE)
             .apply()
+    }
+
+    fun getSoftwareKeyboardModeRuntimeOverride(context: Context): SoftwareKeyboardMode? {
+        val value = getPreferences(context).getString(
+            KEY_SOFTWARE_KEYBOARD_MODE_RUNTIME_OVERRIDE,
+            null
+        ) ?: return null
+        return SoftwareKeyboardMode.values()
+            .firstOrNull { it.storageValue == value && it != SoftwareKeyboardMode.AUTO }
+    }
+
+    fun setSoftwareKeyboardModeRuntimeOverride(
+        context: Context,
+        mode: SoftwareKeyboardMode?
+    ) {
+        val editor = getPreferences(context).edit()
+        if (mode == null || mode == SoftwareKeyboardMode.AUTO) {
+            editor.remove(KEY_SOFTWARE_KEYBOARD_MODE_RUNTIME_OVERRIDE)
+        } else {
+            editor.putString(KEY_SOFTWARE_KEYBOARD_MODE_RUNTIME_OVERRIDE, mode.storageValue)
+        }
+        editor.apply()
     }
 
     fun getSoftwareKeyboardModeToggleToastsEnabled(context: Context): Boolean {
@@ -1188,6 +1219,7 @@ object SettingsManager {
         if (configured != SoftwareKeyboardMode.AUTO) {
             return configured
         }
+        getSoftwareKeyboardModeRuntimeOverride(context)?.let { return it }
         return it.palsoftware.pastiera.inputmethod.SoftwareKeyboardAutoDetector.resolve(context)
     }
 
@@ -3904,6 +3936,19 @@ object SettingsManager {
             .apply()
     }
 
+    fun getClicksCloseInputOnDisconnect(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_CLICKS_CLOSE_INPUT_ON_DISCONNECT,
+            DEFAULT_CLICKS_CLOSE_INPUT_ON_DISCONNECT
+        )
+    }
+
+    fun setClicksCloseInputOnDisconnect(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_CLICKS_CLOSE_INPUT_ON_DISCONNECT, enabled)
+            .apply()
+    }
+
     /**
      * Returns whether Alt+Shift shortcut for keyboard layout cycling is enabled.
      */
@@ -3912,6 +3957,22 @@ object SettingsManager {
             KEY_ALT_SHIFT_LAYOUT_SWITCH,
             DEFAULT_ALT_SHIFT_LAYOUT_SWITCH
         )
+    }
+
+    /**
+     * Keeps Alt+Shift enabled for existing installations while using the safer disabled
+     * default for installations created after this migration was introduced.
+     */
+    fun initializeAltShiftLayoutSwitchDefault(context: Context) {
+        val preferences = getPreferences(context)
+        if (preferences.contains(KEY_ALT_SHIFT_DEFAULT_INITIALIZED)) return
+
+        val existingInstallation = preferences.all.isNotEmpty()
+        val editor = preferences.edit()
+        if (!preferences.contains(KEY_ALT_SHIFT_LAYOUT_SWITCH)) {
+            editor.putBoolean(KEY_ALT_SHIFT_LAYOUT_SWITCH, existingInstallation)
+        }
+        editor.putBoolean(KEY_ALT_SHIFT_DEFAULT_INITIALIZED, true).apply()
     }
 
     /**
@@ -5233,6 +5294,8 @@ object SettingsManager {
             STATUS_BAR_BUTTON_MICROPHONE,
             STATUS_BAR_BUTTON_LANGUAGE,
             STATUS_BAR_BUTTON_HAMBURGER,
+            STATUS_BAR_BUTTON_MINIMAL_UI,
+            STATUS_BAR_BUTTON_SOFTWARE_KEYBOARD_MODE,
             STATUS_BAR_BUTTON_SETTINGS,
             STATUS_BAR_BUTTON_SYMBOLS,
             STATUS_BAR_BUTTON_UNDO,
