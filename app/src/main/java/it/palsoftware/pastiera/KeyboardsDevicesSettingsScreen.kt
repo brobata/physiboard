@@ -1,5 +1,6 @@
 package it.palsoftware.pastiera
 
+import android.hardware.input.InputManager
 import android.view.InputDevice
 import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
@@ -45,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import it.palsoftware.pastiera.commands.PastieraCommandSource
 import it.palsoftware.pastiera.data.mappings.KeyMappingLoader
 import it.palsoftware.pastiera.inputmethod.DeviceSpecific
+import it.palsoftware.pastiera.inputmethod.SoftwareKeyboardAutoDetector
 
 private enum class KeyboardsDevicesDestination { Main, OnScreen, BuiltIn, PowerKeyboard }
 
@@ -92,6 +94,7 @@ private fun KeyboardsDevicesMainScreen(
     var configuredMode by remember { mutableStateOf(SettingsManager.getSoftwareKeyboardMode(context)) }
     var effectiveMode by remember { mutableStateOf(SettingsManager.resolveEffectiveSoftwareKeyboardMode(context)) }
     var showToggleToasts by remember { mutableStateOf(SettingsManager.getSoftwareKeyboardModeToggleToastsEnabled(context)) }
+    var inputDeviceRevision by remember { mutableStateOf(0) }
 
     DisposableEffect(context) {
         val prefs = SettingsManager.getPreferences(context)
@@ -108,15 +111,32 @@ private fun KeyboardsDevicesMainScreen(
         onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }
 
+    DisposableEffect(context) {
+        val inputManager = context.getSystemService(InputManager::class.java)
+        val listener = object : InputManager.InputDeviceListener {
+            private fun refreshKeyboardState() {
+                SoftwareKeyboardAutoDetector.onInputDevicesChanged()
+                inputDeviceRevision += 1
+                effectiveMode = SettingsManager.resolveEffectiveSoftwareKeyboardMode(context)
+            }
+
+            override fun onInputDeviceAdded(deviceId: Int) = refreshKeyboardState()
+            override fun onInputDeviceRemoved(deviceId: Int) = refreshKeyboardState()
+            override fun onInputDeviceChanged(deviceId: Int) = refreshKeyboardState()
+        }
+        inputManager.registerInputDeviceListener(listener, null)
+        onDispose { inputManager.unregisterInputDeviceListener(listener) }
+    }
+
     val autoEnabled = configuredMode == SettingsManager.SoftwareKeyboardMode.AUTO
     val isVirtual = effectiveMode == SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL
     val runtimeOverride = SettingsManager.getSoftwareKeyboardModeRuntimeOverride(context)
-    val clicksDevice = remember {
+    val clicksDevice = remember(inputDeviceRevision) {
         InputDevice.getDeviceIds().asSequence()
             .mapNotNull(InputDevice::getDevice)
             .firstOrNull(DeviceSpecific::isClicksPowerKeyboard)
     }
-    val builtInDetected = remember {
+    val builtInDetected = remember(inputDeviceRevision) {
         DeviceSpecific.detectedInputProfiles().any {
             it.kind == DeviceSpecific.InputDeviceKind.BUILT_IN
         }
