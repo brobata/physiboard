@@ -14,6 +14,10 @@
     <!-- Permesso per l'accesso a Internet (richiesto per il controllo aggiornamenti) -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Lettura delle informazioni del Clicks Power Keyboard tramite BLE GATT -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
     <!-- Permesso per mostrare finestre overlay (per debug trackpad) -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
@@ -34,6 +38,7 @@
         <package android:name="bitpit.launcher" />
         <package android:name="net.dinglisch.android.taskerm" />
         <package android:name="io.homeassistant.companion.android" />
+        <package android:name="com.clicks.companionapp" />
     </queries>
 
     <application

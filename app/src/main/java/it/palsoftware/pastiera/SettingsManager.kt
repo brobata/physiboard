@@ -83,6 +83,7 @@ object SettingsManager {
     private const val KEY_PHYSICAL_KEYBOARD_CURRENCY_SYMBOL = "physical_keyboard_currency_symbol" // Currency symbol for dedicated hardware keys
     private const val KEY_CLICKS_CLOSE_INPUT_ON_DISCONNECT = "clicks_close_input_on_disconnect"
     private const val KEY_CLICKS_SHOW_KEYBOARD_ONLY_WITH_TEXT_FOCUS = "clicks_show_keyboard_only_with_text_focus"
+    private const val KEY_CLICKS_BLUETOOTH_PERMISSION_EXPLAINED = "clicks_bluetooth_permission_explained"
     private const val KEY_RESTORE_SYM_PAGE = "restore_sym_page" // SYM page to restore when returning from settings
     private const val KEY_PENDING_RESTORE_SYM_PAGE = "pending_restore_sym_page" // Temporary SYM page state saved when opening settings
     private const val KEY_SYM_PAGES_CONFIG = "sym_pages_config" // Order/enabled pages for SYM
@@ -3961,6 +3962,16 @@ object SettingsManager {
     fun setClicksShowKeyboardOnlyWithTextFocus(context: Context, enabled: Boolean) {
         getPreferences(context).edit()
             .putBoolean(KEY_CLICKS_SHOW_KEYBOARD_ONLY_WITH_TEXT_FOCUS, enabled)
+            .apply()
+    }
+
+    fun hasExplainedClicksBluetoothPermission(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_CLICKS_BLUETOOTH_PERMISSION_EXPLAINED, false)
+    }
+
+    fun setClicksBluetoothPermissionExplained(context: Context) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_CLICKS_BLUETOOTH_PERMISSION_EXPLAINED, true)
             .apply()
     }
 
