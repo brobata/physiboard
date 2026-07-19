@@ -300,8 +300,15 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
 
         override fun onInputDeviceRemoved(deviceId: Int) {
-            SoftwareKeyboardAutoDetector.onInputDevicesChanged()
             val clicksDisconnected = connectedClicksInputDeviceIds.remove(deviceId)
+            if (
+                clicksDisconnected &&
+                SettingsManager.getClicksCloseInputOnDisconnect(this@PhysicalKeyboardInputMethodService)
+            ) {
+                SoftwareKeyboardAutoDetector.beginClosingInputForClicksDisconnect()
+                requestHideSelf(0)
+            }
+            SoftwareKeyboardAutoDetector.onInputDevicesChanged()
             scheduleInputDeviceModeRefresh(clicksDisconnected = clicksDisconnected)
         }
 
@@ -499,10 +506,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         val closeInputOnDisconnect =
             clicksDisconnected && SettingsManager.getClicksCloseInputOnDisconnect(this)
         invalidateRenderedStatusSnapshot()
-        keyboardVisibilityController.onSoftwareKeyboardModeChanged(
-            showVirtualKeyboard =
-                effectiveMode == SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL &&
-                    !closeInputOnDisconnect
+        keyboardVisibilityController.onKeyboardSurfaceChanged(
+            ensureInputViewShown = !closeInputOnDisconnect
         )
         if (closeInputOnDisconnect) {
             requestHideSelf(0)
@@ -1986,8 +1991,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             ) {
                 invalidateRenderedStatusSnapshot()
                 val effectiveMode = SettingsManager.resolveEffectiveSoftwareKeyboardMode(this)
-                keyboardVisibilityController.onSoftwareKeyboardModeChanged(
-                    showVirtualKeyboard = effectiveMode == SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL
+                keyboardVisibilityController.onKeyboardSurfaceChanged(
+                    ensureInputViewShown = effectiveMode == SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL
                 )
             } else if (
                 key == "software_keyboard_layout_style" ||
@@ -3582,6 +3587,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     
     override fun onWindowHidden() {
         super.onWindowHidden()
+        SoftwareKeyboardAutoDetector.onInputWindowHidden()
+        invalidateRenderedStatusSnapshot()
         if (::candidatesBarController.isInitialized) {
             candidatesBarController.resetSuggestionActionMode()
         }

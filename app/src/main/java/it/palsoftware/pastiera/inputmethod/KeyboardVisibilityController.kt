@@ -97,9 +97,13 @@ class KeyboardVisibilityController(
         applyStatusBarPresentationMode()
     }
 
-    fun onSoftwareKeyboardModeChanged(showVirtualKeyboard: Boolean) {
+    fun onKeyboardSurfaceChanged(ensureInputViewShown: Boolean) {
         refreshStatusBar()
-        if (showVirtualKeyboard && !isInputViewShown()) {
+        if (
+            ensureInputViewShown &&
+            currentInputConnection() != null &&
+            !isInputViewShown()
+        ) {
             try {
                 requestShowInputView()
             } catch (_: Exception) {

@@ -12,6 +12,9 @@ object SoftwareKeyboardAutoDetector {
     @Volatile
     private var systemInputViewDecision: Boolean? = null
 
+    @Volatile
+    private var suppressVirtualPresentationUntilInputHidden: Boolean = false
+
     fun updateSystemInputViewDecision(shouldShowInputView: Boolean) {
         systemInputViewDecision = shouldShowInputView
     }
@@ -20,7 +23,18 @@ object SoftwareKeyboardAutoDetector {
         systemInputViewDecision = null
     }
 
+    fun beginClosingInputForClicksDisconnect() {
+        suppressVirtualPresentationUntilInputHidden = true
+    }
+
+    fun onInputWindowHidden() {
+        suppressVirtualPresentationUntilInputHidden = false
+    }
+
     fun resolve(context: Context): SettingsManager.SoftwareKeyboardMode {
+        if (suppressVirtualPresentationUntilInputHidden) {
+            return SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE
+        }
         val shouldShowVirtualKeyboard =
             systemInputViewDecision ?: !DeviceSpecific.hasConnectedHardwareKeyboard()
         return if (shouldShowVirtualKeyboard) {
