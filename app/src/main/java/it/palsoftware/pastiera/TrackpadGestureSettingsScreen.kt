@@ -178,6 +178,7 @@ fun TrackpadGestureSettingsScreen(
                             maxLines = 2
                         )
                     }
+                    FeatureStatusIcon(FeatureStatus.Experimental)
                     Switch(
                         checked = trackpadGesturesEnabled,
                         onCheckedChange = { enabled ->

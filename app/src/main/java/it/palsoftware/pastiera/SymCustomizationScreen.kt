@@ -59,10 +59,10 @@ fun SymCustomizationScreen(
         mutableStateOf(SettingsManager.getEmojiPickerExpandedHeight(context))
     }
 
-    var titan2LayoutEnabled by remember {
-        mutableStateOf(SettingsManager.isTitan2LayoutEnabled(context))
+    val titan2LayoutEnabled = remember {
+        SettingsManager.isTitan2LayoutEnabled(context)
     }
-    
+
     // Load SYM pages configuration (enabled pages + order)
     var symPagesConfig by remember {
         mutableStateOf(SettingsManager.getSymPagesConfig(context))
@@ -363,49 +363,6 @@ fun SymCustomizationScreen(
             }
         }
 
-        // Titan 2 Layout Alignment toggle
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(64.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Keyboard,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.titan2_layout_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1
-                    )
-                    Text(
-                        text = stringResource(R.string.titan2_layout_description),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2
-                    )
-                }
-                Switch(
-                    checked = titan2LayoutEnabled,
-                    onCheckedChange = { enabled ->
-                        titan2LayoutEnabled = enabled
-                        SettingsManager.setTitan2LayoutEnabled(context, enabled)
-                    }
-                )
-            }
-        }
-        
         HorizontalDivider()
         
         // Tab selector (visualizzazione del layout)

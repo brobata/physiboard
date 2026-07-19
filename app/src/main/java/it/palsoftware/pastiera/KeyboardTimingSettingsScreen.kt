@@ -22,9 +22,11 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.SettingsInputComponent
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -73,12 +75,12 @@ fun KeyboardTimingSettingsScreen(
         mutableStateOf(SettingsManager.getCtrlLatchStaysOnSpace(context))
     }
 
-    var showVirtualKeyboardSettings by remember { mutableStateOf(false) }
+    var destination by rememberSaveable { mutableStateOf(KeyboardTimingDestination.Main) }
 
     AnimatedContent(
-        targetState = showVirtualKeyboardSettings,
+        targetState = destination,
         transitionSpec = {
-            val direction = if (targetState) 1 else -1
+            val direction = if (targetState == KeyboardTimingDestination.Main) -1 else 1
             (slideInHorizontally(
                 animationSpec = tween(220),
                 initialOffsetX = { fullWidth -> direction * fullWidth }
@@ -90,14 +92,17 @@ fun KeyboardTimingSettingsScreen(
             ).using(SizeTransform(clip = false))
         },
         label = "keyboardTimingSubscreen"
-    ) { showSubscreen ->
-        if (showSubscreen) {
-            VirtualKeyboardBehaviorSettingsScreen(
+    ) { currentDestination ->
+        when (currentDestination) {
+            KeyboardTimingDestination.VirtualKeyboard -> VirtualKeyboardBehaviorSettingsScreen(
                 modifier = modifier,
-                onBack = { showVirtualKeyboardSettings = false }
+                onBack = { destination = KeyboardTimingDestination.Main }
             )
-        } else {
-            KeyboardTimingMainContent(
+            KeyboardTimingDestination.HardwareKeyboards -> HardwareKeyboardSettingsScreen(
+                modifier = modifier,
+                onBack = { destination = KeyboardTimingDestination.Main }
+            )
+            KeyboardTimingDestination.Main -> KeyboardTimingMainContent(
                 modifier = modifier,
                 onBack = onBack,
                 longPressThreshold = longPressThreshold,
@@ -114,10 +119,17 @@ fun KeyboardTimingSettingsScreen(
                 onAltLatchStaysOnSpaceChange = { altLatchStaysOnSpace = it },
                 ctrlLatchStaysOnSpace = ctrlLatchStaysOnSpace,
                 onCtrlLatchStaysOnSpaceChange = { ctrlLatchStaysOnSpace = it },
-                onVirtualKeyboardSettingsClick = { showVirtualKeyboardSettings = true }
+                onVirtualKeyboardSettingsClick = { destination = KeyboardTimingDestination.VirtualKeyboard },
+                onHardwareKeyboardSettingsClick = { destination = KeyboardTimingDestination.HardwareKeyboards }
             )
         }
     }
+}
+
+private enum class KeyboardTimingDestination {
+    Main,
+    VirtualKeyboard,
+    HardwareKeyboards
 }
 
 @Composable
@@ -138,7 +150,8 @@ private fun KeyboardTimingMainContent(
     onAltLatchStaysOnSpaceChange: (Boolean) -> Unit,
     ctrlLatchStaysOnSpace: Boolean,
     onCtrlLatchStaysOnSpaceChange: (Boolean) -> Unit,
-    onVirtualKeyboardSettingsClick: () -> Unit
+    onVirtualKeyboardSettingsClick: () -> Unit,
+    onHardwareKeyboardSettingsClick: () -> Unit
 ) {
     val context = LocalContext.current
 
@@ -373,6 +386,47 @@ private fun KeyboardTimingMainContent(
                         )
                         Text(
                             text = stringResource(R.string.virtual_keyboard_behaviour_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(74.dp)
+                    .clickable { onHardwareKeyboardSettingsClick() }
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.SettingsInputComponent,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.hardware_keyboards_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1
+                        )
+                        Text(
+                            text = stringResource(R.string.hardware_keyboards_description),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 2

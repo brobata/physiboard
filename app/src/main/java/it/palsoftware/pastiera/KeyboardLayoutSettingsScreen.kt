@@ -32,7 +32,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import it.palsoftware.pastiera.data.layout.LayoutFileStore
 import it.palsoftware.pastiera.data.layout.LayoutMappingRepository
 import it.palsoftware.pastiera.layout.OnlineLayoutsActivity
-import it.palsoftware.pastiera.inputmethod.DeviceSpecific
 import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils
 import it.palsoftware.pastiera.R
 import kotlinx.coroutines.launch
@@ -63,15 +62,6 @@ fun KeyboardLayoutSettingsScreen(
     var automaticLayoutMode by remember {
         mutableStateOf(SettingsManager.isKeyboardLayoutAutoByLocale(context))
     }
-    var physicalKeyboardProfileOverride by remember {
-        mutableStateOf(SettingsManager.getPhysicalKeyboardProfileOverride(context))
-    }
-    var physicalKeyboardCurrencySymbol by remember {
-        mutableStateOf(SettingsManager.getPhysicalKeyboardCurrencySymbol(context))
-    }
-    val detectedPhysicalProfile = remember { DeviceSpecific.physicalKeyboardName() }
-    var showPhysicalProfileMenu by remember { mutableStateOf(false) }
-    var showCurrencySymbolMenu by remember { mutableStateOf(false) }
     var selectedLayout by remember(locale, automaticLayoutMode, initialLayout, pickerMode) {
         mutableStateOf(
             if (pickerMode && initialLayout != null) {
@@ -174,9 +164,16 @@ fun KeyboardLayoutSettingsScreen(
         )
         return
     }
+
+    fun navigateBack() {
+        if (pickerMode) {
+            onLayoutSelected(locale, selectedLayout)
+        }
+        onBack()
+    }
     
     // Handle system back button
-    BackHandler { onBack() }
+    BackHandler { navigateBack() }
     
     Scaffold(
         topBar = {
@@ -192,7 +189,7 @@ fun KeyboardLayoutSettingsScreen(
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = { navigateBack() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.settings_back_content_description)
@@ -235,25 +232,22 @@ fun KeyboardLayoutSettingsScreen(
                             )
                         }
                     }
-                    // Save button
-                    IconButton(
-                        onClick = {
-                            if (!pickerMode) {
+                    if (!pickerMode) {
+                        IconButton(
+                            onClick = {
                                 SettingsManager.setKeyboardLayoutAutoByLocale(context, automaticLayoutMode)
-                                SettingsManager.setPhysicalKeyboardProfileOverride(context, physicalKeyboardProfileOverride)
-                                SettingsManager.setPhysicalKeyboardCurrencySymbol(context, physicalKeyboardCurrencySymbol)
                                 if (!automaticLayoutMode) {
                                     SettingsManager.setKeyboardLayout(context, selectedLayout)
                                 }
+                                onLayoutSelected(locale, selectedLayout)
+                                onBack()
                             }
-                            onLayoutSelected(locale, selectedLayout)
-                            onBack()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Save,
+                                contentDescription = stringResource(R.string.layout_save_content_description)
+                            )
                         }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Save,
-                            contentDescription = stringResource(R.string.layout_save_content_description)
-                        )
                     }
                 }
             }
@@ -304,22 +298,6 @@ fun KeyboardLayoutSettingsScreen(
                 }
                 
                 Spacer(modifier = Modifier.height(8.dp))
-
-                if (!pickerMode) {
-                    KeyboardLayoutGlobalSettingsSection(
-                        automaticLayoutMode = automaticLayoutMode,
-                        onAutomaticLayoutModeChanged = { automaticLayoutMode = it },
-                        physicalKeyboardProfileOverride = physicalKeyboardProfileOverride,
-                        onPhysicalKeyboardProfileOverrideChanged = { physicalKeyboardProfileOverride = it },
-                        showPhysicalProfileMenu = showPhysicalProfileMenu,
-                        onShowPhysicalProfileMenuChanged = { showPhysicalProfileMenu = it },
-                        detectedPhysicalProfile = detectedPhysicalProfile,
-                        physicalKeyboardCurrencySymbol = physicalKeyboardCurrencySymbol,
-                        onPhysicalKeyboardCurrencySymbolChanged = { physicalKeyboardCurrencySymbol = it },
-                        showCurrencySymbolMenu = showCurrencySymbolMenu,
-                        onShowCurrencySymbolMenuChanged = { showCurrencySymbolMenu = it }
-                    )
-                }
 
                 // No Conversion (QWERTY - default, passes keycodes as-is)
                 Surface(
@@ -537,155 +515,6 @@ fun KeyboardLayoutSettingsScreen(
                 }
             }
         )
-    }
-}
-
-@Composable
-private fun KeyboardLayoutGlobalSettingsSection(
-    automaticLayoutMode: Boolean,
-    onAutomaticLayoutModeChanged: (Boolean) -> Unit,
-    physicalKeyboardProfileOverride: String,
-    onPhysicalKeyboardProfileOverrideChanged: (String) -> Unit,
-    showPhysicalProfileMenu: Boolean,
-    onShowPhysicalProfileMenuChanged: (Boolean) -> Unit,
-    detectedPhysicalProfile: String,
-    physicalKeyboardCurrencySymbol: String,
-    onPhysicalKeyboardCurrencySymbolChanged: (String) -> Unit,
-    showCurrencySymbolMenu: Boolean,
-    onShowCurrencySymbolMenuChanged: (Boolean) -> Unit
-) {
-    val context = LocalContext.current
-
-    KeyboardLayoutSettingRow(
-        title = stringResource(R.string.keyboard_layout_mode_title),
-        description = if (automaticLayoutMode) {
-            stringResource(R.string.keyboard_layout_mode_auto_description)
-        } else {
-            stringResource(R.string.keyboard_layout_mode_manual_description)
-        },
-        control = {
-            Switch(
-                checked = automaticLayoutMode,
-                onCheckedChange = onAutomaticLayoutModeChanged
-            )
-        }
-    )
-
-    KeyboardLayoutSettingRow(
-        title = stringResource(R.string.keyboard_profile_override_title),
-        description = if (physicalKeyboardProfileOverride == "auto") {
-            stringResource(
-                R.string.keyboard_profile_override_auto_description,
-                detectedPhysicalProfile
-            )
-        } else {
-            stringResource(R.string.keyboard_profile_override_manual_description)
-        },
-        control = {
-            Box {
-                TextButton(onClick = { onShowPhysicalProfileMenuChanged(true) }) {
-                    Text(text = keyboardProfileLabel(context, physicalKeyboardProfileOverride))
-                    Icon(
-                        imageVector = Icons.Filled.ArrowDropDown,
-                        contentDescription = null
-                    )
-                }
-                DropdownMenu(
-                    expanded = showPhysicalProfileMenu,
-                    onDismissRequest = { onShowPhysicalProfileMenuChanged(false) }
-                ) {
-                    listOf("auto", "key2", "Q25", "titan", "titan2", "titan2elite_qwerty", "mp01").forEach { profile ->
-                        DropdownMenuItem(
-                            text = { Text(keyboardProfileLabel(context, profile)) },
-                            onClick = {
-                                onPhysicalKeyboardProfileOverrideChanged(profile)
-                                onShowPhysicalProfileMenuChanged(false)
-                            }
-                        )
-                    }
-                }
-            }
-        }
-    )
-
-    KeyboardLayoutSettingRow(
-        title = stringResource(R.string.keyboard_currency_symbol_title),
-        description = stringResource(R.string.keyboard_currency_symbol_description),
-        control = {
-            Box {
-                TextButton(onClick = { onShowCurrencySymbolMenuChanged(true) }) {
-                    Text(text = physicalKeyboardCurrencySymbol)
-                    Icon(
-                        imageVector = Icons.Filled.ArrowDropDown,
-                        contentDescription = null
-                    )
-                }
-                DropdownMenu(
-                    expanded = showCurrencySymbolMenu,
-                    onDismissRequest = { onShowCurrencySymbolMenuChanged(false) }
-                ) {
-                    SettingsManager.physicalKeyboardCurrencySymbols().forEach { symbol ->
-                        DropdownMenuItem(
-                            text = { Text(symbol) },
-                            onClick = {
-                                onPhysicalKeyboardCurrencySymbolChanged(symbol)
-                                onShowCurrencySymbolMenuChanged(false)
-                            }
-                        )
-                    }
-                }
-            }
-        }
-    )
-}
-
-@Composable
-private fun KeyboardLayoutSettingRow(
-    title: String,
-    description: String,
-    control: @Composable () -> Unit
-) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 4.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            control()
-        }
-    }
-}
-
-/**
- * User-facing label for physical keyboard profile override values.
- */
-private fun keyboardProfileLabel(context: Context, profile: String): String {
-    return when (profile) {
-        "key2" -> context.getString(R.string.keyboard_profile_option_key2)
-        "Q25" -> context.getString(R.string.keyboard_profile_option_q25)
-        "titan" -> context.getString(R.string.keyboard_profile_option_titan)
-        "titan2" -> context.getString(R.string.keyboard_profile_option_titan2)
-        "titan2elite_qwerty" -> context.getString(R.string.keyboard_profile_option_titan2elite_qwerty)
-        "mp01" -> context.getString(R.string.keyboard_profile_option_mp01)
-        else -> context.getString(R.string.keyboard_profile_option_auto)
     }
 }
 

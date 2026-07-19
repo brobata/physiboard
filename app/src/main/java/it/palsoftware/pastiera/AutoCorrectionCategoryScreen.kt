@@ -424,6 +424,7 @@ fun AutoCorrectionCategoryScreen(
                                             maxLines = 2
                                         )
                                     }
+                                    FeatureStatusIcon(FeatureStatus.Experimental)
                                     Switch(
                                         checked = experimentalSuggestionsEnabled,
                                         onCheckedChange = { enabled ->

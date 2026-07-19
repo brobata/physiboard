@@ -140,6 +140,8 @@ sealed class TutorialPageType {
     object QuickLauncher : TutorialPageType()
 
     object MessengerPresets : TutorialPageType()
+
+    object FeatureStatuses : TutorialPageType()
     
     data class EnablePastiera(
         val title: String,
@@ -293,6 +295,7 @@ fun TutorialScreen(
                 iconTint = MaterialTheme.colorScheme.secondary
             )
         )
+        add(TutorialPageType.FeatureStatuses)
         add(
             TutorialPageType.Standard(
                 title = stringResource(R.string.tutorial_page_ready_title),
@@ -393,6 +396,9 @@ fun TutorialScreen(
                         }
                         TutorialPageType.MessengerPresets -> {
                             TutorialMessengerPresetsPageContent(modifier = Modifier.fillMaxSize())
+                        }
+                        TutorialPageType.FeatureStatuses -> {
+                            TutorialFeatureStatusesPageContent(modifier = Modifier.fillMaxSize())
                         }
                         is TutorialPageType.EnablePastiera -> {
                             TutorialEnablePastieraPageContent(
@@ -1783,6 +1789,99 @@ fun TutorialReadyPageContent(
             )
 
             Spacer(modifier = Modifier.weight(0.65f))
+        }
+    }
+}
+
+@Composable
+fun TutorialFeatureStatusesPageContent(
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = stringResource(R.string.tutorial_feature_status_title),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        Text(
+            text = stringResource(R.string.tutorial_feature_status_description),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(28.dp))
+        TutorialFeatureStatusCard(
+            status = FeatureStatus.Construction,
+            title = stringResource(R.string.tutorial_feature_status_construction_title),
+            description = stringResource(R.string.tutorial_feature_status_construction_description)
+        )
+        Spacer(modifier = Modifier.height(14.dp))
+        TutorialFeatureStatusCard(
+            status = FeatureStatus.Experimental,
+            title = stringResource(R.string.tutorial_feature_status_experimental_title),
+            description = stringResource(R.string.tutorial_feature_status_experimental_description)
+        )
+        Spacer(modifier = Modifier.height(22.dp))
+        Text(
+            text = stringResource(R.string.tutorial_feature_status_footer),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+@Composable
+private fun TutorialFeatureStatusCard(
+    status: FeatureStatus,
+    title: String,
+    description: String
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            ) {
+                Icon(
+                    imageVector = status.icon,
+                    contentDescription = null,
+                    modifier = Modifier.padding(12.dp).size(30.dp)
+                )
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }

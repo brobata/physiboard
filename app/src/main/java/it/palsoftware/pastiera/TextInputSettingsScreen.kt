@@ -109,10 +109,6 @@ fun TextInputSettingsScreen(
         mutableStateOf(SettingsManager.getAltCtrlSpeechShortcutEnabled(context))
     }
 
-    var titan2LayoutEnabled by remember {
-        mutableStateOf(SettingsManager.isTitan2LayoutEnabled(context))
-    }
-
     var shiftBackspaceDelete by remember {
         mutableStateOf(SettingsManager.getShiftBackspaceDelete(context))
     }
@@ -558,15 +554,26 @@ fun TextInputSettingsScreen(
 
 @Composable
 private fun SettingsSectionHeader(text: String) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Spacer(modifier = Modifier.height(12.dp))
-        HorizontalDivider()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        HorizontalDivider(
+            modifier = Modifier.weight(1f),
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
         Text(
             text = text,
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(start = 16.dp, top = 14.dp, bottom = 6.dp)
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.Medium
+        )
+        HorizontalDivider(
+            modifier = Modifier.weight(1f),
+            color = MaterialTheme.colorScheme.outlineVariant
         )
     }
 }

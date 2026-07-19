@@ -78,7 +78,7 @@ object SettingsManager {
     private const val KEY_ALT_SHIFT_LAYOUT_SWITCH = "alt_shift_layout_switch" // Enable Alt+Shift shortcut for layout cycling
     private const val KEY_ALT_ENTER_LAYOUT_SWITCH = "alt_enter_layout_switch" // Enable Alt+Enter shortcut for layout cycling
     private const val KEY_CTRL_SPACE_LAYOUT_SWITCH = "ctrl_space_layout_switch" // Enable Ctrl+Space shortcut for layout cycling
-    private const val KEY_PHYSICAL_KEYBOARD_PROFILE_OVERRIDE = "physical_keyboard_profile_override" // auto | key2 | Q25 | titan | titan2 | titan2elite_qwerty | mp01
+    private const val KEY_PHYSICAL_KEYBOARD_PROFILE_OVERRIDE = "physical_keyboard_profile_override" // auto | key2 | Q25 | titan | titan2 | titan2elite_qwerty | mp01 | clicks_power
     private const val KEY_PHYSICAL_KEYBOARD_CURRENCY_SYMBOL = "physical_keyboard_currency_symbol" // Currency symbol for dedicated hardware keys
     private const val KEY_RESTORE_SYM_PAGE = "restore_sym_page" // SYM page to restore when returning from settings
     private const val KEY_PENDING_RESTORE_SYM_PAGE = "pending_restore_sym_page" // Temporary SYM page state saved when opening settings
@@ -3863,7 +3863,7 @@ object SettingsManager {
 
     /**
      * Returns the manual physical keyboard profile override used for device-specific mappings.
-     * Supported values: auto, key2, Q25, titan, titan2, titan2elite_qwerty, mp01.
+     * Supported values: auto, key2, Q25, titan, titan2, titan2elite_qwerty, mp01, clicks_power.
      */
     fun getPhysicalKeyboardProfileOverride(context: Context): String {
         val value = getPreferences(context).getString(
@@ -3990,6 +3990,7 @@ object SettingsManager {
             normalized.equals("titan2", ignoreCase = true) -> "titan2"
             normalized.equals("titan2elite_qwerty", ignoreCase = true) -> "titan2elite_qwerty"
             normalized.equals("mp01", ignoreCase = true) -> "mp01"
+            normalized.equals("clicks_power", ignoreCase = true) -> "clicks_power"
             else -> DEFAULT_PHYSICAL_KEYBOARD_PROFILE_OVERRIDE
         }
     }
@@ -5247,7 +5248,7 @@ object SettingsManager {
     )
 
     fun getAppEnterBehaviorEnabled(context: Context): Boolean {
-        return getPreferences(context).getBoolean(KEY_APP_ENTER_BEHAVIOR_ENABLED, false)
+        return getPreferences(context).getBoolean(KEY_APP_ENTER_BEHAVIOR_ENABLED, true)
     }
 
     fun setAppEnterBehaviorEnabled(context: Context, enabled: Boolean) {
@@ -5259,8 +5260,8 @@ object SettingsManager {
     fun getAppEnterBehaviorPreset(context: Context): String {
         val stored = getPreferences(context).getString(
             KEY_APP_ENTER_BEHAVIOR_PRESET,
-            ENTER_BEHAVIOR_PRESET_APP_DEFAULT
-        ) ?: ENTER_BEHAVIOR_PRESET_APP_DEFAULT
+            ENTER_BEHAVIOR_PRESET_ENTER_SEND_SHIFT_NEWLINE
+        ) ?: ENTER_BEHAVIOR_PRESET_ENTER_SEND_SHIFT_NEWLINE
         return normalizeEnterBehaviorPreset(stored)
     }
 

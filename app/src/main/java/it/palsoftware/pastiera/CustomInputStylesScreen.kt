@@ -168,6 +168,10 @@ fun CustomInputStylesScreen(
             }
 
             item {
+                LanguageLayoutModeCard()
+            }
+
+            item {
                 LayoutSwitchShortcutsCard()
             }
 
@@ -297,6 +301,7 @@ fun CustomInputStylesScreen(
                     coroutineScope.launch {
                         snackbarHostState.showSnackbar(context.getString(R.string.custom_input_styles_layout_mapping_updated, getLocaleDisplayName(locale), layout))
                     }
+                    null
                 } else {
                     // For custom styles, update preferences
                     // Guard: prevent duplicate locale+layout (including system entries)
@@ -306,10 +311,7 @@ fun CustomInputStylesScreen(
                                 (targetOld == null || existing.locale != targetOld.locale || existing.layout != targetOld.layout)
                     }
                     if (isDuplicateCombo) {
-                        coroutineScope.launch {
-                            snackbarHostState.showSnackbar(duplicateErrorMsg)
-                        }
-                        return@AddCustomInputStyleDialog
+                        return@AddCustomInputStyleDialog duplicateErrorMsg
                     }
 
                     val success = if (targetOld != null) {
@@ -333,10 +335,9 @@ fun CustomInputStylesScreen(
                         coroutineScope.launch {
                             snackbarHostState.showSnackbar(msg)
                         }
+                        null
                     } else {
-                        coroutineScope.launch {
-                            snackbarHostState.showSnackbar(duplicateErrorMsg)
-                        }
+                        duplicateErrorMsg
                     }
                 }
             }
@@ -372,6 +373,53 @@ fun CustomInputStylesScreen(
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun LanguageLayoutModeCard() {
+    val context = LocalContext.current
+    var automaticLayoutMode by remember {
+        mutableStateOf(SettingsManager.isKeyboardLayoutAutoByLocale(context))
+    }
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Language,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.keyboard_layout_mode_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = if (automaticLayoutMode) {
+                        stringResource(R.string.keyboard_layout_mode_auto_description)
+                    } else {
+                        stringResource(R.string.keyboard_layout_mode_manual_description)
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = automaticLayoutMode,
+                onCheckedChange = { enabled ->
+                    automaticLayoutMode = enabled
+                    SettingsManager.setKeyboardLayoutAutoByLocale(context, enabled)
+                }
+            )
+        }
     }
 }
 
@@ -682,7 +730,7 @@ private fun AddCustomInputStyleDialog(
     isSystemLocale: Boolean = false,
     onDismiss: () -> Unit,
     onOpenLayoutSettings: (String, String?, List<String>) -> Unit,
-    onSave: (String, String, List<String>) -> Unit
+    onSave: (String, String, List<String>) -> String?
 ) {
     val context = LocalContext.current
     
@@ -690,6 +738,7 @@ private fun AddCustomInputStyleDialog(
     var showCustomLocaleDialog by remember { mutableStateOf(false) }
     var customLocaleInput by remember { mutableStateOf("") }
     var customLocaleError by remember { mutableStateOf<String?>(null) }
+    var saveError by remember { mutableStateOf<String?>(null) }
     var selectedLayout by remember(initialLocale, initialLayout) {
         mutableStateOf(initialLayout)
     }
@@ -703,6 +752,7 @@ private fun AddCustomInputStyleDialog(
     }
     
     LaunchedEffect(selectedLocale) {
+        saveError = null
         selectedLayout = selectedLocale?.let { locale ->
             if (locale == initialLocale && initialLayout != null) {
                 initialLayout
@@ -719,14 +769,41 @@ private fun AddCustomInputStyleDialog(
     
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { 
-            Text(
-                when {
-                    isSystemLocale -> stringResource(R.string.custom_input_styles_edit_system_locale_title)
-                    initialLocale != null -> stringResource(R.string.custom_input_styles_edit_dialog_title)
-                    else -> stringResource(R.string.custom_input_styles_add_dialog_title)
+        title = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    when {
+                        isSystemLocale -> stringResource(R.string.custom_input_styles_edit_system_locale_title)
+                        initialLocale != null -> stringResource(R.string.custom_input_styles_edit_dialog_title)
+                        else -> stringResource(R.string.custom_input_styles_add_dialog_title)
+                    }
+                )
+                saveError?.let { message ->
+                    Surface(
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                        shape = MaterialTheme.shapes.small
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                text = message,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
                 }
-            )
+            }
         },
         text = {
             Column(
@@ -884,6 +961,7 @@ private fun AddCustomInputStyleDialog(
                         onSelectedLocalesChanged = { selectedSuggestionLocales = it }
                     )
                 }
+
             }
         },
         confirmButton = {
@@ -892,7 +970,7 @@ private fun AddCustomInputStyleDialog(
                     val locale = selectedLocale
                     val layout = selectedLayout
                     if (locale != null && layout != null) {
-                        onSave(locale, layout, selectedSuggestionLocales)
+                        saveError = onSave(locale, layout, selectedSuggestionLocales)
                     }
                 },
                 enabled = selectedLocale != null && selectedLayout != null

@@ -304,6 +304,7 @@ fun AdvancedSettingsScreen(
                                             maxLines = 1
                                         )
                                     }
+                                    FeatureStatusIcon(FeatureStatus.Experimental)
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                                         contentDescription = null,

@@ -44,6 +44,9 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
@@ -155,7 +158,7 @@ fun CustomizationSettingsScreen(
         )
     }
     var navigationDirection by remember { mutableStateOf(CustomizationNavigationDirection.Push) }
-    val navigationStack = remember {
+    val navigationStack = rememberSaveable(saver = customizationNavigationStackSaver) {
         mutableStateListOf<CustomizationDestination>().apply {
             val deepLinkedDestination = when (initialDestination) {
                 SettingsActivity.CUSTOMIZATION_DESTINATION_VARIATIONS ->
@@ -428,132 +431,6 @@ fun CustomizationSettingsScreen(
                             }
                         }
                     
-                        // App-specific Enter behavior
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(64.dp)
-                                .clickable { navigateTo(CustomizationDestination.AppEnterBehavior) }
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.KeyboardReturn,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = stringResource(R.string.app_enter_behaviour_title),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Medium,
-                                        maxLines = 1
-                                    )
-                                    Text(
-                                        text = stringResource(R.string.app_enter_behaviour_description),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1
-                                    )
-                                }
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-
-                        // Starter / Launcher shortcuts
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(72.dp)
-                                .clickable { navigateTo(CustomizationDestination.LauncherShortcuts) }
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ManageSearch,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = stringResource(R.string.starter_launcher_shortcuts_title),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Medium,
-                                        maxLines = 1
-                                    )
-                                    Text(
-                                        text = stringResource(R.string.starter_launcher_shortcuts_description),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 2
-                                    )
-                                }
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-
-                        // Nav Mode Settings
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(64.dp)
-                                .clickable { navigateTo(CustomizationDestination.NavMode) }
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.KeyboardCommandKey,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = stringResource(R.string.nav_mode_title),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Medium,
-                                        maxLines = 1
-                                    )
-                                    Text(
-                                        text = stringResource(R.string.settings_nav_mode_configure),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1
-                                    )
-                                }
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    
                         // Status Bar Buttons Settings
                         Surface(
                             modifier = Modifier
@@ -583,47 +460,6 @@ fun CustomizationSettingsScreen(
                                     )
                                     Text(
                                         text = stringResource(R.string.status_bar_buttons_description),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1
-                                    )
-                                }
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(72.dp)
-                                .clickable { navigateTo(CustomizationDestination.KeyboardTheme) }
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.Keyboard,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = stringResource(R.string.keyboard_theme_title),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Medium,
-                                        maxLines = 1
-                                    )
-                                    Text(
-                                        text = stringResource(R.string.keyboard_theme_description),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         maxLines = 1
@@ -2389,19 +2225,29 @@ private fun SoundSettingsScreen(
     }
 }
 
-private sealed class CustomizationDestination {
-    object Main : CustomizationDestination()
-    object Variations : CustomizationDestination()
-    object AppEnterBehavior : CustomizationDestination()
-    object NavMode : CustomizationDestination()
-    object LauncherShortcuts : CustomizationDestination()
-    object LauncherShortcutBehavior : CustomizationDestination()
-    object LauncherShortcutCosmetic : CustomizationDestination()
-    object LauncherShortcutAssignments : CustomizationDestination()
-    object StatusBarButtons : CustomizationDestination()
-    object KeyboardTheme : CustomizationDestination()
-    object Sounds : CustomizationDestination()
+private enum class CustomizationDestination {
+    Main,
+    Variations,
+    AppEnterBehavior,
+    NavMode,
+    LauncherShortcuts,
+    LauncherShortcutBehavior,
+    LauncherShortcutCosmetic,
+    LauncherShortcutAssignments,
+    StatusBarButtons,
+    KeyboardTheme,
+    Sounds
 }
+
+private val customizationNavigationStackSaver =
+    listSaver<SnapshotStateList<CustomizationDestination>, String>(
+        save = { stack -> stack.map(CustomizationDestination::name) },
+        restore = { routes ->
+            mutableStateListOf<CustomizationDestination>().apply {
+                addAll(routes.map(CustomizationDestination::valueOf))
+            }
+        }
+    )
 
 private enum class CustomizationNavigationDirection {
     Push,

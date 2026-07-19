@@ -1,6 +1,7 @@
 package it.palsoftware.pastiera
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
@@ -17,6 +18,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.*
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -34,6 +36,7 @@ import java.io.IOException
 import android.content.Intent
 import android.net.Uri
 import android.graphics.BitmapFactory
+import it.palsoftware.pastiera.inputmethod.DeviceSpecific
 
 /**
  * About screen displaying credits and acknowledgments from Markdown file.
@@ -93,6 +96,49 @@ fun AboutScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                shape = MaterialTheme.shapes.medium
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = stringResource(R.string.about_build_info),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = BuildInfo.getBuildInfoString(),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = stringResource(
+                            R.string.settings_device_keyboard_info,
+                            DeviceSpecific.deviceName(),
+                            DeviceSpecific.keyboardName()
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Image(
+                painter = painterResource(id = R.drawable.kofi5),
+                contentDescription = stringResource(R.string.settings_support_ko_fi),
+                modifier = Modifier
+                    .fillMaxWidth(0.35f)
+                    .align(Alignment.CenterHorizontally)
+                    .clickable {
+                        context.startActivity(
+                            Intent(Intent.ACTION_VIEW, Uri.parse("https://ko-fi.com/palsoftware"))
+                        )
+                    }
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
             if (isLoading) {
                 CircularProgressIndicator(
                     modifier = Modifier

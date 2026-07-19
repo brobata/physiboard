@@ -89,6 +89,7 @@
         <!-- Activity per le impostazioni -->
         <activity
             android:name=".SettingsActivity"
+            android:configChanges="keyboard|keyboardHidden|navigation"
             android:exported="true"
             android:label="@string/settings_title"
             android:theme="@style/Theme.Pastiera" />
