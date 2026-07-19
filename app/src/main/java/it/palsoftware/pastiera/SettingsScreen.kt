@@ -27,9 +27,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.KeyboardReturn
 import androidx.compose.material.icons.automirrored.filled.ManageSearch
 import androidx.compose.material.icons.filled.Keyboard
-import androidx.compose.material.icons.filled.KeyboardCommandKey
+import androidx.compose.material.icons.filled.SmartButton
 import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Info
@@ -71,7 +70,9 @@ enum class SettingsDestination {
     Advanced,
     About,
     CustomInputStyles,
-    AppLanguage
+    AppLanguage,
+    DeviceSymLayerEditor,
+    Modifiers
 }
 
 private val settingsNavigationStackSaver =
@@ -110,6 +111,10 @@ fun SettingsScreen(
                     add(SettingsDestination.Main)
                 }
                 add(SettingsDestination.Customization)
+            } else if (initialDestination == SettingsActivity.DESTINATION_DEVICE_SYM_LAYER_EDITOR) {
+                add(SettingsDestination.DeviceSymLayerEditor)
+            } else if (initialDestination == SettingsActivity.DESTINATION_MODIFIERS) {
+                add(SettingsDestination.Modifiers)
             } else {
                 add(SettingsDestination.Main)
             }
@@ -182,7 +187,7 @@ fun SettingsScreen(
             }
         },
         label = "settings_navigation",
-        contentKey = { it::class }
+        contentKey = { it }
     ) { destination ->
         when (destination) {
             SettingsDestination.Main -> {
@@ -191,12 +196,15 @@ fun SettingsScreen(
                     context = context,
                     checkingForUpdates = checkingForUpdates,
                     onCheckingForUpdatesChange = { checkingForUpdates = it },
-                    onKeyboardTimingClick = { navigateTo(SettingsDestination.KeyboardTiming) },
+                    onModifiersClick = { navigateTo(SettingsDestination.Modifiers) },
                     onKeyboardsDevicesClick = { navigateTo(SettingsDestination.KeyboardsDevices) },
                     onTextInputClick = { navigateTo(SettingsDestination.TextInput) },
                     onAccessibilityClick = { navigateTo(SettingsDestination.Accessibility) },
                     onAutoCorrectionClick = { navigateTo(SettingsDestination.AutoCorrection) },
                     onCustomizationClick = { openCustomization(null) },
+                    onStatusBarButtonsClick = {
+                        openCustomization(SettingsActivity.CUSTOMIZATION_DESTINATION_STATUS_BAR_BUTTONS)
+                    },
                     onKeyboardThemeClick = {
                         openCustomization(SettingsActivity.CUSTOMIZATION_DESTINATION_KEYBOARD_THEME)
                     },
@@ -258,7 +266,8 @@ fun SettingsScreen(
                         modifier = modifier,
                         onBack = { navigateBack() },
                         initialDestination = requestedCustomizationDestination,
-                        initialKeyboardThemeTarget = initialKeyboardThemeTarget
+                        initialKeyboardThemeTarget = initialKeyboardThemeTarget,
+                        onOpenModifiers = { navigateTo(SettingsDestination.Modifiers) }
                     )
                 }
             }
@@ -290,6 +299,25 @@ fun SettingsScreen(
             SettingsDestination.AppLanguage -> {
                 AppLanguageSettingsScreen(modifier = modifier, onBack = { navigateBack() })
             }
+            SettingsDestination.DeviceSymLayerEditor -> {
+                DeviceSymLayerEditorStubScreen(modifier = modifier, onBack = { navigateBack() })
+            }
+            SettingsDestination.Modifiers -> {
+                ModifierSettingsScreen(
+                    modifier = modifier,
+                    onBack = { navigateBack() },
+                    onOpenSymLayers = {
+                        context.startActivity(Intent(context, SymCustomizationActivity::class.java))
+                    },
+                    onOpenSymShortcuts = {
+                        openCustomization(SettingsActivity.CUSTOMIZATION_DESTINATION_LAUNCHER_SHORTCUTS)
+                    },
+                    onOpenNavMode = {
+                        requestedNavModeKeyCode = null
+                        navigateTo(SettingsDestination.NavMode)
+                    }
+                )
+            }
         }
     }
 }
@@ -305,12 +333,13 @@ private fun SettingsMainScreen(
     context: Context,
     checkingForUpdates: Boolean,
     onCheckingForUpdatesChange: (Boolean) -> Unit,
-    onKeyboardTimingClick: () -> Unit,
+    onModifiersClick: () -> Unit,
     onKeyboardsDevicesClick: () -> Unit,
     onTextInputClick: () -> Unit,
     onAccessibilityClick: () -> Unit,
     onAutoCorrectionClick: () -> Unit,
     onCustomizationClick: () -> Unit,
+    onStatusBarButtonsClick: () -> Unit,
     onKeyboardThemeClick: () -> Unit,
     onQuickLauncherClick: () -> Unit,
     onNavModeClick: () -> Unit,
@@ -365,9 +394,10 @@ private fun SettingsMainScreen(
                 onClick = onKeyboardsDevicesClick
             )
             SettingsCategoryRow(
-                icon = Icons.Filled.Timer,
-                title = stringResource(R.string.settings_category_keyboard_timing),
-                onClick = onKeyboardTimingClick
+                iconRes = R.drawable.modifier_keys_24,
+                title = stringResource(R.string.modifiers_title),
+                description = stringResource(R.string.modifiers_description),
+                onClick = onModifiersClick
             )
             SettingsCategoryRow(
                 icon = Icons.Filled.Language,
@@ -391,14 +421,8 @@ private fun SettingsMainScreen(
             SettingsGroupDivider(stringResource(R.string.settings_group_customization))
 
             SettingsCategoryRow(
-                icon = Icons.Filled.Tune,
-                title = stringResource(R.string.settings_category_customization),
-                onClick = onCustomizationClick
-            )
-            SettingsCategoryRow(
                 icon = Icons.Filled.Palette,
                 title = stringResource(R.string.keyboard_theme_title),
-                description = stringResource(R.string.keyboard_theme_description),
                 onClick = onKeyboardThemeClick
             )
             SettingsCategoryRow(
@@ -406,6 +430,17 @@ private fun SettingsMainScreen(
                 title = stringResource(R.string.app_language_title),
                 description = currentAppLanguageLabel(context),
                 onClick = onAppLanguageClick
+            )
+            SettingsCategoryRow(
+                icon = Icons.Filled.SmartButton,
+                title = stringResource(R.string.status_bar_buttons_title),
+                description = stringResource(R.string.status_bar_buttons_description),
+                onClick = onStatusBarButtonsClick
+            )
+            SettingsCategoryRow(
+                icon = Icons.Filled.Tune,
+                title = stringResource(R.string.settings_category_customization),
+                onClick = onCustomizationClick
             )
 
             SettingsGroupDivider(stringResource(R.string.settings_group_utility))
@@ -417,7 +452,7 @@ private fun SettingsMainScreen(
                 onClick = onQuickLauncherClick
             )
             SettingsCategoryRow(
-                icon = Icons.Filled.KeyboardCommandKey,
+                icon = ImageVector.vectorResource(R.drawable.navigation_24),
                 title = stringResource(R.string.nav_mode_title),
                 description = stringResource(R.string.settings_nav_mode_configure),
                 onClick = onNavModeClick
@@ -498,7 +533,8 @@ private fun SettingsMainScreen(
 
 @Composable
 private fun SettingsCategoryRow(
-    icon: ImageVector,
+    icon: ImageVector? = null,
+    iconRes: Int? = null,
     title: String,
     description: String? = null,
     enabled: Boolean = true,
@@ -507,7 +543,7 @@ private fun SettingsCategoryRow(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(if (description == null) 64.dp else 72.dp)
+            .height(if (description == null) 56.dp else 64.dp)
             .clickable(enabled = enabled, onClick = onClick)
     ) {
         Row(
@@ -517,16 +553,23 @@ private fun SettingsCategoryRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = if (enabled) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
-                modifier = Modifier.size(24.dp)
-            )
+            val iconTint = if (enabled) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.onSurfaceVariant
+            if (iconRes != null) {
+                Icon(
+                    painter = painterResource(iconRes),
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(24.dp)
+                )
+            } else if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
@@ -562,7 +605,7 @@ private fun SettingsGroupDivider(label: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {

@@ -119,9 +119,9 @@
     <string name="static_variation_preset_dev_choice">Dev’s Choice</string>
     <string name="static_variation_preset_dev_choice_description">Curated punctuation row.</string>
     <string name="static_variation_base_layer_title">Alternative Top Row Preset</string>
-    <string name="static_variation_base_layer_description">Switch the top static row between default symbols and an alternative bracket/special-character set. Shift and Alt layers stay independent.</string>
+    <string name="static_variation_base_layer_description">Switch the top static row between default symbols and an alternative bracket/special-character set. Shift and Device SYM layers stay independent.</string>
     <string name="static_variation_layer_sticky_title">Sticky Layer</string>
-    <string name="static_variation_layer_sticky_description">When Shift/Alt layer is latched by double tap, keep it active after selecting a symbol from that layer.</string>
+    <string name="static_variation_layer_sticky_description">When the Shift or Device SYM layer is latched by double tap, keep it active after selecting a symbol from that layer.</string>
     <string name="swipe_to_move_cursor">Swipe to move cursor</string>
     
     <!-- Info Section -->
@@ -171,9 +171,11 @@
     <string name="save">Save</string>
     
     <!-- SYM Customization -->
-    <string name="sym_customization_title">Customize SYM Keyboard</string>
-    <string name="sym_customization_button">Customize SYM Keyboard</string>
-    <string name="sym_customization_description">Personalize emoji mappings for the SYM keyboard. Tap on any key to change its emoji.</string>
+    <string name="sym_customization_title">Customize SYM Layers</string>
+    <string name="sym_customization_button">Customize SYM Layers</string>
+    <string name="sym_customization_description">Arrange and customize Device, Emoji, and Symbols SYM layers.</string>
+    <string name="device_sym_layer_title">Customize Device SYM Layer</string>
+    <string name="device_sym_layer_description">Device-specific secondary characters; formerly called the Alt Layer.</string>
     <string name="reset_to_default">Reset to Default</string>
     <string name="select_emoji">Select Emoji</string>
     <string name="close">Close</string>
@@ -255,7 +257,34 @@
     <string name="emoji_picker_expanded_height_title">Larger emoji picker</string>
     <string name="emoji_picker_expanded_height_description">Use about 1.5x height for the emoji search page; other SYM pages keep their normal height.</string>
     <string name="sym_swap_pages_title">Arrange SYM pages order</string>
-    <string name="sym_swap_pages_description">Set the exact cycle order for all SYM pages by dragging each row.</string>
+    <string name="sym_swap_pages_description">Drag or use the arrows to set the cycle order. The switch only controls whether an item appears in the cycle.</string>
+    <string name="sym_cycle_device_layer">Device SYM Layer</string>
+    <string name="sym_cycle_emoji_layer">Emoji Layer</string>
+    <string name="sym_cycle_symbols_layer">Symbols Layer</string>
+    <string name="sym_cycle_clipboard_panel">Clipboard</string>
+    <string name="sym_cycle_emoji_picker_panel">Emoji Picker</string>
+    <string name="sym_cycle_type_key_layer">Key layer</string>
+    <string name="sym_cycle_type_panel">Panel</string>
+    <string name="sym_move_up">Move up</string>
+    <string name="sym_move_down">Move down</string>
+    <string name="alt_binding_title">Alt character layer</string>
+    <string name="alt_binding_description">Choose which key layer Alt uses. This is independent of SYM cycle visibility.</string>
+    <string name="alt_binding_current_device">Device SYM Layer · Current input source</string>
+    <string name="alt_binding_first_key_layer">First key layer in SYM order</string>
+    <string name="modifiers_title">Modifiers</string>
+    <string name="modifiers_description">SYM layers, long press, modifier behaviour, and indicators</string>
+    <string name="modifiers_section_sym">SYM</string>
+    <string name="modifiers_section_long_press">Long press</string>
+    <string name="modifiers_section_alt_layer">Alt key</string>
+    <string name="modifiers_section_indicators">Modifier indicators</string>
+    <string name="modifiers_section_control">Control</string>
+    <string name="modifier_control_nav_mode_title">Control in Nav Mode</string>
+    <string name="modifier_control_nav_mode_description">Ctrl is currently configured as a Nav Mode modifier. Open Nav Mode to change its key assignments and behaviour.</string>
+    <string name="sym_modifiers_deeplink_description">Choose which SYM layer Alt uses in Modifier settings.</string>
+    <string name="sym_behavior_section_title">SYM behaviour and display</string>
+    <string name="sym_edit_emoji_layer_title">Edit Emoji Layer</string>
+    <string name="sym_edit_symbols_layer_title">Edit Symbols Layer</string>
+    <string name="sym_edit_layer_content_description">Edit layer</string>
     <string name="sym_order_emoji_first">Emoji first</string>
     <string name="sym_order_symbols_first">Symbols first</string>
     <string name="sym_order_clipboard_first">Clipboard first</string>
@@ -282,18 +311,20 @@
     
     <!-- Long Press Modifier Section -->
     <string name="long_press_modifier_title">Long Press Modifier</string>
-    <string name="long_press_modifier_description">Choose what long press does: Alt+key, Shift+key, character variations, or Sym mappings</string>
-    <string name="long_press_modifier_alt">Alt</string>
+    <string name="long_press_modifier_description">Choose whether long press opens a SYM layer or Variations, or applies Shift.</string>
+    <string name="long_press_modifier_alt">Device SYM Layer (formerly Alt)</string>
     <string name="long_press_modifier_shift">Shift</string>
     <string name="long_press_modifier_variations">Variations</string>
-    <string name="long_press_modifier_sym">Sym</string>
+    <string name="long_press_modifier_sym">First Emoji or Symbols Layer</string>
+    <string name="long_press_modifier_sym_symbols">Symbols Layer</string>
+    <string name="long_press_modifier_sym_emoji">Emoji Layer</string>
     <string name="modifier_tap_behaviour_title">Advanced modifier tap behaviour</string>
     <string name="shift_tap_latches_title">Single-tap locks Shift</string>
     <string name="shift_tap_latches_description">Tap Shift once to lock caps instead of one-shot uppercase.</string>
     <string name="alt_tap_latches_title">Single-tap locks Alt</string>
-    <string name="alt_tap_latches_description">Tap Alt once to keep the Alt layer active until Alt is tapped again.</string>
+    <string name="alt_tap_latches_description">Tap Alt once to keep the Device SYM layer active until Alt is tapped again.</string>
     <string name="alt_latch_stays_on_space_title">Keep locked Alt after Space</string>
-    <string name="alt_latch_stays_on_space_description">When Alt is locked, Space keeps the Alt layer active instead of ending the lock.</string>
+    <string name="alt_latch_stays_on_space_description">When Alt is locked, Space keeps the Device SYM layer active instead of ending the lock.</string>
     <string name="ctrl_tap_latches_title">Single-tap locks Ctrl</string>
     <string name="ctrl_tap_latches_description">Tap Ctrl once to keep Ctrl active until Ctrl is tapped again.</string>
     <string name="ctrl_latch_stays_on_space_title">Keep locked Ctrl after Ctrl+Space</string>
@@ -371,7 +402,7 @@
     <string name="hardware_keyboard_curated_profiles_title">Curated profiles</string>
     <string name="hardware_keyboard_profile_select_label">Keyboard profile</string>
     <string name="hardware_keyboard_custom_profiles_title">Custom profiles</string>
-    <string name="hardware_keyboard_custom_profiles_empty">Custom profiles created in the Alt Key Editor will appear here.</string>
+    <string name="hardware_keyboard_custom_profiles_empty">Custom profiles created in the Device SYM Layer Editor (formerly Alt Key Editor) will appear here.</string>
     <string name="clicks_power_keyboard_title">Clicks Power Keyboard</string>
     <string name="clicks_power_keyboard_summary">Keys, backlight, power saving, charging, and automation.</string>
     <string name="clicks_power_keyboard_stub_description">Planned controls for the BLE Power Keyboard.</string>
@@ -429,8 +460,8 @@
     <string name="hardware_profile_key_events_description">Capture and normalize model-specific scan codes and modifiers.</string>
     <string name="hardware_profile_device_controls_title">Device controls</string>
     <string name="hardware_profile_device_controls_description">Expose model-specific controls if the hardware provides them.</string>
-    <string name="alt_key_editor_title">In-App Alt Key Editor</string>
-    <string name="alt_key_editor_summary">Create custom profiles or clone a curated profile as a template.</string>
+    <string name="alt_key_editor_title">Device SYM Layer Editor</string>
+    <string name="alt_key_editor_summary">Create custom profiles or clone a curated profile as a template. Formerly Alt Key Editor.</string>
     <string name="alt_key_editor_stub_description">Custom hardware profiles created here will be selectable alongside curated profiles.</string>
     <string name="alt_key_editor_create_section">Create profile</string>
     <string name="alt_key_editor_blank_profile_title">New blank profile</string>
@@ -440,7 +471,7 @@
     <string name="alt_key_editor_scope_section">Editor scope</string>
     <string name="alt_key_editor_matching_title">Name and device matching</string>
     <string name="alt_key_editor_matching_description">Configure profile metadata and optional device-name matching.</string>
-    <string name="alt_key_editor_mappings_title">Alt and key mappings</string>
+    <string name="alt_key_editor_mappings_title">Device SYM and key mappings</string>
     <string name="alt_key_editor_mappings_description">Assign characters, modifiers, shortcuts, and Pastiera actions.</string>
     <string name="alt_key_editor_transfer_title">Import and export</string>
     <string name="alt_key_editor_transfer_description">Share custom profiles and restore them with Pastiera backups.</string>
@@ -507,6 +538,10 @@
     <string name="quick_launcher_text_field_shortcuts_title">Allow SYM+Space in text fields</string>
     <string name="quick_launcher_text_field_shortcuts_description">When enabled, the QuickLauncher can also open while the cursor is inside an app text field.</string>
     <string name="quick_launcher_text_field_shortcuts_hint">In text fields, hold SYM and press Space. SYM latch cannot trigger this because tapping SYM cycles the SYM pages.</string>
+    <string name="quick_launcher_alt_space_text_fields_title">Allow Alt+Space in text fields</string>
+    <string name="quick_launcher_alt_space_text_fields_description">Open QuickLauncher with Alt+Space instead of inserting a space. Disabled by default.</string>
+    <string name="quick_launcher_alt_shortcuts_outside_fields_title">Allow Alt shortcuts outside text fields</string>
+    <string name="quick_launcher_alt_shortcuts_outside_fields_description">Use Alt with an assigned key to launch the same app or action as its SYM key shortcut.</string>
     <string name="quick_launcher_respect_keyboard_layout_title">Use active keyboard layout</string>
     <string name="quick_launcher_respect_keyboard_layout_description">When enabled, search input follows the current Pastiera layout instead of Android’s raw QWERTY key output.</string>
     <string name="quick_launcher_typo_tolerant_ranking_title">Typo-tolerant search</string>
@@ -569,7 +604,16 @@
     
     <!-- Power Shortcuts Section -->
     <string name="power_shortcuts_title">SYM key shortcuts</string>
-    <string name="power_shortcuts_description">Press SYM and then an assigned key to launch apps or actions.</string>
+    <string name="power_shortcuts_description">Use SYM with assigned keys to launch apps and actions.</string>
+    <string name="alt_key_shortcuts_title">Alt Key Shortcuts</string>
+    <string name="alt_key_shortcuts_description">Use Alt with assigned keys to launch apps and actions.</string>
+    <string name="alt_key_shortcuts_modifier_link_description">Configure Alt shortcuts and text-field access.</string>
+    <string name="key_shortcuts_allow_in_text_fields_title">Allow in text fields</string>
+    <string name="sym_shortcuts_in_text_fields_description">Also use assigned SYM shortcuts while typing.</string>
+    <string name="alt_shortcuts_in_text_fields_description">Also use assigned Alt shortcuts while typing.</string>
+    <string name="sym_shortcuts_compatibility_info">About SYM key compatibility</string>
+    <string name="sym_shortcuts_compatibility_title">SYM key compatibility</string>
+    <string name="sym_shortcuts_compatibility_description">SYM key shortcuts require a keyboard that exposes SYM as a modifier to Android. They cannot currently work with keyboards whose firmware converts SYM combinations into final characters or navigation events before Pastiera receives them. This includes the Clicks Power Keyboard’s current SYM behaviour.</string>
     <string name="power_shortcuts_press_key">Press shortcut key to launch</string>
     
     <!-- Notification Helper -->
@@ -997,6 +1041,8 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="tutorial_typing_sound_demo_description">Choose a sound style and type below to hear it immediately.</string>
     <string name="tutorial_typing_sound_demo_input_label">Try typing here</string>
     <string name="tutorial_sym_emoji_button">SYM / Emoji</string>
+    <string name="tutorial_device_sym_layer_title">Alt Layer is now Device SYM Layer</string>
+    <string name="tutorial_device_sym_layer_description">Pastiera now calls the device-specific secondary-character mapping the Device SYM Layer. Alt remains the modifier key that can trigger it; Emoji and Symbols are additional SYM layers.</string>
     <string name="tutorial_variations_button">Variations</string>
     <string name="tutorial_status_bar_button">Status bar</string>
     <string name="tutorial_page_ready_title">Ready to Start</string>
@@ -1237,8 +1283,13 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="trackpad_debug_service_description">Displays trackpad events in a small overlay for debugging purposes</string>
 
     <!-- Status Bar Buttons Configuration -->
-    <string name="status_bar_buttons_title">Status Bar Buttons</string>
-    <string name="status_bar_buttons_description">Customize status bar buttons</string>
+    <string name="status_bar_buttons_title">Status Bar</string>
+    <string name="status_bar_buttons_description">Configure the Status Bar and Pastierina Mode.</string>
+    <string name="status_bar_style_section">Status bar style</string>
+    <string name="extended_status_bar_title">Extended Status Bar</string>
+    <string name="extended_status_bar_features_section">Extended features</string>
+    <string name="status_bar_buttons_section">Buttons</string>
+    <string name="pastierina_preview_suggestions">Suggestions</string>
     <string name="status_bar_slot_left">Left Slot</string>
     <string name="status_bar_slot_right_1">Right Slot 1</string>
     <string name="status_bar_slot_right_2">Right Slot 2</string>
@@ -1284,9 +1335,9 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="dynamic_variation_resize_to_content_description">When enabled, dynamic entries fill the available row based on how many are shown. When off, entries keep the slot size from the slider and stay left-aligned.</string>
     <string name="modifier_indicators_title">Modifier indicators</string>
     <string name="modifier_indicators_description">Choose where Shift, Ctrl, Alt, and SYM state appears for the hardware keyboard.</string>
-    <string name="modifier_indicators_bottom_strip">Bottom strip</string>
-    <string name="modifier_indicators_bottom_strip_description">Thin indicator strip below Pastiera.</string>
-    <string name="modifier_indicators_menu_bar">Menu bar</string>
+    <string name="modifier_indicators_bottom_strip">Bottom Strip LEDs</string>
+    <string name="modifier_indicators_bottom_strip_description">Colored modifier LEDs in the strip below Pastiera.</string>
+    <string name="modifier_indicators_menu_bar">Menubar</string>
     <string name="modifier_indicators_menu_bar_description">One compact icon in Android\'s top statusbar.</string>
     <string name="modifier_indicators_status_bar">Statusbar</string>
     <string name="modifier_indicators_status_bar_description">Compact symbols at the left edge of the Pastiera statusbar.</string>

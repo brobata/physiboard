@@ -38,7 +38,6 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.SmartButton
-import androidx.compose.material.icons.filled.SpaceBar
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -81,16 +80,11 @@ fun CustomizationSettingsScreen(
     modifier: Modifier = Modifier,
     onBack: () -> Unit,
     initialDestination: String? = null,
-    initialKeyboardThemeTarget: String? = null
+    initialKeyboardThemeTarget: String? = null,
+    onOpenModifiers: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val prefs = remember { SettingsManager.getPreferences(context) }
-    var pastierinaModeEnabled by remember {
-        mutableStateOf(
-            SettingsManager.getStatusBarPresentationMode(context) ==
-                SettingsManager.StatusBarPresentationMode.PASTIERINA
-        )
-    }
     var launcherShortcutsEnabled by remember {
         mutableStateOf(SettingsManager.getLauncherShortcutsEnabled(context))
     }
@@ -105,6 +99,12 @@ fun CustomizationSettingsScreen(
     }
     var quickLauncherTextFieldShortcuts by remember {
         mutableStateOf(SettingsManager.getQuickLauncherTextFieldShortcuts(context))
+    }
+    var quickLauncherAltSpaceInTextFields by remember {
+        mutableStateOf(SettingsManager.getQuickLauncherAltSpaceInTextFields(context))
+    }
+    var quickLauncherAltShortcutsOutsideTextFields by remember {
+        mutableStateOf(SettingsManager.getQuickLauncherAltShortcutsOutsideTextFields(context))
     }
     var quickLauncherRespectKeyboardLayout by remember {
         mutableStateOf(SettingsManager.getQuickLauncherRespectKeyboardLayout(context))
@@ -183,11 +183,6 @@ fun CustomizationSettingsScreen(
     DisposableEffect(prefs) {
         val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
             when (key) {
-                "pastierina_mode_override" -> {
-                    pastierinaModeEnabled =
-                        SettingsManager.getStatusBarPresentationMode(context) ==
-                            SettingsManager.StatusBarPresentationMode.PASTIERINA
-                }
                 "launcher_shortcuts_enabled" -> {
                     launcherShortcutsEnabled = SettingsManager.getLauncherShortcutsEnabled(context)
                 }
@@ -202,6 +197,13 @@ fun CustomizationSettingsScreen(
                 }
                 "quick_launcher_text_field_shortcuts" -> {
                     quickLauncherTextFieldShortcuts = SettingsManager.getQuickLauncherTextFieldShortcuts(context)
+                }
+                "quick_launcher_alt_space_in_text_fields" -> {
+                    quickLauncherAltSpaceInTextFields = SettingsManager.getQuickLauncherAltSpaceInTextFields(context)
+                }
+                "quick_launcher_alt_shortcuts_outside_text_fields" -> {
+                    quickLauncherAltShortcutsOutsideTextFields =
+                        SettingsManager.getQuickLauncherAltShortcutsOutsideTextFields(context)
                 }
                 "quick_launcher_respect_keyboard_layout" -> {
                     quickLauncherRespectKeyboardLayout = SettingsManager.getQuickLauncherRespectKeyboardLayout(context)
@@ -299,7 +301,7 @@ fun CustomizationSettingsScreen(
             }
         },
         label = "customization_navigation",
-        contentKey = { it::class }
+        contentKey = { it }
     ) { destination ->
         when (destination) {
             CustomizationDestination.Main -> {
@@ -339,62 +341,6 @@ fun CustomizationSettingsScreen(
                             .padding(paddingValues)
                             .verticalScroll(rememberScrollState())
                     ) {
-                        // SYM Customization
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(64.dp)
-                                .clickable {
-                                    val intent = Intent(context, SymCustomizationActivity::class.java).apply {
-                                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                                    }
-                                    context.startActivity(intent)
-                                    (context as? Activity)?.let { activity ->
-                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                                            activity.overrideActivityTransition(
-                                                Activity.OVERRIDE_TRANSITION_OPEN,
-                                                R.anim.slide_in_from_right,
-                                                0
-                                            )
-                                        } else {
-                                            @Suppress("DEPRECATION")
-                                            activity.overridePendingTransition(
-                                                R.anim.slide_in_from_right,
-                                                0
-                                            )
-                                        }
-                                    }
-                                }
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.ic_emoji_symbols_24),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = stringResource(R.string.sym_customization_title),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Medium,
-                                        maxLines = 1
-                                    )
-                                }
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    
                         // Variations Customization
                         Surface(
                             modifier = Modifier
@@ -431,48 +377,6 @@ fun CustomizationSettingsScreen(
                             }
                         }
                     
-                        // Status Bar Buttons Settings
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(64.dp)
-                                .clickable { navigateTo(CustomizationDestination.StatusBarButtons) }
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.SmartButton,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = stringResource(R.string.status_bar_buttons_title),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Medium,
-                                        maxLines = 1
-                                    )
-                                    Text(
-                                        text = stringResource(R.string.status_bar_buttons_description),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1
-                                    )
-                                }
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-
                         // Sound Settings
                         Surface(
                             modifier = Modifier
@@ -515,54 +419,6 @@ fun CustomizationSettingsScreen(
                             }
                         }
 
-                        // Pastierina Mode toggle
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(72.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.SpaceBar,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = stringResource(R.string.pastierina_mode_title),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Medium,
-                                        maxLines = 1
-                                    )
-                                    Text(
-                                        text = stringResource(R.string.pastierina_mode_description),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1
-                                    )
-                                }
-                                Switch(
-                                    checked = pastierinaModeEnabled,
-                                    onCheckedChange = { checked ->
-                                        pastierinaModeEnabled = checked
-                                        val mode = if (checked) {
-                                            SettingsManager.StatusBarPresentationMode.PASTIERINA
-                                        } else {
-                                            SettingsManager.StatusBarPresentationMode.FULL_STATUS_BAR
-                                        }
-                                        SettingsManager.setStatusBarPresentationMode(context, mode)
-                                    }
-                                )
-                            }
-                        }
-
                     }
                 }
             }
@@ -598,15 +454,20 @@ fun CustomizationSettingsScreen(
                         powerShortcutsEnabled = enabled
                         SettingsManager.setPowerShortcutsEnabled(context, enabled)
                     },
-                    quickLauncherAutoStartSingle = quickLauncherAutoStartSingle,
-                    onQuickLauncherAutoStartSingleChanged = { enabled ->
-                        quickLauncherAutoStartSingle = enabled
-                        SettingsManager.setQuickLauncherAutoStartSingle(context, enabled)
+                    symShortcutsInTextFields = quickLauncherTextFieldShortcuts,
+                    onSymShortcutsInTextFieldsChanged = { enabled ->
+                        quickLauncherTextFieldShortcuts = enabled
+                        SettingsManager.setQuickLauncherTextFieldShortcuts(context, enabled)
                     },
-                    quickLauncherLimitResults = quickLauncherLimitResults,
-                    onQuickLauncherLimitResultsChanged = { enabled ->
-                        quickLauncherLimitResults = enabled
-                        SettingsManager.setQuickLauncherLimitResults(context, enabled)
+                    altKeyShortcutsEnabled = quickLauncherAltShortcutsOutsideTextFields,
+                    onAltKeyShortcutsEnabledChanged = { enabled ->
+                        quickLauncherAltShortcutsOutsideTextFields = enabled
+                        SettingsManager.setQuickLauncherAltShortcutsOutsideTextFields(context, enabled)
+                    },
+                    altShortcutsInTextFields = quickLauncherAltSpaceInTextFields,
+                    onAltShortcutsInTextFieldsChanged = { enabled ->
+                        quickLauncherAltSpaceInTextFields = enabled
+                        SettingsManager.setQuickLauncherAltSpaceInTextFields(context, enabled)
                     },
                     quickLauncherDefaultBlocked = quickLauncherDefaultBlocked,
                     quickLauncherShortcutKey = quickLauncherShortcutKey,
@@ -629,11 +490,6 @@ fun CustomizationSettingsScreen(
                     onQuickLauncherLimitResultsChanged = { enabled ->
                         quickLauncherLimitResults = enabled
                         SettingsManager.setQuickLauncherLimitResults(context, enabled)
-                    },
-                    quickLauncherTextFieldShortcuts = quickLauncherTextFieldShortcuts,
-                    onQuickLauncherTextFieldShortcutsChanged = { enabled ->
-                        quickLauncherTextFieldShortcuts = enabled
-                        SettingsManager.setQuickLauncherTextFieldShortcuts(context, enabled)
                     },
                     quickLauncherRespectKeyboardLayout = quickLauncherRespectKeyboardLayout,
                     onQuickLauncherRespectKeyboardLayoutChanged = { enabled ->
@@ -721,7 +577,8 @@ fun CustomizationSettingsScreen(
                 StatusBarButtonsScreen(
                     modifier = modifier,
                     onBack = { navigateBack() },
-                    onCustomizeVariations = { navigateTo(CustomizationDestination.Variations) }
+                    onCustomizeVariations = { navigateTo(CustomizationDestination.Variations) },
+                    onOpenModifiers = onOpenModifiers
                 )
             }
 
@@ -755,10 +612,12 @@ private fun StarterLauncherShortcutsSettingsScreen(
     onLauncherShortcutsEnabledChanged: (Boolean) -> Unit,
     powerShortcutsEnabled: Boolean,
     onPowerShortcutsEnabledChanged: (Boolean) -> Unit,
-    quickLauncherAutoStartSingle: Boolean,
-    onQuickLauncherAutoStartSingleChanged: (Boolean) -> Unit,
-    quickLauncherLimitResults: Boolean,
-    onQuickLauncherLimitResultsChanged: (Boolean) -> Unit,
+    symShortcutsInTextFields: Boolean,
+    onSymShortcutsInTextFieldsChanged: (Boolean) -> Unit,
+    altKeyShortcutsEnabled: Boolean,
+    onAltKeyShortcutsEnabledChanged: (Boolean) -> Unit,
+    altShortcutsInTextFields: Boolean,
+    onAltShortcutsInTextFieldsChanged: (Boolean) -> Unit,
     quickLauncherDefaultBlocked: Boolean,
     quickLauncherShortcutKey: Int?,
     onOpenBehavior: () -> Unit,
@@ -800,8 +659,8 @@ private fun StarterLauncherShortcutsSettingsScreen(
                 .fillMaxWidth()
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Text(
                 text = stringResource(R.string.starter_launcher_shortcuts_intro),
@@ -853,6 +712,41 @@ private fun StarterLauncherShortcutsSettingsScreen(
                 checked = powerShortcutsEnabled,
                 onCheckedChange = onPowerShortcutsEnabledChanged
             )
+            if (powerShortcutsEnabled) {
+                LauncherShortcutTriggerRow(
+                    icon = {},
+                    title = stringResource(R.string.key_shortcuts_allow_in_text_fields_title),
+                    description = stringResource(R.string.sym_shortcuts_in_text_fields_description),
+                    checked = symShortcutsInTextFields,
+                    onCheckedChange = onSymShortcutsInTextFieldsChanged,
+                    indent = true
+                )
+            }
+
+            LauncherShortcutTriggerRow(
+                icon = {
+                    Icon(
+                        painter = painterResource(R.drawable.keyboard_option_key_24),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                },
+                title = stringResource(R.string.alt_key_shortcuts_title),
+                description = stringResource(R.string.alt_key_shortcuts_description),
+                checked = altKeyShortcutsEnabled,
+                onCheckedChange = onAltKeyShortcutsEnabledChanged
+            )
+            if (altKeyShortcutsEnabled) {
+                LauncherShortcutTriggerRow(
+                    icon = {},
+                    title = stringResource(R.string.key_shortcuts_allow_in_text_fields_title),
+                    description = stringResource(R.string.alt_shortcuts_in_text_fields_description),
+                    checked = altShortcutsInTextFields,
+                    onCheckedChange = onAltShortcutsInTextFieldsChanged,
+                    indent = true
+                )
+            }
 
             StarterLauncherNavigationRow(
                 icon = {
@@ -915,8 +809,6 @@ private fun StarterLauncherBehaviorScreen(
     onQuickLauncherAutoStartSingleChanged: (Boolean) -> Unit,
     quickLauncherLimitResults: Boolean,
     onQuickLauncherLimitResultsChanged: (Boolean) -> Unit,
-    quickLauncherTextFieldShortcuts: Boolean,
-    onQuickLauncherTextFieldShortcutsChanged: (Boolean) -> Unit,
     quickLauncherRespectKeyboardLayout: Boolean,
     onQuickLauncherRespectKeyboardLayoutChanged: (Boolean) -> Unit,
     quickLauncherTypoTolerantRanking: Boolean,
@@ -1004,13 +896,6 @@ private fun StarterLauncherBehaviorScreen(
             description = stringResource(R.string.quick_launcher_limit_results_description),
             checked = quickLauncherLimitResults,
             onCheckedChange = onQuickLauncherLimitResultsChanged
-        )
-        LauncherShortcutTriggerRow(
-            icon = { SettingsRowKeyboardIcon() },
-            title = stringResource(R.string.quick_launcher_text_field_shortcuts_title),
-            description = stringResource(R.string.quick_launcher_text_field_shortcuts_description),
-            checked = quickLauncherTextFieldShortcuts,
-            onCheckedChange = onQuickLauncherTextFieldShortcutsChanged
         )
         LauncherShortcutTriggerRow(
             icon = { SettingsRowKeyboardIcon() },
@@ -2032,8 +1917,8 @@ private fun StarterLauncherSubScreen(
                 .fillMaxWidth()
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
             content = content
         )
     }
@@ -2045,7 +1930,8 @@ private fun LauncherShortcutTriggerRow(
     title: String,
     description: String,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
+    indent: Boolean = false
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -2055,11 +1941,18 @@ private fun LauncherShortcutTriggerRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+                .padding(
+                    start = if (indent) 48.dp else 12.dp,
+                    end = 12.dp,
+                    top = 8.dp,
+                    bottom = 8.dp
+                ),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            icon()
+            if (!indent) {
+                icon()
+            }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,

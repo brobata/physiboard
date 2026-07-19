@@ -362,7 +362,7 @@ private fun ClicksSettingsSwitchRow(
 }
 
 @Composable
-fun AltKeyEditorStubScreen(
+fun DeviceSymLayerEditorStubScreen(
     modifier: Modifier = Modifier,
     onBack: () -> Unit
 ) {

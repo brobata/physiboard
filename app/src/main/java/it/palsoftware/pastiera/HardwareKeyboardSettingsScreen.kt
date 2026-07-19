@@ -68,9 +68,9 @@ fun HardwareKeyboardSettingsScreen(
         HardwareKeyboardDestination.Main -> HardwareKeyboardListScreen(
             modifier = modifier,
             onBack = onBack,
-            onAltKeyEditor = { destination = HardwareKeyboardDestination.AltKeyEditor }
+            onDeviceSymLayerEditor = { destination = HardwareKeyboardDestination.DeviceSymLayerEditor }
         )
-        HardwareKeyboardDestination.AltKeyEditor -> AltKeyEditorStubScreen(
+        HardwareKeyboardDestination.DeviceSymLayerEditor -> DeviceSymLayerEditorStubScreen(
             modifier = modifier,
             onBack = { destination = HardwareKeyboardDestination.Main }
         )
@@ -79,7 +79,7 @@ fun HardwareKeyboardSettingsScreen(
 
 private enum class HardwareKeyboardDestination {
     Main,
-    AltKeyEditor
+    DeviceSymLayerEditor
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -87,7 +87,7 @@ private enum class HardwareKeyboardDestination {
 private fun HardwareKeyboardListScreen(
     modifier: Modifier = Modifier,
     onBack: () -> Unit,
-    onAltKeyEditor: () -> Unit
+    onDeviceSymLayerEditor: () -> Unit
 ) {
     val context = LocalContext.current
     var selectedProfile by remember {
@@ -247,7 +247,7 @@ private fun HardwareKeyboardListScreen(
                 description = stringResource(R.string.alt_key_editor_summary),
                 icon = Icons.Filled.Edit,
                 status = FeatureStatus.Construction,
-                onClick = onAltKeyEditor
+                onClick = onDeviceSymLayerEditor
             )
 
             HardwareKeyboardSectionDivider(stringResource(R.string.hardware_keyboard_behavior_title))

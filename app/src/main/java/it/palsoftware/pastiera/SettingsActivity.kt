@@ -12,6 +12,8 @@ class SettingsActivity : LocalizedComponentActivity() {
     companion object {
         const val EXTRA_DESTINATION = "it.palsoftware.pastiera.SETTINGS_DESTINATION"
         const val DESTINATION_CUSTOMIZATION = "customization"
+        const val DESTINATION_DEVICE_SYM_LAYER_EDITOR = "device_sym_layer_editor"
+        const val DESTINATION_MODIFIERS = "modifiers"
         const val EXTRA_CUSTOMIZATION_DESTINATION = "it.palsoftware.pastiera.CUSTOMIZATION_DESTINATION"
         const val CUSTOMIZATION_DESTINATION_VARIATIONS = "variations"
         const val CUSTOMIZATION_DESTINATION_LAUNCHER_SHORTCUTS = "launcher_shortcuts"

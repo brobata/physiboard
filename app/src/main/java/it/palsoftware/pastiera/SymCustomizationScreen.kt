@@ -1,7 +1,10 @@
 package it.palsoftware.pastiera
 
 import android.content.Context
+import android.content.Intent
 import android.view.KeyEvent
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.rememberScrollState
@@ -26,16 +29,22 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.DragHandle
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.inputmethod.StatusBarController
+import kotlinx.coroutines.launch
 
 /**
  * Screen for customizing SYM mappings.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SymCustomizationScreen(
     modifier: Modifier = Modifier,
@@ -47,6 +56,8 @@ fun SymCustomizationScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val screenScrollState = rememberScrollState()
     
     // Load saved auto-close SYM value
     var symAutoClose by remember { 
@@ -82,11 +93,24 @@ fun SymCustomizationScreen(
         persistSymPagesConfig(symPagesConfig.copy(symPageOrder = mutable))
     }
     fun symPageTitle(pageId: String): String = when (pageId) {
-        SymPagesConfig.PAGE_EMOJI -> context.getString(R.string.sym_enable_emoji_page_title)
-        SymPagesConfig.PAGE_SYMBOLS -> context.getString(R.string.sym_enable_symbols_page_title)
-        SymPagesConfig.PAGE_CLIPBOARD -> context.getString(R.string.sym_enable_clipboard_page_title)
-        SymPagesConfig.PAGE_EMOJI_PICKER -> context.getString(R.string.sym_enable_emoji_picker_page_title)
+        SymPagesConfig.PAGE_DEVICE -> context.getString(R.string.sym_cycle_device_layer)
+        SymPagesConfig.PAGE_EMOJI -> context.getString(R.string.sym_cycle_emoji_layer)
+        SymPagesConfig.PAGE_SYMBOLS -> context.getString(R.string.sym_cycle_symbols_layer)
+        SymPagesConfig.PAGE_CLIPBOARD -> context.getString(R.string.sym_cycle_clipboard_panel)
+        SymPagesConfig.PAGE_EMOJI_PICKER -> context.getString(R.string.sym_cycle_emoji_picker_panel)
         else -> pageId
+    }
+    fun setPageEnabled(pageId: String, enabled: Boolean) {
+        persistSymPagesConfig(
+            when (pageId) {
+                SymPagesConfig.PAGE_DEVICE -> symPagesConfig.copy(deviceEnabled = enabled)
+                SymPagesConfig.PAGE_EMOJI -> symPagesConfig.copy(emojiEnabled = enabled)
+                SymPagesConfig.PAGE_SYMBOLS -> symPagesConfig.copy(symbolsEnabled = enabled)
+                SymPagesConfig.PAGE_CLIPBOARD -> symPagesConfig.copy(clipboardEnabled = enabled)
+                SymPagesConfig.PAGE_EMOJI_PICKER -> symPagesConfig.copy(emojiPickerEnabled = enabled)
+                else -> symPagesConfig
+            }
+        )
     }
     var draggingPageId by remember { mutableStateOf<String?>(null) }
     var dragStartIndex by remember { mutableStateOf<Int?>(null) }
@@ -109,6 +133,9 @@ fun SymCustomizationScreen(
     // Selected tab (0 = Emoji, 1 = Characters)
     var selectedTab by remember {
         mutableStateOf(if (initialPage == 2) 1 else 0)
+    }
+    var editingLayerPage by remember {
+        mutableStateOf(initialPage.takeIf { it == 1 || it == 2 })
     }
     
     // Helper to load mappings from JSON
@@ -239,6 +266,10 @@ fun SymCustomizationScreen(
             showEmojiPicker = true
         }
     }
+
+    BackHandler(enabled = editingLayerPage != null) {
+        editingLayerPage = null
+    }
     
     Scaffold(
         topBar = {
@@ -254,14 +285,20 @@ fun SymCustomizationScreen(
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = {
+                        if (editingLayerPage != null) editingLayerPage = null else onBack()
+                    }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.settings_back_content_description)
                         )
                     }
                     Text(
-                        text = stringResource(R.string.sym_customize_title),
+                        text = when (editingLayerPage) {
+                            1 -> stringResource(R.string.sym_edit_emoji_layer_title)
+                            2 -> stringResource(R.string.sym_edit_symbols_layer_title)
+                            else -> stringResource(R.string.sym_customize_title)
+                        },
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.padding(start = 8.dp)
@@ -274,10 +311,206 @@ fun SymCustomizationScreen(
             modifier = modifier
                 .fillMaxWidth()
                 .padding(paddingValues)
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(screenScrollState),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+        if (editingLayerPage == null) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Keyboard,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.sym_swap_pages_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1
+                        )
+                        Text(
+                            text = stringResource(R.string.sym_swap_pages_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2
+                        )
+                    }
+                }
+
+                normalizedSymPageOrder.forEachIndexed { index, pageId ->
+                    val enabled = symPagesConfig.isPageEnabled(pageId)
+                    val isDragging = draggingPageId == pageId
+                    val isDropTarget = dropTargetIndex == index && !isDragging && draggingPageId != null
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        tonalElevation = if (isDragging) 6.dp else 1.dp,
+                        color = if (isDropTarget) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface,
+                        shape = MaterialTheme.shapes.small
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                                .graphicsLayer {
+                                    translationY = if (isDragging) dragOffsetY else 0f
+                                    scaleX = if (isDragging) 1.02f else 1f
+                                    scaleY = if (isDragging) 1.02f else 1f
+                                }
+                                .shadow(if (isDragging) 8.dp else 0.dp, MaterialTheme.shapes.small)
+                                .zIndex(if (isDragging) 1f else 0f),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.DragHandle,
+                                contentDescription = null,
+                                tint = if (isDragging) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.pointerInput(pageId, normalizedSymPageOrder) {
+                                    detectDragGesturesAfterLongPress(
+                                        onDragStart = {
+                                            draggingPageId = pageId
+                                            dragStartIndex = index
+                                            dropTargetIndex = index
+                                            dragOffsetY = 0f
+                                        },
+                                        onDragCancel = { endPageOrderDrag() },
+                                        onDragEnd = { endPageOrderDrag() },
+                                        onDrag = { change, dragAmount ->
+                                            change.consume()
+                                            val start = dragStartIndex ?: return@detectDragGesturesAfterLongPress
+                                            dragOffsetY += dragAmount.y
+                                            val deltaSlots = (dragOffsetY / rowStepPx).toInt()
+                                            dropTargetIndex = (start + deltaSlots)
+                                                .coerceIn(0, normalizedSymPageOrder.lastIndex)
+                                        }
+                                    )
+                                }
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = symPageTitle(pageId),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = stringResource(
+                                        if (pageId == SymPagesConfig.PAGE_CLIPBOARD ||
+                                            pageId == SymPagesConfig.PAGE_EMOJI_PICKER
+                                        ) R.string.sym_cycle_type_panel else R.string.sym_cycle_type_key_layer
+                                    ),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            if (pageId == SymPagesConfig.PAGE_DEVICE) {
+                                FeatureStatusIcon(FeatureStatus.Construction)
+                            }
+                            if (pageId == SymPagesConfig.PAGE_DEVICE ||
+                                pageId == SymPagesConfig.PAGE_EMOJI ||
+                                pageId == SymPagesConfig.PAGE_SYMBOLS
+                            ) {
+                                IconButton(onClick = {
+                                    when (pageId) {
+                                        SymPagesConfig.PAGE_DEVICE -> context.startActivity(
+                                            Intent(context, SettingsActivity::class.java).apply {
+                                                putExtra(
+                                                    SettingsActivity.EXTRA_DESTINATION,
+                                                    SettingsActivity.DESTINATION_DEVICE_SYM_LAYER_EDITOR
+                                                )
+                                            }
+                                        )
+                                        SymPagesConfig.PAGE_EMOJI -> {
+                                            selectedTab = 0
+                                            editingLayerPage = 1
+                                            coroutineScope.launch { screenScrollState.animateScrollTo(0) }
+                                        }
+                                        SymPagesConfig.PAGE_SYMBOLS -> {
+                                            selectedTab = 1
+                                            editingLayerPage = 2
+                                            coroutineScope.launch { screenScrollState.animateScrollTo(0) }
+                                        }
+                                    }
+                                }) {
+                                    Icon(
+                                        Icons.Filled.Edit,
+                                        contentDescription = stringResource(R.string.sym_edit_layer_content_description)
+                                    )
+                                }
+                            }
+                            IconButton(
+                                onClick = { movePageOrderItem(index, index - 1) },
+                                enabled = index > 0
+                            ) {
+                                Icon(Icons.Filled.KeyboardArrowUp, contentDescription = stringResource(R.string.sym_move_up))
+                            }
+                            IconButton(
+                                onClick = { movePageOrderItem(index, index + 1) },
+                                enabled = index < normalizedSymPageOrder.lastIndex
+                            ) {
+                                Icon(Icons.Filled.KeyboardArrowDown, contentDescription = stringResource(R.string.sym_move_down))
+                            }
+                            Switch(
+                                checked = enabled,
+                                onCheckedChange = { setPageEnabled(pageId, it) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
         
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
+                    context.startActivity(
+                        Intent(context, SettingsActivity::class.java).apply {
+                            putExtra(SettingsActivity.EXTRA_DESTINATION, SettingsActivity.DESTINATION_MODIFIERS)
+                        }
+                    )
+                }
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(Icons.Filled.Keyboard, null, tint = MaterialTheme.colorScheme.primary)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.alt_binding_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        stringResource(R.string.sym_modifiers_deeplink_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Icon(Icons.AutoMirrored.Filled.ArrowForward, null)
+            }
+        }
+
+        SettingsSectionDivider(stringResource(R.string.sym_behavior_section_title))
+
+
         // Auto-Close SYM Layout option (in alto)
         Surface(
             modifier = Modifier
@@ -365,26 +598,15 @@ fun SymCustomizationScreen(
 
         HorizontalDivider()
         
-        // Tab selector (visualizzazione del layout)
-        TabRow(selectedTabIndex = selectedTab) {
-            Tab(
-                selected = selectedTab == 0,
-                onClick = { selectedTab = 0 },
-                text = { Text(stringResource(R.string.sym_tab_emoji)) }
-            )
-            Tab(
-                selected = selectedTab == 1,
-                onClick = { selectedTab = 1 },
-                text = { Text(stringResource(R.string.sym_tab_characters)) }
-            )
         }
-        
+
+        if (editingLayerPage != null) {
         // Customizable keyboard grid - uses the same layout as the real keyboard
         val statusBarController = remember { StatusBarController(context) }
         
         // Show the grid based on the selected tab
-        when (selectedTab) {
-            0 -> {
+        when (editingLayerPage) {
+            1 -> {
                 // Emoji tab
                 key(symMappingsPage1, titan2LayoutEnabled) {
                     AndroidView(
@@ -401,7 +623,7 @@ fun SymCustomizationScreen(
                     )
                 }
             }
-            1 -> {
+            2 -> {
                 // Characters tab
                 key(symMappingsPage2, titan2LayoutEnabled) {
                     AndroidView(
@@ -425,7 +647,7 @@ fun SymCustomizationScreen(
         // Reset button (ripristina predefiniti)
         Button(
             onClick = {
-                resetPage = selectedTab + 1 // 1 for emoji tab, 2 for characters tab
+                resetPage = editingLayerPage ?: 1
                 showResetConfirmDialog = true
             },
             modifier = Modifier
@@ -442,7 +664,9 @@ fun SymCustomizationScreen(
             )
         }
         
-        HorizontalDivider()
+        }
+
+        if (editingLayerPage == null) {
 
         Surface(
             modifier = Modifier
@@ -486,298 +710,10 @@ fun SymCustomizationScreen(
             }
         }
         
-        // Emoji page toggle
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(64.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Keyboard,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.sym_enable_emoji_page_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1
-                    )
-                    Text(
-                        text = stringResource(R.string.sym_enable_emoji_page_description),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2
-                    )
-                }
-                Switch(
-                    checked = symPagesConfig.emojiEnabled,
-                    onCheckedChange = { enabled ->
-                        persistSymPagesConfig(symPagesConfig.copy(emojiEnabled = enabled))
-                    }
-                )
-            }
-        }
-        
-        // Symbols page toggle
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(64.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Keyboard,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.sym_enable_symbols_page_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1
-                    )
-                    Text(
-                        text = stringResource(R.string.sym_enable_symbols_page_description),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2
-                    )
-                }
-                Switch(
-                    checked = symPagesConfig.symbolsEnabled,
-                    onCheckedChange = { enabled ->
-                        persistSymPagesConfig(symPagesConfig.copy(symbolsEnabled = enabled))
-                    }
-                )
-            }
+        HorizontalDivider()
+
         }
 
-        // Clipboard page toggle
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(64.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Keyboard,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.sym_enable_clipboard_page_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1
-                    )
-                    Text(
-                        text = stringResource(R.string.sym_enable_clipboard_page_description),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2
-                    )
-                }
-                Switch(
-                    checked = symPagesConfig.clipboardEnabled,
-                    onCheckedChange = { enabled ->
-                        persistSymPagesConfig(symPagesConfig.copy(clipboardEnabled = enabled))
-                    }
-                )
-            }
-        }
-
-        // Emoji picker page toggle
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(64.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Keyboard,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.sym_enable_emoji_picker_page_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1
-                    )
-                    Text(
-                        text = stringResource(R.string.sym_enable_emoji_picker_page_description),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2
-                    )
-                }
-                Switch(
-                    checked = symPagesConfig.emojiPickerEnabled,
-                    onCheckedChange = { enabled ->
-                        persistSymPagesConfig(symPagesConfig.copy(emojiPickerEnabled = enabled))
-                    }
-                )
-            }
-        }
-
-        // Page order control
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Keyboard,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.sym_swap_pages_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1
-                        )
-                        Text(
-                            text = stringResource(R.string.sym_swap_pages_description),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2
-                        )
-                    }
-                }
-
-                normalizedSymPageOrder.forEachIndexed { index, pageId ->
-                    val enabled = symPagesConfig.isPageEnabled(pageId)
-                    val isDragging = draggingPageId == pageId
-                    val isDropTarget = dropTargetIndex == index && !isDragging && draggingPageId != null
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        tonalElevation = if (isDragging) 6.dp else 1.dp,
-                        color = if (isDropTarget) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface,
-                        shape = MaterialTheme.shapes.small
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 8.dp)
-                                .pointerInput(pageId, normalizedSymPageOrder) {
-                                    detectDragGesturesAfterLongPress(
-                                        onDragStart = {
-                                            draggingPageId = pageId
-                                            dragStartIndex = index
-                                            dropTargetIndex = index
-                                            dragOffsetY = 0f
-                                        },
-                                        onDragCancel = {
-                                            endPageOrderDrag()
-                                        },
-                                        onDragEnd = {
-                                            endPageOrderDrag()
-                                        },
-                                        onDrag = { change, dragAmount ->
-                                            change.consume()
-                                            val start = dragStartIndex ?: return@detectDragGesturesAfterLongPress
-                                            dragOffsetY += dragAmount.y
-                                            val deltaSlots = (dragOffsetY / rowStepPx).toInt()
-                                            val target = (start + deltaSlots).coerceIn(0, normalizedSymPageOrder.lastIndex)
-                                            dropTargetIndex = target
-                                        }
-                                    )
-                                }
-                                .graphicsLayer {
-                                    translationY = if (isDragging) dragOffsetY else 0f
-                                    scaleX = if (isDragging) 1.02f else 1f
-                                    scaleY = if (isDragging) 1.02f else 1f
-                                }
-                                .shadow(if (isDragging) 8.dp else 0.dp, MaterialTheme.shapes.small)
-                                .zIndex(if (isDragging) 1f else 0f),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.DragHandle,
-                                contentDescription = null,
-                                tint = if (isDragging) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = "${index + 1}.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = symPageTitle(pageId),
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.weight(1f)
-                            )
-                            Text(
-                                text = if (enabled) "On" else "Off",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            TextButton(
-                                onClick = { movePageOrderItem(index, index - 1) },
-                                enabled = index > 0
-                            ) {
-                                Text("↑")
-                            }
-                            TextButton(
-                                onClick = { movePageOrderItem(index, index + 1) },
-                                enabled = index < normalizedSymPageOrder.lastIndex
-                            ) {
-                                Text("↓")
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        
         // Emoji picker dialog
         if (showEmojiPicker && selectedKeyCode != null) {
             val selectedLetter = getLetterFromKeyCode(selectedKeyCode!!)

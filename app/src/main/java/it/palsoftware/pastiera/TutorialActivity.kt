@@ -1995,6 +1995,8 @@ fun TutorialCustomizationPageContent(
         "shift" -> stringResource(R.string.long_press_modifier_shift)
         "variations" -> stringResource(R.string.long_press_modifier_variations)
         "sym" -> stringResource(R.string.long_press_modifier_sym)
+        "sym_symbols" -> stringResource(R.string.long_press_modifier_sym_symbols)
+        "sym_emoji" -> stringResource(R.string.long_press_modifier_sym_emoji)
         else -> stringResource(R.string.long_press_modifier_alt)
     }
 
@@ -2076,7 +2078,9 @@ fun TutorialCustomizationPageContent(
                     "alt" to stringResource(R.string.long_press_modifier_alt),
                     "shift" to stringResource(R.string.long_press_modifier_shift),
                     "variations" to stringResource(R.string.long_press_modifier_variations),
-                    "sym" to stringResource(R.string.long_press_modifier_sym)
+                    "sym" to stringResource(R.string.long_press_modifier_sym),
+                    "sym_symbols" to stringResource(R.string.long_press_modifier_sym_symbols),
+                    "sym_emoji" to stringResource(R.string.long_press_modifier_sym_emoji)
                 ).forEach { (value, label) ->
                     DropdownMenuItem(
                         text = { Text(label) },
@@ -2087,6 +2091,30 @@ fun TutorialCustomizationPageContent(
                         }
                     )
                 }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.tutorial_device_sym_layer_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = stringResource(R.string.tutorial_device_sym_layer_description),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
 

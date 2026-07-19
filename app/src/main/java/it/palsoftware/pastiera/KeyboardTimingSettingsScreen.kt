@@ -22,7 +22,6 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.SettingsInputComponent
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -54,44 +53,11 @@ fun KeyboardTimingSettingsScreen(
     var longPressThreshold by remember { 
         mutableStateOf(SettingsManager.getLongPressThreshold(context))
     }
-    
-    var longPressModifier by remember { 
-        mutableStateOf(SettingsManager.getLongPressModifier(context))
-    }
-
-    var shiftTapLatches by remember {
-        mutableStateOf(SettingsManager.getShiftTapLatches(context))
-    }
-    var altTapLatches by remember {
-        mutableStateOf(SettingsManager.getAltTapLatches(context))
-    }
-    var ctrlTapLatches by remember {
-        mutableStateOf(SettingsManager.getCtrlTapLatches(context))
-    }
-    var altLatchStaysOnSpace by remember {
-        mutableStateOf(SettingsManager.getAltLatchStaysOnSpace(context))
-    }
-    var ctrlLatchStaysOnSpace by remember {
-        mutableStateOf(SettingsManager.getCtrlLatchStaysOnSpace(context))
-    }
-
     KeyboardTimingMainContent(
-                modifier = modifier,
-                onBack = onBack,
-                longPressThreshold = longPressThreshold,
-                onLongPressThresholdChange = { longPressThreshold = it },
-                longPressModifier = longPressModifier,
-                onLongPressModifierChange = { longPressModifier = it },
-                shiftTapLatches = shiftTapLatches,
-                onShiftTapLatchesChange = { shiftTapLatches = it },
-                altTapLatches = altTapLatches,
-                onAltTapLatchesChange = { altTapLatches = it },
-                ctrlTapLatches = ctrlTapLatches,
-                onCtrlTapLatchesChange = { ctrlTapLatches = it },
-                altLatchStaysOnSpace = altLatchStaysOnSpace,
-                onAltLatchStaysOnSpaceChange = { altLatchStaysOnSpace = it },
-                ctrlLatchStaysOnSpace = ctrlLatchStaysOnSpace,
-                onCtrlLatchStaysOnSpaceChange = { ctrlLatchStaysOnSpace = it }
+        modifier = modifier,
+        onBack = onBack,
+        longPressThreshold = longPressThreshold,
+        onLongPressThresholdChange = { longPressThreshold = it }
     )
 }
 
@@ -100,19 +66,7 @@ private fun KeyboardTimingMainContent(
     modifier: Modifier,
     onBack: () -> Unit,
     longPressThreshold: Long,
-    onLongPressThresholdChange: (Long) -> Unit,
-    longPressModifier: String,
-    onLongPressModifierChange: (String) -> Unit,
-    shiftTapLatches: Boolean,
-    onShiftTapLatchesChange: (Boolean) -> Unit,
-    altTapLatches: Boolean,
-    onAltTapLatchesChange: (Boolean) -> Unit,
-    ctrlTapLatches: Boolean,
-    onCtrlTapLatchesChange: (Boolean) -> Unit,
-    altLatchStaysOnSpace: Boolean,
-    onAltLatchStaysOnSpaceChange: (Boolean) -> Unit,
-    ctrlLatchStaysOnSpace: Boolean,
-    onCtrlLatchStaysOnSpaceChange: (Boolean) -> Unit
+    onLongPressThresholdChange: (Long) -> Unit
 ) {
     val context = LocalContext.current
 
@@ -211,176 +165,6 @@ private fun KeyboardTimingMainContent(
                 }
             }
         
-            // Long Press Modifier (Alt/Shift/Variations/Sym) - Dropdown Style
-            var showModifierMenu by remember { mutableStateOf(false) }
-
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(64.dp)
-                    .clickable { showModifierMenu = true }
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Keyboard,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.long_press_modifier_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1
-                        )
-                        Text(
-                            text = when (longPressModifier) {
-                                "alt" -> stringResource(R.string.long_press_modifier_alt)
-                                "shift" -> stringResource(R.string.long_press_modifier_shift)
-                                "variations" -> stringResource(R.string.long_press_modifier_variations)
-                                "sym" -> stringResource(R.string.long_press_modifier_sym)
-                                else -> stringResource(R.string.long_press_modifier_alt)
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1
-                        )
-                    }
-                    Icon(
-                        imageVector = Icons.Default.ArrowDropDown,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                DropdownMenu(
-                    expanded = showModifierMenu,
-                    onDismissRequest = { showModifierMenu = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.long_press_modifier_alt)) },
-                        onClick = {
-                            onLongPressModifierChange("alt")
-                            SettingsManager.setLongPressModifier(context, "alt")
-                            showModifierMenu = false
-                        },
-                        leadingIcon = {
-                            if (longPressModifier == "alt") {
-                                Icon(Icons.Default.Check, contentDescription = null)
-                            }
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.long_press_modifier_shift)) },
-                        onClick = {
-                            onLongPressModifierChange("shift")
-                            SettingsManager.setLongPressModifier(context, "shift")
-                            showModifierMenu = false
-                        },
-                        leadingIcon = {
-                            if (longPressModifier == "shift") {
-                                Icon(Icons.Default.Check, contentDescription = null)
-                            }
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.long_press_modifier_variations)) },
-                        onClick = {
-                            onLongPressModifierChange("variations")
-                            SettingsManager.setLongPressModifier(context, "variations")
-                            showModifierMenu = false
-                        },
-                        leadingIcon = {
-                            if (longPressModifier == "variations") {
-                                Icon(Icons.Default.Check, contentDescription = null)
-                            }
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.long_press_modifier_sym)) },
-                        onClick = {
-                            onLongPressModifierChange("sym")
-                            SettingsManager.setLongPressModifier(context, "sym")
-                            showModifierMenu = false
-                        },
-                        leadingIcon = {
-                            if (longPressModifier == "sym") {
-                                Icon(Icons.Default.Check, contentDescription = null)
-                            }
-                        }
-                    )
-                }
-            }
-
-            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-
-            Text(
-                text = stringResource(R.string.modifier_tap_behaviour_title),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
-            )
-
-            ModifierTapLatchRow(
-                title = stringResource(R.string.shift_tap_latches_title),
-                description = stringResource(R.string.shift_tap_latches_description),
-                checked = shiftTapLatches,
-                onCheckedChange = { enabled ->
-                    onShiftTapLatchesChange(enabled)
-                    SettingsManager.setShiftTapLatches(context, enabled)
-                }
-            )
-
-            ModifierTapLatchRow(
-                title = stringResource(R.string.alt_tap_latches_title),
-                description = stringResource(R.string.alt_tap_latches_description),
-                checked = altTapLatches,
-                onCheckedChange = { enabled ->
-                    onAltTapLatchesChange(enabled)
-                    SettingsManager.setAltTapLatches(context, enabled)
-                }
-            )
-
-            ModifierTapLatchRow(
-                title = stringResource(R.string.alt_latch_stays_on_space_title),
-                description = stringResource(R.string.alt_latch_stays_on_space_description),
-                checked = altLatchStaysOnSpace,
-                onCheckedChange = { enabled ->
-                    onAltLatchStaysOnSpaceChange(enabled)
-                    SettingsManager.setAltLatchStaysOnSpace(context, enabled)
-                }
-            )
-
-            ModifierTapLatchRow(
-                title = stringResource(R.string.ctrl_tap_latches_title),
-                description = stringResource(R.string.ctrl_tap_latches_description),
-                checked = ctrlTapLatches,
-                onCheckedChange = { enabled ->
-                    onCtrlTapLatchesChange(enabled)
-                    SettingsManager.setCtrlTapLatches(context, enabled)
-                }
-            )
-
-            if (ctrlTapLatches) {
-                ModifierTapLatchRow(
-                    title = stringResource(R.string.ctrl_latch_stays_on_space_title),
-                    description = stringResource(R.string.ctrl_latch_stays_on_space_description),
-                    checked = ctrlLatchStaysOnSpace,
-                    indent = true,
-                    onCheckedChange = { enabled ->
-                        onCtrlLatchStaysOnSpaceChange(enabled)
-                        SettingsManager.setCtrlLatchStaysOnSpace(context, enabled)
-                    }
-                )
-            }
         }
     }
 }
