@@ -52,6 +52,9 @@ fun ClicksPowerKeyboardSettingsStubScreen(
     var closeInputOnDisconnect by remember {
         mutableStateOf(SettingsManager.getClicksCloseInputOnDisconnect(context))
     }
+    var showKeyboardOnlyWithTextFocus by remember {
+        mutableStateOf(SettingsManager.getClicksShowKeyboardOnlyWithTextFocus(context))
+    }
     val connectedDevice = remember {
         InputDevice.getDeviceIds().asSequence()
             .mapNotNull { InputDevice.getDevice(it) }
@@ -124,6 +127,15 @@ fun ClicksPowerKeyboardSettingsStubScreen(
         )
 
         StubSection(stringResource(R.string.clicks_section_automation))
+        ClicksSettingsSwitchRow(
+            title = stringResource(R.string.clicks_show_keyboard_only_with_text_focus_title),
+            description = stringResource(R.string.clicks_show_keyboard_only_with_text_focus_description),
+            checked = showKeyboardOnlyWithTextFocus,
+            onCheckedChange = { enabled ->
+                showKeyboardOnlyWithTextFocus = enabled
+                SettingsManager.setClicksShowKeyboardOnlyWithTextFocus(context, enabled)
+            }
+        )
         ClicksSettingsSwitchRow(
             title = stringResource(R.string.clicks_close_input_on_disconnect_title),
             description = stringResource(R.string.clicks_close_input_on_disconnect_description),

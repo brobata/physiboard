@@ -507,7 +507,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             clicksDisconnected && SettingsManager.getClicksCloseInputOnDisconnect(this)
         invalidateRenderedStatusSnapshot()
         keyboardVisibilityController.onKeyboardSurfaceChanged(
-            ensureInputViewShown = !closeInputOnDisconnect
+            ensureInputViewShown = !closeInputOnDisconnect,
+            requireActiveTextField = SettingsManager.getClicksShowKeyboardOnlyWithTextFocus(this)
         )
         if (closeInputOnDisconnect) {
             requestHideSelf(0)
@@ -1804,6 +1805,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             candidatesBarController = candidatesBarController,
             symLayoutController = symLayoutController,
             isInputViewActive = { isInputViewActive },
+            hasActiveTextField = { inputContextState.isEditable },
             isNavModeLatched = { ctrlLatchFromNavMode },
             currentInputConnection = { currentInputConnection },
             isInputViewShown = { isInputViewShown },

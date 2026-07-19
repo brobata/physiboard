@@ -82,6 +82,7 @@ object SettingsManager {
     private const val KEY_PHYSICAL_KEYBOARD_PROFILE_OVERRIDE = "physical_keyboard_profile_override" // auto | key2 | Q25 | titan | titan2 | titan2elite_qwerty | mp01 | clicks_power
     private const val KEY_PHYSICAL_KEYBOARD_CURRENCY_SYMBOL = "physical_keyboard_currency_symbol" // Currency symbol for dedicated hardware keys
     private const val KEY_CLICKS_CLOSE_INPUT_ON_DISCONNECT = "clicks_close_input_on_disconnect"
+    private const val KEY_CLICKS_SHOW_KEYBOARD_ONLY_WITH_TEXT_FOCUS = "clicks_show_keyboard_only_with_text_focus"
     private const val KEY_RESTORE_SYM_PAGE = "restore_sym_page" // SYM page to restore when returning from settings
     private const val KEY_PENDING_RESTORE_SYM_PAGE = "pending_restore_sym_page" // Temporary SYM page state saved when opening settings
     private const val KEY_SYM_PAGES_CONFIG = "sym_pages_config" // Order/enabled pages for SYM
@@ -306,6 +307,7 @@ object SettingsManager {
     private const val DEFAULT_PHYSICAL_KEYBOARD_PROFILE_OVERRIDE = "auto"
     private const val DEFAULT_PHYSICAL_KEYBOARD_CURRENCY_SYMBOL = "€"
     private const val DEFAULT_CLICKS_CLOSE_INPUT_ON_DISCONNECT = false
+    private const val DEFAULT_CLICKS_SHOW_KEYBOARD_ONLY_WITH_TEXT_FOCUS = true
     private const val DEFAULT_SYM_AUTO_CLOSE = true
     private const val DEFAULT_SYM_AUTO_CLOSE_ON_TOUCH = true
     private const val DEFAULT_MODIFIER_TAP_LATCHES = false
@@ -3946,6 +3948,19 @@ object SettingsManager {
     fun setClicksCloseInputOnDisconnect(context: Context, enabled: Boolean) {
         getPreferences(context).edit()
             .putBoolean(KEY_CLICKS_CLOSE_INPUT_ON_DISCONNECT, enabled)
+            .apply()
+    }
+
+    fun getClicksShowKeyboardOnlyWithTextFocus(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_CLICKS_SHOW_KEYBOARD_ONLY_WITH_TEXT_FOCUS,
+            DEFAULT_CLICKS_SHOW_KEYBOARD_ONLY_WITH_TEXT_FOCUS
+        )
+    }
+
+    fun setClicksShowKeyboardOnlyWithTextFocus(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_CLICKS_SHOW_KEYBOARD_ONLY_WITH_TEXT_FOCUS, enabled)
             .apply()
     }
 

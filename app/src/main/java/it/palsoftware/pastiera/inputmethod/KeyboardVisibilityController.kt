@@ -16,6 +16,7 @@ class KeyboardVisibilityController(
     private val candidatesBarController: CandidatesBarController,
     private val symLayoutController: SymLayoutController,
     private val isInputViewActive: () -> Boolean,
+    private val hasActiveTextField: () -> Boolean,
     private val isNavModeLatched: () -> Boolean,
     private val currentInputConnection: () -> InputConnection?,
     private val isInputViewShown: () -> Boolean,
@@ -97,10 +98,14 @@ class KeyboardVisibilityController(
         applyStatusBarPresentationMode()
     }
 
-    fun onKeyboardSurfaceChanged(ensureInputViewShown: Boolean) {
+    fun onKeyboardSurfaceChanged(
+        ensureInputViewShown: Boolean,
+        requireActiveTextField: Boolean = false
+    ) {
         refreshStatusBar()
         if (
             ensureInputViewShown &&
+            (!requireActiveTextField || hasActiveTextField()) &&
             currentInputConnection() != null &&
             !isInputViewShown()
         ) {

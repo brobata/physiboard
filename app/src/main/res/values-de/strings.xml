@@ -479,6 +479,8 @@ Jede Taste kann als Keycode, Aktion, Native Ctrl oder Keine konfiguriert werden.
     <string name="clicks_connection_automation_description">Auf Öffnen oder Verbindung reagieren und optional Hardware/Virtual umschalten.</string>
     <string name="clicks_close_input_on_disconnect_title">Eingabe beim Trennen schließen</string>
     <string name="clicks_close_input_on_disconnect_description">AN: Ein Clicks-Disconnect schließt die Tastatur immer. AUS: Eine bereits geöffnete virtuelle Tastatur und ihr Textfeld bleiben aktiv.</string>
+    <string name="clicks_show_keyboard_only_with_text_focus_title">Tastatur nur bei Textfokus einblenden</string>
+    <string name="clicks_show_keyboard_only_with_text_focus_description">Hardware- oder Bildschirmtastatur nach einem Clicks-Verbindungswechsel nur aktiv einblenden, wenn der Cursor in einem Textfeld steht.</string>
     <string name="hardware_profile_stub_section">Geplante Profilunterstützung</string>
     <string name="hardware_profile_detection_title">Geräteerkennung</string>
     <string name="hardware_profile_detection_description">Tastatur erkennen und ihr kuratiertes Profil automatisch auswählen.</string>

@@ -405,6 +405,8 @@
     <string name="clicks_connection_automation_description">React to opening or connecting and optionally switch Hardware/Virtual mode.</string>
     <string name="clicks_close_input_on_disconnect_title">Close input on disconnect</string>
     <string name="clicks_close_input_on_disconnect_description">ON: a Clicks disconnect always closes the keyboard. OFF: an already open virtual keyboard and its text field stay active.</string>
+    <string name="clicks_show_keyboard_only_with_text_focus_title">Show keyboard only with text focus</string>
+    <string name="clicks_show_keyboard_only_with_text_focus_description">Only actively show the hardware or virtual keyboard after a Clicks connection change while the cursor is in a text field.</string>
     <string name="hardware_profile_stub_section">Planned profile support</string>
     <string name="hardware_profile_detection_title">Device detection</string>
     <string name="hardware_profile_detection_description">Identify the keyboard and select its curated profile automatically.</string>
