@@ -332,7 +332,7 @@ object AdditionalSubtypeUtils {
         subtypes: Array<InputMethodSubtype>,
         locale: String
     ): InputMethodSubtype? {
-        return subtypes.firstOrNull { it.localeString() == locale }
+        return subtypes.firstOrNull { localesMatch(it.localeString(), locale) }
     }
     
     /**
@@ -344,7 +344,7 @@ object AdditionalSubtypeUtils {
         layoutName: String
     ): InputMethodSubtype? {
         return subtypes.firstOrNull { subtype ->
-            subtype.localeString() == locale && 
+            localesMatch(subtype.localeString(), locale) &&
             extractLayoutFromExtraValue(subtype.extraValue ?: "") == layoutName
         }
     }
@@ -361,8 +361,14 @@ object AdditionalSubtypeUtils {
         locale: String,
         layoutName: String
     ): Boolean {
-        return subtype.localeString() == locale &&
+        return localesMatch(subtype.localeString(), locale) &&
             getKeyboardLayoutFromSubtype(subtype) == layoutName
+    }
+
+    private fun localesMatch(left: String, right: String): Boolean {
+        val leftTag = localeFromSubtypeString(left).toLanguageTag()
+        val rightTag = localeFromSubtypeString(right).toLanguageTag()
+        return leftTag.equals(rightTag, ignoreCase = true)
     }
 
     private fun isRedundantWithBaseSubtype(

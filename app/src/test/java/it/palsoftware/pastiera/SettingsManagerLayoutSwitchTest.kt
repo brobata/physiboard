@@ -35,14 +35,14 @@ class SettingsManagerLayoutSwitchTest {
     }
 
     @Test
-    fun altShiftLayoutSwitch_defaultsEnabled_andPersistsDisabledState() {
+    fun altShiftLayoutSwitch_defaultsDisabled_andPersistsEnabledState() {
         val context = RuntimeEnvironment.getApplication()
 
-        assertTrue(SettingsManager.isAltShiftLayoutSwitchEnabled(context))
-
-        SettingsManager.setAltShiftLayoutSwitchEnabled(context, false)
-
         assertFalse(SettingsManager.isAltShiftLayoutSwitchEnabled(context))
+
+        SettingsManager.setAltShiftLayoutSwitchEnabled(context, true)
+
+        assertTrue(SettingsManager.isAltShiftLayoutSwitchEnabled(context))
     }
 
     @Test

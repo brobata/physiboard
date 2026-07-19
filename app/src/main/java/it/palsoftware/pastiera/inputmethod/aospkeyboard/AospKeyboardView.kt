@@ -1030,7 +1030,7 @@ class AospKeyboardView @JvmOverloads constructor(
     }
 
     private fun previewLabelFor(key: Key): String? {
-        val keyCode = soundKeyCodeFor(key)
+        val keyCode = modifierPreviewKeyCodeFor(key)
         val heldType = heldModifierKey?.spec?.type
         return when {
             heldType == KeyType.CTRL || ctrlPreviewActive -> ctrlPreviewLabels[keyCode]
@@ -1042,7 +1042,7 @@ class AospKeyboardView @JvmOverloads constructor(
     }
 
     private fun previewIconFor(key: Key): Drawable? {
-        val keyCode = soundKeyCodeFor(key)
+        val keyCode = modifierPreviewKeyCodeFor(key)
         val heldType = heldModifierKey?.spec?.type
         if (heldType != KeyType.CTRL && !ctrlPreviewActive) {
             return null
@@ -1379,6 +1379,14 @@ class AospKeyboardView @JvmOverloads constructor(
             KeyType.PERIOD -> KeyEvent.KEYCODE_PERIOD
             KeyType.CHAR -> physicalKeyCodeForText(key.spec.output)
         }
+    }
+
+    private fun modifierPreviewKeyCodeFor(key: Key): Int {
+        if (key.spec.type == KeyType.CHAR) {
+            val character = key.spec.output.firstOrNull()?.lowercaseChar()
+            if (character !in 'a'..'z') return KeyEvent.KEYCODE_UNKNOWN
+        }
+        return soundKeyCodeFor(key)
     }
 
     private fun physicalKeyCodeForText(text: String): Int {
