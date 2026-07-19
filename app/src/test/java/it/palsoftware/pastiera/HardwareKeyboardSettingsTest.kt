@@ -42,4 +42,15 @@ class HardwareKeyboardSettingsTest {
 
         assertEquals("clicks_power", SettingsManager.getPhysicalKeyboardProfileOverride(context))
     }
+
+    @Test
+    fun clicksBuiltInProfilesCanBeSelected() {
+        val context = RuntimeEnvironment.getApplication()
+
+        SettingsManager.setPhysicalKeyboardProfileOverride(context, "clicks_razr")
+        assertEquals("clicks_razr", SettingsManager.getPhysicalKeyboardProfileOverride(context))
+
+        SettingsManager.setPhysicalKeyboardProfileOverride(context, "clicks_pixel")
+        assertEquals("clicks_pixel", SettingsManager.getPhysicalKeyboardProfileOverride(context))
+    }
 }

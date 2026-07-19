@@ -49,6 +49,8 @@ object DeviceSpecific {
         TITAN_SLIM,
         TITAN_ORIGINAL,
         MINIMAL_PHONE,
+        CLICKS_RAZR,
+        CLICKS_PIXEL,
         CLICKS_POWER,
         UNKNOWN
     }
@@ -389,6 +391,8 @@ object DeviceSpecific {
             "titan" -> KeyboardModel.TITAN_ORIGINAL
             "titan2" -> KeyboardModel.TITAN_2
             "mp01" -> KeyboardModel.MINIMAL_PHONE
+            "clicks_razr" -> KeyboardModel.CLICKS_RAZR
+            "clicks_pixel" -> KeyboardModel.CLICKS_PIXEL
             "clicks_power" -> KeyboardModel.CLICKS_POWER
             else -> currentDeviceProfile().model
         }
@@ -522,7 +526,8 @@ object DeviceSpecific {
         val normalized = physicalProfileOverride?.trim()?.lowercase().orEmpty()
         return when (normalized) {
             "", "auto" -> null
-            "key2", "q25", "titan", "titan2", "titan2elite_qwerty", "mp01", "clicks_power" -> normalized
+            "key2", "q25", "titan", "titan2", "titan2elite_qwerty", "mp01",
+            "clicks_razr", "clicks_pixel", "clicks_power" -> normalized
             else -> null
         }
     }
@@ -642,6 +647,8 @@ object DeviceSpecific {
             KeyboardModel.TITAN_SLIM,
             KeyboardModel.TITAN_ORIGINAL,
             KeyboardModel.MINIMAL_PHONE,
+            KeyboardModel.CLICKS_RAZR,
+            KeyboardModel.CLICKS_PIXEL,
             KeyboardModel.CLICKS_POWER -> true
             KeyboardModel.UNKNOWN -> false
         }

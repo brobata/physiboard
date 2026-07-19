@@ -73,6 +73,7 @@ object KeyMappingLoader {
         "KEYCODE_COMMA" to KeyEvent.KEYCODE_COMMA,
         "KEYCODE_PERIOD" to KeyEvent.KEYCODE_PERIOD,
         "KEYCODE_SLASH" to KeyEvent.KEYCODE_SLASH,
+        "KEYCODE_CTRL_LEFT" to KeyEvent.KEYCODE_CTRL_LEFT,
         // Minimal Phone (MP01) custom keycodes
         "KEYCODE_EM" to 666,  // Emoji key
         "KEYCODE_MIC" to 667  // Mic key

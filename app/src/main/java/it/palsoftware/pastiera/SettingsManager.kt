@@ -79,7 +79,7 @@ object SettingsManager {
     private const val KEY_ALT_SHIFT_DEFAULT_INITIALIZED = "alt_shift_default_initialized"
     private const val KEY_ALT_ENTER_LAYOUT_SWITCH = "alt_enter_layout_switch" // Enable Alt+Enter shortcut for layout cycling
     private const val KEY_CTRL_SPACE_LAYOUT_SWITCH = "ctrl_space_layout_switch" // Enable Ctrl+Space shortcut for layout cycling
-    private const val KEY_PHYSICAL_KEYBOARD_PROFILE_OVERRIDE = "physical_keyboard_profile_override" // auto | key2 | Q25 | titan | titan2 | titan2elite_qwerty | mp01 | clicks_power
+    private const val KEY_PHYSICAL_KEYBOARD_PROFILE_OVERRIDE = "physical_keyboard_profile_override" // auto | key2 | Q25 | titan | titan2 | titan2elite_qwerty | mp01 | clicks_razr | clicks_pixel | clicks_power
     private const val KEY_PHYSICAL_KEYBOARD_CURRENCY_SYMBOL = "physical_keyboard_currency_symbol" // Currency symbol for dedicated hardware keys
     private const val KEY_CLICKS_CLOSE_INPUT_ON_DISCONNECT = "clicks_close_input_on_disconnect"
     private const val KEY_CLICKS_SHOW_KEYBOARD_ONLY_WITH_TEXT_FOCUS = "clicks_show_keyboard_only_with_text_focus"
@@ -3938,7 +3938,8 @@ object SettingsManager {
 
     /**
      * Returns the manual physical keyboard profile override used for device-specific mappings.
-     * Supported values: auto, key2, Q25, titan, titan2, titan2elite_qwerty, mp01, clicks_power.
+     * Supported values: auto, key2, Q25, titan, titan2, titan2elite_qwerty, mp01,
+     * clicks_razr, clicks_pixel, clicks_power.
      */
     fun getPhysicalKeyboardProfileOverride(context: Context): String {
         val value = getPreferences(context).getString(
@@ -4117,6 +4118,8 @@ object SettingsManager {
             normalized.equals("titan2", ignoreCase = true) -> "titan2"
             normalized.equals("titan2elite_qwerty", ignoreCase = true) -> "titan2elite_qwerty"
             normalized.equals("mp01", ignoreCase = true) -> "mp01"
+            normalized.equals("clicks_razr", ignoreCase = true) -> "clicks_razr"
+            normalized.equals("clicks_pixel", ignoreCase = true) -> "clicks_pixel"
             normalized.equals("clicks_power", ignoreCase = true) -> "clicks_power"
             else -> DEFAULT_PHYSICAL_KEYBOARD_PROFILE_OVERRIDE
         }

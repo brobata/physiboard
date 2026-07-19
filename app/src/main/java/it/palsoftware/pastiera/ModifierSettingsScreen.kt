@@ -88,6 +88,8 @@ fun ModifierSettingsScreen(
         "device:titan2" to stringResource(R.string.keyboard_profile_option_titan2),
         "device:titan2elite_qwerty" to stringResource(R.string.keyboard_profile_option_titan2elite_qwerty),
         "device:mp01" to stringResource(R.string.keyboard_profile_option_mp01),
+        "device:clicks_razr" to stringResource(R.string.keyboard_profile_option_clicks_razr),
+        "device:clicks_pixel" to stringResource(R.string.keyboard_profile_option_clicks_pixel),
         "device:clicks_power" to stringResource(R.string.clicks_power_keyboard_title)
     )
 

@@ -79,6 +79,25 @@ class KeyMappingLoaderTest {
     }
 
     @Test
+    fun loadDeviceSymMappings_clicksBuiltInProfiles_matchPrintedLegends() {
+        val context = RuntimeEnvironment.getApplication()
+
+        listOf("clicks_razr", "clicks_pixel").forEach { profile ->
+            SettingsManager.setPhysicalKeyboardProfileOverride(context, profile)
+            val mappings = KeyMappingLoader.loadDeviceSymKeyMappings(context.assets, context)
+
+            assertEquals("#", mappings[KeyEvent.KEYCODE_Q])
+            assertEquals("1", mappings[KeyEvent.KEYCODE_W])
+            assertEquals("_", mappings[KeyEvent.KEYCODE_U])
+            assertEquals(";", mappings[KeyEvent.KEYCODE_J])
+            assertEquals("%", mappings[KeyEvent.KEYCODE_V])
+            assertEquals("?", mappings[KeyEvent.KEYCODE_B])
+            assertEquals("\$", mappings[KeyEvent.KEYCODE_PERIOD])
+            assertEquals("0", mappings[KeyEvent.KEYCODE_CTRL_LEFT])
+        }
+    }
+
+    @Test
     fun loadSymPage2Mappings_exposesExpandedTypographyDefaults() {
         val context = RuntimeEnvironment.getApplication()
 

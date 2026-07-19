@@ -54,7 +54,9 @@ private val hardwareKeyboardProfiles = listOf(
     "titan" to R.string.keyboard_profile_option_titan,
     "titan2" to R.string.keyboard_profile_option_titan2,
     "titan2elite_qwerty" to R.string.keyboard_profile_option_titan2elite_qwerty,
-    "mp01" to R.string.keyboard_profile_option_mp01
+    "mp01" to R.string.keyboard_profile_option_mp01,
+    "clicks_razr" to R.string.keyboard_profile_option_clicks_razr,
+    "clicks_pixel" to R.string.keyboard_profile_option_clicks_pixel
 )
 
 @Composable
@@ -232,9 +234,6 @@ private fun HardwareKeyboardListScreen(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
             )
 
-            HardwareKeyboardPlannedProfileRow(stringResource(R.string.keyboard_profile_option_clicks_razr))
-            HardwareKeyboardPlannedProfileRow(stringResource(R.string.keyboard_profile_option_clicks_pixel))
-
             HardwareKeyboardSectionDivider(stringResource(R.string.hardware_keyboard_custom_profiles_title))
             Text(
                 text = stringResource(R.string.hardware_keyboard_custom_profiles_empty),
@@ -317,21 +316,6 @@ private fun HardwareKeyboardSectionTitle(text: String) {
         fontWeight = FontWeight.Medium,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
     )
-}
-
-@Composable
-private fun HardwareKeyboardPlannedProfileRow(title: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Icon(Icons.Filled.Keyboard, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-        Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-        FeatureStatusIcon(FeatureStatus.Construction)
-    }
 }
 
 @Composable

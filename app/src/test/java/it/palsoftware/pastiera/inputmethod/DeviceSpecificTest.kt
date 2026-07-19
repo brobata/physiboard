@@ -116,6 +116,23 @@ class DeviceSpecificTest {
     }
 
     @Test
+    fun clicksBuiltInManualOverrides_resolveAsIndependentProfiles() {
+        val razr = DeviceSpecific.resolveInputProfile(
+            event = null,
+            physicalProfileOverride = "clicks_razr"
+        )
+        val pixel = DeviceSpecific.resolveInputProfile(
+            event = null,
+            physicalProfileOverride = "clicks_pixel"
+        )
+
+        assertEquals("clicks_razr", razr.profileId)
+        assertEquals("clicks_pixel", pixel.profileId)
+        assertFalse(razr.autoDetected)
+        assertFalse(pixel.autoDetected)
+    }
+
+    @Test
     fun titan2EliteQwertyProfile_detectsOnlyWithStrictToken() {
         DeviceSpecific.setBuildFingerprintForTests(
             brand = "unihertz",
