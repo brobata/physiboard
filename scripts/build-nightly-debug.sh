@@ -109,8 +109,9 @@ if [ "$INSTALL" = true ]; then
     exit 1
   fi
 
+  ADB_DEVICE_ARGS=()
   if [ -n "$DEVICE_SERIAL" ]; then
-    "$ADB_BIN" -s "$DEVICE_SERIAL" install -r "$APK_PATH"
+    ADB_DEVICE_ARGS=(-s "$DEVICE_SERIAL")
   else
     device_count="$($ADB_BIN devices | awk 'NR>1 && $2=="device" {count++} END {print count+0}')"
     if [ "$device_count" -gt 1 ]; then
@@ -118,7 +119,21 @@ if [ "$INSTALL" = true ]; then
       "$ADB_BIN" devices -l
       exit 1
     fi
-    "$ADB_BIN" install -r "$APK_PATH"
+  fi
+
+  PREVIOUS_DEFAULT_IME="$(
+    "$ADB_BIN" "${ADB_DEVICE_ARGS[@]}" shell settings get secure default_input_method 2>/dev/null |
+      tr -d '\r'
+  )"
+
+  "$ADB_BIN" "${ADB_DEVICE_ARGS[@]}" install -r "$APK_PATH"
+
+  # A package replacement stops the running IME. Some Android builds then keep the
+  # fallback keyboard selected even though Pastiera remains enabled. Restore Nightly
+  # only when it was already the user's selected input method before this install.
+  if [[ "$PREVIOUS_DEFAULT_IME" == it.palsoftware.pastiera.nightly/* ]]; then
+    "$ADB_BIN" "${ADB_DEVICE_ARGS[@]}" shell ime enable "$PREVIOUS_DEFAULT_IME" >/dev/null
+    "$ADB_BIN" "${ADB_DEVICE_ARGS[@]}" shell ime set "$PREVIOUS_DEFAULT_IME" >/dev/null
   fi
 fi
 
