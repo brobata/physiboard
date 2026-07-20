@@ -167,6 +167,7 @@ object SettingsManager {
     const val KEYBOARD_THEME_POPUP_STYLE_FLOATING = "floating"
     const val KEYBOARD_THEME_POPUP_STYLE_CLASSIC = "classic"
     private const val KEY_KEYBOARD_THEME_SAVED_THEMES = "keyboard_theme_saved_themes"
+    private const val KEY_KEYBOARD_THEME_DRAFTS = "keyboard_theme_drafts"
     private const val KEY_KEYBOARD_THEME_PREVIEW_VIEWPORT_SCALE = "keyboard_theme_preview_viewport_scale"
     
     // Status bar button slot configuration keys
@@ -471,6 +472,12 @@ object SettingsManager {
     data class NamedKeyboardTheme(
         val name: String,
         val theme: KeyboardThemeSettings
+    )
+
+    data class KeyboardThemeDraft(
+        val name: String,
+        val theme: KeyboardThemeSettings,
+        val populatedFields: Set<String> = emptySet()
     )
 
     data class KeyboardThemeLayoutOverride(
@@ -1129,6 +1136,70 @@ object SettingsManager {
         val themes = getSavedKeyboardThemes(context)
             .filterNot { it.name.equals(normalizedName, ignoreCase = true) }
         persistSavedKeyboardThemes(context, themes)
+    }
+
+    fun getKeyboardThemeDrafts(context: Context): List<KeyboardThemeDraft> {
+        val stored = getPreferences(context).getString(KEY_KEYBOARD_THEME_DRAFTS, null)
+            ?: return emptyList()
+        return try {
+            val array = JSONArray(stored)
+            buildList {
+                for (index in 0 until array.length()) {
+                    val item = array.optJSONObject(index) ?: continue
+                    val name = item.optString("name").trim()
+                    val themeObject = item.optJSONObject("theme") ?: continue
+                    val populatedArray = item.optJSONArray("populated_fields")
+                    val populatedFields = buildSet {
+                        if (populatedArray != null) {
+                            for (fieldIndex in 0 until populatedArray.length()) {
+                                populatedArray.optString(fieldIndex).takeIf(String::isNotBlank)?.let(::add)
+                            }
+                        }
+                    }
+                    if (name.isNotEmpty()) {
+                        add(
+                            KeyboardThemeDraft(
+                                name = name,
+                                theme = keyboardThemeFromJson(themeObject, defaultKeyboardTheme()),
+                                populatedFields = populatedFields
+                            )
+                        )
+                    }
+                }
+            }
+        } catch (error: Exception) {
+            Log.e(TAG, "Fehler beim Laden gespeicherter Keyboard-Theme-Entwürfe", error)
+            emptyList()
+        }
+    }
+
+    fun saveKeyboardThemeDraft(context: Context, draft: KeyboardThemeDraft) {
+        val normalizedName = draft.name.trim().ifEmpty { "Untitled theme" }
+        val drafts = getKeyboardThemeDrafts(context)
+            .filterNot { it.name.equals(normalizedName, ignoreCase = true) } +
+            draft.copy(name = normalizedName)
+        persistKeyboardThemeDrafts(context, drafts)
+    }
+
+    fun deleteKeyboardThemeDraft(context: Context, name: String) {
+        val drafts = getKeyboardThemeDrafts(context)
+            .filterNot { it.name.equals(name.trim(), ignoreCase = true) }
+        persistKeyboardThemeDrafts(context, drafts)
+    }
+
+    private fun persistKeyboardThemeDrafts(context: Context, drafts: List<KeyboardThemeDraft>) {
+        val array = JSONArray().apply {
+            drafts.forEach { draft ->
+                put(JSONObject().apply {
+                    put("name", draft.name)
+                    put("theme", keyboardThemeToJson(draft.theme))
+                    put("populated_fields", JSONArray(draft.populatedFields.toList()))
+                })
+            }
+        }
+        getPreferences(context).edit()
+            .putString(KEY_KEYBOARD_THEME_DRAFTS, array.toString())
+            .apply()
     }
 
     private fun persistSavedKeyboardThemes(
