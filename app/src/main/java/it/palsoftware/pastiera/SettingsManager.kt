@@ -84,6 +84,10 @@ object SettingsManager {
     private const val KEY_CLICKS_CLOSE_INPUT_ON_DISCONNECT = "clicks_close_input_on_disconnect"
     private const val KEY_CLICKS_SHOW_KEYBOARD_ONLY_WITH_TEXT_FOCUS = "clicks_show_keyboard_only_with_text_focus"
     private const val KEY_CLICKS_BLUETOOTH_PERMISSION_EXPLAINED = "clicks_bluetooth_permission_explained"
+    private const val KEY_CLICKS_CHARGING_AUTOMATION = "clicks_charging_automation"
+    private const val KEY_CLICKS_CHARGING_START_PERCENT = "clicks_charging_start_percent"
+    private const val KEY_CLICKS_CHARGING_STOP_PERCENT = "clicks_charging_stop_percent"
+    private const val KEY_CLICKS_MANUAL_CHARGING_UNTIL = "clicks_manual_charging_until"
     private const val KEY_RESTORE_SYM_PAGE = "restore_sym_page" // SYM page to restore when returning from settings
     private const val KEY_PENDING_RESTORE_SYM_PAGE = "pending_restore_sym_page" // Temporary SYM page state saved when opening settings
     private const val KEY_SYM_PAGES_CONFIG = "sym_pages_config" // Order/enabled pages for SYM
@@ -311,6 +315,8 @@ object SettingsManager {
     private const val DEFAULT_PHYSICAL_KEYBOARD_CURRENCY_SYMBOL = "€"
     private const val DEFAULT_CLICKS_CLOSE_INPUT_ON_DISCONNECT = false
     private const val DEFAULT_CLICKS_SHOW_KEYBOARD_ONLY_WITH_TEXT_FOCUS = true
+    private const val DEFAULT_CLICKS_CHARGING_START_PERCENT = 50
+    private const val DEFAULT_CLICKS_CHARGING_STOP_PERCENT = 55
     private const val DEFAULT_SYM_AUTO_CLOSE = true
     private const val DEFAULT_SYM_AUTO_CLOSE_ON_TOUCH = true
     private const val DEFAULT_MODIFIER_TAP_LATCHES = false
@@ -4026,6 +4032,50 @@ object SettingsManager {
     fun setClicksBluetoothPermissionExplained(context: Context) {
         getPreferences(context).edit()
             .putBoolean(KEY_CLICKS_BLUETOOTH_PERMISSION_EXPLAINED, true)
+            .apply()
+    }
+
+    fun isClicksChargingAutomationEnabled(context: Context): Boolean =
+        getPreferences(context).getBoolean(KEY_CLICKS_CHARGING_AUTOMATION, false)
+
+    fun setClicksChargingAutomationEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit().putBoolean(KEY_CLICKS_CHARGING_AUTOMATION, enabled).apply()
+    }
+
+    fun getClicksChargingStartPercent(context: Context): Int =
+        getPreferences(context).getInt(
+            KEY_CLICKS_CHARGING_START_PERCENT,
+            DEFAULT_CLICKS_CHARGING_START_PERCENT
+        ).coerceIn(5, 90)
+
+    fun setClicksChargingStartPercent(context: Context, percent: Int) {
+        val start = percent.coerceIn(5, 90)
+        val stop = getClicksChargingStopPercent(context).coerceAtLeast(start + 1)
+        getPreferences(context).edit()
+            .putInt(KEY_CLICKS_CHARGING_START_PERCENT, start)
+            .putInt(KEY_CLICKS_CHARGING_STOP_PERCENT, stop.coerceAtMost(95))
+            .apply()
+    }
+
+    fun getClicksChargingStopPercent(context: Context): Int =
+        getPreferences(context).getInt(
+            KEY_CLICKS_CHARGING_STOP_PERCENT,
+            DEFAULT_CLICKS_CHARGING_STOP_PERCENT
+        ).coerceIn(6, 95)
+
+    fun setClicksChargingStopPercent(context: Context, percent: Int) {
+        val start = getClicksChargingStartPercent(context)
+        getPreferences(context).edit()
+            .putInt(KEY_CLICKS_CHARGING_STOP_PERCENT, percent.coerceIn(start + 1, 95))
+            .apply()
+    }
+
+    fun getClicksManualChargingUntil(context: Context): Long =
+        getPreferences(context).getLong(KEY_CLICKS_MANUAL_CHARGING_UNTIL, 0L)
+
+    fun setClicksManualChargingUntil(context: Context, timestampMillis: Long) {
+        getPreferences(context).edit()
+            .putLong(KEY_CLICKS_MANUAL_CHARGING_UNTIL, timestampMillis.coerceAtLeast(0L))
             .apply()
     }
 

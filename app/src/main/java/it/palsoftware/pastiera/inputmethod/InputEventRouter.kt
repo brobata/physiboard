@@ -1127,7 +1127,12 @@ class InputEventRouter(
             if (!isCtrlActive) {
                 val altChar = (altMappingsOverride ?: altSymManager.getAltMappings())[keyCode]
                 if (altChar != null) {
-                    ic.commitText(altChar, 1)
+                    val dpadKeyCode = deviceLayerDpadKeyCode(altChar)
+                    if (dpadKeyCode != null) {
+                        sendModifiedKeyEvent(ic, dpadKeyCode, ctrl = false, shift = false)
+                    } else {
+                        ic.commitText(altChar, 1)
+                    }
                     Handler(Looper.getMainLooper()).postDelayed({
                         updateStatusBar()
                     }, cursorUpdateDelayMs)
@@ -1178,6 +1183,14 @@ class InputEventRouter(
         // Consume Alt+Space to avoid Android's symbol picker and just insert a space.
         if (keyCode == KeyEvent.KEYCODE_SPACE) {
             ic.commitText(" ", 1)
+            updateStatusBar()
+            return true
+        }
+
+        val deviceLayerValue = (altMappingsOverride ?: altSymManager.getAltMappings())[keyCode]
+        val deviceLayerDpad = deviceLayerDpadKeyCode(deviceLayerValue)
+        if (deviceLayerDpad != null) {
+            sendModifiedKeyEvent(ic, deviceLayerDpad, ctrl = false, shift = false)
             updateStatusBar()
             return true
         }
@@ -1570,6 +1583,14 @@ class InputEventRouter(
         audioManager.dispatchMediaKeyEvent(KeyEvent(eventTime, eventTime, KeyEvent.ACTION_DOWN, keyCode, 0))
         audioManager.dispatchMediaKeyEvent(KeyEvent(eventTime, eventTime, KeyEvent.ACTION_UP, keyCode, 0))
         return true
+    }
+
+    private fun deviceLayerDpadKeyCode(value: String?): Int? = when (value) {
+        "__DPAD_UP__" -> KeyEvent.KEYCODE_DPAD_UP
+        "__DPAD_DOWN__" -> KeyEvent.KEYCODE_DPAD_DOWN
+        "__DPAD_LEFT__" -> KeyEvent.KEYCODE_DPAD_LEFT
+        "__DPAD_RIGHT__" -> KeyEvent.KEYCODE_DPAD_RIGHT
+        else -> null
     }
 
     private fun sendModifiedKeyEvent(

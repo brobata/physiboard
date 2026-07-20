@@ -56,7 +56,8 @@ private val hardwareKeyboardProfiles = listOf(
     "titan2elite_qwerty" to R.string.keyboard_profile_option_titan2elite_qwerty,
     "mp01" to R.string.keyboard_profile_option_mp01,
     "clicks_razr" to R.string.keyboard_profile_option_clicks_razr,
-    "clicks_pixel" to R.string.keyboard_profile_option_clicks_pixel
+    "clicks_pixel" to R.string.keyboard_profile_option_clicks_pixel,
+    "clicks_power" to R.string.keyboard_profile_option_clicks_power_converted
 )
 
 @Composable
@@ -93,16 +94,7 @@ private fun HardwareKeyboardListScreen(
 ) {
     val context = LocalContext.current
     var selectedProfile by remember {
-        mutableStateOf(
-            SettingsManager.getPhysicalKeyboardProfileOverride(context)
-                .takeUnless { it == "clicks_power" }
-                ?: "auto"
-        )
-    }
-    LaunchedEffect(Unit) {
-        if (SettingsManager.getPhysicalKeyboardProfileOverride(context) == "clicks_power") {
-            SettingsManager.setPhysicalKeyboardProfileOverride(context, "auto")
-        }
+        mutableStateOf(SettingsManager.getPhysicalKeyboardProfileOverride(context))
     }
     var profileMenuExpanded by remember { mutableStateOf(false) }
     var currencySymbol by remember {

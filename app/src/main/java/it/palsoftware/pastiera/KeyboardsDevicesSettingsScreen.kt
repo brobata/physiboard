@@ -74,7 +74,7 @@ fun KeyboardsDevicesSettingsScreen(
             modifier = modifier,
             onBack = { destination = KeyboardsDevicesDestination.Main }
         )
-        KeyboardsDevicesDestination.PowerKeyboard -> ClicksPowerKeyboardSettingsStubScreen(
+        KeyboardsDevicesDestination.PowerKeyboard -> ClicksPowerKeyboardSettingsScreen(
             modifier = modifier,
             onBack = { destination = KeyboardsDevicesDestination.Main }
         )
