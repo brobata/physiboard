@@ -2,6 +2,7 @@ package it.palsoftware.pastiera.inputmethod
 
 import android.view.KeyEvent
 import android.view.InputDevice
+import it.palsoftware.pastiera.data.layout.LayoutMappingRepository
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -10,6 +11,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
@@ -255,7 +257,7 @@ class DeviceSpecificTest {
     }
 
     @Test
-    fun key2Bbf1004ScanCodes_areNormalizedToExpectedKeyCodes() {
+    fun key2AlphabeticScanCodes_areNormalizedToCanonicalPositions() {
         DeviceSpecific.setBuildFingerprintForTests(
             brand = "blackberry",
             manufacturer = "blackberry",
@@ -293,6 +295,80 @@ class DeviceSpecificTest {
         val zRemapped = DeviceSpecific.remapHardwareKeyEvent(KeyEvent.KEYCODE_W, zInput)
         assertEquals(KeyEvent.KEYCODE_Z, zRemapped.keyCode)
         assertEquals(KeyEvent.KEYCODE_Z, zRemapped.event?.keyCode)
+
+        listOf(
+            Triple(21, KeyEvent.KEYCODE_Z, KeyEvent.KEYCODE_Y),
+            Triple(44, KeyEvent.KEYCODE_Y, KeyEvent.KEYCODE_Z),
+            Triple(16, KeyEvent.KEYCODE_A, KeyEvent.KEYCODE_Q),
+            Triple(17, KeyEvent.KEYCODE_Z, KeyEvent.KEYCODE_W),
+            Triple(30, KeyEvent.KEYCODE_Q, KeyEvent.KEYCODE_A),
+            Triple(44, KeyEvent.KEYCODE_W, KeyEvent.KEYCODE_Z)
+        ).forEach { (scanCode, reportedKeyCode, canonicalKeyCode) ->
+            val input = keyEvent(
+                action = KeyEvent.ACTION_DOWN,
+                keyCode = reportedKeyCode,
+                metaState = 0,
+                scanCode = scanCode
+            )
+            val remapped = DeviceSpecific.remapHardwareKeyEvent(reportedKeyCode, input)
+            assertEquals(canonicalKeyCode, remapped.keyCode)
+            assertEquals(canonicalKeyCode, remapped.event?.keyCode)
+        }
+    }
+
+    @Test
+    fun key2LineageEvents_areMappedExactlyOnceByInputLanguage() {
+        DeviceSpecific.setBuildFingerprintForTests(
+            brand = "blackberry",
+            manufacturer = "blackberry",
+            model = "bbf100-4",
+            device = "luna",
+            product = "lineage_luna"
+        )
+        val context = RuntimeEnvironment.getApplication()
+
+        try {
+            LayoutMappingRepository.loadLayout(context.assets, "qwertz", context)
+            assertEquals(
+                'z',
+                mappedCharacter(scanCode = 21, reportedKeyCode = KeyEvent.KEYCODE_Z)
+            )
+            assertEquals(
+                'y',
+                mappedCharacter(scanCode = 44, reportedKeyCode = KeyEvent.KEYCODE_Y)
+            )
+
+            LayoutMappingRepository.loadLayout(context.assets, "azerty", context)
+            assertEquals(
+                'a',
+                mappedCharacter(scanCode = 16, reportedKeyCode = KeyEvent.KEYCODE_A)
+            )
+            assertEquals(
+                'z',
+                mappedCharacter(scanCode = 17, reportedKeyCode = KeyEvent.KEYCODE_Z)
+            )
+            assertEquals(
+                'q',
+                mappedCharacter(scanCode = 30, reportedKeyCode = KeyEvent.KEYCODE_Q)
+            )
+            assertEquals(
+                'w',
+                mappedCharacter(scanCode = 44, reportedKeyCode = KeyEvent.KEYCODE_W)
+            )
+        } finally {
+            LayoutMappingRepository.loadLayout(context.assets, "qwerty", context)
+        }
+    }
+
+    private fun mappedCharacter(scanCode: Int, reportedKeyCode: Int): Char? {
+        val input = keyEvent(
+            action = KeyEvent.ACTION_DOWN,
+            keyCode = reportedKeyCode,
+            metaState = 0,
+            scanCode = scanCode
+        )
+        val remapped = DeviceSpecific.remapHardwareKeyEvent(reportedKeyCode, input)
+        return LayoutMappingRepository.getCharacter(remapped.keyCode, isShift = false)
     }
 
     @Test
