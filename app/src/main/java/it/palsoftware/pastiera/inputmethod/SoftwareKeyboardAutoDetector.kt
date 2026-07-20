@@ -35,6 +35,12 @@ object SoftwareKeyboardAutoDetector {
         if (suppressVirtualPresentationUntilInputHidden) {
             return SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE
         }
+        // A recognized built-in keyboard is part of the phone and cannot be transiently absent.
+        // Prefer that stable device identity over Android's initial input-view recommendation,
+        // which may briefly request the full on-screen keyboard while the IME starts.
+        if (DeviceSpecific.hasBuiltInHardwareKeyboard()) {
+            return SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE
+        }
         val shouldShowVirtualKeyboard =
             systemInputViewDecision ?: !DeviceSpecific.hasConnectedHardwareKeyboard()
         return if (shouldShowVirtualKeyboard) {

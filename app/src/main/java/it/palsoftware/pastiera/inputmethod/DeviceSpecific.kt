@@ -484,7 +484,7 @@ object DeviceSpecific {
     }
 
     fun hasConnectedHardwareKeyboard(): Boolean {
-        if (currentDeviceProfile().model != KeyboardModel.UNKNOWN) {
+        if (hasBuiltInHardwareKeyboard()) {
             return true
         }
         return InputDevice.getDeviceIds().any { deviceId ->
@@ -495,6 +495,9 @@ object DeviceSpecific {
                 identity.keyboardType == InputDevice.KEYBOARD_TYPE_ALPHABETIC
         }
     }
+
+    fun hasBuiltInHardwareKeyboard(): Boolean =
+        currentDeviceProfile().model != KeyboardModel.UNKNOWN
 
     private fun keyboardInputIdentity(device: InputDevice): KeyboardInputIdentity {
         return KeyboardInputIdentity(

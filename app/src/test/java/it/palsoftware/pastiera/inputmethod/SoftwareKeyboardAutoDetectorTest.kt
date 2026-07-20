@@ -15,6 +15,7 @@ class SoftwareKeyboardAutoDetectorTest {
 
     @After
     fun tearDown() {
+        SoftwareKeyboardAutoDetector.onInputDevicesChanged()
         DeviceSpecific.clearTestOverrides()
     }
 
@@ -29,6 +30,7 @@ class SoftwareKeyboardAutoDetectorTest {
         )
 
         val context = RuntimeEnvironment.getApplication()
+        SoftwareKeyboardAutoDetector.updateSystemInputViewDecision(true)
         assertEquals(
             SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE,
             SoftwareKeyboardAutoDetector.resolve(context)
