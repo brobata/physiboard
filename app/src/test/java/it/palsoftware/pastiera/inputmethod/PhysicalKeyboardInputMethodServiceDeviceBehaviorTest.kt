@@ -41,6 +41,8 @@ class PhysicalKeyboardInputMethodServiceDeviceBehaviorTest {
         SettingsManager.resetSymMappings(context)
         SettingsManager.resetSymMappingsPage2(context)
         SettingsManager.setStaticVariationBarLayerStickyEnabled(context, true)
+        SettingsManager.setAutoCapitalizeRespectManualShiftOff(context, true)
+        SettingsManager.setAutoCapitalizeRestrictedFields(context, false)
 
         service = Robolectric.buildService(PhysicalKeyboardInputMethodService::class.java)
             .create()
@@ -217,6 +219,100 @@ class PhysicalKeyboardInputMethodServiceDeviceBehaviorTest {
         )
         assertTrue("commits=${recorder.committedTexts}", recorder.committedTexts.contains("a"))
         assertFalse("commits=${recorder.committedTexts}", recorder.committedTexts.contains("A"))
+    }
+
+    @Test
+    fun autoCap_manualShiftOff_doesNotLeakIntoAnotherEmptyField() {
+        val context = RuntimeEnvironment.getApplication()
+        SettingsManager.setAutoCapitalizeFirstLetter(context, true)
+        SettingsManager.setAutoCapitalizeAfterPeriod(context, true)
+
+        service.onStartInput(editorInfo, false)
+        assertTrue(modifierController().shiftOneShot)
+
+        tapShift(2_900L)
+        assertFalse(modifierController().shiftOneShot)
+
+        focusNewField(RecordingInputConnection())
+
+        assertTrue(modifierController().shiftOneShot)
+    }
+
+    @Test
+    fun autoCap_manualShiftOff_survivesRestartOfCurrentField() {
+        val context = RuntimeEnvironment.getApplication()
+        SettingsManager.setAutoCapitalizeFirstLetter(context, true)
+        SettingsManager.setAutoCapitalizeAfterPeriod(context, true)
+
+        service.onStartInput(editorInfo, false)
+        assertTrue(modifierController().shiftOneShot)
+
+        tapShift(3_000L)
+        assertFalse(modifierController().shiftOneShot)
+
+        service.onStartInput(editorInfo, true)
+
+        assertFalse(modifierController().shiftOneShot)
+    }
+
+    @Test
+    fun autoCap_manualShiftOff_doesNotSurviveRestart_whenRespectIsDisabled() {
+        val context = RuntimeEnvironment.getApplication()
+        SettingsManager.setAutoCapitalizeFirstLetter(context, true)
+        SettingsManager.setAutoCapitalizeAfterPeriod(context, true)
+        SettingsManager.setAutoCapitalizeRespectManualShiftOff(context, false)
+
+        service.onStartInput(editorInfo, false)
+        assertTrue(modifierController().shiftOneShot)
+
+        tapShift(3_100L)
+        assertFalse(modifierController().shiftOneShot)
+
+        service.onStartInput(editorInfo, true)
+
+        assertTrue(modifierController().shiftOneShot)
+    }
+
+    @Test
+    fun autoCap_restrictedFieldsSetting_startsUriFieldWithShift() {
+        val context = RuntimeEnvironment.getApplication()
+        SettingsManager.setAutoCapitalizeFirstLetter(context, true)
+        SettingsManager.setAutoCapitalizeRestrictedFields(context, true)
+
+        focusNewField(
+            newRecorder = RecordingInputConnection(),
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+        )
+
+        assertTrue(modifierController().shiftOneShot)
+    }
+
+    @Test
+    fun autoCap_restrictedFieldsSetting_neverStartsPasswordWithShift() {
+        val context = RuntimeEnvironment.getApplication()
+        SettingsManager.setAutoCapitalizeFirstLetter(context, true)
+        SettingsManager.setAutoCapitalizeRestrictedFields(context, true)
+
+        focusNewField(
+            newRecorder = RecordingInputConnection(),
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+        )
+
+        assertFalse(modifierController().shiftOneShot)
+    }
+
+    @Test
+    fun autoCap_newFieldAfterNewline_startsWithShift() {
+        val context = RuntimeEnvironment.getApplication()
+        SettingsManager.setAutoCapitalizeFirstLetter(context, true)
+        SettingsManager.setAutoCapitalizeAfterPeriod(context, true)
+        val nextField = RecordingInputConnection().apply {
+            textBeforeCursor = "Previous line\n"
+        }
+
+        focusNewField(nextField)
+
+        assertTrue(modifierController().shiftOneShot)
     }
 
     @Test
@@ -654,6 +750,22 @@ class PhysicalKeyboardInputMethodServiceDeviceBehaviorTest {
             63,
             keyEvent(KeyEvent.ACTION_UP, 63, start, start + 20L)
         )
+    }
+
+    private fun focusNewField(
+        newRecorder: RecordingInputConnection,
+        inputType: Int = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+    ) {
+        recorder = newRecorder
+        inputConnection = recorder.asProxy()
+        editorInfo = EditorInfo().apply {
+            this.inputType = inputType
+            packageName = "it.palsoftware.pastiera.test"
+        }
+        setField(service, "mInputConnection", inputConnection)
+        setField(service, "mStartedInputConnection", inputConnection)
+        setField(service, "mInputEditorInfo", editorInfo)
+        service.onStartInput(editorInfo, false)
     }
 
     private fun keyEvent(

@@ -47,6 +47,14 @@ fun TextInputSettingsScreen(
         mutableStateOf(SettingsManager.getAutoCapitalizeAfterPeriod(context))
     }
 
+    var autoCapitalizeRespectManualShiftOff by remember {
+        mutableStateOf(SettingsManager.getAutoCapitalizeRespectManualShiftOff(context))
+    }
+
+    var autoCapitalizeRestrictedFields by remember {
+        mutableStateOf(SettingsManager.getAutoCapitalizeRestrictedFields(context))
+    }
+
     var doubleSpaceToPeriod by remember {
         mutableStateOf(SettingsManager.getDoubleSpaceToPeriod(context))
     }
@@ -299,6 +307,30 @@ fun TextInputSettingsScreen(
                     SettingsManager.setAutoCapitalizeFirstLetter(context, enabled)
                 }
             )
+            AnimatedVisibility(visible = autoCapitalizeFirstLetter) {
+                Column {
+                    SettingsSwitchRow(
+                        title = stringResource(R.string.auto_capitalize_respect_manual_shift_off_title),
+                        description = stringResource(R.string.auto_capitalize_respect_manual_shift_off_description),
+                        checked = autoCapitalizeRespectManualShiftOff,
+                        inset = 52.dp,
+                        onCheckedChange = { enabled ->
+                            autoCapitalizeRespectManualShiftOff = enabled
+                            SettingsManager.setAutoCapitalizeRespectManualShiftOff(context, enabled)
+                        }
+                    )
+                    SettingsSwitchRow(
+                        title = stringResource(R.string.auto_capitalize_restricted_fields_title),
+                        description = stringResource(R.string.auto_capitalize_restricted_fields_description),
+                        checked = autoCapitalizeRestrictedFields,
+                        inset = 52.dp,
+                        onCheckedChange = { enabled ->
+                            autoCapitalizeRestrictedFields = enabled
+                            SettingsManager.setAutoCapitalizeRestrictedFields(context, enabled)
+                        }
+                    )
+                }
+            }
             SettingsSwitchRow(
                 title = stringResource(R.string.auto_capitalize_after_period_title),
                 description = stringResource(R.string.auto_capitalize_after_period_description),

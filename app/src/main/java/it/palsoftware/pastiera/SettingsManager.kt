@@ -44,6 +44,10 @@ object SettingsManager {
     private const val KEY_TAP_HAPTIC_USE_SYSTEM = "tap_haptic_use_system"
     private const val KEY_TAP_HAPTIC_DURATION_MS = "tap_haptic_duration_ms"
     private const val KEY_AUTO_CAPITALIZE_FIRST_LETTER = "auto_capitalize_first_letter"
+    private const val KEY_AUTO_CAPITALIZE_RESPECT_MANUAL_SHIFT_OFF =
+        "auto_capitalize_respect_manual_shift_off"
+    private const val KEY_AUTO_CAPITALIZE_RESTRICTED_FIELDS =
+        "auto_capitalize_restricted_fields"
     private const val KEY_DOUBLE_SPACE_TO_PERIOD = "double_space_to_period"
     private const val KEY_SPACED_HYPHEN_TO_EN_DASH = "spaced_hyphen_to_en_dash"
     private const val KEY_SPACED_HYPHEN_DASH_STYLE = "spaced_hyphen_dash_style"
@@ -271,6 +275,8 @@ object SettingsManager {
     private const val MIN_SWIPE_INCREMENTAL_THRESHOLD = 3f
     private const val MAX_SWIPE_INCREMENTAL_THRESHOLD = 25f
     private const val DEFAULT_AUTO_CAPITALIZE_FIRST_LETTER = true
+    private const val DEFAULT_AUTO_CAPITALIZE_RESPECT_MANUAL_SHIFT_OFF = true
+    private const val DEFAULT_AUTO_CAPITALIZE_RESTRICTED_FIELDS = false
     private const val DEFAULT_DOUBLE_SPACE_TO_PERIOD = true
     private const val DEFAULT_SPACED_HYPHEN_TO_EN_DASH = false
     const val DASH_STYLE_EN = "en_dash"
@@ -1717,6 +1723,32 @@ object SettingsManager {
     fun setAutoCapitalizeFirstLetter(context: Context, enabled: Boolean) {
         getPreferences(context).edit()
             .putBoolean(KEY_AUTO_CAPITALIZE_FIRST_LETTER, enabled)
+            .apply()
+    }
+
+    fun getAutoCapitalizeRespectManualShiftOff(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_AUTO_CAPITALIZE_RESPECT_MANUAL_SHIFT_OFF,
+            DEFAULT_AUTO_CAPITALIZE_RESPECT_MANUAL_SHIFT_OFF
+        )
+    }
+
+    fun setAutoCapitalizeRespectManualShiftOff(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_AUTO_CAPITALIZE_RESPECT_MANUAL_SHIFT_OFF, enabled)
+            .apply()
+    }
+
+    fun getAutoCapitalizeRestrictedFields(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_AUTO_CAPITALIZE_RESTRICTED_FIELDS,
+            DEFAULT_AUTO_CAPITALIZE_RESTRICTED_FIELDS
+        )
+    }
+
+    fun setAutoCapitalizeRestrictedFields(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_AUTO_CAPITALIZE_RESTRICTED_FIELDS, enabled)
             .apply()
     }
 
