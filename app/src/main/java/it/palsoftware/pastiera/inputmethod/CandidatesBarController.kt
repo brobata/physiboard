@@ -261,6 +261,11 @@ class CandidatesBarController(
     }
 
     fun isPastierinaModeActive(): Boolean = inputStatusBar.isPastierinaModeActive()
+
+    fun refreshWindowInsets() {
+        inputStatusBar.refreshWindowInsets()
+        candidatesStatusBar.refreshWindowInsets()
+    }
     
     fun invalidateStaticVariations() {
         inputStatusBar.invalidateStaticVariations()

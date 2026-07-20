@@ -28,3 +28,4 @@ Der Dateiname soll den Vergleichskontext erkennbar machen, aber nicht alle Metad
 ## Bekannte Geräte
 
 - [Unihertz Titan 2](unihertz-titan2/)
+- [Unihertz Titan 2 Elite](unihertz-titan2elite/)

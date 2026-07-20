@@ -1995,6 +1995,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 attachTrackpadDecorViewMotionHook("provider_changed")
             } else if (key == "pastierina_mode_override") {
                 keyboardVisibilityController.syncStatusBarPresentationModeFromSettings()
+            } else if (key == SettingsManager.KEY_TITAN2_ELITE_ROUNDED_CORNER_INSETS) {
+                if (::candidatesBarController.isInitialized) {
+                    candidatesBarController.refreshWindowInsets()
+                }
             } else if (
                 key == "software_keyboard_mode" ||
                 key == SettingsManager.KEY_SOFTWARE_KEYBOARD_MODE_RUNTIME_OVERRIDE

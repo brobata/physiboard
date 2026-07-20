@@ -636,6 +636,9 @@ object DeviceSpecific {
         }
     }
 
+    fun isTitan2EliteDevice(): Boolean =
+        currentDeviceProfile().model == KeyboardModel.TITAN_2_ELITE_QWERTY
+
     fun isMinimalPhoneDevice(physicalProfileOverride: String? = null): Boolean {
         return keyboardModelForProfile(physicalProfileOverride) == KeyboardModel.MINIMAL_PHONE
     }

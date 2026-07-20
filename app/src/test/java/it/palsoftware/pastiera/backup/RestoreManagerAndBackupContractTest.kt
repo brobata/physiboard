@@ -77,6 +77,10 @@ class RestoreManagerAndBackupContractTest {
     @Test
     fun statusBarAndVariationPreferences_areRecognizedForRestore() {
         assertEquals(
+            PreferenceValueType.BOOLEAN,
+            PreferenceSchemas.expectedType("pastiera_prefs", "titan2_elite_rounded_corner_insets")
+        )
+        assertEquals(
             PreferenceValueType.STRING,
             PreferenceSchemas.expectedType("pastiera_prefs", "static_variation_bar_preset")
         )

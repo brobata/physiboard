@@ -1,6 +1,8 @@
 package it.palsoftware.pastiera
 
 import android.content.Intent
+import it.palsoftware.pastiera.inputmethod.DeviceSpecific
+import org.junit.After
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -23,6 +25,11 @@ import org.robolectric.shadows.ShadowToast
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
 class SettingsManagerLayoutSwitchTest {
+
+    @After
+    fun tearDown() {
+        DeviceSpecific.clearTestOverrides()
+    }
 
     @Before
     fun setUp() {
@@ -80,6 +87,32 @@ class SettingsManagerLayoutSwitchTest {
         SettingsManager.setSymAutoCloseOnTouch(context, false)
 
         assertFalse(SettingsManager.getSymAutoCloseOnTouch(context))
+    }
+
+    @Test
+    fun titan2EliteRoundedCornerInsets_defaultToDetectedDeviceAndPersistOverride() {
+        val context = RuntimeEnvironment.getApplication()
+
+        assertFalse(SettingsManager.getTitan2EliteRoundedCornerInsetsEnabled(context))
+
+        SettingsManager.setPhysicalKeyboardProfileOverride(context, "titan2elite_qwerty")
+
+        assertFalse(SettingsManager.getTitan2EliteRoundedCornerInsetsEnabled(context))
+
+        DeviceSpecific.setBuildFingerprintForTests(
+            brand = "unihertz",
+            manufacturer = "unihertz",
+            model = "Titan 2 Elite",
+            device = "titan2",
+            product = "titan2",
+            board = "G72BoardV1"
+        )
+
+        assertTrue(SettingsManager.getTitan2EliteRoundedCornerInsetsEnabled(context))
+
+        SettingsManager.setTitan2EliteRoundedCornerInsetsEnabled(context, false)
+
+        assertFalse(SettingsManager.getTitan2EliteRoundedCornerInsetsEnabled(context))
     }
 
     @Test

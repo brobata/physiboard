@@ -864,6 +864,9 @@ Jede Taste kann als Keycode, Aktion, Native Ctrl oder Keine konfiguriert werden.
     <string name="trackpad_debug_service_description">Zeigt Trackpad-Ereignisse in einem kleinen Overlay zu Debugging-Zwecken an</string>
     <string name="status_bar_buttons_title">Statusleisten-Buttons</string>
     <string name="status_bar_buttons_description">Statusleisten-Buttons anpassen</string>
+    <string name="device_specific_interface_section">Gerätespezifisches Interface</string>
+    <string name="titan2_elite_rounded_corners_title">Runde Ecken des Titan 2 Elite</string>
+    <string name="titan2_elite_rounded_corners_description">Hält die Bedienelemente von Pastierina und der erweiterten Statusleiste innerhalb der gerundeten Displayecken.</string>
     <string name="status_bar_slot_left">Linker Slot</string>
     <string name="status_bar_slot_right_1">Rechter Slot 1</string>
     <string name="status_bar_slot_right_2">Rechter Slot 2</string>

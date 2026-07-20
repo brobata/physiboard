@@ -65,6 +65,7 @@ class DeviceSpecificTest {
         assertEquals("Unihertz", DeviceSpecific.keyboardName())
         assertFalse(DeviceSpecific.needsRemapping())
         assertFalse(DeviceSpecific.isMinimalPhoneDevice())
+        assertFalse(DeviceSpecific.isTitan2EliteDevice())
     }
 
     @Test
@@ -146,6 +147,7 @@ class DeviceSpecificTest {
         assertEquals("Unihertz", DeviceSpecific.keyboardName())
         assertFalse(DeviceSpecific.needsRemapping())
         assertTrue(DeviceSpecific.isTitan2Device())
+        assertTrue(DeviceSpecific.isTitan2EliteDevice())
     }
 
     @Test
@@ -162,6 +164,7 @@ class DeviceSpecificTest {
         assertEquals("titan2elite_qwerty", DeviceSpecific.physicalKeyboardName())
         assertEquals("Unihertz", DeviceSpecific.keyboardName())
         assertFalse(DeviceSpecific.needsRemapping())
+        assertTrue(DeviceSpecific.isTitan2EliteDevice())
     }
 
     @Test
@@ -178,6 +181,7 @@ class DeviceSpecificTest {
         assertEquals("titan2elite_qwerty", DeviceSpecific.physicalKeyboardName())
         assertEquals("Unihertz", DeviceSpecific.keyboardName())
         assertFalse(DeviceSpecific.needsRemapping())
+        assertTrue(DeviceSpecific.isTitan2EliteDevice())
     }
 
     @Test

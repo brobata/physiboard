@@ -9,7 +9,9 @@ import android.graphics.Color
 import androidx.core.content.ContextCompat
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
+import android.os.Build
 import android.view.Gravity
+import android.view.RoundedCorner
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AccelerateDecelerateInterpolator
@@ -242,6 +244,7 @@ class StatusBarController(
     companion object {
         private const val TAG = "StatusBarController"
         private val DEFAULT_BACKGROUND = Color.parseColor("#000000")
+        private const val TITAN_2_ELITE_CORNER_FALLBACK_DP = 24f
     }
 
     data class StatusSnapshot(
@@ -320,6 +323,8 @@ class StatusBarController(
     private var hamburgerMenuView: HamburgerMenuView? = null
     private var pastierinaModeActive: Boolean = false
     private var fullSuggestionsBar: FullSuggestionsBar? = null
+    private var baseLeftPadding: Int = 0
+    private var baseRightPadding: Int = 0
     private var baseBottomPadding: Int = 0
     private var lastHamburgerInputConnection: android.view.inputmethod.InputConnection? = null
     private var lastInsetsLogSignature: String? = null
@@ -517,6 +522,10 @@ class StatusBarController(
 
     fun getLayout(): LinearLayout? = statusBarLayout
 
+    fun refreshWindowInsets() {
+        statusBarLayout?.let { ViewCompat.requestApplyInsets(it) }
+    }
+
     fun collapseLayout() {
         val layout = statusBarLayout ?: return
         hideHamburgerMenu()
@@ -547,6 +556,8 @@ class StatusBarController(
                 accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_NONE
             }
             statusBarLayout?.let { layout ->
+                baseLeftPadding = layout.paddingLeft
+                baseRightPadding = layout.paddingRight
                 baseBottomPadding = layout.paddingBottom
                 ViewCompat.setOnApplyWindowInsetsListener(layout) { view, insets ->
                     // Use getInsetsIgnoringVisibility to get stable insets for navigation and gesture areas
@@ -555,9 +566,51 @@ class StatusBarController(
                         WindowInsetsCompat.Type.navigationBars() or WindowInsetsCompat.Type.systemGestures()
                     )
                     val cutout = insets.getInsets(WindowInsetsCompat.Type.displayCutout())
+                    val useTitan2EliteRoundedCornerInsets =
+                        SettingsManager.getTitan2EliteRoundedCornerInsetsEnabled(context)
+                    val platformInsets = insets.toWindowInsets()
+                    val bottomLeftRadius = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        platformInsets?.getRoundedCorner(RoundedCorner.POSITION_BOTTOM_LEFT)?.radius ?: 0
+                    } else {
+                        0
+                    }
+                    val bottomRightRadius = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        platformInsets?.getRoundedCorner(RoundedCorner.POSITION_BOTTOM_RIGHT)?.radius ?: 0
+                    } else {
+                        0
+                    }
+                    val fallbackCornerInset = if (useTitan2EliteRoundedCornerInsets) {
+                        dpToPx(TITAN_2_ELITE_CORNER_FALLBACK_DP)
+                    } else {
+                        0
+                    }
+                    val leftCornerInset = if (useTitan2EliteRoundedCornerInsets) {
+                        bottomLeftRadius.takeIf { it > 0 } ?: fallbackCornerInset
+                    } else {
+                        0
+                    }
+                    val rightCornerInset = if (useTitan2EliteRoundedCornerInsets) {
+                        bottomRightRadius.takeIf { it > 0 } ?: fallbackCornerInset
+                    } else {
+                        0
+                    }
+                    val appliedLeftPadding = baseLeftPadding + if (useTitan2EliteRoundedCornerInsets) {
+                        max(max(navAndGestures.left, cutout.left), leftCornerInset)
+                    } else {
+                        0
+                    }
+                    val appliedRightPadding = baseRightPadding + if (useTitan2EliteRoundedCornerInsets) {
+                        max(max(navAndGestures.right, cutout.right), rightCornerInset)
+                    } else {
+                        0
+                    }
                     val bottomInset = max(navAndGestures.bottom, cutout.bottom)
                     val appliedBottomPadding = baseBottomPadding + bottomInset
-                    view.updatePadding(bottom = appliedBottomPadding)
+                    view.updatePadding(
+                        left = appliedLeftPadding,
+                        right = appliedRightPadding,
+                        bottom = appliedBottomPadding
+                    )
                     logImeOverlayInsetsIfEnabled(
                         navBottom = navAndGestures.bottom,
                         imeBottom = 0,

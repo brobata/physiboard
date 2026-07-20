@@ -56,6 +56,9 @@ fun StatusBarButtonsScreen(
     var dynamicVariationsResizeToContent by remember {
         mutableStateOf(SettingsManager.getDynamicVariationBarResizeToContent(context))
     }
+    var titan2EliteRoundedCornerInsetsEnabled by remember {
+        mutableStateOf(SettingsManager.getTitan2EliteRoundedCornerInsetsEnabled(context))
+    }
     var editorMode by remember {
         mutableStateOf(
             if (
@@ -259,6 +262,36 @@ fun StatusBarButtonsScreen(
                 stringResource(R.string.pastierina_preview_suggestions)
             } else null
         )
+
+        SettingsSectionDivider(stringResource(R.string.device_specific_interface_section))
+        Surface(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.titan2_elite_rounded_corners_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = stringResource(R.string.titan2_elite_rounded_corners_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                FeatureStatusIcon(FeatureStatus.Construction)
+                Switch(
+                    checked = titan2EliteRoundedCornerInsetsEnabled,
+                    onCheckedChange = { enabled ->
+                        titan2EliteRoundedCornerInsetsEnabled = enabled
+                        SettingsManager.setTitan2EliteRoundedCornerInsetsEnabled(context, enabled)
+                    }
+                )
+            }
+        }
 
         if (editorMode == StatusBarEditorMode.Extended) {
             SettingsSectionDivider(stringResource(R.string.extended_status_bar_features_section))
