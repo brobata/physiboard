@@ -187,6 +187,7 @@ fun KeyboardThemeScreen(
     var showSaveAsDialog by remember { mutableStateOf(false) }
     var showNewDraftDialog by remember { mutableStateOf(false) }
     var draftEditorName by remember { mutableStateOf<String?>(null) }
+    val draftEditingGuard = remember { mutableStateOf(false) }
     var draftListFocusName by remember { mutableStateOf<String?>(null) }
     var deleteThemeRequest by remember { mutableStateOf<String?>(null) }
     var deleteDraftRequest by remember { mutableStateOf<String?>(null) }
@@ -243,6 +244,8 @@ fun KeyboardThemeScreen(
     }
 
     fun updateActiveTheme(theme: KeyboardThemePreset) {
+        // Ignore callbacks retained by the normal editor while a draft is opening.
+        if (draftEditingGuard.value) return
         if (activePreviewPage == 0) {
             hardwareTheme = theme
             SettingsManager.setKeyboardTheme(context, SettingsManager.KeyboardThemeTarget.HARDWARE, theme.toSettingsTheme())
@@ -258,6 +261,7 @@ fun KeyboardThemeScreen(
     }
 
     fun applyPreset(option: KeyboardThemeOption) {
+        draftEditingGuard.value = false
         draftEditorName = null
         val preset = option.preset
         if (activeSelectionKey == option.key) {
@@ -361,6 +365,7 @@ fun KeyboardThemeScreen(
             softwareTheme = savedPreset
             SettingsManager.setKeyboardTheme(context, activeTarget, draft.theme)
         }
+        draftEditingGuard.value = false
         draftEditorName = null
     }
 
@@ -520,7 +525,10 @@ fun KeyboardThemeScreen(
                         KeyboardThemeDraftCard(
                             draft = draft,
                             editing = editedDraft?.name.equals(draft.name, ignoreCase = true),
-                            onClick = { draftEditorName = draft.name }
+                            onClick = {
+                                draftEditingGuard.value = true
+                                draftEditorName = draft.name
+                            }
                         )
                     }
                 }
@@ -792,6 +800,8 @@ fun KeyboardThemeScreen(
             existingNames = (savedThemes.map { it.preset.name } + themeDrafts.map { it.name }).toSet(),
             onDismiss = { showNewDraftDialog = false },
             onCreate = { name ->
+                draftEditingGuard.value = true
+                draftEditorName = name
                 val draft = SettingsManager.KeyboardThemeDraft(
                     name = name,
                     theme = SettingsManager.defaultKeyboardTheme()
@@ -802,7 +812,6 @@ fun KeyboardThemeScreen(
                 SettingsManager.saveKeyboardThemeDraft(context, draft)
                 themeDrafts = SettingsManager.getKeyboardThemeDrafts(context)
                 showNewDraftDialog = false
-                draftEditorName = draft.name
             }
         )
     }
@@ -840,6 +849,7 @@ fun KeyboardThemeScreen(
                         SettingsManager.deleteKeyboardThemeDraft(context, name)
                         themeDrafts = SettingsManager.getKeyboardThemeDrafts(context)
                         if (draftEditorName.equals(name, ignoreCase = true)) {
+                            draftEditingGuard.value = false
                             draftEditorName = null
                         }
                     }

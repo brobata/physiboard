@@ -3,6 +3,7 @@ package it.palsoftware.pastiera
 import it.palsoftware.pastiera.backup.PreferenceSchemas
 import it.palsoftware.pastiera.backup.PreferenceValueType
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -217,6 +218,38 @@ class SettingsManagerKeyboardThemeAssignmentTest {
         val savedThemes = SettingsManager.getSavedKeyboardThemes(context)
         assertEquals(listOf("Second"), savedThemes.map { it.name })
         assertEquals(second, savedThemes.single().theme)
+    }
+
+    @Test
+    fun savingAndEditingDraft_doesNotMutateActiveThemes() {
+        val context = RuntimeEnvironment.getApplication()
+        val activeHardware = theme(0xFF281B35.toInt())
+        val activeSoftware = theme(0xFF102030.toInt())
+        val initialDraft = SettingsManager.KeyboardThemeDraft(
+            name = "Draft",
+            theme = theme(0xFFF0F0F0.toInt())
+        )
+
+        SettingsManager.setKeyboardTheme(context, SettingsManager.KeyboardThemeTarget.HARDWARE, activeHardware)
+        SettingsManager.setKeyboardTheme(context, SettingsManager.KeyboardThemeTarget.SOFTWARE, activeSoftware)
+        SettingsManager.saveKeyboardThemeDraft(context, initialDraft)
+        SettingsManager.saveKeyboardThemeDraft(
+            context,
+            initialDraft.copy(
+                theme = theme(0xFFABCDEF.toInt()),
+                populatedFields = setOf("background")
+            )
+        )
+
+        assertEquals(
+            activeHardware,
+            SettingsManager.getKeyboardTheme(context, SettingsManager.KeyboardThemeTarget.HARDWARE)
+        )
+        assertEquals(
+            activeSoftware,
+            SettingsManager.getKeyboardTheme(context, SettingsManager.KeyboardThemeTarget.SOFTWARE)
+        )
+        assertFalse(SettingsManager.isKeyboardThemePreferenceKey("keyboard_theme_drafts"))
     }
 
     @Test
