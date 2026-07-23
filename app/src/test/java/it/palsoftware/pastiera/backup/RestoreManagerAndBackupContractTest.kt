@@ -75,6 +75,22 @@ class RestoreManagerAndBackupContractTest {
     }
 
     @Test
+    fun deleteMethodsPreferences_areRecognizedForRestore() {
+        assertEquals(
+            PreferenceValueType.BOOLEAN,
+            PreferenceSchemas.expectedType("pastiera_prefs", "shift_backspace_delete")
+        )
+        assertEquals(
+            PreferenceValueType.BOOLEAN,
+            PreferenceSchemas.expectedType("pastiera_prefs", "alt_backspace_delete")
+        )
+        assertEquals(
+            PreferenceValueType.BOOLEAN,
+            PreferenceSchemas.expectedType("pastiera_prefs", "backspace_at_start_delete")
+        )
+    }
+
+    @Test
     fun statusBarAndVariationPreferences_areRecognizedForRestore() {
         assertEquals(
             PreferenceValueType.BOOLEAN,

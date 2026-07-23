@@ -323,7 +323,10 @@ object PreferenceSchemas {
             "clicks_charging_stop_percent" to PreferenceValueType.INT,
             "toast_on_layout_switch" to PreferenceValueType.BOOLEAN,
             "software_keyboard_mode_toggle_toasts" to PreferenceValueType.BOOLEAN,
-            "alt_enter_layout_switch" to PreferenceValueType.BOOLEAN
+            "alt_enter_layout_switch" to PreferenceValueType.BOOLEAN,
+            "shift_backspace_delete" to PreferenceValueType.BOOLEAN,
+            "alt_backspace_delete" to PreferenceValueType.BOOLEAN,
+            "backspace_at_start_delete" to PreferenceValueType.BOOLEAN
         ),
         dynamicKeys = listOf(
             PreferenceFileSchema.DynamicKey(
