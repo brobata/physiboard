@@ -1,4 +1,6 @@
-Donate to the current maintainer:
+Support this project on [OpenCollective](https://opencollective.com/pastiera) [WIP, applying for Fiscal Hosts]
+
+Or directly donate to the current maintainer:
 
 Account holder | Patrick Alexander Zauner |
 |---|---|
@@ -7,7 +9,7 @@ BIC | DEUTDESMP12
 
 Or, for everyone who sees an IBAN and quietly gives up:\
 [via PayPal](https://www.paypal.me/zaunerpa)\
-`<OpenCollective Profile coming soon>`
+
 
 Donate to the original developer:\
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/C0C31OHWF2)
