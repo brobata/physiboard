@@ -1,18 +1,26 @@
 Support this project on [OpenCollective](https://opencollective.com/pastiera) [WIP, applying for Fiscal Hosts]
 
-Or directly donate to the current maintainer:
+<details>
+<summary>Alternative direct support options</summary>
 
-Account holder | Patrick Alexander Zauner |
+> **Notice:** The following payments are made directly to individual maintainers and are not administered through OpenCollective. Depending on the terms of Pastiera's future fiscal host, these options may be discontinued and all project contributions may subsequently be processed exclusively through OpenCollective.
+
+### Current maintainer
+
+| | |
 |---|---|
-IBAN | DE25660702130058075300
-BIC | DEUTDESMP12
+| Account holder | Patrick Alexander Zauner |
+| IBAN | DE25660702130058075300 |
+| BIC | DEUTDESMP12 |
 
-Or, for everyone who sees an IBAN and quietly gives up:\
-[via PayPal](https://www.paypal.me/zaunerpa)\
+For everyone who sees an IBAN and quietly gives up:  
+[Support via PayPal](https://www.paypal.me/zaunerpa)
 
+### Original developer
 
-Donate to the original developer:\
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/C0C31OHWF2)
+[![Support the original developer on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/C0C31OHWF2)
+
+</details>
 
 # Pastiera
 
