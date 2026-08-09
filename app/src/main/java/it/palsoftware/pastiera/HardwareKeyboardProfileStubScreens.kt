@@ -97,6 +97,15 @@ fun ClicksPowerKeyboardSettingsScreen(
     var chargingStopSlider by remember {
         mutableStateOf(SettingsManager.getClicksChargingStopPercent(context).toFloat())
     }
+    var clicksOverlappingKeysMode by remember {
+        mutableStateOf(SettingsManager.getClicksOverlappingKeysMode(context))
+    }
+    var numberRowInputMode by remember {
+        mutableStateOf(SettingsManager.getClicksNumberRowInputMode(context))
+    }
+    var numberRowRepeatEnabled by remember {
+        mutableStateOf(SettingsManager.isClicksNumberRowRepeatEnabled(context))
+    }
     var backlightSlider by remember { mutableStateOf(100f) }
     var reserveSlider by remember { mutableStateOf(0f) }
     var mappingPage by remember { mutableStateOf<ClicksMappingPage?>(null) }
@@ -296,6 +305,29 @@ fun ClicksPowerKeyboardSettingsScreen(
             onClick = {
                 gattClient?.setCapsLock(false)
                 gattClient?.setCursorMode(false)
+            }
+        )
+        ClicksOverlappingKeysModeRow(
+            selected = clicksOverlappingKeysMode,
+            onSelected = { mode ->
+                clicksOverlappingKeysMode = mode
+                SettingsManager.setClicksOverlappingKeysMode(context, mode)
+            }
+        )
+        ClicksNumberRowInputModeRow(
+            selected = numberRowInputMode,
+            onSelected = { mode ->
+                numberRowInputMode = mode
+                SettingsManager.setClicksNumberRowInputMode(context, mode)
+            }
+        )
+        ClicksSettingsSwitchRow(
+            title = stringResource(R.string.clicks_number_row_repeat_title),
+            description = stringResource(R.string.clicks_number_row_repeat_description),
+            checked = numberRowRepeatEnabled,
+            onCheckedChange = { enabled ->
+                numberRowRepeatEnabled = enabled
+                SettingsManager.setClicksNumberRowRepeatEnabled(context, enabled)
             }
         )
         ClicksSettingsSwitchRow(
@@ -778,6 +810,103 @@ private fun ClicksIntDropdownRow(
         }
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ClicksNumberRowInputModeRow(
+    selected: SettingsManager.ClicksNumberRowInputMode,
+    onSelected: (SettingsManager.ClicksNumberRowInputMode) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)
+    ) {
+        OutlinedTextField(
+            value = clicksNumberRowInputModeLabel(selected),
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(stringResource(R.string.clicks_number_row_input_mode_title)) },
+            supportingText = { Text(stringResource(R.string.clicks_number_row_input_mode_description)) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+            modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            SettingsManager.ClicksNumberRowInputMode.entries.forEach { mode ->
+                DropdownMenuItem(
+                    text = { Text(clicksNumberRowInputModeLabel(mode)) },
+                    onClick = {
+                        expanded = false
+                        onSelected(mode)
+                    }
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ClicksOverlappingKeysModeRow(
+    selected: SettingsManager.ClicksOverlappingKeysMode,
+    onSelected: (SettingsManager.ClicksOverlappingKeysMode) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)
+    ) {
+        OutlinedTextField(
+            value = clicksOverlappingKeysModeLabel(selected),
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(stringResource(R.string.clicks_release_order_title)) },
+            supportingText = { Text(stringResource(R.string.clicks_release_order_description)) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+            modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            SettingsManager.ClicksOverlappingKeysMode.entries.forEach { mode ->
+                DropdownMenuItem(
+                    text = { Text(clicksOverlappingKeysModeLabel(mode)) },
+                    onClick = {
+                        expanded = false
+                        onSelected(mode)
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun clicksOverlappingKeysModeLabel(mode: SettingsManager.ClicksOverlappingKeysMode): String =
+    stringResource(
+        when (mode) {
+            SettingsManager.ClicksOverlappingKeysMode.OFF ->
+                R.string.clicks_overlapping_keys_mode_off
+            SettingsManager.ClicksOverlappingKeysMode.ADJACENT_ONLY ->
+                R.string.clicks_overlapping_keys_mode_adjacent
+            SettingsManager.ClicksOverlappingKeysMode.ALL_NON_MODIFIERS ->
+                R.string.clicks_overlapping_keys_mode_all
+        }
+    )
+
+@Composable
+private fun clicksNumberRowInputModeLabel(mode: SettingsManager.ClicksNumberRowInputMode): String =
+    stringResource(
+        when (mode) {
+            SettingsManager.ClicksNumberRowInputMode.NORMAL -> R.string.clicks_number_row_input_mode_normal
+            SettingsManager.ClicksNumberRowInputMode.IGNORE_WHILE_ADJACENT_KEY_HELD ->
+                R.string.clicks_number_row_input_mode_adjacent
+            SettingsManager.ClicksNumberRowInputMode.IGNORE_WHILE_ANY_KEY_HELD ->
+                R.string.clicks_number_row_input_mode_any
+            SettingsManager.ClicksNumberRowInputMode.LONG_PRESS -> R.string.clicks_number_row_input_mode_long_press
+            SettingsManager.ClicksNumberRowInputMode.IGNORE_ALL -> R.string.clicks_number_row_input_mode_ignore_all
+        }
+    )
 
 @Composable
 private fun specialRemapPresets(nativeAction: String): List<ClicksRemapPreset> = buildList {

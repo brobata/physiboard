@@ -92,6 +92,10 @@ object SettingsManager {
     private const val KEY_CLICKS_CHARGING_START_PERCENT = "clicks_charging_start_percent"
     private const val KEY_CLICKS_CHARGING_STOP_PERCENT = "clicks_charging_stop_percent"
     private const val KEY_CLICKS_MANUAL_CHARGING_UNTIL = "clicks_manual_charging_until"
+    private const val KEY_CLICKS_OVERLAPPING_KEYS_ENABLED = "clicks_overlapping_keys_enabled"
+    private const val KEY_CLICKS_OVERLAPPING_KEYS_MODE = "clicks_overlapping_keys_mode"
+    private const val KEY_CLICKS_NUMBER_ROW_INPUT_MODE = "clicks_number_row_input_mode"
+    private const val KEY_CLICKS_NUMBER_ROW_REPEAT_ENABLED = "clicks_number_row_repeat_enabled"
     private const val KEY_RESTORE_SYM_PAGE = "restore_sym_page" // SYM page to restore when returning from settings
     private const val KEY_PENDING_RESTORE_SYM_PAGE = "pending_restore_sym_page" // Temporary SYM page state saved when opening settings
     private const val KEY_SYM_PAGES_CONFIG = "sym_pages_config" // Order/enabled pages for SYM
@@ -149,6 +153,7 @@ object SettingsManager {
     private const val KEY_BOUNCE_KEYS_SPACE_ENABLED = "bounce_keys_space_enabled"
     private const val KEY_BOUNCE_KEYS_ENTER_ENABLED = "bounce_keys_enter_enabled"
     private const val KEY_BOUNCE_KEYS_BACKSPACE_ENABLED = "bounce_keys_backspace_enabled"
+    private const val KEY_OVERLAPPING_KEYS_ENABLED = "overlapping_keys_enabled"
     private const val KEY_GLOBAL_VARIATION_LAYOUT_OVERRIDE = "global_variation_layout_override" // Optional layout id used for variation ordering across all layouts
     private const val KEY_APP_LANGUAGE_TAG = "app_language_tag" // BCP-47 language tag for app UI (null/blank = system)
     private const val KEY_APP_ENTER_BEHAVIOR_ENABLED = "app_enter_behavior_enabled"
@@ -337,6 +342,7 @@ object SettingsManager {
     private const val DEFAULT_BOUNCE_KEYS_SPACE_ENABLED = true
     private const val DEFAULT_BOUNCE_KEYS_ENTER_ENABLED = true
     private const val DEFAULT_BOUNCE_KEYS_BACKSPACE_ENABLED = true
+    private const val DEFAULT_OVERLAPPING_KEYS_ENABLED = false
     private const val DEFAULT_EMOJI_PICKER_EXPANDED_HEIGHT = true
     private val DEFAULT_SYM_PAGES_CONFIG = SymPagesConfig()
     private const val DEFAULT_STATIC_VARIATION_BAR_MODE = false
@@ -2253,6 +2259,19 @@ object SettingsManager {
     fun setBounceKeysBackspaceEnabled(context: Context, enabled: Boolean) {
         getPreferences(context).edit()
             .putBoolean(KEY_BOUNCE_KEYS_BACKSPACE_ENABLED, enabled)
+            .apply()
+    }
+
+    fun getOverlappingKeysEnabled(context: Context): Boolean {
+        return getPreferences(context).getBoolean(
+            KEY_OVERLAPPING_KEYS_ENABLED,
+            DEFAULT_OVERLAPPING_KEYS_ENABLED
+        )
+    }
+
+    fun setOverlappingKeysEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_OVERLAPPING_KEYS_ENABLED, enabled)
             .apply()
     }
 
@@ -4179,6 +4198,75 @@ object SettingsManager {
     fun setClicksManualChargingUntil(context: Context, timestampMillis: Long) {
         getPreferences(context).edit()
             .putLong(KEY_CLICKS_MANUAL_CHARGING_UNTIL, timestampMillis.coerceAtLeast(0L))
+            .apply()
+    }
+
+    enum class ClicksOverlappingKeysMode(val persistedValue: String) {
+        OFF("off"),
+        ADJACENT_ONLY("adjacent_only"),
+        ALL_NON_MODIFIERS("all_non_modifiers");
+
+        companion object {
+            fun fromPersistedValue(value: String?): ClicksOverlappingKeysMode =
+                entries.firstOrNull { it.persistedValue == value } ?: OFF
+        }
+    }
+
+    enum class ClicksNumberRowInputMode(val persistedValue: String) {
+        NORMAL("normal"),
+        IGNORE_WHILE_ADJACENT_KEY_HELD("ignore_while_adjacent_key_held"),
+        IGNORE_WHILE_ANY_KEY_HELD("ignore_while_any_key_held"),
+        LONG_PRESS("long_press"),
+        IGNORE_ALL("ignore_all");
+
+        companion object {
+            fun fromPersistedValue(value: String?): ClicksNumberRowInputMode = when (value) {
+                // Compatibility with the first, uncommitted implementation installed on test devices.
+                "ignore_while_other_key_held" -> IGNORE_WHILE_ANY_KEY_HELD
+                else -> entries.firstOrNull { it.persistedValue == value } ?: NORMAL
+            }
+        }
+    }
+
+    fun getClicksOverlappingKeysMode(context: Context): ClicksOverlappingKeysMode {
+        val preferences = getPreferences(context)
+        if (preferences.contains(KEY_CLICKS_OVERLAPPING_KEYS_MODE)) {
+            return ClicksOverlappingKeysMode.fromPersistedValue(
+                preferences.getString(KEY_CLICKS_OVERLAPPING_KEYS_MODE, null)
+            )
+        }
+        return if (preferences.getBoolean(KEY_CLICKS_OVERLAPPING_KEYS_ENABLED, false)) {
+            ClicksOverlappingKeysMode.ALL_NON_MODIFIERS
+        } else {
+            ClicksOverlappingKeysMode.OFF
+        }
+    }
+
+    fun setClicksOverlappingKeysMode(context: Context, mode: ClicksOverlappingKeysMode) {
+        getPreferences(context).edit()
+            .putString(KEY_CLICKS_OVERLAPPING_KEYS_MODE, mode.persistedValue)
+            .remove(KEY_CLICKS_OVERLAPPING_KEYS_ENABLED)
+            .apply()
+    }
+
+    fun getClicksNumberRowInputMode(context: Context): ClicksNumberRowInputMode {
+        return ClicksNumberRowInputMode.fromPersistedValue(
+            getPreferences(context).getString(KEY_CLICKS_NUMBER_ROW_INPUT_MODE, null)
+        )
+    }
+
+    fun setClicksNumberRowInputMode(context: Context, mode: ClicksNumberRowInputMode) {
+        getPreferences(context).edit()
+            .putString(KEY_CLICKS_NUMBER_ROW_INPUT_MODE, mode.persistedValue)
+            .apply()
+    }
+
+    fun isClicksNumberRowRepeatEnabled(context: Context): Boolean =
+        getPreferences(context).getBoolean(KEY_CLICKS_NUMBER_ROW_REPEAT_ENABLED, true)
+
+    fun setClicksNumberRowRepeatEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_CLICKS_NUMBER_ROW_REPEAT_ENABLED, enabled)
             .apply()
     }
 

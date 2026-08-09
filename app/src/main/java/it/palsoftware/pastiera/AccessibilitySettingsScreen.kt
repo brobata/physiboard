@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -77,6 +78,9 @@ fun AccessibilitySettingsScreen(
     }
     var bounceBackspaceEnabled by remember {
         mutableStateOf(SettingsManager.getBounceKeysBackspaceEnabled(context))
+    }
+    var overlappingKeysEnabled by remember {
+        mutableStateOf(SettingsManager.getOverlappingKeysEnabled(context))
     }
 
     BackHandler { onBack() }
@@ -416,6 +420,46 @@ fun AccessibilitySettingsScreen(
                     SettingsManager.setBounceKeysBackspaceEnabled(context, enabled)
                 }
             )
+
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 104.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.TouchApp,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.settings_accessibility_overlapping_keys_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = stringResource(R.string.settings_accessibility_overlapping_keys_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = overlappingKeysEnabled,
+                        onCheckedChange = { enabled ->
+                            overlappingKeysEnabled = enabled
+                            SettingsManager.setOverlappingKeysEnabled(context, enabled)
+                        }
+                    )
+                }
+            }
         }
     }
 }

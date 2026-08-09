@@ -7,6 +7,7 @@ import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.content.res.Configuration
 import it.palsoftware.pastiera.AppBroadcastActions
+import it.palsoftware.pastiera.ClicksPowerKeyboardController
 import it.palsoftware.pastiera.SettingsManager
 import it.palsoftware.pastiera.SoftwareKeyboardModeActions
 import android.inputmethodservice.InputMethodService
@@ -293,6 +294,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         timeoutMs = MULTI_TAP_TIMEOUT_MS
     )
     private val bounceKeyFilter = BounceKeyFilter()
+    private val accidentalKeyPressFilter = AccidentalKeyPressFilter()
+    private val physicalKeyResolver = PhysicalKeyResolver()
+    private var replayingProtectedNumberKey = false
     private val uiHandler = Handler(Looper.getMainLooper())
     private var inputManager: InputManager? = null
     private var lastObservedAutoSoftwareKeyboardMode: SettingsManager.SoftwareKeyboardMode? = null
@@ -309,6 +313,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
 
         override fun onInputDeviceRemoved(deviceId: Int) {
+            accidentalKeyPressFilter.resetDevice(deviceId)
             val clicksDisconnected = connectedClicksInputDeviceIds.remove(deviceId)
             if (
                 clicksDisconnected &&
@@ -322,6 +327,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
 
         override fun onInputDeviceChanged(deviceId: Int) {
+            accidentalKeyPressFilter.resetDevice(deviceId)
             SoftwareKeyboardAutoDetector.onInputDevicesChanged()
             val device = InputDevice.getDevice(deviceId)
             if (device != null && DeviceSpecific.isClicksPowerKeyboard(device)) {
@@ -2426,6 +2432,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     }
     
     override fun onDestroy() {
+        accidentalKeyPressFilter.reset()
         super.onDestroy()
         pendingInputDeviceModeRefresh?.let { uiHandler.removeCallbacks(it) }
         pendingInputDeviceModeRefresh = null
@@ -2518,9 +2525,12 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     override fun onComputeInsets(outInsets: InputMethodService.Insets?) {
         super.onComputeInsets(outInsets)
         outInsets?.let {
+            val decorView = window?.window?.decorView
             ImeInsetsPolicy.applyCandidatesOnlyContentInsets(
                 insets = it,
-                candidatesOnly = !isFullscreenMode && !systemRequestsInputView
+                candidatesOnly = !isFullscreenMode && !systemRequestsInputView,
+                touchableWidth = decorView?.width ?: 0,
+                touchableHeight = decorView?.height ?: 0
             )
         }
     }
@@ -2978,6 +2988,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
         DeferredPunctuationSpaceTracker.clear()
         bounceKeyFilter.reset()
+        accidentalKeyPressFilter.reset()
         cancelPendingSelectionDrivenUiWork()
         invalidateRenderedStatusSnapshot()
         editorHasActiveSelection = false
@@ -3127,6 +3138,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     
     override fun onFinishInput() {
         super.onFinishInput()
+        accidentalKeyPressFilter.reset()
         isInputViewActive = false
         if (::candidatesBarController.isInitialized) {
             candidatesBarController.resetSuggestionActionMode()
@@ -3764,7 +3776,72 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         return remapped.keyCode to remapped.event
     }
 
+    private data class AccidentalKeyInput(
+        val resolution: PhysicalKeyResolver.Resolution,
+        val configuration: AccidentalKeyPressFilter.Configuration
+    )
+
+    private fun accidentalKeyInput(keyCode: Int, event: KeyEvent?): AccidentalKeyInput {
+        val device = event
+            ?.takeIf { it.deviceId >= 0 }
+            ?.let { InputDevice.getDevice(it.deviceId) }
+        val isPhysicalKeyboard = device != null &&
+            !device.isVirtual &&
+            device.sources and InputDevice.SOURCE_KEYBOARD == InputDevice.SOURCE_KEYBOARD
+        val isClicksPowerKeyboard = device?.let(DeviceSpecific::isClicksPowerKeyboard) == true
+        return AccidentalKeyInput(
+            resolution = physicalKeyResolver.resolve(
+                keyCode = keyCode,
+                event = event,
+                profile = ClicksPowerKeyboardLayout.takeIf { isClicksPowerKeyboard },
+                clicksState = if (isClicksPowerKeyboard) {
+                    ClicksPowerKeyboardController.currentState().keyboard
+                } else {
+                    null
+                }
+            ),
+            configuration = AccidentalKeyPressPolicy.configuration(
+                isPhysicalKeyboard = isPhysicalKeyboard,
+                isClicksPowerKeyboard = isClicksPowerKeyboard,
+                globalOverlapEnabled = SettingsManager.getOverlappingKeysEnabled(this),
+                clicksOverlapMode = SettingsManager.getClicksOverlappingKeysMode(this),
+                clicksNumberRowMode = SettingsManager.getClicksNumberRowInputMode(this),
+                clicksNumberRowRepeatEnabled = SettingsManager.isClicksNumberRowRepeatEnabled(this),
+                longPressThresholdMs = SettingsManager.getLongPressThreshold(this)
+            )
+        )
+    }
+
+    private fun replayProtectedNumberKey(
+        keyCode: Int,
+        replay: AccidentalKeyPressFilter.KeyUpResult.ReplayTap
+    ) {
+        replayingProtectedNumberKey = true
+        try {
+            val downHandled = onKeyDown(keyCode, replay.downEvent)
+            if (downHandled) {
+                onKeyUp(keyCode, replay.upEvent)
+            } else {
+                currentInputConnection?.let { inputConnection ->
+                    inputConnection.sendKeyEvent(replay.downEvent)
+                    inputConnection.sendKeyEvent(replay.upEvent)
+                }
+            }
+        } finally {
+            replayingProtectedNumberKey = false
+        }
+    }
+
     override fun onKeyLongPress(keyCode_: Int, event_: KeyEvent?): Boolean {
+        if (!replayingProtectedNumberKey) {
+            val accidentalInput = accidentalKeyInput(keyCode_, event_)
+            accidentalKeyPressFilter.shouldConsumeKeyDown(
+                keyCode = keyCode_,
+                event = event_,
+                resolution = accidentalInput.resolution,
+                configuration = accidentalInput.configuration
+            )?.let { return true }
+        }
         val (keyCode, event) = remapHardwareEvent(keyCode_, event_)
         // Handle long press even when the keyboard is hidden but we still have a valid InputConnection.
         val inputConnection = currentInputConnection
@@ -3790,9 +3867,27 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     }
 
     override fun onKeyDown(keyCode_: Int, event_: KeyEvent?): Boolean {
-        val (keyCode, event) = remapHardwareEvent(keyCode_, event_)
         val perfStart = ImePerfLogger.mark()
         try {
+        if (!replayingProtectedNumberKey) {
+            val accidentalInput = accidentalKeyInput(keyCode_, event_)
+            accidentalKeyPressFilter.shouldConsumeKeyDown(
+                keyCode = keyCode_,
+                event = event_,
+                resolution = accidentalInput.resolution,
+                configuration = accidentalInput.configuration
+            )?.let { suppressed ->
+                notifyDebugKeyEvent(
+                    keyCode = keyCode_,
+                    event = event_,
+                    action = "KEY_DOWN_SUPPRESSED",
+                    origin = "accidental_keys",
+                    outputKeyCodeName = suppressed.debugOutput()
+                )
+                return true
+            }
+        }
+        val (keyCode, event) = remapHardwareEvent(keyCode_, event_)
         bounceKeyFilter.shouldConsumeKeyDown(this, keyCode, event)?.let { suppressed ->
             notifyDebugKeyEvent(
                 keyCode = keyCode,
@@ -4394,7 +4489,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 label = "onKeyDown",
                 startNanos = perfStart,
                 thresholdMs = 16L,
-                details = "key=${KeyEvent.keyCodeToString(keyCode)} repeat=${event?.repeatCount ?: -1} pkg=$currentPackageName"
+                details = "key=${KeyEvent.keyCodeToString(keyCode_)} repeat=${event_?.repeatCount ?: -1} pkg=$currentPackageName"
             )
         }
     }
@@ -4407,6 +4502,25 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     }
 
     override fun onKeyUp(keyCode_: Int, event_: KeyEvent?): Boolean {
+        if (!replayingProtectedNumberKey) {
+            when (val result = accidentalKeyPressFilter.onKeyUp(keyCode_, event_)) {
+                is AccidentalKeyPressFilter.KeyUpResult.Suppressed -> {
+                    notifyDebugKeyEvent(
+                        keyCode = keyCode_,
+                        event = event_,
+                        action = "KEY_UP_SUPPRESSED",
+                        origin = "accidental_keys",
+                        outputKeyCodeName = result.event.debugOutput()
+                    )
+                    return true
+                }
+                is AccidentalKeyPressFilter.KeyUpResult.ReplayTap -> {
+                    replayProtectedNumberKey(keyCode_, result)
+                    return true
+                }
+                null -> Unit
+            }
+        }
         val (keyCode, event) = remapHardwareEvent(keyCode_, event_)
         if (keyCode == KeyEvent.KEYCODE_ENTER && consumeAltEnterUntilKeyUp) {
             consumeAltEnterUntilKeyUp = false

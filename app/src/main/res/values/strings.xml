@@ -500,8 +500,20 @@
     <string name="clicks_section_keyboard_behavior">Keyboard behaviour</string>
     <string name="clicks_modifier_behavior_title">SYM, Ctrl, and Alt behaviour</string>
     <string name="clicks_modifier_behavior_description">Treat modifiers as real Android modifiers instead of Clicks’ partial substitutions.</string>
-    <string name="clicks_release_order_title">Next key after release</string>
-    <string name="clicks_release_order_description">Optionally wait for the previous key release before accepting the next key.</string>
+    <string name="clicks_release_order_title">Ignore overlapping key presses</string>
+    <string name="clicks_release_order_description">Choose whether this Clicks keyboard ignores only physically adjacent overlaps or every second non-modifier key. Modifier shortcuts still work.</string>
+    <string name="clicks_overlapping_keys_mode_off">Off</string>
+    <string name="clicks_overlapping_keys_mode_adjacent">Ignore adjacent keys only</string>
+    <string name="clicks_overlapping_keys_mode_all">Ignore all overlapping non-modifier keys</string>
+    <string name="clicks_number_row_input_mode_title">Number row input protection</string>
+    <string name="clicks_number_row_input_mode_description">Reduce accidental presses on the closely spaced physical number row.</string>
+    <string name="clicks_number_row_input_mode_normal">No additional rule</string>
+    <string name="clicks_number_row_input_mode_adjacent">Ignore while an adjacent key is held</string>
+    <string name="clicks_number_row_input_mode_any">Ignore while any key is held</string>
+    <string name="clicks_number_row_input_mode_ignore_all">Ignore all number keys</string>
+    <string name="clicks_number_row_input_mode_long_press">Require hold and release</string>
+    <string name="clicks_number_row_repeat_title">Number row key repeat</string>
+    <string name="clicks_number_row_repeat_description">Repeat a number while its physical key is held.</string>
     <string name="clicks_section_key_mappings">Key mappings</string>
     <string name="clicks_special_key_mappings_title">Special keys</string>
     <string name="clicks_special_key_mappings_description">Choose the native action or a remap for each firmware-configurable key.</string>
@@ -1002,6 +1014,8 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="settings_accessibility_bounce_keys_enter_description">Ignore accidental repeated line breaks or send actions.</string>
     <string name="settings_accessibility_bounce_keys_backspace_title">Backspace</string>
     <string name="settings_accessibility_bounce_keys_backspace_description">Ignore accidental repeated deletes.</string>
+    <string name="settings_accessibility_overlapping_keys_title">Ignore overlapping key presses</string>
+    <string name="settings_accessibility_overlapping_keys_description">For every physical keyboard, ignore a second non-modifier key until the first is released. Modifier shortcuts still work.</string>
     
     <!-- Languages (Input Method Subtypes) -->
     <string name="languages_title">Languages</string>

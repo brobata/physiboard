@@ -53,6 +53,7 @@ class AltSymManager(
     private val longPressRunnables = ConcurrentHashMap<Int, Runnable>()
     private val longPressActivated = ConcurrentHashMap<Int, Boolean>()
     private val insertedNormalChars = ConcurrentHashMap<Int, String>()
+    private val insertedTextAnchors = ConcurrentHashMap<Int, InsertedTextAnchor>()
     private val keyPressWasShifted = ConcurrentHashMap<Int, Boolean>()
 
     private var longPressThreshold: Long = 500L
@@ -169,6 +170,7 @@ class AltSymManager(
         pressedKeys.clear()
         longPressActivated.clear()
         insertedNormalChars.clear()
+        insertedTextAnchors.clear()
         keyPressWasShifted.clear()
     }
 
@@ -249,6 +251,10 @@ class AltSymManager(
         if (normalChar.isNotEmpty()) {
             inputConnection.commitText(normalChar, 1)
             insertedNormalChars[keyCode] = normalChar
+            insertedTextAnchors.remove(keyCode)
+            captureInsertedTextAnchor(inputConnection, normalChar)?.let { anchor ->
+                insertedTextAnchors[keyCode] = anchor
+            }
             keyPressWasShifted[keyCode] = shiftOneShot || event?.isShiftPressed == true
         }
 
@@ -330,6 +336,7 @@ class AltSymManager(
         val pressStartTime = pressedKeys.remove(keyCode)
         val wasLongPressActivated = longPressActivated.remove(keyCode) ?: false
         val insertedChar = insertedNormalChars.remove(keyCode)
+        insertedTextAnchors.remove(keyCode)
         keyPressWasShifted.remove(keyCode)
         
         longPressRunnables.remove(keyCode)?.let { handler.removeCallbacks(it) }
@@ -359,6 +366,10 @@ class AltSymManager(
         pressedKeys[keyCode] = System.currentTimeMillis()
         longPressActivated[keyCode] = false
         insertedNormalChars[keyCode] = insertedChar
+        insertedTextAnchors.remove(keyCode)
+        captureInsertedTextAnchor(inputConnection, insertedChar)?.let { anchor ->
+            insertedTextAnchors[keyCode] = anchor
+        }
         keyPressWasShifted[keyCode] = insertedChar.firstOrNull()?.isUpperCase() == true
         scheduleLongPress(keyCode, inputConnection)
     }
@@ -399,19 +410,23 @@ class AltSymManager(
                             }
                             if (!variations.isNullOrEmpty()) {
                                 val firstVariation = variations.first()
-                                longPressActivated[keyCode] = true
-
-                                replacePreviousCharWithVariation(
+                                val replaced = replaceInsertedTextWithVariation(
                                     inputConnection = inputConnection,
-                                    expectedChar = insertedChar[0],
+                                    expectedText = insertedChar,
+                                    anchor = insertedTextAnchors[keyCode],
                                     variation = firstVariation
                                 )
-
-                                insertedNormalChars.remove(keyCode)
-                                keyPressWasShifted.remove(keyCode)
                                 longPressRunnables.remove(keyCode)
-                                Log.d(TAG, "Long press Variations per keyCode $keyCode -> $firstVariation")
-                                firstVariation.firstOrNull()?.let { onAltCharInserted?.invoke(it) }
+                                if (replaced) {
+                                    longPressActivated[keyCode] = true
+                                    insertedNormalChars.remove(keyCode)
+                                    insertedTextAnchors.remove(keyCode)
+                                    keyPressWasShifted.remove(keyCode)
+                                    Log.d(TAG, "Long press Variations per keyCode $keyCode -> $firstVariation")
+                                    firstVariation.firstOrNull()?.let { onAltCharInserted?.invoke(it) }
+                                } else {
+                                    Log.d(TAG, "Skipped Variations long press for keyCode $keyCode: original text changed")
+                                }
                             }
                         }
                     }
@@ -565,30 +580,138 @@ class AltSymManager(
         handler.postDelayed(runnable, longPressThreshold)
     }
 
-    private fun replacePreviousCharWithVariation(
-        inputConnection: InputConnection,
-        expectedChar: Char,
-        variation: String
-    ) {
-        val extracted = inputConnection.getExtractedText(ExtractedTextRequest(), 0)
-        val selectionStart = extracted?.selectionStart ?: -1
-        val selectionEnd = extracted?.selectionEnd ?: -1
-        val text = extracted?.text
-        val canReplaceByRegion = text != null &&
-            selectionStart == selectionEnd &&
-            selectionStart > 0 &&
-            selectionStart <= text.length &&
-            text[selectionStart - 1] == expectedChar
+    private data class EditorSnapshot(
+        val text: String,
+        val textStart: Int,
+        val selectionStart: Int,
+        val selectionEnd: Int
+    )
 
-        inputConnection.finishComposingText()
+    private data class InsertedTextAnchor(
+        val inputConnection: InputConnection,
+        val textStart: Int,
+        val targetStart: Int,
+        val targetEnd: Int,
+        val prefixThroughTarget: String,
+        val expectedText: String
+    )
+
+    private fun captureInsertedTextAnchor(
+        inputConnection: InputConnection,
+        insertedText: String
+    ): InsertedTextAnchor? {
+        if (insertedText.isEmpty()) return null
+
+        val snapshot = readEditorSnapshot(inputConnection) ?: return null
+        if (snapshot.selectionStart != snapshot.selectionEnd) return null
+
+        val targetEnd = snapshot.selectionStart
+        val targetStart = targetEnd - insertedText.length
+        val relativeStart = targetStart - snapshot.textStart
+        val relativeEnd = targetEnd - snapshot.textStart
+        if (relativeStart < 0 || relativeEnd > snapshot.text.length) return null
+        if (snapshot.text.substring(relativeStart, relativeEnd) != insertedText) return null
+
+        return InsertedTextAnchor(
+            inputConnection = inputConnection,
+            textStart = snapshot.textStart,
+            targetStart = targetStart,
+            targetEnd = targetEnd,
+            prefixThroughTarget = snapshot.text.substring(0, relativeEnd),
+            expectedText = insertedText
+        )
+    }
+
+    private fun replaceInsertedTextWithVariation(
+        inputConnection: InputConnection,
+        expectedText: String,
+        anchor: InsertedTextAnchor?,
+        variation: String
+    ): Boolean {
+        if (expectedText.isEmpty() || variation.isEmpty()) return false
+
+        val snapshot = readEditorSnapshot(inputConnection) ?: return false
+        val target = when {
+            anchor != null -> resolveAnchoredTarget(inputConnection, snapshot, anchor)
+            else -> resolveImmediatelyPrecedingTarget(snapshot, expectedText)
+        } ?: return false
+
+        val selectionStart = snapshot.selectionStart
+        val selectionEnd = snapshot.selectionEnd
+        val lengthDelta = variation.length - expectedText.length
         inputConnection.beginBatchEdit()
-        if (canReplaceByRegion) {
-            inputConnection.setComposingRegion(selectionStart - 1, selectionStart)
-            inputConnection.commitText(variation, 1)
-        } else {
-            inputConnection.deleteSurroundingText(1, 0)
-            inputConnection.commitText(variation, 1)
+        inputConnection.finishComposingText()
+        val composingRegionSet = inputConnection.setComposingRegion(target.first, target.second)
+        if (!composingRegionSet) {
+            inputConnection.endBatchEdit()
+            return false
+        }
+        val committed = inputConnection.commitText(variation, 1)
+        if (committed) {
+            inputConnection.finishComposingText()
+            inputConnection.setSelection(
+                adjustSelectionAfterReplacement(selectionStart, target, lengthDelta, variation.length),
+                adjustSelectionAfterReplacement(selectionEnd, target, lengthDelta, variation.length)
+            )
         }
         inputConnection.endBatchEdit()
+        return committed
+    }
+
+    private fun resolveAnchoredTarget(
+        inputConnection: InputConnection,
+        snapshot: EditorSnapshot,
+        anchor: InsertedTextAnchor
+    ): Pair<Int, Int>? {
+        if (anchor.inputConnection !== inputConnection) return null
+        if (snapshot.selectionStart != snapshot.selectionEnd) return null
+        if (snapshot.selectionStart < anchor.targetEnd) return null
+        if (snapshot.textStart != anchor.textStart) return null
+
+        val relativeStart = anchor.targetStart - snapshot.textStart
+        val relativeEnd = anchor.targetEnd - snapshot.textStart
+        if (relativeStart < 0 || relativeEnd > snapshot.text.length) return null
+        if (snapshot.text.substring(relativeStart, relativeEnd) != anchor.expectedText) return null
+        if (snapshot.text.substring(0, relativeEnd) != anchor.prefixThroughTarget) return null
+        return anchor.targetStart to anchor.targetEnd
+    }
+
+    private fun resolveImmediatelyPrecedingTarget(
+        snapshot: EditorSnapshot,
+        expectedText: String
+    ): Pair<Int, Int>? {
+        if (snapshot.selectionStart != snapshot.selectionEnd) return null
+        val targetEnd = snapshot.selectionStart
+        val targetStart = targetEnd - expectedText.length
+        val relativeStart = targetStart - snapshot.textStart
+        val relativeEnd = targetEnd - snapshot.textStart
+        if (relativeStart < 0 || relativeEnd > snapshot.text.length) return null
+        if (snapshot.text.substring(relativeStart, relativeEnd) != expectedText) return null
+        return targetStart to targetEnd
+    }
+
+    private fun readEditorSnapshot(inputConnection: InputConnection): EditorSnapshot? {
+        val extracted = inputConnection.getExtractedText(ExtractedTextRequest(), 0) ?: return null
+        val text = extracted.text?.toString() ?: return null
+        if (extracted.selectionStart < 0 || extracted.selectionEnd < 0) return null
+        return EditorSnapshot(
+            text = text,
+            textStart = extracted.startOffset,
+            selectionStart = extracted.startOffset + extracted.selectionStart,
+            selectionEnd = extracted.startOffset + extracted.selectionEnd
+        )
+    }
+
+    private fun adjustSelectionAfterReplacement(
+        position: Int,
+        target: Pair<Int, Int>,
+        lengthDelta: Int,
+        replacementLength: Int
+    ): Int {
+        return when {
+            position <= target.first -> position
+            position >= target.second -> position + lengthDelta
+            else -> target.first + replacementLength
+        }
     }
 }

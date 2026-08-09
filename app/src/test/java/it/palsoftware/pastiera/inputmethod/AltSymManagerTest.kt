@@ -34,7 +34,10 @@ class AltSymManagerTest {
         SettingsManager.setLongPressModifier(context, "variations")
         SettingsManager.saveVariations(
             context,
-            variations = mapOf("u" to listOf("ü"))
+            variations = mapOf(
+                "u" to listOf("ü"),
+                "U" to listOf("Ü")
+            )
         )
     }
 
@@ -69,14 +72,118 @@ class AltSymManagerTest {
         assertEquals(emptyList<Pair<Int, Int>>(), recorder.deleteCalls)
     }
 
-    private class RecordingInputConnection {
+    @Test
+    fun variationsLongPress_replacesOriginalCharacterAndPreservesLaterInput() {
+        val recorder = RecordingInputConnection()
+        val inputConnection = recorder.asProxy()
+        val manager = AltSymManager(context.assets, prefs, context)
+
+        manager.handleKeyWithAltMapping(
+            keyCode = KeyEvent.KEYCODE_U,
+            inputConnection = inputConnection,
+            event = KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_U),
+            capsLockEnabled = false,
+            layoutChar = 'u'
+        )
+        inputConnection.commitText("3", 1)
+
+        shadowOf(Looper.getMainLooper()).idleFor(60, TimeUnit.MILLISECONDS)
+
+        assertEquals("ü3", recorder.text)
+        assertEquals(2, recorder.selectionStart)
+        assertEquals(2, recorder.selectionEnd)
+        assertEquals(listOf(0 to 1), recorder.composingRegions)
+        assertEquals(emptyList<Pair<Int, Int>>(), recorder.deleteCalls)
+    }
+
+    @Test
+    fun variationsLongPress_preservesLaterInputForShiftedCharacter() {
+        val recorder = RecordingInputConnection()
+        val inputConnection = recorder.asProxy()
+        val manager = AltSymManager(context.assets, prefs, context)
+
+        manager.handleKeyWithAltMapping(
+            keyCode = KeyEvent.KEYCODE_U,
+            inputConnection = inputConnection,
+            event = KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_U),
+            capsLockEnabled = false,
+            shiftOneShot = true,
+            layoutChar = 'u'
+        )
+        inputConnection.commitText("3", 1)
+
+        shadowOf(Looper.getMainLooper()).idleFor(60, TimeUnit.MILLISECONDS)
+
+        assertEquals("Ü3", recorder.text)
+        assertEquals(2, recorder.selectionStart)
+        assertEquals(2, recorder.selectionEnd)
+    }
+
+    @Test
+    fun variationsLongPress_doesNotTouchLaterInputWhenOriginalCharacterChanged() {
+        val recorder = RecordingInputConnection()
+        val inputConnection = recorder.asProxy()
+        val manager = AltSymManager(context.assets, prefs, context)
+
+        manager.handleKeyWithAltMapping(
+            keyCode = KeyEvent.KEYCODE_U,
+            inputConnection = inputConnection,
+            event = KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_U),
+            capsLockEnabled = false,
+            layoutChar = 'u'
+        )
+        inputConnection.commitText("3", 1)
+        recorder.replaceTextDirectly(0, 1, "x")
+
+        shadowOf(Looper.getMainLooper()).idleFor(60, TimeUnit.MILLISECONDS)
+
+        assertEquals("x3", recorder.text)
+        assertEquals(emptyList<Pair<Int, Int>>(), recorder.composingRegions)
+        assertEquals(emptyList<Pair<Int, Int>>(), recorder.deleteCalls)
+    }
+
+    @Test
+    fun variationsLongPress_withoutAnchorDoesNotReplaceLaterInput() {
+        val recorder = RecordingInputConnection(extractedTextAvailable = false)
+        val inputConnection = recorder.asProxy()
+        val manager = AltSymManager(context.assets, prefs, context)
+
+        manager.handleKeyWithAltMapping(
+            keyCode = KeyEvent.KEYCODE_U,
+            inputConnection = inputConnection,
+            event = KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_U),
+            capsLockEnabled = false,
+            layoutChar = 'u'
+        )
+        inputConnection.commitText("3", 1)
+        recorder.extractedTextAvailable = true
+
+        shadowOf(Looper.getMainLooper()).idleFor(60, TimeUnit.MILLISECONDS)
+
+        assertEquals("u3", recorder.text)
+        assertEquals(emptyList<Pair<Int, Int>>(), recorder.composingRegions)
+        assertEquals(emptyList<Pair<Int, Int>>(), recorder.deleteCalls)
+    }
+
+    private class RecordingInputConnection(
+        var extractedTextAvailable: Boolean = true
+    ) {
         var text: String = ""
-        private var selectionStart: Int = 0
-        private var selectionEnd: Int = 0
+        var selectionStart: Int = 0
+            private set
+        var selectionEnd: Int = 0
+            private set
         private var composingStart: Int = -1
         private var composingEnd: Int = -1
         val composingRegions = mutableListOf<Pair<Int, Int>>()
         val deleteCalls = mutableListOf<Pair<Int, Int>>()
+
+        fun replaceTextDirectly(start: Int, end: Int, replacement: String) {
+            text = text.replaceRange(start, end, replacement)
+            val lengthDelta = replacement.length - (end - start)
+            selectionStart += lengthDelta
+            selectionEnd += lengthDelta
+        }
 
         fun asProxy(): InputConnection {
             return Proxy.newProxyInstance(
@@ -118,11 +225,20 @@ class AltSymManagerTest {
                         composingEnd = -1
                         true
                     }
+                    "setSelection" -> {
+                        selectionStart = args?.getOrNull(0) as Int
+                        selectionEnd = args.getOrNull(1) as Int
+                        true
+                    }
                     "beginBatchEdit", "endBatchEdit" -> true
-                    "getExtractedText" -> ExtractedText().apply {
-                        this.text = this@RecordingInputConnection.text
-                        selectionStart = this@RecordingInputConnection.selectionStart
-                        selectionEnd = this@RecordingInputConnection.selectionEnd
+                    "getExtractedText" -> if (extractedTextAvailable) {
+                        ExtractedText().apply {
+                            this.text = this@RecordingInputConnection.text
+                            selectionStart = this@RecordingInputConnection.selectionStart
+                            selectionEnd = this@RecordingInputConnection.selectionEnd
+                        }
+                    } else {
+                        null
                     }
                     else -> defaultValue(method.returnType)
                 }

@@ -63,6 +63,30 @@ class RestoreManagerAndBackupContractTest {
     }
 
     @Test
+    fun accidentalKeyProtectionPreferences_areRecognizedForRestore() {
+        assertEquals(
+            PreferenceValueType.BOOLEAN,
+            PreferenceSchemas.expectedType("pastiera_prefs", "overlapping_keys_enabled")
+        )
+        assertEquals(
+            PreferenceValueType.BOOLEAN,
+            PreferenceSchemas.expectedType("pastiera_prefs", "clicks_overlapping_keys_enabled")
+        )
+        assertEquals(
+            PreferenceValueType.STRING,
+            PreferenceSchemas.expectedType("pastiera_prefs", "clicks_overlapping_keys_mode")
+        )
+        assertEquals(
+            PreferenceValueType.STRING,
+            PreferenceSchemas.expectedType("pastiera_prefs", "clicks_number_row_input_mode")
+        )
+        assertEquals(
+            PreferenceValueType.BOOLEAN,
+            PreferenceSchemas.expectedType("pastiera_prefs", "clicks_number_row_repeat_enabled")
+        )
+    }
+
+    @Test
     fun punctuationSpacingPreferences_areRecognizedForRestore() {
         assertEquals(
             PreferenceValueType.STRING,
