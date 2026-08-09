@@ -22,12 +22,14 @@ class KeyboardVisibilityController(
     private val isInputViewShown: () -> Boolean,
     private val attachInputView: (View) -> Unit,
     private val setCandidatesViewShown: (Boolean) -> Unit,
+    private val postToUi: (() -> Unit) -> Unit,
     private val requestShowInputView: () -> Unit,
     private val refreshStatusBar: () -> Unit
 ) {
 
     private var statusBarPresentationMode: SettingsManager.StatusBarPresentationMode =
         SettingsManager.getStatusBarPresentationMode(context)
+    private var presentationGeneration = 0
 
     fun onCreateInputView(): View {
         val layout = candidatesBarController.getInputView(symLayoutController.emojiMapTextForLayout())
@@ -46,8 +48,16 @@ class KeyboardVisibilityController(
     fun onEvaluateInputViewShown(shouldShowInputView: Boolean): Boolean {
         SoftwareKeyboardAutoDetector.updateSystemInputViewDecision(shouldShowInputView)
         refreshStatusBar()
-        setCandidatesViewShown(false)
-        return true
+        val generation = ++presentationGeneration
+        // Apply candidates visibility after InputMethodService has finished evaluating
+        // and hiding its input frame. Showing it re-entrantly from this callback can be
+        // overwritten by the framework before the candidates view is created.
+        postToUi {
+            if (generation != presentationGeneration) return@postToUi
+            setCandidatesViewShown(!shouldShowInputView)
+            refreshStatusBar()
+        }
+        return shouldShowInputView
     }
 
     fun ensureInputViewCreated() {

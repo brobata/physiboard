@@ -1229,11 +1229,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     }
     
     private fun enforceSmartFeatureDisabledState() {
-        val state = inputContextState
-        // Hide candidates view if suggestions are disabled
-        if (state.shouldDisableSuggestions) {
-            setCandidatesViewShown(false)
-        }
+        // The candidates surface also contains Pastiera's hardware-keyboard status bar.
+        // Individual smart features hide their own content; the surface itself stays visible.
         deactivateVariations()
     }
     
@@ -1824,8 +1821,12 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             isInputViewShown = { isInputViewShown },
             attachInputView = { view -> setInputView(view) },
             setCandidatesViewShown = { shown -> setCandidatesViewShown(shown) },
+            postToUi = { action -> uiHandler.post(action) },
             requestShowInputView = { requestShowSelf(0) },
-            refreshStatusBar = { refreshStatusBar() }
+            refreshStatusBar = {
+                invalidateRenderedStatusSnapshot()
+                refreshStatusBar()
+            }
         )
         inputManager = getSystemService(InputManager::class.java)
         InputDevice.getDeviceIds().forEach { deviceId ->
@@ -2512,25 +2513,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     }
 
     /**
-     * Computes the insets for the IME window.
-     * This is critical for candidates view to receive touch events properly.
-     * Setting contentTopInsets = visibleTopInsets ensures touch events reach the candidates view.
-     */
-    override fun onComputeInsets(outInsets: InputMethodService.Insets?) {
-        super.onComputeInsets(outInsets)
-        
-        if (outInsets != null && !isFullscreenMode()) {
-            outInsets.contentTopInsets = outInsets.visibleTopInsets
-        }
-    }
-
-    /**
      * Evaluates whether the IME should run in fullscreen mode.
-     * This is important for candidates view to receive touch events properly.
      */
     override fun onEvaluateFullscreenMode(): Boolean {
-        // Return false to allow candidates view to receive touch events
-        // Fullscreen mode can sometimes limit touch event handling
+        // Keep the compact candidates surface available outside extract mode.
         return false
     }
 

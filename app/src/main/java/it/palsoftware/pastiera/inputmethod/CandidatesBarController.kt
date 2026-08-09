@@ -5,7 +5,6 @@ import android.content.res.AssetManager
 import android.view.KeyEvent
 import android.widget.LinearLayout
 import android.view.inputmethod.InputConnection
-import it.palsoftware.pastiera.SettingsManager
 
 /**
  * Coordinates the two StatusBarController instances (full input view vs
@@ -215,11 +214,7 @@ class CandidatesBarController(
     }
 
     fun getCandidatesView(emojiMapText: String = ""): LinearLayout {
-        return candidatesStatusBar.getOrCreateLayout(emojiMapText).also {
-            if (usesFullSoftwareKeyboard()) {
-                candidatesStatusBar.collapseLayout()
-            }
-        }
+        return candidatesStatusBar.getOrCreateLayout(emojiMapText)
     }
 
     fun setPastierinaModeActive(active: Boolean) {
@@ -294,11 +289,7 @@ class CandidatesBarController(
         symMappings: Map<Int, String>?
     ) {
         inputStatusBar.update(snapshot, emojiMapText, inputConnection, symMappings)
-        if (usesFullSoftwareKeyboard()) {
-            candidatesStatusBar.collapseLayout()
-        } else {
-            candidatesStatusBar.update(snapshot, emojiMapText, inputConnection, symMappings)
-        }
+        candidatesStatusBar.update(snapshot, emojiMapText, inputConnection, symMappings)
     }
 
     fun updateClipboardCount(count: Int) {
@@ -321,7 +312,4 @@ class CandidatesBarController(
         candidatesStatusBar.cancelSoftwareKeyboardTouchState()
     }
 
-    private fun usesFullSoftwareKeyboard(): Boolean =
-        SettingsManager.resolveEffectiveSoftwareKeyboardMode(context) ==
-            SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL
 }

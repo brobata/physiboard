@@ -318,7 +318,7 @@ class StatusBarController(
     private val ledStatusView = LedStatusView(context)
     private val buttonRegistry = StatusBarButtonRegistry()
     private val variationBarView: VariationBarView? =
-        if (mode == Mode.INPUT_VIEW) VariationBarView(context, assets, imeServiceClass, buttonRegistry) else null
+        VariationBarView(context, assets, imeServiceClass, buttonRegistry)
     private var variationsWrapper: View? = null
     private var hamburgerMenuView: HamburgerMenuView? = null
     private var pastierinaModeActive: Boolean = false
@@ -2754,7 +2754,7 @@ class StatusBarController(
         if (showLedStrip) {
             ledStatusView.update(snapshot)
         }
-        val showSecondRow = !pastierinaModeActive && (mode == Mode.INPUT_VIEW || isFullSoftwareKeyboardMode)
+        val showSecondRow = !pastierinaModeActive
         val variationsBar = if (showSecondRow) variationBarView else null
         val variationsWrapperView = if (showSecondRow) variationsWrapper else null
         if (!showSecondRow) {
