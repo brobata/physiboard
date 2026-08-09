@@ -47,6 +47,12 @@ class KeyboardVisibilityControllerTest {
         assertTrue(harness.candidatesViewShown)
         assertEquals(1, harness.candidatesVisibilityChanges)
         assertEquals(2, harness.statusBarRefreshes)
+        assertEquals(0, harness.candidatesContainerRefreshes)
+
+        harness.runPostedActions()
+
+        assertEquals(1, harness.candidatesContainerRefreshes)
+        assertEquals(3, harness.statusBarRefreshes)
     }
 
     @Test
@@ -61,6 +67,19 @@ class KeyboardVisibilityControllerTest {
         assertEquals(1, harness.candidatesVisibilityChanges)
     }
 
+    @Test
+    fun switchingBackBeforeContainerRefreshDoesNotReshowCandidates() {
+        val harness = createHarness()
+
+        harness.controller.onEvaluateInputViewShown(shouldShowInputView = false)
+        harness.runPostedActions()
+        harness.controller.onEvaluateInputViewShown(shouldShowInputView = true)
+        harness.runPostedActions()
+
+        assertFalse(harness.candidatesViewShown)
+        assertEquals(0, harness.candidatesContainerRefreshes)
+    }
+
     private fun createHarness(): VisibilityHarness {
         val context = RuntimeEnvironment.getApplication()
         val prefs = context.getSharedPreferences("keyboard_visibility_controller_test", Context.MODE_PRIVATE)
@@ -69,6 +88,7 @@ class KeyboardVisibilityControllerTest {
         val candidatesBarController = CandidatesBarController(context)
         var candidatesViewShown = false
         var candidatesVisibilityChanges = 0
+        var candidatesContainerRefreshes = 0
         var statusBarRefreshes = 0
         val postedActions = mutableListOf<() -> Unit>()
 
@@ -86,6 +106,9 @@ class KeyboardVisibilityControllerTest {
                 candidatesViewShown = it
                 candidatesVisibilityChanges += 1
             },
+            synchronizeCandidatesContainerVisibility = {
+                candidatesContainerRefreshes += 1
+            },
             postToUi = { postedActions += it },
             requestShowInputView = {},
             refreshStatusBar = { statusBarRefreshes += 1 }
@@ -95,6 +118,7 @@ class KeyboardVisibilityControllerTest {
             controller = controller,
             onCandidatesViewShown = { candidatesViewShown },
             onCandidatesVisibilityChanges = { candidatesVisibilityChanges },
+            onCandidatesContainerRefreshes = { candidatesContainerRefreshes },
             runPostedActions = {
                 postedActions.toList().also { postedActions.clear() }.forEach { it() }
             },
@@ -106,6 +130,7 @@ class KeyboardVisibilityControllerTest {
         val controller: KeyboardVisibilityController,
         private val onCandidatesViewShown: () -> Boolean,
         private val onCandidatesVisibilityChanges: () -> Int,
+        private val onCandidatesContainerRefreshes: () -> Int,
         val runPostedActions: () -> Unit,
         private val onStatusBarRefreshes: () -> Int
     ) {
@@ -113,6 +138,8 @@ class KeyboardVisibilityControllerTest {
             get() = onCandidatesViewShown()
         val candidatesVisibilityChanges: Int
             get() = onCandidatesVisibilityChanges()
+        val candidatesContainerRefreshes: Int
+            get() = onCandidatesContainerRefreshes()
         val statusBarRefreshes: Int
             get() = onStatusBarRefreshes()
     }

@@ -258,6 +258,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private var lastRenderedPastierinaModeActive: Boolean? = null
     private var lastRenderedSoftwareKeyboardMode: SettingsManager.SoftwareKeyboardMode? = null
     private var lastRenderedModifierIndicators: Set<String>? = null
+    private var systemRequestsInputView: Boolean = true
     private var suppressedAutoCapContextKey: String? = null
     private var clearAltOnSpaceEnabled: Boolean = false
     private var physicalKeyboardProfileOverride: String = "auto"
@@ -1821,6 +1822,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             isInputViewShown = { isInputViewShown },
             attachInputView = { view -> setInputView(view) },
             setCandidatesViewShown = { shown -> setCandidatesViewShown(shown) },
+            synchronizeCandidatesContainerVisibility = ::synchronizeCandidatesContainerVisibility,
             postToUi = { action -> uiHandler.post(action) },
             requestShowInputView = { requestShowSelf(0) },
             refreshStatusBar = {
@@ -2509,7 +2511,26 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
      */
     override fun onEvaluateInputViewShown(): Boolean {
         val shouldShowInputView = super.onEvaluateInputViewShown()
+        systemRequestsInputView = shouldShowInputView
         return keyboardVisibilityController.onEvaluateInputViewShown(shouldShowInputView)
+    }
+
+    override fun onComputeInsets(outInsets: InputMethodService.Insets?) {
+        super.onComputeInsets(outInsets)
+        outInsets?.let {
+            ImeInsetsPolicy.applyCandidatesOnlyContentInsets(
+                insets = it,
+                candidatesOnly = !isFullscreenMode && !systemRequestsInputView
+            )
+        }
+    }
+
+    private fun synchronizeCandidatesContainerVisibility() {
+        // InputMethodService can leave fullscreenArea INVISIBLE when an already-open input
+        // window changes to candidates-only mode. Toggling the public extract-view state makes
+        // the framework recompute that container; the second call restores the original state.
+        setExtractViewShown(false)
+        setExtractViewShown(true)
     }
 
     /**

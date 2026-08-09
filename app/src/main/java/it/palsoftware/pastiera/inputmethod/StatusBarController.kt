@@ -2765,8 +2765,8 @@ class StatusBarController(
         val suggestionsEnabledSetting = SettingsManager.getSuggestionsEnabled(context)
         // Keep the suggestion/status row stable in both full-status-bar and Pastierina mode.
         val showFullBar =
+            suggestionsEnabledSetting &&
             (experimentalEnabled || isFullSoftwareKeyboardMode) &&
-            (suggestionsEnabledSetting || isFullSoftwareKeyboardMode) &&
             (isFullSoftwareKeyboardMode || !snapshot.shouldDisableSuggestions) &&
             (snapshot.symPage == 0 || isSoftwareKeyboardOverlayPage) &&
             !snapshot.clipboardOverlay

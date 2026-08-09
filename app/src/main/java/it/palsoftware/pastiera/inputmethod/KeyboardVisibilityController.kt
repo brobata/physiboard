@@ -22,6 +22,7 @@ class KeyboardVisibilityController(
     private val isInputViewShown: () -> Boolean,
     private val attachInputView: (View) -> Unit,
     private val setCandidatesViewShown: (Boolean) -> Unit,
+    private val synchronizeCandidatesContainerVisibility: () -> Unit,
     private val postToUi: (() -> Unit) -> Unit,
     private val requestShowInputView: () -> Unit,
     private val refreshStatusBar: () -> Unit
@@ -56,6 +57,16 @@ class KeyboardVisibilityController(
             if (generation != presentationGeneration) return@postToUi
             setCandidatesViewShown(!shouldShowInputView)
             refreshStatusBar()
+            if (!shouldShowInputView) {
+                // Showing candidates can synchronously create and attach their view. Android's
+                // enclosing fullscreenArea may still retain its previous INVISIBLE state, so
+                // synchronize that container on the following UI turn.
+                postToUi {
+                    if (generation != presentationGeneration) return@postToUi
+                    synchronizeCandidatesContainerVisibility()
+                    refreshStatusBar()
+                }
+            }
         }
         return shouldShowInputView
     }
