@@ -321,17 +321,22 @@ class AutoReplaceController(
         val lookupWord = apostropheSplit?.root ?: word
         val wordLower = word.lowercase()
 
-        exactReplacementProvider?.invoke(word, boundaryChar)?.let { exactReplacement ->
+        val exactReplacement = if (settings.textReplacementsEnabled) {
+            exactReplacementProvider?.invoke(word, boundaryChar)
+        } else {
+            null
+        }
+        exactReplacement?.let { replacement ->
             if (!rejectedWords.contains(wordLower)) {
                 inputConnection.beginBatchEdit()
                 inputConnection.deleteSurroundingText(word.length, 0)
                 val shouldAppendBoundary = boundaryChar != null &&
-                    !(boundaryChar == ' ' && exactReplacement.endsWith("'"))
-                inputConnection.commitText(exactReplacement, 1)
-                repository.markUsed(exactReplacement)
+                    !(boundaryChar == ' ' && replacement.endsWith("'"))
+                inputConnection.commitText(replacement, 1)
+                repository.markUsed(replacement)
                 lastReplacement = LastReplacement(
                     originalWord = word,
-                    replacedWord = exactReplacement
+                    replacedWord = replacement
                 )
                 tracker.reset()
                 inputConnection.endBatchEdit()
@@ -341,14 +346,14 @@ class AutoReplaceController(
                 }
                 DebugCaptureStore.recordAutoCorrectionCommit(
                     before = word,
-                    after = exactReplacement,
+                    after = replacement,
                     trigger = trigger,
                     source = "TEXT_REPLACEMENT",
                     distance = 0,
                     kind = SuggestionKind.CURRENT_WORD.name
                 )
-                Log.d("AutoReplaceController", "Committed exact replacement '$word' -> '$exactReplacement'")
-                return ReplaceResult(true, true, exactReplacement)
+                Log.d("AutoReplaceController", "Committed exact replacement '$word' -> '$replacement'")
+                return ReplaceResult(true, true, replacement)
             }
         }
 

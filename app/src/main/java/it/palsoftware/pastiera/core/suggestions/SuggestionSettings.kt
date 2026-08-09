@@ -1,6 +1,7 @@
 package it.palsoftware.pastiera.core.suggestions
 
 data class SuggestionSettings(
+    val textReplacementsEnabled: Boolean = true,
     val suggestionsEnabled: Boolean = true,
     val accentMatching: Boolean = true,
     val autoReplaceOnSpaceEnter: Boolean = false,

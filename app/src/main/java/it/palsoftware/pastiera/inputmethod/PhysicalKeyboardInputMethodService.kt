@@ -704,6 +704,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private fun getSuggestionSettings(): SuggestionSettings {
         val suggestionsEnabled = SettingsManager.getSuggestionsEnabled(this)
         return SuggestionSettings(
+            textReplacementsEnabled = SettingsManager.getAutoCorrectEnabled(this),
             suggestionsEnabled = suggestionsEnabled,
             accentMatching = SettingsManager.getAccentMatchingEnabled(this),
             autoReplaceOnSpaceEnter = SettingsManager.getAutoReplaceOnSpaceEnter(this),
