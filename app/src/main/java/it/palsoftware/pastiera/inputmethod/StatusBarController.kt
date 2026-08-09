@@ -11,6 +11,7 @@ import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.RoundedCorner
 import android.view.View
 import android.view.ViewGroup
@@ -3207,6 +3208,8 @@ class StatusBarController(
     }
 
     private class ImeChromeLayout(context: Context) : LinearLayout(context) {
+        private val screenAwakeController = ImeTouchScreenAwakeController(context)
+
         var surfaceView: View? = null
             set(value) {
                 field = value
@@ -3221,6 +3224,16 @@ class StatusBarController(
 
         init {
             setChildrenDrawingOrderEnabled(true)
+        }
+
+        override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+            screenAwakeController.onTouchAction(event.actionMasked)
+            return super.dispatchTouchEvent(event)
+        }
+
+        override fun onDetachedFromWindow() {
+            screenAwakeController.release()
+            super.onDetachedFromWindow()
         }
 
         override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {

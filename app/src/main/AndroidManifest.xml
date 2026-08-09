@@ -7,6 +7,9 @@
     
     <!-- Permesso per la vibrazione (richiesto per haptic feedback) -->
     <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- Riavvia il timeout dello schermo dopo un tocco sulla tastiera -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     
     <!-- Permesso per il riconoscimento vocale -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
