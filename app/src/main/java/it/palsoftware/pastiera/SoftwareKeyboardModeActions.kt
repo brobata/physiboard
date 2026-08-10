@@ -14,10 +14,6 @@ object SoftwareKeyboardModeActions {
         return next
     }
 
-    /** Keeps callers from the preceding commit source-compatible until they migrate. */
-    fun toggleForceMode(context: android.content.Context): SettingsManager.SoftwareKeyboardMode =
-        toggleTemporaryMode(context)
-
     fun clearTemporaryMode(context: android.content.Context) {
         SettingsManager.setSoftwareKeyboardModeRuntimeOverride(context, null)
     }

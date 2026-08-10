@@ -79,6 +79,7 @@ class AccidentalKeyPressFilter {
     private val activeKeysByDevice = mutableMapOf<Int, MutableMap<KeyIdentity, ActiveKey>>()
     private val suppressedKeyUps = mutableMapOf<KeyIdentity, SuppressedEvent>()
     private val pendingLongPresses = mutableMapOf<KeyIdentity, PendingLongPress>()
+    private val heldNumberRowKeys = mutableSetOf<KeyIdentity>()
 
     fun shouldConsumeKeyDown(
         keyCode: Int,
@@ -94,7 +95,7 @@ class AccidentalKeyPressFilter {
             return suppressed(Reason.NUMBER_ROW_LONG_PRESS_PENDING, identity)
         }
 
-        val isNumberRowKey = resolution.isDefinitelyNumberRowKey()
+        val isNumberRowKey = resolution.isDefinitelyNumberRowKey() || identity in heldNumberRowKeys
         if (event.repeatCount > 0) {
             return if (isNumberRowKey && !configuration.numberRowRepeatEnabled) {
                 suppressed(Reason.NUMBER_ROW_REPEAT_DISABLED, identity)
@@ -102,6 +103,8 @@ class AccidentalKeyPressFilter {
                 null
             }
         }
+
+        if (isNumberRowKey) heldNumberRowKeys += identity
 
         val numberPolicy = configuration.numberRowPolicy
         if (isNumberRowKey && numberPolicy.acceptance == NumberRowAcceptance.NEVER) {
@@ -154,6 +157,7 @@ class AccidentalKeyPressFilter {
 
         val identity = identityFor(keyCode, event)
         removeActive(identity)
+        heldNumberRowKeys.remove(identity)
 
         pendingLongPresses.remove(identity)?.let { pending ->
             val durationMs = event.eventTime - pending.downEvent.eventTime
@@ -174,12 +178,14 @@ class AccidentalKeyPressFilter {
         activeKeysByDevice.remove(deviceId)
         suppressedKeyUps.keys.removeAll { it.deviceId == deviceId }
         pendingLongPresses.keys.removeAll { it.deviceId == deviceId }
+        heldNumberRowKeys.removeAll { it.deviceId == deviceId }
     }
 
     fun reset() {
         activeKeysByDevice.clear()
         suppressedKeyUps.clear()
         pendingLongPresses.clear()
+        heldNumberRowKeys.clear()
     }
 
     private fun areDefinitelyAdjacent(

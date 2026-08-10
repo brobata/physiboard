@@ -542,6 +542,13 @@ class StatusBarController(
         (layout.parent as? View)?.requestLayout()
     }
 
+    fun expandLayout() {
+        val layout = statusBarLayout ?: return
+        restoreLayoutHeight(layout)
+        layout.requestLayout()
+        (layout.parent as? View)?.requestLayout()
+    }
+
     fun getOrCreateLayout(emojiMapText: String = ""): LinearLayout {
         if (statusBarLayout == null) {
             statusBarLayout = ImeChromeLayout(context).apply {

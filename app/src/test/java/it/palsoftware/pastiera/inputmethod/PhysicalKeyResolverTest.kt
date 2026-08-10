@@ -24,6 +24,30 @@ class PhysicalKeyResolverTest {
     }
 
     @Test
+    fun bottomRowUsesPhysicalLauncherAndRedClicksPositions() {
+        assertEquals(
+            setOf(ClicksPowerKeyboardLayout.LAUNCHER),
+            resolve(KeyEvent.KEYCODE_META_LEFT, scanCode = 125).candidates
+        )
+        assertEquals(
+            setOf(ClicksPowerKeyboardLayout.RED_CLICKS),
+            resolve(KeyEvent.KEYCODE_TAB, scanCode = 15).candidates
+        )
+        assertTrue(
+            ClicksPowerKeyboardLayout.isAdjacent(
+                ClicksPowerKeyboardLayout.N,
+                ClicksPowerKeyboardLayout.RED_CLICKS
+            )
+        )
+        assertTrue(
+            ClicksPowerKeyboardLayout.isAdjacent(
+                ClicksPowerKeyboardLayout.X,
+                ClicksPowerKeyboardLayout.LAUNCHER
+            )
+        )
+    }
+
+    @Test
     fun currentFirmwareSymUUnderscoreResolvesToPhysicalU() {
         val result = resolve(
             KeyEvent.KEYCODE_MINUS,

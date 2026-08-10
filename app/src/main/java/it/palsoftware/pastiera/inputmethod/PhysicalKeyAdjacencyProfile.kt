@@ -71,9 +71,9 @@ object ClicksPowerKeyboardLayout : PhysicalKeyAdjacencyProfile {
 
     val SYM = key("sym")
     val CTRL = key("ctrl")
-    val TAB = key("tab")
+    val LAUNCHER = key("launcher")
     val SPACE = key("space")
-    val CLICKS = key("clicks")
+    val RED_CLICKS = key("red_clicks")
     val KEYBOARD = key("keyboard")
     val MICROPHONE = key("microphone")
 
@@ -84,7 +84,7 @@ object ClicksPowerKeyboardLayout : PhysicalKeyAdjacencyProfile {
     private val qwertyRow = listOf(Q, W, E, R, T, Y, U, I, O, P)
     private val homeRow = listOf(A, S, D, F, G, H, J, K, L, BACKSPACE)
     private val lowerRow = listOf(SHIFT, Z, X, C, V, B, N, M, PERIOD, ENTER)
-    private val functionRow = listOf(SYM, CTRL, TAB, SPACE, CLICKS, KEYBOARD, MICROPHONE)
+    private val functionRow = listOf(SYM, CTRL, LAUNCHER, SPACE, RED_CLICKS, KEYBOARD, MICROPHONE)
 
     override val numberRowKeys: Set<PhysicalKeyId> = numberRow.toSet()
 
@@ -119,11 +119,11 @@ object ClicksPowerKeyboardLayout : PhysicalKeyAdjacencyProfile {
             connect(Z, SYM)
             connect(Z, CTRL)
             connect(X, CTRL)
-            connect(X, TAB)
-            connect(C, TAB)
+            connect(X, LAUNCHER)
+            connect(C, LAUNCHER)
             listOf(C, V, B, N).forEach { connect(it, SPACE) }
-            connect(N, CLICKS)
-            connect(M, CLICKS)
+            connect(N, RED_CLICKS)
+            connect(M, RED_CLICKS)
             connect(M, KEYBOARD)
             connect(PERIOD, KEYBOARD)
             connect(PERIOD, MICROPHONE)
@@ -201,7 +201,7 @@ object ClicksPowerKeyboardLayout : PhysicalKeyAdjacencyProfile {
     private val SCAN_CODE_KEYS = mapOf(
         2 to DIGIT_1, 3 to DIGIT_2, 4 to DIGIT_3, 5 to DIGIT_4, 6 to DIGIT_5,
         7 to DIGIT_6, 8 to DIGIT_7, 9 to DIGIT_8, 10 to DIGIT_9, 11 to DIGIT_0,
-        14 to BACKSPACE, 15 to TAB,
+        14 to BACKSPACE, 15 to RED_CLICKS,
         16 to Q, 17 to W, 18 to E, 19 to R, 20 to T, 21 to Y, 22 to U, 23 to I,
         24 to O, 25 to P,
         28 to ENTER, 29 to CTRL,
@@ -209,7 +209,7 @@ object ClicksPowerKeyboardLayout : PhysicalKeyAdjacencyProfile {
         38 to L,
         42 to SHIFT,
         44 to Z, 45 to X, 46 to C, 47 to V, 48 to B, 49 to N, 50 to M,
-        52 to PERIOD, 57 to SPACE
+        52 to PERIOD, 57 to SPACE, 125 to LAUNCHER
     )
 
     private val KEY_CODE_KEYS = buildMap {
@@ -226,7 +226,8 @@ object ClicksPowerKeyboardLayout : PhysicalKeyAdjacencyProfile {
         put(KeyEvent.KEYCODE_SHIFT_LEFT, SHIFT)
         put(KeyEvent.KEYCODE_CTRL_LEFT, CTRL)
         put(KeyEvent.KEYCODE_SYM, SYM)
-        put(KeyEvent.KEYCODE_TAB, TAB)
+        put(KeyEvent.KEYCODE_TAB, RED_CLICKS)
+        put(KeyEvent.KEYCODE_META_LEFT, LAUNCHER)
         put(KeyEvent.KEYCODE_SPACE, SPACE)
         put(KeyEvent.KEYCODE_PERIOD, PERIOD)
     }

@@ -364,8 +364,12 @@ class InputEventRouterCtrlHoldNavModeTest {
 
         assertTrue(handled)
         assertEquals(
-            SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL,
+            SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE,
             SettingsManager.getSoftwareKeyboardMode(context)
+        )
+        assertEquals(
+            SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL,
+            SettingsManager.getSoftwareKeyboardModeRuntimeOverride(context)
         )
     }
 

@@ -2,7 +2,9 @@ package it.palsoftware.pastiera.inputmethod
 
 import android.content.Context
 import android.content.res.AssetManager
+import android.graphics.Rect
 import android.view.KeyEvent
+import android.view.View
 import android.widget.LinearLayout
 import android.view.inputmethod.InputConnection
 
@@ -19,6 +21,7 @@ class CandidatesBarController(
 
     private val inputStatusBar = StatusBarController(context, StatusBarController.Mode.INPUT_VIEW, clipboardHistoryManager, assets, imeServiceClass)
     private val candidatesStatusBar = StatusBarController(context, StatusBarController.Mode.CANDIDATES_ONLY, clipboardHistoryManager, assets, imeServiceClass)
+    private var candidatesSurfaceActive = true
 
     var onVariationSelectedListener: VariationButtonHandler.OnVariationSelectedListener? = null
         set(value) {
@@ -214,7 +217,35 @@ class CandidatesBarController(
     }
 
     fun getCandidatesView(emojiMapText: String = ""): LinearLayout {
-        return candidatesStatusBar.getOrCreateLayout(emojiMapText)
+        return candidatesStatusBar.getOrCreateLayout(emojiMapText).also {
+            if (!candidatesSurfaceActive) candidatesStatusBar.collapseLayout()
+        }
+    }
+
+    /**
+     * The framework hides its candidates frame with INVISIBLE, which still reserves the child's
+     * measured height. Collapse the child while the full input view is active and explicitly
+     * restore it before returning to hardware/candidates-only mode.
+     */
+    fun setCandidatesSurfaceActive(active: Boolean) {
+        candidatesSurfaceActive = active
+        if (active) candidatesStatusBar.expandLayout() else candidatesStatusBar.collapseLayout()
+    }
+
+    fun isInputViewActuallyRendered(): Boolean =
+        inputStatusBar.getLayout().isActuallyRendered()
+
+    fun isCandidatesViewActuallyRendered(): Boolean =
+        candidatesStatusBar.getLayout().isActuallyRendered()
+
+    private fun View?.isActuallyRendered(): Boolean {
+        if (this == null || !isAttachedToWindow || !isShown || width <= 0 || height <= 0) {
+            return false
+        }
+        val visibleBounds = Rect()
+        return getGlobalVisibleRect(visibleBounds) &&
+            visibleBounds.width() > 0 &&
+            visibleBounds.height() > 0
     }
 
     fun setPastierinaModeActive(active: Boolean) {
@@ -289,7 +320,11 @@ class CandidatesBarController(
         symMappings: Map<Int, String>?
     ) {
         inputStatusBar.update(snapshot, emojiMapText, inputConnection, symMappings)
-        candidatesStatusBar.update(snapshot, emojiMapText, inputConnection, symMappings)
+        if (candidatesSurfaceActive) {
+            candidatesStatusBar.update(snapshot, emojiMapText, inputConnection, symMappings)
+        } else {
+            candidatesStatusBar.collapseLayout()
+        }
     }
 
     fun updateClipboardCount(count: Int) {

@@ -230,6 +230,24 @@ class AccidentalKeyPressFilterTest {
     }
 
     @Test
+    fun disabledNumberRowRepeat_remembersTheHeldKeyWhenARepeatCannotBeResolvedAgain() {
+        val configuration = configuration(numberRowRepeatEnabled = false)
+
+        assertAccepted(KeyEvent.KEYCODE_3, ClicksPowerKeyboardLayout.DIGIT_3, configuration)
+        val repeatedNumber = filter.shouldConsumeKeyDown(
+            KeyEvent.KEYCODE_3,
+            down(KeyEvent.KEYCODE_3, 1_100L, repeatCount = 1),
+            resolution(emptySet()),
+            configuration
+        )
+
+        assertEquals(
+            AccidentalKeyPressFilter.Reason.NUMBER_ROW_REPEAT_DISABLED,
+            repeatedNumber?.reason
+        )
+    }
+
+    @Test
     fun modifiersDoNotCompeteAndCtrlUPlusSevenSuppressesOnlySeven() {
         val configuration = configuration(AccidentalKeyPressFilter.OverlapRule.ADJACENT)
 

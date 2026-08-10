@@ -25,7 +25,7 @@ class SoftwareKeyboardModeButtonFactory : StatusBarButtonFactory {
             isFocusable = true
             setOnClickListener {
                 performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                SoftwareKeyboardModeActions.toggleForceMode(context)
+                SoftwareKeyboardModeActions.toggleTemporaryMode(context)
             }
         }
         return ButtonCreationResult(view = button)

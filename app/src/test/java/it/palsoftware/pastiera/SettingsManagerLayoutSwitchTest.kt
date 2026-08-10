@@ -312,26 +312,56 @@ class SettingsManagerLayoutSwitchTest {
     }
 
     @Test
-    fun softwareKeyboardModeToggle_switchesBetweenForceVirtualAndForceHardware() {
+    fun softwareKeyboardModeToggle_isTemporaryAndLeavesConfiguredModeUntouched() {
         val context = RuntimeEnvironment.getApplication()
 
         SettingsManager.setSoftwareKeyboardMode(context, SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL)
         assertEquals(
             SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE,
-            SoftwareKeyboardModeActions.toggleForceMode(context)
+            SoftwareKeyboardModeActions.toggleTemporaryMode(context)
+        )
+        assertEquals(
+            SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL,
+            SettingsManager.getSoftwareKeyboardMode(context)
         )
         assertEquals(
             SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE,
-            SettingsManager.getSoftwareKeyboardMode(context)
+            SettingsManager.getSoftwareKeyboardModeRuntimeOverride(context)
+        )
+        assertEquals(
+            SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE,
+            SettingsManager.resolveEffectiveSoftwareKeyboardMode(context)
         )
 
         assertEquals(
             SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL,
-            SoftwareKeyboardModeActions.toggleForceMode(context)
+            SoftwareKeyboardModeActions.toggleTemporaryMode(context)
         )
         assertEquals(
             SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL,
             SettingsManager.getSoftwareKeyboardMode(context)
+        )
+        assertEquals(
+            SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL,
+            SettingsManager.getSoftwareKeyboardModeRuntimeOverride(context)
+        )
+    }
+
+    @Test
+    fun clearingTemporaryKeyboardModeRestoresConfiguredMode() {
+        val context = RuntimeEnvironment.getApplication()
+        SettingsManager.setSoftwareKeyboardMode(context, SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE)
+        SettingsManager.setSoftwareKeyboardModeRuntimeOverride(
+            context,
+            SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL
+        )
+
+        SoftwareKeyboardModeActions.clearTemporaryMode(context)
+
+        assertEquals(null, SettingsManager.getSoftwareKeyboardModeRuntimeOverride(context))
+        assertEquals(
+            SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE,
+            SettingsManager.resolveEffectiveSoftwareKeyboardMode(context)
         )
     }
 
@@ -361,8 +391,12 @@ class SettingsManagerLayoutSwitchTest {
 
         assertTrue(result.isSuccess)
         assertEquals(
-            SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL,
+            SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE,
             SettingsManager.getSoftwareKeyboardMode(context)
+        )
+        assertEquals(
+            SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL,
+            SettingsManager.getSoftwareKeyboardModeRuntimeOverride(context)
         )
     }
 
@@ -378,8 +412,12 @@ class SettingsManagerLayoutSwitchTest {
 
         assertTrue(result.isSuccess)
         assertEquals(
-            SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL,
+            SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE,
             SettingsManager.getSoftwareKeyboardMode(context)
+        )
+        assertEquals(
+            SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL,
+            SettingsManager.getSoftwareKeyboardModeRuntimeOverride(context)
         )
         assertEquals(null, ShadowToast.getTextOfLatestToast())
     }
@@ -443,8 +481,12 @@ class SettingsManagerLayoutSwitchTest {
         ).create().destroy()
 
         assertEquals(
-            SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE,
+            SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL,
             SettingsManager.getSoftwareKeyboardMode(context)
+        )
+        assertEquals(
+            SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE,
+            SettingsManager.getSoftwareKeyboardModeRuntimeOverride(context)
         )
     }
 
