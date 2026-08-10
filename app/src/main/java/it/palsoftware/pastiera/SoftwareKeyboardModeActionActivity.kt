@@ -22,7 +22,7 @@ class SoftwareKeyboardModeActionActivity : Activity() {
         if (intent?.action != SoftwareKeyboardModeActions.ACTION_TOGGLE) {
             return
         }
-        val next = SoftwareKeyboardModeActions.toggleForceMode(this)
+        val next = SoftwareKeyboardModeActions.toggleTemporaryMode(this)
         if (SettingsManager.getSoftwareKeyboardModeToggleToastsEnabled(this)) {
             Toast.makeText(this, labelFor(next), Toast.LENGTH_SHORT).show()
         }

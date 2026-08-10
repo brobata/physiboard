@@ -19,8 +19,10 @@ import java.io.Closeable
 
 data class ClicksPowerKeyboardControllerState(
     val deviceName: String? = null,
+    val lastKnownDeviceName: String? = null,
     val phoneBatteryPercent: Int? = null,
     val manualChargingUntil: Long = 0L,
+    val socCalibration: ClicksPowerSocCalibrationStatus? = null,
     val keyboard: ClicksPowerKeyboardState = ClicksPowerKeyboardState()
 )
 
@@ -31,7 +33,13 @@ object ClicksPowerKeyboardController {
     private var client: ClicksPowerKeyboardGattClient? = null
     private var connectedDeviceName: String? = null
     private var pendingAutomaticChargingState: Boolean? = null
+    private val buttonRemapWritesInProgress = mutableSetOf<ClicksButtonBindingTarget>()
+    private val buttonRemapCallbacks = mutableMapOf<ClicksButtonBindingTarget, (Boolean) -> Unit>()
     private var manualOverrideExpiredOnReconnect = false
+    private lateinit var socCalibrationStore: ClicksPowerSocCalibrationStore
+    private var socCalibrationTracker: ClicksPowerSocCalibrationTracker? = null
+    private var socCalibrationKeyboardId: String? = null
+    private var phonePluggedType = ClicksPhonePluggedType.UNKNOWN
     private val handler = Handler(Looper.getMainLooper())
     private val chargingRefresh = object : Runnable {
         override fun run() {
@@ -49,6 +57,16 @@ object ClicksPowerKeyboardController {
         if (initialized) return
         initialized = true
         context = appContext.applicationContext
+        socCalibrationStore = SharedPreferencesClicksPowerSocCalibrationStore(
+            context.getSharedPreferences("pastiera_prefs", Context.MODE_PRIVATE)
+        )
+        SettingsManager.getMostRecentClicksPowerKeyboardSnapshot(context)?.let { snapshot ->
+            state = state.copy(
+                lastKnownDeviceName = snapshot.deviceName,
+                socCalibration = loadSocCalibrationStatus(snapshot.state),
+                keyboard = ClicksPowerKeyboardStateSnapshotCodec.forOfflineDisplay(snapshot.state)
+            )
+        }
         val inputManager = context.getSystemService(InputManager::class.java)
         inputManager.registerInputDeviceListener(object : InputManager.InputDeviceListener {
             override fun onInputDeviceAdded(deviceId: Int) = updateConnection()
@@ -59,8 +77,25 @@ object ClicksPowerKeyboardController {
             override fun onReceive(context: Context?, intent: Intent?) {
                 val level = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
                 val scale = intent?.getIntExtra(BatteryManager.EXTRA_SCALE, 100) ?: 100
+                phonePluggedType = intent?.let { batteryIntent ->
+                    if (batteryIntent.hasExtra(BatteryManager.EXTRA_PLUGGED)) {
+                        val plugged = batteryIntent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0)
+                        when {
+                            plugged == 0 -> ClicksPhonePluggedType.NONE
+                            plugged and BatteryManager.BATTERY_PLUGGED_AC != 0 -> ClicksPhonePluggedType.AC
+                            plugged and BatteryManager.BATTERY_PLUGGED_USB != 0 -> ClicksPhonePluggedType.USB
+                            plugged and BatteryManager.BATTERY_PLUGGED_DOCK != 0 -> ClicksPhonePluggedType.DOCK
+                            plugged and BatteryManager.BATTERY_PLUGGED_WIRELESS != 0 ->
+                                ClicksPhonePluggedType.WIRELESS
+                            else -> ClicksPhonePluggedType.UNKNOWN
+                        }
+                    } else {
+                        ClicksPhonePluggedType.UNKNOWN
+                    }
+                } ?: ClicksPhonePluggedType.UNKNOWN
                 if (level >= 0 && scale > 0) {
                     state = state.copy(phoneBatteryPercent = level * 100 / scale)
+                    observeSocCalibration()
                     publishAndEvaluate()
                 }
             }
@@ -84,6 +119,26 @@ object ClicksPowerKeyboardController {
 
     fun currentState(): ClicksPowerKeyboardControllerState = state
     fun activeClient(): ClicksPowerKeyboardGattClient? = client
+
+    internal fun requestButtonBinding(
+        target: ClicksButtonBindingTarget,
+        binding: ClicksDesiredButtonBinding,
+        onComplete: (Boolean) -> Unit = {}
+    ): ClicksButtonBindingRequestStatus {
+        check(initialized)
+        SettingsManager.setClicksDesiredButtonBinding(context, target, binding)
+        if (ClicksButtonBindingSyncPolicy.isConfirmed(state.keyboard, target, binding.firmwareOutput)) {
+            return ClicksButtonBindingRequestStatus.CONFIRMED
+        }
+        if (!ClicksButtonBindingSyncPolicy.canWrite(state.keyboard) || client == null) {
+            return ClicksButtonBindingRequestStatus.PENDING_CONNECTION
+        }
+        // A newer selection supersedes the UI callback of an older in-flight write. The older
+        // firmware write may still finish, but only the latest request owns the visible result.
+        buttonRemapCallbacks[target] = onComplete
+        startDesiredButtonRemapWrite(target, binding)
+        return ClicksButtonBindingRequestStatus.APPLYING
+    }
 
     fun setManualChargingOverride(enabled: Boolean) {
         if (!initialized) return
@@ -110,9 +165,14 @@ object ClicksPowerKeyboardController {
             .firstOrNull(DeviceSpecific::isClicksPowerKeyboard)
             ?.name
         if (!forceReconnect && deviceName == connectedDeviceName) return
-        client?.close()
-        handler.removeCallbacks(chargingRefresh)
+        val previousClient = client
         client = null
+        previousClient?.close()
+        finishAllButtonRemapCallbacks(success = false)
+        handler.removeCallbacks(chargingRefresh)
+        socCalibrationTracker?.disconnect()
+        socCalibrationTracker = null
+        socCalibrationKeyboardId = null
         connectedDeviceName = deviceName
         pendingAutomaticChargingState = null
         val storedManualUntil = SettingsManager.getClicksManualChargingUntil(context)
@@ -121,15 +181,38 @@ object ClicksPowerKeyboardController {
         if (manualOverrideExpiredOnReconnect) {
             SettingsManager.setClicksManualChargingUntil(context, 0L)
         }
+        val rememberedSnapshot = if (deviceName == null) {
+            state.lastKnownDeviceName?.let {
+                SettingsManager.getClicksPowerKeyboardSnapshot(context, it)
+            } ?: SettingsManager.getMostRecentClicksPowerKeyboardSnapshot(context)
+        } else {
+            SettingsManager.getClicksPowerKeyboardSnapshot(context, deviceName)
+        }
         state = ClicksPowerKeyboardControllerState(
             deviceName = deviceName,
+            lastKnownDeviceName = rememberedSnapshot?.deviceName ?: if (deviceName == null) {
+                state.lastKnownDeviceName
+            } else {
+                deviceName
+            },
             phoneBatteryPercent = state.phoneBatteryPercent,
-            manualChargingUntil = activeManualChargingUntil()
+            manualChargingUntil = activeManualChargingUntil(),
+            socCalibration = rememberedSnapshot?.state?.let(::loadSocCalibrationStatus),
+            keyboard = rememberedSnapshot?.let { ClicksPowerKeyboardStateSnapshotCodec.forOfflineDisplay(it.state) }
+                ?: ClicksPowerKeyboardStateSnapshotCodec.forOfflineDisplay(state.keyboard)
         )
         publish()
         if (deviceName != null && hasBluetoothPermission()) {
-            client = ClicksPowerKeyboardGattClient(context, deviceName) { keyboardState ->
+            client = ClicksPowerKeyboardGattClient(
+                context = context,
+                deviceName = deviceName,
+                initialState = state.keyboard
+            ) { keyboardState ->
                 state = state.copy(keyboard = keyboardState)
+                if (keyboardState.sessionValidated && !keyboardState.stale && keyboardState.serialNumber != null) {
+                    SettingsManager.saveClicksPowerKeyboardSnapshot(context, deviceName, keyboardState)
+                }
+                observeSocCalibration()
                 if (pendingAutomaticChargingState == keyboardState.wirelessChargingEnabled) {
                     pendingAutomaticChargingState = null
                 }
@@ -142,7 +225,12 @@ object ClicksPowerKeyboardController {
     private fun evaluateChargingAutomation() {
         if (!initialized || connectedDeviceName == null) return
         val keyboardState = state.keyboard
-        if (!keyboardState.ready) return
+        if (!keyboardState.ready || !keyboardState.sessionValidated) return
+        if (keyboardState.stale ||
+            keyboardState.batteryPercentStale ||
+            keyboardState.chargingReservePercentStale ||
+            keyboardState.wirelessChargingEnabledStale
+        ) return
         val keyboardBattery = keyboardState.batteryPercent ?: return
         val reserve = keyboardState.chargingReservePercent ?: return
         val charging = keyboardState.wirelessChargingEnabled ?: return
@@ -183,6 +271,100 @@ object ClicksPowerKeyboardController {
     private fun publishAndEvaluate() {
         publish()
         evaluateChargingAutomation()
+        reconcileDesiredButtonBindings()
+    }
+
+    private fun reconcileDesiredButtonBindings() {
+        if (!ClicksButtonBindingSyncPolicy.canWrite(state.keyboard) || client == null) return
+        ClicksButtonBindingTarget.entries.forEach { target ->
+            val desired = SettingsManager.getClicksDesiredButtonBinding(context, target) ?: return@forEach
+            if (!ClicksButtonBindingSyncPolicy.isConfirmed(state.keyboard, target, desired.firmwareOutput)) {
+                startDesiredButtonRemapWrite(target, desired)
+            }
+        }
+    }
+
+    private fun startDesiredButtonRemapWrite(
+        target: ClicksButtonBindingTarget,
+        desired: ClicksDesiredButtonBinding
+    ) {
+        if (!buttonRemapWritesInProgress.add(target)) return
+        val activeClient = client
+        if (activeClient == null) {
+            buttonRemapWritesInProgress.remove(target)
+            finishButtonRemapCallback(target, success = false)
+            return
+        }
+        activeClient.setSpecialKeyRemap(target.firmwareCommand, desired.firmwareOutput) {
+            buttonRemapWritesInProgress.remove(target)
+            val latestDesired = SettingsManager.getClicksDesiredButtonBinding(context, target)
+            val latestDesiredConfirmed = latestDesired != null &&
+                ClicksButtonBindingSyncPolicy.isConfirmed(
+                    state.keyboard,
+                    target,
+                    latestDesired.firmwareOutput
+                )
+            when (
+                ClicksButtonBindingCompletionPolicy.resolve(
+                    attemptedOutput = desired.firmwareOutput,
+                    latestDesiredOutput = latestDesired?.firmwareOutput,
+                    latestDesiredConfirmed = latestDesiredConfirmed
+                )
+            ) {
+                ClicksButtonBindingCompletion.SUCCESS ->
+                    finishButtonRemapCallback(target, success = true)
+                ClicksButtonBindingCompletion.FAILURE ->
+                    finishButtonRemapCallback(target, success = false)
+                ClicksButtonBindingCompletion.KEEP_PENDING -> Unit
+            }
+            reconcileDesiredButtonBindings()
+        }
+    }
+
+    private fun finishButtonRemapCallback(target: ClicksButtonBindingTarget, success: Boolean) {
+        buttonRemapCallbacks.remove(target)?.invoke(success)
+    }
+
+    private fun finishAllButtonRemapCallbacks(success: Boolean) {
+        val callbacks = buttonRemapCallbacks.values.toList()
+        buttonRemapCallbacks.clear()
+        callbacks.forEach { it(success) }
+    }
+
+    /**
+     * Creates a tracker only once the GATT serial number is known. The input-device name is not a
+     * stable enough identity to persist a calibration for a specific keyboard.
+     */
+    private fun observeSocCalibration() {
+        val keyboard = state.keyboard
+        if (!keyboard.hasFreshSocCalibrationInputs()) return
+        val keyboardId = keyboard.serialNumber?.trim()?.takeIf(String::isNotEmpty) ?: return
+        if (keyboardId != socCalibrationKeyboardId) {
+            socCalibrationTracker?.disconnect()
+            socCalibrationKeyboardId = keyboardId
+            socCalibrationTracker = ClicksPowerSocCalibrationTracker(keyboardId, socCalibrationStore)
+        }
+        val phoneBattery = state.phoneBatteryPercent ?: return
+        val keyboardBattery = keyboard.batteryPercent ?: return
+        val wirelessCharging = keyboard.wirelessChargingEnabled ?: return
+        val tracker = socCalibrationTracker ?: return
+        tracker.observe(
+            ClicksPowerSocSnapshot(
+                timestampMillis = System.currentTimeMillis(),
+                phoneBatteryPercent = phoneBattery,
+                keyboardBatteryPercent = keyboardBattery,
+                wirelessChargingEnabled = wirelessCharging,
+                phonePluggedType = phonePluggedType
+            )
+        )
+        state = state.copy(socCalibration = tracker.status())
+    }
+
+    private fun loadSocCalibrationStatus(
+        keyboardState: ClicksPowerKeyboardState
+    ): ClicksPowerSocCalibrationStatus? {
+        val keyboardId = keyboardState.serialNumber?.trim()?.takeIf(String::isNotEmpty) ?: return null
+        return (socCalibrationStore.load(keyboardId) ?: ClicksPowerSocCalibrationAggregate()).status()
     }
 
     private fun publish() = listeners.toList().forEach { it(state) }

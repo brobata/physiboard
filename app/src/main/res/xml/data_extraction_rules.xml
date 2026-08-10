@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <data-extraction-rules>
     <cloud-backup>
-        <!-- Include SharedPreferences for cloud backup -->
+        <!-- Include SharedPreferences for cloud backup, including Clicks snapshots and learned
+             SOC calibration. Restored device values remain stale until GATT validates identity. -->
         <include domain="sharedpref" path="."/>
         <exclude domain="sharedpref" path="recent_emojis_prefs.xml"/>
         

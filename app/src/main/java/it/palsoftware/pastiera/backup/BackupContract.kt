@@ -323,6 +323,17 @@ object PreferenceSchemas {
             "physical_keyboard_currency_symbol" to PreferenceValueType.STRING,
             "clicks_close_input_on_disconnect" to PreferenceValueType.BOOLEAN,
             "clicks_show_keyboard_only_with_text_focus" to PreferenceValueType.BOOLEAN,
+            "clicks_button_mode" to PreferenceValueType.STRING,
+            "clicks_meta_button_mode" to PreferenceValueType.STRING,
+            "clicks_alt_button_mode" to PreferenceValueType.STRING,
+            "clicks_microphone_button_mode" to PreferenceValueType.STRING,
+            "clicks_red_button_binding_choice" to PreferenceValueType.STRING,
+            "clicks_red_button_binding_output" to PreferenceValueType.STRING,
+            "clicks_keyboard_button_binding_choice" to PreferenceValueType.STRING,
+            "clicks_keyboard_button_binding_output" to PreferenceValueType.STRING,
+            "clicks_microphone_button_binding_choice" to PreferenceValueType.STRING,
+            "clicks_microphone_button_binding_output" to PreferenceValueType.STRING,
+            "clicks_power_keyboard_snapshots_v1" to PreferenceValueType.STRING,
             "clicks_charging_automation" to PreferenceValueType.BOOLEAN,
             "clicks_charging_start_percent" to PreferenceValueType.INT,
             "clicks_charging_stop_percent" to PreferenceValueType.INT,
@@ -333,6 +344,10 @@ object PreferenceSchemas {
         dynamicKeys = listOf(
             PreferenceFileSchema.DynamicKey(
                 prefix = "auto_correct_custom_",
+                type = PreferenceValueType.STRING
+            ),
+            PreferenceFileSchema.DynamicKey(
+                prefix = "clicks_power_soc_calibration_",
                 type = PreferenceValueType.STRING
             )
         )

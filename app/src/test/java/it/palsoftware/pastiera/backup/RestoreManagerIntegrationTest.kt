@@ -44,6 +44,8 @@ class RestoreManagerIntegrationTest {
             .edit()
             .remove("user_dictionary_entries")
             .remove("keyboard_layout")
+            .remove("clicks_power_keyboard_snapshots_v1")
+            .remove("clicks_power_soc_calibration_PK-42")
             .commit()
         if (userDefaultsFile.exists()) {
             userDefaultsFile.delete()
@@ -56,6 +58,8 @@ class RestoreManagerIntegrationTest {
             .edit()
             .remove("user_dictionary_entries")
             .remove("keyboard_layout")
+            .remove("clicks_power_keyboard_snapshots_v1")
+            .remove("clicks_power_soc_calibration_PK-42")
             .commit()
 
         if (originalUserDefaultsExisted) {
@@ -166,6 +170,40 @@ class RestoreManagerIntegrationTest {
         }
 
         assertEquals(0, broadcastCount)
+    }
+
+    @Test
+    fun restore_clicksPowerStateAndCalibration_onFreshInstall() {
+        val snapshot = "[{\"deviceName\":\"Power Keyboard\"}]"
+        val calibration = "3:8,4:9"
+
+        val summary = PreferencesBackupHelper.restorePreferences(
+            context,
+            mapOf(
+                "pastiera_prefs" to mapOf(
+                    "clicks_power_keyboard_snapshots_v1" to PreferenceValue(
+                        PreferenceValueType.STRING,
+                        snapshot
+                    ),
+                    "clicks_power_soc_calibration_PK-42" to PreferenceValue(
+                        PreferenceValueType.STRING,
+                        calibration
+                    )
+                )
+            )
+        )
+
+        assertTrue(summary.skippedKeys.isEmpty())
+        assertEquals(
+            setOf(
+                "pastiera_prefs:clicks_power_keyboard_snapshots_v1",
+                "pastiera_prefs:clicks_power_soc_calibration_PK-42"
+            ),
+            summary.appliedKeys.toSet()
+        )
+        val preferences = context.getSharedPreferences("pastiera_prefs", Context.MODE_PRIVATE)
+        assertEquals(snapshot, preferences.getString("clicks_power_keyboard_snapshots_v1", null))
+        assertEquals(calibration, preferences.getString("clicks_power_soc_calibration_PK-42", null))
     }
 
     private suspend fun countUserDictionaryBroadcastsDuring(block: suspend () -> Unit): Int {

@@ -96,6 +96,17 @@ object SettingsManager {
     private const val KEY_CLICKS_OVERLAPPING_KEYS_MODE = "clicks_overlapping_keys_mode"
     private const val KEY_CLICKS_NUMBER_ROW_INPUT_MODE = "clicks_number_row_input_mode"
     private const val KEY_CLICKS_NUMBER_ROW_REPEAT_ENABLED = "clicks_number_row_repeat_enabled"
+    private const val KEY_CLICKS_POWER_KEYBOARD_SNAPSHOTS = "clicks_power_keyboard_snapshots_v1"
+    private const val KEY_CLICKS_BUTTON_MODE = "clicks_button_mode"
+    private const val KEY_CLICKS_META_BUTTON_MODE = "clicks_meta_button_mode"
+    private const val KEY_CLICKS_ALT_BUTTON_MODE = "clicks_alt_button_mode"
+    private const val KEY_CLICKS_MICROPHONE_BUTTON_MODE = "clicks_microphone_button_mode"
+    private const val KEY_CLICKS_RED_BUTTON_BINDING_CHOICE = "clicks_red_button_binding_choice"
+    private const val KEY_CLICKS_RED_BUTTON_BINDING_OUTPUT = "clicks_red_button_binding_output"
+    private const val KEY_CLICKS_KEYBOARD_BUTTON_BINDING_CHOICE = "clicks_keyboard_button_binding_choice"
+    private const val KEY_CLICKS_KEYBOARD_BUTTON_BINDING_OUTPUT = "clicks_keyboard_button_binding_output"
+    private const val KEY_CLICKS_MICROPHONE_BUTTON_BINDING_CHOICE = "clicks_microphone_button_binding_choice"
+    private const val KEY_CLICKS_MICROPHONE_BUTTON_BINDING_OUTPUT = "clicks_microphone_button_binding_output"
     private const val KEY_RESTORE_SYM_PAGE = "restore_sym_page" // SYM page to restore when returning from settings
     private const val KEY_PENDING_RESTORE_SYM_PAGE = "pending_restore_sym_page" // Temporary SYM page state saved when opening settings
     private const val KEY_SYM_PAGES_CONFIG = "sym_pages_config" // Order/enabled pages for SYM
@@ -1309,11 +1320,11 @@ object SettingsManager {
         }
 
     fun resolveEffectiveSoftwareKeyboardMode(context: Context): SoftwareKeyboardMode {
+        getSoftwareKeyboardModeRuntimeOverride(context)?.let { return it }
         val configured = getSoftwareKeyboardMode(context)
         if (configured != SoftwareKeyboardMode.AUTO) {
             return configured
         }
-        getSoftwareKeyboardModeRuntimeOverride(context)?.let { return it }
         return it.palsoftware.pastiera.inputmethod.SoftwareKeyboardAutoDetector.resolve(context)
     }
 
@@ -2046,6 +2057,114 @@ object SettingsManager {
             .putBoolean(KEY_ALT_CTRL_SPEECH_SHORTCUT, enabled)
             .apply()
     }
+
+    enum class ClicksPowerButtonMode(val persistedValue: String) {
+        NATIVE("native"),
+        QUICK_LAUNCHER("quick_launcher"),
+        OPEN_PASTIERA("open_pastiera"),
+        TOGGLE_KEYBOARD_MODE("toggle_keyboard_mode"),
+        TOGGLE_EMOJI_PICKER("toggle_emoji_picker"),
+        ALT("alt"),
+        TAB("tab"),
+        SYM("sym");
+
+        companion object {
+            fun fromPersistedValue(value: String?): ClicksPowerButtonMode =
+                entries.firstOrNull { it.persistedValue == value } ?: NATIVE
+        }
+    }
+
+    fun getClicksButtonMode(context: Context): ClicksPowerButtonMode =
+        ClicksPowerButtonMode.fromPersistedValue(
+            getPreferences(context).getString(KEY_CLICKS_BUTTON_MODE, null)
+        )
+
+    fun setClicksButtonMode(context: Context, mode: ClicksPowerButtonMode) {
+        getPreferences(context).edit().putString(KEY_CLICKS_BUTTON_MODE, mode.persistedValue).apply()
+    }
+
+    fun getClicksMetaButtonMode(context: Context): ClicksPowerButtonMode =
+        ClicksPowerButtonMode.fromPersistedValue(
+            getPreferences(context).getString(KEY_CLICKS_META_BUTTON_MODE, null)
+        )
+
+    fun setClicksMetaButtonMode(context: Context, mode: ClicksPowerButtonMode) {
+        getPreferences(context).edit().putString(KEY_CLICKS_META_BUTTON_MODE, mode.persistedValue).apply()
+    }
+
+    fun getClicksAltButtonMode(context: Context): ClicksPowerButtonMode =
+        ClicksPowerButtonMode.fromPersistedValue(
+            getPreferences(context).getString(KEY_CLICKS_ALT_BUTTON_MODE, null)
+        )
+
+    fun setClicksAltButtonMode(context: Context, mode: ClicksPowerButtonMode) {
+        getPreferences(context).edit().putString(KEY_CLICKS_ALT_BUTTON_MODE, mode.persistedValue).apply()
+    }
+
+    fun getClicksMicrophoneButtonMode(context: Context): ClicksPowerButtonMode =
+        ClicksPowerButtonMode.fromPersistedValue(
+            getPreferences(context).getString(KEY_CLICKS_MICROPHONE_BUTTON_MODE, null)
+        )
+
+    fun setClicksMicrophoneButtonMode(context: Context, mode: ClicksPowerButtonMode) {
+        getPreferences(context).edit()
+            .putString(KEY_CLICKS_MICROPHONE_BUTTON_MODE, mode.persistedValue)
+            .apply()
+    }
+
+    internal fun getClicksDesiredButtonBinding(
+        context: Context,
+        target: ClicksButtonBindingTarget
+    ): ClicksDesiredButtonBinding? {
+        val (choiceKey, outputKey) = clicksDesiredButtonBindingKeys(target)
+        val preferences = getPreferences(context)
+        val choiceId = preferences.getString(choiceKey, null)?.takeIf(String::isNotBlank) ?: return null
+        val output = preferences.getString(outputKey, null)?.decodeClicksRemapOutput() ?: return null
+        return ClicksDesiredButtonBinding(choiceId, output)
+    }
+
+    internal fun setClicksDesiredButtonBinding(
+        context: Context,
+        target: ClicksButtonBindingTarget,
+        binding: ClicksDesiredButtonBinding
+    ) {
+        require(binding.firmwareOutput.size == 2)
+        val (choiceKey, outputKey) = clicksDesiredButtonBindingKeys(target)
+        getPreferences(context).edit()
+            .putString(choiceKey, binding.choiceId)
+            .putString(outputKey, binding.firmwareOutput.encodeClicksRemapOutput())
+            .apply()
+    }
+
+    private fun clicksDesiredButtonBindingKeys(target: ClicksButtonBindingTarget): Pair<String, String> =
+        when (target) {
+            ClicksButtonBindingTarget.RED ->
+                KEY_CLICKS_RED_BUTTON_BINDING_CHOICE to KEY_CLICKS_RED_BUTTON_BINDING_OUTPUT
+            ClicksButtonBindingTarget.KEYBOARD ->
+                KEY_CLICKS_KEYBOARD_BUTTON_BINDING_CHOICE to KEY_CLICKS_KEYBOARD_BUTTON_BINDING_OUTPUT
+            ClicksButtonBindingTarget.MICROPHONE ->
+                KEY_CLICKS_MICROPHONE_BUTTON_BINDING_CHOICE to KEY_CLICKS_MICROPHONE_BUTTON_BINDING_OUTPUT
+        }
+
+    private fun ByteArray.encodeClicksRemapOutput(): String = joinToString(separator = "") {
+        "%02x".format(it.toInt() and 0xff)
+    }
+
+    private fun String.decodeClicksRemapOutput(): ByteArray? {
+        if (length != 4) return null
+        return runCatching {
+            byteArrayOf(substring(0, 2).toInt(16).toByte(), substring(2, 4).toInt(16).toByte())
+        }.getOrNull()
+    }
+
+    internal fun applyClicksRecommendedButtonModes(context: Context): Boolean =
+        getPreferences(context).edit()
+            .putString(KEY_CLICKS_BUTTON_MODE, ClicksPowerButtonMode.QUICK_LAUNCHER.persistedValue)
+            .putString(KEY_CLICKS_META_BUTTON_MODE, ClicksPowerButtonMode.QUICK_LAUNCHER.persistedValue)
+            .putString(KEY_CLICKS_ALT_BUTTON_MODE, ClicksPowerButtonMode.NATIVE.persistedValue)
+            .putString(KEY_CLICKS_MICROPHONE_BUTTON_MODE, ClicksPowerButtonMode.NATIVE.persistedValue)
+            .putBoolean(KEY_ALT_CTRL_SPEECH_SHORTCUT, true)
+            .commit()
 
     /**
      * Returns whether Ctrl+letter app shortcuts should be resolved through
@@ -4268,6 +4387,57 @@ object SettingsManager {
         getPreferences(context).edit()
             .putBoolean(KEY_CLICKS_NUMBER_ROW_REPEAT_ENABLED, enabled)
             .apply()
+    }
+
+    fun getClicksPowerKeyboardSnapshot(
+        context: Context,
+        deviceName: String
+    ): ClicksPowerKeyboardStateSnapshot? = readClicksPowerKeyboardSnapshots(context)
+        .filter { it.deviceName.equals(deviceName, ignoreCase = true) }
+        .maxByOrNull { it.savedAtMillis }
+
+    fun getMostRecentClicksPowerKeyboardSnapshot(context: Context): ClicksPowerKeyboardStateSnapshot? =
+        readClicksPowerKeyboardSnapshots(context).maxByOrNull { it.savedAtMillis }
+
+    fun saveClicksPowerKeyboardSnapshot(
+        context: Context,
+        deviceName: String,
+        state: ClicksPowerKeyboardState
+    ) {
+        if (!ClicksPowerKeyboardStateSnapshotCodec.hasMeaningfulDeviceData(state)) return
+        val snapshot = ClicksPowerKeyboardStateSnapshot(
+            deviceName = deviceName,
+            state = ClicksPowerKeyboardStateSnapshotCodec.forStorage(state),
+            savedAtMillis = System.currentTimeMillis()
+        )
+        val snapshots = readClicksPowerKeyboardSnapshots(context).toMutableList()
+        snapshots.removeAll {
+            it.identity == snapshot.identity ||
+                (it.deviceName.equals(snapshot.deviceName, ignoreCase = true) &&
+                    (it.state.serialNumber == null || snapshot.state.serialNumber == null))
+        }
+        snapshots += snapshot
+        val encoded = JSONArray().also { array ->
+            snapshots.sortedBy { it.savedAtMillis }.forEach { item ->
+                array.put(JSONObject(ClicksPowerKeyboardStateSnapshotCodec.encode(item)))
+            }
+        }
+        getPreferences(context).edit()
+            .putString(KEY_CLICKS_POWER_KEYBOARD_SNAPSHOTS, encoded.toString())
+            .apply()
+    }
+
+    private fun readClicksPowerKeyboardSnapshots(context: Context): List<ClicksPowerKeyboardStateSnapshot> {
+        val serialized = getPreferences(context)
+            .getString(KEY_CLICKS_POWER_KEYBOARD_SNAPSHOTS, null)
+            ?: return emptyList()
+        return runCatching {
+            JSONArray(serialized).let { array ->
+                List(array.length()) { index ->
+                    ClicksPowerKeyboardStateSnapshotCodec.decode(array.getJSONObject(index).toString())
+                }.filterNotNull()
+            }
+        }.getOrDefault(emptyList())
     }
 
     /**

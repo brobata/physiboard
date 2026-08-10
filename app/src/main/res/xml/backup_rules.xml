@@ -7,7 +7,9 @@
    See https://developer.android.com/about/versions/12/backup-restore
 -->
 <full-backup-content>
-    <!-- Include all SharedPreferences (contains SYM mappings, auto-corrections, settings) -->
+    <!-- Include all SharedPreferences (contains SYM mappings, auto-corrections, settings).
+         This intentionally includes last-known Clicks snapshots and learned SOC calibration.
+         Restored device values stay stale until a matching GATT serial is freshly validated. -->
     <include domain="sharedpref" path="."/>
     <exclude domain="sharedpref" path="recent_emojis_prefs.xml"/>
     

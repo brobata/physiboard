@@ -178,7 +178,10 @@ private fun KeyboardsDevicesMainScreen(
             InfoRow(
                 title = stringResource(R.string.keyboard_switching_current_title),
                 description = when {
-                    runtimeOverride != null -> stringResource(R.string.keyboard_switching_status_override)
+                    runtimeOverride != null && isVirtual ->
+                        stringResource(R.string.keyboard_switching_status_override_virtual)
+                    runtimeOverride != null ->
+                        stringResource(R.string.keyboard_switching_status_override_hardware)
                     isVirtual && !DeviceSpecific.hasConnectedHardwareKeyboard() -> stringResource(R.string.keyboard_switching_status_no_physical)
                     isVirtual -> stringResource(R.string.keyboard_switching_status_virtual)
                     clicksDevice != null -> stringResource(R.string.keyboard_switching_status_clicks)

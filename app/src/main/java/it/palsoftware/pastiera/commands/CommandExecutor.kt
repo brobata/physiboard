@@ -132,7 +132,7 @@ class CommandExecutor(
     }
 
     private fun toggleSoftwareKeyboardMode(): CommandExecutionResult {
-        val next = SoftwareKeyboardModeActions.toggleForceMode(context)
+        val next = SoftwareKeyboardModeActions.toggleTemporaryMode(context)
         if (showToast && SettingsManager.getSoftwareKeyboardModeToggleToastsEnabled(context)) {
             val message = when (next) {
                 SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL ->

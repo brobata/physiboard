@@ -145,6 +145,19 @@
                 android:resource="@xml/method" />
         </service>
 
+        <service
+            android:name=".inputmethod.ClicksLauncherButtonAccessibilityService"
+            android:exported="true"
+            android:label="@string/clicks_launcher_interception_service_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/clicks_launcher_button_accessibility_service" />
+        </service>
+
         <!-- Attività helper per il riconoscimento vocale -->
         <activity
             android:name=".inputmethod.SpeechRecognitionActivity"

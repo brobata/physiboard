@@ -3,12 +3,16 @@ package it.palsoftware.pastiera
 import android.Manifest
 import android.content.pm.PackageManager
 import android.content.Intent
+import android.content.ComponentName
 import android.net.Uri
 import android.os.Build
+import android.provider.Settings
+import android.view.accessibility.AccessibilityManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,11 +26,21 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardTab
 import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.Bluetooth
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.EmojiEmotions
+import androidx.compose.material.icons.filled.EmojiSymbols
 import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.filled.KeyboardAlt
+import androidx.compose.material.icons.filled.KeyboardCommandKey
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Restore
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.SystemUpdate
@@ -60,13 +74,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import it.palsoftware.pastiera.inputmethod.DeviceSpecific
+import it.palsoftware.pastiera.inputmethod.ClicksLauncherButtonAccessibilityService
+import it.palsoftware.pastiera.inputmethod.directActionOrNull
 
-private enum class ClicksMappingPage { HostSlots, SpecialKeys, NumberRow }
+private enum class ClicksMappingPage { HostSlots, Buttons, NumberRow }
 
 @Composable
 fun ClicksPowerKeyboardSettingsScreen(
@@ -74,6 +95,7 @@ fun ClicksPowerKeyboardSettingsScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val mainScrollState = rememberScrollState()
     var closeInputOnDisconnect by remember {
         mutableStateOf(SettingsManager.getClicksCloseInputOnDisconnect(context))
     }
@@ -87,6 +109,9 @@ fun ClicksPowerKeyboardSettingsScreen(
     var powerState by remember { mutableStateOf(ClicksPowerKeyboardState()) }
     var gattClient by remember { mutableStateOf<ClicksPowerKeyboardGattClient?>(null) }
     var connectedDeviceName by remember { mutableStateOf<String?>(null) }
+    var lastKnownDeviceName by remember { mutableStateOf<String?>(null) }
+    var phoneBatteryPercent by remember { mutableStateOf<Int?>(null) }
+    var socCalibration by remember { mutableStateOf<ClicksPowerSocCalibrationStatus?>(null) }
     var manualChargingUntil by remember { mutableStateOf(0L) }
     var chargingAutomation by remember {
         mutableStateOf(SettingsManager.isClicksChargingAutomationEnabled(context))
@@ -106,10 +131,43 @@ fun ClicksPowerKeyboardSettingsScreen(
     var numberRowRepeatEnabled by remember {
         mutableStateOf(SettingsManager.isClicksNumberRowRepeatEnabled(context))
     }
+    var clicksButtonMode by remember {
+        mutableStateOf(SettingsManager.getClicksButtonMode(context))
+    }
+    var clicksMetaButtonMode by remember {
+        mutableStateOf(SettingsManager.getClicksMetaButtonMode(context))
+    }
+    var clicksAltButtonMode by remember {
+        mutableStateOf(SettingsManager.getClicksAltButtonMode(context))
+    }
+    var clicksMicrophoneButtonMode by remember {
+        mutableStateOf(SettingsManager.getClicksMicrophoneButtonMode(context))
+    }
+    var desiredRedButtonBinding by remember {
+        mutableStateOf(
+            SettingsManager.getClicksDesiredButtonBinding(context, ClicksButtonBindingTarget.RED)
+        )
+    }
+    var desiredKeyboardButtonBinding by remember {
+        mutableStateOf(
+            SettingsManager.getClicksDesiredButtonBinding(context, ClicksButtonBindingTarget.KEYBOARD)
+        )
+    }
+    var desiredMicrophoneButtonBinding by remember {
+        mutableStateOf(
+            SettingsManager.getClicksDesiredButtonBinding(context, ClicksButtonBindingTarget.MICROPHONE)
+        )
+    }
     var backlightSlider by remember { mutableStateOf(100f) }
     var reserveSlider by remember { mutableStateOf(0f) }
     var mappingPage by remember { mutableStateOf<ClicksMappingPage?>(null) }
     var hostSlotToEdit by remember { mutableStateOf<Int?>(null) }
+    var buttonBindingsInProgress by remember { mutableStateOf(emptySet<String>()) }
+    var buttonBindingResult by remember { mutableStateOf<Int?>(null) }
+    var launcherInterceptionEnabled by remember {
+        mutableStateOf(isClicksLauncherInterceptionEnabled(context))
+    }
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     val bluetoothPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -131,6 +189,9 @@ fun ClicksPowerKeyboardSettingsScreen(
     DisposableEffect(Unit) {
         val observation = ClicksPowerKeyboardController.observe { controllerState ->
             connectedDeviceName = controllerState.deviceName
+            lastKnownDeviceName = controllerState.lastKnownDeviceName
+            phoneBatteryPercent = controllerState.phoneBatteryPercent
+            socCalibration = controllerState.socCalibration
             manualChargingUntil = controllerState.manualChargingUntil
             powerState = controllerState.keyboard
             gattClient = ClicksPowerKeyboardController.activeClient()
@@ -138,11 +199,44 @@ fun ClicksPowerKeyboardSettingsScreen(
         onDispose { observation.close() }
     }
 
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                launcherInterceptionEnabled = isClicksLauncherInterceptionEnabled(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     LaunchedEffect(powerState.backlightBrightness) {
         powerState.backlightBrightness?.let { backlightSlider = it.toFloat() }
     }
     LaunchedEffect(powerState.chargingReservePercent) {
         powerState.chargingReservePercent?.let { reserveSlider = it.toFloat() }
+    }
+
+    fun requestButtonBinding(
+        progressId: String,
+        target: ClicksButtonBindingTarget,
+        binding: ClicksDesiredButtonBinding
+    ) {
+        buttonBindingResult = null
+        when (ClicksPowerKeyboardController.requestButtonBinding(target, binding) { success ->
+            buttonBindingsInProgress -= progressId
+            buttonBindingResult = if (success) {
+                R.string.clicks_button_binding_success
+            } else {
+                R.string.clicks_button_binding_failure
+            }
+        }) {
+            ClicksButtonBindingRequestStatus.CONFIRMED ->
+                buttonBindingResult = R.string.clicks_button_binding_success
+            ClicksButtonBindingRequestStatus.PENDING_CONNECTION ->
+                buttonBindingResult = R.string.clicks_button_binding_pending
+            ClicksButtonBindingRequestStatus.APPLYING ->
+                buttonBindingsInProgress += progressId
+        }
     }
 
     if (showBluetoothPermissionExplanation) {
@@ -194,12 +288,68 @@ fun ClicksPowerKeyboardSettingsScreen(
         return
     }
 
-    if (mappingPage == ClicksMappingPage.SpecialKeys) {
-        ClicksSpecialKeyMappingsScreen(
+    if (mappingPage == ClicksMappingPage.Buttons) {
+        ClicksButtonMappingsScreen(
             modifier = modifier,
             state = powerState,
+            redButtonMode = clicksButtonMode,
+            launcherButtonMode = clicksMetaButtonMode,
+            altButtonMode = clicksAltButtonMode,
+            microphoneButtonMode = clicksMicrophoneButtonMode,
+            desiredRedButtonBinding = desiredRedButtonBinding,
+            desiredKeyboardButtonBinding = desiredKeyboardButtonBinding,
+            desiredMicrophoneButtonBinding = desiredMicrophoneButtonBinding,
+            launcherInterceptionEnabled = launcherInterceptionEnabled,
+            inProgress = buttonBindingsInProgress,
+            resultMessage = buttonBindingResult,
             onBack = { mappingPage = null },
-            onSelected = { command, bytes -> gattClient?.setSpecialKeyRemap(command, bytes) }
+            onOpenLauncherInterceptionSettings = {
+                context.startActivity(
+                    Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+            },
+            onRedSelected = { choiceId, mode, firmwareOutput, pastieraFunction ->
+                clicksButtonMode = mode
+                SettingsManager.setClicksButtonMode(context, mode)
+                pastieraFunction?.let { applyClicksBindingPastieraFunction(context, it) }
+                val binding = ClicksDesiredButtonBinding(choiceId, firmwareOutput)
+                desiredRedButtonBinding = binding
+                requestButtonBinding(
+                    CLICKS_BINDING_RED,
+                    ClicksButtonBindingTarget.RED,
+                    binding
+                )
+            },
+            onLauncherSelected = { mode ->
+                clicksMetaButtonMode = mode
+                SettingsManager.setClicksMetaButtonMode(context, mode)
+                buttonBindingResult = R.string.clicks_button_binding_success
+            },
+            onAltSelected = { choiceId, mode, firmwareOutput, pastieraFunction ->
+                clicksAltButtonMode = mode
+                SettingsManager.setClicksAltButtonMode(context, mode)
+                pastieraFunction?.let { applyClicksBindingPastieraFunction(context, it) }
+                val binding = ClicksDesiredButtonBinding(choiceId, firmwareOutput)
+                desiredKeyboardButtonBinding = binding
+                requestButtonBinding(
+                    CLICKS_BINDING_ALT,
+                    ClicksButtonBindingTarget.KEYBOARD,
+                    binding
+                )
+            },
+            onMicrophoneSelected = { choiceId, mode, bytes, pastieraFunction ->
+                clicksMicrophoneButtonMode = mode
+                SettingsManager.setClicksMicrophoneButtonMode(context, mode)
+                pastieraFunction?.let { applyClicksBindingPastieraFunction(context, it) }
+                val binding = ClicksDesiredButtonBinding(choiceId, bytes)
+                desiredMicrophoneButtonBinding = binding
+                requestButtonBinding(
+                    CLICKS_BINDING_MICROPHONE,
+                    ClicksButtonBindingTarget.MICROPHONE,
+                    binding
+                )
+            }
         )
         return
     }
@@ -218,7 +368,8 @@ fun ClicksPowerKeyboardSettingsScreen(
         modifier = modifier,
         title = stringResource(R.string.clicks_power_keyboard_title),
         description = stringResource(R.string.clicks_power_keyboard_description),
-        onBack = onBack
+        onBack = onBack,
+        scrollState = mainScrollState
     ) {
         StubSection(stringResource(R.string.clicks_section_device))
         ClicksDeviceInfoRow(
@@ -243,7 +394,14 @@ fun ClicksPowerKeyboardSettingsScreen(
                     powerState.error != null -> powerState.error!!
                     else -> stringResource(R.string.clicks_device_status_connected, slot)
                 }
-            } ?: stringResource(R.string.clicks_device_status_disconnected),
+            } ?: if (powerState.stale) {
+                stringResource(
+                    R.string.clicks_device_status_last_known,
+                    lastKnownDeviceName ?: stringResource(R.string.clicks_device_status_disconnected)
+                )
+            } else {
+                stringResource(R.string.clicks_device_status_disconnected)
+            },
             onClick = when {
                 connectedDeviceName == null -> null
                 !hasBluetoothPermission -> ({ showBluetoothPermissionExplanation = true })
@@ -264,7 +422,7 @@ fun ClicksPowerKeyboardSettingsScreen(
         }
         val firmwareVersion = powerState.firmwareVersion
         val firmwareSupported = firmwareVersion?.let(ClicksFirmwareVersionReader::isSupported) == true
-        val controlsEnabled = powerState.ready && firmwareSupported
+        val controlsEnabled = powerState.ready && powerState.sessionValidated && !powerState.stale && firmwareSupported
         if (powerState.activeHostSlot != null) {
             ClicksDeviceInfoRow(
                 icon = Icons.Filled.Bluetooth,
@@ -302,10 +460,63 @@ fun ClicksPowerKeyboardSettingsScreen(
             icon = Icons.Filled.CheckCircle,
             title = stringResource(R.string.clicks_recommended_settings_title),
             description = stringResource(R.string.clicks_recommended_settings_description),
-            onClick = {
-                gattClient?.setCapsLock(false)
-                gattClient?.setCursorMode(false)
-            }
+            onClick = if (controlsEnabled && powerState.specialKeyEnableFlags != null) ({
+                val client = gattClient ?: return@ClicksDeviceInfoRow
+                buttonBindingsInProgress += CLICKS_BINDING_RECOMMENDED
+                buttonBindingResult = null
+                val plan = ClicksRecommendedSettingsPlanner.plan(
+                    ClicksRecommendedSettingsSnapshot(
+                        tabRemap = powerState.tabRemap,
+                        microphoneRemap = powerState.geminiRemap,
+                        altRemap = powerState.altRemap
+                    )
+                )
+                applyClicksRecommendedSettings(client, plan.remapWrites) { firmwareSuccess ->
+                    val success = firmwareSuccess && SettingsManager.applyClicksRecommendedButtonModes(context)
+                    if (success) {
+                        clicksButtonMode = SettingsManager.ClicksPowerButtonMode.QUICK_LAUNCHER
+                        clicksMetaButtonMode = SettingsManager.ClicksPowerButtonMode.QUICK_LAUNCHER
+                        clicksAltButtonMode = SettingsManager.ClicksPowerButtonMode.NATIVE
+                        clicksMicrophoneButtonMode = SettingsManager.ClicksPowerButtonMode.NATIVE
+                        desiredRedButtonBinding = ClicksDesiredButtonBinding(
+                            choiceId = "red_quick_launcher",
+                            firmwareOutput = ClicksPowerKeyboardProtocol.nativeRemapOutput()
+                        ).also {
+                            SettingsManager.setClicksDesiredButtonBinding(
+                                context,
+                                ClicksButtonBindingTarget.RED,
+                                it
+                            )
+                        }
+                        desiredKeyboardButtonBinding = ClicksDesiredButtonBinding(
+                            choiceId = "alt_native",
+                            firmwareOutput = ClicksPowerKeyboardProtocol.nativeRemapOutput()
+                        ).also {
+                            SettingsManager.setClicksDesiredButtonBinding(
+                                context,
+                                ClicksButtonBindingTarget.KEYBOARD,
+                                it
+                            )
+                        }
+                        desiredMicrophoneButtonBinding = ClicksDesiredButtonBinding(
+                            choiceId = "microphone_dictation",
+                            firmwareOutput = ClicksPowerKeyboardProtocol.dictationRemapOutput()
+                        ).also {
+                            SettingsManager.setClicksDesiredButtonBinding(
+                                context,
+                                ClicksButtonBindingTarget.MICROPHONE,
+                                it
+                            )
+                        }
+                    }
+                    buttonBindingsInProgress -= CLICKS_BINDING_RECOMMENDED
+                    buttonBindingResult = if (success) {
+                        R.string.clicks_recommended_settings_success
+                    } else {
+                        R.string.clicks_recommended_settings_failure
+                    }
+                }
+            }) else null
         )
         ClicksOverlappingKeysModeRow(
             selected = clicksOverlappingKeysMode,
@@ -366,12 +577,11 @@ fun ClicksPowerKeyboardSettingsScreen(
         StubSection(stringResource(R.string.clicks_section_key_mappings))
         ClicksDeviceInfoRow(
             icon = Icons.Filled.Edit,
-            title = stringResource(R.string.clicks_special_key_mappings_title),
-            description = stringResource(R.string.clicks_special_key_mappings_description),
-            onClick = if (controlsEnabled && powerState.specialKeyEnableFlags != null) {
-                ({ mappingPage = ClicksMappingPage.SpecialKeys })
-            } else {
-                null
+            title = stringResource(R.string.clicks_button_bindings_title),
+            description = stringResource(R.string.clicks_button_bindings_description),
+            onClick = {
+                buttonBindingResult = null
+                mappingPage = ClicksMappingPage.Buttons
             }
         )
         ClicksDeviceInfoRow(
@@ -472,9 +682,77 @@ fun ClicksPowerKeyboardSettingsScreen(
                 SettingsManager.setClicksChargingStopPercent(context, chargingStopSlider.toInt())
             }
         )
+        val reserveDisplay = powerState.batteryReserveDisplay()
+        val selectedReservePercent = reserveSlider.toInt()
+        val keyboardBatteryPercent = reserveDisplay?.keyboardBatteryPercent
+        val currentPhoneBatteryPercent = phoneBatteryPercent
+        val currentSocCalibration = socCalibration
+        val availableKeyboardPercent = keyboardBatteryPercent
+            ?.let { (it - selectedReservePercent).coerceAtLeast(0) }
+        val chargeProjection = if (keyboardBatteryPercent != null) {
+            currentSocCalibration?.estimate?.projectChargeUntilReserve(
+                keyboardBatteryPercent = keyboardBatteryPercent,
+                reservePercent = selectedReservePercent,
+                phoneBatteryPercent = currentPhoneBatteryPercent
+            )
+        } else {
+            null
+        }
+        val reserveDescription = when {
+            keyboardBatteryPercent == null -> stringResource(
+                if (reserveDisplay?.source == ClicksBatteryReserveSource.LastKnown) {
+                    R.string.clicks_charging_reserve_soc_last_known_unavailable
+                } else {
+                    R.string.clicks_charging_reserve_soc_live_unavailable
+                }
+            )
+            chargeProjection != null && currentPhoneBatteryPercent != null -> stringResource(
+                if (reserveDisplay?.source == ClicksBatteryReserveSource.LastKnown) {
+                    R.string.clicks_charging_reserve_projection_last_known
+                } else {
+                    R.string.clicks_charging_reserve_projection_live
+                },
+                keyboardBatteryPercent,
+                currentPhoneBatteryPercent,
+                chargeProjection.availableKeyboardPercent,
+                chargeProjection.estimatedPhoneGainPercent
+            )
+            chargeProjection != null -> stringResource(
+                if (reserveDisplay?.source == ClicksBatteryReserveSource.LastKnown) {
+                    R.string.clicks_charging_reserve_projection_last_known_without_phone
+                } else {
+                    R.string.clicks_charging_reserve_projection_live_without_phone
+                },
+                keyboardBatteryPercent,
+                chargeProjection.availableKeyboardPercent,
+                chargeProjection.estimatedPhoneGainPercent
+            )
+            currentSocCalibration != null -> stringResource(
+                if (reserveDisplay?.source == ClicksBatteryReserveSource.LastKnown) {
+                    R.string.clicks_charging_reserve_calibration_last_known
+                } else {
+                    R.string.clicks_charging_reserve_calibration_live
+                },
+                keyboardBatteryPercent,
+                availableKeyboardPercent ?: 0,
+                currentSocCalibration.acceptedSampleCount,
+                ClicksPowerSocCalibrationAggregate.MINIMUM_SAMPLE_COUNT,
+                currentSocCalibration.keyboardPercentObserved,
+                ClicksPowerSocCalibrationAggregate.MINIMUM_KEYBOARD_SPENT_PERCENT
+            )
+            reserveDisplay?.source == ClicksBatteryReserveSource.LastKnown -> stringResource(
+                R.string.clicks_charging_reserve_soc_last_known,
+                keyboardBatteryPercent
+            )
+            else -> stringResource(
+                R.string.clicks_charging_reserve_soc_live,
+                keyboardBatteryPercent
+            )
+        }
         ClicksSliderRow(
             title = stringResource(R.string.clicks_charging_reserve_title),
-            valueLabel = "${reserveSlider.toInt()} %",
+            valueLabel = "$selectedReservePercent %",
+            description = reserveDescription,
             value = reserveSlider,
             range = 0f..50f,
             steps = 4,
@@ -514,31 +792,455 @@ fun ClicksPowerKeyboardSettingsScreen(
 }
 
 @Composable
-private fun ClicksSpecialKeyMappingsScreen(
+private fun ClicksButtonMappingsScreen(
     modifier: Modifier,
     state: ClicksPowerKeyboardState,
+    redButtonMode: SettingsManager.ClicksPowerButtonMode,
+    launcherButtonMode: SettingsManager.ClicksPowerButtonMode,
+    altButtonMode: SettingsManager.ClicksPowerButtonMode,
+    microphoneButtonMode: SettingsManager.ClicksPowerButtonMode,
+    desiredRedButtonBinding: ClicksDesiredButtonBinding?,
+    desiredKeyboardButtonBinding: ClicksDesiredButtonBinding?,
+    desiredMicrophoneButtonBinding: ClicksDesiredButtonBinding?,
+    launcherInterceptionEnabled: Boolean,
+    inProgress: Set<String>,
+    resultMessage: Int?,
     onBack: () -> Unit,
-    onSelected: (Int, ByteArray) -> Unit
+    onOpenLauncherInterceptionSettings: () -> Unit,
+    onRedSelected: (
+        String,
+        SettingsManager.ClicksPowerButtonMode,
+        ByteArray,
+        ClicksBindingPastieraFunction?
+    ) -> Unit,
+    onLauncherSelected: (SettingsManager.ClicksPowerButtonMode) -> Unit,
+    onAltSelected: (
+        String,
+        SettingsManager.ClicksPowerButtonMode,
+        ByteArray,
+        ClicksBindingPastieraFunction?
+    ) -> Unit,
+    onMicrophoneSelected: (
+        String,
+        SettingsManager.ClicksPowerButtonMode,
+        ByteArray,
+        ClicksBindingPastieraFunction?
+    ) -> Unit
 ) {
+    val nativeOutput = ClicksPowerKeyboardProtocol.nativeRemapOutput()
+    val altOutput = ClicksPowerKeyboardProtocol.leftAltRemapOutput()
+    val languageSwitchOutput = ClicksPowerKeyboardProtocol.languageSwitchRemapOutput()
+    val dictationOutput = ClicksPowerKeyboardProtocol.dictationRemapOutput()
+    val directActionOutput = ClicksPowerKeyboardProtocol.pastieraActionRemapOutput()
+    val microphoneDirectActionOutput =
+        ClicksPowerKeyboardProtocol.pastieraMicrophoneActionRemapOutput()
+    val shortcutOutputs = ClicksButtonBindingCatalog.shortcutOutputs()
+
+    val originalCategory = stringResource(R.string.clicks_binding_category_original)
+    val functionCategory = stringResource(R.string.clicks_binding_category_function)
+    val pastieraShortcutCategory = stringResource(R.string.clicks_binding_category_pastiera_shortcut)
+    val keyCategory = stringResource(R.string.clicks_binding_category_key)
+    val shortcutCategory = stringResource(R.string.clicks_binding_category_shortcut)
+    fun groupedLabel(category: String, action: String) = "$category · $action"
+
+    val redNative = ClicksButtonBindingChoice(
+        id = "red_native",
+        label = groupedLabel(originalCategory, stringResource(R.string.clicks_red_native_action)),
+        description = stringResource(R.string.clicks_red_native_description),
+        softwareMode = SettingsManager.ClicksPowerButtonMode.NATIVE,
+        firmwareOutput = nativeOutput
+    )
+    val redQuickLauncher = ClicksButtonBindingChoice(
+        id = "red_quick_launcher",
+        label = groupedLabel(functionCategory, stringResource(R.string.clicks_button_mode_quick_launcher)),
+        description = stringResource(R.string.clicks_button_mode_quick_launcher_description),
+        softwareMode = SettingsManager.ClicksPowerButtonMode.QUICK_LAUNCHER,
+        firmwareOutput = nativeOutput
+    )
+    val redOpenPastiera = ClicksButtonBindingChoice(
+        id = "red_open_pastiera",
+        label = groupedLabel(functionCategory, stringResource(R.string.clicks_button_mode_open_pastiera)),
+        description = stringResource(R.string.clicks_button_mode_open_pastiera_description),
+        softwareMode = SettingsManager.ClicksPowerButtonMode.OPEN_PASTIERA,
+        firmwareOutput = nativeOutput
+    )
+    val redToggleKeyboardMode = ClicksButtonBindingChoice(
+        id = "red_toggle_keyboard_mode",
+        label = groupedLabel(functionCategory, stringResource(R.string.clicks_button_mode_toggle_keyboard_mode)),
+        description = stringResource(R.string.clicks_button_mode_toggle_keyboard_mode_description),
+        softwareMode = SettingsManager.ClicksPowerButtonMode.TOGGLE_KEYBOARD_MODE,
+        firmwareOutput = nativeOutput
+    )
+    val redToggleEmojiPicker = ClicksButtonBindingChoice(
+        id = "red_toggle_emoji_picker",
+        label = groupedLabel(functionCategory, stringResource(R.string.clicks_button_mode_toggle_emoji_picker)),
+        description = stringResource(R.string.clicks_button_mode_toggle_emoji_picker_description),
+        softwareMode = SettingsManager.ClicksPowerButtonMode.TOGGLE_EMOJI_PICKER,
+        firmwareOutput = nativeOutput
+    )
+    val redAlt = ClicksButtonBindingChoice(
+        id = "red_alt",
+        label = groupedLabel(keyCategory, stringResource(R.string.clicks_button_mode_alt)),
+        description = stringResource(R.string.clicks_button_mode_alt_description),
+        softwareMode = SettingsManager.ClicksPowerButtonMode.NATIVE,
+        firmwareOutput = altOutput
+    )
+    val redTab = ClicksButtonBindingChoice(
+        id = "red_tab",
+        label = groupedLabel(keyCategory, stringResource(R.string.clicks_button_mode_tab)),
+        description = stringResource(R.string.clicks_button_mode_tab_description),
+        softwareMode = SettingsManager.ClicksPowerButtonMode.TAB,
+        firmwareOutput = nativeOutput
+    )
+    val redSym = ClicksButtonBindingChoice(
+        id = "red_sym",
+        label = groupedLabel(keyCategory, stringResource(R.string.clicks_button_mode_sym)),
+        description = stringResource(R.string.clicks_button_mode_sym_description),
+        softwareMode = SettingsManager.ClicksPowerButtonMode.SYM,
+        firmwareOutput = nativeOutput
+    )
+    val redLanguageSwitch = ClicksButtonBindingChoice(
+        id = "red_language_switch",
+        label = groupedLabel(pastieraShortcutCategory, stringResource(R.string.clicks_function_language_switch)),
+        description = stringResource(R.string.clicks_function_language_switch_description),
+        softwareMode = SettingsManager.ClicksPowerButtonMode.NATIVE,
+        firmwareOutput = languageSwitchOutput,
+        pastieraFunction = ClicksBindingPastieraFunction.LANGUAGE_SWITCH
+    )
+    val redShortcutChoices = shortcutOutputs.map { (label, bytes) ->
+        ClicksButtonBindingChoice(
+            id = "red_shortcut_${bytes.toHexPair()}",
+            label = groupedLabel(shortcutCategory, label),
+            description = stringResource(R.string.clicks_binding_shortcut_description, label),
+            softwareMode = SettingsManager.ClicksPowerButtonMode.NATIVE,
+            firmwareOutput = bytes
+        )
+    }
+    val redChoices = listOf(
+        redNative,
+        redQuickLauncher,
+        redOpenPastiera,
+        redToggleKeyboardMode,
+        redToggleEmojiPicker,
+        redLanguageSwitch,
+        redAlt,
+        redTab,
+        redSym
+    ) + redShortcutChoices
+    val desiredRedSelection = ClicksButtonBindingCatalog.desiredSelection(
+        desiredRedButtonBinding,
+        redChoices
+    )
+    val redDirectSelection = ClicksButtonBindingCatalog.directActionSelection(redButtonMode, redChoices)
+    val redSelected = desiredRedSelection ?: redDirectSelection ?: if (state.tabRemap != null) {
+        ClicksButtonBindingCatalog.firmwareSelection(state.tabRemap, redChoices)
+            ?.takeUnless { choice ->
+                choice.id == redNative.id ||
+                    choice.id == redTab.id ||
+                    choice.id == redSym.id ||
+                    choice.softwareMode?.directActionOrNull() != null
+            }
+            ?: ClicksButtonBindingChoice(
+                id = "red_custom",
+                label = groupedLabel(
+                    shortcutCategory,
+                    stringResource(R.string.clicks_remap_custom_value, state.tabRemap.toHexPair())
+                ),
+                description = stringResource(R.string.clicks_binding_custom_description),
+                softwareMode = SettingsManager.ClicksPowerButtonMode.NATIVE,
+                firmwareOutput = state.tabRemap
+            )
+    } else {
+        when (redButtonMode) {
+            SettingsManager.ClicksPowerButtonMode.NATIVE -> redNative
+            SettingsManager.ClicksPowerButtonMode.QUICK_LAUNCHER -> redQuickLauncher
+            SettingsManager.ClicksPowerButtonMode.OPEN_PASTIERA -> redOpenPastiera
+            SettingsManager.ClicksPowerButtonMode.TOGGLE_KEYBOARD_MODE -> redToggleKeyboardMode
+            SettingsManager.ClicksPowerButtonMode.TOGGLE_EMOJI_PICKER -> redToggleEmojiPicker
+            SettingsManager.ClicksPowerButtonMode.ALT -> redAlt
+            SettingsManager.ClicksPowerButtonMode.TAB -> redTab
+            SettingsManager.ClicksPowerButtonMode.SYM -> redSym
+        }
+    }
+
+    val launcherChoices = SettingsManager.ClicksPowerButtonMode.entries.map { mode ->
+        val category = if (mode.directActionOrNull() != null) {
+            functionCategory
+        } else if (mode == SettingsManager.ClicksPowerButtonMode.NATIVE) {
+            originalCategory
+        } else {
+            keyCategory
+        }
+        val action = if (mode == SettingsManager.ClicksPowerButtonMode.NATIVE) {
+            stringResource(R.string.clicks_launcher_native_action)
+        } else {
+            clicksPowerButtonModeLabel(mode)
+        }
+        ClicksButtonBindingChoice(
+            id = "launcher_${mode.persistedValue}",
+            label = groupedLabel(category, action),
+            description = if (mode == SettingsManager.ClicksPowerButtonMode.NATIVE) {
+                stringResource(R.string.clicks_launcher_native_description)
+            } else {
+                clicksPowerButtonModeDescription(mode)
+            },
+            softwareMode = mode
+        )
+    }
+    val launcherSelected = launcherChoices.first { it.softwareMode == launcherButtonMode }
+
+    @Composable
+    fun firmwareChoices(
+        bindingId: String,
+        nativeAction: String,
+        nativeDescription: String,
+        includeAlt: Boolean
+    ): List<ClicksButtonBindingChoice> = buildList {
+        add(
+            ClicksButtonBindingChoice(
+                id = "${bindingId}_native",
+                label = groupedLabel(originalCategory, nativeAction),
+                description = nativeDescription,
+                softwareMode = SettingsManager.ClicksPowerButtonMode.NATIVE,
+                firmwareOutput = nativeOutput
+            )
+        )
+        add(
+            ClicksButtonBindingChoice(
+                id = "${bindingId}_language_switch",
+                label = groupedLabel(
+                    pastieraShortcutCategory,
+                    stringResource(R.string.clicks_function_language_switch)
+                ),
+                description = stringResource(R.string.clicks_function_language_switch_description),
+                softwareMode = SettingsManager.ClicksPowerButtonMode.NATIVE,
+                firmwareOutput = languageSwitchOutput,
+                pastieraFunction = ClicksBindingPastieraFunction.LANGUAGE_SWITCH
+            )
+        )
+        if (bindingId == CLICKS_BINDING_MICROPHONE) {
+            add(
+                ClicksButtonBindingChoice(
+                    id = "${bindingId}_dictation",
+                    label = groupedLabel(
+                        pastieraShortcutCategory,
+                        stringResource(R.string.clicks_function_dictation)
+                    ),
+                    description = stringResource(R.string.clicks_function_dictation_description),
+                    softwareMode = SettingsManager.ClicksPowerButtonMode.NATIVE,
+                    firmwareOutput = dictationOutput,
+                    pastieraFunction = ClicksBindingPastieraFunction.DICTATION
+                )
+            )
+        }
+        if (includeAlt) {
+            add(
+                ClicksButtonBindingChoice(
+                    id = "${bindingId}_alt",
+                    label = groupedLabel(keyCategory, stringResource(R.string.clicks_button_mode_alt)),
+                    description = stringResource(R.string.clicks_binding_alt_output_description),
+                    softwareMode = SettingsManager.ClicksPowerButtonMode.NATIVE,
+                    firmwareOutput = altOutput
+                )
+            )
+        }
+        shortcutOutputs.forEach { (label, bytes) ->
+            add(
+                ClicksButtonBindingChoice(
+                    id = "${bindingId}_shortcut_${bytes.toHexPair()}",
+                    label = groupedLabel(shortcutCategory, label),
+                    description = stringResource(R.string.clicks_binding_shortcut_description, label),
+                    softwareMode = SettingsManager.ClicksPowerButtonMode.NATIVE,
+                    firmwareOutput = bytes
+                )
+            )
+        }
+    }
+
+    val altFirmwareChoices = firmwareChoices(
+        bindingId = CLICKS_BINDING_ALT,
+        nativeAction = stringResource(R.string.clicks_alt_native_action),
+        nativeDescription = stringResource(R.string.clicks_alt_native_description),
+        includeAlt = false
+    )
+    val altDirectChoices = listOf(
+        SettingsManager.ClicksPowerButtonMode.QUICK_LAUNCHER,
+        SettingsManager.ClicksPowerButtonMode.OPEN_PASTIERA,
+        SettingsManager.ClicksPowerButtonMode.TOGGLE_KEYBOARD_MODE,
+        SettingsManager.ClicksPowerButtonMode.TOGGLE_EMOJI_PICKER
+    ).map { mode ->
+        ClicksButtonBindingChoice(
+            id = "alt_${mode.persistedValue}",
+            label = groupedLabel(functionCategory, clicksPowerButtonModeLabel(mode)),
+            description = clicksPowerButtonModeDescription(mode),
+            softwareMode = mode,
+            firmwareOutput = directActionOutput
+        )
+    }
+    val altChoices = altFirmwareChoices.take(1) + altDirectChoices + altFirmwareChoices.drop(1)
+    val microphoneFirmwareChoices = firmwareChoices(
+        bindingId = CLICKS_BINDING_MICROPHONE,
+        nativeAction = stringResource(R.string.clicks_microphone_native_action),
+        nativeDescription = stringResource(R.string.clicks_microphone_native_description),
+        includeAlt = true
+    )
+    val microphoneEmojiChoice = ClicksButtonBindingChoice(
+        id = "microphone_toggle_emoji_picker",
+        label = groupedLabel(
+            functionCategory,
+            stringResource(R.string.clicks_button_mode_toggle_emoji_picker)
+        ),
+        description = stringResource(R.string.clicks_button_mode_toggle_emoji_picker_description),
+        softwareMode = SettingsManager.ClicksPowerButtonMode.TOGGLE_EMOJI_PICKER,
+        firmwareOutput = microphoneDirectActionOutput
+    )
+    val microphoneChoices =
+        microphoneFirmwareChoices.take(1) + microphoneEmojiChoice + microphoneFirmwareChoices.drop(1)
+    @Composable
+    fun selectedFirmwareChoice(
+        bindingId: String,
+        current: ByteArray?,
+        choices: List<ClicksButtonBindingChoice>
+    ): Pair<ClicksButtonBindingChoice, List<ClicksButtonBindingChoice>> {
+        val normalized = current ?: nativeOutput
+        ClicksButtonBindingCatalog.firmwareSelection(normalized, choices)?.let {
+            return it to choices
+        }
+        val custom = ClicksButtonBindingChoice(
+            id = "${bindingId}_custom",
+            label = groupedLabel(
+                shortcutCategory,
+                stringResource(R.string.clicks_remap_custom_value, normalized.toHexPair())
+            ),
+            description = stringResource(R.string.clicks_binding_custom_description),
+            firmwareOutput = normalized
+        )
+        return custom to (choices + custom)
+    }
+    val desiredAltSelection = ClicksButtonBindingCatalog.desiredSelection(
+        desiredKeyboardButtonBinding,
+        altChoices
+    )
+    val (altSelected, displayedAltChoices) = desiredAltSelection
+        ?.let { it to altChoices }
+        ?: ClicksButtonBindingCatalog.directActionSelection(altButtonMode, altChoices)
+            ?.let { it to altChoices }
+        ?: selectedFirmwareChoice(
+            CLICKS_BINDING_ALT,
+            state.altRemap?.takeUnless { it.contentEquals(altOutput) },
+            altChoices
+        )
+    val desiredMicrophoneSelection = ClicksButtonBindingCatalog.desiredSelection(
+        desiredMicrophoneButtonBinding,
+        microphoneChoices
+    )
+    val (microphoneSelected, displayedMicrophoneChoices) = desiredMicrophoneSelection
+        ?.let { it to microphoneChoices }
+        ?: ClicksButtonBindingCatalog.directActionSelection(microphoneButtonMode, microphoneChoices)
+            ?.let { it to microphoneChoices }
+        ?: selectedFirmwareChoice(
+            CLICKS_BINDING_MICROPHONE,
+            state.geminiRemap,
+            microphoneChoices
+        )
+    val redBindingPending = desiredRedButtonBinding?.let {
+        !ClicksButtonBindingSyncPolicy.isConfirmed(state, ClicksButtonBindingTarget.RED, it.firmwareOutput)
+    } == true
+    val keyboardBindingPending = desiredKeyboardButtonBinding?.let {
+        !ClicksButtonBindingSyncPolicy.isConfirmed(state, ClicksButtonBindingTarget.KEYBOARD, it.firmwareOutput)
+    } == true
+    val microphoneBindingPending = desiredMicrophoneButtonBinding?.let {
+        !ClicksButtonBindingSyncPolicy.isConfirmed(state, ClicksButtonBindingTarget.MICROPHONE, it.firmwareOutput)
+    } == true
+
     HardwareProfileScaffold(
         modifier = modifier,
-        title = stringResource(R.string.clicks_special_key_mappings_title),
-        description = stringResource(R.string.clicks_special_key_mappings_description),
+        title = stringResource(R.string.clicks_button_bindings_title),
+        description = stringResource(R.string.clicks_button_bindings_screen_description),
         onBack = onBack
     ) {
-        listOf(
-            Triple(ClicksPowerKeyboardProtocol.COMMAND_TAB_REMAP, "Tab", state.tabRemap),
-            Triple(ClicksPowerKeyboardProtocol.COMMAND_GEMINI_REMAP, "Gemini", state.geminiRemap),
-            Triple(ClicksPowerKeyboardProtocol.COMMAND_ALT_REMAP, "Alt", state.altRemap)
-        ).forEach { (command, nativeAction, bytes) ->
-            val displayedBytes = bytes.takeUnless {
-                nativeAction == "Alt" && it?.contentEquals(byteArrayOf(0xe2.toByte(), 0x00)) == true
+        ClicksDeviceInfoRow(
+            icon = if (launcherInterceptionEnabled) Icons.Filled.CheckCircle else Icons.Filled.Warning,
+            title = stringResource(R.string.clicks_launcher_interception_title),
+            description = stringResource(
+                if (launcherInterceptionEnabled) {
+                    R.string.clicks_launcher_interception_enabled
+                } else {
+                    R.string.clicks_launcher_interception_disabled
+                }
+            ),
+            onClick = onOpenLauncherInterceptionSettings
+        )
+        ClicksButtonBindingRow(
+            title = stringResource(R.string.clicks_launcher_button_title),
+            hardwareDescription = stringResource(R.string.clicks_launcher_button_hardware_description),
+            selected = launcherSelected,
+            choices = launcherChoices,
+            enabled = true,
+            applying = false,
+            pending = false,
+            onSelected = { choice -> onLauncherSelected(requireNotNull(choice.softwareMode)) }
+        )
+        ClicksButtonBindingRow(
+            title = stringResource(R.string.clicks_red_button_title),
+            hardwareDescription = stringResource(R.string.clicks_red_button_hardware_description),
+            selected = redSelected,
+            choices = if (redSelected.id == "red_custom") redChoices + redSelected else redChoices,
+            enabled = CLICKS_BINDING_RED !in inProgress,
+            applying = CLICKS_BINDING_RED in inProgress,
+            pending = redBindingPending,
+            onSelected = { choice ->
+                onRedSelected(
+                    choice.id,
+                    requireNotNull(choice.softwareMode),
+                    requireNotNull(choice.firmwareOutput),
+                    choice.pastieraFunction
+                )
             }
-            ClicksRemapDropdownRow(
-                title = nativeAction,
-                selectedBytes = displayedBytes,
-                presets = specialRemapPresets(nativeAction),
-                onSelected = { onSelected(command, it) }
+        )
+        ClicksButtonBindingRow(
+            title = stringResource(R.string.clicks_alt_button_title),
+            hardwareDescription = stringResource(R.string.clicks_alt_button_hardware_description),
+            selected = altSelected,
+            choices = displayedAltChoices,
+            enabled = CLICKS_BINDING_ALT !in inProgress,
+            applying = CLICKS_BINDING_ALT in inProgress,
+            pending = keyboardBindingPending,
+            onSelected = { choice ->
+                onAltSelected(
+                    choice.id,
+                    requireNotNull(choice.softwareMode),
+                    requireNotNull(choice.firmwareOutput),
+                    choice.pastieraFunction
+                )
+            }
+        )
+        ClicksButtonBindingRow(
+            title = stringResource(R.string.clicks_microphone_button_title),
+            hardwareDescription = stringResource(R.string.clicks_microphone_button_hardware_description),
+            selected = microphoneSelected,
+            choices = displayedMicrophoneChoices,
+            enabled = CLICKS_BINDING_MICROPHONE !in inProgress,
+            applying = CLICKS_BINDING_MICROPHONE in inProgress,
+            pending = microphoneBindingPending,
+            onSelected = { choice ->
+                onMicrophoneSelected(
+                    choice.id,
+                    choice.softwareMode ?: SettingsManager.ClicksPowerButtonMode.NATIVE,
+                    requireNotNull(choice.firmwareOutput),
+                    choice.pastieraFunction
+                )
+            }
+        )
+        resultMessage?.let { message ->
+            Text(
+                text = stringResource(message),
+                color = if (message == R.string.clicks_button_binding_failure) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    MaterialTheme.colorScheme.primary
+                },
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             )
         }
     }
@@ -607,6 +1309,18 @@ private fun hasClicksBluetoothPermission(context: android.content.Context): Bool
         PackageManager.PERMISSION_GRANTED
 }
 
+private fun isClicksLauncherInterceptionEnabled(context: android.content.Context): Boolean {
+    val expected = ComponentName(context, ClicksLauncherButtonAccessibilityService::class.java)
+    val manager = context.getSystemService(android.content.Context.ACCESSIBILITY_SERVICE)
+        as? AccessibilityManager ?: return false
+    return manager
+        .getEnabledAccessibilityServiceList(android.accessibilityservice.AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
+        .any { info ->
+            val serviceInfo = info.resolveInfo?.serviceInfo ?: return@any false
+            ComponentName(serviceInfo.packageName, serviceInfo.name) == expected
+        }
+}
+
 private fun openClicksFirmwareUpdates(context: android.content.Context) {
     val launchIntent = context.packageManager
         .getLaunchIntentForPackage(CLICKS_COMPANION_PACKAGE)
@@ -653,6 +1367,58 @@ private fun ClicksDeviceInfoRow(
                 )
             }
         }
+    }
+}
+
+private fun applyClicksRemaps(
+    client: ClicksPowerKeyboardGattClient,
+    writes: List<ClicksRemapWrite>,
+    onComplete: (Boolean) -> Unit
+) {
+    fun applyAt(index: Int) {
+        if (index >= writes.size) {
+            onComplete(true)
+            return
+        }
+        val write = writes[index]
+        client.setSpecialKeyRemap(write.command, write.output) { success ->
+            if (success) applyAt(index + 1) else onComplete(false)
+        }
+    }
+    applyAt(0)
+}
+
+private fun applyClicksRecommendedSettings(
+    client: ClicksPowerKeyboardGattClient,
+    remapWrites: List<ClicksRemapWrite>,
+    onComplete: (Boolean) -> Unit
+) {
+    client.setCapsLock(false) { capsLockSuccess ->
+        if (!capsLockSuccess) {
+            onComplete(false)
+            return@setCapsLock
+        }
+        client.setCursorMode(false) { cursorModeSuccess ->
+            if (!cursorModeSuccess) {
+                onComplete(false)
+                return@setCursorMode
+            }
+            applyClicksRemaps(client, remapWrites) { remapsSuccess ->
+                if (remapsSuccess) client.verifyRecommendedSettings(onComplete) else onComplete(false)
+            }
+        }
+    }
+}
+
+private fun applyClicksBindingPastieraFunction(
+    context: android.content.Context,
+    function: ClicksBindingPastieraFunction
+) {
+    when (function) {
+        ClicksBindingPastieraFunction.LANGUAGE_SWITCH ->
+            SettingsManager.setCtrlSpaceLayoutSwitchEnabled(context, true)
+        ClicksBindingPastieraFunction.DICTATION ->
+            SettingsManager.setAltCtrlSpeechShortcutEnabled(context, true)
     }
 }
 
@@ -813,6 +1579,161 @@ private fun ClicksIntDropdownRow(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+private fun ClicksButtonBindingRow(
+    title: String,
+    hardwareDescription: String,
+    selected: ClicksButtonBindingChoice,
+    choices: List<ClicksButtonBindingChoice>,
+    enabled: Boolean,
+    applying: Boolean,
+    pending: Boolean,
+    onSelected: (ClicksButtonBindingChoice) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { if (enabled) expanded = it },
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)
+    ) {
+        OutlinedTextField(
+            value = if (applying) {
+                stringResource(R.string.clicks_button_binding_applying)
+            } else {
+                selected.compactLabel()
+            },
+            onValueChange = {},
+            readOnly = true,
+            enabled = enabled || applying,
+            label = { Text(title) },
+            supportingText = {
+                Text(
+                    text = if (pending) {
+                        stringResource(R.string.clicks_button_binding_pending)
+                    } else {
+                        hardwareDescription
+                    },
+                    color = if (pending) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            },
+            leadingIcon = {
+                Icon(
+                    imageVector = selected.bindingIcon(),
+                    contentDescription = null,
+                    tint = selected.bindingTint()
+                )
+            },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+            modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            choices.forEach { choice ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            choice.compactLabel(),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = choice.bindingIcon(),
+                            contentDescription = null,
+                            tint = choice.bindingTint()
+                        )
+                    },
+                    trailingIcon = if (choice.id == selected.id) {
+                        {
+                            Icon(
+                                imageVector = Icons.Filled.Check,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    } else {
+                        null
+                    },
+                    onClick = {
+                        expanded = false
+                        onSelected(choice)
+                    }
+                )
+            }
+        }
+    }
+}
+
+private fun ClicksButtonBindingChoice.compactLabel(): String = label.substringAfter(" · ")
+
+private fun ClicksButtonBindingChoice.bindingIcon(): ImageVector = when {
+    id.endsWith("_native") -> Icons.Filled.Restore
+    softwareMode == SettingsManager.ClicksPowerButtonMode.QUICK_LAUNCHER -> Icons.Filled.Search
+    softwareMode == SettingsManager.ClicksPowerButtonMode.OPEN_PASTIERA -> Icons.Filled.Settings
+    softwareMode == SettingsManager.ClicksPowerButtonMode.TOGGLE_KEYBOARD_MODE -> Icons.Filled.Keyboard
+    softwareMode == SettingsManager.ClicksPowerButtonMode.TOGGLE_EMOJI_PICKER -> Icons.Filled.EmojiEmotions
+    softwareMode == SettingsManager.ClicksPowerButtonMode.ALT -> Icons.Filled.KeyboardAlt
+    softwareMode == SettingsManager.ClicksPowerButtonMode.TAB -> Icons.AutoMirrored.Filled.KeyboardTab
+    softwareMode == SettingsManager.ClicksPowerButtonMode.SYM -> Icons.Filled.EmojiSymbols
+    pastieraFunction == ClicksBindingPastieraFunction.LANGUAGE_SWITCH -> Icons.Filled.Language
+    pastieraFunction == ClicksBindingPastieraFunction.DICTATION -> Icons.Filled.Mic
+    else -> Icons.Filled.KeyboardCommandKey
+}
+
+@Composable
+private fun ClicksButtonBindingChoice.bindingTint(): Color = when {
+    id.endsWith("_native") -> MaterialTheme.colorScheme.onSurfaceVariant
+    softwareMode?.directActionOrNull() != null || pastieraFunction != null ->
+        MaterialTheme.colorScheme.primary
+    softwareMode == SettingsManager.ClicksPowerButtonMode.ALT ||
+        softwareMode == SettingsManager.ClicksPowerButtonMode.TAB ||
+        softwareMode == SettingsManager.ClicksPowerButtonMode.SYM -> MaterialTheme.colorScheme.tertiary
+    else -> MaterialTheme.colorScheme.secondary
+}
+
+@Composable
+private fun clicksPowerButtonModeLabel(mode: SettingsManager.ClicksPowerButtonMode): String =
+    stringResource(
+        when (mode) {
+            SettingsManager.ClicksPowerButtonMode.NATIVE -> R.string.clicks_button_mode_native
+            SettingsManager.ClicksPowerButtonMode.QUICK_LAUNCHER -> R.string.clicks_button_mode_quick_launcher
+            SettingsManager.ClicksPowerButtonMode.OPEN_PASTIERA -> R.string.clicks_button_mode_open_pastiera
+            SettingsManager.ClicksPowerButtonMode.TOGGLE_KEYBOARD_MODE ->
+                R.string.clicks_button_mode_toggle_keyboard_mode
+            SettingsManager.ClicksPowerButtonMode.TOGGLE_EMOJI_PICKER ->
+                R.string.clicks_button_mode_toggle_emoji_picker
+            SettingsManager.ClicksPowerButtonMode.ALT -> R.string.clicks_button_mode_alt
+            SettingsManager.ClicksPowerButtonMode.TAB -> R.string.clicks_button_mode_tab
+            SettingsManager.ClicksPowerButtonMode.SYM -> R.string.clicks_button_mode_sym
+        }
+    )
+
+@Composable
+private fun clicksPowerButtonModeDescription(mode: SettingsManager.ClicksPowerButtonMode): String =
+    stringResource(
+        when (mode) {
+            SettingsManager.ClicksPowerButtonMode.NATIVE -> R.string.clicks_button_mode_native_description
+            SettingsManager.ClicksPowerButtonMode.QUICK_LAUNCHER ->
+                R.string.clicks_button_mode_quick_launcher_description
+            SettingsManager.ClicksPowerButtonMode.OPEN_PASTIERA ->
+                R.string.clicks_button_mode_open_pastiera_description
+            SettingsManager.ClicksPowerButtonMode.TOGGLE_KEYBOARD_MODE ->
+                R.string.clicks_button_mode_toggle_keyboard_mode_description
+            SettingsManager.ClicksPowerButtonMode.TOGGLE_EMOJI_PICKER ->
+                R.string.clicks_button_mode_toggle_emoji_picker_description
+            SettingsManager.ClicksPowerButtonMode.ALT -> R.string.clicks_button_mode_alt_description
+            SettingsManager.ClicksPowerButtonMode.TAB -> R.string.clicks_button_mode_tab_description
+            SettingsManager.ClicksPowerButtonMode.SYM -> R.string.clicks_button_mode_sym_description
+        }
+    )
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 private fun ClicksNumberRowInputModeRow(
     selected: SettingsManager.ClicksNumberRowInputMode,
     onSelected: (SettingsManager.ClicksNumberRowInputMode) -> Unit
@@ -909,23 +1830,6 @@ private fun clicksNumberRowInputModeLabel(mode: SettingsManager.ClicksNumberRowI
     )
 
 @Composable
-private fun specialRemapPresets(nativeAction: String): List<ClicksRemapPreset> = buildList {
-    add(ClicksRemapPreset(
-        stringResource(R.string.clicks_remap_native_action, nativeAction),
-        byteArrayOf(0x00, 0x00)
-    ))
-    add(ClicksRemapPreset("Ctrl + Space", byteArrayOf(0xe0.toByte(), 0x2c)))
-    if (nativeAction != "Alt") {
-        add(ClicksRemapPreset("Alt", byteArrayOf(0xe2.toByte(), 0x00)))
-    }
-    add(ClicksRemapPreset("Alt + D", byteArrayOf(0xe2.toByte(), 0x07)))
-    add(ClicksRemapPreset("Alt + K", byteArrayOf(0xe2.toByte(), 0x0e)))
-    add(ClicksRemapPreset("Alt + S", byteArrayOf(0xe2.toByte(), 0x16)))
-    add(ClicksRemapPreset("Alt + .", byteArrayOf(0xe2.toByte(), 0x37)))
-    add(ClicksRemapPreset("−", byteArrayOf(0x00, 0x2d)))
-}
-
-@Composable
 private fun numberRemapPresets(): List<ClicksRemapPreset> = listOf(
     ClicksRemapPreset(stringResource(R.string.clicks_remap_native_number_action), byteArrayOf(0x00, 0x00)),
     ClicksRemapPreset(stringResource(R.string.clicks_number_preset_escape), byteArrayOf(0x29, 0x00)),
@@ -947,6 +1851,7 @@ private fun numberRemapPresets(): List<ClicksRemapPreset> = listOf(
 private fun ClicksSliderRow(
     title: String,
     valueLabel: String,
+    description: String? = null,
     value: Float,
     range: ClosedFloatingPointRange<Float>,
     steps: Int,
@@ -958,6 +1863,14 @@ private fun ClicksSliderRow(
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(title, style = MaterialTheme.typography.titleMedium)
             Text(valueLabel, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+        }
+        description?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp)
+            )
         }
         Slider(
             value = value.coerceIn(range.start, range.endInclusive),
@@ -1183,72 +2096,6 @@ private fun ClicksChoiceButtonGrid(
 }
 
 @Composable
-private fun ClicksRemapDialog(
-    command: Int,
-    state: ClicksPowerKeyboardState,
-    onApply: (Int, ByteArray) -> Unit,
-    onDismiss: () -> Unit
-) {
-    val disabledLabel = stringResource(R.string.clicks_remap_disabled)
-    val presets = remember(disabledLabel) {
-        listOf(
-            ClicksRemapPreset(disabledLabel, byteArrayOf(0x00, 0x00)),
-            ClicksRemapPreset("Ctrl + Space", byteArrayOf(0xe0.toByte(), 0x2c)),
-            ClicksRemapPreset("Alt", byteArrayOf(0xe2.toByte(), 0x00)),
-            ClicksRemapPreset("Alt + D", byteArrayOf(0xe2.toByte(), 0x07)),
-            ClicksRemapPreset("Alt + K", byteArrayOf(0xe2.toByte(), 0x0e)),
-            ClicksRemapPreset("Alt + S", byteArrayOf(0xe2.toByte(), 0x16)),
-            ClicksRemapPreset("Alt + .", byteArrayOf(0xe2.toByte(), 0x37)),
-            ClicksRemapPreset("Minus", byteArrayOf(0x00, 0x2d))
-        )
-    }
-    val currentBytes = when (command) {
-        ClicksPowerKeyboardProtocol.COMMAND_TAB_REMAP -> state.tabRemap
-        ClicksPowerKeyboardProtocol.COMMAND_GEMINI_REMAP -> state.geminiRemap
-        else -> state.altRemap
-    }
-    val availablePresets = if (
-        currentBytes != null && presets.none { it.bytes.contentEquals(currentBytes) }
-    ) {
-        listOf(
-            ClicksRemapPreset(
-                stringResource(R.string.clicks_remap_custom_value, currentBytes.toHexPair()),
-                currentBytes.copyOf()
-            )
-        ) + presets
-    } else {
-        presets
-    }
-    var selected by remember(command, currentBytes?.contentHashCode()) {
-        mutableStateOf(
-            availablePresets.firstOrNull { preset ->
-                currentBytes != null && preset.bytes.contentEquals(currentBytes)
-            } ?: availablePresets.first()
-        )
-    }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.clicks_special_key_mappings_title)) },
-        text = {
-            Column {
-                availablePresets.forEach { preset ->
-                    val isSelected = selected.bytes.contentEquals(preset.bytes)
-                    TextButton(onClick = { selected = preset }, modifier = Modifier.fillMaxWidth()) {
-                        Text(if (isSelected) "✓ ${preset.label}" else preset.label)
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = { onApply(command, selected.bytes) }) {
-                Text(stringResource(R.string.clicks_apply))
-            }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } }
-    )
-}
-
-@Composable
 fun DeviceSymLayerEditorStubScreen(
     modifier: Modifier = Modifier,
     onBack: () -> Unit
@@ -1296,6 +2143,7 @@ private fun HardwareProfileScaffold(
     title: String,
     description: String,
     onBack: () -> Unit,
+    scrollState: ScrollState = rememberScrollState(),
     content: @Composable () -> Unit
 ) {
     BackHandler { onBack() }
@@ -1337,7 +2185,7 @@ private fun HardwareProfileScaffold(
             modifier = modifier
                 .fillMaxWidth()
                 .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
         ) {
             Text(
                 text = description,

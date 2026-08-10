@@ -87,6 +87,82 @@ class RestoreManagerAndBackupContractTest {
     }
 
     @Test
+    fun clicksButtonModes_areRecognizedForRestore() {
+        assertEquals(
+            PreferenceValueType.STRING,
+            PreferenceSchemas.expectedType("pastiera_prefs", "clicks_button_mode")
+        )
+        assertEquals(
+            PreferenceValueType.STRING,
+            PreferenceSchemas.expectedType("pastiera_prefs", "clicks_meta_button_mode")
+        )
+        assertEquals(
+            PreferenceValueType.STRING,
+            PreferenceSchemas.expectedType("pastiera_prefs", "clicks_alt_button_mode")
+        )
+        assertEquals(
+            PreferenceValueType.STRING,
+            PreferenceSchemas.expectedType("pastiera_prefs", "clicks_microphone_button_mode")
+        )
+        assertEquals(
+            PreferenceValueType.STRING,
+            PreferenceSchemas.expectedType("pastiera_prefs", "clicks_red_button_binding_choice")
+        )
+        assertEquals(
+            PreferenceValueType.STRING,
+            PreferenceSchemas.expectedType("pastiera_prefs", "clicks_red_button_binding_output")
+        )
+        assertEquals(
+            PreferenceValueType.STRING,
+            PreferenceSchemas.expectedType("pastiera_prefs", "clicks_keyboard_button_binding_choice")
+        )
+        assertEquals(
+            PreferenceValueType.STRING,
+            PreferenceSchemas.expectedType("pastiera_prefs", "clicks_keyboard_button_binding_output")
+        )
+        assertEquals(
+            PreferenceValueType.STRING,
+            PreferenceSchemas.expectedType("pastiera_prefs", "clicks_microphone_button_binding_choice")
+        )
+        assertEquals(
+            PreferenceValueType.STRING,
+            PreferenceSchemas.expectedType("pastiera_prefs", "clicks_microphone_button_binding_output")
+        )
+    }
+
+    @Test
+    fun clicksPowerStateAndSocCalibrationAreRecognizedOnFreshInstall() {
+        assertEquals(
+            PreferenceValueType.STRING,
+            PreferenceSchemas.expectedType(
+                "pastiera_prefs",
+                "clicks_power_keyboard_snapshots_v1"
+            )
+        )
+        assertEquals(
+            PreferenceValueType.STRING,
+            PreferenceSchemas.expectedType(
+                "pastiera_prefs",
+                "clicks_power_soc_calibration_PK-42"
+            )
+        )
+        assertTrue(
+            PreferenceSchemas.isRecognized(
+                prefName = "pastiera_prefs",
+                key = "clicks_power_keyboard_snapshots_v1",
+                currentKeys = emptySet()
+            )
+        )
+        assertTrue(
+            PreferenceSchemas.isRecognized(
+                prefName = "pastiera_prefs",
+                key = "clicks_power_soc_calibration_PK-42",
+                currentKeys = emptySet()
+            )
+        )
+    }
+
+    @Test
     fun punctuationSpacingPreferences_areRecognizedForRestore() {
         assertEquals(
             PreferenceValueType.STRING,
