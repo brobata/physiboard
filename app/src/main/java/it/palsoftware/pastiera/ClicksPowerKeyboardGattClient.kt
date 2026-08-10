@@ -8,6 +8,7 @@ import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
+import android.bluetooth.BluetoothStatusCodes
 import android.content.Context
 import android.os.Build
 import android.os.Handler
@@ -18,19 +19,26 @@ import java.util.UUID
 data class ClicksPowerKeyboardState(
     val connected: Boolean = false,
     val ready: Boolean = false,
+    /** Values restored from durable storage instead of confirmed by the current GATT session. */
+    val stale: Boolean = false,
+    /** The current GATT session completed its identity-checked initial read successfully. */
+    val sessionValidated: Boolean = false,
     val mtu: Int = 23,
     val model: String? = null,
     val serialNumber: String? = null,
     val firmwareVersion: String? = null,
     val batteryPercent: Int? = null,
+    val batteryPercentStale: Boolean = false,
     val backlightBrightness: Int? = null,
     val chargingReservePercent: Int? = null,
+    val chargingReservePercentStale: Boolean = false,
     val backlightTimeoutSeconds: Int? = null,
     val idleTimeoutSeconds: Int? = null,
     val featureFlags: Int? = null,
     val specialKeyEnableFlags: Int? = null,
     val numberKeyEnableFlags: Int? = null,
     val wirelessChargingEnabled: Boolean? = null,
+    val wirelessChargingEnabledStale: Boolean = false,
     val activeHostSlot: Int? = null,
     val hostConfigurations: List<Int?> = List(9) { null },
     val hostNames: List<String?> = List(9) { null },
@@ -49,6 +57,7 @@ data class ClicksPowerKeyboardState(
 class ClicksPowerKeyboardGattClient(
     context: Context,
     deviceName: String,
+    initialState: ClicksPowerKeyboardState = ClicksPowerKeyboardState(),
     private val onStateChanged: (ClicksPowerKeyboardState) -> Unit
 ) : Closeable {
     private val appContext = context.applicationContext
@@ -59,8 +68,18 @@ class ClicksPowerKeyboardGattClient(
     private var commandCharacteristic: BluetoothGattCharacteristic? = null
     private var servicesDiscoveryStarted = false
     private var closed = false
-    private var state = ClicksPowerKeyboardState()
-    private val operationTimeout = Runnable { completeCurrent(null) }
+    private var state = ClicksPowerKeyboardStateSnapshotCodec.forGattReconnect(initialState)
+    private var initialReadGeneration = 0
+    private var initialReadFailed = false
+    private var initialReadSerialNumber: String? = null
+    private var refreshRequested = false
+    private val responseSessionGate = ClicksGattResponseSessionGate()
+    private val operationTimeout = Runnable {
+        if (!closed && currentOperation != null) {
+            responseSessionGate.onOperationTimeout()
+            fail(appContext.getString(R.string.clicks_gatt_error_operation_timeout))
+        }
+    }
     private val mtuFallback = Runnable { gatt?.let(::discoverServices) }
     private val connectionTimeout = Runnable {
         fail(appContext.getString(R.string.clicks_gatt_error_connection_timeout))
@@ -127,7 +146,7 @@ class ClicksPowerKeyboardGattClient(
                 }
                 val started = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     gatt.writeDescriptor(descriptor, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE) ==
-                        BluetoothGatt.GATT_SUCCESS
+                        BluetoothStatusCodes.SUCCESS
                 } else {
                     @Suppress("DEPRECATION")
                     descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
@@ -200,8 +219,11 @@ class ClicksPowerKeyboardGattClient(
     fun refresh() {
         val activeGatt = gatt ?: return
         if (!state.ready) return
-        operations.clear()
-        enqueueInitialReads(activeGatt)
+        if (currentOperation != null || operations.isNotEmpty()) {
+            refreshRequested = true
+        } else {
+            enqueueInitialReads(activeGatt)
+        }
     }
 
     fun refreshChargingInputs() {
@@ -209,17 +231,26 @@ class ClicksPowerKeyboardGattClient(
         if (!state.ready) return
         val battery = activeGatt.getService(BATTERY_SERVICE_UUID)
         enqueueStandardRead(battery?.getCharacteristic(BATTERY_LEVEL_UUID)) {
-            updateState(state.copy(batteryPercent = it?.firstOrNull()?.toInt()?.and(0xff)))
+            updateState(state.copy(
+                batteryPercent = it?.firstOrNull()?.toInt()?.and(0xff),
+                batteryPercentStale = false
+            ))
         }
         enqueueConfigRead(ClicksPowerKeyboardProtocol.COMMAND_CHARGING_RESERVE, 1) {
-            updateState(state.copy(chargingReservePercent = it.firstOrNull()?.toInt()?.and(0xff)))
+            updateState(state.copy(
+                chargingReservePercent = it.firstOrNull()?.toInt()?.and(0xff),
+                chargingReservePercentStale = false
+            ))
         }
         enqueue(Operation.Control(
             ClicksPowerKeyboardProtocol.readWirelessCharging(),
             ClicksPowerKeyboardProtocol.GROUP_READ_WIRELESS
         ) { payload ->
             payload?.takeIf { it.size >= 4 }?.let {
-                updateState(state.copy(wirelessChargingEnabled = it[3].toInt() and 0x04 == 0x04))
+                updateState(state.copy(
+                    wirelessChargingEnabled = it[3].toInt() and 0x04 == 0x04,
+                    wirelessChargingEnabledStale = false
+                ))
             }
         })
     }
@@ -234,9 +265,10 @@ class ClicksPowerKeyboardGattClient(
         enabled
     )
 
-    fun setCapsLock(enabled: Boolean) = updateFeatureFlag(
+    fun setCapsLock(enabled: Boolean, onComplete: (Boolean) -> Unit = {}) = updateFeatureFlag(
         ClicksPowerKeyboardProtocol.FLAG_CAPS_LOCK,
-        enabled
+        enabled,
+        onComplete
     )
 
     fun setSoftReturn(enabled: Boolean) = updateFeatureFlag(
@@ -244,9 +276,10 @@ class ClicksPowerKeyboardGattClient(
         enabled
     )
 
-    fun setCursorMode(enabled: Boolean) = updateFeatureFlag(
+    fun setCursorMode(enabled: Boolean, onComplete: (Boolean) -> Unit = {}) = updateFeatureFlag(
         ClicksPowerKeyboardProtocol.FLAG_CURSOR_MODE,
-        enabled
+        enabled,
+        onComplete
     )
 
     fun setBacklightBrightness(percent: Int) {
@@ -269,7 +302,7 @@ class ClicksPowerKeyboardGattClient(
                 normalized
             ),
             ClicksPowerKeyboardProtocol.GROUP_WRITE_CONFIG
-        ) { updateState(state.copy(chargingReservePercent = normalized)) }
+        ) { updateState(state.copy(chargingReservePercent = normalized, chargingReservePercentStale = false)) }
     }
 
     fun setBacklightTimeout(seconds: Int) {
@@ -298,7 +331,10 @@ class ClicksPowerKeyboardGattClient(
         enqueueWrite(
             ClicksPowerKeyboardProtocol.writeWirelessCharging(enabled),
             ClicksPowerKeyboardProtocol.GROUP_WRITE_WIRELESS
-        ) { updateState(state.copy(wirelessChargingEnabled = enabled)) }
+        ) { updateState(state.copy(
+            wirelessChargingEnabled = enabled,
+            wirelessChargingEnabledStale = false
+        )) }
     }
 
     fun setHostName(slotIndex: Int, name: String) {
@@ -313,18 +349,77 @@ class ClicksPowerKeyboardGattClient(
         }
     }
 
-    fun setSpecialKeyRemap(command: Int, bytes: ByteArray) {
+    fun setSpecialKeyRemap(command: Int, bytes: ByteArray, onComplete: (Boolean) -> Unit = {}) {
         val target = requireNotNull(ClicksPowerKeyboardProtocol.remapTarget(command))
         require(bytes.size == 2)
         val disable = bytes.all { it == 0.toByte() }
         if (disable) {
-            writeRemapEnableFlags(target, enabled = false, bytes = null)
+            writeRemapEnableFlags(target, enabled = false, bytes = null, onComplete = onComplete)
         } else {
-            enqueueWrite(
+            enqueue(Operation.Control(
                 ClicksPowerKeyboardProtocol.writeConfigBytes(command, bytes),
                 ClicksPowerKeyboardProtocol.GROUP_WRITE_CONFIG
-            ) {
-                writeRemapEnableFlags(target, enabled = true, bytes = bytes, prioritize = true)
+            ) { payload ->
+                if (payload == null) {
+                    onComplete(false)
+                } else {
+                    writeRemapEnableFlags(
+                        target,
+                        enabled = true,
+                        bytes = bytes,
+                        prioritize = true,
+                        onComplete = onComplete
+                    )
+                }
+            })
+        }
+    }
+
+    fun verifyRecommendedSettings(onComplete: (Boolean) -> Unit) {
+        enqueueConfigReadResult(ClicksPowerKeyboardProtocol.COMMAND_FEATURE_FLAGS, 1) { featurePayload ->
+            val featureFlags = featurePayload?.firstOrNull()?.toInt()?.and(0xff)
+            if (featureFlags == null) {
+                onComplete(false)
+                return@enqueueConfigReadResult
+            }
+            updateState(state.copy(featureFlags = featureFlags))
+            enqueueConfigReadResult(
+                ClicksPowerKeyboardProtocol.COMMAND_SPECIAL_KEY_ENABLE_FLAGS,
+                1
+            ) { specialPayload ->
+                val specialFlags = specialPayload?.firstOrNull()?.toInt()?.and(0xff)
+                if (specialFlags == null) {
+                    onComplete(false)
+                    return@enqueueConfigReadResult
+                }
+                updateState(state.copy(specialKeyEnableFlags = specialFlags))
+                enqueueConfigReadResult(ClicksPowerKeyboardProtocol.COMMAND_GEMINI_REMAP, 2) { microphonePayload ->
+                    val microphoneRemap = microphonePayload?.takeIf { it.size >= 2 }?.copyOf(2)
+                    if (microphoneRemap == null) {
+                        onComplete(false)
+                        return@enqueueConfigReadResult
+                    }
+                    val microphoneEnabled = specialFlags and
+                        ClicksPowerKeyboardProtocol.FLAG_GEMINI_REMAP_ENABLED != 0
+                    updateState(
+                        state.copy(
+                            tabRemap = state.tabRemap.takeIf {
+                                specialFlags and ClicksPowerKeyboardProtocol.FLAG_TAB_REMAP_ENABLED != 0
+                            },
+                            geminiRemap = microphoneRemap.takeIf { microphoneEnabled },
+                            altRemap = state.altRemap.takeIf {
+                                specialFlags and ClicksPowerKeyboardProtocol.FLAG_ALT_REMAP_ENABLED != 0
+                            }
+                        )
+                    )
+                    onComplete(
+                        ClicksRecommendedSettingsPlanner.isVerified(
+                            featureFlags = featureFlags,
+                            specialKeyEnableFlags = specialFlags,
+                            microphoneRemap = microphoneRemap
+                        )
+                    )
+                }
             }
         }
     }
@@ -333,7 +428,8 @@ class ClicksPowerKeyboardGattClient(
         target: ClicksPowerKeyboardProtocol.RemapTarget,
         enabled: Boolean,
         bytes: ByteArray?,
-        prioritize: Boolean = false
+        prioritize: Boolean = false,
+        onComplete: (Boolean) -> Unit = {}
     ) {
         var writtenFlags: Int? = null
         enqueue(
@@ -354,7 +450,10 @@ class ClicksPowerKeyboardGattClient(
                 if (payload != null) {
                     writtenFlags?.let { flags ->
                         updateState(state.withRemap(target, flags, bytes?.copyOf()))
+                        onComplete(true)
                     }
+                } else {
+                    onComplete(false)
                 }
             },
             prioritize = prioritize
@@ -390,7 +489,7 @@ class ClicksPowerKeyboardGattClient(
         }
     }
 
-    private fun updateFeatureFlag(flag: Int, enabled: Boolean) {
+    private fun updateFeatureFlag(flag: Int, enabled: Boolean, onComplete: (Boolean) -> Unit = {}) {
         var writtenFlags: Int? = null
         enqueue(Operation.Control(
             frameProvider = {
@@ -406,102 +505,169 @@ class ClicksPowerKeyboardGattClient(
             expectedGroup = ClicksPowerKeyboardProtocol.GROUP_WRITE_CONFIG
         ) { payload ->
             if (payload != null) {
-                writtenFlags?.let { updateState(state.copy(featureFlags = it)) }
+                writtenFlags?.let {
+                    updateState(state.copy(featureFlags = it))
+                    onComplete(true)
+                } ?: onComplete(false)
+            } else {
+                onComplete(false)
             }
         })
     }
 
     private fun enqueueInitialReads(gatt: BluetoothGatt) {
+        val generation = ++initialReadGeneration
+        initialReadFailed = false
+        initialReadSerialNumber = null
+        val cachedSerialNumber = state.serialNumber
+        val hadCachedDeviceData = ClicksPowerKeyboardStateSnapshotCodec.hasMeaningfulDeviceData(state)
+        updateState(
+            state.copy(
+                stale = hadCachedDeviceData,
+                sessionValidated = false,
+                batteryPercentStale = state.batteryPercent != null,
+                chargingReservePercentStale = state.chargingReservePercent != null,
+                wirelessChargingEnabledStale = state.wirelessChargingEnabled != null
+            )
+        )
         val deviceInfo = gatt.getService(DEVICE_INFORMATION_SERVICE_UUID)
         val battery = gatt.getService(BATTERY_SERVICE_UUID)
-        enqueueStandardRead(deviceInfo?.getCharacteristic(MODEL_NUMBER_UUID)) {
+        // Identity must be established before any cached state is allowed to become current.
+        enqueueInitialStandardRead(generation, deviceInfo?.getCharacteristic(SERIAL_NUMBER_UUID)) { payload ->
+            val serialNumber = payload.toGattString()
+            initialReadSerialNumber = serialNumber
+            if (ClicksGattReadSessionPolicy.shouldDiscardCachedState(
+                    hadCachedDeviceData,
+                    cachedSerialNumber,
+                    serialNumber
+                )
+            ) {
+                updateState(
+                    ClicksPowerKeyboardState(
+                        connected = state.connected,
+                        ready = state.ready,
+                        stale = false,
+                        mtu = state.mtu,
+                        serialNumber = serialNumber,
+                        error = state.error
+                    )
+                )
+            } else {
+                updateState(state.copy(serialNumber = serialNumber))
+            }
+        }
+        enqueueInitialStandardRead(generation, deviceInfo?.getCharacteristic(MODEL_NUMBER_UUID)) {
             updateState(state.copy(model = it.toGattString()))
         }
-        enqueueStandardRead(deviceInfo?.getCharacteristic(SERIAL_NUMBER_UUID)) {
-            updateState(state.copy(serialNumber = it.toGattString()))
-        }
-        enqueueStandardRead(deviceInfo?.getCharacteristic(FIRMWARE_REVISION_UUID)) {
+        enqueueInitialStandardRead(generation, deviceInfo?.getCharacteristic(FIRMWARE_REVISION_UUID)) {
             updateState(state.copy(firmwareVersion = it.toGattString()))
         }
-        enqueueStandardRead(battery?.getCharacteristic(BATTERY_LEVEL_UUID)) {
-            updateState(state.copy(batteryPercent = it?.firstOrNull()?.toInt()?.and(0xff)))
+        enqueueInitialStandardRead(generation, battery?.getCharacteristic(BATTERY_LEVEL_UUID)) {
+            updateState(state.copy(
+                batteryPercent = it?.firstOrNull()?.toInt()?.and(0xff),
+                batteryPercentStale = false
+            ))
         }
-        enqueueConfigRead(ClicksPowerKeyboardProtocol.COMMAND_BACKLIGHT_BRIGHTNESS, 1) {
+        enqueueInitialConfigRead(generation, ClicksPowerKeyboardProtocol.COMMAND_BACKLIGHT_BRIGHTNESS, 1) {
             val raw = it.firstOrNull()?.toInt()?.and(0xff)
-            updateState(state.copy(backlightBrightness = raw?.let { value -> (value * 100 + 127) / 255 }))
+            updateState(
+                state.copy(backlightBrightness = raw?.let { value -> (value * 100 + 127) / 255 })
+            )
         }
-        enqueueConfigRead(ClicksPowerKeyboardProtocol.COMMAND_CHARGING_RESERVE, 1) {
-            updateState(state.copy(chargingReservePercent = it.firstOrNull()?.toInt()?.and(0xff)))
+        enqueueInitialConfigRead(generation, ClicksPowerKeyboardProtocol.COMMAND_CHARGING_RESERVE, 1) {
+            updateState(state.copy(
+                chargingReservePercent = it.firstOrNull()?.toInt()?.and(0xff),
+                chargingReservePercentStale = false
+            ))
         }
-        enqueueConfigRead(ClicksPowerKeyboardProtocol.COMMAND_BACKLIGHT_TIMEOUT, 2) {
-            updateState(state.copy(backlightTimeoutSeconds =
-                ClicksPowerKeyboardProtocol.decodeLittleEndian16(it)?.div(1000)))
+        enqueueInitialConfigRead(generation, ClicksPowerKeyboardProtocol.COMMAND_BACKLIGHT_TIMEOUT, 2) {
+            updateState(
+                state.copy(
+                    backlightTimeoutSeconds = ClicksPowerKeyboardProtocol.decodeLittleEndian16(it)?.div(1000)
+                )
+            )
         }
-        enqueueConfigRead(ClicksPowerKeyboardProtocol.COMMAND_IDLE_TIMEOUT, 2) {
-            updateState(state.copy(idleTimeoutSeconds = ClicksPowerKeyboardProtocol.decodeLittleEndian16(it)))
+        enqueueInitialConfigRead(generation, ClicksPowerKeyboardProtocol.COMMAND_IDLE_TIMEOUT, 2) {
+            updateState(
+                state.copy(idleTimeoutSeconds = ClicksPowerKeyboardProtocol.decodeLittleEndian16(it))
+            )
         }
-        enqueueConfigRead(ClicksPowerKeyboardProtocol.COMMAND_FEATURE_FLAGS, 1) {
+        enqueueInitialConfigRead(generation, ClicksPowerKeyboardProtocol.COMMAND_FEATURE_FLAGS, 1) {
             updateState(state.copy(featureFlags = it.firstOrNull()?.toInt()?.and(0xff)))
         }
-        enqueueConfigRead(ClicksPowerKeyboardProtocol.COMMAND_ACTIVE_HOST, 1) {
+        enqueueInitialConfigRead(generation, ClicksPowerKeyboardProtocol.COMMAND_ACTIVE_HOST, 1) {
             updateState(state.copy(activeHostSlot = it.firstOrNull()?.toInt()?.and(0xff)))
         }
-        enqueueConfigRead(ClicksPowerKeyboardProtocol.COMMAND_HOSTS_1_TO_4, 1) {
+        enqueueInitialConfigRead(generation, ClicksPowerKeyboardProtocol.COMMAND_HOSTS_1_TO_4, 1) {
             updateHostConfigurations(startIndex = 0, count = 4, packed = it.firstOrNull())
         }
-        enqueueConfigRead(ClicksPowerKeyboardProtocol.COMMAND_HOSTS_5_TO_8, 1) {
+        enqueueInitialConfigRead(generation, ClicksPowerKeyboardProtocol.COMMAND_HOSTS_5_TO_8, 1) {
             updateHostConfigurations(startIndex = 4, count = 4, packed = it.firstOrNull())
         }
-        enqueueConfigRead(ClicksPowerKeyboardProtocol.COMMAND_HOST_9, 1) {
+        enqueueInitialConfigRead(generation, ClicksPowerKeyboardProtocol.COMMAND_HOST_9, 1) {
             updateHostConfigurations(startIndex = 8, count = 1, packed = it.firstOrNull())
         }
         listOf(0x0000, 0x0060, 0x00C0).forEach { offset ->
-            enqueue(Operation.Control(
+            enqueueInitialControlRead(
+                generation,
                 ClicksPowerKeyboardProtocol.readHostNames(offset, 0x60),
-                ClicksPowerKeyboardProtocol.GROUP_READ_HOST_NAMES
+                ClicksPowerKeyboardProtocol.GROUP_READ_HOST_NAMES,
+                expectedLength = 0x60
             ) { payload ->
-                if (payload != null && payload.size == 0x60) {
-                    val updated = state.hostNames.toMutableList()
-                    repeat(3) { blockIndex ->
-                        val slotIndex = offset / 32 + blockIndex
-                        val block = payload.copyOfRange(blockIndex * 32, (blockIndex + 1) * 32)
-                        updated[slotIndex] = ClicksPowerKeyboardProtocol.decodeHostName(block)
-                    }
-                    updateState(state.copy(hostNames = updated))
+                val updated = state.hostNames.toMutableList()
+                repeat(3) { blockIndex ->
+                    val slotIndex = offset / 32 + blockIndex
+                    val block = payload.copyOfRange(blockIndex * 32, (blockIndex + 1) * 32)
+                    updated[slotIndex] = ClicksPowerKeyboardProtocol.decodeHostName(block)
                 }
-            })
+                updateState(state.copy(hostNames = updated))
+            }
         }
-        enqueueConfigRead(ClicksPowerKeyboardProtocol.COMMAND_SPECIAL_KEY_ENABLE_FLAGS, 1) {
-            updateState(state.copy(specialKeyEnableFlags = it.firstOrNull()?.toInt()?.and(0xff)))
+        enqueueInitialConfigRead(generation, ClicksPowerKeyboardProtocol.COMMAND_SPECIAL_KEY_ENABLE_FLAGS, 1) {
+            updateState(
+                state.copy(specialKeyEnableFlags = it.firstOrNull()?.toInt()?.and(0xff))
+            )
         }
-        enqueueConfigRead(ClicksPowerKeyboardProtocol.COMMAND_NUMBER_KEY_ENABLE_FLAGS, 1) {
-            updateState(state.copy(numberKeyEnableFlags = it.firstOrNull()?.toInt()?.and(0xff)))
+        enqueueInitialConfigRead(generation, ClicksPowerKeyboardProtocol.COMMAND_NUMBER_KEY_ENABLE_FLAGS, 1) {
+            updateState(
+                state.copy(numberKeyEnableFlags = it.firstOrNull()?.toInt()?.and(0xff))
+            )
         }
-        enqueueConfigRead(ClicksPowerKeyboardProtocol.COMMAND_TAB_REMAP, 2) {
+        enqueueInitialConfigRead(generation, ClicksPowerKeyboardProtocol.COMMAND_TAB_REMAP, 2) {
             val enabled = state.specialKeyEnableFlags?.and(ClicksPowerKeyboardProtocol.FLAG_TAB_REMAP_ENABLED) ==
                 ClicksPowerKeyboardProtocol.FLAG_TAB_REMAP_ENABLED
-            updateState(state.copy(tabRemap = it.takeIf { value -> enabled && value.size == 2 }?.copyOf()))
+            updateState(
+                state.copy(tabRemap = it.takeIf { value -> enabled && value.size == 2 }?.copyOf())
+            )
         }
-        enqueueConfigRead(ClicksPowerKeyboardProtocol.COMMAND_GEMINI_REMAP, 2) {
+        enqueueInitialConfigRead(generation, ClicksPowerKeyboardProtocol.COMMAND_GEMINI_REMAP, 2) {
             val enabled = state.specialKeyEnableFlags?.and(ClicksPowerKeyboardProtocol.FLAG_GEMINI_REMAP_ENABLED) ==
                 ClicksPowerKeyboardProtocol.FLAG_GEMINI_REMAP_ENABLED
-            updateState(state.copy(geminiRemap = it.takeIf { value -> enabled && value.size == 2 }?.copyOf()))
+            updateState(
+                state.copy(geminiRemap = it.takeIf { value -> enabled && value.size == 2 }?.copyOf())
+            )
         }
-        enqueueConfigRead(ClicksPowerKeyboardProtocol.COMMAND_ALT_REMAP, 2) {
+        enqueueInitialConfigRead(generation, ClicksPowerKeyboardProtocol.COMMAND_ALT_REMAP, 2) {
             val enabled = state.specialKeyEnableFlags?.and(ClicksPowerKeyboardProtocol.FLAG_ALT_REMAP_ENABLED) ==
                 ClicksPowerKeyboardProtocol.FLAG_ALT_REMAP_ENABLED
-            updateState(state.copy(altRemap = it.takeIf { value -> enabled && value.size == 2 }?.copyOf()))
+            updateState(
+                state.copy(altRemap = it.takeIf { value -> enabled && value.size == 2 }?.copyOf())
+            )
         }
-        enqueueRemapRead(ClicksPowerKeyboardProtocol.COMMAND_BACKSPACE_REMAP)
-        ClicksPowerKeyboardProtocol.NUMBER_REMAP_COMMANDS.forEach(::enqueueRemapRead)
-        enqueue(Operation.Control(
+        enqueueInitialRemapRead(generation, ClicksPowerKeyboardProtocol.COMMAND_BACKSPACE_REMAP)
+        ClicksPowerKeyboardProtocol.NUMBER_REMAP_COMMANDS.forEach { enqueueInitialRemapRead(generation, it) }
+        enqueueInitialControlRead(
+            generation,
             ClicksPowerKeyboardProtocol.readWirelessCharging(),
-            ClicksPowerKeyboardProtocol.GROUP_READ_WIRELESS
+            ClicksPowerKeyboardProtocol.GROUP_READ_WIRELESS,
+            expectedLength = 4,
+            finalRead = true
         ) { payload ->
-            payload?.takeIf { it.size >= 4 }?.let {
-                updateState(state.copy(wirelessChargingEnabled = it[3].toInt() and 0x04 == 0x04))
-            }
-        })
+            updateState(state.copy(
+                wirelessChargingEnabled = payload[3].toInt() and 0x04 == 0x04,
+                wirelessChargingEnabledStale = false
+            ))
+        }
     }
 
     private fun discoverServices(gatt: BluetoothGatt) {
@@ -510,15 +676,17 @@ class ClicksPowerKeyboardGattClient(
         if (!gatt.discoverServices()) fail(appContext.getString(R.string.clicks_gatt_error_services))
     }
 
-    private fun enqueueRemapRead(command: Int) {
+    private fun enqueueInitialRemapRead(generation: Int, command: Int) {
         val target = ClicksPowerKeyboardProtocol.remapTarget(command) ?: return
-        enqueueConfigRead(command, 2) { payload ->
+        enqueueInitialConfigRead(generation, command, 2) { payload ->
             val flags = when (target.enableCommand) {
                 ClicksPowerKeyboardProtocol.COMMAND_SPECIAL_KEY_ENABLE_FLAGS -> state.specialKeyEnableFlags
                 else -> state.numberKeyEnableFlags
-            } ?: return@enqueueConfigRead
+            } ?: return@enqueueInitialConfigRead
             val enabled = flags.and(target.enableFlag) == target.enableFlag
-            updateState(state.withRemap(target, flags, payload.takeIf { enabled && it.size == 2 }?.copyOf()))
+            updateState(
+                state.withRemap(target, flags, payload.takeIf { enabled && it.size == 2 }?.copyOf())
+            )
         }
     }
 
@@ -529,11 +697,74 @@ class ClicksPowerKeyboardGattClient(
         updateState(state.copy(hostConfigurations = updated))
     }
 
+    private fun enqueueInitialStandardRead(
+        generation: Int,
+        characteristic: BluetoothGattCharacteristic?,
+        result: (ByteArray?) -> Unit
+    ) {
+        enqueueStandardRead(characteristic) { payload ->
+            if (generation != initialReadGeneration) return@enqueueStandardRead
+            if (payload == null) initialReadFailed = true
+            result(payload)
+        }
+    }
+
+    private fun enqueueInitialConfigRead(
+        generation: Int,
+        command: Int,
+        length: Int,
+        result: (ByteArray) -> Unit
+    ) = enqueueInitialControlRead(
+        generation = generation,
+        frame = ClicksPowerKeyboardProtocol.readConfig(command, length),
+        expectedGroup = ClicksPowerKeyboardProtocol.GROUP_READ_CONFIG,
+        expectedLength = length,
+        result = result
+    )
+
+    private fun enqueueInitialControlRead(
+        generation: Int,
+        frame: ByteArray,
+        expectedGroup: Int,
+        expectedLength: Int,
+        finalRead: Boolean = false,
+        result: (ByteArray) -> Unit
+    ) {
+        enqueue(Operation.Control(frame, expectedGroup) { payload ->
+            if (generation != initialReadGeneration) return@Control
+            val validPayload = payload?.takeIf { it.size >= expectedLength }
+            if (validPayload == null) {
+                initialReadFailed = true
+            } else {
+                result(validPayload)
+            }
+            if (finalRead) finishInitialReads(generation)
+        })
+    }
+
+    private fun finishInitialReads(generation: Int) {
+        if (generation != initialReadGeneration) return
+        val validated = ClicksGattReadSessionPolicy.isSessionValidated(
+            readFailed = initialReadFailed,
+            freshSerialNumber = initialReadSerialNumber
+        )
+        updateState(
+            state.copy(
+                stale = if (validated) false else ClicksPowerKeyboardStateSnapshotCodec.hasMeaningfulDeviceData(state),
+                sessionValidated = validated
+            )
+        )
+    }
+
     private fun enqueueConfigRead(command: Int, length: Int, result: (ByteArray) -> Unit) {
+        enqueueConfigReadResult(command, length) { payload -> payload?.let(result) }
+    }
+
+    private fun enqueueConfigReadResult(command: Int, length: Int, result: (ByteArray?) -> Unit) {
         enqueue(Operation.Control(
             ClicksPowerKeyboardProtocol.readConfig(command, length),
             ClicksPowerKeyboardProtocol.GROUP_READ_CONFIG
-        ) { payload -> payload?.let(result) })
+        ) { payload -> result(payload?.takeIf { it.size >= length }) })
     }
 
     private fun enqueueStandardRead(
@@ -552,6 +783,10 @@ class ClicksPowerKeyboardGattClient(
     }
 
     private fun enqueue(operation: Operation, prioritize: Boolean = false) {
+        if (closed) {
+            operation.onResult(null)
+            return
+        }
         if (prioritize) operations.addFirst(operation) else operations.addLast(operation)
         runNextOperation()
     }
@@ -571,7 +806,7 @@ class ClicksPowerKeyboardGattClient(
                         characteristic,
                         frame,
                         BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
-                    ) == BluetoothGatt.GATT_SUCCESS
+                    ) == BluetoothStatusCodes.SUCCESS
                 } else {
                     @Suppress("DEPRECATION")
                     characteristic.writeType = BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
@@ -607,7 +842,7 @@ class ClicksPowerKeyboardGattClient(
             if (characteristic.uuid != NOTIFY_CHARACTERISTIC_UUID) return@post
             val operation = currentOperation as? Operation.Control ?: return@post
             val response = ClicksPowerKeyboardProtocol.parseResponse(value) ?: return@post
-            if (response.group == operation.expectedGroup) {
+            if (responseSessionGate.acceptsResponse(operation.expectedGroup, response.group)) {
                 completeCurrent(response.payload.takeIf { response.status == 0 })
             }
         }
@@ -619,31 +854,51 @@ class ClicksPowerKeyboardGattClient(
         currentOperation = null
         operation.onResult(result)
         runNextOperation()
+        if (currentOperation == null && operations.isEmpty() && refreshRequested) {
+            refreshRequested = false
+            gatt?.takeIf { state.ready }?.let(::enqueueInitialReads)
+        }
     }
 
     private fun updateState(newState: ClicksPowerKeyboardState) {
         state = newState
-        onStateChanged(newState)
+        onStateChanged(state)
     }
 
     private fun fail(message: String) {
         if (closed) return
-        operations.clear()
-        currentOperation = null
+        closed = true
+        initialReadGeneration += 1
+        refreshRequested = false
         handler.removeCallbacks(operationTimeout)
         handler.removeCallbacks(mtuFallback)
         handler.removeCallbacks(connectionTimeout)
-        updateState(state.copy(connected = false, ready = false, error = message))
+        gatt?.close()
+        gatt = null
+        updateState(state.copy(connected = false, ready = false, sessionValidated = false, error = message))
+        abortOperations()
     }
 
     override fun close() {
         if (closed) return
         closed = true
+        initialReadGeneration += 1
+        refreshRequested = false
+        handler.removeCallbacks(operationTimeout)
+        abortOperations()
         handler.removeCallbacksAndMessages(null)
-        operations.clear()
-        currentOperation = null
         gatt?.close()
         gatt = null
+    }
+
+    private fun abortOperations() {
+        val aborted = buildList {
+            currentOperation?.let(::add)
+            addAll(operations)
+        }
+        currentOperation = null
+        operations.clear()
+        aborted.forEach { it.onResult(null) }
     }
 
     private fun ByteArray?.toGattString(): String? = this

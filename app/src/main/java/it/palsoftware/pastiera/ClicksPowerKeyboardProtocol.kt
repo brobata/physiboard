@@ -1,6 +1,12 @@
 package it.palsoftware.pastiera
 
 internal object ClicksPowerKeyboardProtocol {
+    private const val HID_LEFT_CTRL = 0xe0
+    private const val HID_LEFT_ALT = 0xe2
+    private const val HID_SPACE = 0x2c
+    private const val HID_F11 = 0x44
+    private const val HID_F12 = 0x45
+
     const val GROUP_READ_CONFIG = 0x25
     const val GROUP_WRITE_CONFIG = 0x24
     const val GROUP_READ_WIRELESS = 0x27
@@ -36,6 +42,21 @@ internal object ClicksPowerKeyboardProtocol {
     const val FLAG_BACKSPACE_REMAP_ENABLED = 0x08
 
     val NUMBER_REMAP_COMMANDS = intArrayOf(0x26, 0x2A, 0x2E, 0x32, 0x36, 0x3A, 0x3E, 0x42, 0x46)
+
+    fun nativeRemapOutput(): ByteArray = byteArrayOf(0x00, 0x00)
+
+    fun leftAltRemapOutput(): ByteArray = byteArrayOf(HID_LEFT_ALT.toByte(), 0x00)
+
+    fun languageSwitchRemapOutput(): ByteArray = byteArrayOf(HID_LEFT_CTRL.toByte(), HID_SPACE.toByte())
+
+    /** Emits the existing Pastiera Alt+Ctrl trigger without invoking Android's native voice action. */
+    fun dictationRemapOutput(): ByteArray = byteArrayOf(HID_LEFT_ALT.toByte(), HID_LEFT_CTRL.toByte())
+
+    /** Emits a supported key reserved for a software-handled action on the keyboard button. */
+    fun pastieraActionRemapOutput(): ByteArray = byteArrayOf(0x00, HID_F12.toByte())
+
+    /** Keeps microphone software actions distinguishable from the keyboard-button sentinel. */
+    fun pastieraMicrophoneActionRemapOutput(): ByteArray = byteArrayOf(0x00, HID_F11.toByte())
 
     data class RemapTarget(
         val command: Int,

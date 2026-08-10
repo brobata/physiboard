@@ -547,11 +547,13 @@ Jede Taste kann als Keycode, Aktion, Native Ctrl oder Keine konfiguriert werden.
     <string name="clicks_gatt_error_not_bonded">Kein gekoppeltes Clicks Power Keyboard gefunden.</string>
     <string name="clicks_gatt_error_connect_start">Die GATT-Verbindung konnte nicht gestartet werden.</string>
     <string name="clicks_gatt_error_connection_timeout">Zeitüberschreitung beim Aufbau der Clicks-GATT-Verbindung.</string>
+    <string name="clicks_gatt_error_operation_timeout">Zeitüberschreitung bei der Clicks-GATT-Operation. Zum sicheren Wiederholen neu verbinden.</string>
     <string name="clicks_section_device">Gerät</string>
     <string name="clicks_device_status_title">Verbindung und Geräteinformationen</string>
     <string name="clicks_device_status_description">Verbindungsstatus, Tastaturakku und Firmwareversion.</string>
     <string name="clicks_device_status_connected">Verbunden · Slot %1$s</string>
     <string name="clicks_device_status_disconnected">Nicht verbunden</string>
+    <string name="clicks_device_status_last_known">Nicht verbunden · Zuletzt bekannte Gerätedaten: %1$s</string>
     <string name="clicks_device_status_with_firmware">Verbunden · Slot %1$s · Firmware %2$s</string>
     <string name="clicks_device_status_with_battery">Verbunden · Slot %1$s · Keyboard-Akku %2$d%%</string>
     <string name="clicks_device_status_firmware_loading">Verbunden · Slot %1$s · Firmware wird gelesen…</string>

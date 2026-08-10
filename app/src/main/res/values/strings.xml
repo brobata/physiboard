@@ -476,11 +476,13 @@
     <string name="clicks_gatt_error_not_bonded">No paired Clicks Power Keyboard found.</string>
     <string name="clicks_gatt_error_connect_start">Could not start the GATT connection.</string>
     <string name="clicks_gatt_error_connection_timeout">The Clicks GATT connection timed out.</string>
+    <string name="clicks_gatt_error_operation_timeout">The Clicks GATT operation timed out. Reconnect to retry safely.</string>
     <string name="clicks_section_device">Device</string>
     <string name="clicks_device_status_title">Connection and device information</string>
     <string name="clicks_device_status_description">Connection state, keyboard battery, and firmware version.</string>
     <string name="clicks_device_status_connected">Connected · Slot %1$s</string>
     <string name="clicks_device_status_disconnected">Not connected</string>
+    <string name="clicks_device_status_last_known">Not connected · Last known device data: %1$s</string>
     <string name="clicks_device_status_with_firmware">Connected · Slot %1$s · Firmware %2$s</string>
     <string name="clicks_device_status_with_battery">Connected · Slot %1$s · Keyboard battery %2$d%%</string>
     <string name="clicks_device_status_firmware_loading">Connected · Slot %1$s · Reading firmware…</string>
