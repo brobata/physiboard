@@ -7,6 +7,7 @@ REPO_URL="https://pastiera.eu/fdroid/nightly/repo"
 PAGES_REPO_DIR_OVERRIDE="${PAGES_REPO_DIR:-}"
 AUTO_PUSH_PAGES="${AUTO_PUSH_PAGES:-true}"
 NIGHTLY_TIMESTAMP="${PASTIERA_NIGHTLY_TIMESTAMP:-}"
+NIGHTLY_HIGHLIGHTS_FILE="${NIGHTLY_HIGHLIGHTS_FILE:-}"
 
 if [ -z "$BASE_VERSION" ]; then
   echo "Usage: $0 <base-version> [pages-public-dir] [repo-url] [--timestamp YYYYMMDD.HHMMSS] [--no-push-pages]" >&2
@@ -55,6 +56,9 @@ if ! command -v fdroid >/dev/null 2>&1; then
 fi
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if [ -z "$NIGHTLY_HIGHLIGHTS_FILE" ]; then
+  NIGHTLY_HIGHLIGHTS_FILE="$ROOT_DIR/.github/release-templates/nightly-highlights.md"
+fi
 FDROID_ROOT="${FDROID_ROOT:-$ROOT_DIR/.fdroid/nightly}"
 FDROID_REPO_DIR="$FDROID_ROOT/repo"
 FDROID_METADATA_DIR="$FDROID_ROOT/metadata"
@@ -63,6 +67,7 @@ APK_PATH="$ROOT_DIR/app/build/outputs/apk/nightly/release/app-nightly-release.ap
 APP_ID="it.palsoftware.pastiera.nightly"
 VERSION_INFO="$("$ROOT_DIR/scripts/nightly-version.sh" "$BASE_VERSION")"
 FULL_VERSION="$(printf '%s\n' "$VERSION_INFO" | awk -F= '/^full_version=/{print $2}')"
+VERSION_CODE="$(printf '%s\n' "$VERSION_INFO" | awk -F= '/^version_code=/{print $2}')"
 COMMIT_MESSAGE="${COMMIT_MESSAGE:-Publish Pastiera nightly F-Droid repo ${FULL_VERSION}}"
 FDROID_APK_PATH="$FDROID_REPO_DIR/pastiera-nightly-${FULL_VERSION}.apk"
 
@@ -96,6 +101,12 @@ ensure_yaml_value "$FDROID_ROOT/config.yml" "repo_url" "$REPO_URL"
 ensure_yaml_value "$FDROID_ROOT/config.yml" "repo_name" "Pastiera Nightly"
 ensure_yaml_value "$FDROID_ROOT/config.yml" "repo_description" "Nightly builds for Pastiera"
 
+mkdir -p "$FDROID_ROOT/config"
+cat > "$FDROID_ROOT/config/categories.yml" <<EOF
+nightly:
+  name: Nightly
+EOF
+
 mkdir -p "$FDROID_METADATA_DIR"
 find "$FDROID_METADATA_DIR" -maxdepth 1 -type f ! -name "${APP_ID}.yml" -delete
 
@@ -110,6 +121,12 @@ SourceCode: https://github.com/palsoftware/pastiera
 Summary: Nightly builds for Pastiera
 WebSite: https://pastiera.eu
 EOF
+
+if [ -s "$NIGHTLY_HIGHLIGHTS_FILE" ]; then
+  CHANGELOG_DIR="$FDROID_METADATA_DIR/${APP_ID}/en-US/changelogs"
+  mkdir -p "$CHANGELOG_DIR"
+  cp "$NIGHTLY_HIGHLIGHTS_FILE" "$CHANGELOG_DIR/${VERSION_CODE}.txt"
+fi
 
 "$ROOT_DIR/scripts/build-nightly.sh" "$BASE_VERSION" --fdroid
 

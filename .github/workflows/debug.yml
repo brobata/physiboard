@@ -94,6 +94,8 @@ jobs:
         if: ${{ inputs.publish_github_prerelease }}
         run: |
           cp .github/release-templates/debug-prerelease.md /tmp/nightly-prerelease-notes.md
+          printf '\n' >> /tmp/nightly-prerelease-notes.md
+          cat .github/release-templates/nightly-highlights.md >> /tmp/nightly-prerelease-notes.md
 
       - name: Create GitHub nightly pre-release
         if: ${{ inputs.publish_github_prerelease }}

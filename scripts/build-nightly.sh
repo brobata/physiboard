@@ -21,6 +21,7 @@ VERSION_CODE="$(printf '%s\n' "$VERSION_INFO" | awk -F= '/^version_code=/{print 
 APK_PATH="$ROOT_DIR/app/build/outputs/apk/nightly/release/app-nightly-release.apk"
 SHA_PATH="${APK_PATH}.sha256"
 NOTES_PATH="$ROOT_DIR/.github/release-templates/debug-prerelease.md"
+HIGHLIGHTS_PATH="${NIGHTLY_HIGHLIGHTS_FILE:-$ROOT_DIR/.github/release-templates/nightly-highlights.md}"
 TMP_NOTES_PATH="$(mktemp)"
 EXPECTED_NIGHTLY_CERT_SHA256="${EXPECTED_NIGHTLY_CERT_SHA256:-8c5dce860a65a7a3c3befcb7f7f35a1f3523c1d01462271d6ae03f4df402e685}"
 GRADLE_ARGS=(
@@ -106,6 +107,10 @@ build_nightly_notes() {
   previous_tag="$(git tag --list 'nightly/*' --sort=-creatordate | head -n 1)"
 
   cat "$NOTES_PATH" > "$TMP_NOTES_PATH"
+  if [ -s "$HIGHLIGHTS_PATH" ]; then
+    printf '\n' >> "$TMP_NOTES_PATH"
+    cat "$HIGHLIGHTS_PATH" >> "$TMP_NOTES_PATH"
+  fi
   {
     printf '\n## Build Metadata\n\n'
     printf -- '- Version: `%s`\n' "$FULL_VERSION"
