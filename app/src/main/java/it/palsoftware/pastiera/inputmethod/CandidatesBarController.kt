@@ -342,6 +342,16 @@ class CandidatesBarController(
         candidatesStatusBar.resetSuggestionActionMode()
     }
 
+    fun showExpansionSuggestions(suggestions: List<String>, onSelected: (String) -> Unit) {
+        inputStatusBar.showExpansionSuggestions(suggestions, onSelected)
+        candidatesStatusBar.showExpansionSuggestions(suggestions, onSelected)
+    }
+
+    fun clearExpansionSuggestions() {
+        inputStatusBar.clearExpansionSuggestions()
+        candidatesStatusBar.clearExpansionSuggestions()
+    }
+
     fun cancelSoftwareKeyboardTouchState() {
         inputStatusBar.cancelSoftwareKeyboardTouchState()
         candidatesStatusBar.cancelSoftwareKeyboardTouchState()

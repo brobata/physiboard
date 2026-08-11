@@ -18,6 +18,9 @@ import it.palsoftware.pastiera.inputmethod.DeviceSpecific
 import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils
 import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils.localeString
 import it.palsoftware.pastiera.inputmethod.ui.KeyboardThemeColors
+import it.palsoftware.pastiera.inputmethod.expansion.ExpansionActivationPolicy
+import it.palsoftware.pastiera.inputmethod.expansion.ExpansionPresentation
+import it.palsoftware.pastiera.inputmethod.expansion.TextExpansionEngine
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -70,6 +73,13 @@ object SettingsManager {
     private const val KEY_AUTO_CORRECT_ENABLED = "auto_correct_enabled"
     private const val KEY_AUTO_CORRECT_ENABLED_LANGUAGES = "auto_correct_enabled_languages"
     private const val KEY_SUGGESTIONS_ENABLED = "suggestions_enabled"
+    private const val KEY_SNIPPETS_ENABLED = "snippets_enabled"
+    private const val KEY_SNIPPETS_PREFIX = "snippets_prefix"
+    private const val KEY_SNIPPETS = "snippets_v1"
+    private const val KEY_SNIPPETS_PRESENTATION = "snippets_presentation"
+    private const val KEY_SNIPPETS_EXACT_ON_SPACE = "snippets_exact_on_space"
+    private const val KEY_SNIPPETS_ACCEPT_WITH_TAB = "snippets_accept_with_tab"
+    private const val KEY_SNIPPETS_ACCEPT_WITH_ENTER = "snippets_accept_with_enter"
     private const val KEY_ACCENT_MATCHING_ENABLED = "accent_matching_enabled"
     private const val KEY_AUTO_REPLACE_ON_SPACE_ENTER = "auto_replace_on_space_enter"
     private const val KEY_MAX_AUTO_REPLACE_DISTANCE = "max_auto_replace_distance"
@@ -318,6 +328,8 @@ object SettingsManager {
     private const val DEFAULT_LAYOUT_AWARE_CTRL_SHORTCUTS = false
     private const val DEFAULT_AUTO_CORRECT_ENABLED = true
     private const val DEFAULT_SUGGESTIONS_ENABLED = true
+    private const val DEFAULT_SNIPPETS_ENABLED = false
+    private const val DEFAULT_SNIPPETS_PREFIX = "!"
     private const val DEFAULT_ACCENT_MATCHING_ENABLED = true
     private const val DEFAULT_AUTO_REPLACE_ON_SPACE_ENTER = false
     private const val DEFAULT_MAX_AUTO_REPLACE_DISTANCE = 1
@@ -3061,6 +3073,77 @@ object SettingsManager {
             Log.e(TAG, "Error loading custom corrections for $languageCode", e)
             emptyMap()
         }
+    }
+
+    fun getSnippetsEnabled(context: Context): Boolean =
+        getPreferences(context).getBoolean(KEY_SNIPPETS_ENABLED, DEFAULT_SNIPPETS_ENABLED)
+
+    fun setSnippetsEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit().putBoolean(KEY_SNIPPETS_ENABLED, enabled).apply()
+    }
+
+    fun getSnippetsPrefix(context: Context): String {
+        val stored = getPreferences(context).getString(KEY_SNIPPETS_PREFIX, DEFAULT_SNIPPETS_PREFIX)
+        return stored?.takeIf(TextExpansionEngine::isValidSnippetPrefix) ?: DEFAULT_SNIPPETS_PREFIX
+    }
+
+    fun setSnippetsPrefix(context: Context, prefix: String): Boolean {
+        if (!TextExpansionEngine.isValidSnippetPrefix(prefix)) return false
+        getPreferences(context).edit().putString(KEY_SNIPPETS_PREFIX, prefix).apply()
+        return true
+    }
+
+    fun getSnippets(context: Context): LinkedHashMap<String, String> {
+        val json = getPreferences(context).getString(KEY_SNIPPETS, null) ?: return linkedMapOf()
+        return runCatching {
+            val objectValue = JSONObject(json)
+            linkedMapOf<String, String>().apply {
+                objectValue.keys().forEach { key ->
+                    if (TextExpansionEngine.isValidSnippetShortcut(key)) {
+                        put(key.lowercase(java.util.Locale.ROOT), objectValue.getString(key))
+                    }
+                }
+            }
+        }.getOrElse {
+            Log.e(TAG, "Error loading snippets", it)
+            linkedMapOf()
+        }
+    }
+
+    fun saveSnippets(context: Context, snippets: Map<String, String>) {
+        val json = JSONObject()
+        snippets.forEach { (shortcut, replacement) ->
+            val normalized = shortcut.trim().lowercase(java.util.Locale.ROOT)
+            if (TextExpansionEngine.isValidSnippetShortcut(normalized) && !replacement.isBlank()) {
+                json.put(normalized, replacement)
+            }
+        }
+        getPreferences(context).edit().putString(KEY_SNIPPETS, json.toString()).apply()
+    }
+
+    fun getSnippetsPresentation(context: Context): ExpansionPresentation = ExpansionPresentation.fromStorage(
+        getPreferences(context).getString(KEY_SNIPPETS_PRESENTATION, null)
+    )
+
+    fun setSnippetsPresentation(context: Context, presentation: ExpansionPresentation) {
+        getPreferences(context).edit().putString(KEY_SNIPPETS_PRESENTATION, presentation.storageValue).apply()
+    }
+
+    fun getSnippetsActivationPolicy(context: Context): ExpansionActivationPolicy {
+        val prefs = getPreferences(context)
+        return ExpansionActivationPolicy(
+            exactOnSpace = prefs.getBoolean(KEY_SNIPPETS_EXACT_ON_SPACE, true),
+            acceptWithTab = prefs.getBoolean(KEY_SNIPPETS_ACCEPT_WITH_TAB, true),
+            acceptWithEnter = prefs.getBoolean(KEY_SNIPPETS_ACCEPT_WITH_ENTER, false)
+        )
+    }
+
+    fun setSnippetsActivationPolicy(context: Context, policy: ExpansionActivationPolicy) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_SNIPPETS_EXACT_ON_SPACE, policy.exactOnSpace)
+            .putBoolean(KEY_SNIPPETS_ACCEPT_WITH_TAB, policy.acceptWithTab)
+            .putBoolean(KEY_SNIPPETS_ACCEPT_WITH_ENTER, policy.acceptWithEnter)
+            .apply()
     }
     
     /**

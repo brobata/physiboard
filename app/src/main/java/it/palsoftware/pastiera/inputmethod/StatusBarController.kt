@@ -324,6 +324,8 @@ class StatusBarController(
     private var hamburgerMenuView: HamburgerMenuView? = null
     private var pastierinaModeActive: Boolean = false
     private var fullSuggestionsBar: FullSuggestionsBar? = null
+    private var expansionSuggestions: List<String> = emptyList()
+    private var onExpansionSuggestionSelected: ((String) -> Unit)? = null
     private var baseLeftPadding: Int = 0
     private var baseRightPadding: Int = 0
     private var baseBottomPadding: Int = 0
@@ -783,6 +785,16 @@ class StatusBarController(
 
     fun resetSuggestionActionMode() {
         fullSuggestionsBar?.resetActionMode()
+    }
+
+    fun showExpansionSuggestions(suggestions: List<String>, onSelected: (String) -> Unit) {
+        expansionSuggestions = suggestions.take(3)
+        onExpansionSuggestionSelected = onSelected
+    }
+
+    fun clearExpansionSuggestions() {
+        expansionSuggestions = emptyList()
+        onExpansionSuggestionSelected = null
     }
 
     fun cancelSoftwareKeyboardTouchState() {
@@ -2771,31 +2783,34 @@ class StatusBarController(
         val experimentalEnabled = SettingsManager.isExperimentalSuggestionsEnabled(context)
         val suggestionsEnabledSetting = SettingsManager.getSuggestionsEnabled(context)
         // Keep the suggestion/status row stable in both full-status-bar and Pastierina mode.
-        val showFullBar =
+        val expansionActive = expansionSuggestions.isNotEmpty()
+        val showFullBar = expansionActive || (
             suggestionsEnabledSetting &&
-            (experimentalEnabled || isFullSoftwareKeyboardMode) &&
-            (isFullSoftwareKeyboardMode || !snapshot.shouldDisableSuggestions) &&
-            (snapshot.symPage == 0 || isSoftwareKeyboardOverlayPage) &&
-            !snapshot.clipboardOverlay
+                (experimentalEnabled || isFullSoftwareKeyboardMode) &&
+                (isFullSoftwareKeyboardMode || !snapshot.shouldDisableSuggestions) &&
+                (snapshot.symPage == 0 || isSoftwareKeyboardOverlayPage) &&
+                !snapshot.clipboardOverlay
+            )
         val suggestionsAnnouncementDelayMs = SettingsManager.getAccessibilitySuggestionsAnnouncementDelayMs(context)
         fullSuggestionsBar?.setAccessibilityAnnouncementConfig(
             liveAnnouncementsEnabled = isAccessibilityLiveAnnouncementsEnabled(),
             suggestionsAnnouncementDelayMs = suggestionsAnnouncementDelayMs
         )
-        fullSuggestionsBar?.requireDictionaryForSuggestions = !isFullSoftwareKeyboardMode
+        fullSuggestionsBar?.requireDictionaryForSuggestions = !expansionActive && !isFullSoftwareKeyboardMode
         fullSuggestionsBar?.update(
-            snapshot.suggestions,
+            if (expansionActive) expansionSuggestions else snapshot.suggestions,
             showFullBar,
             inputConnection,
             onVariationSelectedListener,
-            if (isFullSoftwareKeyboardMode) false else snapshot.shouldDisableSuggestions,
-            snapshot.addWordCandidate,
+            if (expansionActive || isFullSoftwareKeyboardMode) false else snapshot.shouldDisableSuggestions,
+            if (expansionActive) null else snapshot.addWordCandidate,
             onAddUserWord,
             onAddUserWordSubstitutionRequested,
             onSuggestionCommitted,
             onHideSuggestion,
             onDeleteUserSuggestion,
-            canDeleteUserSuggestion
+            canDeleteUserSuggestion,
+            if (expansionActive) { _, suggestion -> onExpansionSuggestionSelected?.invoke(suggestion) } else null
         )
         val shouldShowSoftwareKeyboard =
             isFullSoftwareKeyboardMode &&

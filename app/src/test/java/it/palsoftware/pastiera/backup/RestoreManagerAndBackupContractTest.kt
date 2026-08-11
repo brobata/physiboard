@@ -23,6 +23,23 @@ class RestoreManagerAndBackupContractTest {
     }
 
     @Test
+    fun snippetExpansionPreferences_areRecognizedForFreshInstallRestore() {
+        val expected = mapOf(
+            "snippets_enabled" to PreferenceValueType.BOOLEAN,
+            "snippets_prefix" to PreferenceValueType.STRING,
+            "snippets_v1" to PreferenceValueType.STRING,
+            "snippets_presentation" to PreferenceValueType.STRING,
+            "snippets_exact_on_space" to PreferenceValueType.BOOLEAN,
+            "snippets_accept_with_tab" to PreferenceValueType.BOOLEAN,
+            "snippets_accept_with_enter" to PreferenceValueType.BOOLEAN
+        )
+        expected.forEach { (key, type) ->
+            assertTrue(PreferenceSchemas.isRecognized("pastiera_prefs", key, emptySet()))
+            assertEquals(type, PreferenceSchemas.expectedType("pastiera_prefs", key))
+        }
+    }
+
+    @Test
     fun layoutSwitchPreferences_areRecognizedForRestore() {
         assertEquals(
             PreferenceValueType.BOOLEAN,

@@ -62,6 +62,10 @@ import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils.setAdd
 import it.palsoftware.pastiera.inputmethod.telex.VietnameseTelexProcessor
 import it.palsoftware.pastiera.inputmethod.trackpad.TrackpadEventDeviceResolver
 import it.palsoftware.pastiera.inputmethod.trackpad.TrackpadGestureDetector
+import it.palsoftware.pastiera.inputmethod.expansion.ExpansionRuntimeConfig
+import it.palsoftware.pastiera.inputmethod.expansion.ExpansionTriggerKind
+import it.palsoftware.pastiera.inputmethod.expansion.SnippetExpansionSource
+import it.palsoftware.pastiera.inputmethod.expansion.TextExpansionController
 import java.util.Locale
 import android.view.inputmethod.InputMethodManager
 import android.view.inputmethod.InputMethodSubtype
@@ -132,6 +136,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     // Broadcast receiver for additional IME subtypes updates
     private var additionalSubtypesReceiver: BroadcastReceiver? = null
     private lateinit var candidatesBarController: CandidatesBarController
+    private lateinit var textExpansionController: TextExpansionController
 
     // Keycode for the SYM key
     private val KEYCODE_SYM = 63
@@ -560,6 +565,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         pendingKeyboardSurfaceTransition?.let(uiHandler::removeCallbacks)
         val transition = Runnable {
             pendingKeyboardSurfaceTransition = null
+            if (::textExpansionController.isInitialized) textExpansionController.clear()
             invalidateRenderedStatusSnapshot()
             if (closeInput) {
                 requestHideSelf(0)
@@ -1588,6 +1594,39 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         clipboardHistoryManager.onCreate()
 
         candidatesBarController = CandidatesBarController(this, clipboardHistoryManager, assets, PhysicalKeyboardInputMethodService::class.java)
+        val snippetExpansionSource = SnippetExpansionSource {
+            SettingsManager.getSnippets(this)
+        }
+        textExpansionController = TextExpansionController(
+            context = this,
+            handler = Handler(Looper.getMainLooper()),
+            inputConnectionProvider = { currentInputConnection },
+            inputContextProvider = { inputContextState },
+            anchorProvider = { window?.window?.decorView },
+            configsProvider = {
+                listOf(
+                    ExpansionRuntimeConfig(
+                        source = snippetExpansionSource,
+                        triggerKind = ExpansionTriggerKind.PREFIX,
+                        enabled = SettingsManager.getSnippetsEnabled(this),
+                        prefix = SettingsManager.getSnippetsPrefix(this).first(),
+                        presentation = SettingsManager.getSnippetsPresentation(this),
+                        activationPolicy = SettingsManager.getSnippetsActivationPolicy(this)
+                    )
+                )
+            },
+            showSuggestionBar = { labels, onSelected ->
+                candidatesBarController.showExpansionSuggestions(labels, onSelected)
+            },
+            clearSuggestionBar = { candidatesBarController.clearExpansionSuggestions() },
+            requestSurfaceUpdate = { updateStatusBarText() },
+            onCommitted = {
+                markSelectionUpdateSkipAfterCommit()
+                suggestionController.onContextReset()
+                suggestionController.readInitialContext(currentInputConnection)
+                updateStatusBarText()
+            }
+        )
         candidatesBarController.onAddUserWord = { word ->
             if (shiftLayerLatched || altLayerLatched) {
                 shiftLayerLatched = false
@@ -2264,6 +2303,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         val ic = inputConnection ?: return false
 
         if (text == " ") {
+            if (::textExpansionController.isInitialized &&
+                textExpansionController.handleKeyDown(KeyEvent.KEYCODE_SPACE)
+            ) {
+                return true
+            }
             DeferredPunctuationSpaceTracker.prepareForTextCommit(this, ic, text)
             return SoftwareKeyboardTextInputHandler.handleSpaceInput(
                 textInputController = textInputController,
@@ -2292,6 +2336,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
             suggestionController.onCharacterCommitted(text, ic)
         }
         updateStatusBarText()
+        if (::textExpansionController.isInitialized) textExpansionController.scheduleRefresh()
         return true
     }
 
@@ -3052,6 +3097,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
 
     override fun onStartInput(info: EditorInfo?, restarting: Boolean) {
         super.onStartInput(info, restarting)
+        if (::textExpansionController.isInitialized) textExpansionController.clear()
         if (
             !restarting ||
             !SettingsManager.getAutoCapitalizeRespectManualShiftOff(this)
@@ -3145,6 +3191,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
+        if (::textExpansionController.isInitialized) textExpansionController.clear()
         updateDebugImeContextSnapshot(info)
         attachTrackpadDecorViewMotionHook("onStartInputView")
 
@@ -3212,6 +3259,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
 
     override fun onFinishInput() {
         super.onFinishInput()
+        if (::textExpansionController.isInitialized) textExpansionController.clear()
         keyboardVisibilityController.cancelPendingSurfaceTransition()
         accidentalKeyPressFilter.reset()
         isInputViewActive = false
@@ -3234,6 +3282,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
+        if (::textExpansionController.isInitialized) textExpansionController.clear()
         isInputViewActive = false
         if (::candidatesBarController.isInitialized) {
             candidatesBarController.resetSuggestionActionMode()
@@ -3739,6 +3788,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
+        if (::textExpansionController.isInitialized) textExpansionController.clear()
 
         val systemLocalesSignature = newConfig.locales.toLanguageTags()
         if (systemLocalesSignature == lastSystemLocalesSignature) {
@@ -3817,6 +3867,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
             // Telegram can emit a selection update for every hardware key. Coalescing keeps
             // expensive InputConnection reads from stacking up behind fast typing.
             scheduleStatusBarTextUpdate()
+        }
+        if (cursorPositionChanged && collapsedSelection && ::textExpansionController.isInitialized) {
+            textExpansionController.scheduleRefresh()
         }
         if (SettingsManager.isSuggestionDebugLoggingEnabled(this)) {
             Log.d(
@@ -4143,6 +4196,12 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
                 ensureEmojiSearchCursorAnchorMonitoring(initialInputConnection)
                 return true
             }
+        }
+
+        if (hasEditableField && ::textExpansionController.isInitialized &&
+            textExpansionController.handleKeyDown(keyCode)
+        ) {
+            return true
         }
 
         if (hasEditableField && keyCode == KEYCODE_SYM && event?.repeatCount == 0) {
@@ -4902,8 +4961,12 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         if (symLayoutController.handleKeyUp(keyCode, shiftPressed)) {
             return true
         }
-        
-        return super.onKeyUp(keyCode, event)
+
+        val handled = super.onKeyUp(keyCode, event)
+        if (!isPureModifierKey(keyCode) && ::textExpansionController.isInitialized) {
+            textExpansionController.scheduleRefresh()
+        }
+        return handled
     }
 
     /**
