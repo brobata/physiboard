@@ -12,6 +12,7 @@ class TextExpansionController(
     private val handler: Handler,
     private val inputConnectionProvider: () -> InputConnection?,
     private val inputContextProvider: () -> InputContextState,
+    private val isSelectionCollapsedProvider: () -> Boolean = { true },
     private val anchorProvider: () -> View?,
     private val configsProvider: () -> List<ExpansionRuntimeConfig>,
     private val showSuggestionBar: (List<String>, (String) -> Unit) -> Unit,
@@ -41,7 +42,7 @@ class TextExpansionController(
         refreshRunnable?.let(handler::removeCallbacks)
         refreshRunnable = null
         val state = inputContextProvider()
-        if (!state.isReallyEditable || state.restrictedReason != null) {
+        if (!state.isReallyEditable || state.restrictedReason != null || !isSelectionCollapsedProvider()) {
             clear()
             return
         }
@@ -60,27 +61,34 @@ class TextExpansionController(
                 ExpansionTriggerKind.PREFIX -> config.prefix?.let { engine.snippetQuery(text, it) }
                 ExpansionTriggerKind.COLON_SHORTCODE -> engine.shortcodeQuery(text)
             } ?: return@mapNotNull null
-            val matches = engine.collect(query, listOf(config.source))
-            if (matches.isEmpty()) null else Triple(config, query, matches)
+            config to query
         }
-        val chosen = candidates.maxByOrNull { (_, query, _) -> query.tokenStart } ?: run {
+        val latest = candidates.maxByOrNull { (_, query) -> query.tokenStart } ?: run {
             clear()
             return
         }
-        val queryChanged = activeQuery?.token != chosen.second.token ||
-            activeConfig?.source !== chosen.first.source
-        activeConfig = chosen.first
-        activeQuery = chosen.second
-        activeMatches = chosen.third
+        val matching = candidates.filter { (_, query) ->
+            query.tokenStart == latest.second.tokenStart && query.token == latest.second.token
+        }
+        val matches = engine.collect(latest.second, matching.map { it.first.source })
+        if (matches.isEmpty()) {
+            clear()
+            return
+        }
+        val queryChanged = activeQuery?.token != latest.second.token ||
+            activeConfig?.source !== latest.first.source
+        activeConfig = latest.first
+        activeQuery = latest.second
+        activeMatches = matches
         if (queryChanged) selectedIndex = 0
         selectedIndex = selectedIndex.coerceAtMost(activeMatches.lastIndex)
 
-        val exact = engine.uniqueExact(chosen.second, chosen.third)
-        if (chosen.second.closed && chosen.first.exactOnClose && exact != null) {
+        val exact = engine.uniqueExact(latest.second, matches)
+        if (latest.second.closed && latest.first.exactOnClose && exact != null) {
             commit(exact, suffix = "")
             return
         }
-        render(chosen.first.presentation)
+        render(latest.first.presentation)
     }
 
     fun handleKeyDown(keyCode: Int): Boolean {
@@ -108,6 +116,15 @@ class TextExpansionController(
                 if (config.activationPolicy.exactOnSpace && exact != null) {
                     commit(exact, " ")
                     true
+                } else if (
+                    exact == null &&
+                    config.activationPolicy.acceptPrefixWithSpace &&
+                    hasVisibleMatches()
+                ) {
+                    activeMatches.getOrNull(selectedIndex)?.let {
+                        commit(it, " ")
+                        true
+                    } ?: false
                 } else false
             }
             KeyEvent.KEYCODE_TAB -> acceptIfEnabled(config.activationPolicy.acceptWithTab, exact)
@@ -189,7 +206,8 @@ class TextExpansionController(
                         selectedIndex = 0
                     }
                 ).also { popup = it }
-                if (currentPopup.isShowing()) currentPopup.update(activeMatches) else currentPopup.show(anchor, activeMatches)
+                if (currentPopup.isShowing()) currentPopup.update(anchor, activeMatches)
+                else currentPopup.show(anchor, activeMatches)
             }
             ExpansionPresentation.SUGGESTION_BAR -> {
                 popup?.dismiss()

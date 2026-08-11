@@ -30,6 +30,7 @@ class SettingsManagerTextExpansionTest {
         assertEquals(ExpansionPresentation.FLOATING_POPUP, SettingsManager.getSnippetsPresentation(context))
         val policy = SettingsManager.getSnippetsActivationPolicy(context)
         assertTrue(policy.exactOnSpace)
+        assertFalse(policy.acceptPrefixWithSpace)
         assertTrue(policy.acceptWithTab)
         assertFalse(policy.acceptWithEnter)
     }
@@ -47,5 +48,34 @@ class SettingsManagerTextExpansionTest {
             .putString("snippets_presentation", "future-value")
             .commit()
         assertEquals(ExpansionPresentation.FLOATING_POPUP, SettingsManager.getSnippetsPresentation(context))
+    }
+
+    @Test
+    fun emojiAndSymbolDefaults_matchTheActivationContract() {
+        assertFalse(SettingsManager.getEmojiShortcodesEnabled(context))
+        assertFalse(SettingsManager.getSymbolShortcodesEnabled(context))
+        assertEquals(ExpansionPresentation.FLOATING_POPUP, SettingsManager.getEmojiSymbolsPresentation(context))
+        val policy = SettingsManager.getEmojiSymbolsActivationPolicy(context)
+        assertFalse(policy.exactOnSpace)
+        assertFalse(policy.acceptPrefixWithSpace)
+        assertTrue(policy.acceptWithTab)
+        assertFalse(policy.acceptWithEnter)
+        assertTrue(SettingsManager.getEmojiSymbolsExactOnClose(context))
+    }
+
+    @Test
+    fun prefixSpaceOptionsRoundTripIndependently() {
+        val snippetPolicy = SettingsManager.getSnippetsActivationPolicy(context).copy(
+            acceptPrefixWithSpace = true
+        )
+        val emojiPolicy = SettingsManager.getEmojiSymbolsActivationPolicy(context).copy(
+            acceptPrefixWithSpace = true
+        )
+
+        SettingsManager.setSnippetsActivationPolicy(context, snippetPolicy)
+        SettingsManager.setEmojiSymbolsActivationPolicy(context, emojiPolicy)
+
+        assertEquals(snippetPolicy, SettingsManager.getSnippetsActivationPolicy(context))
+        assertEquals(emojiPolicy, SettingsManager.getEmojiSymbolsActivationPolicy(context))
     }
 }

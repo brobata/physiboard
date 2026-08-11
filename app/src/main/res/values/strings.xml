@@ -1593,10 +1593,19 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="expansion_presentation_off">Off</string>
     <string name="expansion_presentation_popup">Floating popup</string>
     <string name="expansion_presentation_bar">Suggestion bar</string>
-    <string name="expansion_space_title">Exact match with Space</string>
-    <string name="expansion_space_description">Expand only when the typed shortcut exactly matches an entry.</string>
+    <string name="expansion_space_title">Expand exact match with Space</string>
+    <string name="expansion_space_description">Press Space to expand a unique exact shortcut and keep the trailing space. Prefix matches are ignored.</string>
+    <string name="expansion_prefix_space_title">Accept prefix match with Space</string>
+    <string name="expansion_prefix_space_description">Press Space to accept the highlighted match when the typed shortcut is not an exact match.</string>
     <string name="expansion_tab_title">Accept with Tab</string>
     <string name="expansion_tab_description">Use Tab to accept the highlighted or unique exact match.</string>
     <string name="expansion_enter_title">Accept with Enter</string>
     <string name="expansion_enter_description">Use Enter to accept the highlighted or unique exact match.</string>
+    <string name="emoji_symbols_title">Emoji &amp; symbols</string>
+    <string name="emoji_shortcodes_enable_title">Enable emoji shortcodes</string>
+    <string name="emoji_shortcodes_enable_description">Type :name to search Unicode emoji.</string>
+    <string name="symbol_shortcodes_enable_title">Enable symbol shortcodes</string>
+    <string name="symbol_shortcodes_enable_description">Type :name to search typographic and mathematical symbols.</string>
+    <string name="emoji_symbols_close_title">Expand :name:</string>
+    <string name="emoji_symbols_close_description">A closing colon expands a unique exact match. Collisions stay selectable.</string>
 </resources>

@@ -78,8 +78,17 @@ object SettingsManager {
     private const val KEY_SNIPPETS = "snippets_v1"
     private const val KEY_SNIPPETS_PRESENTATION = "snippets_presentation"
     private const val KEY_SNIPPETS_EXACT_ON_SPACE = "snippets_exact_on_space"
+    private const val KEY_SNIPPETS_ACCEPT_PREFIX_WITH_SPACE = "snippets_accept_prefix_with_space"
     private const val KEY_SNIPPETS_ACCEPT_WITH_TAB = "snippets_accept_with_tab"
     private const val KEY_SNIPPETS_ACCEPT_WITH_ENTER = "snippets_accept_with_enter"
+    private const val KEY_EMOJI_SHORTCODES_ENABLED = "emoji_shortcodes_enabled"
+    private const val KEY_SYMBOL_SHORTCODES_ENABLED = "symbol_shortcodes_enabled"
+    private const val KEY_EMOJI_SYMBOLS_PRESENTATION = "emoji_symbols_presentation"
+    private const val KEY_EMOJI_SYMBOLS_EXACT_ON_SPACE = "emoji_symbols_exact_on_space"
+    private const val KEY_EMOJI_SYMBOLS_ACCEPT_PREFIX_WITH_SPACE = "emoji_symbols_accept_prefix_with_space"
+    private const val KEY_EMOJI_SYMBOLS_ACCEPT_WITH_TAB = "emoji_symbols_accept_with_tab"
+    private const val KEY_EMOJI_SYMBOLS_ACCEPT_WITH_ENTER = "emoji_symbols_accept_with_enter"
+    private const val KEY_EMOJI_SYMBOLS_EXACT_ON_CLOSE = "emoji_symbols_exact_on_close"
     private const val KEY_ACCENT_MATCHING_ENABLED = "accent_matching_enabled"
     private const val KEY_AUTO_REPLACE_ON_SPACE_ENTER = "auto_replace_on_space_enter"
     private const val KEY_MAX_AUTO_REPLACE_DISTANCE = "max_auto_replace_distance"
@@ -3133,6 +3142,7 @@ object SettingsManager {
         val prefs = getPreferences(context)
         return ExpansionActivationPolicy(
             exactOnSpace = prefs.getBoolean(KEY_SNIPPETS_EXACT_ON_SPACE, true),
+            acceptPrefixWithSpace = prefs.getBoolean(KEY_SNIPPETS_ACCEPT_PREFIX_WITH_SPACE, false),
             acceptWithTab = prefs.getBoolean(KEY_SNIPPETS_ACCEPT_WITH_TAB, true),
             acceptWithEnter = prefs.getBoolean(KEY_SNIPPETS_ACCEPT_WITH_ENTER, false)
         )
@@ -3141,9 +3151,60 @@ object SettingsManager {
     fun setSnippetsActivationPolicy(context: Context, policy: ExpansionActivationPolicy) {
         getPreferences(context).edit()
             .putBoolean(KEY_SNIPPETS_EXACT_ON_SPACE, policy.exactOnSpace)
+            .putBoolean(KEY_SNIPPETS_ACCEPT_PREFIX_WITH_SPACE, policy.acceptPrefixWithSpace)
             .putBoolean(KEY_SNIPPETS_ACCEPT_WITH_TAB, policy.acceptWithTab)
             .putBoolean(KEY_SNIPPETS_ACCEPT_WITH_ENTER, policy.acceptWithEnter)
             .apply()
+    }
+
+    fun getEmojiShortcodesEnabled(context: Context): Boolean =
+        getPreferences(context).getBoolean(KEY_EMOJI_SHORTCODES_ENABLED, false)
+
+    fun setEmojiShortcodesEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit().putBoolean(KEY_EMOJI_SHORTCODES_ENABLED, enabled).apply()
+    }
+
+    fun getSymbolShortcodesEnabled(context: Context): Boolean =
+        getPreferences(context).getBoolean(KEY_SYMBOL_SHORTCODES_ENABLED, false)
+
+    fun setSymbolShortcodesEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit().putBoolean(KEY_SYMBOL_SHORTCODES_ENABLED, enabled).apply()
+    }
+
+    fun getEmojiSymbolsPresentation(context: Context): ExpansionPresentation = ExpansionPresentation.fromStorage(
+        getPreferences(context).getString(KEY_EMOJI_SYMBOLS_PRESENTATION, null)
+    )
+
+    fun setEmojiSymbolsPresentation(context: Context, presentation: ExpansionPresentation) {
+        getPreferences(context).edit()
+            .putString(KEY_EMOJI_SYMBOLS_PRESENTATION, presentation.storageValue)
+            .apply()
+    }
+
+    fun getEmojiSymbolsActivationPolicy(context: Context): ExpansionActivationPolicy {
+        val prefs = getPreferences(context)
+        return ExpansionActivationPolicy(
+            exactOnSpace = prefs.getBoolean(KEY_EMOJI_SYMBOLS_EXACT_ON_SPACE, false),
+            acceptPrefixWithSpace = prefs.getBoolean(KEY_EMOJI_SYMBOLS_ACCEPT_PREFIX_WITH_SPACE, false),
+            acceptWithTab = prefs.getBoolean(KEY_EMOJI_SYMBOLS_ACCEPT_WITH_TAB, true),
+            acceptWithEnter = prefs.getBoolean(KEY_EMOJI_SYMBOLS_ACCEPT_WITH_ENTER, false)
+        )
+    }
+
+    fun setEmojiSymbolsActivationPolicy(context: Context, policy: ExpansionActivationPolicy) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_EMOJI_SYMBOLS_EXACT_ON_SPACE, policy.exactOnSpace)
+            .putBoolean(KEY_EMOJI_SYMBOLS_ACCEPT_PREFIX_WITH_SPACE, policy.acceptPrefixWithSpace)
+            .putBoolean(KEY_EMOJI_SYMBOLS_ACCEPT_WITH_TAB, policy.acceptWithTab)
+            .putBoolean(KEY_EMOJI_SYMBOLS_ACCEPT_WITH_ENTER, policy.acceptWithEnter)
+            .apply()
+    }
+
+    fun getEmojiSymbolsExactOnClose(context: Context): Boolean =
+        getPreferences(context).getBoolean(KEY_EMOJI_SYMBOLS_EXACT_ON_CLOSE, true)
+
+    fun setEmojiSymbolsExactOnClose(context: Context, enabled: Boolean) {
+        getPreferences(context).edit().putBoolean(KEY_EMOJI_SYMBOLS_EXACT_ON_CLOSE, enabled).apply()
     }
     
     /**

@@ -65,6 +65,8 @@ import it.palsoftware.pastiera.inputmethod.trackpad.TrackpadGestureDetector
 import it.palsoftware.pastiera.inputmethod.expansion.ExpansionRuntimeConfig
 import it.palsoftware.pastiera.inputmethod.expansion.ExpansionTriggerKind
 import it.palsoftware.pastiera.inputmethod.expansion.SnippetExpansionSource
+import it.palsoftware.pastiera.inputmethod.expansion.EmojiShortcodeSource
+import it.palsoftware.pastiera.inputmethod.expansion.SymbolShortcodeSource
 import it.palsoftware.pastiera.inputmethod.expansion.TextExpansionController
 import java.util.Locale
 import android.view.inputmethod.InputMethodManager
@@ -137,6 +139,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     private var additionalSubtypesReceiver: BroadcastReceiver? = null
     private lateinit var candidatesBarController: CandidatesBarController
     private lateinit var textExpansionController: TextExpansionController
+    private lateinit var emojiShortcodeSource: EmojiShortcodeSource
+    private lateinit var symbolShortcodeSource: SymbolShortcodeSource
+    private val expansionAssetScope = CoroutineScope(Dispatchers.IO)
 
     // Keycode for the SYM key
     private val KEYCODE_SYM = 63
@@ -1597,11 +1602,14 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         val snippetExpansionSource = SnippetExpansionSource {
             SettingsManager.getSnippets(this)
         }
+        emojiShortcodeSource = EmojiShortcodeSource(assets)
+        symbolShortcodeSource = SymbolShortcodeSource(assets)
         textExpansionController = TextExpansionController(
             context = this,
             handler = Handler(Looper.getMainLooper()),
             inputConnectionProvider = { currentInputConnection },
             inputContextProvider = { inputContextState },
+            isSelectionCollapsedProvider = { !editorHasActiveSelection },
             anchorProvider = { window?.window?.decorView },
             configsProvider = {
                 listOf(
@@ -1612,6 +1620,22 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
                         prefix = SettingsManager.getSnippetsPrefix(this).first(),
                         presentation = SettingsManager.getSnippetsPresentation(this),
                         activationPolicy = SettingsManager.getSnippetsActivationPolicy(this)
+                    ),
+                    ExpansionRuntimeConfig(
+                        source = emojiShortcodeSource,
+                        triggerKind = ExpansionTriggerKind.COLON_SHORTCODE,
+                        enabled = SettingsManager.getEmojiShortcodesEnabled(this),
+                        presentation = SettingsManager.getEmojiSymbolsPresentation(this),
+                        activationPolicy = SettingsManager.getEmojiSymbolsActivationPolicy(this),
+                        exactOnClose = SettingsManager.getEmojiSymbolsExactOnClose(this)
+                    ),
+                    ExpansionRuntimeConfig(
+                        source = symbolShortcodeSource,
+                        triggerKind = ExpansionTriggerKind.COLON_SHORTCODE,
+                        enabled = SettingsManager.getSymbolShortcodesEnabled(this),
+                        presentation = SettingsManager.getEmojiSymbolsPresentation(this),
+                        activationPolicy = SettingsManager.getEmojiSymbolsActivationPolicy(this),
+                        exactOnClose = SettingsManager.getEmojiSymbolsExactOnClose(this)
                     )
                 )
             },
@@ -1627,6 +1651,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
                 updateStatusBarText()
             }
         )
+        prepareEnabledExpansionAssets()
         candidatesBarController.onAddUserWord = { word ->
             if (shiftLayerLatched || altLayerLatched) {
                 shiftLayerLatched = false
@@ -2005,6 +2030,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
                 Handler(Looper.getMainLooper()).post { updateStatusBarText() }
             } else if (key == "clear_alt_on_space") {
                 clearAltOnSpaceEnabled = SettingsManager.getClearAltOnSpace(this)
+            } else if (key == "emoji_shortcodes_enabled" || key == "symbol_shortcodes_enabled") {
+                prepareEnabledExpansionAssets()
             } else if (key == "shift_tap_latches" || key == "alt_tap_latches" || key == "ctrl_tap_latches") {
                 updateModifierTapLatchSettings()
                 Handler(Looper.getMainLooper()).post {
@@ -2540,6 +2567,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         ClicksAccessibilityKeyBridge.unregister(this)
         accidentalKeyPressFilter.reset()
         clicksPowerButtonEventMapper.reset()
+        expansionAssetScope.cancel()
         super.onDestroy()
         pendingInputDeviceModeRefresh?.let { uiHandler.removeCallbacks(it) }
         pendingInputDeviceModeRefresh = null
@@ -2610,6 +2638,17 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         // Stop trackpad gesture detection
         trackpadGestureDetector.stop()
         trackpadScope.cancel()
+    }
+
+    private fun prepareEnabledExpansionAssets() {
+        expansionAssetScope.launch {
+            if (::emojiShortcodeSource.isInitialized && SettingsManager.getEmojiShortcodesEnabled(this@PhysicalKeyboardInputMethodService)) {
+                emojiShortcodeSource.prepare()
+            }
+            if (::symbolShortcodeSource.isInitialized && SettingsManager.getSymbolShortcodesEnabled(this@PhysicalKeyboardInputMethodService)) {
+                symbolShortcodeSource.prepare()
+            }
+        }
     }
 
     override fun onCreateInputView(): View? = keyboardVisibilityController.onCreateInputView()
@@ -3868,8 +3907,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
             // expensive InputConnection reads from stacking up behind fast typing.
             scheduleStatusBarTextUpdate()
         }
-        if (cursorPositionChanged && collapsedSelection && ::textExpansionController.isInitialized) {
-            textExpansionController.scheduleRefresh()
+        if (cursorPositionChanged && ::textExpansionController.isInitialized) {
+            if (collapsedSelection) textExpansionController.scheduleRefresh()
+            else textExpansionController.clear()
         }
         if (SettingsManager.isSuggestionDebugLoggingEnabled(this)) {
             Log.d(
@@ -4198,7 +4238,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
             }
         }
 
-        if (hasEditableField && ::textExpansionController.isInitialized &&
+        val expansionShortcutModifierActive = event?.isCtrlPressed == true ||
+            event?.isAltPressed == true || event?.isMetaPressed == true || event?.isShiftPressed == true ||
+            ctrlPressed || ctrlPhysicallyPressed || ctrlLatchActive || ctrlOneShot || ctrlLatchFromNavMode ||
+            altPressed || altPhysicallyPressed || altLatchActive || altOneShot ||
+            shiftPressed || modifierStateController.shiftPhysicallyPressed || shiftLayerLatched || shiftOneShot
+        if (hasEditableField && !expansionShortcutModifierActive &&
+            ::textExpansionController.isInitialized &&
             textExpansionController.handleKeyDown(keyCode)
         ) {
             return true

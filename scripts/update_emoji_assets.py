@@ -270,6 +270,7 @@ def write_shortcode_index(
     path: Path,
     english_annotations: dict[str, dict],
     allowed_emojis: set[str],
+    categories: dict[str, str],
 ) -> None:
     index: dict[str, list[str]] = {}
     for emoji, payload in english_annotations.items():
@@ -284,9 +285,27 @@ def write_shortcode_index(
             if emoji not in matches:
                 matches.append(emoji)
     path.write_text(
-        json.dumps(dict(sorted(index.items())), ensure_ascii=False, separators=(",", ":")) + "\n",
+        json.dumps(
+            {
+                "provider": "unicode",
+                "categories": dict(sorted(categories.items())),
+                "shortcodes": dict(sorted(index.items())),
+            },
+            ensure_ascii=False,
+            separators=(",", ":"),
+        ) + "\n",
         encoding="utf-8",
     )
+
+
+def emoji_categories(emoji_dir: Path) -> dict[str, str]:
+    files, _ = load_category_files(emoji_dir)
+    return {
+        emoji: file_name.removesuffix(".txt")
+        for file_name, lines in files.items()
+        for line in lines
+        for emoji in line
+    }
 
 
 def rebuild_shortcodes_from_committed_search(root: Path) -> None:
@@ -305,6 +324,7 @@ def rebuild_shortcodes_from_committed_search(root: Path) -> None:
         root / "app/src/main/assets/common/emoji_shortcodes.json",
         annotations,
         load_project_emojis(emoji_dir),
+        emoji_categories(emoji_dir),
     )
 
 
@@ -318,7 +338,12 @@ def generate(root: Path) -> tuple[str, int]:
     annotations_by_locale = {locale: fetch_annotations(locale) for locale in SEARCH_LOCALES}
     for locale, annotations in annotations_by_locale.items():
         write_search_tsv(search_dir / f"{locale}.tsv", build_search_rows(annotations, allowed_emojis))
-    write_shortcode_index(shortcode_path, annotations_by_locale["en"], allowed_emojis)
+    write_shortcode_index(
+        shortcode_path,
+        annotations_by_locale["en"],
+        allowed_emojis,
+        emoji_categories(emoji_dir),
+    )
     return emoji_version, added_count
 
 

@@ -19,6 +19,7 @@ enum class ExpansionPresentation(val storageValue: String) {
 
 data class ExpansionActivationPolicy(
     val exactOnSpace: Boolean,
+    val acceptPrefixWithSpace: Boolean,
     val acceptWithTab: Boolean,
     val acceptWithEnter: Boolean
 )

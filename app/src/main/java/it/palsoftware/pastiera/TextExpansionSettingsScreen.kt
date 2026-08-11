@@ -71,6 +71,12 @@ fun TextExpansionSettingsScreen(onBack: () -> Unit) {
     var presentation by remember { mutableStateOf(SettingsManager.getSnippetsPresentation(context)) }
     var policy by remember { mutableStateOf(SettingsManager.getSnippetsActivationPolicy(context)) }
     var presentationExpanded by remember { mutableStateOf(false) }
+    var emojiEnabled by remember { mutableStateOf(SettingsManager.getEmojiShortcodesEnabled(context)) }
+    var symbolsEnabled by remember { mutableStateOf(SettingsManager.getSymbolShortcodesEnabled(context)) }
+    var emojiPresentation by remember { mutableStateOf(SettingsManager.getEmojiSymbolsPresentation(context)) }
+    var emojiPolicy by remember { mutableStateOf(SettingsManager.getEmojiSymbolsActivationPolicy(context)) }
+    var exactOnClose by remember { mutableStateOf(SettingsManager.getEmojiSymbolsExactOnClose(context)) }
+    var emojiPresentationExpanded by remember { mutableStateOf(false) }
 
     SettingsScaffold(title = stringResource(R.string.text_expansion_title), onBack = onBack) { padding ->
         LazyColumn(
@@ -147,17 +153,6 @@ fun TextExpansionSettingsScreen(onBack: () -> Unit) {
             }
             item {
                 SwitchSettingRow(
-                    title = stringResource(R.string.expansion_space_title),
-                    description = stringResource(R.string.expansion_space_description),
-                    checked = policy.exactOnSpace,
-                    onCheckedChange = {
-                        policy = policy.copy(exactOnSpace = it)
-                        SettingsManager.setSnippetsActivationPolicy(context, policy)
-                    }
-                )
-            }
-            item {
-                SwitchSettingRow(
                     title = stringResource(R.string.expansion_tab_title),
                     description = stringResource(R.string.expansion_tab_description),
                     checked = policy.acceptWithTab,
@@ -197,6 +192,139 @@ fun TextExpansionSettingsScreen(onBack: () -> Unit) {
                         Text("›", style = MaterialTheme.typography.headlineSmall)
                     }
                 }
+            }
+            item {
+                SwitchSettingRow(
+                    title = stringResource(R.string.expansion_space_title),
+                    description = stringResource(R.string.expansion_space_description),
+                    checked = policy.exactOnSpace,
+                    onCheckedChange = {
+                        policy = policy.copy(exactOnSpace = it)
+                        SettingsManager.setSnippetsActivationPolicy(context, policy)
+                    }
+                )
+            }
+            item {
+                SwitchSettingRow(
+                    title = stringResource(R.string.expansion_prefix_space_title),
+                    description = stringResource(R.string.expansion_prefix_space_description),
+                    checked = policy.acceptPrefixWithSpace,
+                    onCheckedChange = {
+                        policy = policy.copy(acceptPrefixWithSpace = it)
+                        SettingsManager.setSnippetsActivationPolicy(context, policy)
+                    }
+                )
+            }
+            item { SectionTitle(stringResource(R.string.emoji_symbols_title)) }
+            item {
+                SwitchSettingRow(
+                    title = stringResource(R.string.emoji_shortcodes_enable_title),
+                    description = stringResource(R.string.emoji_shortcodes_enable_description),
+                    checked = emojiEnabled,
+                    onCheckedChange = {
+                        emojiEnabled = it
+                        SettingsManager.setEmojiShortcodesEnabled(context, it)
+                    }
+                )
+            }
+            item {
+                SwitchSettingRow(
+                    title = stringResource(R.string.symbol_shortcodes_enable_title),
+                    description = stringResource(R.string.symbol_shortcodes_enable_description),
+                    checked = symbolsEnabled,
+                    onCheckedChange = {
+                        symbolsEnabled = it
+                        SettingsManager.setSymbolShortcodesEnabled(context, it)
+                    }
+                )
+            }
+            item {
+                Surface(modifier = Modifier.fillMaxWidth()) {
+                    ExposedDropdownMenuBox(
+                        expanded = emojiPresentationExpanded,
+                        onExpandedChange = { emojiPresentationExpanded = it },
+                        modifier = Modifier.fillMaxWidth().padding(16.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = presentationLabel(emojiPresentation),
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text(stringResource(R.string.expansion_presentation_title)) },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(emojiPresentationExpanded) },
+                            modifier = Modifier.menuAnchor().fillMaxWidth()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = emojiPresentationExpanded,
+                            onDismissRequest = { emojiPresentationExpanded = false }
+                        ) {
+                            ExpansionPresentation.entries.forEach { option ->
+                                DropdownMenuItem(
+                                    text = { Text(presentationLabel(option)) },
+                                    onClick = {
+                                        emojiPresentation = option
+                                        SettingsManager.setEmojiSymbolsPresentation(context, option)
+                                        emojiPresentationExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            item {
+                SwitchSettingRow(
+                    title = stringResource(R.string.expansion_tab_title),
+                    description = stringResource(R.string.expansion_tab_description),
+                    checked = emojiPolicy.acceptWithTab,
+                    onCheckedChange = {
+                        emojiPolicy = emojiPolicy.copy(acceptWithTab = it)
+                        SettingsManager.setEmojiSymbolsActivationPolicy(context, emojiPolicy)
+                    }
+                )
+            }
+            item {
+                SwitchSettingRow(
+                    title = stringResource(R.string.expansion_enter_title),
+                    description = stringResource(R.string.expansion_enter_description),
+                    checked = emojiPolicy.acceptWithEnter,
+                    onCheckedChange = {
+                        emojiPolicy = emojiPolicy.copy(acceptWithEnter = it)
+                        SettingsManager.setEmojiSymbolsActivationPolicy(context, emojiPolicy)
+                    }
+                )
+            }
+            item {
+                SwitchSettingRow(
+                    title = stringResource(R.string.emoji_symbols_close_title),
+                    description = stringResource(R.string.emoji_symbols_close_description),
+                    checked = exactOnClose,
+                    onCheckedChange = {
+                        exactOnClose = it
+                        SettingsManager.setEmojiSymbolsExactOnClose(context, it)
+                    }
+                )
+            }
+            item {
+                SwitchSettingRow(
+                    title = stringResource(R.string.expansion_space_title),
+                    description = stringResource(R.string.expansion_space_description),
+                    checked = emojiPolicy.exactOnSpace,
+                    onCheckedChange = {
+                        emojiPolicy = emojiPolicy.copy(exactOnSpace = it)
+                        SettingsManager.setEmojiSymbolsActivationPolicy(context, emojiPolicy)
+                    }
+                )
+            }
+            item {
+                SwitchSettingRow(
+                    title = stringResource(R.string.expansion_prefix_space_title),
+                    description = stringResource(R.string.expansion_prefix_space_description),
+                    checked = emojiPolicy.acceptPrefixWithSpace,
+                    onCheckedChange = {
+                        emojiPolicy = emojiPolicy.copy(acceptPrefixWithSpace = it)
+                        SettingsManager.setEmojiSymbolsActivationPolicy(context, emojiPolicy)
+                    }
+                )
             }
         }
     }
