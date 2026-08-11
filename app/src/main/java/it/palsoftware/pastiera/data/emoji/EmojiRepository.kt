@@ -1,6 +1,7 @@
 package it.palsoftware.pastiera.data.emoji
 
 import android.content.Context
+import android.graphics.Paint
 import android.os.Build
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -27,6 +28,7 @@ object EmojiRepository {
     )
 
     private var cachedCategories: List<EmojiCategory>? = null
+    private val glyphPaint = Paint()
 
     suspend fun getEmojiCategories(context: Context): List<EmojiCategory> {
         return cachedCategories ?: loadEmojiCategories(context).also { cachedCategories = it }
@@ -151,8 +153,11 @@ object EmojiRepository {
     }
 
     private fun isEmojiAllowed(emoji: String, sdk: Int, minApiMap: Map<String, Int>): Boolean {
-        val minApi = minApiMap[emoji] ?: return true
-        return sdk >= minApi
+        val minApi = minApiMap[emoji]
+        if (minApi != null && minApi > 0 && sdk >= minApi) {
+            return true
+        }
+        return glyphPaint.hasGlyph(emoji)
     }
 
     private fun mapCategoryRes(fileName: String): Int? {
@@ -189,4 +194,3 @@ object EmojiRepository {
         }
     }
 }
-
