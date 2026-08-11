@@ -7,6 +7,7 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.PopupWindow
 import android.widget.TextView
@@ -20,7 +21,6 @@ class EmojiEntryRecyclerViewAdapter(
     private val entries: List<EmojiRepository.EmojiEntry>,
     private val onEmojiSelected: (String) -> Unit
 ) : RecyclerView.Adapter<EmojiEntryRecyclerViewAdapter.EmojiEntryViewHolder>() {
-
     class EmojiEntryViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val emojiText: TextView = itemView.findViewById(android.R.id.text1)
     }
@@ -89,8 +89,8 @@ class EmojiEntryRecyclerViewAdapter(
         options.forEach { emoji ->
             val textView = TextView(context).apply {
                 text = emoji
-                textSize = 24f
                 gravity = Gravity.CENTER
+                textSize = 24f
                 setPadding(itemHorizontalPadding, itemVerticalPadding, itemHorizontalPadding, itemVerticalPadding)
                 val nightModeFlags = context.resources.configuration.uiMode and
                     android.content.res.Configuration.UI_MODE_NIGHT_MASK
@@ -104,10 +104,21 @@ class EmojiEntryRecyclerViewAdapter(
             container.addView(textView)
         }
 
+        val maxPopupWidth = context.resources.displayMetrics.widthPixels - (16 * density).toInt()
+        val popupContent = HorizontalScrollView(context).apply {
+            isHorizontalScrollBarEnabled = false
+            addView(container)
+        }
+
+        popupContent.measure(
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+
         popup = PopupWindow(
-            container,
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT,
+            popupContent,
+            minOf(popupContent.measuredWidth, maxPopupWidth),
+            popupContent.measuredHeight,
             true
         ).apply {
             setBackgroundDrawable(ColorDrawable(Color.parseColor("#DDFFFFFF")))
@@ -118,4 +129,3 @@ class EmojiEntryRecyclerViewAdapter(
         popup.showAsDropDown(anchor, 0, -anchor.height / 2)
     }
 }
-

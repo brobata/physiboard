@@ -361,7 +361,8 @@ class FullSuggestionsBar(
         onSuggestionCommitted: (() -> Unit)?,
         onHideSuggestion: ((String) -> Unit)?,
         onDeleteUserSuggestion: ((String) -> Unit)?,
-        canDeleteUserSuggestion: ((String) -> Boolean)?
+        canDeleteUserSuggestion: ((String) -> Boolean)?,
+        onSuggestionSelectedOverride: ((Int, String) -> Unit)? = null
     ) {
         val bar = container ?: return
         val frame = frameContainer ?: return
@@ -430,7 +431,8 @@ class FullSuggestionsBar(
             onSuggestionCommitted,
             onHideSuggestion,
             onDeleteUserSuggestion,
-            canDeleteUserSuggestion
+            canDeleteUserSuggestion,
+            onSuggestionSelectedOverride
         )
         lastSlots = slots
     }
@@ -455,7 +457,8 @@ class FullSuggestionsBar(
             onSuggestionCommitted = null,
             onHideSuggestion = null,
             onDeleteUserSuggestion = null,
-            canDeleteUserSuggestion = null
+            canDeleteUserSuggestion = null,
+            onSuggestionSelectedOverride = null
         )
         lastSlots = emptyList()
     }
@@ -612,7 +615,8 @@ class FullSuggestionsBar(
         onSuggestionCommitted: (() -> Unit)?,
         onHideSuggestion: ((String) -> Unit)?,
         onDeleteUserSuggestion: ((String) -> Unit)?,
-        canDeleteUserSuggestion: ((String) -> Boolean)?
+        canDeleteUserSuggestion: ((String) -> Boolean)?,
+        onSuggestionSelectedOverride: ((Int, String) -> Unit)?
     ) {
         bar.removeAllViews()
         suggestionButtons.clear()
@@ -696,7 +700,14 @@ class FullSuggestionsBar(
                     View.IMPORTANT_FOR_ACCESSIBILITY_YES
                 }
                 if (suggestion != null) {
-                    if (addWordCandidate != null && suggestion.equals(addWordCandidate, ignoreCase = true)) {
+                    if (onSuggestionSelectedOverride != null) {
+                        setOnClickListener { view ->
+                            resetActionMode()
+                            flashSlot(slotIndex)
+                            NotificationHelper.triggerTapHapticFeedback(view)
+                            onSuggestionSelectedOverride(slotIndex, suggestion)
+                        }
+                    } else if (addWordCandidate != null && suggestion.equals(addWordCandidate, ignoreCase = true)) {
                         val addDrawable = androidx.core.content.ContextCompat.getDrawable(context, android.R.drawable.ic_input_add)?.mutate()
                         addDrawable?.setTint(Color.YELLOW)
                         addDrawable?.setBounds(0, 0, dpToPx(18f), dpToPx(18f))
@@ -745,7 +756,8 @@ class FullSuggestionsBar(
                                 onSuggestionCommitted = onSuggestionCommitted,
                                 onHideSuggestion = onHideSuggestion,
                                 onDeleteUserSuggestion = onDeleteUserSuggestion,
-                                canDeleteUserSuggestion = canDeleteUserSuggestion
+                                canDeleteUserSuggestion = canDeleteUserSuggestion,
+                                onSuggestionSelectedOverride = onSuggestionSelectedOverride
                             )
                             true
                         }

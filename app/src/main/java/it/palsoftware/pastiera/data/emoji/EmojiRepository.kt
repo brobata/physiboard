@@ -1,7 +1,6 @@
 package it.palsoftware.pastiera.data.emoji
 
 import android.content.Context
-import android.os.Build
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.BufferedReader
@@ -16,7 +15,6 @@ import java.io.InputStreamReader
  */
 object EmojiRepository {
     private const val EMOJI_ASSET_DIR = "common/emoji"
-    private const val MIN_API_FILE = "minApi.txt"
     const val RECENTS_CATEGORY_ID = "RECENTS"
 
     data class EmojiEntry(val base: String, val variants: List<String>)
@@ -72,7 +70,7 @@ object EmojiRepository {
     private suspend fun loadEmojiCategories(context: Context): List<EmojiCategory> = withContext(Dispatchers.IO) {
         val assetManager = context.assets
         val files = assetManager.list(EMOJI_ASSET_DIR)
-            ?.filter { it.endsWith(".txt") && it != MIN_API_FILE }
+            ?.filter { it.endsWith(".txt") && it != "minApi.txt" }
             .orEmpty()
 
         // Define custom category order
@@ -93,10 +91,10 @@ object EmojiRepository {
             if (index >= 0) index else Int.MAX_VALUE // Unknown files go to the end
         }
 
-        val minApiMap = loadMinApiMap(context)
+        val availability = EmojiAvailability.fromAssets(assetManager)
 
         sortedFiles.mapNotNull { fileName ->
-            val emojis = parseEmojiFile(context, fileName, minApiMap)
+            val emojis = parseEmojiFile(context, fileName, availability)
             if (emojis.isEmpty()) return@mapNotNull null
             EmojiCategory(
                 id = fileName.substringBefore(".txt"),
@@ -106,27 +104,12 @@ object EmojiRepository {
         }
     }
 
-    private fun loadMinApiMap(context: Context): Map<String, Int> {
-        val assetPath = "$EMOJI_ASSET_DIR/$MIN_API_FILE"
-        return runCatching {
-            context.assets.open(assetPath).use { input ->
-                BufferedReader(InputStreamReader(input)).lineSequence().flatMap { line ->
-                    val parts = line.split(" ").filter { it.isNotBlank() }
-                    if (parts.isEmpty()) return@flatMap emptySequence()
-                    val api = parts.first().toIntOrNull() ?: return@flatMap emptySequence()
-                    parts.drop(1).asSequence().map { emoji -> emoji to api }
-                }.toMap()
-            }
-        }.getOrElse { emptyMap() }
-    }
-
     private fun parseEmojiFile(
         context: Context,
         fileName: String,
-        minApiMap: Map<String, Int>
+        availability: EmojiAvailability
     ): List<EmojiEntry> {
         val assetPath = "$EMOJI_ASSET_DIR/$fileName"
-        val sdk = Build.VERSION.SDK_INT
 
         return runCatching {
             context.assets.open(assetPath).use { input ->
@@ -137,8 +120,8 @@ object EmojiRepository {
                     val base = tokens.first()
                     val variants = tokens.drop(1)
 
-                    val allowedBase = isEmojiAllowed(base, sdk, minApiMap)
-                    val allowedVariants = variants.filter { isEmojiAllowed(it, sdk, minApiMap) }
+                    val allowedBase = availability.isAvailable(base)
+                    val allowedVariants = variants.filter(availability::isAvailable)
 
                     if (!allowedBase) {
                         null
@@ -148,11 +131,6 @@ object EmojiRepository {
                 }.toList()
             }
         }.getOrElse { emptyList() }
-    }
-
-    private fun isEmojiAllowed(emoji: String, sdk: Int, minApiMap: Map<String, Int>): Boolean {
-        val minApi = minApiMap[emoji] ?: return true
-        return sdk >= minApi
     }
 
     private fun mapCategoryRes(fileName: String): Int? {
@@ -189,4 +167,3 @@ object EmojiRepository {
         }
     }
 }
-
