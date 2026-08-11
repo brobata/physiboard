@@ -59,6 +59,13 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 if [ -z "$NIGHTLY_HIGHLIGHTS_FILE" ]; then
   NIGHTLY_HIGHLIGHTS_FILE="$ROOT_DIR/.github/release-templates/nightly-highlights.md"
 fi
+if [ -s "$NIGHTLY_HIGHLIGHTS_FILE" ]; then
+  HIGHLIGHTS_CHARACTER_COUNT="$(wc -m < "$NIGHTLY_HIGHLIGHTS_FILE" | tr -d '[:space:]')"
+  if [ "$HIGHLIGHTS_CHARACTER_COUNT" -gt 500 ]; then
+    echo "Nightly highlights exceed the F-Droid 500-character limit: $HIGHLIGHTS_CHARACTER_COUNT" >&2
+    exit 1
+  fi
+fi
 FDROID_ROOT="${FDROID_ROOT:-$ROOT_DIR/.fdroid/nightly}"
 FDROID_REPO_DIR="$FDROID_ROOT/repo"
 FDROID_METADATA_DIR="$FDROID_ROOT/metadata"

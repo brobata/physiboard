@@ -126,7 +126,18 @@ build_nightly_notes() {
   fi
 }
 
+validate_nightly_highlights() {
+  [ ! -s "$HIGHLIGHTS_PATH" ] && return
+  local character_count
+  character_count="$(wc -m < "$HIGHLIGHTS_PATH" | tr -d '[:space:]')"
+  if [ "$character_count" -gt 500 ]; then
+    echo "Nightly highlights exceed the F-Droid 500-character limit: $character_count" >&2
+    exit 1
+  fi
+}
+
 cd "$ROOT_DIR"
+validate_nightly_highlights
 configure_nightly_signing_env
 
 ./gradlew :app:testNightlyReleaseUnitTest "${GRADLE_ARGS[@]}"

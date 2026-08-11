@@ -1,7 +1,7 @@
 ## What’s new
 
-This nightly adds configurable text expansion with global snippets and typed emoji or symbol shortcodes. Matches can appear in a floating popup or in Pastiera’s suggestion bar and remain independent from regular word suggestions.
+This nightly adds configurable snippets and emoji or symbol shortcodes with floating or suggestion-bar matches.
 
-Clicks Power Keyboard support receives a major update with configurable hardware buttons, QuickLauncher, dictation, emoji and keyboard controls, accidental-key protection, number-row controls, persistent device state, and improved battery and charging information.
+Clicks Power Keyboard support gains configurable buttons, QuickLauncher, dictation, accidental-key and number-row protection, persistent device state, and battery data.
 
-It also makes switching between physical and on-screen keyboards more reliable, preserves Pastiera’s status controls, and fixes regressions affecting editor scrolling, screen-awake behavior, disabled text replacements, and backup and restore.
+Physical/on-screen switching is more reliable, status controls stay visible, and regressions affecting editor scrolling, screen-awake behavior, disabled replacements, and backup/restore are fixed.

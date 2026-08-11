@@ -93,6 +93,11 @@ jobs:
       - name: Prepare nightly pre-release notes
         if: ${{ inputs.publish_github_prerelease }}
         run: |
+          HIGHLIGHTS_CHARACTER_COUNT=$(wc -m < .github/release-templates/nightly-highlights.md | tr -d '[:space:]')
+          if [ "$HIGHLIGHTS_CHARACTER_COUNT" -gt 500 ]; then
+            echo "Nightly highlights exceed the F-Droid 500-character limit: $HIGHLIGHTS_CHARACTER_COUNT" >&2
+            exit 1
+          fi
           cp .github/release-templates/debug-prerelease.md /tmp/nightly-prerelease-notes.md
           printf '\n' >> /tmp/nightly-prerelease-notes.md
           cat .github/release-templates/nightly-highlights.md >> /tmp/nightly-prerelease-notes.md
