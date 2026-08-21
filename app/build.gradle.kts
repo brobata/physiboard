@@ -75,8 +75,8 @@ android {
     namespace = "it.palsoftware.pastiera"
     compileSdk = 36
 
-    val defaultVersionCode = 86
-    val defaultVersionName = "0.86"
+    val defaultVersionCode = 10000
+    val defaultVersionName = "1.0.0"
     val ciVersionCode = providers.gradleProperty("PASTIERA_VERSION_CODE").orNull?.toIntOrNull()
     val ciVersionName = providers.gradleProperty("PASTIERA_VERSION_NAME").orNull
     val nightlyVersionCode = providers.gradleProperty("PASTIERA_NIGHTLY_VERSION_CODE").orNull?.toIntOrNull()
@@ -135,6 +135,15 @@ android {
             buildConfigField("String", "RELEASE_CHANNEL", "\"stable\"")
             buildConfigField("boolean", "IS_FDROID_BUILD", if (isFdroidBuild) "true" else "false")
             buildConfigField("boolean", "ENABLE_GITHUB_UPDATE_CHECKS", if (isFdroidBuild) "false" else "true")
+        }
+        create("physi") {
+            dimension = "channel"
+            applicationId = "brobata.physiboard"
+            manifestPlaceholders["appLabel"] = "PhysiBoard"
+            manifestPlaceholders["imeLabel"] = "PhysiBoard"
+            buildConfigField("String", "RELEASE_CHANNEL", "\"physi\"")
+            buildConfigField("boolean", "IS_FDROID_BUILD", "false")
+            buildConfigField("boolean", "ENABLE_GITHUB_UPDATE_CHECKS", "false")
         }
         create("nightly") {
             dimension = "channel"
@@ -243,6 +252,9 @@ android {
         resources {
             // Exclude legacy JSON base dictionaries; keep serialized .dict and user_defaults.json
             excludes += "assets/common/dictionaries/*_base.json"
+            // BouncyCastle (bcpkix/bcutil/bcprov) + jspecify ship duplicate OSGI metadata
+            excludes += "META-INF/versions/9/OSGI-INF/MANIFEST.MF"
+            excludes += "META-INF/versions/**/OSGI-INF/**"
         }
     }
     testOptions {
@@ -277,6 +289,12 @@ dependencies {
     // Shizuku for ADB shell access
     implementation("dev.rikka.shizuku:api:13.1.5")
     implementation("dev.rikka.shizuku:provider:13.1.5")
+    // Embedded wireless-ADB pairing (vendored moe.shizuku.manager.adb, physi test entry point)
+    implementation("org.bouncycastle:bcpkix-jdk18on:1.80")
+    implementation("org.lsposed.hiddenapibypass:hiddenapibypass:6.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.9.2")
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
     testImplementation("org.mockito:mockito-core:5.11.0")

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  PhysiBoard Terminal launcher foreground: a single bold keycap in Signal Amber
+  carrying a ">_" shell-prompt legend. Sits on a solid Ink adaptive background.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Keycap outline (rounded square) -->
+    <path
+        android:strokeColor="#F59E0B"
+        android:strokeWidth="6"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000"
+        android:pathData="M40,30 h28 a12,12 0 0 1 12,12 v28 a12,12 0 0 1 -12,12 h-28 a12,12 0 0 1 -12,-12 v-28 a12,12 0 0 1 12,-12 z" />
+    <!-- Prompt chevron ">" -->
+    <path
+        android:strokeColor="#F59E0B"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000"
+        android:pathData="M44,44 L57,56 L44,68" />
+    <!-- Prompt cursor underscore "_" -->
+    <path
+        android:strokeColor="#F59E0B"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M60,66 L72,66" />
+</vector>
