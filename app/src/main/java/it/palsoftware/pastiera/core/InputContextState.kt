@@ -91,6 +91,10 @@ data class InputContextState(
     val isPasswordField: Boolean
         get() = restrictedReason == RestrictedReason.PASSWORD
 
+    /** The whole app is in raw mode (explicit "no smart typing" choice), not a field-type restriction. */
+    val isAppRawMode: Boolean
+        get() = restrictedReason == RestrictedReason.APP_RAW_MODE
+
     val isUriField: Boolean
         get() = restrictedReason == RestrictedReason.URI
 

@@ -237,6 +237,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     private val shouldDisableAutoCapitalize: Boolean
         get() {
             if (!inputContextState.shouldDisableAutoCapitalize) return false
+            // Raw-mode apps are an explicit per-app "no smart typing" choice — always disable
+            // auto-cap there, independent of the "auto-cap in restricted fields" setting (which
+            // is about field TYPES like email/URL, not a whole-app opt-out).
+            if (inputContextState.isAppRawMode) return true
             val includeRestrictedFields = SettingsManager.getAutoCapitalizeRestrictedFields(this)
             return !includeRestrictedFields || inputContextState.isPasswordField
         }
