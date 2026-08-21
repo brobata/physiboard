@@ -38,3 +38,7 @@ debug-logs/
 
 # Local prediction benchmark workspace
 .prediction-bench/
+
+# Local secrets — never commit
+.env
+*.env
