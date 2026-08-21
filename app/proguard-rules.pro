@@ -26,3 +26,13 @@
 
 # Keep BuildConfig for runtime checks if needed
 -keep class it.palsoftware.pastiera.BuildConfig { *; }
+# --- PhysiBoard: embedded wireless-ADB (smart backlight) ---
+# libadb.so binds JNI to the hardcoded class moe/shizuku/manager/adb/PairingContext,
+# and the vendored ADB stack uses reflection/crypto — keep it all so R8 can't strip/rename it.
+-keep class moe.shizuku.manager.adb.** { *; }
+-keepclasseswithmembernames class * { native <methods>; }
+-keep class org.lsposed.hiddenapibypass.** { *; }
+-keep class org.bouncycastle.** { *; }
+-dontwarn org.bouncycastle.**
+-dontwarn org.conscrypt.**
+-dontwarn com.android.org.conscrypt.**
