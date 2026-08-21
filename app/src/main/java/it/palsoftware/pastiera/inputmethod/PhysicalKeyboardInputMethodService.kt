@@ -2178,6 +2178,15 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
                 attachTrackpadDecorViewMotionHook("provider_changed")
             } else if (key == "pastierina_mode_override") {
                 keyboardVisibilityController.syncStatusBarPresentationModeFromSettings()
+            } else if (key == SettingsManager.KEY_SHOW_STATUS_BAR) {
+                // Master status-bar toggle. Purely visual: re-render the strip so it
+                // collapses/expands without restarting the IME. The snapshot itself is
+                // unchanged by this pref, so invalidate the render cache first to force
+                // updateStatusBars() through the caching guard.
+                invalidateRenderedStatusSnapshot()
+                Handler(Looper.getMainLooper()).post {
+                    updateStatusBarText()
+                }
             } else if (key == SettingsManager.KEY_TITAN2_ELITE_ROUNDED_CORNER_INSETS) {
                 if (::candidatesBarController.isInitialized) {
                     candidatesBarController.refreshWindowInsets()

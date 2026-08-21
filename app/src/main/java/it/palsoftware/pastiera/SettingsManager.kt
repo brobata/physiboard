@@ -172,6 +172,26 @@ object SettingsManager {
     private const val KEY_ALT_BACKSPACE_DELETE = "alt_backspace_delete" // Alt + Backspace performs forward delete
     private const val KEY_BACKSPACE_AT_START_DELETE = "backspace_at_start_delete" // Backspace at line start performs forward delete
     private const val KEY_PASTIERINA_MODE_OVERRIDE = "pastierina_mode_override" // pastierina | full_status_bar
+
+    // Fn -> Ctrl system remap: remember the device's ORIGINAL programmable-key values before
+    // we first overwrite them, so "Reset Fn key" can restore the exact prior state (these are
+    // system-wide Settings.System values that outlive an uninstall).
+    private const val KEY_FN_CTRL_CAPTURED = "fn_ctrl_prev_captured"
+    private const val KEY_FN_CTRL_PREV_ENABLE = "fn_ctrl_prev_enable"
+    private const val KEY_FN_CTRL_PREV_FUNCTION = "fn_ctrl_prev_function"
+
+    /** Sentinel for "the system had no value for this key when we captured it". */
+    const val FN_CTRL_VALUE_UNSET = Int.MIN_VALUE
+
+    // QS keyboard-backlight tile: remember the device's ORIGINAL value of the vendor global
+    // (agui_keyboard_background_light) before the tile first flips it, so "Reset to stock" can
+    // restore the exact prior state. It is a system-wide Settings.Global value that outlives an
+    // uninstall. Mirrors the fn_ctrl capture shape above.
+    private const val KEY_QS_BACKLIGHT_CAPTURED = "qs_backlight_prev_captured"
+    private const val KEY_QS_BACKLIGHT_PREV = "qs_backlight_prev"
+
+    /** Sentinel for "the system had no value for the QS backlight global when we captured it". */
+    const val QS_BACKLIGHT_VALUE_UNSET = Int.MIN_VALUE
     private const val KEY_PASTIERINA_MODE_ACTIVE = "pastierina_mode_active" // Current effective state
     private const val KEY_SOFTWARE_KEYBOARD_MODE = "software_keyboard_mode" // auto | force_hardware | force_virtual
     const val KEY_SOFTWARE_KEYBOARD_MODE_RUNTIME_OVERRIDE = "software_keyboard_mode_runtime_override"
@@ -221,6 +241,8 @@ object SettingsManager {
     private const val KEY_KEYBOARD_THEME_PREVIEW_VIEWPORT_SCALE = "keyboard_theme_preview_viewport_scale"
     
     // Status bar button slot configuration keys
+    // Public so the running IME's SharedPreferences listener can match it for live apply.
+    const val KEY_SHOW_STATUS_BAR = "show_status_bar"
     private const val KEY_STATUS_BAR_SLOT_LEFT = "status_bar_slot_left"
     private const val KEY_STATUS_BAR_SLOT_RIGHT_1 = "status_bar_slot_right_1"
     private const val KEY_STATUS_BAR_SLOT_RIGHT_2 = "status_bar_slot_right_2"
@@ -577,6 +599,82 @@ object SettingsManager {
     fun setStatusBarPresentationMode(context: Context, mode: StatusBarPresentationMode) {
         getPreferences(context).edit()
             .putString(KEY_PASTIERINA_MODE_OVERRIDE, mode.storageValue)
+            .apply()
+    }
+
+    /**
+     * Master toggle for the on-screen IME status-bar strip. When false, the strip is
+     * collapsed to zero height regardless of presentation mode / suggestions / LED state.
+     * Independent of the PASTIERINA vs FULL_STATUS_BAR presentation mode. Defaults to true.
+     */
+    fun getShowStatusBar(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_SHOW_STATUS_BAR, true)
+    }
+
+    fun setShowStatusBar(context: Context, show: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_SHOW_STATUS_BAR, show)
+            .apply()
+    }
+
+    /** True once we've stashed the device's original Fn programmable-key values. */
+    fun isFnCtrlOriginalCaptured(context: Context): Boolean =
+        getPreferences(context).getBoolean(KEY_FN_CTRL_CAPTURED, false)
+
+    /**
+     * Stash the device's original Fn programmable-key values ONCE, before we first overwrite
+     * them. No-op if already captured, so repeated applies never clobber the true original.
+     */
+    fun captureFnCtrlOriginal(context: Context, enable: Int, function: Int) {
+        if (isFnCtrlOriginalCaptured(context)) return
+        getPreferences(context).edit()
+            .putInt(KEY_FN_CTRL_PREV_ENABLE, enable)
+            .putInt(KEY_FN_CTRL_PREV_FUNCTION, function)
+            .putBoolean(KEY_FN_CTRL_CAPTURED, true)
+            .apply()
+    }
+
+    fun getFnCtrlOriginalEnable(context: Context): Int =
+        getPreferences(context).getInt(KEY_FN_CTRL_PREV_ENABLE, FN_CTRL_VALUE_UNSET)
+
+    fun getFnCtrlOriginalFunction(context: Context): Int =
+        getPreferences(context).getInt(KEY_FN_CTRL_PREV_FUNCTION, FN_CTRL_VALUE_UNSET)
+
+    /** Forget the captured original (after a successful revert), so a future apply re-captures. */
+    fun clearFnCtrlOriginal(context: Context) {
+        getPreferences(context).edit()
+            .remove(KEY_FN_CTRL_CAPTURED)
+            .remove(KEY_FN_CTRL_PREV_ENABLE)
+            .remove(KEY_FN_CTRL_PREV_FUNCTION)
+            .apply()
+    }
+
+    /** True once we've stashed the device's original QS keyboard-backlight global value. */
+    fun isQsBacklightOriginalCaptured(context: Context): Boolean =
+        getPreferences(context).getBoolean(KEY_QS_BACKLIGHT_CAPTURED, false)
+
+    /**
+     * Stash the device's original QS keyboard-backlight global value ONCE, before the tile first
+     * overwrites it. No-op if already captured, so repeated toggles never clobber the true
+     * original. [value] is the current Settings.Global value (or [QS_BACKLIGHT_VALUE_UNSET] when
+     * the system had no value), so revert can then restore exactly that (or fall back to 0).
+     */
+    fun captureQsBacklightOriginalIfNeeded(context: Context, value: Int) {
+        if (isQsBacklightOriginalCaptured(context)) return
+        getPreferences(context).edit()
+            .putInt(KEY_QS_BACKLIGHT_PREV, value)
+            .putBoolean(KEY_QS_BACKLIGHT_CAPTURED, true)
+            .apply()
+    }
+
+    fun getQsBacklightOriginal(context: Context): Int =
+        getPreferences(context).getInt(KEY_QS_BACKLIGHT_PREV, QS_BACKLIGHT_VALUE_UNSET)
+
+    /** Forget the captured QS backlight original (after a successful revert). */
+    fun clearQsBacklightOriginal(context: Context) {
+        getPreferences(context).edit()
+            .remove(KEY_QS_BACKLIGHT_CAPTURED)
+            .remove(KEY_QS_BACKLIGHT_PREV)
             .apply()
     }
 
@@ -5269,8 +5367,6 @@ object SettingsManager {
         editor.putBoolean("dynamic_variation_bar_resize_to_content", false)
 
         // Ints
-        editor.putInt("smart_backlight_lux_threshold", 25)
-        editor.putInt("smart_backlight_timeout_seconds", 45)
         editor.putInt("dynamic_variation_bar_slot_count", 7)
         editor.putInt("dictation_end_silence_ms", 2000)
 

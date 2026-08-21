@@ -7,6 +7,7 @@ import android.service.quicksettings.TileService
 import android.util.Log
 import android.widget.Toast
 import it.palsoftware.pastiera.R
+import it.palsoftware.pastiera.SettingsManager
 
 /**
  * Quick Settings tile that toggles the Unihertz keyboard backlight
@@ -33,6 +34,14 @@ class KeyboardBacklightTileService : TileService() {
             updateTile()
             return
         }
+        // Snapshot the device's ORIGINAL value ONCE before we first overwrite it, so the
+        // "Reset device settings to stock" button can restore the exact prior state.
+        val prior = Settings.Global.getInt(
+            contentResolver,
+            VENDOR_BACKLIGHT_SETTING,
+            SettingsManager.QS_BACKLIGHT_VALUE_UNSET
+        )
+        SettingsManager.captureQsBacklightOriginalIfNeeded(this, prior)
         val newValue = if (readBacklightEnabled()) 0 else 1
         try {
             Settings.Global.putInt(contentResolver, VENDOR_BACKLIGHT_SETTING, newValue)

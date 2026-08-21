@@ -2756,7 +2756,18 @@ class StatusBarController(
         val symSurfaceView = symSurfaceContainer ?: return
         val symSurfaceStackView = symSurfaceStack ?: return
         emojiView.visibility = View.GONE
-        
+
+        // Master "Show status bar" toggle. When OFF, collapse the root chrome container to
+        // zero height (GONE + height 0) so the strip contributes no on-screen footprint,
+        // regardless of presentation mode / suggestions / LED state. This is purely visual:
+        // the IME stays active and hardware key events are still processed, the input view
+        // simply collapses to zero height. Covers both INPUT_VIEW and CANDIDATES_ONLY modes
+        // since both StatusBarController instances flow through update().
+        if (!SettingsManager.getShowStatusBar(context)) {
+            collapseLayout()
+            return
+        }
+
         if (snapshot.navModeActive) {
             layout.visibility = View.GONE
             return

@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.*
@@ -39,6 +40,7 @@ fun StatusBarButtonsScreen(
     onOpenModifiers: () -> Unit
 ) {
     val context = LocalContext.current
+    var showStatusBar by remember { mutableStateOf(SettingsManager.getShowStatusBar(context)) }
     var leftSlots by remember { mutableStateOf(SettingsManager.getStatusBarSlotsLeft(context)) }
     var rightSlots by remember { mutableStateOf(SettingsManager.getStatusBarSlotsRight(context)) }
     var pastierinaLeftSlots by remember {
@@ -169,6 +171,16 @@ fun StatusBarButtonsScreen(
                 }
             }
         }
+
+        ShowStatusBarToggleRow(
+            checked = showStatusBar,
+            onCheckedChange = { enabled ->
+                showStatusBar = enabled
+                // Persist first; the running IME's SharedPreferences listener picks this
+                // up and re-renders the strip live (collapse/expand, no IME restart).
+                SettingsManager.setShowStatusBar(context, enabled)
+            }
+        )
 
         Surface(modifier = Modifier.fillMaxWidth()) {
             Text(
@@ -341,6 +353,42 @@ fun StatusBarButtonsScreen(
         Spacer(modifier = Modifier.height(16.dp))
     }
 }
+@Composable
+private fun ShowStatusBarToggleRow(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Surface(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Visibility,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.show_status_bar_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = stringResource(R.string.show_status_bar_description),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(checked = checked, onCheckedChange = onCheckedChange)
+        }
+    }
+}
+
 @Composable
 private fun StatusBarLayoutPreview(
     leftSlots: List<String>,

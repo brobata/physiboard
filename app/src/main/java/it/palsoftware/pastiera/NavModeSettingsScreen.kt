@@ -1,7 +1,12 @@
 package it.palsoftware.pastiera
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import android.view.KeyEvent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -29,6 +34,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -48,6 +54,10 @@ import it.palsoftware.pastiera.commands.CommandSurface
 import it.palsoftware.pastiera.commands.CommandTarget
 import it.palsoftware.pastiera.data.layout.JsonLayoutLoader
 import it.palsoftware.pastiera.data.mappings.KeyMappingLoader
+import it.palsoftware.pastiera.inputmethod.EmbeddedAdbShell
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.min
 
 /**
@@ -90,9 +100,101 @@ fun NavModeSettingsScreen(
         loadLayoutHints(context)
     }
     
+    // Fn -> Ctrl system remap (experimental, Titan 2 Elite)
+    val scope = rememberCoroutineScope()
+    var fnCtrlAlreadySet by remember { mutableStateOf(false) }
+    var fnCtrlStatusRes by remember { mutableStateOf<Int?>(null) }
+    var fnCtrlBusy by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        fnCtrlAlreadySet = withContext(Dispatchers.IO) { readFnCtrlSet(context) }
+    }
+
+    val writeSettingsLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        // Returning from the write-settings grant screen: if we can now write, apply.
+        if (Settings.System.canWrite(context) && !fnCtrlBusy) {
+            fnCtrlBusy = true
+            fnCtrlStatusRes = null
+            scope.launch {
+                val result = withContext(Dispatchers.IO) { applyFnCtrl(context) }
+                fnCtrlAlreadySet = result == FnCtrlApplyResult.SUCCESS
+                fnCtrlStatusRes = if (result == FnCtrlApplyResult.SUCCESS) {
+                    R.string.fn_ctrl_status_success
+                } else {
+                    R.string.fn_ctrl_status_failed
+                }
+                fnCtrlBusy = false
+            }
+        }
+    }
+
+    // Click handler: try Settings.System, then broker, else launch the grant screen.
+    fun runApplyFnCtrl() {
+        if (fnCtrlBusy) return
+        fnCtrlBusy = true
+        fnCtrlStatusRes = null
+        scope.launch {
+            val result = withContext(Dispatchers.IO) { applyFnCtrl(context) }
+            when (result) {
+                FnCtrlApplyResult.SUCCESS -> {
+                    fnCtrlAlreadySet = true
+                    fnCtrlStatusRes = R.string.fn_ctrl_status_success
+                }
+                FnCtrlApplyResult.NEEDS_PERMISSION -> {
+                    fnCtrlStatusRes = R.string.fn_ctrl_status_needs_permission
+                    runCatching {
+                        writeSettingsLauncher.launch(
+                            Intent(
+                                Settings.ACTION_MANAGE_WRITE_SETTINGS,
+                                Uri.parse("package:${context.packageName}")
+                            )
+                        )
+                    }
+                }
+                FnCtrlApplyResult.FAILED -> {
+                    fnCtrlStatusRes = R.string.fn_ctrl_status_failed
+                }
+            }
+            fnCtrlBusy = false
+        }
+    }
+
+    // Reset handler: restore the captured original Fn mapping (or turn the remap off).
+    fun runRevertFnCtrl() {
+        if (fnCtrlBusy) return
+        fnCtrlBusy = true
+        fnCtrlStatusRes = null
+        scope.launch {
+            val result = withContext(Dispatchers.IO) { revertFnCtrl(context) }
+            when (result) {
+                FnCtrlApplyResult.SUCCESS -> {
+                    fnCtrlAlreadySet = false
+                    fnCtrlStatusRes = R.string.fn_ctrl_reset_success
+                }
+                FnCtrlApplyResult.NEEDS_PERMISSION -> {
+                    fnCtrlStatusRes = R.string.fn_ctrl_status_needs_permission
+                    runCatching {
+                        writeSettingsLauncher.launch(
+                            Intent(
+                                Settings.ACTION_MANAGE_WRITE_SETTINGS,
+                                Uri.parse("package:${context.packageName}")
+                            )
+                        )
+                    }
+                }
+                FnCtrlApplyResult.FAILED -> {
+                    fnCtrlStatusRes = R.string.fn_ctrl_reset_failed
+                }
+            }
+            fnCtrlBusy = false
+        }
+    }
+
     // Handle system back button
     BackHandler { onBack() }
-    
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -162,6 +264,88 @@ fun NavModeSettingsScreen(
             }
         }
         
+        // Set Fn key to Ctrl (experimental, Titan 2 Elite)
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(enabled = !fnCtrlBusy) { runApplyFnCtrl() }
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.fn_ctrl_map_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = stringResource(R.string.fn_ctrl_map_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                    Text(
+                        text = stringResource(R.string.fn_ctrl_map_warning),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 6.dp)
+                    )
+                    if (fnCtrlAlreadySet) {
+                        Text(
+                            text = stringResource(R.string.fn_ctrl_map_already_set),
+                            style = MaterialTheme.typography.labelLarge,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 6.dp)
+                        )
+                    }
+                    fnCtrlStatusRes?.let { res ->
+                        Text(
+                            text = stringResource(res),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 6.dp)
+                        )
+                    }
+                    if (fnCtrlAlreadySet && !fnCtrlBusy) {
+                        TextButton(
+                            onClick = { runRevertFnCtrl() },
+                            contentPadding = PaddingValues(horizontal = 0.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = stringResource(R.string.fn_ctrl_reset_action),
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                if (fnCtrlBusy) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    OutlinedButton(onClick = { runApplyFnCtrl() }) {
+                        Text(
+                            text = stringResource(R.string.fn_ctrl_map_action),
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+                }
+            }
+        }
+
         // Enable/Disable toggle
         Surface(
             modifier = Modifier.fillMaxWidth()
@@ -956,6 +1140,102 @@ private fun getMappingLabelShort(mapping: KeyMappingLoader.CtrlMapping): String?
         "none" -> null // Don't show label for "none"
         else -> null
     }
+}
+
+// --- Fn -> Ctrl system remap (experimental, Titan 2 Elite) ---------------------
+// Unihertz stores the programmable-key mapping in Settings.System as integers.
+// function = 1 is INFERRED to mean Ctrl from a Titan 2 Elite that had Fn=Ctrl set;
+// it may differ on other firmware, and a reboot may be needed to take effect.
+private const val FN_KEY_ENABLE = "fn_programmable_key_enable"
+private const val FN_KEY_FUNCTION = "fn_programmable_key_function"
+
+private enum class FnCtrlApplyResult { SUCCESS, NEEDS_PERMISSION, FAILED }
+
+/** True when the system already reports Fn mapped to Ctrl (enable=1, function=1). */
+private fun readFnCtrlSet(context: Context): Boolean = runCatching {
+    val cr = context.contentResolver
+    Settings.System.getInt(cr, FN_KEY_ENABLE, -1) == 1 &&
+        Settings.System.getInt(cr, FN_KEY_FUNCTION, -1) == 1
+}.getOrDefault(false)
+
+/**
+ * Snapshot the device's ORIGINAL programmable-key values before we first overwrite them, so
+ * [revertFnCtrl] can restore the exact prior state. No-op once captured. UNSET is stored when
+ * the system has no value for a key, so revert can then clear it back to "unset" (enable=0).
+ */
+private fun captureFnCtrlOriginalIfNeeded(context: Context) {
+    if (SettingsManager.isFnCtrlOriginalCaptured(context)) return
+    val cr = context.contentResolver
+    val enable = runCatching {
+        Settings.System.getInt(cr, FN_KEY_ENABLE, SettingsManager.FN_CTRL_VALUE_UNSET)
+    }.getOrDefault(SettingsManager.FN_CTRL_VALUE_UNSET)
+    val function = runCatching {
+        Settings.System.getInt(cr, FN_KEY_FUNCTION, SettingsManager.FN_CTRL_VALUE_UNSET)
+    }.getOrDefault(SettingsManager.FN_CTRL_VALUE_UNSET)
+    SettingsManager.captureFnCtrlOriginal(context, enable, function)
+}
+
+/**
+ * Apply the Fn -> Ctrl mapping. BLOCKING (broker path does network IO) — call OFF the
+ * main thread. Never throws. Captures the original values first (once). Preferred path:
+ * Settings.System when WRITE_SETTINGS is held. Fallback: the embedded ADB broker's shell.
+ * If neither is available, returns NEEDS_PERMISSION so the caller can launch the grant screen.
+ */
+private fun applyFnCtrl(context: Context): FnCtrlApplyResult {
+    if (Settings.System.canWrite(context)) {
+        captureFnCtrlOriginalIfNeeded(context)
+        val ok = runCatching {
+            Settings.System.putInt(context.contentResolver, FN_KEY_ENABLE, 1)
+            Settings.System.putInt(context.contentResolver, FN_KEY_FUNCTION, 1)
+        }.getOrDefault(false)
+        return if (ok && readFnCtrlSet(context)) FnCtrlApplyResult.SUCCESS else FnCtrlApplyResult.FAILED
+    }
+    if (EmbeddedAdbShell.isPaired(context)) {
+        captureFnCtrlOriginalIfNeeded(context)
+        val enabled = runCatching {
+            EmbeddedAdbShell.runShell(context, "settings put system $FN_KEY_ENABLE 1")
+        }.getOrDefault(false)
+        val functioned = runCatching {
+            EmbeddedAdbShell.runShell(context, "settings put system $FN_KEY_FUNCTION 1")
+        }.getOrDefault(false)
+        return if (enabled && functioned) FnCtrlApplyResult.SUCCESS else FnCtrlApplyResult.FAILED
+    }
+    return FnCtrlApplyResult.NEEDS_PERMISSION
+}
+
+/**
+ * Undo [applyFnCtrl], restoring the captured original programmable-key values (or disabling
+ * the remap with enable=0 when the original was unset / never captured). BLOCKING — call OFF
+ * the main thread. Never throws. On success the captured snapshot is cleared. Same
+ * dual-path (Settings.System, then broker) and NEEDS_PERMISSION contract as apply.
+ */
+private fun revertFnCtrl(context: Context): FnCtrlApplyResult {
+    val captured = SettingsManager.isFnCtrlOriginalCaptured(context)
+    val prevEnable = SettingsManager.getFnCtrlOriginalEnable(context)
+    val prevFunction = SettingsManager.getFnCtrlOriginalFunction(context)
+    // Restore the captured value, or fall back to "off" (0) when it was unset/never captured.
+    val targetEnable = if (captured && prevEnable != SettingsManager.FN_CTRL_VALUE_UNSET) prevEnable else 0
+    val targetFunction = if (captured && prevFunction != SettingsManager.FN_CTRL_VALUE_UNSET) prevFunction else 0
+
+    if (Settings.System.canWrite(context)) {
+        val ok = runCatching {
+            Settings.System.putInt(context.contentResolver, FN_KEY_ENABLE, targetEnable)
+            Settings.System.putInt(context.contentResolver, FN_KEY_FUNCTION, targetFunction)
+        }.getOrDefault(false)
+        if (ok) SettingsManager.clearFnCtrlOriginal(context)
+        return if (ok) FnCtrlApplyResult.SUCCESS else FnCtrlApplyResult.FAILED
+    }
+    if (EmbeddedAdbShell.isPaired(context)) {
+        val enabled = runCatching {
+            EmbeddedAdbShell.runShell(context, "settings put system $FN_KEY_ENABLE $targetEnable")
+        }.getOrDefault(false)
+        val functioned = runCatching {
+            EmbeddedAdbShell.runShell(context, "settings put system $FN_KEY_FUNCTION $targetFunction")
+        }.getOrDefault(false)
+        if (enabled && functioned) SettingsManager.clearFnCtrlOriginal(context)
+        return if (enabled && functioned) FnCtrlApplyResult.SUCCESS else FnCtrlApplyResult.FAILED
+    }
+    return FnCtrlApplyResult.NEEDS_PERMISSION
 }
 
 private fun loadAllKeyMappings(context: Context, useDefaults: Boolean = false): Map<Int, KeyMappingLoader.CtrlMapping> {

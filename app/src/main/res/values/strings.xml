@@ -968,6 +968,27 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="layout_aware_ctrl_shortcuts_disabled_description">Disabled while Ctrl-hold navigation is active, because held Ctrl is handled by Fn Layer instead of the app.</string>
     <string name="layout_aware_ctrl_shortcuts_info_title">Ctrl shortcuts and Fn Layer</string>
     <string name="layout_aware_ctrl_shortcuts_info_text">There are two paths for held Ctrl. If Ctrl-hold navigation is on, Pastiera handles Ctrl+key with the Fn Layer mappings shown below. If Ctrl-hold navigation is off, Pastiera passes Ctrl+key to the app. This option only affects that app path: when enabled, Ctrl+letter is translated through the active Pastiera layout first, so shortcuts can follow the letters you type. When disabled, apps receive the original physical key positions.</string>
+    <string name="fn_ctrl_map_title">Set Fn key to Ctrl</string>
+    <string name="fn_ctrl_map_description">Map the Fn key to Ctrl at the system level, so Fn works as Ctrl everywhere (recommended for Titan 2 Elite). Experimental and Titan-specific: the Ctrl mapping is inferred from a device that had Fn=Ctrl set, so it may behave differently on other firmware, and a reboot may be needed.</string>
+    <string name="fn_ctrl_map_already_set">Fn is set to Ctrl ✓</string>
+    <string name="fn_ctrl_map_action">Set Fn → Ctrl</string>
+    <string name="fn_ctrl_map_working">Applying…</string>
+    <string name="fn_ctrl_status_success">Fn is now Ctrl — you may need to reboot for it to fully apply.</string>
+    <string name="fn_ctrl_status_needs_permission">Opening the write-settings screen — grant \"Modify system settings\" for PhysiBoard, then tap again.</string>
+    <string name="fn_ctrl_status_failed">Couldn\'t apply the mapping. Grant PhysiBoard \"Modify system settings\", or pair the backlight (wireless debugging), then try again.</string>
+    <string name="fn_ctrl_map_warning">⚠ This changes a system-wide setting that affects every keyboard and stays after you uninstall PhysiBoard. You can undo it here anytime.</string>
+    <string name="fn_ctrl_reset_action">Reset Fn key to default</string>
+    <string name="fn_ctrl_reset_success">Fn key restored — you may need to reboot for it to fully apply.</string>
+    <string name="fn_ctrl_reset_failed">Couldn\'t reset the Fn key. Grant PhysiBoard \"Modify system settings\", or pair the backlight (wireless debugging), then try again.</string>
+    <string name="reset_to_stock_title">Reset device settings to stock</string>
+    <string name="reset_to_stock_description">Undo the system-wide changes PhysiBoard made — the Fn key mapping and keyboard backlight — restoring your device to stock. Do this BEFORE uninstalling; uninstalling alone won\'t undo them.</string>
+    <string name="reset_to_stock_confirm_title">Reset device settings to stock?</string>
+    <string name="reset_to_stock_confirm_message">This restores the Fn key mapping and keyboard backlight to your device\'s stock settings. Your PhysiBoard preferences are kept. You can re-apply these features anytime.</string>
+    <string name="reset_to_stock_confirm_action">Reset to stock</string>
+    <string name="reset_to_stock_confirm_cancel">Cancel</string>
+    <string name="reset_to_stock_result_success">Device settings restored to stock.</string>
+    <string name="reset_to_stock_result_partial">Some settings were restored. A reboot may be needed for changes to fully apply.</string>
+    <string name="reset_to_stock_result_needs_permission">Grant PhysiBoard \"Modify system settings\", or pair wireless debugging, then try again.</string>
     <string name="nav_mode_key_mappings">Key Mappings</string>
     <string name="nav_mode_revert_to_default">Revert to Default</string>
     <string name="nav_mode_note">Note: Modifying Fn Layer keys also affects Ctrl+key combinations in text fields.</string>
@@ -1595,6 +1616,8 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="trackpad_debug_service_description">Displays trackpad events in a small overlay for debugging purposes</string>
 
     <!-- Status Bar Buttons Configuration -->
+    <string name="show_status_bar_title">Show status bar</string>
+    <string name="show_status_bar_description">Off hides the on-screen bar entirely — handy with the Titan\'s physical keyboard.</string>
     <string name="status_bar_buttons_title">Status Bar</string>
     <string name="status_bar_buttons_description">Configure the Status Bar and Pastierina Mode.</string>
     <string name="status_bar_style_section">Status bar style</string>

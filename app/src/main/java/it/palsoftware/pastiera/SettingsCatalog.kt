@@ -51,6 +51,7 @@ object SettingsCatalog {
         SettingsSearchEntry(R.string.settings_category_auto_correction, R.string.settings_category_auto_correction, SettingsSearchTarget.AUTO_CORRECTION, "autocorrect spell dictionary suggestions typo"),
         SettingsSearchEntry(R.string.settings_category_customization, R.string.settings_category_customization, SettingsSearchTarget.CUSTOMIZATION, "customize variations shortcuts"),
         SettingsSearchEntry(R.string.settings_category_advanced, R.string.settings_category_advanced, SettingsSearchTarget.ADVANCED, "trackpad clipboard backup restore export import debug"),
+        SettingsSearchEntry(R.string.reset_to_stock_title, R.string.settings_category_advanced, SettingsSearchTarget.ADVANCED, "reset stock uninstall undo revert fn ctrl backlight system default factory"),
         SettingsSearchEntry(R.string.about_title, R.string.about_title, SettingsSearchTarget.ABOUT, "version credits license update"),
         SettingsSearchEntry(R.string.custom_input_styles_title, R.string.custom_input_styles_title, SettingsSearchTarget.CUSTOM_INPUT_STYLES, "language layout azerty qwertz input style"),
         SettingsSearchEntry(R.string.app_language_title, R.string.app_language_title, SettingsSearchTarget.APP_LANGUAGE, "language locale translate"),

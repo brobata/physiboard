@@ -34,9 +34,13 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.SettingsBackupRestore
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.TouchApp
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -70,8 +74,10 @@ import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.backup.BackupManager
 import it.palsoftware.pastiera.backup.RestoreManager
 import androidx.compose.material3.Surface
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -104,6 +110,8 @@ fun AdvancedSettingsScreen(
         mutableStateOf(SettingsManager.getClipboardRetentionTime(context).toString())
     }
     var shizukuStatus by remember { mutableStateOf(ShizukuStatus.NotConnected) }
+    var showResetToStockDialog by remember { mutableStateOf(false) }
+    var resetToStockInProgress by remember { mutableStateOf(false) }
     var trackpadProvider by remember { mutableStateOf(SettingsManager.getTrackpadProvider(context)) }
     var navigationDirection by remember { mutableStateOf(AdvancedNavigationDirection.Push) }
     val navigationStack = remember {
@@ -430,6 +438,93 @@ fun AdvancedSettingsScreen(
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
+                        }
+
+                        // Reset device settings to stock — undoes EVERY system-wide change
+                        // PhysiBoard can make (Fn->Ctrl, keyboard backlight). Survives uninstall,
+                        // so the user must tap this BEFORE uninstalling.
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(enabled = !resetToStockInProgress) {
+                                    showResetToStockDialog = true
+                                }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.SettingsBackupRestore,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = stringResource(R.string.reset_to_stock_title),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 2
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.reset_to_stock_description),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                if (resetToStockInProgress) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(24.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+
+                        if (showResetToStockDialog) {
+                            AlertDialog(
+                                onDismissRequest = { showResetToStockDialog = false },
+                                title = { Text(stringResource(R.string.reset_to_stock_confirm_title)) },
+                                text = { Text(stringResource(R.string.reset_to_stock_confirm_message)) },
+                                confirmButton = {
+                                    TextButton(onClick = {
+                                        showResetToStockDialog = false
+                                        resetToStockInProgress = true
+                                        scope.launch {
+                                            val result = withContext(Dispatchers.IO) {
+                                                SystemChangeManager.resetToStock(context)
+                                            }
+                                            resetToStockInProgress = false
+                                            val message = when {
+                                                result.allSucceeded ->
+                                                    context.getString(R.string.reset_to_stock_result_success)
+                                                result.needsPermission ->
+                                                    context.getString(R.string.reset_to_stock_result_needs_permission)
+                                                else ->
+                                                    context.getString(R.string.reset_to_stock_result_partial)
+                                            }
+                                            snackbarHostState.showSnackbar(message)
+                                        }
+                                    }) {
+                                        Text(stringResource(R.string.reset_to_stock_confirm_action))
+                                    }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = { showResetToStockDialog = false }) {
+                                        Text(stringResource(R.string.reset_to_stock_confirm_cancel))
+                                    }
+                                }
+                            )
                         }
 
                         // Swipe Bar Sensitivity hidden — it tunes the on-screen VariationBar
