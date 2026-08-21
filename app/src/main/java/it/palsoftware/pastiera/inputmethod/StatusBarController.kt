@@ -412,8 +412,24 @@ class StatusBarController(
     ): KeyboardThemeColors =
         activeThemeSettings(isFullSoftwareKeyboardMode).toKeyboardThemeColors()
 
+    /**
+     * Bar background that rounds its bottom corners to match the phone's rounded display,
+     * so the bar conforms to the screen instead of squaring off into the corners.
+     */
+    private fun barBackground(color: Int): android.graphics.drawable.Drawable {
+        if (!SettingsManager.getTitan2EliteRoundedCornerInsetsEnabled(context)) {
+            return android.graphics.drawable.ColorDrawable(color)
+        }
+        val r = dpToPx(TITAN_2_ELITE_CORNER_FALLBACK_DP).toFloat()
+        return GradientDrawable().apply {
+            setColor(color)
+            // top corners square (butts against the field above), bottom corners rounded.
+            cornerRadii = floatArrayOf(0f, 0f, 0f, 0f, r, r, r, r)
+        }
+    }
+
     private fun applyKeyboardThemeOverrides(activeColors: KeyboardThemeColors) {
-        statusBarLayout?.setBackgroundColor(activeColors.background)
+        statusBarLayout?.background = barBackground(activeColors.background)
         symSurfaceStack?.setBackgroundColor(activeColors.background)
         symSurfaceContainer?.setBackgroundColor(activeColors.background)
         emojiKeyboardContainer?.setBackgroundColor(activeColors.background)
@@ -604,13 +620,15 @@ class StatusBarController(
                     } else {
                         0
                     }
+                    // Let the outer buttons fill to the screen edge; the physical rounded
+                    // display crops their corners into a curve. Still pad for nav/cutout.
                     val appliedLeftPadding = baseLeftPadding + if (useTitan2EliteRoundedCornerInsets) {
-                        max(max(navAndGestures.left, cutout.left), leftCornerInset)
+                        max(navAndGestures.left, cutout.left)
                     } else {
                         0
                     }
                     val appliedRightPadding = baseRightPadding + if (useTitan2EliteRoundedCornerInsets) {
-                        max(max(navAndGestures.right, cutout.right), rightCornerInset)
+                        max(navAndGestures.right, cutout.right)
                     } else {
                         0
                     }
@@ -1012,7 +1030,8 @@ class StatusBarController(
     private fun buildMenuBarModifierIndicators(snapshot: StatusSnapshot): List<MenuBarModifierIndicator> {
         val indicators = mutableListOf<MenuBarModifierIndicator>()
         val shiftLocked = snapshot.capsLockEnabled
-        val shiftActive = (snapshot.shiftPhysicallyPressed || snapshot.shiftOneShot) && !shiftLocked
+        // One-shot / locked only; ignore a plain physical hold to avoid flashing on every press.
+        val shiftActive = snapshot.shiftOneShot && !shiftLocked
         if (shiftLocked || shiftActive) {
             indicators.add(
                 MenuBarModifierIndicator.Icon(
@@ -1024,7 +1043,7 @@ class StatusBarController(
         }
 
         val ctrlLocked = snapshot.ctrlLatchActive
-        val ctrlActive = (snapshot.ctrlPhysicallyPressed || snapshot.ctrlOneShot) && !ctrlLocked
+        val ctrlActive = snapshot.ctrlOneShot && !ctrlLocked
         if (ctrlLocked || ctrlActive) {
             indicators.add(
                 MenuBarModifierIndicator.Icon(
@@ -1036,7 +1055,7 @@ class StatusBarController(
         }
 
         val altLocked = snapshot.altLatchActive
-        val altActive = (snapshot.altPhysicallyPressed || snapshot.altOneShot) && !altLocked
+        val altActive = snapshot.altOneShot && !altLocked
         if (altLocked || altActive) {
             indicators.add(
                 MenuBarModifierIndicator.Icon(

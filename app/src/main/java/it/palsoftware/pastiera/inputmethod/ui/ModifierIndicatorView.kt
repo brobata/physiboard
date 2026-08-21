@@ -73,18 +73,8 @@ class ModifierIndicatorView(
             )
         }
 
-        val ctrlLocked = snapshot.ctrlLatchActive
-        val ctrlActive = (snapshot.ctrlPhysicallyPressed || snapshot.ctrlOneShot) && !ctrlLocked
-        if (ctrlLocked || ctrlActive) {
-            specs.add(
-                IndicatorSpec.Icon(
-                    resId = R.drawable.keyboard_control_key_24,
-                    locked = ctrlLocked,
-                    description = "Ctrl"
-                )
-            )
-        }
-
+        // Fn (mapped to Ctrl) and SYM indicators intentionally omitted — only Shift and Alt
+        // are surfaced here per user preference; the rest just add noise.
         val altLocked = snapshot.altLatchActive
         val altActive = (snapshot.altPhysicallyPressed || snapshot.altOneShot) && !altLocked
         if (altLocked || altActive) {
@@ -97,15 +87,6 @@ class ModifierIndicatorView(
             )
         }
 
-        if (snapshot.symPage > 0) {
-            specs.add(
-                IndicatorSpec.Text(
-                    label = if (snapshot.symPage == 2) "SYM" else "SYM",
-                    locked = snapshot.symPage == 2,
-                    description = "SYM"
-                )
-            )
-        }
         return specs
     }
 

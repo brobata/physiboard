@@ -22,6 +22,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.widget.TextViewCompat
 import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.SettingsActivity
+import it.palsoftware.pastiera.SettingsManager
 import it.palsoftware.pastiera.inputmethod.NotificationHelper
 import it.palsoftware.pastiera.inputmethod.suggestions.SuggestionButtonHandler
 import it.palsoftware.pastiera.inputmethod.VariationButtonHandler
@@ -55,6 +56,9 @@ class FullSuggestionsBar(
         private val DEFAULT_SUGGESTION_COLOR = Color.argb(100, 17, 17, 17)
         private const val FLASH_DURATION_MS = 160L
         private const val BASE_HEIGHT_DP = 36f
+        // How much wider a rounded corner-edge button (clipboard / mic) is vs a normal button.
+        // The center suggestion container is inset by the extra width so nothing overlaps.
+        private const val EDGE_WIDTH_MULTIPLIER = 2.15f
     }
 
     private var container: LinearLayout? = null
@@ -187,9 +191,10 @@ class FullSuggestionsBar(
                     targetHeightPx
                 ).apply {
                     gravity = Gravity.START or Gravity.CENTER_VERTICAL
+                    marginStart = ledEdgeInsetPx()
                 }
             }
-            
+
             frameContainer?.addView(container)
             modifierIndicatorsContainer?.let { frameContainer?.addView(it) }
             minimalLeftButtonsContainer?.let { frameContainer?.addView(it) }
@@ -494,16 +499,52 @@ class FullSuggestionsBar(
         val callbacks = (callbacksProvider?.invoke() ?: StatusBarCallbacks())
             .copy(onHamburgerMenuRequested = { toggleHamburgerMenu() })
 
-        fun addButton(buttonId: StatusBarButtonId, target: LinearLayout, isLast: Boolean) {
+        // Round the outer bottom corner of the buttons at the screen edges so they conform to
+        // the display's rounded corners instead of leaving a hard square corner. Same size as
+        // other buttons (no widening) and same theme color, so it reads as a subtle chamfer.
+        val roundEdges = SettingsManager.getTitan2EliteRoundedCornerInsetsEnabled(context)
+        val edgeWidth = (buttonSize * EDGE_WIDTH_MULTIPLIER).toInt()
+        val edgeOuterRadius = buttonSize * 0.9f
+        val edgeNormalColor = themeOverride?.statusBarButton ?: StatusBarButtonStyles.NORMAL_COLOR
+        val edgePressedColor = themeOverride?.accent ?: StatusBarButtonStyles.PRESSED_BLUE
+
+        fun addButton(buttonId: StatusBarButtonId, target: LinearLayout, isLast: Boolean, edgeSide: Int = 0) {
+            val isEdge = roundEdges && edgeSide != 0
+            val width = if (isEdge) edgeWidth else buttonSize
             val hosted = host.getOrCreateButton(
                 id = buttonId,
                 size = buttonSize,
                 callbacks = callbacks,
-                width = buttonSize,
+                width = width,
                 height = buttonSize
             ) ?: return
-            hosted.container.layoutParams = LinearLayout.LayoutParams(buttonSize, buttonSize).apply {
+            hosted.container.layoutParams = LinearLayout.LayoutParams(width, buttonSize).apply {
                 marginEnd = if (isLast) 0 else spacing
+            }
+            if (isEdge) {
+                // Wider, themed, rounded outer corner: fills the display corner cleanly.
+                hosted.button.background = StatusBarButtonStyles.createEdgeButtonDrawable(
+                    heightPx = buttonSize,
+                    leftEdge = edgeSide < 0,
+                    outerRadiusPx = edgeOuterRadius,
+                    normalColor = edgeNormalColor,
+                    pressedColor = edgePressedColor
+                )
+                // Lean the glyph toward the inner (text) side, leaving the extra width to hug
+                // the rounded display corner — so it reads as purposeful, not floating.
+                val basePad = (buttonSize * 0.18f).toInt()
+                // Lean only partway into the extra width so the glyph looks balanced, not shoved.
+                val lean = ((width - buttonSize).coerceAtLeast(0) * 0.5f).toInt()
+                (hosted.button as? ImageView)?.scaleType = ImageView.ScaleType.FIT_CENTER
+                if (edgeSide < 0) {
+                    // Left edge: nudge content right (inward).
+                    (hosted.button as? TextView)?.gravity = Gravity.END or Gravity.CENTER_VERTICAL
+                    hosted.button.setPadding(basePad + lean, basePad, basePad, basePad)
+                } else {
+                    // Right edge: nudge content left (inward).
+                    (hosted.button as? TextView)?.gravity = Gravity.START or Gravity.CENTER_VERTICAL
+                    hosted.button.setPadding(basePad, basePad, basePad + lean, basePad)
+                }
             }
             target.addView(hosted.container)
         }
@@ -517,10 +558,10 @@ class FullSuggestionsBar(
             .sortedBy { it.order }
 
         leftButtons.forEachIndexed { index, config ->
-            addButton(config.id, leftContainer, index == leftButtons.lastIndex)
+            addButton(config.id, leftContainer, index == leftButtons.lastIndex, edgeSide = if (index == 0) -1 else 0)
         }
         rightButtons.forEachIndexed { index, config ->
-            addButton(config.id, rightContainer, index == rightButtons.lastIndex)
+            addButton(config.id, rightContainer, index == rightButtons.lastIndex, edgeSide = if (index == rightButtons.lastIndex) 1 else 0)
         }
 
         leftContainer.visibility = if (leftButtons.isEmpty()) View.GONE else View.VISIBLE
@@ -534,13 +575,20 @@ class FullSuggestionsBar(
         val indicatorInset = modifierIndicatorsContainer?.takeIf {
             showModifierMenuIndicators && it.visibility == View.VISIBLE
         }?.let {
-            modifierIndicatorsWidthPx(it) + spacing
+            ledEdgeInsetPx() + modifierIndicatorsWidthPx(it) + spacing
         } ?: 0
+        // Extra width the edge buttons take beyond a normal button, so the center
+        // suggestion slots are inset enough to not sit under them.
+        val edgeExtraInset = if (SettingsManager.getTitan2EliteRoundedCornerInsetsEnabled(context)) {
+            ((targetHeightPx - dpToPx(4f)).coerceAtLeast(dpToPx(24f)) * (EDGE_WIDTH_MULTIPLIER - 1f)).toInt()
+        } else {
+            0
+        }
         val minimalLeftInset = if (showMinimalUiButtons) {
             minimalLeftButtonsContainer?.takeIf { it.visibility == View.VISIBLE }?.let {
                 it.childCount * (targetHeightPx - dpToPx(4f)).coerceAtLeast(dpToPx(24f)) +
                     (it.childCount - 1).coerceAtLeast(0) * spacing +
-                    spacing
+                    spacing + edgeExtraInset
             } ?: 0
         } else {
             0
@@ -560,7 +608,7 @@ class FullSuggestionsBar(
             minimalRightButtonsContainer?.takeIf { it.visibility == View.VISIBLE }?.let {
                 it.childCount * (targetHeightPx - dpToPx(4f)).coerceAtLeast(dpToPx(24f)) +
                     (it.childCount - 1).coerceAtLeast(0) * spacing +
-                    spacing
+                    spacing + edgeExtraInset
             } ?: 0
         } else {
             0
@@ -964,4 +1012,7 @@ class FullSuggestionsBar(
             context.resources.displayMetrics
         ).toInt()
     }
+
+    // Keep the modifier LED chips off the rounded display corner so they read as intentional.
+    private fun ledEdgeInsetPx(): Int = dpToPx(20f)
 }

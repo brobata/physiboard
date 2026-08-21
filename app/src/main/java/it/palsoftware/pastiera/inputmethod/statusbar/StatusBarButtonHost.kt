@@ -150,6 +150,15 @@ class StatusBarButtonHost(
         height: Int
     ): View {
         val frame = FrameLayout(context)
+        // Icon buttons default to CENTER scale, which pins a 24dp glyph at native size in a
+        // larger slot so it reads as tiny. Scale icons to fill their slot with balanced padding.
+        (button as? android.widget.ImageView)?.let { iv ->
+            if (iv.scaleType == android.widget.ImageView.ScaleType.CENTER) {
+                iv.scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+                val pad = (minOf(width, height) * 0.22f).toInt()
+                iv.setPadding(pad, pad, pad, pad)
+            }
+        }
         frame.addView(button, FrameLayout.LayoutParams(width, height))
 
         badgeView?.let { badge ->

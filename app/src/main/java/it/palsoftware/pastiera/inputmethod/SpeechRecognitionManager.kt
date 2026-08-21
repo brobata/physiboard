@@ -3,9 +3,13 @@ package it.palsoftware.pastiera.inputmethod
 import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
@@ -157,6 +161,7 @@ class SpeechRecognitionManager(
                         isComposingPartialText = false
                         // Notify that recognition is active (hint will be shown by the UI)
                         onRecognitionStateChanged?.invoke(true)
+                        playHapticCue(started = true)
                     }
 
                     override fun onBeginningOfSpeech() {
@@ -181,6 +186,7 @@ class SpeechRecognitionManager(
                     override fun onError(error: Int) {
                         // Notify that recognition is finished (due to error)
                         onRecognitionStateChanged?.invoke(false)
+                        playHapticCue(started = false)
                         
                         // Clear partial text on error
                         if (isComposingPartialText) {
@@ -218,6 +224,7 @@ class SpeechRecognitionManager(
                     override fun onResults(results: Bundle) {
                         // Notify that recognition is finished
                         onRecognitionStateChanged?.invoke(false)
+                        playHapticCue(started = false)
                         
                         val matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                         val confidenceScores = results.getFloatArray(SpeechRecognizer.CONFIDENCE_SCORES)
@@ -414,6 +421,18 @@ class SpeechRecognitionManager(
                 putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, context.packageName)
                 putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5)
                 putExtra(RecognizerIntent.EXTRA_PROMPT, context.getString(R.string.speech_recognition_prompt))
+                // Masking defaults to true in the recognizer, and keyboard-level Google voice
+                // typing settings do not apply to SpeechRecognizer sessions.
+                putExtra(
+                    RecognizerIntent.EXTRA_MASK_OFFENSIVE_WORDS,
+                    SettingsManager.getDictationMaskOffensive(context)
+                )
+                // End-of-speech pause: the recognizer treats these as hints and may ignore them.
+                val endSilenceMs = SettingsManager.getDictationEndSilenceMs(context)
+                if (endSilenceMs > 0) {
+                    putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, endSilenceMs)
+                    putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, endSilenceMs)
+                }
             }
             
             Log.d(TAG, "Starting speech recognition with language: $languageTag")
@@ -447,5 +466,33 @@ class SpeechRecognitionManager(
             clearPartialText()
         }
         Log.d(TAG, "SpeechRecognizer destroyed")
+    }
+
+    // A stop cue is only played for a session that played a start cue, so error callbacks
+    // arriving after the results callback cannot vibrate twice.
+    private var stopCuePending = false
+
+    private fun playHapticCue(started: Boolean) {
+        if (!SettingsManager.getDictationHapticsEnabled(context)) return
+        if (started) {
+            stopCuePending = true
+        } else {
+            if (!stopCuePending) return
+            stopCuePending = false
+        }
+        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)?.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+        } ?: return
+        val effect = if (started) {
+            // Two quick ticks: listening.
+            VibrationEffect.createWaveform(longArrayOf(0, 35, 70, 35), -1)
+        } else {
+            // One longer pulse: stopped.
+            VibrationEffect.createOneShot(90, VibrationEffect.DEFAULT_AMPLITUDE)
+        }
+        vibrator.vibrate(effect)
     }
 }

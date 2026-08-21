@@ -126,6 +126,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     
     // Speech recognition using SpeechRecognizer (modern approach)
     private var speechRecognitionManager: SpeechRecognitionManager? = null
+    private val keyboardBacklightManager by lazy { KeyboardBacklightManager(this) }
     private var isSpeechRecognitionActive: Boolean = false
     private var pendingSpeechRecognition: Boolean = false
     
@@ -247,6 +248,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     private val DOUBLE_TAP_THRESHOLD = 500L
     private val CURSOR_UPDATE_DELAY = 50L
     private val MULTI_TAP_TIMEOUT_MS = 400L
+    // 5 repeats at ~50ms adds ~200ms of hold beyond the point the vendor starts delivering
+    // them (~400ms in), ~600ms total. Chorded keys arrive earlier than that and block.
+    private val FN_SPEECH_TRIGGER_EVENT_COUNT = 5
+    // Longer than the ~50ms repeat interval, short enough to separate two distinct holds.
+    private val FN_SPEECH_BURST_RESET_MS = 200L
 
     // Modifier/nav/SYM controllers
     private lateinit var modifierStateController: ModifierStateController
@@ -312,6 +318,27 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     private var dispatchingClicksAccessibilityKeyEvent = false
     private var replayingProtectedNumberKey = false
     private val uiHandler = Handler(Looper.getMainLooper())
+    // Fn long-press speech shortcut. The physical Fn key is matched by scan code because the
+    // system may remap it to an arbitrary key code (Ctrl on Titan devices). On Titan 2 the
+    // vendor layer never delivers the key's initial down (repeat 0) or its release: while Fn
+    // is held it only emits auto-repeat events (~50ms apart, starting at the system long-press
+    // threshold), and quick chords apply Ctrl purely as meta state on the other key. A "long
+    // press" is therefore a burst of consecutive Fn repeats with no other key in between; the
+    // burst state resets when the repeats stop arriving.
+    private var fnSpeechBurstEventCount = 0
+    private var fnSpeechBurstBlocked = false
+    private val fnSpeechBurstResetRunnable = Runnable {
+        if (fnSpeechBurstEventCount > 0) {
+            Log.d(TAG, "fnSpeech: burst reset (count=$fnSpeechBurstEventCount blocked=$fnSpeechBurstBlocked)")
+        }
+        fnSpeechBurstEventCount = 0
+        fnSpeechBurstBlocked = false
+    }
+
+    private fun isFnSpeechKey(keyCode: Int, event: KeyEvent?): Boolean =
+        event?.scanCode == SettingsManager.getFnSpeechScanCode(this) ||
+            keyCode == KeyEvent.KEYCODE_FUNCTION
+
     private var inputManager: InputManager? = null
     private var lastObservedAutoSoftwareKeyboardMode: SettingsManager.SoftwareKeyboardMode? = null
     private var pendingInputDeviceModeRefresh: Runnable? = null
@@ -394,7 +421,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         get() = if (::symLayoutController.isInitialized) symLayoutController.currentSymPage() else 0
 
     private fun updateInputContextState(info: EditorInfo?) {
-        inputContextState = InputContextState.fromEditorInfo(info)
+        inputContextState = InputContextState.fromEditorInfo(
+            info,
+            isRawModeApp = SettingsManager.isRawModeApp(this, info?.packageName)
+        )
     }
 
     private fun markSelectionUpdateSkipAfterCommit() {
@@ -1557,6 +1587,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         // Clear legacy nav mode notification since we now rely on the status icon only.
         NotificationHelper.cancelNavModeNotification(this)
 
+        keyboardBacklightManager.start()
+
         modifierStateController = ModifierStateController(DOUBLE_TAP_THRESHOLD)
         updateModifierTapLatchSettings()
         navModeController = NavModeController(this, modifierStateController)
@@ -2564,6 +2596,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     }
     
     override fun onDestroy() {
+        keyboardBacklightManager.stop()
         ClicksAccessibilityKeyBridge.unregister(this)
         accidentalKeyPressFilter.reset()
         clicksPowerButtonEventMapper.reset()
@@ -4111,7 +4144,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
             // Consumiamo l'evento per evitare il popup di Android
             return true
         }
-        
+
         return super.onKeyLongPress(keyCode, event)
     }
 
@@ -4154,6 +4187,40 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
             return true
         }
 
+        if (SettingsManager.getFnLongPressSpeechEnabled(this)) {
+            if (isFnSpeechKey(keyCode, event)) {
+                uiHandler.removeCallbacks(fnSpeechBurstResetRunnable)
+                uiHandler.postDelayed(fnSpeechBurstResetRunnable, FN_SPEECH_BURST_RESET_MS)
+                if (!fnSpeechBurstBlocked) {
+                    fnSpeechBurstEventCount++
+                    if (fnSpeechBurstEventCount == 1) {
+                        Log.d(TAG, "fnSpeech: burst started (repeat=${event?.repeatCount})")
+                    }
+                    if (fnSpeechBurstEventCount >= FN_SPEECH_TRIGGER_EVENT_COUNT) {
+                        Log.d(TAG, "fnSpeech: TRIGGER at count=$fnSpeechBurstEventCount")
+                        fnSpeechBurstBlocked = true
+                        modifierStateController.clearCtrlState(resetPressedState = true)
+                        modifierStateController.clearAltState(resetPressedState = true)
+                        updateStatusBarText()
+                        startSpeechRecognition()
+                        return true
+                    }
+                }
+                // Consume every Fn-origin event: the vendor never delivers this key's
+                // release, so letting its remapped Ctrl downs into the modifier state
+                // machine leaves Ctrl stuck "pressed" and breaks Alt/Ctrl chords until
+                // something clears it. Real chords are unaffected — the Ctrl meta flag
+                // arrives on the chorded key's own event.
+                return true
+            } else if (fnSpeechBurstEventCount > 0) {
+                // Another key during the burst is a chord, not a speech request.
+                if (!fnSpeechBurstBlocked) {
+                    Log.d(TAG, "fnSpeech: blocked by chord key=$keyCode at count=$fnSpeechBurstEventCount")
+                }
+                fnSpeechBurstBlocked = true
+            }
+        }
+
         // Check if we have an editable field at the very start
         val info = currentInputEditorInfo
         val initialInputConnection = currentInputConnection
@@ -4165,6 +4232,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         if (hasEditableField && ::candidatesBarController.isInitialized) {
             candidatesBarController.resetSuggestionActionMode()
         }
+
+        keyboardBacklightManager.onKeyActivity()
 
         if (shouldPlayTypingSound(hasEditableField, keyCode, event)) {
             typingSoundPlayer.play(keyCode)
@@ -4805,6 +4874,17 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
                 outputKeyCodeName = suppressed.debugOutput()
             )
             return true
+        }
+
+        if (SettingsManager.getFnLongPressSpeechEnabled(this) && isFnSpeechKey(keyCode, event)) {
+            // Titan devices never deliver this release; on devices that do, end the burst and
+            // swallow the release of a triggered hold so the modifier does not latch one-shot.
+            val triggered = fnSpeechBurstEventCount >= FN_SPEECH_TRIGGER_EVENT_COUNT
+            uiHandler.removeCallbacks(fnSpeechBurstResetRunnable)
+            fnSpeechBurstResetRunnable.run()
+            if (triggered) {
+                return true
+            }
         }
 
         // Check if we have an editable field at the start (same logic as onKeyDown)

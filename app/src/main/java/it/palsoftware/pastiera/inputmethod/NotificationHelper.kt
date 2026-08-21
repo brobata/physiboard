@@ -1,11 +1,13 @@
 package it.palsoftware.pastiera.inputmethod
 
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.provider.Settings
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -24,6 +26,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.IconCompat
 import it.palsoftware.pastiera.R
+import it.palsoftware.pastiera.SettingsActivity
 import it.palsoftware.pastiera.SettingsManager
 import it.palsoftware.pastiera.update.GITHUB_RELEASES_PAGE
 
@@ -317,5 +320,101 @@ object NotificationHelper {
     fun cancelNavModeNotification(context: Context) {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.cancel(NOTIFICATION_ID)
+    }
+
+    // ---- Smart-backlight guidance notification --------------------------------------------------
+    // Posted from the physi BootReceiver when the backlight can't work after a reboot, and cancelled
+    // by the IME's KeyboardBacklightManager once wireless debugging is back on / the LED re-arms.
+    // A stable id updates in place rather than stacking. No foreground service is involved.
+
+    const val BACKLIGHT_GUIDANCE_CHANNEL_ID = "backlight_guidance"
+    const val BACKLIGHT_GUIDANCE_NOTIF_ID = 4712
+
+    /** Creates the low-importance guidance channel if missing (Android 8.0+). */
+    fun ensureBacklightGuidanceChannel(context: Context) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
+        if (nm.getNotificationChannel(BACKLIGHT_GUIDANCE_CHANNEL_ID) == null) {
+            nm.createNotificationChannel(
+                NotificationChannel(
+                    BACKLIGHT_GUIDANCE_CHANNEL_ID,
+                    "Keyboard backlight",
+                    NotificationManager.IMPORTANCE_LOW
+                ).apply {
+                    description = "Reminds you when the keyboard backlight needs attention."
+                    setShowBadge(false)
+                }
+            )
+        }
+    }
+
+    /**
+     * Posts the single smart-backlight guidance notification. No foreground service required — a
+     * BroadcastReceiver may call this directly on boot.
+     *
+     * @param paused true = paired but Wireless debugging is off ("paused", deep-links to Developer
+     *   options); false = never paired ("setup", deep-links to the Smart Backlight screen).
+     *
+     * No-op if POST_NOTIFICATIONS is not granted. Fully wrapped so it can never throw at a caller.
+     */
+    fun postBacklightGuidance(context: Context, paused: Boolean) {
+        if (!hasNotificationPermission(context)) return
+        try {
+            ensureBacklightGuidanceChannel(context)
+
+            val pendingFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            } else {
+                PendingIntent.FLAG_UPDATE_CURRENT
+            }
+
+            val title: String
+            val text: String
+            val pending: PendingIntent
+            if (paused) {
+                title = "Keyboard backlight paused"
+                text = "Turn on Wireless debugging to restore it."
+                val intent = Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                pending = PendingIntent.getActivity(context, 1, intent, pendingFlags)
+            } else {
+                title = "Finish backlight setup"
+                text = "Open PhysiBoard to pair once."
+                val intent = Intent(context, SettingsActivity::class.java)
+                    .putExtra(SettingsActivity.EXTRA_DESTINATION, SettingsActivity.DESTINATION_SMART_BACKLIGHT)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                pending = PendingIntent.getActivity(context, 2, intent, pendingFlags)
+            }
+
+            val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                Notification.Builder(context, BACKLIGHT_GUIDANCE_CHANNEL_ID)
+            } else {
+                @Suppress("DEPRECATION")
+                Notification.Builder(context)
+            }
+            val notification = builder
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setContentTitle(title)
+                .setContentText(text)
+                .setContentIntent(pending)
+                .setAutoCancel(true)
+                .setOngoing(false)
+                .build()
+
+            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
+            nm.notify(BACKLIGHT_GUIDANCE_NOTIF_ID, notification)
+        } catch (t: Throwable) {
+            android.util.Log.w("NotificationHelper", "postBacklightGuidance failed", t)
+        }
+    }
+
+    /** Cancels the smart-backlight guidance notification. Safe from any thread; never throws. */
+    fun cancelBacklightGuidance(context: Context) {
+        try {
+            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
+            nm.cancel(BACKLIGHT_GUIDANCE_NOTIF_ID)
+        } catch (t: Throwable) {
+            android.util.Log.w("NotificationHelper", "cancelBacklightGuidance failed", t)
+        }
     }
 }

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Strings for the vendored Shizuku ADB pairing service (AdbPairingService) -->
+    <string name="notification_channel_adb_pairing">ADB pairing</string>
+    <string name="notification_adb_pairing_searching_for_service_title">Searching for pairing service…</string>
+    <string name="notification_adb_pairing_service_found_title">Pairing service found</string>
+    <string name="notification_adb_pairing_working_title">Pairing…</string>
+    <string name="notification_adb_pairing_succeed_title">Paired successfully</string>
+    <string name="notification_adb_pairing_succeed_text">This device can now connect to wireless debugging.</string>
+    <string name="notification_adb_pairing_failed_title">Pairing failed</string>
+    <string name="notification_adb_pairing_stop_searching">Stop</string>
+    <string name="notification_adb_pairing_retry">Retry</string>
+    <string name="notification_adb_pairing_input_paring_code">Enter pairing code</string>
+    <string name="dialog_adb_pairing_paring_code">Pairing code</string>
+    <string name="cannot_connect_port">Cannot connect to the pairing port.</string>
+    <string name="paring_code_is_wrong">The pairing code is wrong.</string>
+    <string name="adb_error_key_store">Failed to access the ADB key store.</string>
+</resources>

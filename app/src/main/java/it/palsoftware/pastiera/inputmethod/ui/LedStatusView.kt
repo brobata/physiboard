@@ -101,17 +101,16 @@ class LedStatusView(
     fun getView(): LinearLayout? = container
 
     fun update(snapshot: StatusBarController.StatusSnapshot) {
+        // Only light for armed (one-shot) or locked states; a plain physical hold is
+        // ignored so the strip does not flash during every keypress.
         val shiftLocked = snapshot.capsLockEnabled
-        val shiftActive = (snapshot.shiftPhysicallyPressed || snapshot.shiftOneShot) && !shiftLocked
-        updateLed(shiftLed, shiftLocked, shiftActive)
+        updateLed(shiftLed, shiftLocked, snapshot.shiftOneShot && !shiftLocked)
 
         val ctrlLocked = snapshot.ctrlLatchActive
-        val ctrlActive = (snapshot.ctrlPhysicallyPressed || snapshot.ctrlOneShot) && !ctrlLocked
-        updateLed(ctrlLed, ctrlLocked, ctrlActive)
+        updateLed(ctrlLed, ctrlLocked, snapshot.ctrlOneShot && !ctrlLocked)
 
         val altLocked = snapshot.altLatchActive
-        val altActive = (snapshot.altPhysicallyPressed || snapshot.altOneShot) && !altLocked
-        updateLed(altLed, altLocked, altActive)
+        updateLed(altLed, altLocked, snapshot.altOneShot && !altLocked)
 
         updateSymLed(symLed, snapshot.symPage)
     }
