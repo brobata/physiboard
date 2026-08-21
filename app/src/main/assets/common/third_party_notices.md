@@ -13,6 +13,30 @@ The Apache License, Version 2.0 text is included in `assets/common/licenses/Apac
 
 Pastiera does not import AOSP dictionaries.
 
+## JetBrains Mono
+
+The PhysiBoard app UI is typeset in JetBrains Mono (the "PhysiBoard Terminal" brand face). The font files are redistributed unmodified under the SIL Open Font License 1.1.
+
+- Project: JetBrains Mono
+- Source repository: https://github.com/JetBrains/JetBrainsMono
+- Copyright: 2020 The JetBrains Mono Project Authors
+- License: SIL Open Font License, Version 1.1
+
+The SIL Open Font License, Version 1.1 text is included in the repository under `third_party/licenses/OFL-1.1.txt`.
+
+## Shizuku wireless-ADB implementation (vendored)
+
+PhysiBoard's self-contained keyboard-backlight control pairs with the device's own Wireless Debugging using Shizuku's ADB pairing/connection classes, vendored with their original `moe.shizuku.manager.adb` package name preserved for attribution.
+
+- Project: Shizuku, by RikkaApps
+- Source repository: https://github.com/RikkaApps/Shizuku
+- License: Apache License, Version 2.0
+- Vendored source: `app/src/main/java/moe/shizuku/manager/adb/` (AdbClient, AdbKey, AdbMdns, AdbMessage, AdbPairingClient, AdbPairingService, AdbProtocol, AdbException)
+
+The bundled prebuilt native library `libadb.so` (`app/src/main/jniLibs/arm64-v8a/libadb.so`) is built from the Shizuku project's native `adb` module, which incorporates BoringSSL for the SPAKE2 pairing handshake and TLS. The JNI entry class name `moe/shizuku/manager/adb/PairingContext` is hardcoded in the binary and is therefore preserved in the vendored Kotlin sources.
+
+The Apache License, Version 2.0 text is included in `assets/common/licenses/Apache-2.0.txt` and in the repository under `third_party/licenses/Apache-2.0.txt`. BoringSSL is distributed under the OpenSSL License / ISC-style terms as documented in the BoringSSL source (https://boringssl.googlesource.com/boringssl).
+
 ## Google Material Symbols / Material Icons
 
 Pastiera uses icon artwork from Google Material Symbols / Material Icons for parts of the app UI and keyboard chrome.

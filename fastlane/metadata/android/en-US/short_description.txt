@@ -1,1 +1,1 @@
-Physical-keyboard Android IME with shortcuts, gestures, layouts, and backup.
+Physical-keyboard Android keyboard: hold-Fn dictation, smart backlight, and more.

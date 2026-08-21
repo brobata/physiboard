@@ -1,13 +1,16 @@
-Pastiera is an input method for Android devices with a physical keyboard.
+PhysiBoard is a physical-keyboard-first input method for Android, tuned for the Unihertz Titan 2 Elite. It is a fork of Pastiera by PalSoftware, adding a focused set of hardware-keyboard features on top of that engine.
 
-It is designed to make typing faster through shortcuts, gestures, and extensive layout customization.
+Fork highlights:
+- Hold the Fn key in any text field to start voice dictation (adjustable end-of-speech pause, profanity masking, haptic cues).
+- Smart keyboard backlight that stays lit in the dark past the vendor's 30-second cap, driven in-app with no companion app and no root.
+- A clean terminal-style UI and an action-surface home screen that only shows what needs attention.
+- Sensible out-of-box defaults and a two-step setup.
 
-Features include:
-- long-press mappings and configurable modifier behavior
-- navigation shortcuts and cursor movement gestures
-- customizable keyboard layouts and symbol pages
-- clipboard history and user dictionaries
-- backup and restore of settings and custom data
+Inherited from Pastiera:
+- Long-press mappings and configurable modifier behavior.
+- A navigation/shortcut layer and physical-key cursor gestures.
+- Customizable keyboard layouts and symbol pages with JSON import/export.
+- Clipboard history, user dictionaries, suggestions, and autocorrection.
+- Full backup and restore of settings and custom data.
 
-The stable release is prepared for the official F-Droid build path.
-Nightly builds use a separate application ID and are intended for a private repository.
+PhysiBoard is licensed under the GNU General Public License v3, the same as Pastiera.

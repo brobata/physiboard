@@ -1,0 +1,47 @@
+# a72 KeyLayout
+
+# ROW1
+key 16    Q
+key 17    W
+key 18    E
+key 19    R
+key 20    T
+key 21    Y
+key 22    U
+key 23    I
+key 24    O
+key 25    P
+
+# ROW2
+key 30    A
+key 31    S
+key 32    D
+key 33    F
+key 34    G
+key 35    H
+key 36    J
+key 37    K
+key 38    L
+key 14    DEL
+
+# ROW3
+key 56    ALT_LEFT
+key 44    Z
+key 45    X
+key 46    C
+key 47    V
+key 48    B
+key 49    N
+key 50    M
+key 253   AGUI_SYM
+key 28    ENTER
+
+# ROW4
+key 42    SHIFT_LEFT
+key 158   BACK
+key 102   HOME
+key 57    SPACE
+key 580   APP_SWITCH
+key 251   FUNC3
+key 54    SHIFT_RIGHT
+

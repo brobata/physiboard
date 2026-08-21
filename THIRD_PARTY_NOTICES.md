@@ -1,6 +1,60 @@
 # Third-party Notices
 
-Pastiera is licensed under the GNU General Public License version 3. Some components are derived from third-party open source projects and retain their original attribution requirements.
+PhysiBoard (a GPLv3 fork of Pastiera) is licensed under the GNU General Public License
+version 3. Some components are derived from or vendored from third-party open source
+projects and retain their original attribution requirements.
+
+## Pastiera (upstream project)
+
+- Project: Pastiera, by Andrea Palumbo (PalSoftware) and contributors
+- Source repository: https://github.com/palsoftware/pastiera
+- License: GNU General Public License, version 3 (`LICENSE`)
+
+PhysiBoard is a fork of Pastiera. The entire keyboard engine and the majority of this
+codebase originate there; fork changes are documented in `PHYSIBOARD_CHANGES.md` per
+GPLv3 §5(a).
+
+## JetBrains Mono
+
+- Project: JetBrains Mono
+- Source repository: https://github.com/JetBrains/JetBrainsMono
+- Copyright: 2020 The JetBrains Mono Project Authors
+- License: SIL Open Font License, Version 1.1
+- License text: `third_party/licenses/OFL-1.1.txt`
+- Bundled files: `app/src/main/res/font/jetbrains_mono_regular.ttf`,
+  `jetbrains_mono_medium.ttf`, `jetbrains_mono_bold.ttf`
+
+The PhysiBoard app UI is typeset in JetBrains Mono (the "PhysiBoard Terminal" brand face).
+The font files are redistributed unmodified under the SIL Open Font License 1.1.
+
+## Shizuku wireless-ADB implementation (vendored)
+
+- Project: Shizuku, by RikkaApps (Xingchen Song / rikka)
+- Source repository: https://github.com/RikkaApps/Shizuku
+- License: Apache License, Version 2.0
+- License text: `third_party/licenses/Apache-2.0.txt`
+- Vendored source: `app/src/main/java/moe/shizuku/manager/adb/` (AdbClient, AdbKey, AdbMdns,
+  AdbMessage, AdbPairingClient, AdbPairingService, AdbProtocol, AdbException)
+
+PhysiBoard's self-contained keyboard-backlight control pairs with the device's own Wireless
+Debugging using Shizuku's ADB pairing/connection classes, vendored with their original
+`moe.shizuku.manager.adb` package name preserved for attribution. These files are covered by
+the Apache License 2.0; see `app/src/main/java/moe/shizuku/manager/adb/NOTICE`.
+
+### libadb.so (prebuilt native binary)
+
+- Origin: built from the Shizuku project's native `adb` module, which incorporates BoringSSL
+  (for the SPAKE2 pairing handshake and TLS).
+- Source repository: https://github.com/RikkaApps/Shizuku (native `adb`/starter modules);
+  BoringSSL: https://boringssl.googlesource.com/boringssl
+- License: Apache License, Version 2.0 (Shizuku); BoringSSL is distributed under the OpenSSL
+  License / ISC-style terms as documented in the BoringSSL source.
+- Bundled file: `app/src/main/jniLibs/arm64-v8a/libadb.so` (arm64-v8a only)
+
+The JNI entry class name `moe/shizuku/manager/adb/PairingContext` is hardcoded in the binary
+and is therefore preserved in the vendored Kotlin sources.
+
+## Android Open Source Project LatinIME
 
 ## Android Open Source Project LatinIME
 
