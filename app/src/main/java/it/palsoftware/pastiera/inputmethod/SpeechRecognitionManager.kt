@@ -62,6 +62,22 @@ class SpeechRecognitionManager(
 
     private var speechRecognizer: SpeechRecognizer? = null
     private var isComposingPartialText: Boolean = false
+    // Last partial hypothesis, used to detect when the recognizer starts a NEW utterance
+    // after a pause within one session (so we commit the previous one instead of overwriting it).
+    private var lastPartialText: String = ""
+
+    /**
+     * A partial is a NEW utterance (not a continuation of the previous one) when neither string
+     * is a prefix of the other AND the first words differ. Growing text and mid-utterance
+     * re-recognition (where the first word usually stays) are treated as the SAME utterance.
+     */
+    private fun looksLikeNewUtterance(prev: String, curr: String): Boolean {
+        val p = prev.trim()
+        val c = curr.trim()
+        if (p.isEmpty() || c.isEmpty()) return false
+        if (c.startsWith(p, ignoreCase = true) || p.startsWith(c, ignoreCase = true)) return false
+        return !p.substringBefore(' ').equals(c.substringBefore(' '), ignoreCase = true)
+    }
 
     /**
      * Normalizes punctuation words (e.g., "punto" -> ".") in recognized text.
@@ -282,8 +298,21 @@ class SpeechRecognitionManager(
     private fun updatePartialSpeechText(text: String) {
         Handler(Looper.getMainLooper()).post {
             val inputConnection = inputConnectionProvider() ?: return@post
-            
+
             try {
+                // If the recognizer started a NEW utterance after a pause (within one session),
+                // commit the previous composing text and separate with a space, so the new
+                // utterance appends at the cursor instead of overwriting the previous sentence.
+                if (isComposingPartialText && looksLikeNewUtterance(lastPartialText, text)) {
+                    inputConnection.finishComposingText()
+                    isComposingPartialText = false
+                    val before = inputConnection.getTextBeforeCursor(1, 0)
+                    if (before != null && before.isNotEmpty() && before.last().isLetterOrDigit()) {
+                        inputConnection.commitText(" ", 1)
+                    }
+                }
+                lastPartialText = text
+
                 // Apply basic capitalization to partial text (only first letter, not sentence endings)
                 var formatted = text
                 if (formatted.isNotEmpty() && !shouldDisableAutoCapitalize()) {
@@ -353,6 +382,7 @@ class SpeechRecognitionManager(
                     inputConnection.commitText(textToCommit, 1)
                     Log.d(TAG, "Final text inserted: '$textToCommit'")
                 }
+                lastPartialText = ""
             } catch (e: Exception) {
                 Log.e(TAG, "Error replacing with final text", e)
             }
@@ -372,6 +402,7 @@ class SpeechRecognitionManager(
                     isComposingPartialText = false
                     Log.d(TAG, "Partial text cleared")
                 }
+                lastPartialText = ""
             } catch (e: Exception) {
                 Log.e(TAG, "Error clearing partial text", e)
             }
@@ -389,7 +420,8 @@ class SpeechRecognitionManager(
             onError?.invoke(context.getString(R.string.speech_recognition_error_permission))
             return
         }
-        
+
+        lastPartialText = ""
         ensureSpeechRecognizer()
         
         if (speechRecognizer == null) {
