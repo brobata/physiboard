@@ -147,100 +147,7 @@ fun TypingSoundSettingsRow() {
                     showTypingSoundMenu = false
                 }
             )
-            TypingSoundDropdownItem(
-                text = stringResource(R.string.typing_sound_custom),
-                selected = typingSoundMode == SettingsManager.TYPING_SOUND_MODE_CUSTOM,
-                onClick = {
-                    showTypingSoundMenu = false
-                    typingSoundImportLauncher.launch(
-                        arrayOf(
-                            "application/zip",
-                            "application/x-zip-compressed",
-                            "application/octet-stream"
-                        )
-                    )
-                }
-            )
-        }
-    }
-
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(88.dp)
-            .clickable { showOutputMenu = true }
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Keyboard,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp)
-            )
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(R.string.typing_sound_output_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1
-                )
-                Text(
-                    text = typingSoundOutputModeLabel(typingSoundOutputMode),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1
-                )
-                Text(
-                    text = stringResource(R.string.typing_sound_output_dnd_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2
-                )
-            }
-            Icon(
-                imageVector = Icons.Default.ArrowDropDown,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
-        DropdownMenu(
-            expanded = showOutputMenu,
-            onDismissRequest = { showOutputMenu = false }
-        ) {
-            TypingSoundDropdownItem(
-                text = stringResource(R.string.typing_sound_output_media),
-                selected = typingSoundOutputMode == SettingsManager.TYPING_SOUND_OUTPUT_MEDIA,
-                onClick = {
-                    typingSoundOutputMode = SettingsManager.TYPING_SOUND_OUTPUT_MEDIA
-                    SettingsManager.setTypingSoundOutputMode(context, typingSoundOutputMode)
-                    showOutputMenu = false
-                }
-            )
-            TypingSoundDropdownItem(
-                text = stringResource(R.string.typing_sound_output_system),
-                selected = typingSoundOutputMode == SettingsManager.TYPING_SOUND_OUTPUT_SYSTEM,
-                onClick = {
-                    typingSoundOutputMode = SettingsManager.TYPING_SOUND_OUTPUT_SYSTEM
-                    SettingsManager.setTypingSoundOutputMode(context, typingSoundOutputMode)
-                    showOutputMenu = false
-                }
-            )
-            TypingSoundDropdownItem(
-                text = stringResource(R.string.typing_sound_output_notification),
-                selected = typingSoundOutputMode == SettingsManager.TYPING_SOUND_OUTPUT_NOTIFICATION,
-                onClick = {
-                    typingSoundOutputMode = SettingsManager.TYPING_SOUND_OUTPUT_NOTIFICATION
-                    SettingsManager.setTypingSoundOutputMode(context, typingSoundOutputMode)
-                    showOutputMenu = false
-                }
-            )
+            // Custom "sound pack" import option hidden to declutter.
         }
     }
 
@@ -273,7 +180,6 @@ fun TypingSoundSettingsRow() {
                     text = stringResource(R.string.tap_haptic_system_description),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2
                 )
             }
             Switch(
@@ -286,95 +192,54 @@ fun TypingSoundSettingsRow() {
         }
     }
 
-    if (!tapHapticUseSystem) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(104.dp)
-        ) {
-            Column(
+    SettingsAdvancedSection {
+        // Typing sound output (audio-routing) row hidden to declutter.
+
+        if (!tapHapticUseSystem) {
+            Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                    .height(104.dp)
             ) {
-                Text(
-                    text = stringResource(R.string.tap_haptic_duration_title, tapHapticDurationMs.toInt()),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1
-                )
-                Text(
-                    text = stringResource(R.string.tap_haptic_duration_description),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1
-                )
-                Slider(
-                    value = tapHapticDurationMs,
-                    onValueChange = { value ->
-                        val rounded = (value / 5f).toInt() * 5L
-                        if (rounded == tapHapticDurationMs.toLong()) {
-                            return@Slider
-                        }
-                        tapHapticDurationMs = rounded.toFloat()
-                        SettingsManager.setTapHapticDurationMs(context, rounded)
-                        NotificationHelper.triggerFixedDurationHapticFeedback(context, rounded)
-                    },
-                    valueRange = SettingsManager.getMinTapHapticDurationMs().toFloat()..
-                        SettingsManager.getMaxTapHapticDurationMs().toFloat(),
-                    steps = 14
-                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.tap_haptic_duration_title, tapHapticDurationMs.toInt()),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1
+                    )
+                    Text(
+                        text = stringResource(R.string.tap_haptic_duration_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
+                    )
+                    Slider(
+                        value = tapHapticDurationMs,
+                        onValueChange = { value ->
+                            val rounded = (value / 5f).toInt() * 5L
+                            if (rounded == tapHapticDurationMs.toLong()) {
+                                return@Slider
+                            }
+                            tapHapticDurationMs = rounded.toFloat()
+                            SettingsManager.setTapHapticDurationMs(context, rounded)
+                            NotificationHelper.triggerFixedDurationHapticFeedback(context, rounded)
+                        },
+                        valueRange = SettingsManager.getMinTapHapticDurationMs().toFloat()..
+                            SettingsManager.getMaxTapHapticDurationMs().toFloat(),
+                        steps = 14
+                    )
+                }
             }
         }
     }
 
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(64.dp)
-            .clickable {
-                val intent = Intent(
-                    Intent.ACTION_VIEW,
-                    Uri.parse(context.getString(R.string.typing_sound_docs_url))
-                )
-                context.startActivity(intent)
-            }
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Info,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp)
-            )
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(R.string.typing_sound_docs_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1
-                )
-                Text(
-                    text = stringResource(R.string.typing_sound_docs_description),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1
-                )
-            }
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
+    // Sound pack format/docs row hidden to declutter.
 }
 
 @Composable

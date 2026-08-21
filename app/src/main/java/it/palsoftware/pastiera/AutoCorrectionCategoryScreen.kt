@@ -169,7 +169,7 @@ fun AutoCorrectionCategoryScreen(
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(80.dp)
+                                .heightIn(min = 80.dp)
                             ) {
                             Row(
                                 modifier = Modifier
@@ -195,7 +195,6 @@ fun AutoCorrectionCategoryScreen(
 	                                        text = stringResource(R.string.auto_correct_title_description),
 	                                        style = MaterialTheme.typography.bodySmall,
 	                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-	                                        maxLines = 2
 	                                    )
 	                                }
                                 Switch(
@@ -213,7 +212,7 @@ fun AutoCorrectionCategoryScreen(
                             Surface(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(80.dp)
+                                    .heightIn(min = 80.dp)
                                     .clickable { navigateTo(AutoCorrectionDestination.Settings) }
                             ) {
                                 Row(
@@ -240,7 +239,6 @@ fun AutoCorrectionCategoryScreen(
 	                                            text = stringResource(R.string.auto_correct_languages_description),
 	                                            style = MaterialTheme.typography.bodySmall,
 	                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-	                                            maxLines = 2
 	                                        )
 	                                    }
                                     Icon(
@@ -256,7 +254,7 @@ fun AutoCorrectionCategoryScreen(
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(80.dp)
+                                .heightIn(min = 80.dp)
                         ) {
                             Row(
                                 modifier = Modifier
@@ -282,7 +280,6 @@ fun AutoCorrectionCategoryScreen(
                                         text = stringResource(R.string.auto_correct_auto_replace_description),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 2
                                     )
                                 }
                                 Switch(
@@ -353,7 +350,7 @@ fun AutoCorrectionCategoryScreen(
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(80.dp)
+                                .heightIn(min = 80.dp)
                                 .clickable { navigateTo(AutoCorrectionDestination.UserDictionary) }
                             ) {
                                 Row(
@@ -380,7 +377,6 @@ fun AutoCorrectionCategoryScreen(
 	                                        text = stringResource(R.string.auto_correct_manage_user_dict_description),
 	                                        style = MaterialTheme.typography.bodySmall,
 	                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-	                                        maxLines = 2
 	                                    )
 	                                }
                                     Icon(
@@ -395,7 +391,7 @@ fun AutoCorrectionCategoryScreen(
                         Surface(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(80.dp)
+                                    .heightIn(min = 80.dp)
                             ) {
                                 Row(
                                     modifier = Modifier
@@ -421,7 +417,6 @@ fun AutoCorrectionCategoryScreen(
                                             text = stringResource(R.string.experimental_suggestions_subtitle),
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            maxLines = 2
                                         )
                                     }
                                     FeatureStatusIcon(FeatureStatus.Experimental)
@@ -442,7 +437,7 @@ fun AutoCorrectionCategoryScreen(
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(64.dp)
+                                .heightIn(min = 64.dp)
                         ) {
                                 Row(
                                     modifier = Modifier
@@ -479,7 +474,7 @@ fun AutoCorrectionCategoryScreen(
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(64.dp)
+                                .heightIn(min = 64.dp)
                         ) {
                             Row(
                                 modifier = Modifier
@@ -516,7 +511,7 @@ fun AutoCorrectionCategoryScreen(
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(64.dp)
+                                .heightIn(min = 64.dp)
                         ) {
                             Row(
                                 modifier = Modifier
@@ -542,7 +537,6 @@ fun AutoCorrectionCategoryScreen(
                                         text = stringResource(R.string.auto_correct_keyboard_proximity_description),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 2
                                     )
                                 }
                                 Switch(
@@ -559,7 +553,7 @@ fun AutoCorrectionCategoryScreen(
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(64.dp)
+                                .heightIn(min = 64.dp)
                         ) {
                             Row(
                                 modifier = Modifier

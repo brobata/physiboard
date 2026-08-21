@@ -9,6 +9,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -44,7 +45,8 @@ import it.palsoftware.pastiera.inputmethod.DeviceSpecific
 @Composable
 fun AboutScreen(
     modifier: Modifier = Modifier,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onAppLanguageClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var markdownContent by remember { mutableStateOf<String?>(null) }
@@ -124,6 +126,24 @@ fun AboutScreen(
                 }
             }
 
+            Spacer(modifier = Modifier.height(8.dp))
+
+            AboutActionRow(
+                title = stringResource(R.string.app_language_title),
+                description = currentAppLanguageLabel(context),
+                onClick = onAppLanguageClick
+            )
+            AboutActionRow(
+                title = stringResource(R.string.tutorial_show),
+                description = stringResource(R.string.tutorial_review_description),
+                onClick = {
+                    SettingsManager.resetTutorialCompleted(context)
+                    context.startActivity(Intent(context, TutorialActivity::class.java))
+                }
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
             Image(
                 painter = painterResource(id = R.drawable.kofi5),
                 contentDescription = stringResource(R.string.settings_support_ko_fi),
@@ -158,6 +178,47 @@ fun AboutScreen(
                     color = MaterialTheme.colorScheme.error
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun AboutActionRow(
+    title: String,
+    description: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = MaterialTheme.shapes.medium
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

@@ -347,7 +347,6 @@ fun SymCustomizationScreen(
                             text = stringResource(R.string.sym_swap_pages_description),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2
                         )
                     }
                 }
@@ -541,7 +540,6 @@ fun SymCustomizationScreen(
                         text = stringResource(R.string.sym_auto_close_description),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2
                     )
                 }
                 Switch(
@@ -582,7 +580,6 @@ fun SymCustomizationScreen(
                         text = stringResource(R.string.sym_auto_close_touch_description),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2
                     )
                 }
                 Switch(
@@ -697,7 +694,6 @@ fun SymCustomizationScreen(
                         text = stringResource(R.string.emoji_picker_expanded_height_description),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2
                     )
                 }
                 Switch(

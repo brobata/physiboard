@@ -113,10 +113,6 @@ fun TextInputSettingsScreen(
     var autoShowKeyboard by remember {
         mutableStateOf(SettingsManager.getAutoShowKeyboard(context))
     }
-    
-    var altCtrlSpeechShortcut by remember {
-        mutableStateOf(SettingsManager.getAltCtrlSpeechShortcutEnabled(context))
-    }
 
     var shiftBackspaceDelete by remember {
         mutableStateOf(SettingsManager.getShiftBackspaceDelete(context))
@@ -128,6 +124,10 @@ fun TextInputSettingsScreen(
 
     var backspaceAtStartDelete by remember {
         mutableStateOf(SettingsManager.getBackspaceAtStartDelete(context))
+    }
+
+    var currencySymbol by remember {
+        mutableStateOf(SettingsManager.getPhysicalKeyboardCurrencySymbol(context))
     }
     
     // Handle system back button
@@ -322,30 +322,6 @@ fun TextInputSettingsScreen(
                     SettingsManager.setAutoCapitalizeFirstLetter(context, enabled)
                 }
             )
-            AnimatedVisibility(visible = autoCapitalizeFirstLetter) {
-                Column {
-                    SettingsSwitchRow(
-                        title = stringResource(R.string.auto_capitalize_respect_manual_shift_off_title),
-                        description = stringResource(R.string.auto_capitalize_respect_manual_shift_off_description),
-                        checked = autoCapitalizeRespectManualShiftOff,
-                        inset = 52.dp,
-                        onCheckedChange = { enabled ->
-                            autoCapitalizeRespectManualShiftOff = enabled
-                            SettingsManager.setAutoCapitalizeRespectManualShiftOff(context, enabled)
-                        }
-                    )
-                    SettingsSwitchRow(
-                        title = stringResource(R.string.auto_capitalize_restricted_fields_title),
-                        description = stringResource(R.string.auto_capitalize_restricted_fields_description),
-                        checked = autoCapitalizeRestrictedFields,
-                        inset = 52.dp,
-                        onCheckedChange = { enabled ->
-                            autoCapitalizeRestrictedFields = enabled
-                            SettingsManager.setAutoCapitalizeRestrictedFields(context, enabled)
-                        }
-                    )
-                }
-            }
             SettingsSwitchRow(
                 title = stringResource(R.string.auto_capitalize_after_period_title),
                 description = stringResource(R.string.auto_capitalize_after_period_description),
@@ -364,100 +340,6 @@ fun TextInputSettingsScreen(
                 onCheckedChange = { enabled ->
                     doubleSpaceToPeriod = enabled
                     SettingsManager.setDoubleSpaceToPeriod(context, enabled)
-                }
-            )
-            SettingsNavigationRow(
-                title = stringResource(R.string.auto_space_punctuation_title),
-                description = autoSpacePunctuationSummary(
-                    beforePunctuation = autoSpacePunctuation,
-                    afterPunctuation = spaceAfterPunctuation,
-                    beforeLabel = stringResource(R.string.auto_space_punctuation_before_column),
-                    afterLabel = stringResource(R.string.auto_space_punctuation_after_column),
-                    offLabel = stringResource(R.string.auto_space_punctuation_choose_off)
-                ),
-                onClick = { autoSpacePunctuationDialogVisible = true }
-            )
-            SettingsSwitchRow(
-                title = stringResource(R.string.comma_space_title),
-                description = stringResource(R.string.comma_space_description),
-                checked = commaSpace,
-                onCheckedChange = { enabled ->
-                    commaSpace = enabled
-                    SettingsManager.setCommaSpace(context, enabled)
-                }
-            )
-            SettingsSwitchRow(
-                title = stringResource(R.string.french_punctuation_spacing_title),
-                description = stringResource(R.string.french_punctuation_spacing_description),
-                checked = frenchPunctuationSpacing,
-                onCheckedChange = { enabled ->
-                    frenchPunctuationSpacing = enabled
-                    SettingsManager.setFrenchPunctuationSpacing(context, enabled)
-                }
-            )
-            AnimatedVisibility(visible = frenchPunctuationSpacing) {
-                SettingsSwitchRow(
-                    title = stringResource(R.string.french_punctuation_only_french_title),
-                    description = stringResource(R.string.french_punctuation_only_french_description),
-                    checked = frenchPunctuationOnlyFrenchLayouts,
-                    inset = 52.dp,
-                    onCheckedChange = { enabled ->
-                        frenchPunctuationOnlyFrenchLayouts = enabled
-                        SettingsManager.setFrenchPunctuationOnlyFrenchLayouts(context, enabled)
-                    }
-                )
-            }
-
-            SettingsSectionHeader(text = stringResource(R.string.text_input_section_typography))
-            SettingsDropdownSwitchRow(
-                title = stringResource(R.string.spaced_hyphen_to_en_dash_title),
-                checked = spacedHyphenToEnDash,
-                onCheckedChange = { enabled ->
-                    spacedHyphenToEnDash = enabled
-                    SettingsManager.setSpacedHyphenToEnDash(context, enabled)
-                    if (!enabled) {
-                        spacedHyphenDashExpanded = false
-                    }
-                },
-                expanded = spacedHyphenDashExpanded,
-                onExpandedChange = { spacedHyphenDashExpanded = it },
-                value = dashStyleLabel(spacedHyphenDashStyle),
-                options = dashStyleOptions(),
-                optionLabel = ::dashStyleLabel,
-                onOptionSelected = { style ->
-                    spacedHyphenDashStyle = style
-                    SettingsManager.setSpacedHyphenDashStyle(context, style)
-                    spacedHyphenDashExpanded = false
-                }
-            )
-            SettingsSwitchRow(
-                title = stringResource(R.string.mid_word_quote_to_apostrophe_title),
-                description = stringResource(R.string.mid_word_quote_to_apostrophe_description),
-                checked = midWordQuoteToApostrophe,
-                onCheckedChange = { enabled ->
-                    midWordQuoteToApostrophe = enabled
-                    SettingsManager.setMidWordQuoteToApostrophe(context, enabled)
-                }
-            )
-            SettingsDropdownSwitchRow(
-                title = stringResource(R.string.smart_quotes_title),
-                checked = smartQuotes,
-                onCheckedChange = { enabled ->
-                    smartQuotes = enabled
-                    SettingsManager.setSmartQuotes(context, enabled)
-                    if (!enabled) {
-                        smartQuotesExpanded = false
-                    }
-                },
-                expanded = smartQuotesExpanded,
-                onExpandedChange = { smartQuotesExpanded = it },
-                value = smartQuotesStyleLabel(smartQuotesStyle),
-                options = smartQuoteStyleOptions(),
-                optionLabel = ::smartQuotesStyleLabel,
-                onOptionSelected = { style ->
-                    smartQuotesStyle = style
-                    SettingsManager.setSmartQuotesStyle(context, style)
-                    smartQuotesExpanded = false
                 }
             )
 
@@ -480,15 +362,48 @@ fun TextInputSettingsScreen(
                     SettingsManager.setAutoShowKeyboard(context, enabled)
                 }
             )
-            SettingsSwitchRow(
-                title = stringResource(R.string.alt_ctrl_speech_shortcut_title),
-                description = stringResource(R.string.alt_ctrl_speech_shortcut_description),
-                checked = altCtrlSpeechShortcut,
-                onCheckedChange = { enabled ->
-                    altCtrlSpeechShortcut = enabled
-                    SettingsManager.setAltCtrlSpeechShortcutEnabled(context, enabled)
-                }
+            SettingsSectionHeader(text = stringResource(R.string.keyboard_currency_symbol_title))
+            Text(
+                text = stringResource(R.string.keyboard_currency_symbol_description),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
             )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                SettingsManager.physicalKeyboardCurrencySymbols().forEach { symbol ->
+                    Surface(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable {
+                                currencySymbol = symbol
+                                SettingsManager.setPhysicalKeyboardCurrencySymbol(context, symbol)
+                            },
+                        color = if (currencySymbol == symbol) {
+                            MaterialTheme.colorScheme.primaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.surface
+                        },
+                        shape = MaterialTheme.shapes.small
+                    ) {
+                        Text(
+                            text = symbol,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = if (currencySymbol == symbol) {
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            },
+                            modifier = Modifier.padding(vertical = 12.dp),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                    }
+                }
+            }
 
             SettingsSectionHeader(text = stringResource(R.string.text_input_section_delete))
             Surface(
@@ -550,27 +465,6 @@ fun TextInputSettingsScreen(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = stringResource(R.string.backspace_at_start_delete_title),
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Switch(
-                            checked = backspaceAtStartDelete,
-                            onCheckedChange = { enabled ->
-                                backspaceAtStartDelete = enabled
-                                SettingsManager.setBackspaceAtStartDelete(context, enabled)
-                            }
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
                     Text(
                         text = stringResource(R.string.delete_alternatives_hint),
                         style = MaterialTheme.typography.bodySmall,
@@ -592,6 +486,110 @@ fun TextInputSettingsScreen(
                         fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                     )
                 }
+            }
+
+            SettingsAdvancedSection {
+                AnimatedVisibility(visible = autoCapitalizeFirstLetter) {
+                    Column {
+                        SettingsSwitchRow(
+                            title = stringResource(R.string.auto_capitalize_respect_manual_shift_off_title),
+                            description = stringResource(R.string.auto_capitalize_respect_manual_shift_off_description),
+                            checked = autoCapitalizeRespectManualShiftOff,
+                            onCheckedChange = { enabled ->
+                                autoCapitalizeRespectManualShiftOff = enabled
+                                SettingsManager.setAutoCapitalizeRespectManualShiftOff(context, enabled)
+                            }
+                        )
+                        SettingsSwitchRow(
+                            title = stringResource(R.string.auto_capitalize_restricted_fields_title),
+                            description = stringResource(R.string.auto_capitalize_restricted_fields_description),
+                            checked = autoCapitalizeRestrictedFields,
+                            onCheckedChange = { enabled ->
+                                autoCapitalizeRestrictedFields = enabled
+                                SettingsManager.setAutoCapitalizeRestrictedFields(context, enabled)
+                            }
+                        )
+                    }
+                }
+                SettingsNavigationRow(
+                    title = stringResource(R.string.auto_space_punctuation_title),
+                    description = autoSpacePunctuationSummary(
+                        beforePunctuation = autoSpacePunctuation,
+                        afterPunctuation = spaceAfterPunctuation,
+                        beforeLabel = stringResource(R.string.auto_space_punctuation_before_column),
+                        afterLabel = stringResource(R.string.auto_space_punctuation_after_column),
+                        offLabel = stringResource(R.string.auto_space_punctuation_choose_off)
+                    ),
+                    onClick = { autoSpacePunctuationDialogVisible = true }
+                )
+                SettingsSwitchRow(
+                    title = stringResource(R.string.comma_space_title),
+                    description = stringResource(R.string.comma_space_description),
+                    checked = commaSpace,
+                    onCheckedChange = { enabled ->
+                        commaSpace = enabled
+                        SettingsManager.setCommaSpace(context, enabled)
+                    }
+                )
+                SettingsDropdownSwitchRow(
+                    title = stringResource(R.string.spaced_hyphen_to_en_dash_title),
+                    checked = spacedHyphenToEnDash,
+                    onCheckedChange = { enabled ->
+                        spacedHyphenToEnDash = enabled
+                        SettingsManager.setSpacedHyphenToEnDash(context, enabled)
+                        if (!enabled) {
+                            spacedHyphenDashExpanded = false
+                        }
+                    },
+                    expanded = spacedHyphenDashExpanded,
+                    onExpandedChange = { spacedHyphenDashExpanded = it },
+                    value = dashStyleLabel(spacedHyphenDashStyle),
+                    options = dashStyleOptions(),
+                    optionLabel = ::dashStyleLabel,
+                    onOptionSelected = { style ->
+                        spacedHyphenDashStyle = style
+                        SettingsManager.setSpacedHyphenDashStyle(context, style)
+                        spacedHyphenDashExpanded = false
+                    }
+                )
+                SettingsSwitchRow(
+                    title = stringResource(R.string.mid_word_quote_to_apostrophe_title),
+                    description = stringResource(R.string.mid_word_quote_to_apostrophe_description),
+                    checked = midWordQuoteToApostrophe,
+                    onCheckedChange = { enabled ->
+                        midWordQuoteToApostrophe = enabled
+                        SettingsManager.setMidWordQuoteToApostrophe(context, enabled)
+                    }
+                )
+                SettingsDropdownSwitchRow(
+                    title = stringResource(R.string.smart_quotes_title),
+                    checked = smartQuotes,
+                    onCheckedChange = { enabled ->
+                        smartQuotes = enabled
+                        SettingsManager.setSmartQuotes(context, enabled)
+                        if (!enabled) {
+                            smartQuotesExpanded = false
+                        }
+                    },
+                    expanded = smartQuotesExpanded,
+                    onExpandedChange = { smartQuotesExpanded = it },
+                    value = smartQuotesStyleLabel(smartQuotesStyle),
+                    options = smartQuoteStyleOptions(),
+                    optionLabel = ::smartQuotesStyleLabel,
+                    onOptionSelected = { style ->
+                        smartQuotesStyle = style
+                        SettingsManager.setSmartQuotesStyle(context, style)
+                        smartQuotesExpanded = false
+                    }
+                )
+                SettingsSwitchRow(
+                    title = stringResource(R.string.backspace_at_start_delete_title),
+                    checked = backspaceAtStartDelete,
+                    onCheckedChange = { enabled ->
+                        backspaceAtStartDelete = enabled
+                        SettingsManager.setBackspaceAtStartDelete(context, enabled)
+                    }
+                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -675,7 +673,6 @@ private fun SettingsSwitchRow(
                     text = description,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2
                 )
             }
         }
@@ -715,7 +712,6 @@ private fun SettingsNavigationRow(
                 text = description,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2
             )
         }
         Icon(

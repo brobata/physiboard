@@ -307,7 +307,6 @@ internal fun VirtualKeyboardBehaviorSettingsScreen(
                             ),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2
                         )
                     }
                     Icon(
@@ -585,7 +584,6 @@ private fun ModifierTapLatchRow(
                     text = description,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2
                 )
             }
             Switch(

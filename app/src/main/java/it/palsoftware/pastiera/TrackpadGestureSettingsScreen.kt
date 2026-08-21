@@ -175,7 +175,6 @@ fun TrackpadGestureSettingsScreen(
                             text = stringResource(R.string.trackpad_gestures_enabled_description),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2
                         )
                     }
                     FeatureStatusIcon(FeatureStatus.Experimental)
@@ -213,7 +212,6 @@ fun TrackpadGestureSettingsScreen(
                             text = stringResource(R.string.trackpad_gesture_add_word_description),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2
                         )
                     }
                     Switch(
@@ -251,7 +249,6 @@ fun TrackpadGestureSettingsScreen(
                             text = stringResource(R.string.trackpad_gesture_add_word_full_width_description),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2
                         )
                     }
                     Switch(
@@ -439,7 +436,6 @@ fun TrackpadGestureSettingsScreen(
                             text = stringResource(R.string.swipe_to_delete_description),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2
                         )
                     }
                     Switch(
@@ -482,7 +478,6 @@ fun TrackpadGestureSettingsScreen(
                             text = stringResource(R.string.trackpad_sensitivity_description),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2
                         )
                     }
                     Text(
@@ -664,7 +659,6 @@ private fun TrackpadSensitivitySlider(
                         text = description,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2
                     )
                 }
                 Text(

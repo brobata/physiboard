@@ -97,9 +97,6 @@ private fun HardwareKeyboardListScreen(
         mutableStateOf(SettingsManager.getPhysicalKeyboardProfileOverride(context))
     }
     var profileMenuExpanded by remember { mutableStateOf(false) }
-    var currencySymbol by remember {
-        mutableStateOf(SettingsManager.getPhysicalKeyboardCurrencySymbol(context))
-    }
     var titan2LayoutEnabled by remember {
         mutableStateOf(SettingsManager.isTitan2LayoutEnabled(context))
     }
@@ -233,13 +230,6 @@ private fun HardwareKeyboardListScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
             )
-            HardwareKeyboardNavigationRow(
-                title = stringResource(R.string.alt_key_editor_title),
-                description = stringResource(R.string.alt_key_editor_summary),
-                icon = Icons.Filled.Edit,
-                status = FeatureStatus.Construction,
-                onClick = onDeviceSymLayerEditor
-            )
 
             HardwareKeyboardSectionDivider(stringResource(R.string.hardware_keyboard_behavior_title))
 
@@ -253,47 +243,14 @@ private fun HardwareKeyboardListScreen(
                 }
             )
 
-            HardwareKeyboardSectionTitle(stringResource(R.string.keyboard_currency_symbol_title))
-            Text(
-                text = stringResource(R.string.keyboard_currency_symbol_description),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-            )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                SettingsManager.physicalKeyboardCurrencySymbols().forEach { symbol ->
-                    Surface(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable {
-                                currencySymbol = symbol
-                                SettingsManager.setPhysicalKeyboardCurrencySymbol(context, symbol)
-                            },
-                        color = if (currencySymbol == symbol) {
-                            MaterialTheme.colorScheme.primaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.surface
-                        },
-                        shape = MaterialTheme.shapes.small
-                    ) {
-                        Text(
-                            text = symbol,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = if (currencySymbol == symbol) {
-                                MaterialTheme.colorScheme.onPrimaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.onSurface
-                            },
-                            modifier = Modifier.padding(vertical = 12.dp),
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                        )
-                    }
-                }
+            SettingsAdvancedSection {
+                HardwareKeyboardNavigationRow(
+                    title = stringResource(R.string.alt_key_editor_title),
+                    description = stringResource(R.string.alt_key_editor_summary),
+                    icon = Icons.Filled.Edit,
+                    status = FeatureStatus.Construction,
+                    onClick = onDeviceSymLayerEditor
+                )
             }
         }
     }

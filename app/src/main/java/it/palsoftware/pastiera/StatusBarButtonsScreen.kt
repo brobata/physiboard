@@ -179,6 +179,7 @@ fun StatusBarButtonsScreen(
             )
         }
 
+        SettingsAdvancedSection {
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
@@ -216,42 +217,9 @@ fun StatusBarButtonsScreen(
                 )
             }
         }
-
-        SettingsSectionDivider(stringResource(R.string.status_bar_style_section))
-        SingleChoiceSegmentedButtonRow(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp)
-        ) {
-            StatusBarEditorMode.entries.forEachIndexed { index, mode ->
-                SegmentedButton(
-                    selected = editorMode == mode,
-                    onClick = {
-                        editorMode = mode
-                        SettingsManager.setStatusBarPresentationMode(
-                            context,
-                            if (mode == StatusBarEditorMode.Pastierina) {
-                                SettingsManager.StatusBarPresentationMode.PASTIERINA
-                            } else {
-                                SettingsManager.StatusBarPresentationMode.FULL_STATUS_BAR
-                            }
-                        )
-                    },
-                    shape = SegmentedButtonDefaults.itemShape(index, StatusBarEditorMode.entries.size)
-                ) {
-                    Text(
-                        text = stringResource(
-                            if (mode == StatusBarEditorMode.Extended) {
-                                R.string.extended_status_bar_title
-                            } else {
-                                R.string.pastierina_status_bar_buttons_title
-                            }
-                        ),
-                        maxLines = 1
-                    )
-                }
-            }
         }
+
+        // Status bar "style" picker hidden to simplify to a single presentation.
 
         StatusBarLayoutPreview(
             leftSlots = if (editorMode == StatusBarEditorMode.Extended) leftSlots else pastierinaLeftSlots,
@@ -263,151 +231,12 @@ fun StatusBarButtonsScreen(
             } else null
         )
 
-        SettingsSectionDivider(stringResource(R.string.device_specific_interface_section))
-        Surface(modifier = Modifier.fillMaxWidth()) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.titan2_elite_rounded_corners_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Text(
-                        text = stringResource(R.string.titan2_elite_rounded_corners_description),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                FeatureStatusIcon(FeatureStatus.Construction)
-                Switch(
-                    checked = titan2EliteRoundedCornerInsetsEnabled,
-                    onCheckedChange = { enabled ->
-                        titan2EliteRoundedCornerInsetsEnabled = enabled
-                        SettingsManager.setTitan2EliteRoundedCornerInsetsEnabled(context, enabled)
-                    }
-                )
-            }
-        }
+        // Titan2-Elite rounded-corner insets option hidden (still reachable via prefs/backup).
 
         if (editorMode == StatusBarEditorMode.Extended) {
-            SettingsSectionDivider(stringResource(R.string.extended_status_bar_features_section))
-            Surface(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.status_bar_variations_visible_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Text(
-                            text = stringResource(R.string.status_bar_variations_visible_description),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Switch(
-                        checked = variationsVisible,
-                        onCheckedChange = { visible ->
-                            variationsVisible = visible
-                            SettingsManager.setStatusBarVariationsEnabled(context, visible)
-                        }
-                    )
-                }
-            }
+            // Swipe-cursor info row hidden to declutter.
 
-            Surface(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Info,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Text(
-                        text = stringResource(R.string.status_bar_swipe_cursor_info),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            if (variationsVisible) {
-                Surface(modifier = Modifier.fillMaxWidth()) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
-                    ) {
-                        Text(
-                            text = stringResource(R.string.dynamic_variation_slot_count_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Text(
-                            text = stringResource(
-                                R.string.dynamic_variation_slot_count_description,
-                                dynamicVariationSlotCount
-                            ),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Slider(
-                            value = dynamicVariationSlotCount.toFloat(),
-                            onValueChange = { value ->
-                                dynamicVariationSlotCount = value.toInt().coerceIn(
-                                    SettingsManager.MIN_DYNAMIC_VARIATION_BAR_SLOT_COUNT,
-                                    SettingsManager.MAX_DYNAMIC_VARIATION_BAR_SLOT_COUNT
-                                )
-                            },
-                            onValueChangeFinished = {
-                                SettingsManager.setDynamicVariationBarSlotCount(context, dynamicVariationSlotCount)
-                            },
-                            valueRange = SettingsManager.MIN_DYNAMIC_VARIATION_BAR_SLOT_COUNT.toFloat()..
-                                SettingsManager.MAX_DYNAMIC_VARIATION_BAR_SLOT_COUNT.toFloat(),
-                            steps = SettingsManager.MAX_DYNAMIC_VARIATION_BAR_SLOT_COUNT -
-                                SettingsManager.MIN_DYNAMIC_VARIATION_BAR_SLOT_COUNT - 1
-                        )
-                    }
-                }
-
-                Surface(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = stringResource(R.string.dynamic_variation_resize_to_content_title),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Text(
-                                text = stringResource(R.string.dynamic_variation_resize_to_content_description),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Switch(
-                            checked = dynamicVariationsResizeToContent,
-                            onCheckedChange = { enabled ->
-                                dynamicVariationsResizeToContent = enabled
-                                SettingsManager.setDynamicVariationBarResizeToContent(context, enabled)
-                            }
-                        )
-                    }
-                }
-
+            SettingsAdvancedSection {
                 Surface(
                     modifier = Modifier.fillMaxWidth().clickable(onClick = onCustomizeVariations)
                 ) {
@@ -451,6 +280,7 @@ fun StatusBarButtonsScreen(
                     leftSlots = leftSlots.toMutableList().also { it.removeAt(index) }
                     SettingsManager.setStatusBarSlotsLeft(context, leftSlots)
                 }
+                ,allowMultiple = false
             )
             SlotGroup(
                 title = stringResource(R.string.status_bar_slots_right),
@@ -465,6 +295,7 @@ fun StatusBarButtonsScreen(
                     rightSlots = rightSlots.toMutableList().also { it.removeAt(index) }
                     SettingsManager.setStatusBarSlotsRight(context, rightSlots)
                 }
+                ,allowMultiple = false
             )
         } else {
             SettingsSectionDivider(stringResource(R.string.pastierina_status_bar_buttons_title))
@@ -488,6 +319,7 @@ fun StatusBarButtonsScreen(
                     pastierinaLeftSlots = pastierinaLeftSlots.toMutableList().also { it.removeAt(index) }
                     SettingsManager.setPastierinaStatusBarSlotsLeft(context, pastierinaLeftSlots)
                 }
+                ,allowMultiple = false
             )
             SlotGroup(
                 title = stringResource(R.string.status_bar_slots_right),
@@ -502,6 +334,7 @@ fun StatusBarButtonsScreen(
                     pastierinaRightSlots = pastierinaRightSlots.toMutableList().also { it.removeAt(index) }
                     SettingsManager.setPastierinaStatusBarSlotsRight(context, pastierinaRightSlots)
                 }
+                ,allowMultiple = false
             )
         }
 
@@ -558,8 +391,12 @@ private fun SlotGroup(
     slotPrefix: String,
     onSlotSelected: (Int, String) -> Unit,
     onAddSlot: () -> Unit,
-    onRemoveSlot: (Int) -> Unit
+    onRemoveSlot: (Int) -> Unit,
+    allowMultiple: Boolean = true
 ) {
+    // When limited to a single button per side, only show the first slot and
+    // hide the add/remove controls. Underlying slot data is preserved.
+    val visibleSlots = if (allowMultiple) slots else slots.take(1)
     Surface(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier
@@ -576,15 +413,17 @@ private fun SlotGroup(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium
                 )
-                IconButton(onClick = onAddSlot) {
-                    Icon(
-                        imageVector = Icons.Filled.Add,
-                        contentDescription = stringResource(R.string.status_bar_slot_add)
-                    )
+                if (allowMultiple) {
+                    IconButton(onClick = onAddSlot) {
+                        Icon(
+                            imageVector = Icons.Filled.Add,
+                            contentDescription = stringResource(R.string.status_bar_slot_add)
+                        )
+                    }
                 }
             }
 
-            slots.forEachIndexed { index, buttonId ->
+            visibleSlots.forEachIndexed { index, buttonId ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
@@ -597,19 +436,21 @@ private fun SlotGroup(
                         modifier = Modifier.weight(1f),
                         onButtonSelected = { selected -> onSlotSelected(index, selected) }
                     )
-                    IconButton(
-                        onClick = { onRemoveSlot(index) },
-                        enabled = slots.size > 1
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Delete,
-                            contentDescription = stringResource(R.string.status_bar_slot_remove),
-                            tint = if (slots.size > 1) {
-                                MaterialTheme.colorScheme.error
-                            } else {
-                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                            }
-                        )
+                    if (allowMultiple) {
+                        IconButton(
+                            onClick = { onRemoveSlot(index) },
+                            enabled = slots.size > 1
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Delete,
+                                contentDescription = stringResource(R.string.status_bar_slot_remove),
+                                tint = if (slots.size > 1) {
+                                    MaterialTheme.colorScheme.error
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                }
+                            )
+                        }
                     }
                 }
             }

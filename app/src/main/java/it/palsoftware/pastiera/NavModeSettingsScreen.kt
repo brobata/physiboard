@@ -230,6 +230,7 @@ fun NavModeSettingsScreen(
                 }
             }
 
+            SettingsAdvancedSection {
             Surface(
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -285,6 +286,7 @@ fun NavModeSettingsScreen(
                         }
                     )
                 }
+            }
             }
         }
 

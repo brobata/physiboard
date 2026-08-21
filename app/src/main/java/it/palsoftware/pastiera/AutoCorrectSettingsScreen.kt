@@ -81,7 +81,7 @@ private fun LanguageItem(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(64.dp)
+            .heightIn(min = 64.dp)
             .clickable { onEdit() }
     ) {
         Row(
@@ -349,7 +349,7 @@ fun AutoCorrectSettingsScreen(
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(56.dp)
+                            .heightIn(min = 56.dp)
                     ) {
                         Box(
                             modifier = Modifier
@@ -381,20 +381,6 @@ fun AutoCorrectSettingsScreen(
                             }
                         )
                     }
-                    
-                    // Ricette Pastiera (shown after system language)
-                    LanguageItem(
-                        languageCode = "x-pastiera",
-                        languageName = getLanguageDisplayName(context, "x-pastiera"),
-                        isSystemLanguage = false,
-                        isEnabled = isLanguageEnabled("x-pastiera"),
-                        onToggle = { enabled ->
-                            toggleLanguage("x-pastiera", isLanguageEnabled("x-pastiera"))
-                        },
-                        onEdit = {
-                            onEditLanguage("x-pastiera")
-                        }
-                    )
                     
                     // Other available languages (excluding x-pastiera)
                     val otherLanguages = allLanguages.filter { it != systemLocale && it != "x-pastiera" }.sorted()

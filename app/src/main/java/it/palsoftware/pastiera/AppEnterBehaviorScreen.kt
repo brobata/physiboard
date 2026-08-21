@@ -159,53 +159,6 @@ fun AppEnterBehaviorScreen(
             }
         )
 
-        EnterAdditionalSendShortcutSelector(
-            shortcut = selectedAdditionalSendShortcut,
-            onShortcutSelected = { shortcut ->
-                val updated = overrides.map { it.copy(additionalSendShortcut = shortcut) }
-                overrides = updated
-                SettingsManager.setAppEnterBehaviorOverrides(context, updated)
-            }
-        )
-
-        if (
-            selectedAdditionalSendShortcut == SettingsManager.ENTER_ADDITIONAL_SEND_SHORTCUT_SYM_ENTER &&
-            quickLauncherUsesSymEnter
-        ) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                color = MaterialTheme.colorScheme.tertiaryContainer,
-                contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                shape = MaterialTheme.shapes.medium
-            ) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Icon(Icons.Filled.WarningAmber, contentDescription = null)
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.app_enter_behaviour_sym_enter_conflict_title),
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Text(
-                            text = stringResource(R.string.app_enter_behaviour_sym_enter_conflict_description),
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                    if (onOpenLauncherShortcutAssignments != null) {
-                        TextButton(onClick = onOpenLauncherShortcutAssignments) {
-                            Text(stringResource(R.string.app_enter_behaviour_sym_enter_conflict_action))
-                        }
-                    }
-                }
-            }
-        }
-
         Text(
             text = stringResource(R.string.app_enter_behaviour_overrides_title),
             style = MaterialTheme.typography.titleMedium,
@@ -253,6 +206,55 @@ fun AppEnterBehaviorScreen(
                     SettingsManager.setAppEnterBehaviorOverrides(context, updated)
                 }
             )
+        }
+
+        SettingsAdvancedSection {
+            EnterAdditionalSendShortcutSelector(
+                shortcut = selectedAdditionalSendShortcut,
+                onShortcutSelected = { shortcut ->
+                    val updated = overrides.map { it.copy(additionalSendShortcut = shortcut) }
+                    overrides = updated
+                    SettingsManager.setAppEnterBehaviorOverrides(context, updated)
+                }
+            )
+
+            if (
+                selectedAdditionalSendShortcut == SettingsManager.ENTER_ADDITIONAL_SEND_SHORTCUT_SYM_ENTER &&
+                quickLauncherUsesSymEnter
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Icon(Icons.Filled.WarningAmber, contentDescription = null)
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.app_enter_behaviour_sym_enter_conflict_title),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = stringResource(R.string.app_enter_behaviour_sym_enter_conflict_description),
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                        if (onOpenLauncherShortcutAssignments != null) {
+                            TextButton(onClick = onOpenLauncherShortcutAssignments) {
+                                Text(stringResource(R.string.app_enter_behaviour_sym_enter_conflict_action))
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(24.dp))

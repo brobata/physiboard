@@ -344,7 +344,6 @@ fun KeyboardLayoutSettingsScreen(
                                 text = stringResource(R.string.keyboard_layout_no_conversion_description),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 2
                             )
                         }
                         Row(
@@ -434,7 +433,6 @@ fun KeyboardLayoutSettingsScreen(
                                         text = metadata?.description ?: getLayoutDescription(context, layout),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 2
                                     )
                                 }
                                 if (canDelete) {

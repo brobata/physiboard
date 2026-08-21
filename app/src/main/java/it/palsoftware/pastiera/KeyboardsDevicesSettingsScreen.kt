@@ -189,46 +189,12 @@ private fun KeyboardsDevicesMainScreen(
                 },
                 value = if (isVirtual) stringResource(R.string.keyboard_source_on_screen) else stringResource(R.string.keyboard_source_physical)
             )
-            NavigationRow(
-                icon = Icons.Filled.Keyboard,
-                title = shortcut?.let { stringResource(R.string.keyboard_switching_override_shortcut, it) }
-                    ?: stringResource(R.string.keyboard_switching_shortcut_unassigned),
-                description = stringResource(R.string.keyboard_switching_override_description),
-                onClick = { onNavModeSettingsClick(shortcutKeyCode) }
-            )
-            SwitchRow(
-                title = stringResource(R.string.software_keyboard_mode_toggle_toasts_title),
-                description = stringResource(R.string.software_keyboard_mode_toggle_toasts_description),
-                checked = showToggleToasts,
-                onCheckedChange = {
-                    showToggleToasts = it
-                    SettingsManager.setSoftwareKeyboardModeToggleToastsEnabled(context, it)
-                }
-            )
-
             SectionDivider(stringResource(R.string.keyboard_sources_section_title))
-            NavigationRow(
-                icon = Icons.Filled.Keyboard,
-                title = stringResource(R.string.on_screen_keyboard_title),
-                description = if (isVirtual) stringResource(R.string.keyboard_source_active) else stringResource(R.string.keyboard_source_standby),
-                onClick = onOnScreen
-            )
             NavigationRow(
                 icon = Icons.Filled.PhoneAndroid,
                 title = stringResource(R.string.built_in_keyboards_title),
                 description = if (builtInDetected) stringResource(R.string.keyboard_source_device_bound_detected) else stringResource(R.string.keyboard_source_device_bound),
                 onClick = onBuiltIn
-            )
-            NavigationRow(
-                icon = Icons.Filled.Bluetooth,
-                title = stringResource(R.string.keyboard_accessories_title),
-                description = if (clicksDevice != null) {
-                    val slot = clicksDevice.name.substringAfterLast('-', missingDelimiterValue = "?")
-                    stringResource(R.string.keyboard_accessory_clicks_connected, slot)
-                } else {
-                    stringResource(R.string.keyboard_accessory_clicks_disconnected)
-                },
-                onClick = onPowerKeyboard
             )
 
             SectionDivider(stringResource(R.string.hardware_keyboard_custom_profiles_title))
@@ -238,6 +204,16 @@ private fun KeyboardsDevicesMainScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
             )
+
+            SettingsAdvancedSection {
+                NavigationRow(
+                    icon = Icons.Filled.Keyboard,
+                    title = shortcut?.let { stringResource(R.string.keyboard_switching_override_shortcut, it) }
+                        ?: stringResource(R.string.keyboard_switching_shortcut_unassigned),
+                    description = stringResource(R.string.keyboard_switching_override_description),
+                    onClick = { onNavModeSettingsClick(shortcutKeyCode) }
+                )
+            }
         }
     }
 }

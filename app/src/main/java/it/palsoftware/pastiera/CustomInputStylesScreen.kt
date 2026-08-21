@@ -488,16 +488,6 @@ private fun LayoutSwitchShortcutsCard() {
                     SettingsManager.setCtrlSpaceLayoutSwitchEnabled(context, enabled)
                 }
             )
-
-            LayoutSwitchShortcutRow(
-                title = stringResource(R.string.toast_on_layout_switch_title),
-                description = stringResource(R.string.toast_on_layout_switch_description),
-                checked = toastOnLayoutSwitch,
-                onCheckedChange = { enabled ->
-                    toastOnLayoutSwitch = enabled
-                    SettingsManager.setToastOnLayoutSwitchEnabled(context, enabled)
-                }
-            )
         }
     }
 }

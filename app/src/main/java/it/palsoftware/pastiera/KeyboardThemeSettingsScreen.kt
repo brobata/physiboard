@@ -152,7 +152,7 @@ fun KeyboardThemeScreen(
                 context,
                 SettingsManager.KeyboardThemeTarget.HARDWARE,
                 dark = false
-            ).toKeyboardThemePreset("Pastiera Light")
+            ).toKeyboardThemePreset("Slate Light")
         )
     }
     var hardwareDarkTheme by remember {
@@ -161,7 +161,7 @@ fun KeyboardThemeScreen(
                 context,
                 SettingsManager.KeyboardThemeTarget.HARDWARE,
                 dark = true
-            ).toKeyboardThemePreset("Pastiera Dark")
+            ).toKeyboardThemePreset("Slate Dark")
         )
     }
     var softwareLightTheme by remember {
@@ -170,7 +170,7 @@ fun KeyboardThemeScreen(
                 context,
                 SettingsManager.KeyboardThemeTarget.SOFTWARE,
                 dark = false
-            ).toKeyboardThemePreset("Pastiera Light")
+            ).toKeyboardThemePreset("Slate Light")
         )
     }
     var softwareDarkTheme by remember {
@@ -179,7 +179,7 @@ fun KeyboardThemeScreen(
                 context,
                 SettingsManager.KeyboardThemeTarget.SOFTWARE,
                 dark = true
-            ).toKeyboardThemePreset("Pastiera Dark")
+            ).toKeyboardThemePreset("Slate Dark")
         )
     }
     var exportTheme by remember { mutableStateOf<KeyboardThemePreset?>(null) }
@@ -533,66 +533,9 @@ fun KeyboardThemeScreen(
                     }
                 }
             }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Button(
-                    onClick = { showNewDraftDialog = true },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(stringResource(R.string.keyboard_theme_action_new))
-                }
-                Button(
-                    onClick = { showImportDialog = true },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(stringResource(R.string.keyboard_theme_action_import))
-                }
-            }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Button(
-                    onClick = { showSaveAsDialog = true },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(stringResource(R.string.keyboard_theme_action_duplicate))
-                }
-                Button(
-                    onClick = { exportTheme = draftPreset ?: activeTheme },
-                    enabled = editedDraft == null || draftComplete,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(stringResource(R.string.keyboard_theme_action_export))
-                }
-                val savedName = activeSelectionKey.removePrefix("saved:")
-                    .takeIf { activeSelectionKey.startsWith("saved:") }
-                Button(
-                    onClick = {
-                        if (editedDraft != null) {
-                            deleteDraftRequest = editedDraft.name
-                        } else if (savedName != null) {
-                            deleteThemeRequest = savedName
-                        }
-                    },
-                    enabled = editedDraft != null || savedName != null,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    ),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(stringResource(R.string.keyboard_theme_action_delete))
-                }
-            }
+            // Theme authoring actions (New / Import / Duplicate / Export / Delete) were
+            // removed from the UI to keep the editor to preset selection + live preview.
+            // The underlying theme model and dialogs remain intact.
 
             if (editedDraft == null) {
                 KeyboardThemeAssignmentSummaryRow(
@@ -698,55 +641,19 @@ fun KeyboardThemeScreen(
                     )
                 }
             }
-            TabRow(
-                selectedTabIndex = customizationTab,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            ) {
-                Tab(
-                    selected = customizationTab == 0,
-                    onClick = { customizationTab = 0 },
-                    text = { Text(stringResource(R.string.keyboard_theme_tab_colors)) }
-                )
-                Tab(
-                    selected = customizationTab == 1,
-                    onClick = { customizationTab = 1 },
-                    text = { Text(stringResource(R.string.keyboard_theme_tab_keys)) }
-                )
-            }
+            // Customize reduced to the LED-indicator toggle only; the full Colors/Keys editor
+            // was removed to keep the theme screen to presets + preview + follow-system.
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
-                    .heightIn(max = 360.dp)
-                    .verticalScroll(rememberScrollState())
             ) {
-                if (editedDraft != null && draftPreset != null && customizationTab == 0) {
-                    KeyboardThemeDraftColorsEditor(
-                        theme = draftPreset,
-                        populatedFields = editedDraft.populatedFields,
-                        onFieldChanged = ::updateDraft
-                    )
-                } else if (editedDraft != null && draftPreset != null) {
-                    KeyboardThemeDraftKeysEditor(
-                        theme = draftPreset,
-                        populatedFields = editedDraft.populatedFields,
-                        onFieldChanged = ::updateDraft
-                    )
-                } else if (customizationTab == 0) {
-                    KeyboardThemeColorsEditor(
-                        theme = activeTheme,
-                        preset = activePreset,
-                        isSoftware = activePreviewPage == 1,
-                        onThemeChanged = ::updateActiveTheme
-                    )
-                } else {
-                    KeyboardThemeKeysEditor(
-                        theme = activeTheme,
-                        preset = activePreset,
-                        isSoftware = activePreviewPage == 1,
-                        onThemeChanged = ::updateActiveTheme
-                    )
-                }
+                KeyboardThemeSwitchRow(
+                    label = stringResource(R.string.keyboard_theme_show_leds),
+                    checked = activeTheme.showLeds,
+                    presetChecked = activePreset.showLeds,
+                    onCheckedChanged = { updateActiveTheme(activeTheme.copy(showLeds = it)) }
+                )
             }
             if (editedDraft != null) {
                 Button(

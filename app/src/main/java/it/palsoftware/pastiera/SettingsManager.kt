@@ -67,6 +67,15 @@ object SettingsManager {
     private const val KEY_AUTO_SHOW_KEYBOARD = "auto_show_keyboard"
     private const val KEY_CLEAR_ALT_ON_SPACE = "clear_alt_on_space"
     private const val KEY_ALT_CTRL_SPEECH_SHORTCUT = "alt_ctrl_speech_shortcut"
+    private const val KEY_FN_LONG_PRESS_SPEECH = "fn_long_press_speech"
+    private const val KEY_FN_SPEECH_SCAN_CODE = "fn_speech_scan_code"
+    private const val KEY_DICTATION_HAPTICS = "dictation_haptics"
+    private const val KEY_DICTATION_END_SILENCE_MS = "dictation_end_silence_ms"
+    private const val KEY_DICTATION_MASK_OFFENSIVE = "dictation_mask_offensive"
+    private const val KEY_APP_RAW_MODE_PACKAGES = "app_raw_mode_packages"
+    private const val KEY_SMART_BACKLIGHT_ENABLED = "smart_backlight_enabled"
+    private const val KEY_SMART_BACKLIGHT_LUX = "smart_backlight_lux_threshold"
+    private const val KEY_SMART_BACKLIGHT_TIMEOUT_S = "smart_backlight_timeout_seconds"
     private const val KEY_LAYOUT_AWARE_CTRL_SHORTCUTS = "layout_aware_ctrl_shortcuts"
     private const val KEY_SYM_MAPPINGS_CUSTOM = "sym_mappings_custom"
     private const val KEY_SYM_MAPPINGS_PAGE2_CUSTOM = "sym_mappings_page2_custom"
@@ -140,6 +149,7 @@ object SettingsManager {
     private const val KEY_EMOJI_PICKER_EXPANDED_HEIGHT = "emoji_picker_expanded_height"
     private const val KEY_DISMISSED_RELEASES = "dismissed_releases" // Set of release tag_names that were dismissed
     private const val KEY_TUTORIAL_COMPLETED = "tutorial_completed" // Whether the first-run tutorial has been completed
+    private const val KEY_IMPACT_DEFAULTS_APPLIED = "impact_defaults_applied" // One-shot opinionated first-run defaults
     private const val KEY_LAST_SEEN_WHATS_NEW_VERSION = "last_seen_whats_new_version"
     private const val KEY_SWIPE_INCREMENTAL_THRESHOLD = "swipe_incremental_threshold" // Distance in DIP for cursor movement
     private const val KEY_STATIC_VARIATION_BAR_MODE = "static_variation_bar_mode" // Use static variation bar instead of dynamic cursor-based variations
@@ -334,6 +344,10 @@ object SettingsManager {
     private const val DEFAULT_AUTO_SHOW_KEYBOARD = true
     private const val DEFAULT_CLEAR_ALT_ON_SPACE = true
     private const val DEFAULT_ALT_CTRL_SPEECH_SHORTCUT = true
+    private const val DEFAULT_FN_LONG_PRESS_SPEECH = false
+    // Scan code of the physical Fn key on Unihertz Titan devices. The scan code identifies
+    // the physical key even when the system remaps Fn to another key code (Ctrl, Home, ...).
+    private const val DEFAULT_FN_SPEECH_SCAN_CODE = 251
     private const val DEFAULT_LAYOUT_AWARE_CTRL_SHORTCUTS = false
     private const val DEFAULT_AUTO_CORRECT_ENABLED = true
     private const val DEFAULT_SUGGESTIONS_ENABLED = true
@@ -391,7 +405,7 @@ object SettingsManager {
     private const val DEFAULT_USE_EDIT_TYPE_RANKING = false
     private const val DEFAULT_IME_OVERLAY_DEBUG_LOGGING = false
     private const val DEFAULT_CLIPBOARD_HISTORY_ENABLED = true
-    private const val DEFAULT_CLIPBOARD_RETENTION_TIME = 120L // 2 hours in minutes
+    private const val DEFAULT_CLIPBOARD_RETENTION_TIME = 5L // 5 minutes
     private const val DEFAULT_TRACKPAD_GESTURES_ENABLED = false
     private const val DEFAULT_TRACKPAD_GESTURE_ADD_WORD_ENABLED = true
     private const val DEFAULT_TRACKPAD_GESTURE_ADD_WORD_FULL_WIDTH_ENABLED = true
@@ -911,6 +925,7 @@ object SettingsManager {
     fun getKeyboardThemeAssignmentMode(context: Context, target: KeyboardThemeTarget): String {
         val stored = getPreferences(context).getString(
             keyboardThemeAssignmentModeKeyForTarget(target),
+            // Default to a fixed theme; users can opt into following the system dark/light setting.
             KEYBOARD_THEME_ASSIGNMENT_MODE_FIXED
         )
         return if (stored == KEYBOARD_THEME_ASSIGNMENT_MODE_FOLLOW_SYSTEM) {
@@ -2077,6 +2092,159 @@ object SettingsManager {
         getPreferences(context).edit()
             .putBoolean(KEY_ALT_CTRL_SPEECH_SHORTCUT, enabled)
             .apply()
+    }
+
+    /**
+     * Returns whether long-pressing the Fn key starts speech recognition.
+     */
+    fun getFnLongPressSpeechEnabled(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_FN_LONG_PRESS_SPEECH, DEFAULT_FN_LONG_PRESS_SPEECH)
+    }
+
+    /**
+     * Sets whether long-pressing the Fn key starts speech recognition.
+     */
+    fun setFnLongPressSpeechEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_FN_LONG_PRESS_SPEECH, enabled)
+            .apply()
+    }
+
+    /**
+     * Returns the scan code of the physical key that triggers speech input when held.
+     */
+    fun getFnSpeechScanCode(context: Context): Int {
+        return getPreferences(context).getInt(KEY_FN_SPEECH_SCAN_CODE, DEFAULT_FN_SPEECH_SCAN_CODE)
+    }
+
+    /**
+     * Sets the scan code of the physical key that triggers speech input when held.
+     */
+    fun setFnSpeechScanCode(context: Context, scanCode: Int) {
+        getPreferences(context).edit()
+            .putInt(KEY_FN_SPEECH_SCAN_CODE, scanCode)
+            .apply()
+    }
+
+    /**
+     * Raw user preference for the dictation start/stop vibration cue.
+     * Use this for the settings toggle state; use [getDictationHapticsEnabled]
+     * for the effective value that also honors the system haptic setting.
+     */
+    fun getDictationHapticsPreference(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_DICTATION_HAPTICS, true)
+    }
+
+    /**
+     * Returns whether dictation start/stop is signalled with a vibration cue.
+     * Effective value: gated on the system haptic-feedback setting so the cue
+     * follows the system rather than being an independent always-on toggle.
+     */
+    fun getDictationHapticsEnabled(context: Context): Boolean {
+        return getDictationHapticsPreference(context) && isSystemHapticFeedbackEnabled(context)
+    }
+
+    /**
+     * Reads the system-wide "Haptic feedback" toggle (Settings.System). Defaults
+     * to enabled when the value cannot be read.
+     */
+    fun isSystemHapticFeedbackEnabled(context: Context): Boolean {
+        return try {
+            android.provider.Settings.System.getInt(
+                context.contentResolver,
+                android.provider.Settings.System.HAPTIC_FEEDBACK_ENABLED,
+                1
+            ) != 0
+        } catch (_: Exception) {
+            true
+        }
+    }
+
+    fun setDictationHapticsEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_DICTATION_HAPTICS, enabled)
+            .apply()
+    }
+
+    /**
+     * Returns the requested end-of-speech silence length in milliseconds.
+     * 0 means the recognizer's system default. The recognition service may
+     * treat the value as a hint and is not guaranteed to honor it.
+     */
+    fun getDictationEndSilenceMs(context: Context): Int {
+        return getPreferences(context).getInt(KEY_DICTATION_END_SILENCE_MS, 0)
+    }
+
+    fun setDictationEndSilenceMs(context: Context, ms: Int) {
+        getPreferences(context).edit()
+            .putInt(KEY_DICTATION_END_SILENCE_MS, ms.coerceIn(0, 10000))
+            .apply()
+    }
+
+    /**
+     * Returns whether the recognizer should mask offensive words (e.g. "f***").
+     * The keyboard-level Google voice typing setting does not apply here because
+     * dictation runs through SpeechRecognizer with a per-request flag.
+     */
+    fun getDictationMaskOffensive(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_DICTATION_MASK_OFFENSIVE, true)
+    }
+
+    fun setDictationMaskOffensive(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_DICTATION_MASK_OFFENSIVE, enabled)
+            .apply()
+    }
+
+    /**
+     * Packages where all smart typing features are disabled ("raw mode"),
+     * e.g. terminal apps where auto-correction breaks commands.
+     */
+    fun getRawModePackages(context: Context): Set<String> {
+        return getPreferences(context).getStringSet(KEY_APP_RAW_MODE_PACKAGES, emptySet()) ?: emptySet()
+    }
+
+    fun isRawModeApp(context: Context, packageName: String?): Boolean {
+        if (packageName.isNullOrEmpty()) return false
+        return packageName in getRawModePackages(context)
+    }
+
+    fun setRawModeApp(context: Context, packageName: String, enabled: Boolean) {
+        val current = getRawModePackages(context).toMutableSet()
+        if (enabled) current.add(packageName) else current.remove(packageName)
+        getPreferences(context).edit()
+            .putStringSet(KEY_APP_RAW_MODE_PACKAGES, current)
+            .apply()
+    }
+
+    /**
+     * Smart keyboard backlight: keeps the LED on while the screen is on and the room is
+     * darker than the lux threshold, bypassing the vendor's 30s cap (needs Shizuku).
+     */
+    fun getSmartBacklightEnabled(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_SMART_BACKLIGHT_ENABLED, false)
+    }
+
+    fun setSmartBacklightEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit().putBoolean(KEY_SMART_BACKLIGHT_ENABLED, enabled).apply()
+    }
+
+    /** Ambient light at or below this (lux) counts as "dark". */
+    fun getSmartBacklightLuxThreshold(context: Context): Int {
+        return getPreferences(context).getInt(KEY_SMART_BACKLIGHT_LUX, 20)
+    }
+
+    fun setSmartBacklightLuxThreshold(context: Context, lux: Int) {
+        getPreferences(context).edit().putInt(KEY_SMART_BACKLIGHT_LUX, lux.coerceIn(1, 200)).apply()
+    }
+
+    /** Seconds of no keypress before the LED is released; 0 = stay on while dark. */
+    fun getSmartBacklightTimeoutSeconds(context: Context): Int {
+        return getPreferences(context).getInt(KEY_SMART_BACKLIGHT_TIMEOUT_S, 0)
+    }
+
+    fun setSmartBacklightTimeoutSeconds(context: Context, seconds: Int) {
+        getPreferences(context).edit().putInt(KEY_SMART_BACKLIGHT_TIMEOUT_S, seconds.coerceIn(0, 600)).apply()
     }
 
     enum class ClicksPowerButtonMode(val persistedValue: String) {
@@ -5070,6 +5238,74 @@ object SettingsManager {
         getPreferences(context).edit()
             .putBoolean(KEY_TUTORIAL_COMPLETED, false)
             .apply()
+    }
+
+    /**
+     * Applies PhysiBoard's opinionated first-run defaults exactly once, so a fresh install
+     * arrives already configured for a physical-keyboard phone instead of everything-off.
+     * Only sets keys the user has not already chosen, and never re-runs.
+     */
+    fun applyImpactDefaultsIfNeeded(context: Context) {
+        val prefs = getPreferences(context)
+        if (prefs.getBoolean(KEY_IMPACT_DEFAULTS_APPLIED, false)) return
+        val editor = prefs.edit()
+        // Curated first-run defaults: the user's real, dialed-in PhysiBoard config
+        // (scrubbed of personal/state/device data). Written as raw pref keys that
+        // map 1:1 to how the app reads them. Gated by KEY_IMPACT_DEFAULTS_APPLIED so
+        // this never clobbers a returning user's own changes.
+
+        // Booleans
+        editor.putBoolean("auto_capitalize_first_letter", false)
+        editor.putBoolean("fn_long_press_speech", true)
+        editor.putBoolean("dictation_haptics", true)
+        editor.putBoolean("dictation_mask_offensive", false)
+        editor.putBoolean("smart_backlight_enabled", true)
+        editor.putBoolean("pastierina_mode_active", true)
+        editor.putBoolean("status_bar_variations_visible", false)
+        editor.putBoolean("titan2_elite_rounded_corner_insets", true)
+        editor.putBoolean("use_keyboard_proximity", true)
+        editor.putBoolean("alt_shift_layout_switch", true)
+        editor.putBoolean("alt_ctrl_speech_shortcut", false)
+        editor.putBoolean("auto_show_keyboard", true)
+        editor.putBoolean("emoji_picker_expanded_height", false)
+        editor.putBoolean("static_variation_bar_mode", false)
+        editor.putBoolean("static_variation_bar_base_layer_enabled", false)
+        editor.putBoolean("dynamic_variation_bar_resize_to_content", false)
+
+        // Ints
+        editor.putInt("smart_backlight_lux_threshold", 25)
+        editor.putInt("smart_backlight_timeout_seconds", 45)
+        editor.putInt("dynamic_variation_bar_slot_count", 7)
+        editor.putInt("dictation_end_silence_ms", 2000)
+
+        // Strings
+        editor.putString("modifier_indicator_mode", "menu_bar")
+        editor.putString("pastierina_mode_override", "pastierina")
+        editor.putString("status_bar_slot_left", "clipboard")
+        editor.putString("status_bar_slot_right_1", "microphone")
+        editor.putString("status_bar_slot_right_2", "none")
+        editor.putString("physical_keyboard_currency_symbol", "$")
+        editor.putString("keyboard_layout", "qwerty")
+        editor.putString("software_keyboard_mode", "auto")
+        editor.putString("static_variation_bar_preset", "off")
+        editor.putString("app_enter_behavior_preset", "enter_send_shift_newline")
+
+        // JSON strings (written as literal strings)
+        editor.putString("status_bar_slots_left", "[\"clipboard\"]")
+        editor.putString("status_bar_slots_right", "[\"microphone\",\"none\"]")
+        editor.putString("pastierina_status_bar_slots_left", "[\"clipboard\"]")
+        editor.putString("pastierina_status_bar_slots_right", "[\"microphone\"]")
+        editor.putString(
+            "sym_pages_config",
+            "{\"emojiEnabled\":false,\"symbolsEnabled\":true,\"clipboardEnabled\":false,\"emojiPickerEnabled\":true,\"emojiFirst\":false,\"symPageOrder\":[\"emoji_picker\",\"symbols\",\"clipboard\",\"emoji\"]}"
+        )
+        editor.putString(
+            "app_enter_behavior_overrides",
+            "[{\"packageName\":\"com.whatsapp\",\"behavior\":\"enter_send_shift_newline\",\"sendStrategy\":\"auto\",\"additionalSendShortcut\":\"none\"},{\"packageName\":\"com.discord\",\"behavior\":\"enter_send_shift_newline\",\"sendStrategy\":\"auto\",\"additionalSendShortcut\":\"none\"},{\"packageName\":\"com.google.android.apps.messaging\",\"behavior\":\"enter_send_shift_newline\",\"sendStrategy\":\"auto\",\"additionalSendShortcut\":\"none\"},{\"packageName\":\"com.instagram.android\",\"behavior\":\"enter_send_shift_newline\",\"sendStrategy\":\"auto\",\"additionalSendShortcut\":\"none\"}]"
+        )
+
+        editor.putBoolean(KEY_IMPACT_DEFAULTS_APPLIED, true)
+        editor.apply()
     }
 
     fun shouldShowWhatsNew(context: Context, currentVersion: String): Boolean {

@@ -171,6 +171,8 @@ fun CustomizationSettingsScreen(
                     CustomizationDestination.StatusBarButtons
                 SettingsActivity.CUSTOMIZATION_DESTINATION_KEYBOARD_THEME ->
                     CustomizationDestination.KeyboardTheme
+                SettingsActivity.CUSTOMIZATION_DESTINATION_SOUNDS ->
+                    CustomizationDestination.Sounds
                 else -> null
             }
             add(deepLinkedDestination ?: CustomizationDestination.Main)
@@ -341,88 +343,45 @@ fun CustomizationSettingsScreen(
                             .padding(paddingValues)
                             .verticalScroll(rememberScrollState())
                     ) {
-                        // Variations Customization
                         Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(64.dp)
-                                .clickable { navigateTo(CustomizationDestination.Variations) }
-                        ) {
-                            Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    .height(64.dp)
+                                    .clickable { navigateTo(CustomizationDestination.Variations) }
                             ) {
-                                Icon(
-                                    imageVector = Icons.Filled.Tune,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = stringResource(R.string.variation_customize_title),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Medium,
-                                        maxLines = 1
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Tune,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = stringResource(R.string.variation_customize_title),
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Medium,
+                                            maxLines = 1
+                                        )
+                                    }
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
                             }
-                        }
-                    
-                        // Sound Settings
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(64.dp)
-                                .clickable { navigateTo(CustomizationDestination.Sounds) }
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = stringResource(R.string.settings_category_sounds),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Medium,
-                                        maxLines = 1
-                                    )
-                                    Text(
-                                        text = stringResource(R.string.settings_sounds_description),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1
-                                    )
-                                }
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
 
                     }
                 }
             }
-            
+
             CustomizationDestination.Variations -> {
                 VariationCustomizationScreen(
                     modifier = modifier,
@@ -712,16 +671,6 @@ private fun StarterLauncherShortcutsSettingsScreen(
                 checked = powerShortcutsEnabled,
                 onCheckedChange = onPowerShortcutsEnabledChanged
             )
-            if (powerShortcutsEnabled) {
-                LauncherShortcutTriggerRow(
-                    icon = {},
-                    title = stringResource(R.string.key_shortcuts_allow_in_text_fields_title),
-                    description = stringResource(R.string.sym_shortcuts_in_text_fields_description),
-                    checked = symShortcutsInTextFields,
-                    onCheckedChange = onSymShortcutsInTextFieldsChanged,
-                    indent = true
-                )
-            }
 
             LauncherShortcutTriggerRow(
                 icon = {
@@ -737,16 +686,6 @@ private fun StarterLauncherShortcutsSettingsScreen(
                 checked = altKeyShortcutsEnabled,
                 onCheckedChange = onAltKeyShortcutsEnabledChanged
             )
-            if (altKeyShortcutsEnabled) {
-                LauncherShortcutTriggerRow(
-                    icon = {},
-                    title = stringResource(R.string.key_shortcuts_allow_in_text_fields_title),
-                    description = stringResource(R.string.alt_shortcuts_in_text_fields_description),
-                    checked = altShortcutsInTextFields,
-                    onCheckedChange = onAltShortcutsInTextFieldsChanged,
-                    indent = true
-                )
-            }
 
             StarterLauncherNavigationRow(
                 icon = {
@@ -760,20 +699,6 @@ private fun StarterLauncherShortcutsSettingsScreen(
                 title = stringResource(R.string.quick_launcher_behaviour_title),
                 description = stringResource(R.string.quick_launcher_behaviour_description),
                 onClick = onOpenBehavior
-            )
-
-            StarterLauncherNavigationRow(
-                icon = {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ManageSearch,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                },
-                title = stringResource(R.string.quick_launcher_cosmetic_title),
-                description = stringResource(R.string.quick_launcher_cosmetic_description),
-                onClick = onOpenCosmetic
             )
 
             StarterLauncherNavigationRow(
@@ -796,6 +721,27 @@ private fun StarterLauncherShortcutsSettingsScreen(
                 },
                 onClick = onManageAssignments
             )
+
+            SettingsAdvancedSection {
+                if (powerShortcutsEnabled) {
+                    LauncherShortcutTriggerRow(
+                        icon = {},
+                        title = stringResource(R.string.key_shortcuts_allow_in_text_fields_title),
+                        description = stringResource(R.string.sym_shortcuts_in_text_fields_description),
+                        checked = symShortcutsInTextFields,
+                        onCheckedChange = onSymShortcutsInTextFieldsChanged
+                    )
+                }
+                if (altKeyShortcutsEnabled) {
+                    LauncherShortcutTriggerRow(
+                        icon = {},
+                        title = stringResource(R.string.key_shortcuts_allow_in_text_fields_title),
+                        description = stringResource(R.string.alt_shortcuts_in_text_fields_description),
+                        checked = altShortcutsInTextFields,
+                        onCheckedChange = onAltShortcutsInTextFieldsChanged
+                    )
+                }
+            }
         }
     }
 }
@@ -830,6 +776,7 @@ private fun StarterLauncherBehaviorScreen(
         title = stringResource(R.string.quick_launcher_behaviour_title),
         onBack = onBack
     ) {
+        SettingsAdvancedSection {
         Surface(
             modifier = Modifier.fillMaxWidth(),
             tonalElevation = 1.dp,
@@ -922,6 +869,7 @@ private fun StarterLauncherBehaviorScreen(
             )
             Spacer(modifier = Modifier.width(6.dp))
             Text(stringResource(R.string.quick_launcher_ranking_info_button))
+        }
         }
         Surface(
             modifier = Modifier.fillMaxWidth(),
@@ -2008,7 +1956,6 @@ private fun StarterLauncherNavigationRow(
                     text = description,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2
                 )
             }
             Icon(
@@ -2107,6 +2054,44 @@ private fun SoundSettingsScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             TypingSoundSettingsRow()
+            DictationHapticsSettingsRow()
+        }
+    }
+}
+
+@Composable
+private fun DictationHapticsSettingsRow() {
+    val context = LocalContext.current
+    var dictationHaptics by remember {
+        mutableStateOf(SettingsManager.getDictationHapticsPreference(context))
+    }
+    Surface(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.dictation_haptics_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = stringResource(R.string.dictation_haptics_description),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = dictationHaptics,
+                onCheckedChange = { enabled ->
+                    dictationHaptics = enabled
+                    SettingsManager.setDictationHapticsEnabled(context, enabled)
+                }
+            )
         }
     }
 }

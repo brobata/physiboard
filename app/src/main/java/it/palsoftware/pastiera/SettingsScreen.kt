@@ -26,14 +26,19 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.KeyboardReturn
 import androidx.compose.material.icons.automirrored.filled.ManageSearch
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.SmartButton
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.TouchApp
+import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Spellcheck
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Engineering
@@ -60,6 +65,7 @@ import it.palsoftware.pastiera.update.shouldUseGithubUpdateChecks
  */
 enum class SettingsDestination {
     Main,
+    Status,
     KeyboardsDevices,
     KeyboardTiming,
     TextInput,
@@ -67,12 +73,16 @@ enum class SettingsDestination {
     AutoCorrection,
     Customization,
     NavMode,
+    KeyboardSwipe,
     Advanced,
     About,
     CustomInputStyles,
     AppLanguage,
     DeviceSymLayerEditor,
-    Modifiers
+    Modifiers,
+    AppRawMode,
+    SmartBacklight,
+    Voice
 }
 
 private val settingsNavigationStackSaver =
@@ -101,7 +111,12 @@ fun SettingsScreen(
     var checkingForUpdates by remember { mutableStateOf(false) }
     var navigationDirection by remember { mutableStateOf(NavigationDirection.Push) }
     var requestedCustomizationDestination by rememberSaveable {
-        mutableStateOf(initialCustomizationDestination)
+        mutableStateOf(
+            initialCustomizationDestination
+                ?: if (initialDestination == SettingsActivity.DESTINATION_KEYBOARD_THEME)
+                    SettingsActivity.CUSTOMIZATION_DESTINATION_KEYBOARD_THEME
+                else null
+        )
     }
     var requestedNavModeKeyCode by rememberSaveable { mutableStateOf<Int?>(null) }
     val navigationStack = rememberSaveable(saver = settingsNavigationStackSaver) {
@@ -115,6 +130,30 @@ fun SettingsScreen(
                 add(SettingsDestination.DeviceSymLayerEditor)
             } else if (initialDestination == SettingsActivity.DESTINATION_MODIFIERS) {
                 add(SettingsDestination.Modifiers)
+            } else if (initialDestination == SettingsActivity.DESTINATION_SMART_BACKLIGHT) {
+                add(SettingsDestination.Main)
+                add(SettingsDestination.SmartBacklight)
+            } else if (initialDestination == SettingsActivity.DESTINATION_INPUT_LANGUAGES) {
+                add(SettingsDestination.Main)
+                add(SettingsDestination.CustomInputStyles)
+            } else if (initialDestination == SettingsActivity.DESTINATION_KEYBOARD_THEME) {
+                add(SettingsDestination.Main)
+                add(SettingsDestination.Customization)
+            } else if (initialDestination == SettingsActivity.DESTINATION_SMART_FEATURES) {
+                add(SettingsDestination.Main)
+                add(SettingsDestination.TextInput)
+            } else if (initialDestination == SettingsActivity.DESTINATION_AUTO_CORRECT) {
+                add(SettingsDestination.Main)
+                add(SettingsDestination.AutoCorrection)
+            } else if (initialDestination == SettingsActivity.DESTINATION_VOICE) {
+                add(SettingsDestination.Main)
+                add(SettingsDestination.Voice)
+            } else if (initialDestination == SettingsActivity.DESTINATION_RAW_MODE) {
+                add(SettingsDestination.Main)
+                add(SettingsDestination.AppRawMode)
+            } else if (initialDestination == SettingsActivity.DESTINATION_FN_LAYER) {
+                add(SettingsDestination.Main)
+                add(SettingsDestination.NavMode)
             } else {
                 add(SettingsDestination.Main)
             }
@@ -196,11 +235,19 @@ fun SettingsScreen(
                     context = context,
                     checkingForUpdates = checkingForUpdates,
                     onCheckingForUpdatesChange = { checkingForUpdates = it },
+                    onStatusClick = { navigateTo(SettingsDestination.Status) },
                     onModifiersClick = { navigateTo(SettingsDestination.Modifiers) },
                     onKeyboardsDevicesClick = { navigateTo(SettingsDestination.KeyboardsDevices) },
                     onTextInputClick = { navigateTo(SettingsDestination.TextInput) },
+                    onVoiceClick = { navigateTo(SettingsDestination.Voice) },
+                    onKeyboardSwipeClick = { navigateTo(SettingsDestination.KeyboardSwipe) },
+                    onSoundHapticsClick = {
+                        openCustomization(SettingsActivity.CUSTOMIZATION_DESTINATION_SOUNDS)
+                    },
                     onAccessibilityClick = { navigateTo(SettingsDestination.Accessibility) },
                     onAutoCorrectionClick = { navigateTo(SettingsDestination.AutoCorrection) },
+                    onAppRawModeClick = { navigateTo(SettingsDestination.AppRawMode) },
+                    onSmartBacklightClick = { navigateTo(SettingsDestination.SmartBacklight) },
                     onCustomizationClick = { openCustomization(null) },
                     onStatusBarButtonsClick = {
                         openCustomization(SettingsActivity.CUSTOMIZATION_DESTINATION_STATUS_BAR_BUTTONS)
@@ -223,6 +270,18 @@ fun SettingsScreen(
                     onBackClick = { navigateBack() },
                     onCustomInputStylesClick = { navigateTo(SettingsDestination.CustomInputStyles) },
                     onAppLanguageClick = { navigateTo(SettingsDestination.AppLanguage) }
+                )
+            }
+            SettingsDestination.Status -> {
+                StatusScreen(
+                    modifier = modifier,
+                    onBack = { navigateBack() }
+                )
+            }
+            SettingsDestination.KeyboardSwipe -> {
+                TrackpadGestureSettingsScreen(
+                    modifier = modifier,
+                    onBack = { navigateBack() }
                 )
             }
             SettingsDestination.KeyboardsDevices -> {
@@ -260,6 +319,27 @@ fun SettingsScreen(
                     onBack = { navigateBack() }
                 )
             }
+            SettingsDestination.AppRawMode -> {
+                AppRawModeScreen(
+                    modifier = modifier,
+                    onBack = { navigateBack() }
+                )
+            }
+            SettingsDestination.SmartBacklight -> {
+                SmartBacklightScreen(
+                    modifier = modifier,
+                    onBack = { navigateBack() }
+                )
+            }
+            SettingsDestination.Voice -> {
+                VoiceSettingsScreen(
+                    modifier = modifier,
+                    onBack = { navigateBack() },
+                    onOpenSoundHaptics = {
+                        openCustomization(SettingsActivity.CUSTOMIZATION_DESTINATION_SOUNDS)
+                    }
+                )
+            }
             SettingsDestination.Customization -> {
                 key(requestedCustomizationDestination, initialKeyboardThemeTarget) {
                     CustomizationSettingsScreen(
@@ -281,13 +361,15 @@ fun SettingsScreen(
             SettingsDestination.Advanced -> {
                 AdvancedSettingsScreen(
                     modifier = modifier,
-                    onBack = { navigateBack() }
+                    onBack = { navigateBack() },
+                    onOpenInputLanguages = { navigateTo(SettingsDestination.CustomInputStyles) }
                 )
             }
             SettingsDestination.About -> {
                 AboutScreen(
                     modifier = modifier,
-                    onBack = { navigateBack() }
+                    onBack = { navigateBack() },
+                    onAppLanguageClick = { navigateTo(SettingsDestination.AppLanguage) }
                 )
             }
             SettingsDestination.CustomInputStyles -> {
@@ -333,11 +415,17 @@ private fun SettingsMainScreen(
     context: Context,
     checkingForUpdates: Boolean,
     onCheckingForUpdatesChange: (Boolean) -> Unit,
+    onStatusClick: () -> Unit,
     onModifiersClick: () -> Unit,
     onKeyboardsDevicesClick: () -> Unit,
     onTextInputClick: () -> Unit,
+    onVoiceClick: () -> Unit,
+    onKeyboardSwipeClick: () -> Unit,
+    onSoundHapticsClick: () -> Unit,
     onAccessibilityClick: () -> Unit,
     onAutoCorrectionClick: () -> Unit,
+    onAppRawModeClick: () -> Unit,
+    onSmartBacklightClick: () -> Unit,
     onCustomizationClick: () -> Unit,
     onStatusBarButtonsClick: () -> Unit,
     onKeyboardThemeClick: () -> Unit,
@@ -350,6 +438,29 @@ private fun SettingsMainScreen(
     onCustomInputStylesClick: () -> Unit,
     onAppLanguageClick: () -> Unit
 ) {
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    val searchTargetHandler: (SettingsSearchTarget) -> Unit = { target ->
+        searchQuery = ""
+        when (target) {
+            SettingsSearchTarget.MODIFIERS -> onModifiersClick()
+            SettingsSearchTarget.KEYBOARDS_DEVICES -> onKeyboardsDevicesClick()
+            SettingsSearchTarget.TEXT_INPUT -> onTextInputClick()
+            SettingsSearchTarget.VOICE -> onVoiceClick()
+            SettingsSearchTarget.ACCESSIBILITY -> onAccessibilityClick()
+            SettingsSearchTarget.AUTO_CORRECTION -> onAutoCorrectionClick()
+            SettingsSearchTarget.APP_RAW_MODE -> onAppRawModeClick()
+            SettingsSearchTarget.CUSTOMIZATION -> onCustomizationClick()
+            SettingsSearchTarget.STATUS_BAR_BUTTONS -> onStatusBarButtonsClick()
+            SettingsSearchTarget.KEYBOARD_THEME -> onKeyboardThemeClick()
+            SettingsSearchTarget.QUICK_LAUNCHER -> onQuickLauncherClick()
+            SettingsSearchTarget.NAV_MODE -> onNavModeClick()
+            SettingsSearchTarget.ENTER_BEHAVIOR -> onEnterBehaviorClick()
+            SettingsSearchTarget.ADVANCED -> onAdvancedClick()
+            SettingsSearchTarget.ABOUT -> onAboutClick()
+            SettingsSearchTarget.CUSTOM_INPUT_STYLES -> onCustomInputStylesClick()
+            SettingsSearchTarget.APP_LANGUAGE -> onAppLanguageClick()
+        }
+    }
     Scaffold(
         topBar = {
             Surface(
@@ -386,13 +497,58 @@ private fun SettingsMainScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
-            SettingsGroupDivider(stringResource(R.string.settings_group_typing))
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                placeholder = { Text(stringResource(R.string.settings_search_placeholder)) },
+                singleLine = true,
+                shape = MaterialTheme.shapes.extraLarge,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+
+            val query = searchQuery.trim()
+            if (query.isNotEmpty()) {
+                val results = SettingsCatalog.entries.filter { entry ->
+                    val title = stringResource(entry.titleRes)
+                    val screen = stringResource(entry.screenTitleRes)
+                    title.contains(query, ignoreCase = true) ||
+                        screen.contains(query, ignoreCase = true) ||
+                        entry.keywords.contains(query, ignoreCase = true)
+                }
+                if (results.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.settings_search_no_results, query),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+                results.forEach { entry ->
+                    val title = stringResource(entry.titleRes)
+                    val screen = stringResource(entry.screenTitleRes)
+                    SettingsCategoryRow(
+                        icon = Icons.Filled.Search,
+                        title = title,
+                        description = if (screen != title) {
+                            stringResource(R.string.settings_search_result_in, screen)
+                        } else null,
+                        onClick = { searchTargetHandler(entry.target) }
+                    )
+                }
+                return@Column
+            }
 
             SettingsCategoryRow(
-                icon = Icons.Filled.Keyboard,
-                title = stringResource(R.string.keyboards_devices_title),
-                onClick = onKeyboardsDevicesClick
+                icon = Icons.Filled.CheckCircle,
+                title = stringResource(R.string.settings_category_status),
+                description = stringResource(R.string.settings_status_row_description),
+                onClick = onStatusClick
             )
+
+            SettingsGroupDivider(stringResource(R.string.settings_group_keys))
+
             SettingsCategoryRow(
                 iconRes = R.drawable.modifier_keys_24,
                 title = stringResource(R.string.modifiers_title),
@@ -400,12 +556,19 @@ private fun SettingsMainScreen(
                 onClick = onModifiersClick
             )
             SettingsCategoryRow(
-                icon = Icons.Filled.Language,
-                title = stringResource(R.string.custom_input_styles_title),
-                onClick = onCustomInputStylesClick
+                icon = ImageVector.vectorResource(R.drawable.navigation_24),
+                title = stringResource(R.string.nav_mode_title),
+                description = stringResource(R.string.settings_nav_mode_configure),
+                onClick = onNavModeClick
+            )
+            SettingsCategoryRow(
+                icon = Icons.Filled.TouchApp,
+                title = stringResource(R.string.trackpad_gestures_title),
+                description = stringResource(R.string.trackpad_gestures_description),
+                onClick = onKeyboardSwipeClick
             )
 
-            SettingsGroupDivider(stringResource(R.string.settings_group_smart_features))
+            SettingsGroupDivider(stringResource(R.string.settings_group_typing_corrections))
 
             SettingsCategoryRow(
                 icon = Icons.Filled.TextFields,
@@ -417,19 +580,25 @@ private fun SettingsMainScreen(
                 title = stringResource(R.string.settings_category_auto_correction),
                 onClick = onAutoCorrectionClick
             )
+            SettingsCategoryRow(
+                icon = Icons.AutoMirrored.Filled.KeyboardReturn,
+                title = stringResource(R.string.app_enter_behaviour_title),
+                description = stringResource(R.string.app_enter_behaviour_description),
+                onClick = onEnterBehaviorClick
+            )
+            SettingsCategoryRow(
+                icon = Icons.Filled.Block,
+                title = stringResource(R.string.app_raw_mode_title),
+                description = stringResource(R.string.app_raw_mode_row_description),
+                onClick = onAppRawModeClick
+            )
 
-            SettingsGroupDivider(stringResource(R.string.settings_group_customization))
+            SettingsGroupDivider(stringResource(R.string.settings_group_appearance))
 
             SettingsCategoryRow(
                 icon = Icons.Filled.Palette,
                 title = stringResource(R.string.keyboard_theme_title),
                 onClick = onKeyboardThemeClick
-            )
-            SettingsCategoryRow(
-                icon = ImageVector.vectorResource(R.drawable.translate_24),
-                title = stringResource(R.string.app_language_title),
-                description = currentAppLanguageLabel(context),
-                onClick = onAppLanguageClick
             )
             SettingsCategoryRow(
                 icon = Icons.Filled.SmartButton,
@@ -438,30 +607,30 @@ private fun SettingsMainScreen(
                 onClick = onStatusBarButtonsClick
             )
             SettingsCategoryRow(
+                icon = Icons.Filled.LightMode,
+                title = stringResource(R.string.smart_backlight_title),
+                description = stringResource(R.string.smart_backlight_row_description),
+                onClick = onSmartBacklightClick
+            )
+            SettingsCategoryRow(
+                icon = Icons.AutoMirrored.Filled.VolumeUp,
+                title = stringResource(R.string.settings_category_sounds),
+                description = stringResource(R.string.settings_sounds_description),
+                onClick = onSoundHapticsClick
+            )
+            SettingsCategoryRow(
                 icon = Icons.Filled.Tune,
                 title = stringResource(R.string.settings_category_customization),
                 onClick = onCustomizationClick
             )
 
-            SettingsGroupDivider(stringResource(R.string.settings_group_utility))
+            SettingsGroupDivider(stringResource(R.string.settings_group_shortcuts_language))
 
             SettingsCategoryRow(
                 icon = Icons.AutoMirrored.Filled.ManageSearch,
                 title = stringResource(R.string.starter_launcher_shortcuts_title),
                 description = stringResource(R.string.starter_launcher_shortcuts_description),
                 onClick = onQuickLauncherClick
-            )
-            SettingsCategoryRow(
-                icon = ImageVector.vectorResource(R.drawable.navigation_24),
-                title = stringResource(R.string.nav_mode_title),
-                description = stringResource(R.string.settings_nav_mode_configure),
-                onClick = onNavModeClick
-            )
-            SettingsCategoryRow(
-                icon = Icons.AutoMirrored.Filled.KeyboardReturn,
-                title = stringResource(R.string.app_enter_behaviour_title),
-                description = stringResource(R.string.app_enter_behaviour_description),
-                onClick = onEnterBehaviorClick
             )
 
             SettingsGroupDivider(stringResource(R.string.settings_group_system))
@@ -543,13 +712,13 @@ private fun SettingsCategoryRow(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(if (description == null) 56.dp else 64.dp)
+            .heightIn(min = if (description == null) 56.dp else 64.dp)
             .clickable(enabled = enabled, onClick = onClick)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -587,7 +756,7 @@ private fun SettingsCategoryRow(
                         text = description,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
+                        maxLines = 3
                     )
                 }
             }

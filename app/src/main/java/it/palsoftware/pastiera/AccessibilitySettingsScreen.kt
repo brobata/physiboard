@@ -165,124 +165,6 @@ fun AccessibilitySettingsScreen(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(84.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.TouchApp,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.settings_accessibility_second_row_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1
-                        )
-                        Text(
-                            text = stringResource(R.string.settings_accessibility_second_row_description),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Switch(
-                        checked = readSecondRowEnabled,
-                        onCheckedChange = { enabled ->
-                            readSecondRowEnabled = enabled
-                            SettingsManager.setAccessibilityReadSecondRowEnabled(context, enabled)
-                        }
-                    )
-                }
-            }
-
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(84.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Timer,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.settings_accessibility_suggestions_delay_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1
-                        )
-                        Text(
-                            text = stringResource(
-                                R.string.settings_accessibility_suggestions_delay_value,
-                                suggestionsAnnouncementDelayMs
-                            ),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    OutlinedButton(
-                        onClick = {
-                            val updated = (suggestionsAnnouncementDelayMs - 50L).coerceAtLeast(
-                                SettingsManager.getMinAccessibilitySuggestionsAnnouncementDelayMs()
-                            )
-                            suggestionsAnnouncementDelayMs = updated
-                            SettingsManager.setAccessibilitySuggestionsAnnouncementDelayMs(context, updated)
-                            Toast.makeText(
-                                context,
-                                context.getString(R.string.settings_accessibility_delay_feedback, updated),
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        },
-                        enabled = suggestionsAnnouncementDelayMs > SettingsManager.getMinAccessibilitySuggestionsAnnouncementDelayMs()
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Remove,
-                            contentDescription = stringResource(R.string.settings_accessibility_delay_decrease)
-                        )
-                    }
-                    OutlinedButton(
-                        onClick = {
-                            val updated = (suggestionsAnnouncementDelayMs + 50L).coerceAtMost(
-                                SettingsManager.getMaxAccessibilitySuggestionsAnnouncementDelayMs()
-                            )
-                            suggestionsAnnouncementDelayMs = updated
-                            SettingsManager.setAccessibilitySuggestionsAnnouncementDelayMs(context, updated)
-                            Toast.makeText(
-                                context,
-                                context.getString(R.string.settings_accessibility_delay_feedback, updated),
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        },
-                        enabled = suggestionsAnnouncementDelayMs < SettingsManager.getMaxAccessibilitySuggestionsAnnouncementDelayMs()
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Add,
-                            contentDescription = stringResource(R.string.settings_accessibility_delay_increase)
-                        )
-                    }
-                }
-            }
-
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
                     .height(96.dp)
             ) {
                 Row(
@@ -383,44 +265,6 @@ fun AccessibilitySettingsScreen(
                     SettingsManager.setBounceKeysModifierKeysEnabled(context, enabled)
                 }
             )
-            Text(
-                text = stringResource(R.string.settings_accessibility_bounce_keys_text_control_title),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-            )
-            BounceKeyToggleRow(
-                title = stringResource(R.string.settings_accessibility_bounce_keys_space_title),
-                description = stringResource(R.string.settings_accessibility_bounce_keys_space_description),
-                checked = bounceSpaceEnabled,
-                enabled = bounceKeysEnabled,
-                onCheckedChange = { enabled ->
-                    bounceSpaceEnabled = enabled
-                    SettingsManager.setBounceKeysSpaceEnabled(context, enabled)
-                }
-            )
-            BounceKeyToggleRow(
-                title = stringResource(R.string.settings_accessibility_bounce_keys_enter_title),
-                description = stringResource(R.string.settings_accessibility_bounce_keys_enter_description),
-                checked = bounceEnterEnabled,
-                enabled = bounceKeysEnabled,
-                onCheckedChange = { enabled ->
-                    bounceEnterEnabled = enabled
-                    SettingsManager.setBounceKeysEnterEnabled(context, enabled)
-                }
-            )
-            BounceKeyToggleRow(
-                title = stringResource(R.string.settings_accessibility_bounce_keys_backspace_title),
-                description = stringResource(R.string.settings_accessibility_bounce_keys_backspace_description),
-                checked = bounceBackspaceEnabled,
-                enabled = bounceKeysEnabled,
-                onCheckedChange = { enabled ->
-                    bounceBackspaceEnabled = enabled
-                    SettingsManager.setBounceKeysBackspaceEnabled(context, enabled)
-                }
-            )
-
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -459,6 +303,164 @@ fun AccessibilitySettingsScreen(
                         }
                     )
                 }
+            }
+
+            SettingsAdvancedSection {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(84.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.TouchApp,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.settings_accessibility_second_row_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1
+                            )
+                            Text(
+                                text = stringResource(R.string.settings_accessibility_second_row_description),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = readSecondRowEnabled,
+                            onCheckedChange = { enabled ->
+                                readSecondRowEnabled = enabled
+                                SettingsManager.setAccessibilityReadSecondRowEnabled(context, enabled)
+                            }
+                        )
+                    }
+                }
+
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(84.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Timer,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.settings_accessibility_suggestions_delay_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1
+                            )
+                            Text(
+                                text = stringResource(
+                                    R.string.settings_accessibility_suggestions_delay_value,
+                                    suggestionsAnnouncementDelayMs
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                val updated = (suggestionsAnnouncementDelayMs - 50L).coerceAtLeast(
+                                    SettingsManager.getMinAccessibilitySuggestionsAnnouncementDelayMs()
+                                )
+                                suggestionsAnnouncementDelayMs = updated
+                                SettingsManager.setAccessibilitySuggestionsAnnouncementDelayMs(context, updated)
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.settings_accessibility_delay_feedback, updated),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            },
+                            enabled = suggestionsAnnouncementDelayMs > SettingsManager.getMinAccessibilitySuggestionsAnnouncementDelayMs()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Remove,
+                                contentDescription = stringResource(R.string.settings_accessibility_delay_decrease)
+                            )
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                val updated = (suggestionsAnnouncementDelayMs + 50L).coerceAtMost(
+                                    SettingsManager.getMaxAccessibilitySuggestionsAnnouncementDelayMs()
+                                )
+                                suggestionsAnnouncementDelayMs = updated
+                                SettingsManager.setAccessibilitySuggestionsAnnouncementDelayMs(context, updated)
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.settings_accessibility_delay_feedback, updated),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            },
+                            enabled = suggestionsAnnouncementDelayMs < SettingsManager.getMaxAccessibilitySuggestionsAnnouncementDelayMs()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Add,
+                                contentDescription = stringResource(R.string.settings_accessibility_delay_increase)
+                            )
+                        }
+                    }
+                }
+
+                Text(
+                    text = stringResource(R.string.settings_accessibility_bounce_keys_text_control_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+                BounceKeyToggleRow(
+                    title = stringResource(R.string.settings_accessibility_bounce_keys_space_title),
+                    description = stringResource(R.string.settings_accessibility_bounce_keys_space_description),
+                    checked = bounceSpaceEnabled,
+                    enabled = bounceKeysEnabled,
+                    onCheckedChange = { enabled ->
+                        bounceSpaceEnabled = enabled
+                        SettingsManager.setBounceKeysSpaceEnabled(context, enabled)
+                    }
+                )
+                BounceKeyToggleRow(
+                    title = stringResource(R.string.settings_accessibility_bounce_keys_enter_title),
+                    description = stringResource(R.string.settings_accessibility_bounce_keys_enter_description),
+                    checked = bounceEnterEnabled,
+                    enabled = bounceKeysEnabled,
+                    onCheckedChange = { enabled ->
+                        bounceEnterEnabled = enabled
+                        SettingsManager.setBounceKeysEnterEnabled(context, enabled)
+                    }
+                )
+                BounceKeyToggleRow(
+                    title = stringResource(R.string.settings_accessibility_bounce_keys_backspace_title),
+                    description = stringResource(R.string.settings_accessibility_bounce_keys_backspace_description),
+                    checked = bounceBackspaceEnabled,
+                    enabled = bounceKeysEnabled,
+                    onCheckedChange = { enabled ->
+                        bounceBackspaceEnabled = enabled
+                        SettingsManager.setBounceKeysBackspaceEnabled(context, enabled)
+                    }
+                )
             }
         }
     }

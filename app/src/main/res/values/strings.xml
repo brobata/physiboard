@@ -1,5 +1,6 @@
 <resources>
-    <string name="app_name">Pastiera</string>
+    <string name="app_name">PhysiBoard</string>
+    <string name="app_tagline">The Keyboard for your Keyboard</string>
     <string name="input_method_name">Pastiera</string>
     <string name="input_method_name_en">English</string>
     <string name="input_method_name_it">Italiano</string>
@@ -89,11 +90,11 @@
     <!-- Delete Alternatives Section -->
     <string name="delete_alternatives_title">Delete</string>
     <string name="delete_alternatives_description">Alternative methods to delete characters to the right of cursor</string>
-    <string name="delete_alternatives_nav_mode_title">Open Nav Mode settings</string>
+    <string name="delete_alternatives_nav_mode_title">Open Fn Layer settings</string>
     <string name="shift_backspace_delete_title">Shift + Backspace</string>
     <string name="alt_backspace_delete_title">Alt + Backspace</string>
     <string name="backspace_at_start_delete_title">Backspace at line start</string>
-    <string name="delete_alternatives_hint">Hint: Ctrl + key can be configured in Nav Mode settings</string>
+    <string name="delete_alternatives_hint">Hint: Ctrl + key can be configured in Fn Layer settings</string>
     <string name="delete_alternatives_selection_hint">When text is selected, these alternatives are disabled and Backspace deletes the selection.</string>
 
     <!-- Swipe Incremental Threshold Section -->
@@ -107,6 +108,62 @@
     <!-- Alt+Ctrl Speech Recognition Shortcut Section -->
     <string name="alt_ctrl_speech_shortcut_title">Alt+Ctrl for speech input</string>
     <string name="alt_ctrl_speech_shortcut_description">Start speech input with Alt+Ctrl.</string>
+
+    <!-- Fn Long-Press Speech Recognition Shortcut Section -->
+    <string name="fn_long_press_speech_title">Long-press Fn for speech input</string>
+    <string name="settings_search_placeholder">Search settings…</string>
+    <string name="settings_search_no_results">No settings match “%1$s”</string>
+    <string name="settings_search_result_in">In %1$s</string>
+    <string name="smart_backlight_title">Smart keyboard backlight</string>
+    <string name="smart_backlight_row_description">Keep the keyboard lit in the dark, past the 30s limit</string>
+    <string name="smart_backlight_enable_title">Smart backlight</string>
+    <string name="smart_backlight_enable_description">Keeps the keyboard lit in the dark — needs a quick one-time setup (below).</string>
+    <string name="smart_backlight_lux_title">Darkness threshold</string>
+    <string name="smart_backlight_lux_value">Below %1$d lux counts as dark</string>
+    <string name="smart_backlight_lux_now">Right now: %1$d lux — %2$s</string>
+    <string name="smart_backlight_lux_dark">dark, backlight would be on</string>
+    <string name="smart_backlight_lux_bright">bright, backlight would be off</string>
+    <string name="smart_backlight_timeout_title">Turn off after</string>
+    <string name="smart_backlight_timeout_always">Stay on while dark</string>
+    <string name="smart_backlight_timeout_seconds">%1$d s after last keypress</string>
+    <string name="smart_backlight_setup_title">Wireless debugging</string>
+    <string name="smart_backlight_setup_not_paired">Almost there — pairing is armed and waiting while this screen is open. One-time setup: (1) turn on Wireless debugging, (2) tap \"Pair device with pairing code\", (3) type the 6-digit code into the PhysiBoard notification. No extra apps needed.</string>
+    <string name="smart_backlight_setup_wireless_off">Paired. Turn on Settings → System → Developer options → Wireless debugging so the light can arm.</string>
+    <string name="smart_backlight_setup_ready">Ready — paired and Wireless debugging is on. The keyboard will stay lit in the dark.</string>
+    <string name="smart_backlight_setup_pair_button">Restart pairing</string>
+    <string name="smart_backlight_setup_pair_hint">Pairing re-armed. Open Developer options → Wireless debugging → Pair device with code, then tap the PIN notification.</string>
+    <!-- Smart backlight — guided one-time setup walkthrough -->
+    <string name="smart_backlight_guide_toggle">How do I turn on Wireless debugging?</string>
+    <string name="smart_backlight_guide_title">One-time setup</string>
+    <string name="smart_backlight_guide_intro">PhysiBoard can keep the keyboard lit in the dark, but Android needs a one-time setup first:</string>
+    <string name="smart_backlight_guide_step1">1. Enable Developer options: Settings → About phone → tap \"Build number\" 7 times.</string>
+    <string name="smart_backlight_guide_step2">2. Open Settings → System → Developer options → Wireless debugging and turn it ON.</string>
+    <string name="smart_backlight_guide_step3">3. Open this screen (pairing arms automatically). In Wireless debugging, tap \"Pair device with pairing code\" → type the 6-digit code into the PhysiBoard notification that appears. (Use \"Restart pairing\" if you need to re-arm.)</string>
+    <string name="smart_backlight_guide_step4">4. Note: Wireless debugging turns off on reboot (Android security) — flip it back on after a restart. PhysiBoard will notify you.</string>
+    <string name="smart_backlight_guide_open_dev">Open Developer options</string>
+    <string name="smart_backlight_guide_open_about">Open About phone</string>
+    <string name="smart_backlight_guide_open_failed">Couldn\'t open that screen on this device — open it manually from Settings.</string>
+    <string name="app_raw_mode_title">Exact typing</string>
+    <string name="app_raw_mode_row_description">Type exactly — no autocorrect in the apps you pick</string>
+    <string name="app_raw_mode_description">Smart typing features (suggestions, auto-correction, auto-capitalization, double-space period) are disabled while typing in the apps you enable here. Useful for terminals and code editors where corrections break commands.</string>
+    <string name="dictation_mask_offensive_title">Block offensive words</string>
+    <string name="dictation_mask_offensive_description">Mask profanity in dictation results (e.g. f***). Turn off to transcribe words exactly as spoken.</string>
+    <string name="dictation_haptics_title">Vibrate on dictation start/stop</string>
+    <string name="dictation_haptics_description">Two quick ticks when the microphone starts listening, one pulse when it stops. Follows the system haptic setting.</string>
+    <string name="dictation_end_silence_title">End-of-speech pause</string>
+    <string name="dictation_end_silence_system_default">System default</string>
+    <string name="dictation_end_silence_seconds">%1$.1f s of silence before dictation stops</string>
+    <string name="dictation_end_silence_hint">How long you can pause before dictation stops. The speech service may not honor this on all devices.</string>
+    <string name="fn_long_press_speech_description">Start speech input by holding the Fn key alone. Short presses and key combos keep their normal behavior. On Titan devices, set the Fn key to Ctrl in the system Shortcut keys settings so the key reaches the keyboard.</string>
+
+    <!-- Voice / dictation settings screen -->
+    <string name="settings_category_voice">Voice</string>
+    <string name="voice_screen_intro">Hold the Fn key in any text field to dictate. Speak, then release — your words are transcribed inline.</string>
+    <string name="voice_section_triggers">Triggers</string>
+    <string name="voice_section_transcription">Transcription</string>
+    <string name="voice_section_feedback">Feedback</string>
+    <string name="voice_vibration_link_title">Vibrate on dictation start/stop</string>
+    <string name="voice_vibration_link_description">Set the start &amp; stop vibration in Sound &amp; Haptics.</string>
 
     <!-- Static Variation Bar Mode -->
     <string name="static_variation_bar_mode_title">Static Variation Bar</string>
@@ -149,7 +206,31 @@
     <string name="pastiera_not_enabled">Pastiera is not enabled</string>
     <string name="choose_input_method">Choose input method</string>
     <string name="pastiera_not_selected">Pastiera is not selected</string>
-    
+
+    <!-- Home action surface -->
+    <string name="home_action_enable_title">Enable PhysiBoard</string>
+    <string name="home_action_enable_subtitle">Turn it on in system keyboard settings</string>
+    <string name="home_action_select_title">Set as keyboard</string>
+    <string name="home_action_select_subtitle">Pick PhysiBoard from the input switcher</string>
+    <string name="home_action_update_title">Update available</string>
+    <string name="home_action_update_subtitle">Version %1$s is ready to install</string>
+    <string name="home_all_set">✓ all set</string>
+    <string name="home_tile_backlight">Backlight</string>
+    <string name="home_tile_theme">Theme</string>
+    <string name="home_tile_settings">Settings</string>
+    <string name="home_tile_smart_features">Smart Features</string>
+    <string name="home_tile_auto_correct">Auto-correct</string>
+    <string name="home_tile_voice">Voice</string>
+    <string name="home_tile_raw_mode">Exact Typing</string>
+    <string name="home_tile_fn_layer">Fn Layer</string>
+    <string name="home_tile_all_settings">Settings</string>
+    <string name="home_tile_language">Language</string>
+    <string name="home_tile_backlight_needs_setup">needs setup</string>
+    <string name="home_tile_backlight_wireless_off">turn on Wi-Fi debug</string>
+    <string name="diagnostics_title">Diagnostics</string>
+    <string name="diagnostics_row_description">Physical key-event logger and debug export</string>
+
+
     <!-- Test Section -->
     <string name="test_keyboard_title">Keyboard Test</string>
     <string name="test_keyboard_description">Connect a physical keyboard and test below:</string>
@@ -282,8 +363,8 @@
     <string name="modifiers_section_alt_layer">Alt key</string>
     <string name="modifiers_section_indicators">Modifier indicators</string>
     <string name="modifiers_section_control">Control</string>
-    <string name="modifier_control_nav_mode_title">Control in Nav Mode</string>
-    <string name="modifier_control_nav_mode_description">Ctrl is currently configured as a Nav Mode modifier. Open Nav Mode to change its key assignments and behaviour.</string>
+    <string name="modifier_control_nav_mode_title">Control in Fn Layer</string>
+    <string name="modifier_control_nav_mode_description">Ctrl is currently configured as a Fn Layer modifier. Open Fn Layer to change its key assignments and behaviour.</string>
     <string name="sym_modifiers_deeplink_description">Choose which SYM layer Alt uses in Modifier settings.</string>
     <string name="sym_behavior_section_title">SYM behaviour and display</string>
     <string name="sym_edit_emoji_layer_title">Edit Emoji Layer</string>
@@ -833,9 +914,9 @@
     <string name="power_shortcuts_press_key">Press shortcut key to launch</string>
     
     <!-- Notification Helper -->
-    <string name="notification_nav_mode_channel_name">Pastiera Nav Mode</string>
+    <string name="notification_nav_mode_channel_name">Pastiera Fn Layer</string>
     <string name="notification_nav_mode_channel_description">Notifications for Pastiera nav mode</string>
-    <string name="notification_nav_mode_activated_title">Nav Mode Activated</string>
+    <string name="notification_nav_mode_activated_title">Fn Layer Activated</string>
     <string name="notification_nav_mode_activated_text">Nav mode activated</string>
     
     <!-- Update Notifications -->
@@ -859,19 +940,19 @@
     <string name="auto_correct_clear_search">Clear search</string>
     <string name="auto_correct_no_corrections_found">No corrections found</string>
     
-    <!-- Nav Mode Settings -->
-    <string name="nav_mode_title">Nav Mode</string>
-    <string name="nav_mode_guide_title">Nav Mode guide</string>
+    <!-- Fn Layer Settings -->
+    <string name="nav_mode_title">Fn Layer</string>
+    <string name="nav_mode_guide_title">Fn Layer guide</string>
     <string name="nav_mode_guide_description">How Ctrl, mappings, app shortcuts, and layout hints work together.</string>
-    <string name="nav_mode_guide_text">Nav Mode turns letter keys into navigation and shortcut keys. The result can differ by app because some apps understand Android editor actions, while others only react to real Ctrl shortcuts.
+    <string name="nav_mode_guide_text">Fn Layer turns letter keys into navigation and shortcut keys. The result can differ by app because some apps understand Android editor actions, while others only react to real Ctrl shortcuts.
 
 Ctrl-hold navigation
 When Ctrl-hold navigation is off, physically held Ctrl is passed to the app whenever possible. Shortcuts such as Ctrl+B, Ctrl+I, or Ctrl+Z can then work directly in editors.
 
-When Ctrl-hold navigation is on, physically held Ctrl first uses the Nav Mode mappings below. A mapped key performs its configured Nav Mode command.
+When Ctrl-hold navigation is on, physically held Ctrl first uses the Fn Layer mappings below. A mapped key performs its configured Fn Layer command.
 
 Double-tap Ctrl
-Double-tapping Ctrl latches Nav Mode. After that, pressing a letter triggers the Nav Mode mapping until Nav Mode is left again. This is useful for arrows, Page Up/Down, Escape, Tab, and selection commands without holding Ctrl.
+Double-tapping Ctrl latches Fn Layer. After that, pressing a letter triggers the Fn Layer mapping until Fn Layer is left again. This is useful for arrows, Page Up/Down, Escape, Tab, and selection commands without holding Ctrl.
 
 Action vs. Native Ctrl
 Actions such as Copy, Paste, Cut, Select All, and Undo are sent as Android editor actions. They work in many text fields, but not every app supports every action.
@@ -879,25 +960,25 @@ Actions such as Copy, Paste, Cut, Select All, and Undo are sent as Android edito
 Use Native Ctrl when an app expects a real shortcut. For example, mapping I to Native Ctrl sends Ctrl+I, so editors such as Google Docs can use it for italic text. Undo can also be mapped as Native Ctrl if an app handles Ctrl+Z better than Android Undo.
 
 QWERTZ on physical QWERTY
-Nav Mode uses the physical key position so navigation remains stable. Layout hints on keys show when the active text layout would treat that physical key as a different letter, such as Y/Z on QWERTZ.
+Fn Layer uses the physical key position so navigation remains stable. Layout hints on keys show when the active text layout would treat that physical key as a different letter, such as Y/Z on QWERTZ.
 
 Layout-aware app Ctrl shortcuts
-When held Ctrl is passed to apps, this optional setting can translate Ctrl+letter through the active Pastiera layout first. It affects app shortcuts, not the physical Nav Mode grid.
+When held Ctrl is passed to apps, this optional setting can translate Ctrl+letter through the active Pastiera layout first. It affects app shortcuts, not the physical Fn Layer grid.
 
 Overrides
 Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrides to solve app-specific conflicts without changing the whole mode.</string>
-    <string name="nav_mode_enable_title">Enable Nav Mode</string>
-    <string name="nav_mode_enable_description">Double-tap Ctrl to activate navigation mode</string>
+    <string name="nav_mode_enable_title">Enable Fn Layer</string>
+    <string name="nav_mode_enable_description">Double-tap Ctrl to activate the Fn Layer</string>
     <string name="nav_mode_ctrl_hold_title">Ctrl-hold navigation</string>
-    <string name="nav_mode_ctrl_hold_description">When enabled, text fields use Nav Mode mappings while Ctrl is held. When off, Ctrl shortcuts are passed to the app. Keys set to Native Ctrl are always passed through as real Ctrl shortcuts.</string>
+    <string name="nav_mode_ctrl_hold_description">When enabled, text fields use Fn Layer mappings while Ctrl is held. When off, Ctrl shortcuts are passed to the app. Keys set to Native Ctrl are always passed through as real Ctrl shortcuts.</string>
     <string name="layout_aware_ctrl_shortcuts_title">Layout-aware app Ctrl shortcuts</string>
     <string name="layout_aware_ctrl_shortcuts_description">When held Ctrl is passed to apps, translate Ctrl+letter through the active Pastiera layout first.</string>
-    <string name="layout_aware_ctrl_shortcuts_disabled_description">Disabled while Ctrl-hold navigation is active, because held Ctrl is handled by Nav Mode instead of the app.</string>
-    <string name="layout_aware_ctrl_shortcuts_info_title">Ctrl shortcuts and Nav Mode</string>
-    <string name="layout_aware_ctrl_shortcuts_info_text">There are two paths for held Ctrl. If Ctrl-hold navigation is on, Pastiera handles Ctrl+key with the Nav Mode mappings shown below. If Ctrl-hold navigation is off, Pastiera passes Ctrl+key to the app. This option only affects that app path: when enabled, Ctrl+letter is translated through the active Pastiera layout first, so shortcuts can follow the letters you type. When disabled, apps receive the original physical key positions.</string>
+    <string name="layout_aware_ctrl_shortcuts_disabled_description">Disabled while Ctrl-hold navigation is active, because held Ctrl is handled by Fn Layer instead of the app.</string>
+    <string name="layout_aware_ctrl_shortcuts_info_title">Ctrl shortcuts and Fn Layer</string>
+    <string name="layout_aware_ctrl_shortcuts_info_text">There are two paths for held Ctrl. If Ctrl-hold navigation is on, Pastiera handles Ctrl+key with the Fn Layer mappings shown below. If Ctrl-hold navigation is off, Pastiera passes Ctrl+key to the app. This option only affects that app path: when enabled, Ctrl+letter is translated through the active Pastiera layout first, so shortcuts can follow the letters you type. When disabled, apps receive the original physical key positions.</string>
     <string name="nav_mode_key_mappings">Key Mappings</string>
     <string name="nav_mode_revert_to_default">Revert to Default</string>
-    <string name="nav_mode_note">Note: Modifying nav mode keys also affects Ctrl+key combinations in text fields.</string>
+    <string name="nav_mode_note">Note: Modifying Fn Layer keys also affects Ctrl+key combinations in text fields.</string>
     <string name="nav_mode_warning_icon">⚠</string>
     <string name="nav_mode_configure_key">Configure %1$s</string>
     <string name="nav_mode_type">Type</string>
@@ -1022,7 +1103,7 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     
     <!-- Settings Screen -->
     <string name="settings_support_ko_fi">Support on Ko-fi</string>
-    <string name="settings_nav_mode_configure">Configure navigation mode key mappings</string>
+    <string name="settings_nav_mode_configure">Configure Fn layer key mappings</string>
     <string name="settings_update_section_title">Updates</string>
     <string name="settings_update_section_description">Check the latest release on GitHub.</string>
     <string name="settings_update_button">Check for updates</string>
@@ -1045,15 +1126,35 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="settings_category_auto_correction">Auto-correction</string>
     <string name="settings_category_customization">More Customization</string>
     <string name="settings_category_sounds">Sound &amp; Haptics</string>
-    <string name="settings_sounds_description">Typing sounds, vibration, and sound pack import</string>
+    <string name="settings_sounds_description">Typing sounds and vibration</string>
+    <string name="settings_category_status">Status</string>
+    <string name="settings_status_row_description">Check PhysiBoard is set up correctly</string>
+    <string name="status_screen_title">Status</string>
+    <string name="status_enabled_title">PhysiBoard enabled</string>
+    <string name="status_enabled_description">Enabled as an input method</string>
+    <string name="status_active_ime_title">Active keyboard</string>
+    <string name="status_active_ime_description">Currently the active input method</string>
+    <string name="status_input_language_title">Input language</string>
+    <string name="status_backlight_title">Smart backlight</string>
+    <string name="status_version_title">App version</string>
+    <string name="status_value_yes">Yes</string>
+    <string name="status_value_no">No</string>
+    <string name="status_value_on">On</string>
+    <string name="status_value_off">Off</string>
+    <string name="status_value_unknown">Unknown</string>
+    <string name="input_languages_row_title">Input Languages</string>
     <string name="settings_category_advanced">Advanced</string>
     <string name="settings_group_keyboard">Keyboard</string>
     <string name="settings_group_typing">Typing</string>
     <string name="settings_group_smart_features">Smart Features</string>
     <string name="settings_group_customization">Interface</string>
-    <string name="settings_group_system">Advanced</string>
+    <string name="settings_group_system">System</string>
     <string name="settings_group_utility">Utility</string>
     <string name="settings_group_pastiera">About</string>
+    <string name="settings_group_keys">Keys &amp; modifiers</string>
+    <string name="settings_group_typing_corrections">Typing &amp; corrections</string>
+    <string name="settings_group_appearance">Appearance</string>
+    <string name="settings_group_shortcuts_language">Shortcuts</string>
     <string name="settings_about_version_summary">v%1$s</string>
     <string name="settings_accessibility_live_read_title">Live reading for status bar changes</string>
     <string name="settings_accessibility_live_read_description">When enabled, TalkBack can announce language/layout and status bar changes automatically.</string>
@@ -1155,7 +1256,7 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="debug_recorder_include_raw_trackpad">incl. raw trackpad</string>
     <string name="debug_report_viewer_title">Debug Report Viewer</string>
     
-    <!-- Nav Mode Key Labels -->
+    <!-- Fn Layer Key Labels -->
     <string name="nav_mode_action_copy">Copy</string>
     <string name="nav_mode_action_paste">Paste</string>
     <string name="nav_mode_action_cut">Cut</string>
@@ -1199,7 +1300,7 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="tutorial_whats_new_docs_button">Open Pastiera docs</string>
     <string name="tutorial_whats_new_continue_hint">Continue through the tutorial to review the most useful settings for this release.</string>
     <string name="tutorial_page_welcome_title">Welcome to Pastiera</string>
-    <string name="tutorial_page_welcome_description">Pastiera is an advanced input method for PKB Android devices with support for Nav Mode, shortcuts, custom keyboard mappings, and more.</string>
+    <string name="tutorial_page_welcome_description">Pastiera is an advanced input method for PKB Android devices with support for Fn Layer, shortcuts, custom keyboard mappings, and more.</string>
     <string name="tutorial_devs_choice_button">Dev\'s Choice</string>
     <string name="tutorial_devs_choice_applied">Dev\'s Choice settings applied.</string>
     <string name="tutorial_page_enable_title">Enable Pastiera</string>
@@ -1232,13 +1333,13 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="tutorial_software_keyboard_auto_reason_touch">Reason: this profile is not recognized as a physical-keyboard device, so Auto uses virtual-keyboard mode.</string>
     <string name="tutorial_page_led_title">Modifier indicators</string>
     <string name="tutorial_page_led_description">To get the most out of Pastiera, set the Fn key to act as Ctrl from Android system settings. Pastiera can show modifier state in the bottom strip, menu bar, or Pastiera statusbar: active one-shot states use the active color, locked states use the locked color.</string>
-    <string name="tutorial_page_nav_mode_title">Nav Mode</string>
-    <string name="tutorial_page_nav_mode_description">Nav Mode turns letter keys into navigation and editing controls. Press Ctrl twice to latch it, or enable Ctrl-hold navigation below.</string>
+    <string name="tutorial_page_nav_mode_title">Fn Layer</string>
+    <string name="tutorial_page_nav_mode_description">Fn Layer turns letter keys into navigation and editing controls. Press Ctrl twice to latch it, or enable Ctrl-hold navigation below.</string>
     <string name="tutorial_nav_mode_bullet_selection">Selection actions can extend text selection left, right, or word by word.</string>
     <string name="tutorial_nav_mode_bullet_words">Word actions jump by whole words for faster cursor movement in text fields.</string>
     <string name="tutorial_nav_mode_bullet_media">Mappings can also handle app shortcuts, media controls, Escape, Tab, Page Up/Down, and Pastierina.</string>
     <string name="tutorial_page_customization_title">Customization</string>
-    <string name="tutorial_page_customization_description">Pastiera offers many customization options:\n• Customizable keyboard layouts\n• Launcher shortcuts &amp; Power Shortcuts\n• IME bar can act as a swipe bar to move the cursor\n• Custom mappings for Nav Mode\nExplore the settings to find the perfect configuration for you!</string>
+    <string name="tutorial_page_customization_description">Pastiera offers many customization options:\n• Customizable keyboard layouts\n• Launcher shortcuts &amp; Power Shortcuts\n• IME bar can act as a swipe bar to move the cursor\n• Custom mappings for Fn Layer\nExplore the settings to find the perfect configuration for you!</string>
     <string name="tutorial_quick_launcher_title">QuickLauncher</string>
     <string name="tutorial_quick_launcher_description">Open apps from the keyboard without leaving your typing flow.</string>
     <string name="tutorial_quick_launcher_bullet_sym_space">Hold SYM and press Space to open QuickLauncher from anywhere.</string>
@@ -1455,8 +1556,8 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="clipboard_retention_time_minutes">%1$d minutes</string>
 
     <!-- Trackpad Gesture Settings -->
-    <string name="trackpad_gestures_title">Trackpad Gesture Suggestions</string>
-    <string name="trackpad_gestures_description">Swipe up on the trackpad to accept suggestions</string>
+    <string name="trackpad_gestures_title">Keyboard swipe</string>
+    <string name="trackpad_gestures_description">Swipe across the physical keys to move the cursor and accept suggestions</string>
     <string name="trackpad_gestures_enabled_title">Enable Trackpad Gestures</string>
     <string name="trackpad_gestures_enabled_description">Swipe up on trackpad to accept word suggestions</string>
     <string name="trackpad_gesture_add_word_title">Add words with gestures</string>

@@ -243,7 +243,6 @@ fun VariationCustomizationScreen(
                             text = stringResource(R.string.static_variation_bar_mode_description),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2
                         )
 
                         ExposedDropdownMenuBox(
@@ -343,7 +342,6 @@ fun VariationCustomizationScreen(
                             text = stringResource(R.string.static_variation_layer_sticky_description),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2
                         )
                     }
                     Switch(

@@ -85,9 +85,8 @@ class TutorialActivity : LocalizedComponentActivity() {
         val previousVersionOverride = intent.getStringExtra(EXTRA_PREVIOUS_VERSION)
         setContent {
             PastieraTheme {
-                TutorialScreen(
+                OnboardingScreen(
                     updateTutorial = updateTutorial,
-                    previousVersionOverride = previousVersionOverride,
                     onComplete = {
                         SettingsManager.setTutorialCompleted(this@TutorialActivity)
                         if (updateTutorial && !previewUpdateTutorial) {
