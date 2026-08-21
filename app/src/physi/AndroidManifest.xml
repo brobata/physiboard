@@ -12,9 +12,6 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
-    <!-- Boot: post the backlight guidance notification (no service started) -->
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-
     <application>
         <service
             android:name="it.palsoftware.pastiera.physi.KeyboardBacklightTileService"
@@ -32,19 +29,6 @@
             android:name="moe.shizuku.manager.adb.AdbPairingService"
             android:exported="false"
             android:foregroundServiceType="connectedDevice" />
-
-        <!-- On boot, post a guidance notification if the backlight can't work yet. No service is
-             started from boot (a foreground-service-start from BOOT_COMPLETED crashes on this OEM).
-             Prompt re-arm now lives in the IME's KeyboardBacklightManager. -->
-        <receiver
-            android:name="it.palsoftware.pastiera.physi.BootReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
-                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
-            </intent-filter>
-        </receiver>
 
     </application>
 </manifest>

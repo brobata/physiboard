@@ -67,7 +67,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import it.palsoftware.pastiera.inputmethod.DeviceSpecific
-import it.palsoftware.pastiera.inputmethod.EmbeddedAdbShell
 import it.palsoftware.pastiera.inputmethod.KeyboardEventTracker
 import it.palsoftware.pastiera.inputmethod.NotificationHelper
 import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils.localeString
@@ -249,10 +248,11 @@ fun KeyboardSetupScreen(
     var updateInfo by remember { mutableStateOf<HomeUpdateInfo?>(null) }
 
     // Smart-backlight readiness — surfaced on the Backlight tile so the home can flag
-    // when the light is enabled but can't actually arm (needs pairing / Wi-Fi debug).
+    // when the light is enabled but has never been configured (the persistent value has
+    // not been written yet). Once configured it survives reboots, so live Wireless-debugging
+    // state is irrelevant to the badge.
     var backlightEnabled by remember { mutableStateOf(false) }
-    var backlightPaired by remember { mutableStateOf(false) }
-    var backlightWirelessOn by remember { mutableStateOf(false) }
+    var backlightApplied by remember { mutableStateOf(false) }
 
     fun refreshStatus() {
         checkImeStatus(context) { enabled, selected ->
@@ -261,8 +261,7 @@ fun KeyboardSetupScreen(
         }
         enabledLanguageCount = getEnabledInputLanguageCount(context)
         backlightEnabled = SettingsManager.getSmartBacklightEnabled(context)
-        backlightPaired = EmbeddedAdbShell.isPaired(context)
-        backlightWirelessOn = EmbeddedAdbShell.isWirelessDebuggingEnabled(context)
+        backlightApplied = SettingsManager.getSmartBacklightApplied(context)
     }
 
     // Initial IME + language + backlight status
@@ -276,10 +275,9 @@ fun KeyboardSetupScreen(
         }
     }
 
-    // Backlight attention: enabled but not actually able to light up yet.
-    val backlightNeedsPairing = backlightEnabled && !backlightPaired
-    val backlightNeedsWireless = backlightEnabled && backlightPaired && !backlightWirelessOn
-    val backlightNeedsAttention = backlightNeedsPairing || backlightNeedsWireless
+    // Backlight attention: enabled but never configured (persistent value never written).
+    // Clears once configured, regardless of current Wireless-debugging state.
+    val backlightNeedsAttention = backlightEnabled && !backlightApplied
 
     // Request notification permission (Android 13+)
     val requestPermissionLauncher = rememberLauncherForActivityResult(
@@ -398,11 +396,9 @@ fun KeyboardSetupScreen(
             }
 
             // Quick-launcher tiles. Wrap to 2 columns so they fit the square screen.
-            val backlightSublabel = when {
-                backlightNeedsPairing -> stringResource(R.string.home_tile_backlight_needs_setup)
-                backlightNeedsWireless -> stringResource(R.string.home_tile_backlight_wireless_off)
-                else -> null
-            }
+            val backlightSublabel = if (backlightNeedsAttention) {
+                stringResource(R.string.home_tile_backlight_needs_setup)
+            } else null
             val tiles = buildList {
                 add(
                     HomeTile(

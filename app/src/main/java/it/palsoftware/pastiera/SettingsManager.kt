@@ -74,8 +74,9 @@ object SettingsManager {
     private const val KEY_DICTATION_MASK_OFFENSIVE = "dictation_mask_offensive"
     private const val KEY_APP_RAW_MODE_PACKAGES = "app_raw_mode_packages"
     private const val KEY_SMART_BACKLIGHT_ENABLED = "smart_backlight_enabled"
-    private const val KEY_SMART_BACKLIGHT_LUX = "smart_backlight_lux_threshold"
-    private const val KEY_SMART_BACKLIGHT_TIMEOUT_S = "smart_backlight_timeout_seconds"
+    // "The persistent always-on vendor value has been successfully written at least once."
+    // Survives reboots, so this — not live Wireless-debugging state — is the readiness signal.
+    private const val KEY_SMART_BACKLIGHT_APPLIED = "smart_backlight_applied"
     private const val KEY_LAYOUT_AWARE_CTRL_SHORTCUTS = "layout_aware_ctrl_shortcuts"
     private const val KEY_SYM_MAPPINGS_CUSTOM = "sym_mappings_custom"
     private const val KEY_SYM_MAPPINGS_PAGE2_CUSTOM = "sym_mappings_page2_custom"
@@ -2229,22 +2230,17 @@ object SettingsManager {
         getPreferences(context).edit().putBoolean(KEY_SMART_BACKLIGHT_ENABLED, enabled).apply()
     }
 
-    /** Ambient light at or below this (lux) counts as "dark". */
-    fun getSmartBacklightLuxThreshold(context: Context): Int {
-        return getPreferences(context).getInt(KEY_SMART_BACKLIGHT_LUX, 20)
+    /**
+     * True once the persistent always-on vendor value has been successfully written at least
+     * once. The value survives reboots, so this is the readiness signal — not whether Wireless
+     * debugging happens to be on right now.
+     */
+    fun getSmartBacklightApplied(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_SMART_BACKLIGHT_APPLIED, false)
     }
 
-    fun setSmartBacklightLuxThreshold(context: Context, lux: Int) {
-        getPreferences(context).edit().putInt(KEY_SMART_BACKLIGHT_LUX, lux.coerceIn(1, 200)).apply()
-    }
-
-    /** Seconds of no keypress before the LED is released; 0 = stay on while dark. */
-    fun getSmartBacklightTimeoutSeconds(context: Context): Int {
-        return getPreferences(context).getInt(KEY_SMART_BACKLIGHT_TIMEOUT_S, 0)
-    }
-
-    fun setSmartBacklightTimeoutSeconds(context: Context, seconds: Int) {
-        getPreferences(context).edit().putInt(KEY_SMART_BACKLIGHT_TIMEOUT_S, seconds.coerceIn(0, 600)).apply()
+    fun setSmartBacklightApplied(context: Context, applied: Boolean) {
+        getPreferences(context).edit().putBoolean(KEY_SMART_BACKLIGHT_APPLIED, applied).apply()
     }
 
     enum class ClicksPowerButtonMode(val persistedValue: String) {

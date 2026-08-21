@@ -7,6 +7,7 @@ import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.text.TextUtils
 import android.util.TypedValue
 import android.view.Gravity
@@ -56,6 +57,12 @@ class FullSuggestionsBar(
         private val DEFAULT_SUGGESTION_COLOR = Color.argb(100, 17, 17, 17)
         private const val FLASH_DURATION_MS = 160L
         private const val BASE_HEIGHT_DP = 36f
+        // Smart-backlight "paused" in-context nudge (pill -> collapses to amber dot).
+        private val BACKLIGHT_AMBER = Color.rgb(0xFF, 0xB3, 0x00)
+        private const val BACKLIGHT_PILL_COLLAPSE_MS = 4000L
+        // Ignore the burst of refreshes right after the pill appears; only a later
+        // refresh (typically the first keypress) collapses it early.
+        private const val BACKLIGHT_MIN_SHOW_BEFORE_KEYPRESS_MS = 350L
         // How much wider a rounded corner-edge button (clipboard / mic) is vs a normal button.
         // The center suggestion container is inset by the extra width so nothing overlaps.
         private const val EDGE_WIDTH_MULTIPLIER = 2.15f
@@ -83,6 +90,13 @@ class FullSuggestionsBar(
     private var lastAnnouncedSlots: List<String?> = emptyList()
     private var actionCandidate: String? = null
     private var actionSlots: List<String?> = emptyList()
+    // Smart-backlight paused nudge — a self-contained overlay on frameContainer.
+    private var backlightPill: LinearLayout? = null
+    private var backlightDot: View? = null
+    private var backlightPaused: Boolean = false
+    private var backlightPillShown: Boolean = false
+    private var backlightShownAtMs: Long = 0L
+    private var backlightCollapseRunnable: Runnable? = null
     var requireDictionaryForSuggestions: Boolean = true
     var themeOverride: KeyboardThemeColors? = null
         set(value) {
@@ -472,6 +486,176 @@ class FullSuggestionsBar(
         try {
             val intent = Intent(context, SettingsActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+        } catch (_: Exception) {
+            // Ignore failures to avoid crashing the suggestions bar
+        }
+    }
+
+    /**
+     * Drives the smart-backlight "paused" nudge. Called cheaply on every status
+     * refresh (which includes every keypress) with a pre-computed paused flag —
+     * this method itself does no discovery, only shows/collapses/hides the overlay.
+     *
+     * paused == true: show a compact amber pill in the suggestion-bar area that
+     * auto-collapses (after ~4s or the first refresh/keypress) to a small amber
+     * dot in the status area. Tapping either opens the Smart Backlight setup.
+     * paused == false: hide the pill/dot entirely.
+     */
+    fun setBacklightPaused(paused: Boolean) {
+        if (!paused) {
+            if (backlightPaused ||
+                backlightPill?.visibility == View.VISIBLE ||
+                backlightDot?.visibility == View.VISIBLE
+            ) {
+                hideBacklightAlert()
+            }
+            backlightPaused = false
+            return
+        }
+        ensureBacklightAlertViews()
+        if (!backlightPaused) {
+            backlightPaused = true
+            showBacklightPill()
+            return
+        }
+        // Already paused: while the pill is up, the next refresh (usually the first
+        // keypress) collapses it to the dot, once it's been visible a brief moment.
+        if (backlightPillShown &&
+            SystemClock.uptimeMillis() - backlightShownAtMs >= BACKLIGHT_MIN_SHOW_BEFORE_KEYPRESS_MS
+        ) {
+            collapseBacklightToDot()
+        } else if (!backlightPillShown && backlightDot?.visibility != View.VISIBLE) {
+            collapseBacklightToDot()
+        } else {
+            updateBacklightAlertPosition()
+        }
+    }
+
+    private fun ensureBacklightAlertViews() {
+        if (backlightPill != null) return
+        val frame = frameContainer ?: return
+
+        val pill = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            visibility = View.GONE
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = dpToPx(8f).toFloat()
+                setColor(BACKLIGHT_AMBER)
+            }
+            setPadding(dpToPx(9f), dpToPx(3f), dpToPx(6f), dpToPx(3f))
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply { gravity = Gravity.END or Gravity.CENTER_VERTICAL }
+            isClickable = true
+            isFocusable = true
+            contentDescription = "Keyboard backlight paused, tap to fix"
+            setOnClickListener { openSmartBacklightSettings() }
+        }
+        val label = TextView(context).apply {
+            text = "⚡ backlight paused — tap to fix"
+            setTextColor(Color.BLACK)
+            textSize = 11f
+            maxLines = 1
+            ellipsize = TextUtils.TruncateAt.END
+            includeFontPadding = false
+            setTypeface(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.NORMAL)
+        }
+        val dismiss = TextView(context).apply {
+            text = "✕"
+            setTextColor(Color.BLACK)
+            textSize = 12f
+            includeFontPadding = false
+            setPadding(dpToPx(8f), 0, dpToPx(2f), 0)
+            isClickable = true
+            isFocusable = true
+            contentDescription = "Dismiss"
+            setOnClickListener { collapseBacklightToDot() }
+        }
+        pill.addView(label)
+        pill.addView(dismiss)
+
+        val dot = View(context).apply {
+            visibility = View.GONE
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(BACKLIGHT_AMBER)
+            }
+            layoutParams = FrameLayout.LayoutParams(dpToPx(9f), dpToPx(9f)).apply {
+                gravity = Gravity.END or Gravity.CENTER_VERTICAL
+            }
+            isClickable = true
+            isFocusable = true
+            contentDescription = "Keyboard backlight paused, tap to fix"
+            setOnClickListener { openSmartBacklightSettings() }
+        }
+
+        // Added last => drawn on top of the suggestion slots / edge buttons. Both are
+        // wrap_content and edge-anchored, so they only intercept touches within their
+        // own small bounds and never resize or reposition the tuned bar.
+        frame.addView(dot)
+        frame.addView(pill)
+        backlightPill = pill
+        backlightDot = dot
+    }
+
+    private fun showBacklightPill() {
+        ensureBacklightAlertViews()
+        updateBacklightAlertPosition()
+        backlightDot?.visibility = View.GONE
+        backlightPill?.visibility = View.VISIBLE
+        backlightPillShown = true
+        backlightShownAtMs = SystemClock.uptimeMillis()
+        backlightCollapseRunnable?.let { mainHandler.removeCallbacks(it) }
+        val runnable = Runnable { collapseBacklightToDot() }
+        backlightCollapseRunnable = runnable
+        mainHandler.postDelayed(runnable, BACKLIGHT_PILL_COLLAPSE_MS)
+    }
+
+    private fun collapseBacklightToDot() {
+        backlightCollapseRunnable?.let { mainHandler.removeCallbacks(it) }
+        backlightCollapseRunnable = null
+        backlightPillShown = false
+        backlightPill?.visibility = View.GONE
+        updateBacklightAlertPosition()
+        backlightDot?.visibility = View.VISIBLE
+    }
+
+    private fun hideBacklightAlert() {
+        backlightCollapseRunnable?.let { mainHandler.removeCallbacks(it) }
+        backlightCollapseRunnable = null
+        backlightPillShown = false
+        backlightPill?.visibility = View.GONE
+        backlightDot?.visibility = View.GONE
+    }
+
+    // Keep the nudge just inside the right-edge buttons, reusing the inset the
+    // suggestion container already computed (its current marginEnd).
+    private fun updateBacklightAlertPosition() {
+        val inset = ((container?.layoutParams as? FrameLayout.LayoutParams)?.marginEnd ?: 0) + dpToPx(4f)
+        (backlightPill?.layoutParams as? FrameLayout.LayoutParams)?.let {
+            if (it.marginEnd != inset) {
+                it.marginEnd = inset
+                backlightPill?.layoutParams = it
+            }
+        }
+        (backlightDot?.layoutParams as? FrameLayout.LayoutParams)?.let {
+            if (it.marginEnd != inset) {
+                it.marginEnd = inset
+                backlightDot?.layoutParams = it
+            }
+        }
+    }
+
+    private fun openSmartBacklightSettings() {
+        try {
+            val intent = Intent(context, SettingsActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                putExtra(SettingsActivity.EXTRA_DESTINATION, SettingsActivity.DESTINATION_SMART_BACKLIGHT)
             }
             context.startActivity(intent)
         } catch (_: Exception) {

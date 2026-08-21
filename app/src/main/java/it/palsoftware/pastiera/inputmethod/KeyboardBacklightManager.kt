@@ -1,185 +1,82 @@
 package it.palsoftware.pastiera.inputmethod
 
-import android.content.BroadcastReceiver
 import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
-import android.database.ContentObserver
-import android.hardware.Sensor
-import android.hardware.SensorEvent
-import android.hardware.SensorEventListener
-import android.hardware.SensorManager
-import android.net.Uri
-import android.os.Handler
-import android.os.Looper
-import android.provider.Settings
 import it.palsoftware.pastiera.SettingsManager
 import java.util.concurrent.Executors
 
 /**
- * Drives the Unihertz keyboard backlight beyond the stock 30s cap.
+ * Keeps the Unihertz keyboard backlight on beyond the stock 30s cap using a PERSISTENT
+ * vendor setting instead of a fragile per-session LED hold.
  *
- * The vendor's KeyboardLightController exposes a "test mode" over its system binder
- * service (`agui_functional_service`, transaction 7 = keyboardLightTest(String)):
- * arg "1" latches the LED on indefinitely, arg "0" releases it. That service is only
- * reachable at shell privilege, so we invoke it through the app's OWN embedded
- * wireless-ADB broker ([EmbeddedAdbShell]) — no separate Shizuku app required.
+ * The vendor stores a keyboard-backlight timeout that accepts a sentinel `-1` = "never turn
+ * off". It is written through the system binder service (`agui_functional_service`,
+ * transaction 2 = SET(key, value)):
+ *   - ALWAYS ON: keyboard_brightness_timeout = "-1"
+ *   - REVERT:    keyboard_brightness_timeout = "30000" (the stock 30s default)
  *
- * Policy: hold the LED on whenever the screen is on AND ambient light is below the
- * user's lux threshold. When it is bright or the screen is off, we release the hold and
- * the keyboard falls back to the vendor's own behavior (lights on keypress, 30s timeout).
+ * The value is a STORED setting, so it takes effect instantly and SURVIVES REBOOTS — no
+ * light sensor, no screen receivers, no per-keystroke re-latch, and no per-reboot re-arm.
+ * We only need shell privilege to WRITE it, which we do exactly once through the app's OWN
+ * embedded wireless-ADB broker ([EmbeddedAdbShell]) — no separate Shizuku app required.
  *
- * Requires the `physi` flavor + a paired embedded broker (Wireless debugging on). Every
- * effect is a no-op when the broker cannot connect, so nothing here can crash the IME.
+ * Every broker call runs off the IME's main thread and is fully wrapped, so a broker that
+ * cannot connect is a silent no-op (the user can also change the value from the vendor menu).
  */
 class KeyboardBacklightManager(private val context: Context) {
 
-    // Serializes the blocking embedded-adb shell calls off the IME's main thread.
-    private val shellExecutor = Executors.newSingleThreadExecutor()
-    private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
-    private val lightSensor: Sensor? = sensorManager?.getDefaultSensor(Sensor.TYPE_LIGHT)
-
-    private var screenOn = true
-    private var lastLux = Float.MAX_VALUE
-    private var ledLatchedOn = false
-    private var registered = false
-
-    private val lightListener = object : SensorEventListener {
-        override fun onSensorChanged(event: SensorEvent) {
-            lastLux = event.values.firstOrNull() ?: lastLux
-            evaluate()
-        }
-        override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
-    }
-
-    private val screenReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            when (intent?.action) {
-                Intent.ACTION_SCREEN_ON -> { screenOn = true; startSensor(); evaluate() }
-                Intent.ACTION_SCREEN_OFF -> { screenOn = false; stopSensor(); setLed(false) }
-            }
-        }
-    }
-
-    // Watches `Settings.Global.adb_wifi_enabled`. When Wireless debugging comes on after a reboot,
-    // the embedded broker can re-arm the light, so we retire the boot guidance notification. This
-    // replaces the old foreground AutoReArmService — the IME is already a long-running service.
-    private var wdObserverRegistered = false
-    private val wirelessDebuggingObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
-        override fun onChange(selfChange: Boolean, uri: Uri?) {
-            if (isWirelessDebuggingOn()) {
-                runCatching { NotificationHelper.cancelBacklightGuidance(context) }
-            }
-        }
-    }
-
-    private fun isWirelessDebuggingOn(): Boolean =
-        runCatching {
-            Settings.Global.getInt(context.contentResolver, ADB_WIFI_ENABLED, 0) == 1
-        }.getOrDefault(false)
-
-    private fun registerWirelessDebuggingObserver() {
-        if (wdObserverRegistered) return
-        runCatching {
-            context.contentResolver.registerContentObserver(
-                Settings.Global.getUriFor(ADB_WIFI_ENABLED),
-                false,
-                wirelessDebuggingObserver
-            )
-            wdObserverRegistered = true
-        }
-    }
-
-    private fun unregisterWirelessDebuggingObserver() {
-        if (!wdObserverRegistered) return
-        runCatching { context.contentResolver.unregisterContentObserver(wirelessDebuggingObserver) }
-        wdObserverRegistered = false
-    }
-
+    /** Apply the persistent "always on" setting if the feature is enabled. */
     fun start() {
-        if (registered) return
         if (!SettingsManager.getSmartBacklightEnabled(context)) return
-        registered = true
-        context.registerReceiver(
-            screenReceiver,
-            IntentFilter().apply {
-                addAction(Intent.ACTION_SCREEN_ON)
-                addAction(Intent.ACTION_SCREEN_OFF)
-            }
-        )
-        registerWirelessDebuggingObserver()
-        startSensor()
-        evaluate()
-    }
-
-    fun stop() {
-        if (!registered) return
-        registered = false
-        stopSensor()
-        unregisterWirelessDebuggingObserver()
-        runCatching { context.unregisterReceiver(screenReceiver) }
-        setLed(false)
+        applyAlwaysOn(context)
     }
 
     /**
-     * Called by the IME on each physical keypress. The vendor lights the LED on the press;
-     * we re-arm the hold so it does not fade at the 30s cap while the room is dark.
+     * No teardown needed: the vendor setting persists on its own. Disabling the feature is an
+     * explicit user action handled via [revertToDefault]; IME shutdown must NOT revert.
      */
-    fun onKeyActivity() {
-        if (!registered || !SettingsManager.getSmartBacklightEnabled(context)) return
-        if (shouldBeOn()) setLed(true)
-    }
-
-    private fun startSensor() {
-        val sensor = lightSensor ?: return
-        sensorManager?.registerListener(lightListener, sensor, SensorManager.SENSOR_DELAY_NORMAL)
-    }
-
-    private fun stopSensor() {
-        sensorManager?.unregisterListener(lightListener)
-    }
-
-    private fun shouldBeOn(): Boolean {
-        if (!screenOn) return false
-        val threshold = SettingsManager.getSmartBacklightLuxThreshold(context)
-        // Hysteresis: while already on, tolerate up to 1.5x threshold before dropping.
-        val effective = if (ledLatchedOn) threshold * 1.5f else threshold.toFloat()
-        return lastLux <= effective
-    }
-
-    private fun evaluate() {
-        if (!SettingsManager.getSmartBacklightEnabled(context)) { setLed(false); return }
-        setLed(shouldBeOn())
-    }
-
-    private fun setLed(on: Boolean) {
-        if (on == ledLatchedOn) return
-        // Cheap gate: if the broker has never been paired it cannot possibly work, so
-        // don't flip state or queue an 8s discovery — each keypress will re-check cheaply.
-        if (!EmbeddedAdbShell.isPaired(context)) return
-        // Update state optimistically so rapid re-entrancy on the main thread does not
-        // queue duplicate (blocking) shell calls; the actual connect runs off-thread.
-        ledLatchedOn = on
-        shellExecutor.execute {
-            if (on) {
-                // Latch the LED on via the vendor's keyboardLightTest test mode.
-                val ok = EmbeddedAdbShell.runShell(context, "service call $VENDOR_SERVICE $TXN_KEYBOARD_LIGHT_TEST s16 1")
-                // A successful hold means the backlight is working again — retire any boot guidance.
-                if (ok) runCatching { NotificationHelper.cancelBacklightGuidance(context) }
-            } else {
-                // Release: exit test mode, then the vendor's CLOSE broadcast powers it down.
-                EmbeddedAdbShell.runShell(context, "service call $VENDOR_SERVICE $TXN_KEYBOARD_LIGHT_TEST s16 0")
-                EmbeddedAdbShell.runShell(context, "am broadcast -a $CLOSE_LIGHT_ACTION")
-            }
-        }
+    fun stop() {
+        // Intentionally empty — the persistent setting outlives the IME process.
     }
 
     companion object {
-        private const val ADB_WIFI_ENABLED = "adb_wifi_enabled"
+        // Serializes the blocking embedded-adb shell calls off any caller's main thread.
+        private val executor = Executors.newSingleThreadExecutor()
+
         private const val VENDOR_SERVICE = "agui_functional_service"
-        // keyboardLightTest(String): "1" latches LED on, "0" releases. Verified on
-        // Titan 2 Elite build V02.00.02, 2026-08-19.
-        private const val TXN_KEYBOARD_LIGHT_TEST = "7"
-        private const val CLOSE_LIGHT_ACTION = "agui.action.CLOSE_KEYBOARD_LIGHT"
+        // transaction 2 = SET(String key, String value) on agui_functional_service.
+        private const val TXN_SET = "2"
+        private const val KEY_TIMEOUT = "keyboard_brightness_timeout"
+        // Sentinel: -1 = never turn off; 30000 = stock 30s default. Verified on-device
+        // (Titan 2 Elite), 2026-08-21. Survives reboots.
+        private const val VALUE_ALWAYS_ON = "-1"
+        private const val VALUE_DEFAULT = "30000"
+
+        /** Persist "keyboard backlight never turns off". Best-effort, off-thread, never throws. */
+        fun applyAlwaysOn(context: Context) = runSet(context, VALUE_ALWAYS_ON, applied = true)
+
+        /** Restore the stock 30s timeout. Best-effort, off-thread, never throws. */
+        fun revertToDefault(context: Context) = runSet(context, VALUE_DEFAULT, applied = false)
+
+        /**
+         * Writes the vendor timeout setting off-thread. On a successful write, records the
+         * persisted-readiness flag ([SettingsManager.setSmartBacklightApplied]) — `true` for the
+         * always-on value, `false` for the revert — so the UI can key readiness off "configured
+         * once" rather than live Wireless-debugging state.
+         */
+        private fun runSet(context: Context, value: String, applied: Boolean) {
+            // Cheap gate: without a paired broker the write can't possibly land, so don't
+            // queue an ~8s mDNS discovery. The setting is applied once pairing completes.
+            if (!EmbeddedAdbShell.isPaired(context)) return
+            val appContext = context.applicationContext
+            executor.execute {
+                runCatching {
+                    val ok = EmbeddedAdbShell.runShell(
+                        appContext,
+                        "service call $VENDOR_SERVICE $TXN_SET s16 \"$KEY_TIMEOUT\" s16 \"$value\""
+                    )
+                    if (ok) SettingsManager.setSmartBacklightApplied(appContext, applied)
+                }
+            }
+        }
     }
 }

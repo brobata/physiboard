@@ -2777,6 +2777,12 @@ class StatusBarController(
             !isFullSoftwareKeyboardMode && showHardwareStatusBarIndicators
         )
         fullSuggestionsBar?.updateModifierIndicators(snapshot)
+        // In-context nudge: smart backlight enabled but never configured (the persistent
+        // always-on value has not been written yet). Once configured it survives reboots, so
+        // live Wireless-debugging state is irrelevant. Cheap local pref reads only.
+        val backlightPaused = SettingsManager.getSmartBacklightEnabled(context) &&
+            !SettingsManager.getSmartBacklightApplied(context)
+        fullSuggestionsBar?.setBacklightPaused(backlightPaused)
         updateMenuBarModifierIndicators(
             container = modifiersContainerView,
             snapshot = snapshot,

@@ -5,10 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.provider.Settings
-import android.hardware.Sensor
-import android.hardware.SensorEvent
-import android.hardware.SensorEventListener
-import android.hardware.SensorManager
 import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -33,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import it.palsoftware.pastiera.inputmethod.EmbeddedAdbShell
+import it.palsoftware.pastiera.inputmethod.KeyboardBacklightManager
 import kotlinx.coroutines.delay
 import moe.shizuku.manager.adb.AdbPairingService
 
@@ -101,24 +98,6 @@ fun SmartBacklightScreen(
     val context = LocalContext.current
 
     var enabled by remember { mutableStateOf(SettingsManager.getSmartBacklightEnabled(context)) }
-    var luxThreshold by remember { mutableStateOf(SettingsManager.getSmartBacklightLuxThreshold(context)) }
-
-    // Live ambient light readout so the user can calibrate by looking at the room.
-    var currentLux by remember { mutableStateOf<Float?>(null) }
-    DisposableEffect(Unit) {
-        val sensorManager = context.getSystemService(android.content.Context.SENSOR_SERVICE) as? SensorManager
-        val sensor = sensorManager?.getDefaultSensor(Sensor.TYPE_LIGHT)
-        val listener = object : SensorEventListener {
-            override fun onSensorChanged(event: SensorEvent) {
-                currentLux = event.values.firstOrNull()
-            }
-            override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
-        }
-        if (sensor != null) {
-            sensorManager.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_UI)
-        }
-        onDispose { sensorManager?.unregisterListener(listener) }
-    }
 
     // Poll the embedded-broker state so the setup card reflects pairing / wireless-debug
     // changes made while this screen is open (both reads are cheap: prefs + a global flag).
@@ -130,8 +109,18 @@ fun SmartBacklightScreen(
         }
     }
     val paired = remember(statusTick) { EmbeddedAdbShell.isPaired(context) }
-    val wirelessOn = remember(statusTick) { EmbeddedAdbShell.isWirelessDebuggingEnabled(context) }
-    val ready = paired && wirelessOn
+    // Readiness keys off the persisted "configured once" flag, NOT live Wireless-debugging.
+    // The always-on vendor value survives reboots and outlives Wireless debugging, so once it
+    // has been written the feature is set up even if debugging is later turned off.
+    val configured = remember(statusTick) { SettingsManager.getSmartBacklightApplied(context) }
+
+    // If the feature is enabled and pairing has completed, write the persistent setting now
+    // (covers "enable first, pair second"). On success the manager flips `configured` true.
+    LaunchedEffect(enabled, paired) {
+        if (enabled && paired) {
+            KeyboardBacklightManager.applyAlwaysOn(context)
+        }
+    }
 
     // Auto-arm the pairing watcher while this screen is open and the device isn't paired
     // yet, so the PIN-entry notification is already listening BEFORE the user reaches
@@ -209,122 +198,105 @@ fun SmartBacklightScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Self-contained setup / troubleshooting surface. Green when the embedded
-            // broker is paired and Wireless debugging is on; otherwise a prompt to pair.
-            Surface(
-                color = if (ready) MaterialTheme.colorScheme.surfaceVariant
-                        else MaterialTheme.colorScheme.errorContainer,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = stringResource(R.string.smart_backlight_setup_title),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Medium,
-                        color = if (ready) MaterialTheme.colorScheme.onSurfaceVariant
-                                else MaterialTheme.colorScheme.onErrorContainer
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = stringResource(
-                            when {
-                                !paired -> R.string.smart_backlight_setup_not_paired
-                                !wirelessOn -> R.string.smart_backlight_setup_wireless_off
-                                else -> R.string.smart_backlight_setup_ready
-                            }
-                        ),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (ready) MaterialTheme.colorScheme.onSurfaceVariant
-                                else MaterialTheme.colorScheme.onErrorContainer
-                    )
-                    if (!paired) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Button(onClick = { onPairClicked() }) {
-                            Text(stringResource(R.string.smart_backlight_setup_pair_button))
-                        }
-                    }
-
-                    val guideTint = if (ready) MaterialTheme.colorScheme.onSurfaceVariant
-                                    else MaterialTheme.colorScheme.onErrorContainer
-
-                    // Expandable "How do I turn on Wireless debugging?" walkthrough.
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { guideExpanded = !guideExpanded }
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
-                    ) {
+            // When set up, this collapses to a single quiet line — no card, no steps.
+            // "Configured" (the persistent value written once) is the readiness signal, so the
+            // ready line stays even after Wireless debugging is turned off. The full pairing
+            // walkthrough only appears when the feature is enabled but not yet configured.
+            if (enabled && configured) {
+                Text(
+                    text = "✓ " + stringResource(R.string.smart_backlight_setup_ready),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontFamily = FontFamily.Monospace,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                )
+            } else if (enabled) {
+                // Not set up yet — a compact, non-alarming prompt. The step-by-step walkthrough
+                // stays tucked behind a collapsed "How?" toggle so it isn't clutter for most.
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            text = stringResource(R.string.smart_backlight_guide_toggle),
+                            text = stringResource(
+                                if (!paired) R.string.smart_backlight_setup_not_paired
+                                else R.string.smart_backlight_setup_wireless_off
+                            ),
                             style = MaterialTheme.typography.bodyMedium,
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Medium,
-                            color = guideTint,
-                            modifier = Modifier.weight(1f)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Icon(
-                            imageVector = if (guideExpanded) Icons.Filled.ExpandLess
-                                          else Icons.Filled.ExpandMore,
-                            contentDescription = null,
-                            tint = guideTint
-                        )
-                    }
+                        if (!paired) {
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Button(onClick = { onPairClicked() }) {
+                                Text(stringResource(R.string.smart_backlight_setup_pair_button))
+                            }
+                        }
 
-                    if (guideExpanded) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = stringResource(R.string.smart_backlight_guide_intro),
-                            style = MaterialTheme.typography.bodySmall,
-                            fontFamily = FontFamily.Monospace,
-                            color = guideTint
-                        )
+                        // Collapsed "How do I turn on Wireless debugging?" walkthrough.
                         Spacer(modifier = Modifier.height(8.dp))
-                        listOf(
-                            R.string.smart_backlight_guide_step1,
-                            R.string.smart_backlight_guide_step2,
-                            R.string.smart_backlight_guide_step3,
-                            R.string.smart_backlight_guide_step4
-                        ).forEach { stepRes ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { guideExpanded = !guideExpanded }
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                        ) {
                             Text(
-                                text = stringResource(stepRes),
+                                text = stringResource(R.string.smart_backlight_guide_toggle),
                                 style = MaterialTheme.typography.bodySmall,
                                 fontFamily = FontFamily.Monospace,
-                                color = guideTint,
-                                modifier = Modifier.padding(bottom = 6.dp)
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Icon(
+                                imageVector = if (guideExpanded) Icons.Filled.ExpandLess
+                                              else Icons.Filled.ExpandMore,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        Spacer(modifier = Modifier.height(4.dp))
-                        OutlinedButton(
-                            onClick = {
-                                openSystemSettings(
-                                    context,
-                                    Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS
+
+                        if (guideExpanded) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = stringResource(R.string.smart_backlight_guide_intro),
+                                style = MaterialTheme.typography.bodySmall,
+                                fontFamily = FontFamily.Monospace,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            listOf(
+                                R.string.smart_backlight_guide_step1,
+                                R.string.smart_backlight_guide_step2,
+                                R.string.smart_backlight_guide_step3,
+                                R.string.smart_backlight_guide_step4
+                            ).forEach { stepRes ->
+                                Text(
+                                    text = stringResource(stepRes),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(bottom = 6.dp)
                                 )
                             }
-                        ) {
-                            Text(
-                                text = stringResource(R.string.smart_backlight_guide_open_dev),
-                                fontFamily = FontFamily.Monospace
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(6.dp))
-                        OutlinedButton(
-                            onClick = {
-                                openSystemSettings(
-                                    context,
-                                    Settings.ACTION_DEVICE_INFO_SETTINGS,
-                                    Settings.ACTION_SETTINGS
+                            Spacer(modifier = Modifier.height(4.dp))
+                            OutlinedButton(
+                                onClick = {
+                                    openSystemSettings(
+                                        context,
+                                        Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS
+                                    )
+                                }
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.smart_backlight_guide_open_dev),
+                                    fontFamily = FontFamily.Monospace
                                 )
                             }
-                        ) {
-                            Text(
-                                text = stringResource(R.string.smart_backlight_guide_open_about),
-                                fontFamily = FontFamily.Monospace
-                            )
                         }
                     }
                 }
@@ -354,45 +326,15 @@ fun SmartBacklightScreen(
                     onCheckedChange = {
                         enabled = it
                         SettingsManager.setSmartBacklightEnabled(context, it)
+                        // One-time write of the persistent vendor setting (survives reboots).
+                        // Both calls no-op safely if the broker isn't paired/connectable.
+                        if (it) {
+                            KeyboardBacklightManager.applyAlwaysOn(context)
+                        } else {
+                            KeyboardBacklightManager.revertToDefault(context)
+                        }
                     }
                 )
-            }
-
-            HorizontalDivider()
-
-            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-                Text(
-                    text = stringResource(R.string.smart_backlight_lux_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text = stringResource(R.string.smart_backlight_lux_value, luxThreshold),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Slider(
-                    value = luxThreshold.toFloat(),
-                    onValueChange = {
-                        luxThreshold = it.toInt().coerceIn(1, 50)
-                        SettingsManager.setSmartBacklightLuxThreshold(context, luxThreshold)
-                    },
-                    valueRange = 1f..50f,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                currentLux?.let { lux ->
-                    val luxInt = lux.toInt()
-                    val state = if (luxInt <= luxThreshold) {
-                        stringResource(R.string.smart_backlight_lux_dark)
-                    } else {
-                        stringResource(R.string.smart_backlight_lux_bright)
-                    }
-                    Text(
-                        text = stringResource(R.string.smart_backlight_lux_now, luxInt, state),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
             }
         }
     }

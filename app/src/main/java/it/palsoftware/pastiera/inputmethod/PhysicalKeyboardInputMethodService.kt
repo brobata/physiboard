@@ -4237,8 +4237,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
             candidatesBarController.resetSuggestionActionMode()
         }
 
-        keyboardBacklightManager.onKeyActivity()
-
         if (shouldPlayTypingSound(hasEditableField, keyCode, event)) {
             typingSoundPlayer.play(keyCode)
         }

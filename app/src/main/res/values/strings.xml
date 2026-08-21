@@ -117,19 +117,11 @@
     <string name="smart_backlight_title">Smart keyboard backlight</string>
     <string name="smart_backlight_row_description">Keep the keyboard lit in the dark, past the 30s limit</string>
     <string name="smart_backlight_enable_title">Smart backlight</string>
-    <string name="smart_backlight_enable_description">Keeps the keyboard lit in the dark — needs a quick one-time setup (below).</string>
-    <string name="smart_backlight_lux_title">Darkness threshold</string>
-    <string name="smart_backlight_lux_value">Below %1$d lux counts as dark</string>
-    <string name="smart_backlight_lux_now">Right now: %1$d lux — %2$s</string>
-    <string name="smart_backlight_lux_dark">dark, backlight would be on</string>
-    <string name="smart_backlight_lux_bright">bright, backlight would be off</string>
-    <string name="smart_backlight_timeout_title">Turn off after</string>
-    <string name="smart_backlight_timeout_always">Stay on while dark</string>
-    <string name="smart_backlight_timeout_seconds">%1$d s after last keypress</string>
+    <string name="smart_backlight_enable_description">Keeps the keyboard backlight on whenever the screen is on. A one-time setup below — it survives reboots.</string>
     <string name="smart_backlight_setup_title">Wireless debugging</string>
     <string name="smart_backlight_setup_not_paired">Almost there — pairing is armed and waiting while this screen is open. One-time setup: (1) turn on Wireless debugging, (2) tap \"Pair device with pairing code\", (3) type the 6-digit code into the PhysiBoard notification. No extra apps needed.</string>
-    <string name="smart_backlight_setup_wireless_off">Paired. Turn on Settings → System → Developer options → Wireless debugging so the light can arm.</string>
-    <string name="smart_backlight_setup_ready">Ready — paired and Wireless debugging is on. The keyboard will stay lit in the dark.</string>
+    <string name="smart_backlight_setup_wireless_off">Paired. Turn on Settings → System → Developer options → Wireless debugging so the setting can be sent once.</string>
+    <string name="smart_backlight_setup_ready">Always on — set up once, survives reboots.</string>
     <string name="smart_backlight_setup_pair_button">Restart pairing</string>
     <string name="smart_backlight_setup_pair_hint">Pairing re-armed. Open Developer options → Wireless debugging → Pair device with code, then tap the PIN notification.</string>
     <!-- Smart backlight — guided one-time setup walkthrough -->
@@ -139,7 +131,7 @@
     <string name="smart_backlight_guide_step1">1. Enable Developer options: Settings → About phone → tap \"Build number\" 7 times.</string>
     <string name="smart_backlight_guide_step2">2. Open Settings → System → Developer options → Wireless debugging and turn it ON.</string>
     <string name="smart_backlight_guide_step3">3. Open this screen (pairing arms automatically). In Wireless debugging, tap \"Pair device with pairing code\" → type the 6-digit code into the PhysiBoard notification that appears. (Use \"Restart pairing\" if you need to re-arm.)</string>
-    <string name="smart_backlight_guide_step4">4. Note: Wireless debugging turns off on reboot (Android security) — flip it back on after a restart. PhysiBoard will notify you.</string>
+    <string name="smart_backlight_guide_step4">4. That\'s it — this is a one-time setup. The backlight setting is stored on the device and survives reboots, so you never have to do this again.</string>
     <string name="smart_backlight_guide_open_dev">Open Developer options</string>
     <string name="smart_backlight_guide_open_about">Open About phone</string>
     <string name="smart_backlight_guide_open_failed">Couldn\'t open that screen on this device — open it manually from Settings.</string>
