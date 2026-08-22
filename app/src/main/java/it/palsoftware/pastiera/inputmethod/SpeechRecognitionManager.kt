@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -518,13 +519,27 @@ class SpeechRecognitionManager(
             @Suppress("DEPRECATION")
             context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
         } ?: return
+        // Full-strength cues: the phone is usually on a desk or in a hand at arm's length
+        // while dictating, so the default (touch-feedback) amplitude is easy to miss.
         val effect = if (started) {
-            // Two quick ticks: listening.
-            VibrationEffect.createWaveform(longArrayOf(0, 35, 70, 35), -1)
+            // Two firm ticks: listening.
+            VibrationEffect.createWaveform(
+                longArrayOf(0, 60, 70, 60),
+                intArrayOf(0, 255, 0, 255),
+                -1
+            )
         } else {
-            // One longer pulse: stopped.
-            VibrationEffect.createOneShot(90, VibrationEffect.DEFAULT_AMPLITUDE)
+            // One long pulse: stopped.
+            VibrationEffect.createOneShot(160, 255)
         }
-        vibrator.vibrate(effect)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // Notification-class so the system's touch-feedback intensity doesn't scale it down.
+            vibrator.vibrate(
+                effect,
+                VibrationAttributes.createForUsage(VibrationAttributes.USAGE_NOTIFICATION)
+            )
+        } else {
+            vibrator.vibrate(effect)
+        }
     }
 }
