@@ -38,13 +38,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Gesture
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Spellcheck
 import androidx.compose.material.icons.filled.Update
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -411,6 +411,13 @@ fun KeyboardSetupScreen(
                 )
                 add(
                     HomeTile(
+                        icon = Icons.Filled.Gesture,
+                        label = stringResource(R.string.home_tile_screen_trackpad),
+                        onClick = { launchSettings(SettingsActivity.DESTINATION_SCREEN_TRACKPAD) }
+                    )
+                )
+                add(
+                    HomeTile(
                         icon = Icons.Filled.Palette,
                         label = stringResource(R.string.home_tile_theme),
                         onClick = launchKeyboardTheme
@@ -428,13 +435,6 @@ fun KeyboardSetupScreen(
                         icon = Icons.Filled.AutoAwesome,
                         label = stringResource(R.string.home_tile_smart_features),
                         onClick = { launchSettings(SettingsActivity.DESTINATION_SMART_FEATURES) }
-                    )
-                )
-                add(
-                    HomeTile(
-                        icon = Icons.Filled.Spellcheck,
-                        label = stringResource(R.string.home_tile_auto_correct),
-                        onClick = { launchSettings(SettingsActivity.DESTINATION_AUTO_CORRECT) }
                     )
                 )
                 add(

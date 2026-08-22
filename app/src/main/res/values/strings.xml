@@ -212,6 +212,7 @@
     <string name="home_tile_settings">Settings</string>
     <string name="home_tile_smart_features">Smart Features</string>
     <string name="home_tile_auto_correct">Auto-correct</string>
+    <string name="home_tile_screen_trackpad">Trackpad</string>
     <string name="home_tile_voice">Voice</string>
     <string name="home_tile_raw_mode">Exact Typing</string>
     <string name="home_tile_fn_layer">Fn Layer</string>

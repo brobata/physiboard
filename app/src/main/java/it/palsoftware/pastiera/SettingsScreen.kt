@@ -134,6 +134,9 @@ fun SettingsScreen(
             } else if (initialDestination == SettingsActivity.DESTINATION_SMART_BACKLIGHT) {
                 add(SettingsDestination.Main)
                 add(SettingsDestination.SmartBacklight)
+            } else if (initialDestination == SettingsActivity.DESTINATION_SCREEN_TRACKPAD) {
+                add(SettingsDestination.Main)
+                add(SettingsDestination.ScreenTrackpad)
             } else if (initialDestination == SettingsActivity.DESTINATION_INPUT_LANGUAGES) {
                 add(SettingsDestination.Main)
                 add(SettingsDestination.CustomInputStyles)

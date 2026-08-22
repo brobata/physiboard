@@ -22,6 +22,7 @@ class SettingsActivity : LocalizedComponentActivity() {
         const val DESTINATION_VOICE = "voice_destination"
         const val DESTINATION_RAW_MODE = "raw_mode_destination"
         const val DESTINATION_FN_LAYER = "fn_layer_destination"
+        const val DESTINATION_SCREEN_TRACKPAD = "screen_trackpad_destination"
         const val EXTRA_CUSTOMIZATION_DESTINATION = "it.palsoftware.pastiera.CUSTOMIZATION_DESTINATION"
         const val CUSTOMIZATION_DESTINATION_VARIATIONS = "variations"
         const val CUSTOMIZATION_DESTINATION_LAUNCHER_SHORTCUTS = "launcher_shortcuts"
