@@ -168,6 +168,11 @@ object SettingsManager {
     private const val KEY_TRACKPAD_SUGGESTION_SWIPE_THRESHOLD = "trackpad_suggestion_swipe_threshold"
     private const val KEY_TRACKPAD_DELETE_SWIPE_THRESHOLD = "trackpad_delete_swipe_threshold"
     private const val KEY_TRACKPAD_PROVIDER = "trackpad_provider" // shizuku | native_ime
+    private const val KEY_SCREEN_TRACKPAD_ENABLED = "screen_trackpad_enabled"
+    private const val KEY_SCREEN_TRACKPAD_TRIGGER_KEY = "screen_trackpad_trigger_key"
+    private const val KEY_SCREEN_TRACKPAD_ACTIVATION = "screen_trackpad_activation"
+    private const val KEY_SCREEN_TRACKPAD_STEP_PX = "screen_trackpad_step_px"
+    private const val KEY_SCREEN_TRACKPAD_SHOW_HINT = "screen_trackpad_show_hint"
     private const val KEY_SHIFT_BACKSPACE_DELETE = "shift_backspace_delete" // Shift + Backspace performs forward delete
     private const val KEY_ALT_BACKSPACE_DELETE = "alt_backspace_delete" // Alt + Backspace performs forward delete
     private const val KEY_BACKSPACE_AT_START_DELETE = "backspace_at_start_delete" // Backspace at line start performs forward delete
@@ -444,6 +449,29 @@ object SettingsManager {
         TRACKPAD_PROVIDER_SHIZUKU,
         TRACKPAD_PROVIDER_NATIVE_IME
     )
+    const val SCREEN_TRACKPAD_TRIGGER_SPACE = "space"
+    const val SCREEN_TRACKPAD_TRIGGER_SHIFT_LEFT = "shift_left"
+    const val SCREEN_TRACKPAD_TRIGGER_SHIFT_RIGHT = "shift_right"
+    const val SCREEN_TRACKPAD_TRIGGER_SHIFT_EITHER = "shift_either"
+    const val SCREEN_TRACKPAD_TRIGGER_SYM = "sym"
+    private val SCREEN_TRACKPAD_TRIGGER_VALUES = setOf(
+        SCREEN_TRACKPAD_TRIGGER_SPACE,
+        SCREEN_TRACKPAD_TRIGGER_SHIFT_LEFT,
+        SCREEN_TRACKPAD_TRIGGER_SHIFT_RIGHT,
+        SCREEN_TRACKPAD_TRIGGER_SHIFT_EITHER,
+        SCREEN_TRACKPAD_TRIGGER_SYM
+    )
+    const val SCREEN_TRACKPAD_ACTIVATION_HOLD = "hold"
+    const val SCREEN_TRACKPAD_ACTIVATION_DOUBLE_TAP = "double_tap"
+    const val SCREEN_TRACKPAD_ACTIVATION_SINGLE_TAP = "single_tap"
+    private val SCREEN_TRACKPAD_ACTIVATION_VALUES = setOf(
+        SCREEN_TRACKPAD_ACTIVATION_HOLD,
+        SCREEN_TRACKPAD_ACTIVATION_DOUBLE_TAP,
+        SCREEN_TRACKPAD_ACTIVATION_SINGLE_TAP
+    )
+    const val MIN_SCREEN_TRACKPAD_STEP_PX = 8
+    const val MAX_SCREEN_TRACKPAD_STEP_PX = 64
+    private const val DEFAULT_SCREEN_TRACKPAD_STEP_PX = 24
     const val SWIPE_TO_DELETE_PROVIDER_TITAN2_KEYCODE = "titan2_keycode"
     const val SWIPE_TO_DELETE_PROVIDER_NATIVE_IME = "native_ime"
     private const val DEFAULT_SWIPE_TO_DELETE_PROVIDER = SWIPE_TO_DELETE_PROVIDER_NATIVE_IME
@@ -5563,6 +5591,52 @@ object SettingsManager {
         getPreferences(context).edit()
             .putFloat(KEY_TRACKPAD_DELETE_SWIPE_THRESHOLD, clamped)
             .commit()
+    }
+
+    // ---- Screen trackpad (hold a key, swipe anywhere on the screen to move the cursor) ----
+
+    fun isScreenTrackpadEnabled(context: Context): Boolean =
+        getPreferences(context).getBoolean(KEY_SCREEN_TRACKPAD_ENABLED, false)
+
+    fun setScreenTrackpadEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit().putBoolean(KEY_SCREEN_TRACKPAD_ENABLED, enabled).commit()
+    }
+
+    fun getScreenTrackpadTriggerKey(context: Context): String {
+        val value = getPreferences(context).getString(KEY_SCREEN_TRACKPAD_TRIGGER_KEY, SCREEN_TRACKPAD_TRIGGER_SPACE).orEmpty()
+        return if (SCREEN_TRACKPAD_TRIGGER_VALUES.contains(value)) value else SCREEN_TRACKPAD_TRIGGER_SPACE
+    }
+
+    fun setScreenTrackpadTriggerKey(context: Context, value: String) {
+        val normalized = if (SCREEN_TRACKPAD_TRIGGER_VALUES.contains(value)) value else SCREEN_TRACKPAD_TRIGGER_SPACE
+        getPreferences(context).edit().putString(KEY_SCREEN_TRACKPAD_TRIGGER_KEY, normalized).commit()
+    }
+
+    fun getScreenTrackpadActivation(context: Context): String {
+        val value = getPreferences(context).getString(KEY_SCREEN_TRACKPAD_ACTIVATION, SCREEN_TRACKPAD_ACTIVATION_HOLD).orEmpty()
+        return if (SCREEN_TRACKPAD_ACTIVATION_VALUES.contains(value)) value else SCREEN_TRACKPAD_ACTIVATION_HOLD
+    }
+
+    fun setScreenTrackpadActivation(context: Context, value: String) {
+        val normalized = if (SCREEN_TRACKPAD_ACTIVATION_VALUES.contains(value)) value else SCREEN_TRACKPAD_ACTIVATION_HOLD
+        getPreferences(context).edit().putString(KEY_SCREEN_TRACKPAD_ACTIVATION, normalized).commit()
+    }
+
+    fun getScreenTrackpadStepPx(context: Context): Int =
+        getPreferences(context).getInt(KEY_SCREEN_TRACKPAD_STEP_PX, DEFAULT_SCREEN_TRACKPAD_STEP_PX)
+            .coerceIn(MIN_SCREEN_TRACKPAD_STEP_PX, MAX_SCREEN_TRACKPAD_STEP_PX)
+
+    fun setScreenTrackpadStepPx(context: Context, stepPx: Int) {
+        getPreferences(context).edit()
+            .putInt(KEY_SCREEN_TRACKPAD_STEP_PX, stepPx.coerceIn(MIN_SCREEN_TRACKPAD_STEP_PX, MAX_SCREEN_TRACKPAD_STEP_PX))
+            .commit()
+    }
+
+    fun isScreenTrackpadHintEnabled(context: Context): Boolean =
+        getPreferences(context).getBoolean(KEY_SCREEN_TRACKPAD_SHOW_HINT, true)
+
+    fun setScreenTrackpadHintEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit().putBoolean(KEY_SCREEN_TRACKPAD_SHOW_HINT, enabled).commit()
     }
 
     fun getTrackpadProvider(context: Context): String {

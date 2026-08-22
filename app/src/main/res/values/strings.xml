@@ -1569,6 +1569,36 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="clipboard_retention_time_description">0 = never delete clips</string>
     <string name="clipboard_retention_time_minutes">%1$d minutes</string>
 
+    <!-- Screen Trackpad Settings -->
+    <string name="screen_trackpad_title">Screen trackpad</string>
+    <string name="screen_trackpad_description">Hold a key and swipe anywhere on the screen to move the cursor</string>
+    <string name="screen_trackpad_enabled_title">Enable screen trackpad</string>
+    <string name="screen_trackpad_enabled_description">Turns the whole display into a cursor trackpad while the trigger key is active</string>
+    <string name="screen_trackpad_permission_title">Display over other apps</string>
+    <string name="screen_trackpad_permission_description">Required so the trackpad can capture swipes on top of the current app</string>
+    <string name="screen_trackpad_permission_granted">Permission granted</string>
+    <string name="screen_trackpad_permission_missing">Permission not granted — tap to open system settings</string>
+    <string name="screen_trackpad_permission_toast">Screen trackpad needs “Display over other apps”. Enable it in Pastiera settings.</string>
+    <string name="screen_trackpad_trigger_key_title">Trigger key</string>
+    <string name="screen_trackpad_trigger_space">Space</string>
+    <string name="screen_trackpad_trigger_shift_left">Left Shift</string>
+    <string name="screen_trackpad_trigger_shift_right">Right Shift</string>
+    <string name="screen_trackpad_trigger_shift_either">Either Shift</string>
+    <string name="screen_trackpad_trigger_sym">Sym</string>
+    <string name="screen_trackpad_activation_title">Activate by</string>
+    <string name="screen_trackpad_activation_hold">Hold (active while held)</string>
+    <string name="screen_trackpad_activation_double_tap">Double tap (stays on until tapped again)</string>
+    <string name="screen_trackpad_activation_single_tap">Single tap (stays on until tapped again)</string>
+    <string name="screen_trackpad_activation_hold_note">A quick tap still types the key normally. Hold Shift while swiping to select text.</string>
+    <string name="screen_trackpad_activation_sticky_note">Tap the trigger key, the Back key, or the on-screen pill to exit. Single tap takes over the key completely — only use it with a key you don\'t type with.</string>
+    <string name="screen_trackpad_sensitivity_title">Sensitivity</string>
+    <string name="screen_trackpad_sensitivity_description">Pixels of swipe per cursor step — lower is faster</string>
+    <string name="screen_trackpad_hint_enabled_title">Show on-screen hint</string>
+    <string name="screen_trackpad_hint_enabled_description">Small pill at the top of the screen while the trackpad is active</string>
+    <string name="screen_trackpad_hint_cursor">✥ Cursor</string>
+    <string name="screen_trackpad_hint_select">⇧ Select</string>
+    <string name="screen_trackpad_hint_sticky">✥ Cursor · tap to exit</string>
+
     <!-- Trackpad Gesture Settings -->
     <string name="trackpad_gestures_title">Keyboard swipe</string>
     <string name="trackpad_gestures_description">Swipe across the physical keys to move the cursor and accept suggestions</string>

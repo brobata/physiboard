@@ -18,6 +18,7 @@ enum class SettingsSearchTarget {
     KEYBOARD_THEME,
     QUICK_LAUNCHER,
     NAV_MODE,
+    SCREEN_TRACKPAD,
     ENTER_BEHAVIOR,
     ADVANCED,
     ABOUT,
@@ -44,6 +45,7 @@ data class SettingsSearchEntry(
 object SettingsCatalog {
     val entries: List<SettingsSearchEntry> = listOf(
         // Screens
+        SettingsSearchEntry(R.string.screen_trackpad_title, R.string.screen_trackpad_title, SettingsSearchTarget.SCREEN_TRACKPAD, "trackpad cursor swipe screen spacebar hold arrow select"),
         SettingsSearchEntry(R.string.modifiers_title, R.string.modifiers_title, SettingsSearchTarget.MODIFIERS, "shift alt ctrl sym sticky latch lock"),
         SettingsSearchEntry(R.string.keyboards_devices_title, R.string.keyboards_devices_title, SettingsSearchTarget.KEYBOARDS_DEVICES, "hardware physical layout device profile"),
         SettingsSearchEntry(R.string.settings_category_text_input, R.string.settings_category_text_input, SettingsSearchTarget.TEXT_INPUT, "typing punctuation spaces"),

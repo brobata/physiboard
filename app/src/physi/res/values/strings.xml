@@ -122,4 +122,5 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="backlight_tile_label">Keyboard light</string>
     <string name="backlight_tile_permission_missing">PhysiBoard needs WRITE_SECURE_SETTINGS. Grant once via ADB: adb shell pm grant brobata.physiboard android.permission.WRITE_SECURE_SETTINGS</string>
     <string name="backlight_tile_no_permission_subtitle">Needs ADB grant</string>
+    <string name="screen_trackpad_permission_toast">Screen trackpad needs “Display over other apps”. Enable it in PhysiBoard settings.</string>
 </resources>

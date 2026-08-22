@@ -321,6 +321,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     private val clicksPowerButtonEventMapper = ClicksPowerButtonEventMapper()
     private var dispatchingClicksAccessibilityKeyEvent = false
     private var replayingProtectedNumberKey = false
+    private var screenTrackpadReplaying = false
+    private lateinit var screenTrackpadController: ScreenTrackpadController
     private val uiHandler = Handler(Looper.getMainLooper())
     // Fn long-press speech shortcut. The physical Fn key is matched by scan code because the
     // system may remap it to an arbitrary key code (Ctrl on Titan devices). On Titan 2 the
@@ -1602,6 +1604,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         inputEventRouter = InputEventRouter(this, navModeController).apply {
             onCommitText = { markSelectionUpdateSkipAfterCommit() }
         }
+        screenTrackpadController = ScreenTrackpadController(
+            service = this,
+            handler = uiHandler,
+            inputConnectionProvider = { currentInputConnection },
+            isShiftActive = { isShiftModifierActive(null) },
+            replayKey = { keyCode, downEvent, upEvent -> replayScreenTrackpadTriggerKey(keyCode, downEvent, upEvent) }
+        )
         typingSoundPlayer = TypingSoundPlayer(this).apply { reload() }
         textInputController = TextInputController(
             context = this,
@@ -2609,6 +2618,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     }
     
     override fun onDestroy() {
+        if (::screenTrackpadController.isInitialized) screenTrackpadController.deactivate()
         keyboardBacklightManager.stop()
         ClicksAccessibilityKeyBridge.unregister(this)
         accidentalKeyPressFilter.reset()
@@ -3861,6 +3871,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     
     override fun onWindowHidden() {
         super.onWindowHidden()
+        if (::screenTrackpadController.isInitialized) screenTrackpadController.deactivate()
         SoftwareKeyboardAutoDetector.onInputWindowHidden()
         invalidateRenderedStatusSnapshot()
         if (::candidatesBarController.isInitialized) {
@@ -4104,6 +4115,28 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         )
     }
 
+    /**
+     * Re-dispatches a trigger key that the screen trackpad swallowed but that turned out to be a
+     * plain tap (or a chord), so it gets its normal behaviour. [upEvent] is null when only the
+     * down must be replayed (the real up will follow through the normal path).
+     */
+    private fun replayScreenTrackpadTriggerKey(keyCode: Int, downEvent: KeyEvent, upEvent: KeyEvent?) {
+        screenTrackpadReplaying = true
+        try {
+            val downHandled = onKeyDown(keyCode, downEvent)
+            if (downHandled) {
+                if (upEvent != null) onKeyUp(keyCode, upEvent)
+            } else {
+                currentInputConnection?.let { inputConnection ->
+                    inputConnection.sendKeyEvent(downEvent)
+                    if (upEvent != null) inputConnection.sendKeyEvent(upEvent)
+                }
+            }
+        } finally {
+            screenTrackpadReplaying = false
+        }
+    }
+
     private fun replayProtectedNumberKey(
         keyCode: Int,
         replay: AccidentalKeyPressFilter.KeyUpResult.ReplayTap
@@ -4164,7 +4197,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     override fun onKeyDown(keyCode_: Int, event_: KeyEvent?): Boolean {
         val perfStart = ImePerfLogger.mark()
         try {
-        if (!replayingProtectedNumberKey) {
+        if (!replayingProtectedNumberKey && !screenTrackpadReplaying) {
             val accidentalInput = accidentalKeyInput(keyCode_, event_)
             accidentalKeyPressFilter.shouldConsumeKeyDown(
                 keyCode = keyCode_,
@@ -4189,15 +4222,22 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         }
         val keyCode = remapped.keyCode
         val event = remapped.event
-        bounceKeyFilter.shouldConsumeKeyDown(this, keyCode, event)?.let { suppressed ->
-            notifyDebugKeyEvent(
-                keyCode = keyCode,
-                event = event,
-                action = "KEY_DOWN_SUPPRESSED",
-                origin = "bounce_keys",
-                outputKeyCodeName = suppressed.debugOutput()
-            )
-            return true
+        if (!screenTrackpadReplaying) {
+            bounceKeyFilter.shouldConsumeKeyDown(this, keyCode, event)?.let { suppressed ->
+                notifyDebugKeyEvent(
+                    keyCode = keyCode,
+                    event = event,
+                    action = "KEY_DOWN_SUPPRESSED",
+                    origin = "bounce_keys",
+                    outputKeyCodeName = suppressed.debugOutput()
+                )
+                return true
+            }
+            if (::screenTrackpadController.isInitialized &&
+                screenTrackpadController.onKeyDown(keyCode, event, keyCode_, event_)
+            ) {
+                return true
+            }
         }
 
         if (SettingsManager.getFnLongPressSpeechEnabled(this)) {
@@ -4849,7 +4889,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     }
 
     override fun onKeyUp(keyCode_: Int, event_: KeyEvent?): Boolean {
-        if (!replayingProtectedNumberKey) {
+        if (!replayingProtectedNumberKey && !screenTrackpadReplaying) {
             when (val result = accidentalKeyPressFilter.onKeyUp(keyCode_, event_)) {
                 is AccidentalKeyPressFilter.KeyUpResult.Suppressed -> {
                     notifyDebugKeyEvent(
@@ -4876,15 +4916,22 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
             consumeAltEnterUntilKeyUp = false
             return true
         }
-        bounceKeyFilter.shouldConsumeKeyUp(keyCode, event)?.let { suppressed ->
-            notifyDebugKeyEvent(
-                keyCode = keyCode,
-                event = event,
-                action = "KEY_UP_SUPPRESSED",
-                origin = "bounce_keys",
-                outputKeyCodeName = suppressed.debugOutput()
-            )
-            return true
+        if (!screenTrackpadReplaying) {
+            bounceKeyFilter.shouldConsumeKeyUp(keyCode, event)?.let { suppressed ->
+                notifyDebugKeyEvent(
+                    keyCode = keyCode,
+                    event = event,
+                    action = "KEY_UP_SUPPRESSED",
+                    origin = "bounce_keys",
+                    outputKeyCodeName = suppressed.debugOutput()
+                )
+                return true
+            }
+            if (::screenTrackpadController.isInitialized &&
+                screenTrackpadController.onKeyUp(keyCode, event, keyCode_, event_)
+            ) {
+                return true
+            }
         }
 
         if (SettingsManager.getFnLongPressSpeechEnabled(this) && isFnSpeechKey(keyCode, event)) {
