@@ -27,6 +27,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.KeyboardReturn
 import androidx.compose.material.icons.automirrored.filled.ManageSearch
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.Gesture
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.SmartButton
@@ -73,7 +74,7 @@ enum class SettingsDestination {
     AutoCorrection,
     Customization,
     NavMode,
-    KeyboardSwipe,
+    ScreenTrackpad,
     Advanced,
     About,
     CustomInputStyles,
@@ -240,7 +241,7 @@ fun SettingsScreen(
                     onKeyboardsDevicesClick = { navigateTo(SettingsDestination.KeyboardsDevices) },
                     onTextInputClick = { navigateTo(SettingsDestination.TextInput) },
                     onVoiceClick = { navigateTo(SettingsDestination.Voice) },
-                    onKeyboardSwipeClick = { navigateTo(SettingsDestination.KeyboardSwipe) },
+                    onScreenTrackpadClick = { navigateTo(SettingsDestination.ScreenTrackpad) },
                     onSoundHapticsClick = {
                         openCustomization(SettingsActivity.CUSTOMIZATION_DESTINATION_SOUNDS)
                     },
@@ -278,8 +279,8 @@ fun SettingsScreen(
                     onBack = { navigateBack() }
                 )
             }
-            SettingsDestination.KeyboardSwipe -> {
-                TrackpadGestureSettingsScreen(
+            SettingsDestination.ScreenTrackpad -> {
+                ScreenTrackpadSettingsScreen(
                     modifier = modifier,
                     onBack = { navigateBack() }
                 )
@@ -420,7 +421,7 @@ private fun SettingsMainScreen(
     onKeyboardsDevicesClick: () -> Unit,
     onTextInputClick: () -> Unit,
     onVoiceClick: () -> Unit,
-    onKeyboardSwipeClick: () -> Unit,
+    onScreenTrackpadClick: () -> Unit,
     onSoundHapticsClick: () -> Unit,
     onAccessibilityClick: () -> Unit,
     onAutoCorrectionClick: () -> Unit,
@@ -454,6 +455,7 @@ private fun SettingsMainScreen(
             SettingsSearchTarget.KEYBOARD_THEME -> onKeyboardThemeClick()
             SettingsSearchTarget.QUICK_LAUNCHER -> onQuickLauncherClick()
             SettingsSearchTarget.NAV_MODE -> onNavModeClick()
+            SettingsSearchTarget.SCREEN_TRACKPAD -> onScreenTrackpadClick()
             SettingsSearchTarget.ENTER_BEHAVIOR -> onEnterBehaviorClick()
             SettingsSearchTarget.ADVANCED -> onAdvancedClick()
             SettingsSearchTarget.ABOUT -> onAboutClick()
@@ -562,10 +564,10 @@ private fun SettingsMainScreen(
                 onClick = onNavModeClick
             )
             SettingsCategoryRow(
-                icon = Icons.Filled.TouchApp,
-                title = stringResource(R.string.trackpad_gestures_title),
-                description = stringResource(R.string.trackpad_gestures_description),
-                onClick = onKeyboardSwipeClick
+                icon = Icons.Filled.Gesture,
+                title = stringResource(R.string.screen_trackpad_title),
+                description = stringResource(R.string.screen_trackpad_description),
+                onClick = onScreenTrackpadClick
             )
 
             SettingsGroupDivider(stringResource(R.string.settings_group_typing_corrections))
