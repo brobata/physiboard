@@ -6,6 +6,7 @@ import android.view.ViewGroup
 import android.widget.TextView
 import it.palsoftware.pastiera.SettingsManager
 import org.junit.After
+import org.junit.Before
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -22,8 +23,15 @@ import org.robolectric.annotation.Config
 class CandidatesBarControllerTest {
     private val context = RuntimeEnvironment.getApplication()
 
+    @Before
+    fun setUp() {
+        // These tests exercise status-bar layout; the bar is hidden by default in this fork.
+        SettingsManager.setShowStatusBar(context, true)
+    }
+
     @After
     fun tearDown() {
+        SettingsManager.setShowStatusBar(context, false)
         SettingsManager.setSoftwareKeyboardMode(context, SettingsManager.SoftwareKeyboardMode.AUTO)
         SettingsManager.setSuggestionsEnabled(context, true)
         SettingsManager.setStaticVariationBarPreset(context, SettingsManager.STATIC_VARIATION_PRESET_OFF)

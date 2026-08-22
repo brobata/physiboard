@@ -636,7 +636,7 @@ object SettingsManager {
      * Independent of the PASTIERINA vs FULL_STATUS_BAR presentation mode. Defaults to true.
      */
     fun getShowStatusBar(context: Context): Boolean {
-        return getPreferences(context).getBoolean(KEY_SHOW_STATUS_BAR, true)
+        return getPreferences(context).getBoolean(KEY_SHOW_STATUS_BAR, false)
     }
 
     fun setShowStatusBar(context: Context, show: Boolean) {
@@ -860,22 +860,26 @@ object SettingsManager {
             ?: defaultValue
     }
 
+    // Slate Dark — the same palette as the dark system slot — so a fresh install matches
+    // the app's terminal look out of the box.
     fun defaultKeyboardTheme(): KeyboardThemeSettings =
         KeyboardThemeSettings(
-            background = 0xFFF2F2F2.toInt(),
-            divider = 0xFFB8B8B8.toInt(),
-            normalKey = 0xFFFAFAFA.toInt(),
-            specialKey = 0xFFDDDDDD.toInt(),
-            textAndIcons = 0xFF111111.toInt(),
-            ledInactive = 0xFFB0B0B0.toInt(),
-            ledActive = 0xFF555555.toInt(),
-            ledLocked = 0xFF111111.toInt(),
-            accent = 0xFF3F8C96.toInt(),
-            cursorSwipe = 0xFF3F8C96.toInt(),
-            keyPopup = 0xFFDDDDDD.toInt(),
-            keyPopupSelected = 0xFF3F8C96.toInt(),
-            suggestion = 0xFFFAFAFA.toInt(),
-            statusBarButton = 0xFFDDDDDD.toInt()
+            background = 0xFF000000.toInt(),
+            divider = 0xFF2C3136.toInt(),
+            normalKey = 0xFF15191D.toInt(),
+            specialKey = 0xFF2B3138.toInt(),
+            textAndIcons = 0xFFEFEFEF.toInt(),
+            ledInactive = 0xFF303030.toInt(),
+            ledActive = 0xFF6496FF.toInt(),
+            ledLocked = 0xFFF76300.toInt(),
+            accent = 0xFF6496FF.toInt(),
+            cursorSwipe = 0xFF6496FF.toInt(),
+            keyPopup = 0xFF2B3138.toInt(),
+            keyPopupSelected = 0xFF6496FF.toInt(),
+            suggestion = 0xFF15191D.toInt(),
+            statusBarButton = 0xFF2B3138.toInt(),
+            keyCornerRadiusRatio = 0.10f,
+            chromeCornerRadiusRatio = 0.10f
         )
 
     private fun defaultKeyboardTheme(target: KeyboardThemeTarget): KeyboardThemeSettings =
