@@ -79,7 +79,18 @@ object EmbeddedAdbShell {
      * sets [lastError]) when the device is not paired, wireless debugging is off, or
      * nothing is discovered — the caller (backlight) simply does not arm.
      */
-    fun runShell(context: Context, command: String): Boolean {
+    fun runShell(context: Context, command: String): Boolean = synchronized(brokerLock) {
+        runShellLocked(context, command)
+    }
+
+    /**
+     * Serializes discovery + shell across callers: overlapping NsdManager discoveries for the
+     * same service type fail silently, so two privileged steps started together (backlight
+     * and overlay grant at IME start) would both see "no service found".
+     */
+    private val brokerLock = Any()
+
+    private fun runShellLocked(context: Context, command: String): Boolean {
         EmbeddedAdbInit.ensure()
         if (!isPaired(context)) {
             lastError = "Not paired yet — set up wireless debugging first."
