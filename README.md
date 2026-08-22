@@ -2,7 +2,7 @@
 
 ![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Android-3ddc84.svg)
-![Version](https://img.shields.io/badge/version-1.0.2-f59e0b.svg)
+![Version](https://img.shields.io/badge/version-1.0.3-f59e0b.svg)
 
 Input method for physical-keyboard Android devices (e.g. Unihertz Titan 2 Elite), designed to make typing faster through shortcuts, gestures, dictation, and customization.
 
@@ -80,7 +80,7 @@ Full change notes (per GPLv3 §5(a)) are in [PHYSIBOARD_CHANGES.md](PHYSIBOARD_C
 - Dictionary-based suggestions and autocorrection with swipe-to-accept.
 - User dictionary with search and edit.
 - Per-language auto-substitution editor.
-- **Exact typing** *(fork)*: pick apps (terminals, editors) where suggestions, autocorrect, auto-capitalization, and double-space-period are all disabled.
+- **Exact typing** *(fork)*: pick apps (terminals, editors) where suggestions, autocorrect, auto-capitalization, and double-space-period are all disabled. Installed web apps count too — they type inside their browser, so excluding one excludes that browser.
 
 ## Comfort and extra input
 

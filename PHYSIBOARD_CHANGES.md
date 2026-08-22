@@ -4,6 +4,18 @@ PhysiBoard is a GPLv3 fork of [Pastiera](https://github.com/palsoftware/pastiera
 Andrea Palumbo (PalSoftware) and contributors. This file documents the fork's changes,
 as required by GPLv3 §5(a). Package: `brobata.physiboard` (`physi` product flavor).
 
+## 1.0.3 (2026-08-22)
+
+- **Fixed: Exact typing never applied to installed web apps (PWAs)** — a WebAPK's
+  text fields live inside its host browser, so the IME saw `com.android.chrome`
+  rather than the package the user excluded. Auto-capitalization kept firing in
+  terminal-style web apps (the IME can't read their text, so every keystroke looked
+  like a sentence start — producing `lIKE tHIS`). The host browser, read from the
+  WebAPK's `runtimeHost` metadata, is now matched too; the picker says so on
+  web-app rows.
+- **New defaults** — the on-screen status bar is hidden and the keyboard theme is
+  Slate Dark on a fresh install. Existing settings are untouched.
+
 ## 1.0.2 (2026-08-22)
 
 - **Screen trackpad** — hold a trigger key (Space by default; Left/Right/Either Shift
