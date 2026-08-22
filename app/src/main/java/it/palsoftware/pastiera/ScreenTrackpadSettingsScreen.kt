@@ -4,6 +4,8 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import androidx.compose.foundation.clickable
+import it.palsoftware.pastiera.inputmethod.EmbeddedAdbShell
+import it.palsoftware.pastiera.inputmethod.ScreenTrackpadSetup
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -49,6 +51,17 @@ fun ScreenTrackpadSettingsScreen(
         }
     }
     val overlayGranted = remember(statusTick) { Settings.canDrawOverlays(context) }
+    val brokerPaired = remember(statusTick) { EmbeddedAdbShell.isPaired(context) }
+
+    // If the keyboard-backlight broker is paired, grant the overlay permission silently
+    // instead of sending the user to system settings.
+    var brokerGrantAttempted by remember { mutableStateOf(false) }
+    LaunchedEffect(enabled, overlayGranted, brokerPaired) {
+        if (enabled && !overlayGranted && brokerPaired && !brokerGrantAttempted) {
+            brokerGrantAttempted = true
+            ScreenTrackpadSetup.grantOverlayPermissionViaBroker(context)
+        }
+    }
 
     val triggerOptions = listOf(
         SettingsManager.SCREEN_TRACKPAD_TRIGGER_SPACE to stringResource(R.string.screen_trackpad_trigger_space),
@@ -115,7 +128,9 @@ fun ScreenTrackpadSettingsScreen(
                 onCheckedChange = {
                     enabled = it
                     SettingsManager.setScreenTrackpadEnabled(context, it)
-                    if (it && !Settings.canDrawOverlays(context)) openOverlayPermission()
+                    if (it && !Settings.canDrawOverlays(context) && !EmbeddedAdbShell.isPaired(context)) {
+                        openOverlayPermission()
+                    }
                 }
             )
 

@@ -18,6 +18,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import it.palsoftware.pastiera.R
+import it.palsoftware.pastiera.inputmethod.PrivilegedSetup
 import java.net.ConnectException
 
 @TargetApi(Build.VERSION_CODES.R)
@@ -182,6 +183,8 @@ class AdbPairingService : Service() {
 
         if (success) {
             Log.i(tag, "Pair succeed")
+            // One pairing, every privileged step: backlight, overlay permission, trackpad.
+            PrivilegedSetup.applyAll(this, reason = "pairing_succeeded")
 
             title = getString(R.string.notification_adb_pairing_succeed_title)
             text = getString(R.string.notification_adb_pairing_succeed_text)

@@ -88,6 +88,7 @@ object EmbeddedAdbShell {
         val port = discoverPort(context)
         if (port == null || port <= 0) {
             lastError = "No adb-tls-connect service found. Is wireless debugging on?"
+            Log.w(TAG, "embedded adb shell: $lastError")
             return false
         }
         return try {

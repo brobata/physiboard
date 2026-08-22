@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import it.palsoftware.pastiera.inputmethod.EmbeddedAdbShell
 import it.palsoftware.pastiera.inputmethod.KeyboardBacklightManager
+import it.palsoftware.pastiera.inputmethod.PrivilegedSetup
 import kotlinx.coroutines.delay
 import moe.shizuku.manager.adb.AdbPairingService
 
@@ -118,7 +119,7 @@ fun SmartBacklightScreen(
     // (covers "enable first, pair second"). On success the manager flips `configured` true.
     LaunchedEffect(enabled, paired) {
         if (enabled && paired) {
-            KeyboardBacklightManager.applyAlwaysOn(context)
+            PrivilegedSetup.applyAll(context, reason = "backlight_screen")
         }
     }
 

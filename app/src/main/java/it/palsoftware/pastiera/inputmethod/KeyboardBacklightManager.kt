@@ -26,8 +26,9 @@ class KeyboardBacklightManager(private val context: Context) {
 
     /** Apply the persistent "always on" setting if the feature is enabled. */
     fun start() {
-        if (!SettingsManager.getSmartBacklightEnabled(context)) return
-        applyAlwaysOn(context)
+        // Runs every privileged step (backlight if enabled, screen-trackpad overlay grant),
+        // so a device paired once stays fully set up across reboots and IME restarts.
+        PrivilegedSetup.applyAll(context, reason = "ime_start")
     }
 
     /**
