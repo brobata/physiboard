@@ -2,12 +2,12 @@
 ---
 ## Based on Pastiera
 
-PhysiBoard is a fork of **[Pastiera](https://github.com/palsoftware/pastiera)** by **Andrea Palumbo (PalSoftware)** and contributors. All core keyboard functionality comes from the Pastiera project — this fork adds device-specific features and branding.
+PhysiBoard is a fork of [Pastiera](https://github.com/palsoftware/pastiera) by **Andrea Palumbo (PalSoftware)** and contributors. All core keyboard functionality comes from the Pastiera project — this fork adds device-specific features and branding.
 
 Both Pastiera and PhysiBoard are free software licensed under the **GNU General Public License v3.0 (GPLv3)**. PhysiBoard's complete source code, including all modifications to Pastiera, is available in the fork repository as required by the license.
 
-If you find this keyboard useful, please support the upstream project:
-#### [Support Pastiera on Ko-fi](https://ko-fi.com/palsoftware/)
+If you find this keyboard useful, please support the upstream project — donations go to PalSoftware, not to this fork's maintainer.
+{{button:☕ Buy them a coffee|https://ko-fi.com/palsoftware/}}
 
 ---
 ## Pastiera Credits

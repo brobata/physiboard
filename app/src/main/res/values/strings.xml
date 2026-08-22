@@ -1116,7 +1116,6 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     
     <!-- Settings Screen -->
     <string name="settings_support_ko_fi">Support on Ko-fi</string>
-    <string name="settings_support_them_coffee">☕ Buy them a coffee</string>
     <string name="settings_nav_mode_configure">Configure Fn layer key mappings</string>
     <string name="settings_update_section_title">Updates</string>
     <string name="settings_update_section_description">Check the latest release on GitHub.</string>

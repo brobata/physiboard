@@ -143,24 +143,6 @@ fun AboutScreen(
                 }
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Donations go to PalSoftware — the upstream Pastiera author — not to this
-            // fork's maintainer, so the label says "them" to be honest about who it supports.
-            OutlinedButton(
-                onClick = {
-                    context.startActivity(
-                        Intent(Intent.ACTION_VIEW, Uri.parse("https://ko-fi.com/palsoftware"))
-                    )
-                },
-                modifier = Modifier.align(Alignment.CenterHorizontally)
-            ) {
-                Text(
-                    text = stringResource(R.string.settings_support_them_coffee),
-                    fontFamily = FontFamily.Monospace
-                )
-            }
-
             Spacer(modifier = Modifier.height(12.dp))
 
             if (isLoading) {
@@ -257,6 +239,8 @@ private sealed class MarkdownElement {
     data class Heading2(val text: String) : MarkdownElement()
     data class Heading3(val text: String) : MarkdownElement()
     data class Heading4(val text: String) : MarkdownElement()
+    /** `{{button:Label|https://url}}` — a centered outlined button that opens a URL. */
+    data class LinkButton(val label: String, val url: String) : MarkdownElement()
     data class Paragraph(val text: String) : MarkdownElement()
     data class ListItem(val text: String) : MarkdownElement()
     data class Image(val altText: String, val url: String) : MarkdownElement()
@@ -289,6 +273,15 @@ private fun parseMarkdown(markdown: String): List<MarkdownElement> {
         when {
             line.isEmpty() -> {
                 // Skip empty lines or treat as paragraph separator
+                i++
+            }
+            line.startsWith("{{button:") && line.endsWith("}}") -> {
+                val body = line.removePrefix("{{button:").removeSuffix("}}")
+                val label = body.substringBefore('|').trim()
+                val url = body.substringAfter('|', "").trim()
+                if (label.isNotEmpty() && url.isNotEmpty()) {
+                    elements.add(MarkdownElement.LinkButton(label, url))
+                }
                 i++
             }
             line.startsWith("# ") -> {
@@ -341,6 +334,7 @@ private fun parseMarkdown(markdown: String): List<MarkdownElement> {
                         currentLine.startsWith("* ") ||
                         currentLine.startsWith("---") ||
                         currentLine.startsWith("![") ||
+                        currentLine.startsWith("{{button:") ||
                         currentLine.startsWith("***") ||
                         currentLine.startsWith("___")) {
                         break
@@ -398,6 +392,18 @@ private fun MarkdownContent(
                         context = context
                     )
                     Spacer(modifier = Modifier.height(6.dp))
+                }
+                is MarkdownElement.LinkButton -> {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    OutlinedButton(
+                        onClick = {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(element.url)))
+                        },
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    ) {
+                        Text(text = element.label, fontFamily = FontFamily.Monospace)
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
                 }
                 is MarkdownElement.Heading4 -> {
                     val (text, urlMap) = parseInlineFormatting(element.text, context)
