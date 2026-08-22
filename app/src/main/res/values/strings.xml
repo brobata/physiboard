@@ -213,6 +213,7 @@
     <string name="home_tile_smart_features">Smart Features</string>
     <string name="home_tile_auto_correct">Auto-correct</string>
     <string name="home_tile_screen_trackpad">Trackpad</string>
+    <string name="app_raw_mode_webapk_note">Web app — types inside %1$s, so %1$s is excluded too</string>
     <string name="home_tile_voice">Voice</string>
     <string name="home_tile_raw_mode">Exact Typing</string>
     <string name="home_tile_fn_layer">Fn Layer</string>

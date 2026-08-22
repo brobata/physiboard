@@ -21,11 +21,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
+import it.palsoftware.pastiera.inputmethod.WebApkHost
 
 private data class RawModeApp(
     val packageName: String,
     val label: String,
-    val icon: Drawable?
+    val icon: Drawable?,
+    /** Host browser when this entry is an installed web app (WebAPK); null otherwise. */
+    val hostBrowser: String? = null
 )
 
 private fun loadLaunchableApps(context: Context): List<RawModeApp> {
@@ -39,7 +42,8 @@ private fun loadLaunchableApps(context: Context): List<RawModeApp> {
             RawModeApp(
                 packageName = packageName,
                 label = resolveInfo.loadLabel(packageManager)?.toString() ?: packageName,
-                icon = resolveInfo.loadIcon(packageManager)
+                icon = resolveInfo.loadIcon(packageManager),
+                hostBrowser = WebApkHost.hostBrowser(context, packageName)
             )
         }
         .distinctBy { it.packageName }
@@ -146,6 +150,14 @@ fun AppRawModeScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1
                         )
+                        app.hostBrowser?.let { host ->
+                            Text(
+                                text = stringResource(R.string.app_raw_mode_webapk_note, hostAppLabel(context, host)),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                maxLines = 2
+                            )
+                        }
                     }
                     Switch(
                         checked = enabled,
@@ -159,3 +171,9 @@ fun AppRawModeScreen(
         }
     }
 }
+
+private fun hostAppLabel(context: Context, packageName: String): String =
+    runCatching {
+        val pm = context.packageManager
+        pm.getApplicationLabel(pm.getApplicationInfo(packageName, 0)).toString()
+    }.getOrDefault(packageName)

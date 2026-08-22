@@ -2333,7 +2333,10 @@ object SettingsManager {
 
     fun isRawModeApp(context: Context, packageName: String?): Boolean {
         if (packageName.isNullOrEmpty()) return false
-        return packageName in getRawModePackages(context)
+        val packages = getRawModePackages(context)
+        if (packageName in packages) return true
+        // A raw-mode PWA types inside its host browser, so the browser must match too.
+        return packageName in it.palsoftware.pastiera.inputmethod.WebApkHost.expandWithHosts(context, packages)
     }
 
     fun setRawModeApp(context: Context, packageName: String, enabled: Boolean) {
