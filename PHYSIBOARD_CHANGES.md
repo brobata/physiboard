@@ -4,6 +4,49 @@ PhysiBoard is a GPLv3 fork of [Pastiera](https://github.com/palsoftware/pastiera
 Andrea Palumbo (PalSoftware) and contributors. This file documents the fork's changes,
 as required by GPLv3 §5(a). Package: `brobata.physiboard` (`physi` product flavor).
 
+## 1.0.2 (2026-08-22)
+
+- **Screen trackpad** — hold a trigger key (Space by default; Left/Right/Either Shift
+  or Sym selectable) and swipe anywhere on the display to move the cursor. A transparent
+  full-screen overlay captures the drag and emits DPAD key events, so it works in every
+  app including terminals; Shift during the drag extends the selection. Activation is
+  hold (momentary), double tap or single tap (sticky; exit via the trigger key, Back or
+  the on-screen pill). A quick tap of the trigger still types the key — the swallowed
+  press is replayed through the normal input pipeline — and another key while the
+  trigger is down is treated as a chord. New `ScreenTrackpadController`, settings
+  screen, search entry, backup schema entries.
+- **One pairing applies every privileged step** — new `PrivilegedSetup.applyAll()`
+  runs at pairing success, at IME start and from the backlight screen: backlight
+  setting (if enabled) plus the trackpad's "Display over other apps" grant via
+  `appops`, switching the trackpad on the first time the grant succeeds. Broker calls
+  are now serialized — overlapping mDNS discoveries failed silently.
+- **GitHub update checks enabled** — per-flavor `GITHUB_REPO` build config
+  (`brobata/physiboard` for this flavor, upstream for stable/nightly); versions are
+  compared numerically so a local build ahead of the newest release isn't flagged.
+- **Trackpad home tile** replaces the Auto-correct tile; new settings deep link.
+- **Keyboard swipe screen removed** — the Shizuku-backed keyboard-surface trackpad is
+  superseded; its detector code remains, disabled, for upstream parity.
+- **About** — the upstream Ko-fi donation button moved into the "Based on Pastiera"
+  credits (rendered via a small `{{button:Label|url}}` markdown element); fixed a
+  bold-wrapped link rendering as raw markdown.
+
+## 1.0.1 (2026-08-21)
+
+- **Always-on keyboard backlight, set up once** — the smart backlight writes a
+  persistent vendor setting that survives reboots; the per-boot wireless-debugging
+  dance, lux threshold and post-reboot reminder are gone.
+- **Show status bar toggle** — hide the on-screen status bar entirely.
+- **One-tap Fn → Ctrl** with a one-tap reset.
+- **Reset device settings to stock** (Settings → Advanced) reverts every system-level
+  change PhysiBoard makes.
+- Fixed: dictation appends after a pause instead of overwriting the previous sentence;
+  Exact-Typing (raw-mode) apps reliably keep auto-capitalization off.
+
+## 1.0.0 (2026-08-21)
+
+First public release under the `brobata.physiboard` package — the 0.86-physi work
+below, rebranded and signed for distribution via GitHub Releases.
+
 ## 0.86-physi — later revisions (2026-08-20)
 
 - **Terminal brand** — new "PhysiBoard Terminal" look: slate + amber palette,

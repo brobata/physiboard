@@ -19,18 +19,21 @@ PhysiBoard is a **fork of [Pastiera](https://github.com/palsoftware/pastiera)** 
 Full change notes (per GPLv3 §5(a)) are in [PHYSIBOARD_CHANGES.md](PHYSIBOARD_CHANGES.md).
 
 - **Hold Fn to dictate** — hold the Fn key in any text field to start voice typing. Matched by hardware scan code so vendor Fn remapping can't break it. Haptic cues, an adjustable end-of-speech pause (default 2s), and a real profanity-masking toggle.
-- **Smart keyboard backlight** — keeps the keyboard lit past the vendor's 30-second cap while the screen is on and the room is dark, driven entirely in-app over the device's own wireless debugging (no companion app, no root). Guided one-time setup and a post-reboot reminder.
+- **Screen trackpad** — hold Space and swipe anywhere on the display to move the cursor; hold Shift while swiping to select. The whole screen is the trackpad, it works in every app including terminals, and it needs no Shizuku or root. Trigger key (Space, either Shift, Sym) and activation (hold, double tap, single tap) are configurable.
+- **Always-on keyboard backlight** — lifts the vendor's 30-second keyboard-light cap with a persistent device setting that survives reboots, applied in-app over the device's own wireless debugging (no companion app, no root).
+- **One pairing sets up everything** — pair Wireless debugging once and PhysiBoard applies every device-level step itself: the backlight setting and the trackpad's "Display over other apps" permission. No trips to system settings.
+- **Update checks** — checks GitHub for new releases daily and from the home screen, with a direct APK download.
 - **Terminal UI** — slate + amber, JetBrains Mono throughout, and an action-surface home that only surfaces what needs attention.
 - **Sensible defaults + two-step onboarding** — auto-capitalization off, dictation on, dark-aware backlight, follow-system theme, and a decluttered settings tree with search.
 
 ## Quick overview
 
-- Compact status bar with LED indicators for Shift/Alt, a variants/suggestions bar, and swipe-pad gestures to move the cursor.
+- Compact status bar with LED indicators for Shift/Alt and a variants/suggestions bar.
 - Multiple layouts (QWERTY/AZERTY/QWERTZ, Greek, Cyrillic, Arabic, translit, etc.), fully configurable with JSON import/export.
 - SYM pages usable via touch or physical keys (emoji + symbols), reorderable/disableable, with an integrated editor.
 - Clipboard history with pinnable items.
 - Dictionary-based suggestions and autocorrection, with swipe-to-accept.
-- Hold-Fn voice dictation and an always-on-in-the-dark keyboard backlight (this fork).
+- Hold-Fn voice dictation, a screen trackpad, and an always-on keyboard backlight (this fork).
 - Full backup/restore (settings, layouts, variations, dictionaries) and built-in update checks.
 
 ## Typing and modifiers
@@ -46,11 +49,19 @@ Full change notes (per GPLv3 §5(a)) are in [PHYSIBOARD_CHANGES.md](PHYSIBOARD_C
 - Adjustable end-of-speech pause (0–10s, default 2s), profanity masking toggle, and start/stop haptic cues.
 - Optional Alt+Ctrl trigger; the microphone is also always available on the variants bar.
 
+## Screen trackpad *(fork)*
+
+- Hold Space and swipe anywhere on the screen to move the cursor; a small on-screen pill shows the mode.
+- Hold Shift while swiping to extend the selection. Movement is sent as arrow keys, so it works in every app, including terminals.
+- A quick Space tap still types a space; pressing another key while Space is down is treated as a normal chord.
+- Settings → Screen trackpad: trigger key (Space, Left/Right/Either Shift, Sym), activation (hold / double tap / single tap — the tap modes stay on until you tap again, press Back, or tap the pill), sensitivity, and the hint.
+- Needs the "Display over other apps" permission, which the one-time pairing grants for you (see below); otherwise the settings screen opens the system toggle.
+
 ## Keyboard backlight *(fork)*
 
-- Keeps the keyboard lit in the dark while the screen is on, past the vendor's 30-second cap.
+- Lifts the vendor's 30-second keyboard-light cap with a persistent device setting, so it survives reboots — set it up once and forget it.
 - Runs entirely in-app by pairing once with Android's own Wireless debugging — no companion app, no root.
-- A darkness (lux) threshold, a live "right now" reading, a guided setup walkthrough, and a post-reboot reminder.
+- That single pairing also applies every other device-level step PhysiBoard needs (currently the trackpad's overlay permission), and a one-tap **Reset to stock** in Advanced reverts everything.
 
 ## Keyboard layouts
 
@@ -74,13 +85,13 @@ Full change notes (per GPLv3 §5(a)) are in [PHYSIBOARD_CHANGES.md](PHYSIBOARD_C
 ## Comfort and extra input
 
 - Double-space → period + space + uppercase.
-- Physical-key swipe to move the cursor and accept suggestions.
+- Screen trackpad (hold Space + swipe) to move the cursor and select text.
 - Compact status bar; with the on-screen keyboard disabled it uses even less space (PhysiBar mode).
 
 ## Backup, updates, and data
 
 - UI-based backup/restore in ZIP format (preferences, layouts, variations, SYM/Ctrl maps, dictionaries).
-- Built-in GitHub update check when opening settings.
+- Built-in GitHub update check: daily in the background and from the home screen, with a direct APK download and a "later" dismissal per release.
 
 ## Screenshots
 
@@ -93,14 +104,14 @@ Full change notes (per GPLv3 §5(a)) are in [PHYSIBOARD_CHANGES.md](PHYSIBOARD_C
 
 ## Installation
 
-1. Build the APK (below) or install an existing build from [Releases](../../releases).
+1. Install the latest `physiboard-x.y.z.apk` from [Releases](../../releases), or build it yourself (below). Once installed, the app announces new releases on its own.
 2. Android Settings → System → Languages & input → On-screen keyboard / Manage keyboards.
 3. Enable **PhysiBoard**, then select it from the input selector when typing. (The app's two-step onboarding walks you through this.)
 
 ## Requirements
 
 - Android 11 (API 30) or higher.
-- A device with a physical keyboard (profiled on the Unihertz Titan 2 Elite; adaptable via JSON). The smart backlight is Titan 2 Elite-specific; everything else works on any hardware-keyboard Android phone.
+- A device with a physical keyboard (profiled on the Unihertz Titan 2 Elite; adaptable via JSON). The always-on backlight is Titan 2 Elite-specific; the screen trackpad and everything else work on any hardware-keyboard Android phone.
 
 ## Development
 
