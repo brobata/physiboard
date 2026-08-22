@@ -6,6 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import it.palsoftware.pastiera.BuildConfig
 import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.SettingsManager
 import okhttp3.Call
@@ -18,9 +19,9 @@ import org.json.JSONObject
 import java.io.IOException
 
 private const val GITHUB_RELEASES_URL =
-    "https://api.github.com/repos/palsoftware/pastiera/releases?per_page=20"
+    "https://api.github.com/repos/${BuildConfig.GITHUB_REPO}/releases?per_page=20"
 const val GITHUB_RELEASES_PAGE =
-    "https://github.com/palsoftware/pastiera/releases"
+    "https://github.com/${BuildConfig.GITHUB_REPO}/releases"
 
 private val client = OkHttpClient()
 private val mainHandler = Handler(Looper.getMainLooper())
@@ -70,7 +71,7 @@ fun checkForUpdate(
                 val normalizedLatest = normalizeReleaseVersion(latestVersion)
                 val normalizedCurrent = normalizeReleaseVersion(currentVersion)
                 
-                val hasUpdate = normalizedLatest != normalizedCurrent
+                val hasUpdate = isNewerVersion(normalizedLatest, normalizedCurrent)
                 
                 // If ignoring dismissed releases, check if this release was dismissed
                 if (hasUpdate && ignoreDismissedReleases) {

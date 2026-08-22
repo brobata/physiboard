@@ -20,6 +20,12 @@ class FlavorBuildConfigTest {
                 assertTrue(BuildConfig.VERSION_NAME.contains("nightly"))
                 assertEquals("Ver. ${BuildConfig.VERSION_NAME} - Nightly", BuildInfo.getBuildInfoString())
             }
+            "physi" -> {
+                assertFalse(BuildConfig.IS_FDROID_BUILD)
+                assertTrue(BuildConfig.ENABLE_GITHUB_UPDATE_CHECKS)
+                assertEquals("brobata/physiboard", BuildConfig.GITHUB_REPO)
+                assertEquals("Ver. ${BuildConfig.VERSION_NAME} - Physi", BuildInfo.getBuildInfoString())
+            }
             else -> error("Unexpected release channel: ${BuildConfig.RELEASE_CHANNEL}")
         }
     }

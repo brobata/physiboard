@@ -133,6 +133,7 @@ android {
             manifestPlaceholders["appLabel"] = "Pastiera"
             manifestPlaceholders["imeLabel"] = "Pastiera"
             buildConfigField("String", "RELEASE_CHANNEL", "\"stable\"")
+            buildConfigField("String", "GITHUB_REPO", "\"palsoftware/pastiera\"")
             buildConfigField("boolean", "IS_FDROID_BUILD", if (isFdroidBuild) "true" else "false")
             buildConfigField("boolean", "ENABLE_GITHUB_UPDATE_CHECKS", if (isFdroidBuild) "false" else "true")
         }
@@ -142,8 +143,9 @@ android {
             manifestPlaceholders["appLabel"] = "PhysiBoard"
             manifestPlaceholders["imeLabel"] = "PhysiBoard"
             buildConfigField("String", "RELEASE_CHANNEL", "\"physi\"")
+            buildConfigField("String", "GITHUB_REPO", "\"brobata/physiboard\"")
             buildConfigField("boolean", "IS_FDROID_BUILD", "false")
-            buildConfigField("boolean", "ENABLE_GITHUB_UPDATE_CHECKS", "false")
+            buildConfigField("boolean", "ENABLE_GITHUB_UPDATE_CHECKS", "true")
         }
         create("nightly") {
             dimension = "channel"
@@ -155,6 +157,7 @@ android {
             manifestPlaceholders["appLabel"] = "Pastiera Nightly"
             manifestPlaceholders["imeLabel"] = "Pastiera Nightly"
             buildConfigField("String", "RELEASE_CHANNEL", "\"nightly\"")
+            buildConfigField("String", "GITHUB_REPO", "\"palsoftware/pastiera\"")
             buildConfigField("boolean", "IS_FDROID_BUILD", if (isFdroidBuild) "true" else "false")
             buildConfigField("boolean", "ENABLE_GITHUB_UPDATE_CHECKS", if (isFdroidBuild) "false" else "true")
             val storePath = signingProp("nightlyStoreFile", "PASTIERA_NIGHTLY_KEYSTORE_PATH")
