@@ -5384,7 +5384,7 @@ object SettingsManager {
         // this never clobbers a returning user's own changes.
 
         // Booleans
-        editor.putBoolean("auto_capitalize_first_letter", false)
+        editor.putBoolean("auto_capitalize_first_letter", true)
         editor.putBoolean("fn_long_press_speech", true)
         editor.putBoolean("dictation_haptics", true)
         editor.putBoolean("dictation_mask_offensive", false)
@@ -5400,10 +5400,12 @@ object SettingsManager {
         editor.putBoolean("static_variation_bar_mode", false)
         editor.putBoolean("static_variation_bar_base_layer_enabled", false)
         editor.putBoolean("dynamic_variation_bar_resize_to_content", false)
+        editor.putBoolean("screen_trackpad_enabled", true)
+        editor.putBoolean("show_status_bar", false)
 
         // Ints
         editor.putInt("dynamic_variation_bar_slot_count", 7)
-        editor.putInt("dictation_end_silence_ms", 2000)
+        editor.putInt("dictation_end_silence_ms", 2500)
 
         // Strings
         editor.putString("modifier_indicator_mode", "menu_bar")

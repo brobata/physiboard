@@ -18,13 +18,13 @@ PhysiBoard is a **fork of [Pastiera](https://github.com/palsoftware/pastiera)** 
 
 Full change notes (per GPLv3 §5(a)) are in [PHYSIBOARD_CHANGES.md](PHYSIBOARD_CHANGES.md).
 
-- **Hold Fn to dictate** — hold the Fn key in any text field to start voice typing. Matched by hardware scan code so vendor Fn remapping can't break it. Haptic cues, an adjustable end-of-speech pause (default 2s), and a real profanity-masking toggle.
+- **Hold Fn to dictate** — hold the Fn key in any text field to start voice typing. Matched by hardware scan code so vendor Fn remapping can't break it. Haptic cues, an adjustable end-of-speech pause (default 2.5s), strong start/stop haptic cues, and a real profanity-masking toggle.
 - **Screen trackpad** — hold Space and swipe anywhere on the display to move the cursor; hold Shift while swiping to select. The whole screen is the trackpad, it works in every app including terminals, and it needs no Shizuku or root. Trigger key (Space, either Shift, Sym) and activation (hold, double tap, single tap) are configurable.
 - **Always-on keyboard backlight** — lifts the vendor's 30-second keyboard-light cap with a persistent device setting that survives reboots, applied in-app over the device's own wireless debugging (no companion app, no root).
 - **One pairing sets up everything** — pair Wireless debugging once and PhysiBoard applies every device-level step itself: the backlight setting and the trackpad's "Display over other apps" permission. No trips to system settings.
 - **Update checks** — checks GitHub for new releases daily and from the home screen, with a direct APK download.
 - **Terminal UI** — slate + amber, JetBrains Mono throughout, and an action-surface home that only surfaces what needs attention.
-- **Sensible defaults + two-step onboarding** — auto-capitalization off, dictation on, dark-aware backlight, follow-system theme, and a decluttered settings tree with search.
+- **Sensible defaults + two-step onboarding** — first-letter auto-capitalization, hold-Fn dictation, the screen trackpad and the always-on backlight all on, status bar hidden, Slate Dark theme, and a decluttered settings tree with search.
 
 ## Quick overview
 
@@ -46,7 +46,7 @@ Full change notes (per GPLv3 §5(a)) are in [PHYSIBOARD_CHANGES.md](PHYSIBOARD_C
 ## Voice dictation *(fork)*
 
 - Hold the Fn key in any text field to start voice typing; release to stop.
-- Adjustable end-of-speech pause (0–10s, default 2s), profanity masking toggle, and start/stop haptic cues.
+- Adjustable end-of-speech pause (0–10s, default 2.5s), profanity masking toggle, and firm start/stop haptic cues.
 - Optional Alt+Ctrl trigger; the microphone is also always available on the variants bar.
 
 ## Screen trackpad *(fork)*
