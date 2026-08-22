@@ -22,6 +22,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.*
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.style.TextDecoration
@@ -144,18 +145,21 @@ fun AboutScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Image(
-                painter = painterResource(id = R.drawable.kofi5),
-                contentDescription = stringResource(R.string.settings_support_ko_fi),
-                modifier = Modifier
-                    .fillMaxWidth(0.35f)
-                    .align(Alignment.CenterHorizontally)
-                    .clickable {
-                        context.startActivity(
-                            Intent(Intent.ACTION_VIEW, Uri.parse("https://ko-fi.com/palsoftware"))
-                        )
-                    }
-            )
+            // Donations go to PalSoftware — the upstream Pastiera author — not to this
+            // fork's maintainer, so the label says "them" to be honest about who it supports.
+            OutlinedButton(
+                onClick = {
+                    context.startActivity(
+                        Intent(Intent.ACTION_VIEW, Uri.parse("https://ko-fi.com/palsoftware"))
+                    )
+                },
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            ) {
+                Text(
+                    text = stringResource(R.string.settings_support_them_coffee),
+                    fontFamily = FontFamily.Monospace
+                )
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
