@@ -4,6 +4,14 @@ PhysiBoard is a GPLv3 fork of [Pastiera](https://github.com/palsoftware/pastiera
 Andrea Palumbo (PalSoftware) and contributors. This file documents the fork's changes,
 as required by GPLv3 §5(a). Package: `brobata.physiboard` (`physi` product flavor).
 
+## 1.0.4 (2026-08-22)
+
+- **Firmer dictation haptics** — max-amplitude, longer start/stop cues, played as
+  notification-class vibration so the system touch-feedback level doesn't damp them.
+- **First-run defaults synced** with the maintainer's config: first-letter
+  auto-capitalization on, 2.5s end-of-speech pause, screen trackpad on, status bar
+  hidden. Applied once on a fresh install only.
+
 ## 1.0.3 (2026-08-22)
 
 - **Fixed: Exact typing never applied to installed web apps (PWAs)** — a WebAPK's
