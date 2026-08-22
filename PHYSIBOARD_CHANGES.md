@@ -4,6 +4,16 @@ PhysiBoard is a GPLv3 fork of [Pastiera](https://github.com/palsoftware/pastiera
 Andrea Palumbo (PalSoftware) and contributors. This file documents the fork's changes,
 as required by GPLv3 §5(a). Package: `brobata.physiboard` (`physi` product flavor).
 
+## 1.0.5 (2026-08-22)
+
+- **Fixed: end-of-speech pause was ignored** — the recognizer treats the silence
+  extras as hints and stopped after ~1s. The IME now owns the pause: it restarts
+  listening after each result and ends the session only when its own silence timer
+  (your setting) expires, you stop explicitly, or a real error occurs. One start/stop
+  cue per session.
+- **Fixed: dictation haptics silent in 1.0.4** — notification-class vibration is muted
+  when notification vibration is off; back to plain vibration, still full strength.
+
 ## 1.0.4 (2026-08-22)
 
 - **Firmer dictation haptics** — max-amplitude, longer start/stop cues, played as
