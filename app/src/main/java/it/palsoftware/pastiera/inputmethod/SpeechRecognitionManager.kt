@@ -7,7 +7,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.os.VibrationAttributes
+import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -39,6 +39,11 @@ class SpeechRecognitionManager(
 ) {
     companion object {
         private const val TAG = "SpeechRecognitionMgr"
+        /** Roughly how long the recognizer itself waits before ending a request on silence. */
+        private const val RECOGNIZER_INTERNAL_SILENCE_MS = 1000
+        private const val MIN_SILENCE_TIMER_MS = 400
+        /** A continuation that errors faster than this is a failure loop, not silence. */
+        private const val CONTINUATION_MIN_RUN_MS = 700L
 
         internal fun normalizeSubtypeLocaleToLanguageTag(subtypeLocale: String?): String? {
             val normalized = subtypeLocale
@@ -176,13 +181,19 @@ class SpeechRecognitionManager(
                         Log.d(TAG, "Speech recognition ready for speech")
                         // Reset composing state for new recognition session
                         isComposingPartialText = false
-                        // Notify that recognition is active (hint will be shown by the UI)
-                        onRecognitionStateChanged?.invoke(true)
-                        playHapticCue(started = true)
+                        // Notify that recognition is active (hint will be shown by the UI).
+                        // Once per session: continuations must not re-cue.
+                        if (!sessionCueStarted) {
+                            sessionCueStarted = true
+                            onRecognitionStateChanged?.invoke(true)
+                            playHapticCue(started = true)
+                        }
                     }
 
                     override fun onBeginningOfSpeech() {
                         Log.d(TAG, "Speech recognition: beginning of speech")
+                        // Speech resumed inside the pause window: keep the session open.
+                        cancelSilenceTimer()
                     }
 
                     override fun onRmsChanged(rmsdB: Float) {
@@ -201,9 +212,29 @@ class SpeechRecognitionManager(
                     }
 
                     override fun onError(error: Int) {
-                        // Notify that recognition is finished (due to error)
-                        onRecognitionStateChanged?.invoke(false)
-                        playHapticCue(started = false)
+                        // Within a continued session the recognizer may give up on a silent
+                        // stretch before our pause expires: keep waiting on our timer instead
+                        // of ending the session. Guard against a tight failure loop.
+                        val isQuietError = error == SpeechRecognizer.ERROR_NO_MATCH ||
+                            error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT
+                        val continuing = sessionActive && !stopRequested && continuationStartedAt > 0L
+                        val ranLongEnough =
+                            SystemClock.uptimeMillis() - continuationStartedAt > CONTINUATION_MIN_RUN_MS
+                        if (continuing && isQuietError && ranLongEnough) {
+                            Log.d(TAG, "Quiet continuation ended by recognizer — waiting for pause timer")
+                            if (isComposingPartialText) clearPartialText()
+                            if (configuredPauseMs() > 0) {
+                                // Timer is still running from the last result; if it has
+                                // already fired, endSession handled it.
+                                if (sessionActive) continueSessionIfTimerPending()
+                            } else {
+                                endSession(cancelRecognizer = false)
+                            }
+                            return
+                        }
+
+                        // Real error: end the session.
+                        endSession(cancelRecognizer = false)
                         
                         // Clear partial text on error
                         if (isComposingPartialText) {
@@ -239,10 +270,6 @@ class SpeechRecognitionManager(
                     }
 
                     override fun onResults(results: Bundle) {
-                        // Notify that recognition is finished
-                        onRecognitionStateChanged?.invoke(false)
-                        playHapticCue(started = false)
-                        
                         val matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                         val confidenceScores = results.getFloatArray(SpeechRecognizer.CONFIDENCE_SCORES)
                         
@@ -267,6 +294,14 @@ class SpeechRecognitionManager(
                             }
                             Log.w(TAG, "No text recognized")
                         }
+
+                        // Keep the session open for the configured pause, then listen again.
+                        if (sessionActive && !stopRequested && configuredPauseMs() > 0) {
+                            armSilenceTimer()
+                            continueSession()
+                        } else {
+                            endSession(cancelRecognizer = false)
+                        }
                     }
 
                     override fun onPartialResults(partialResults: Bundle?) {
@@ -275,6 +310,7 @@ class SpeechRecognitionManager(
                         
                         if (partialText.isNotEmpty()) {
                             Log.d(TAG, "Speech recognition partial results: '$partialText'")
+                            cancelSilenceTimer()
                             // Insert/update partial text in real-time
                             updatePartialSpeechText(partialText)
                         } else {
@@ -446,10 +482,34 @@ class SpeechRecognitionManager(
                 TAG,
                 "Speech locale source: subtype=$imeSubtypeLocale, device=${deviceLocale?.toLanguageTag()}, using=$languageTag"
             )
+            recognitionLanguageTag = languageTag
+            val intent = buildRecognizerIntent()
+            cancelSilenceTimer()
+            sessionActive = true
+            sessionCueStarted = false
+            stopRequested = false
+            continuationStartedAt = 0L
             
-            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            Log.d(TAG, "Starting speech recognition with language: $languageTag")
+            speechRecognizer?.startListening(intent)
+            Log.d(TAG, "Speech recognition started via SpeechRecognizer")
+        } catch (e: SecurityException) {
+            sessionActive = false
+            Log.e(TAG, "Security exception starting speech recognition - permission denied", e)
+            onError?.invoke(context.getString(R.string.speech_recognition_error_permission))
+        } catch (e: Exception) {
+            sessionActive = false
+            Log.e(TAG, "Unable to start speech recognition", e)
+            onError?.invoke(context.getString(R.string.speech_recognition_error_generic))
+        }
+    }
+
+    private var recognitionLanguageTag: String? = null
+
+    private fun buildRecognizerIntent(): Intent =
+        Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, languageTag)
+                recognitionLanguageTag?.let { putExtra(RecognizerIntent.EXTRA_LANGUAGE, it) }
                 putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
                 putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, context.packageName)
                 putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5)
@@ -467,16 +527,17 @@ class SpeechRecognitionManager(
                     putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, endSilenceMs)
                 }
             }
-            
-            Log.d(TAG, "Starting speech recognition with language: $languageTag")
-            speechRecognizer?.startListening(intent)
-            Log.d(TAG, "Speech recognition started via SpeechRecognizer")
-        } catch (e: SecurityException) {
-            Log.e(TAG, "Security exception starting speech recognition - permission denied", e)
-            onError?.invoke(context.getString(R.string.speech_recognition_error_permission))
-        } catch (e: Exception) {
-            Log.e(TAG, "Unable to start speech recognition", e)
-            onError?.invoke(context.getString(R.string.speech_recognition_error_generic))
+
+    /**
+     * After a quiet continuation the recognizer stopped on its own; if our pause timer is
+     * still pending, listen again so speech resuming inside the window is captured.
+     */
+    private fun continueSessionIfTimerPending() {
+        if (!sessionActive) return
+        if (mainHandler.hasCallbacks(silenceRunnable)) {
+            continueSession()
+        } else {
+            endSession(cancelRecognizer = false)
         }
     }
 
@@ -484,6 +545,10 @@ class SpeechRecognitionManager(
      * Stops voice input if active.
      */
     fun stopRecognition() {
+        // Explicit stop: let the in-flight utterance finish (onResults commits it and then
+        // ends the session), but don't continue afterwards.
+        stopRequested = true
+        cancelSilenceTimer()
         speechRecognizer?.stopListening()
         Log.d(TAG, "Speech recognition stopped")
     }
@@ -492,6 +557,10 @@ class SpeechRecognitionManager(
      * Destroys the SpeechRecognizer instance.
      */
     fun destroy() {
+        cancelSilenceTimer()
+        sessionActive = false
+        sessionCueStarted = false
+        stopRequested = false
         speechRecognizer?.destroy()
         speechRecognizer = null
         // Clear any partial text
@@ -504,6 +573,66 @@ class SpeechRecognitionManager(
     // A stop cue is only played for a session that played a start cue, so error callbacks
     // arriving after the results callback cannot vibrate twice.
     private var stopCuePending = false
+
+    // ---- Continuous session ----
+    // Google's recognizer treats the end-of-speech extras as hints and ends a request after
+    // roughly a second of silence regardless. To honour the user's pause we keep the session
+    // open ourselves: after each result we restart listening and only end the session when
+    // our own silence timer (the configured pause) expires without new speech, when the user
+    // stops explicitly, or on a real error.
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var sessionActive = false
+    private var sessionCueStarted = false
+    private var stopRequested = false
+    private var continuationStartedAt = 0L
+    private val silenceRunnable = Runnable {
+        Log.d(TAG, "Silence timer expired — ending session")
+        endSession(cancelRecognizer = true)
+    }
+
+    private fun configuredPauseMs(): Int = SettingsManager.getDictationEndSilenceMs(context)
+
+    private fun armSilenceTimer() {
+        mainHandler.removeCallbacks(silenceRunnable)
+        val pause = configuredPauseMs()
+        if (pause <= 0) return
+        // The recognizer has already waited ~1s of silence before delivering the result.
+        val remaining = (pause - RECOGNIZER_INTERNAL_SILENCE_MS).coerceAtLeast(MIN_SILENCE_TIMER_MS)
+        mainHandler.postDelayed(silenceRunnable, remaining.toLong())
+    }
+
+    private fun cancelSilenceTimer() {
+        mainHandler.removeCallbacks(silenceRunnable)
+    }
+
+    /** Ends the continuous session once: UI state, stop cue, timers. */
+    private fun endSession(cancelRecognizer: Boolean) {
+        cancelSilenceTimer()
+        if (!sessionActive) return
+        sessionActive = false
+        sessionCueStarted = false
+        stopRequested = false
+        if (cancelRecognizer) {
+            runCatching { speechRecognizer?.cancel() }
+            if (isComposingPartialText) clearPartialText()
+        }
+        onRecognitionStateChanged?.invoke(false)
+        playHapticCue(started = false)
+    }
+
+    /** Restart listening for the next utterance within the same session. */
+    private fun continueSession() {
+        if (!sessionActive || stopRequested) return
+        continuationStartedAt = SystemClock.uptimeMillis()
+        mainHandler.post {
+            if (!sessionActive) return@post
+            runCatching { speechRecognizer?.startListening(buildRecognizerIntent()) }
+                .onFailure {
+                    Log.w(TAG, "Unable to continue session", it)
+                    endSession(cancelRecognizer = false)
+                }
+        }
+    }
 
     private fun playHapticCue(started: Boolean) {
         if (!SettingsManager.getDictationHapticsEnabled(context)) return
@@ -532,14 +661,8 @@ class SpeechRecognitionManager(
             // One long pulse: stopped.
             VibrationEffect.createOneShot(160, 255)
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // Notification-class so the system's touch-feedback intensity doesn't scale it down.
-            vibrator.vibrate(
-                effect,
-                VibrationAttributes.createForUsage(VibrationAttributes.USAGE_NOTIFICATION)
-            )
-        } else {
-            vibrator.vibrate(effect)
-        }
+        // Plain vibrate(): notification-class attributes are muted whenever the phone's
+        // notification vibration is off, which silenced the cues entirely.
+        vibrator.vibrate(effect)
     }
 }
