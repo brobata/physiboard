@@ -471,7 +471,7 @@ object SettingsManager {
     )
     const val MIN_SCREEN_TRACKPAD_STEP_PX = 8
     const val MAX_SCREEN_TRACKPAD_STEP_PX = 64
-    private const val DEFAULT_SCREEN_TRACKPAD_STEP_PX = 24
+    private const val DEFAULT_SCREEN_TRACKPAD_STEP_PX = 32
     const val SWIPE_TO_DELETE_PROVIDER_TITAN2_KEYCODE = "titan2_keycode"
     const val SWIPE_TO_DELETE_PROVIDER_NATIVE_IME = "native_ime"
     private const val DEFAULT_SWIPE_TO_DELETE_PROVIDER = SWIPE_TO_DELETE_PROVIDER_NATIVE_IME
