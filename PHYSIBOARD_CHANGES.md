@@ -4,6 +4,12 @@ PhysiBoard is a GPLv3 fork of [Pastiera](https://github.com/palsoftware/pastiera
 Andrea Palumbo (PalSoftware) and contributors. This file documents the fork's changes,
 as required by GPLv3 §5(a). Package: `brobata.physiboard` (`physi` product flavor).
 
+## 1.0.6 (2026-08-23)
+
+- **Fixed: Sym key did nothing with the status bar hidden** — the SYM pages render in
+  the same chrome the toggle collapses. The strip now stays collapsed only while no SYM
+  page is open, so emoji/symbols/clipboard pages still appear and close again.
+
 ## 1.0.5 (2026-08-22)
 
 - **Fixed: end-of-speech pause was ignored** — the recognizer treats the silence
