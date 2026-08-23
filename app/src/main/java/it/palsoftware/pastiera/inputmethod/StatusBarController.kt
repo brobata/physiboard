@@ -2763,7 +2763,10 @@ class StatusBarController(
         // the IME stays active and hardware key events are still processed, the input view
         // simply collapses to zero height. Covers both INPUT_VIEW and CANDIDATES_ONLY modes
         // since both StatusBarController instances flow through update().
-        if (!SettingsManager.getShowStatusBar(context)) {
+        // Exception: an open SYM page (emoji, symbols, clipboard, picker) IS the content the
+        // user asked for with the Sym key, so it still shows; the strip collapses again when
+        // the page closes.
+        if (!SettingsManager.getShowStatusBar(context) && snapshot.symPage == 0) {
             collapseLayout()
             return
         }
