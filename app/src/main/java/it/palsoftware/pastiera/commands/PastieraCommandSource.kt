@@ -34,6 +34,18 @@ class PastieraCommandSource : CommandSource {
                 searchTokens = listOf("Pastiera", "Settings")
             ),
             CommandTarget(
+                id = COMMAND_VOICE_ASSISTANT,
+                source = id,
+                kind = CommandKind.PastieraAction,
+                label = "Voice assistant",
+                subtitle = "Open it already listening",
+                icon = CommandIcon.Search,
+                launch = CommandLaunchSpec.InternalAction(ACTION_START_VOICE_ASSISTANT),
+                capabilities = setOf(CommandCapability.LaunchesActivity),
+                defaultSurfaces = setOf(CommandSurface.AssignedKey, CommandSurface.QuickLauncher, CommandSurface.NavMode),
+                searchTokens = listOf("Assistant", "Voice", "Gemini", "Ask", "Siri")
+            ),
+            CommandTarget(
                 id = COMMAND_TOGGLE_SOFTWARE_KEYBOARD_MODE,
                 source = id,
                 kind = CommandKind.PastieraAction,
@@ -52,8 +64,10 @@ class PastieraCommandSource : CommandSource {
         const val COMMAND_QUICK_LAUNCHER = "pastiera.quick_launcher"
         const val COMMAND_MAIN_ACTIVITY = "pastiera.main"
         const val COMMAND_TOGGLE_SOFTWARE_KEYBOARD_MODE = "pastiera.toggle_software_keyboard_mode"
+        const val COMMAND_VOICE_ASSISTANT = "pastiera.voice_assistant"
         const val ACTION_OPEN_QUICK_LAUNCHER = "open_quick_launcher"
         const val ACTION_OPEN_MAIN_ACTIVITY = "open_main_activity"
         const val ACTION_TOGGLE_SOFTWARE_KEYBOARD_MODE = "toggle_software_keyboard_mode"
+        const val ACTION_START_VOICE_ASSISTANT = "start_voice_assistant"
     }
 }

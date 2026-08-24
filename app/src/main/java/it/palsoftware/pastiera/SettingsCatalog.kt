@@ -70,6 +70,12 @@ object SettingsCatalog {
         SettingsSearchEntry(R.string.dictation_haptics_title, R.string.settings_category_voice, SettingsSearchTarget.VOICE, "vibrate vibration haptic dictation voice"),
         SettingsSearchEntry(R.string.dictation_end_silence_title, R.string.settings_category_voice, SettingsSearchTarget.VOICE, "pause silence timeout cutoff dictation voice"),
         SettingsSearchEntry(R.string.dictation_mask_offensive_title, R.string.settings_category_voice, SettingsSearchTarget.VOICE, "profanity censor swear offensive f***"),
+        SettingsSearchEntry(R.string.sym_long_press_assistant_title, R.string.settings_category_voice, SettingsSearchTarget.VOICE, "assistant gemini sym hold long press voice ask siri"),
+        SettingsSearchEntry(R.string.side_key_assistant_title, R.string.settings_category_voice, SettingsSearchTarget.VOICE, "assistant gemini orange side key func1 shortcut voice ask"),
+        SettingsSearchEntry(R.string.assistant_action_title, R.string.settings_category_voice, SettingsSearchTarget.VOICE, "assistant action intent listening gemini voice command hands free assist"),
+        SettingsSearchEntry(R.string.dictation_engine_title, R.string.settings_category_voice, SettingsSearchTarget.VOICE, "engine recognizer speech service google on-device offline dictation voice"),
+        SettingsSearchEntry(R.string.dictation_continuous_title, R.string.settings_category_voice, SettingsSearchTarget.VOICE, "continuous segmented session pause cutoff dictation voice"),
+        SettingsSearchEntry(R.string.dictation_auto_punctuation_title, R.string.settings_category_voice, SettingsSearchTarget.VOICE, "punctuation comma period capitalization formatting dictation voice"),
 
         // Typing behavior
         SettingsSearchEntry(R.string.auto_capitalize_title, R.string.settings_category_text_input, SettingsSearchTarget.TEXT_INPUT, "capital uppercase sentence autocap"),

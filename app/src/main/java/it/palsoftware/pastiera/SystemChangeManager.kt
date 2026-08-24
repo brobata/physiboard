@@ -10,13 +10,14 @@ import it.palsoftware.pastiera.inputmethod.KeyboardBacklightManager
 /**
  * One-button "Reset device settings to stock" safety net.
  *
- * PhysiBoard writes three things that live at the OS / vendor level and SURVIVE an uninstall.
+ * PhysiBoard writes four things that live at the OS / vendor level and SURVIVE an uninstall.
  * Android gives an app no uninstall hook, so we cannot auto-revert — the supported path is the
- * user tapping this before uninstalling. [resetToStock] undoes ALL THREE:
+ * user tapping this before uninstalling. [resetToStock] undoes ALL FOUR:
  *
  *   1. Fn -> Ctrl remap   — Settings.System `fn_programmable_key_enable` / `_function`.
  *   2. Backlight always-on — vendor `keyboard_brightness_timeout` (restored to stock 30000).
  *   3. QS tile backlight   — Settings.Global `agui_keyboard_background_light`.
+ *   4. Orange side key     — Settings.System `func1_long_press_package` / `_activity`.
  *
  * Each revert runs INDEPENDENTLY (one failing never skips the others) and clears its own capture
  * log only on success. Every step is wrapped in runCatching, so this NEVER throws. It is BLOCKING
@@ -43,28 +44,32 @@ object SystemChangeManager {
     data class ResetResult(
         val fnCtrl: StepOutcome,
         val backlight: StepOutcome,
-        val qsBacklight: StepOutcome
+        val qsBacklight: StepOutcome,
+        val sideKey: StepOutcome
     ) {
         val allSucceeded: Boolean
             get() = fnCtrl == StepOutcome.SUCCESS &&
                 backlight == StepOutcome.SUCCESS &&
-                qsBacklight == StepOutcome.SUCCESS
+                qsBacklight == StepOutcome.SUCCESS &&
+                sideKey == StepOutcome.SUCCESS
 
         val needsPermission: Boolean
             get() = fnCtrl == StepOutcome.NEEDS_PERMISSION ||
                 backlight == StepOutcome.NEEDS_PERMISSION ||
-                qsBacklight == StepOutcome.NEEDS_PERMISSION
+                qsBacklight == StepOutcome.NEEDS_PERMISSION ||
+                sideKey == StepOutcome.NEEDS_PERMISSION
     }
 
     /**
      * Revert every system-wide change PhysiBoard can make. BLOCKING — call OFF the main thread.
-     * Never throws. Runs the three reverts independently and reports each outcome.
+     * Never throws. Runs the four reverts independently and reports each outcome.
      */
     fun resetToStock(context: Context): ResetResult {
         val fn = runCatching { revertFnCtrl(context) }.getOrDefault(StepOutcome.FAILED)
         val backlight = runCatching { revertBacklight(context) }.getOrDefault(StepOutcome.FAILED)
         val qs = runCatching { revertQsBacklight(context) }.getOrDefault(StepOutcome.FAILED)
-        return ResetResult(fnCtrl = fn, backlight = backlight, qsBacklight = qs)
+        val sideKey = runCatching { revertSideKey(context) }.getOrDefault(StepOutcome.FAILED)
+        return ResetResult(fnCtrl = fn, backlight = backlight, qsBacklight = qs, sideKey = sideKey)
     }
 
     // ---------------------------------------------------------------------------------------
@@ -148,6 +153,19 @@ object SystemChangeManager {
             return if (ok) StepOutcome.SUCCESS else StepOutcome.FAILED
         }
         return StepOutcome.NEEDS_PERMISSION
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // 4. Orange side key. Hand the vendor's long-press slot back to whatever it pointed at
+    //    before, and stop the app from re-binding it. Nothing captured means we never took it.
+    // ---------------------------------------------------------------------------------------
+    private fun revertSideKey(context: Context): StepOutcome {
+        runCatching { SettingsManager.setSideKeyAssistantEnabled(context, false) }
+        return when (VendorSideKeyManager.restoreLongPress(context)) {
+            VendorSideKeyManager.Outcome.SUCCESS -> StepOutcome.SUCCESS
+            VendorSideKeyManager.Outcome.NEEDS_PERMISSION -> StepOutcome.NEEDS_PERMISSION
+            VendorSideKeyManager.Outcome.FAILED -> StepOutcome.FAILED
+        }
     }
 
     private fun hasWriteSecureSettings(context: Context): Boolean = runCatching {

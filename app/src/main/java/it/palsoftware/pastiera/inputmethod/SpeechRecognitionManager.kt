@@ -44,6 +44,32 @@ class SpeechRecognitionManager(
         private const val MIN_SILENCE_TIMER_MS = 400
         /** A continuation that errors faster than this is a failure loop, not silence. */
         private const val CONTINUATION_MIN_RUN_MS = 700L
+        /**
+         * How long past the configured pause a segmented engine has to close its own session.
+         * Generous on purpose: firing early cuts a live dictation short, while firing late only
+         * costs a couple of seconds before the session is recovered.
+         */
+        private const val SEGMENTED_WATCHDOG_SLACK_MS = 5000L
+        /** An error this soon into a segmented session is the engine refusing the request. */
+        private const val SEGMENTED_REJECT_WINDOW_MS = 1200L
+
+        /**
+         * Whether a dictation session should ask the engine to hold one segmented session open
+         * and end it on the configured pause, rather than the keyboard restarting the recognizer
+         * after every result and timing the pause itself.
+         *
+         * Needs Android 13, the user's opt-in, a pause to actually end on, and an engine that has
+         * not already refused a segmented request.
+         */
+        internal fun shouldUseSegmentedSession(
+            sdkInt: Int,
+            userEnabled: Boolean,
+            engineRefusedSegments: Boolean,
+            pauseMs: Int
+        ): Boolean = sdkInt >= Build.VERSION_CODES.TIRAMISU &&
+            userEnabled &&
+            !engineRefusedSegments &&
+            pauseMs > 0
 
         internal fun normalizeSubtypeLocaleToLanguageTag(subtypeLocale: String?): String? {
             val normalized = subtypeLocale
@@ -167,15 +193,21 @@ class SpeechRecognitionManager(
      * Ensures SpeechRecognizer is initialized with a RecognitionListener.
      */
     private fun ensureSpeechRecognizer() {
+        val engineId = SettingsManager.getDictationEngine(context)
+        if (speechRecognizer != null && activeEngineId != engineId) {
+            Log.d(TAG, "Dictation engine changed ('$activeEngineId' -> '$engineId') — rebuilding")
+            runCatching { speechRecognizer?.destroy() }
+            speechRecognizer = null
+            segmentedUnsupported = false
+        }
         if (speechRecognizer == null) {
             if (!SpeechRecognizer.isRecognitionAvailable(context)) {
                 Log.w(TAG, "Speech recognition is not available on this device")
                 return
             }
-            
-            // Create SpeechRecognizer - let system find the best available service
-            Log.d(TAG, "Creating SpeechRecognizer instance")
-            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context)?.apply {
+
+            Log.d(TAG, "Creating SpeechRecognizer for engine '$engineId'")
+            speechRecognizer = RecognitionEngines.createRecognizer(context, engineId)?.apply {
                 setRecognitionListener(object : RecognitionListener {
                     override fun onReadyForSpeech(params: Bundle?) {
                         Log.d(TAG, "Speech recognition ready for speech")
@@ -194,6 +226,7 @@ class SpeechRecognitionManager(
                         Log.d(TAG, "Speech recognition: beginning of speech")
                         // Speech resumed inside the pause window: keep the session open.
                         cancelSilenceTimer()
+                        cancelSegmentedWatchdog()
                     }
 
                     override fun onRmsChanged(rmsdB: Float) {
@@ -209,9 +242,35 @@ class SpeechRecognitionManager(
                         Log.d(TAG, "Speech recognition: end of speech detected")
                         // The system automatically detected silence after speech
                         // onResults() will be called next with the final recognition result
+                        // Only now can a segmented session be close to ending, so this is the
+                        // point to start watching for one that never does.
+                        if (segmentedSession) armSegmentedWatchdog()
                     }
 
                     override fun onError(error: Int) {
+                        // A segmented session is optional in the RecognitionService contract, so
+                        // an engine may simply refuse one. Failing that fast, before a single
+                        // segment, is a refusal rather than a recognition problem: retry the same
+                        // session as a plain request and stop asking for segments from here on.
+                        val refusedSegments = segmentedSession &&
+                            segmentsSeen == 0 &&
+                            sessionActive &&
+                            !stopRequested &&
+                            SystemClock.uptimeMillis() - sessionStartedAt < SEGMENTED_REJECT_WINDOW_MS &&
+                            error != SpeechRecognizer.ERROR_NO_MATCH &&
+                            error != SpeechRecognizer.ERROR_SPEECH_TIMEOUT &&
+                            error != SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS &&
+                            error != SpeechRecognizer.ERROR_AUDIO
+                        if (refusedSegments) {
+                            Log.w(TAG, "Segmented session refused (error $error) — retrying without it")
+                            segmentedUnsupported = true
+                            segmentedSession = false
+                            cancelSegmentedWatchdog()
+                            if (isComposingPartialText) clearPartialText()
+                            restartWithoutSegmentedSession()
+                            return
+                        }
+
                         // Within a continued session the recognizer may give up on a silent
                         // stretch before our pause expires: keep waiting on our timer instead
                         // of ending the session. Guard against a tight failure loop.
@@ -230,6 +289,26 @@ class SpeechRecognitionManager(
                             } else {
                                 endSession(cancelRecognizer = false)
                             }
+                            return
+                        }
+
+                        // A segmented session that already produced text and now reports silence
+                        // has simply run out of speech. That is the session ending the way it is
+                        // meant to, so close it without complaining.
+                        if (segmentedSession && isQuietError && segmentsSeen > 0) {
+                            Log.d(TAG, "Segmented session ended on silence after $segmentsSeen segment(s)")
+                            endSession(cancelRecognizer = false)
+                            if (isComposingPartialText) clearPartialText()
+                            return
+                        }
+
+                        // A callback for a session we already closed: the pause timer fired
+                        // and cancelled the recognizer while its restarted request was still in
+                        // flight, so the request reports the silence that ended the session as
+                        // an error. Nothing failed and there is nothing to act on — stay quiet.
+                        if (!sessionActive) {
+                            Log.d(TAG, "Trailing error $error after the session ended \u2014 ignored")
+                            if (isComposingPartialText) clearPartialText()
                             return
                         }
 
@@ -270,29 +349,15 @@ class SpeechRecognitionManager(
                     }
 
                     override fun onResults(results: Bundle) {
-                        val matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                        val confidenceScores = results.getFloatArray(SpeechRecognizer.CONFIDENCE_SCORES)
-                        
-                        Log.d(TAG, "Speech recognition results: ${matches?.size ?: 0} matches")
-                        matches?.forEachIndexed { index, match ->
-                            val confidence = confidenceScores?.getOrNull(index)
-                            Log.d(TAG, "  Result[$index]: '$match' (confidence: $confidence)")
-                        }
-                        
-                        val text = matches?.firstOrNull() ?: ""
-                        if (text.isNotEmpty()) {
-                            val normalizedText = normalizePunctuationWords(text)
-                            // Apply auto-capitalization rules
-                            val formattedText = formatTextWithAutoCapitalization(normalizedText)
-                            Log.d(TAG, "Using recognized text: '$formattedText' (original: '$text', normalized: '$normalizedText')")
-                            // Replace partial text with final formatted text
-                            replacePartialWithFinalText(formattedText)
-                        } else {
-                            // Clear partial text if no final result
-                            if (isComposingPartialText) {
-                                clearPartialText()
-                            }
-                            Log.w(TAG, "No text recognized")
+                        commitRecognizedText(results)
+
+                        if (segmentedSession) {
+                            // A segmented engine reports finals through onSegmentResults and ends
+                            // the session itself. Reaching here means it ignored the request and
+                            // ran a plain one-shot, so let the watchdog close the session and fall
+                            // back to the restart loop next time.
+                            armSegmentedWatchdog()
+                            return
                         }
 
                         // Keep the session open for the configured pause, then listen again.
@@ -304,6 +369,25 @@ class SpeechRecognitionManager(
                         }
                     }
 
+                    /**
+                     * Segmented sessions deliver one of these per utterance and keep listening;
+                     * the engine, not our timer, decides when the pause has run out.
+                     */
+                    override fun onSegmentResults(segmentResults: Bundle) {
+                        segmentsSeen++
+                        Log.d(TAG, "Segment result #$segmentsSeen")
+                        commitRecognizedText(segmentResults)
+                        // The engine owes us an onEndOfSegmentedSession; if it never arrives the
+                        // session would hang "listening" forever, so keep a watchdog on it.
+                        armSegmentedWatchdog()
+                    }
+
+                    override fun onEndOfSegmentedSession() {
+                        Log.d(TAG, "Segmented session ended by the engine")
+                        cancelSegmentedWatchdog()
+                        endSession(cancelRecognizer = false)
+                    }
+
                     override fun onPartialResults(partialResults: Bundle?) {
                         val matches = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                         val partialText = matches?.firstOrNull() ?: ""
@@ -311,6 +395,7 @@ class SpeechRecognitionManager(
                         if (partialText.isNotEmpty()) {
                             Log.d(TAG, "Speech recognition partial results: '$partialText'")
                             cancelSilenceTimer()
+                            cancelSegmentedWatchdog()
                             // Insert/update partial text in real-time
                             updatePartialSpeechText(partialText)
                         } else {
@@ -323,6 +408,7 @@ class SpeechRecognitionManager(
                     }
                 })
             }
+            activeEngineId = if (speechRecognizer != null) engineId else null
             Log.d(TAG, "SpeechRecognizer initialized")
         }
     }
@@ -375,6 +461,34 @@ class SpeechRecognitionManager(
             } catch (e: Exception) {
                 Log.e(TAG, "Error updating partial text", e)
             }
+        }
+    }
+
+    /**
+     * Commits one final recognition result (a whole one-shot request, or one segment of a
+     * segmented session) into the field.
+     */
+    private fun commitRecognizedText(results: Bundle) {
+        val matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+        val confidenceScores = results.getFloatArray(SpeechRecognizer.CONFIDENCE_SCORES)
+
+        Log.d(TAG, "Speech recognition results: ${matches?.size ?: 0} matches")
+        matches?.forEachIndexed { index, match ->
+            val confidence = confidenceScores?.getOrNull(index)
+            Log.d(TAG, "  Result[$index]: '$match' (confidence: $confidence)")
+        }
+
+        val text = matches?.firstOrNull() ?: ""
+        if (text.isNotEmpty()) {
+            val normalizedText = normalizePunctuationWords(text)
+            val formattedText = formatTextWithAutoCapitalization(normalizedText)
+            Log.d(TAG, "Using recognized text: '$formattedText' (original: '$text', normalized: '$normalizedText')")
+            replacePartialWithFinalText(formattedText)
+        } else {
+            if (isComposingPartialText) {
+                clearPartialText()
+            }
+            Log.w(TAG, "No text recognized")
         }
     }
 
@@ -483,14 +597,18 @@ class SpeechRecognitionManager(
                 "Speech locale source: subtype=$imeSubtypeLocale, device=${deviceLocale?.toLanguageTag()}, using=$languageTag"
             )
             recognitionLanguageTag = languageTag
-            val intent = buildRecognizerIntent()
             cancelSilenceTimer()
+            cancelSegmentedWatchdog()
             sessionActive = true
             sessionCueStarted = false
             stopRequested = false
             continuationStartedAt = 0L
-            
-            Log.d(TAG, "Starting speech recognition with language: $languageTag")
+            segmentedSession = segmentedSessionSupported()
+            segmentsSeen = 0
+            sessionStartedAt = SystemClock.uptimeMillis()
+            val intent = buildRecognizerIntent()
+
+            Log.d(TAG, "Starting speech recognition with language: $languageTag (segmented=$segmentedSession)")
             speechRecognizer?.startListening(intent)
             Log.d(TAG, "Speech recognition started via SpeechRecognizer")
         } catch (e: SecurityException) {
@@ -506,7 +624,7 @@ class SpeechRecognitionManager(
 
     private var recognitionLanguageTag: String? = null
 
-    private fun buildRecognizerIntent(): Intent =
+    private fun buildRecognizerIntent(segmented: Boolean = segmentedSession): Intent =
         Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                 recognitionLanguageTag?.let { putExtra(RecognizerIntent.EXTRA_LANGUAGE, it) }
@@ -520,11 +638,30 @@ class SpeechRecognitionManager(
                     RecognizerIntent.EXTRA_MASK_OFFENSIVE_WORDS,
                     SettingsManager.getDictationMaskOffensive(context)
                 )
-                // End-of-speech pause: the recognizer treats these as hints and may ignore them.
+                // End-of-speech pause. In a one-shot request the recognizer treats these as
+                // hints and may ignore them; in a segmented session the complete-silence value
+                // below is what actually ends the session.
                 val endSilenceMs = SettingsManager.getDictationEndSilenceMs(context)
                 if (endSilenceMs > 0) {
                     putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, endSilenceMs)
                     putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, endSilenceMs)
+                }
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    if (SettingsManager.getDictationAutoPunctuation(context)) {
+                        putExtra(
+                            RecognizerIntent.EXTRA_ENABLE_FORMATTING,
+                            RecognizerIntent.FORMATTING_OPTIMIZE_QUALITY
+                        )
+                    }
+                    if (segmented) {
+                        // One long session that the engine ends on the complete-silence length
+                        // above, instead of us restarting after every result.
+                        putExtra(
+                            RecognizerIntent.EXTRA_SEGMENTED_SESSION,
+                            RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS
+                        )
+                    }
                 }
             }
 
@@ -550,6 +687,9 @@ class SpeechRecognitionManager(
         stopRequested = true
         cancelSilenceTimer()
         speechRecognizer?.stopListening()
+        // A segmented engine answers stopListening() with onEndOfSegmentedSession; if it stays
+        // quiet the watchdog closes the session rather than leaving the mic latched on.
+        if (segmentedSession) armSegmentedWatchdog()
         Log.d(TAG, "Speech recognition stopped")
     }
 
@@ -558,11 +698,14 @@ class SpeechRecognitionManager(
      */
     fun destroy() {
         cancelSilenceTimer()
+        cancelSegmentedWatchdog()
         sessionActive = false
         sessionCueStarted = false
         stopRequested = false
+        segmentedSession = false
         speechRecognizer?.destroy()
         speechRecognizer = null
+        activeEngineId = null
         // Clear any partial text
         if (isComposingPartialText) {
             clearPartialText()
@@ -581,6 +724,64 @@ class SpeechRecognitionManager(
     // our own silence timer (the configured pause) expires without new speech, when the user
     // stops explicitly, or on a real error.
     private val mainHandler = Handler(Looper.getMainLooper())
+
+    // ---- Engine + segmented session ----
+    // Android 13 can hold one session open and end it on our silence length itself, which is what
+    // the restart loop above is imitating. Engines are free to ignore the request, so the loop
+    // stays as the fallback and [segmentedUnsupported] latches once an engine proves it needs it.
+    private var activeEngineId: String? = null
+    private var segmentedSession = false
+    private var segmentsSeen = 0
+    private var segmentedUnsupported = false
+    private var sessionStartedAt = 0L
+
+    private val segmentedWatchdogRunnable = Runnable {
+        // An engine that delivered segments clearly understands the mode, so a single slow close
+        // is not evidence against it; only one that never segmented at all gets struck off.
+        val neverSegmented = segmentsSeen == 0
+        Log.w(
+            TAG,
+            "Segmented session never ended itself (segments=$segmentsSeen) — " +
+                if (neverSegmented) "falling back to the restart loop" else "closing it here"
+        )
+        if (neverSegmented) segmentedUnsupported = true
+        endSession(cancelRecognizer = true)
+    }
+
+    private fun segmentedSessionSupported(): Boolean = shouldUseSegmentedSession(
+        sdkInt = Build.VERSION.SDK_INT,
+        userEnabled = SettingsManager.getDictationContinuousSession(context),
+        engineRefusedSegments = segmentedUnsupported,
+        pauseMs = configuredPauseMs()
+    )
+
+    /** Armed only while the engine should be closing the session — never during live speech. */
+    private fun armSegmentedWatchdog() {
+        mainHandler.removeCallbacks(segmentedWatchdogRunnable)
+        if (!segmentedSession || !sessionActive) return
+        mainHandler.postDelayed(
+            segmentedWatchdogRunnable,
+            configuredPauseMs() + SEGMENTED_WATCHDOG_SLACK_MS
+        )
+    }
+
+    private fun cancelSegmentedWatchdog() {
+        mainHandler.removeCallbacks(segmentedWatchdogRunnable)
+    }
+
+    /** Re-runs the current session as a plain request after the engine refused segments. */
+    private fun restartWithoutSegmentedSession() {
+        mainHandler.post {
+            if (!sessionActive) return@post
+            continuationStartedAt = 0L
+            runCatching { speechRecognizer?.startListening(buildRecognizerIntent(segmented = false)) }
+                .onFailure {
+                    Log.w(TAG, "Unable to restart without a segmented session", it)
+                    endSession(cancelRecognizer = false)
+                }
+        }
+    }
+
     private var sessionActive = false
     private var sessionCueStarted = false
     private var stopRequested = false
@@ -608,10 +809,13 @@ class SpeechRecognitionManager(
     /** Ends the continuous session once: UI state, stop cue, timers. */
     private fun endSession(cancelRecognizer: Boolean) {
         cancelSilenceTimer()
+        cancelSegmentedWatchdog()
         if (!sessionActive) return
         sessionActive = false
         sessionCueStarted = false
         stopRequested = false
+        segmentedSession = false
+        segmentsSeen = 0
         if (cancelRecognizer) {
             runCatching { speechRecognizer?.cancel() }
             if (isComposingPartialText) clearPartialText()

@@ -16,6 +16,7 @@ import it.palsoftware.pastiera.R
 import it.palsoftware.pastiera.SettingsManager
 import it.palsoftware.pastiera.SoftwareKeyboardModeActions
 import it.palsoftware.pastiera.core.NavModeController
+import it.palsoftware.pastiera.inputmethod.AssistantLauncher
 import it.palsoftware.pastiera.inputmethod.QuickLauncherActivity
 import rikka.shizuku.Shizuku
 
@@ -89,6 +90,13 @@ class CommandExecutor(
                 } catch (error: Exception) {
                     Log.e(TAG, "Failed to open QuickLauncher", error)
                     fail("Could not open QuickLauncher")
+                }
+            }
+            PastieraCommandSource.ACTION_START_VOICE_ASSISTANT -> {
+                if (AssistantLauncher.launch(context)) {
+                    CommandExecutionResult.Success
+                } else {
+                    fail(context.getString(R.string.assistant_unavailable))
                 }
             }
             PastieraCommandSource.ACTION_OPEN_MAIN_ACTIVITY -> {

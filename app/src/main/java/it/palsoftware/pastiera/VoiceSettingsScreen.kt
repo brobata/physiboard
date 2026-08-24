@@ -1,6 +1,12 @@
 package it.palsoftware.pastiera
 
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -10,6 +16,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,6 +26,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import it.palsoftware.pastiera.R
+import it.palsoftware.pastiera.inputmethod.RecognitionEngines
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Voice (dictation) settings screen — the dedicated home for PhysiBoard's
@@ -46,6 +57,98 @@ fun VoiceSettingsScreen(
     }
     var dictationEndSilenceMs by remember {
         mutableStateOf(SettingsManager.getDictationEndSilenceMs(context))
+    }
+    var dictationEngine by remember {
+        mutableStateOf(SettingsManager.getDictationEngine(context))
+    }
+    var dictationContinuous by remember {
+        mutableStateOf(SettingsManager.getDictationContinuousSession(context))
+    }
+    var dictationAutoPunctuation by remember {
+        mutableStateOf(SettingsManager.getDictationAutoPunctuation(context))
+    }
+    var symLongPressAssistant by remember {
+        mutableStateOf(SettingsManager.getSymLongPressAssistantEnabled(context))
+    }
+    val symUsedByTrackpad = remember {
+        SettingsManager.isScreenTrackpadEnabled(context) &&
+            SettingsManager.getScreenTrackpadTriggerKey(context) ==
+            SettingsManager.SCREEN_TRACKPAD_TRIGGER_SYM
+    }
+    var sideKeyAssistant by remember {
+        mutableStateOf(SettingsManager.getSideKeyAssistantEnabled(context))
+    }
+    var sideKeyBusy by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    // Set when a binding was refused for lack of WRITE_SETTINGS, so returning from the grant
+    // screen can finish what the user asked for instead of making them toggle again.
+    var pendingSideKeyEnable by remember { mutableStateOf<Boolean?>(null) }
+    var writeSettingsGrantReturns by remember { mutableStateOf(0) }
+    val writeSettingsLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { writeSettingsGrantReturns++ }
+    var assistantAction by remember {
+        mutableStateOf(SettingsManager.getAssistantAction(context))
+    }
+    var showAssistantActionPicker by remember { mutableStateOf(false) }
+    val assistantActions = listOf(
+        Triple(SettingsManager.ASSISTANT_ACTION_AUTO, R.string.assistant_action_auto, R.string.assistant_action_auto_detail),
+        Triple(SettingsManager.ASSISTANT_ACTION_VOICE_COMMAND, R.string.assistant_action_voice_command, R.string.assistant_action_voice_command_detail),
+        Triple(SettingsManager.ASSISTANT_ACTION_HANDS_FREE, R.string.assistant_action_hands_free, R.string.assistant_action_hands_free_detail),
+        Triple(SettingsManager.ASSISTANT_ACTION_ASSIST, R.string.assistant_action_assist, R.string.assistant_action_assist_detail)
+    )
+    var showEnginePicker by remember { mutableStateOf(false) }
+    val engines = remember { RecognitionEngines.available(context) }
+
+    fun applySideKeyBinding(enabled: Boolean) {
+        sideKeyBusy = true
+        scope.launch {
+            val outcome = withContext(Dispatchers.IO) {
+                if (enabled) {
+                    VendorSideKeyManager.bindAssistantToLongPress(context)
+                } else {
+                    VendorSideKeyManager.restoreLongPress(context)
+                }
+            }
+            sideKeyBusy = false
+            when (outcome) {
+                VendorSideKeyManager.Outcome.SUCCESS -> {
+                    sideKeyAssistant = enabled
+                    SettingsManager.setSideKeyAssistantEnabled(context, enabled)
+                }
+                VendorSideKeyManager.Outcome.NEEDS_PERMISSION -> {
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.side_key_assistant_needs_permission),
+                        Toast.LENGTH_LONG
+                    ).show()
+                    pendingSideKeyEnable = enabled
+                    runCatching {
+                        writeSettingsLauncher.launch(
+                            Intent(
+                                Settings.ACTION_MANAGE_WRITE_SETTINGS,
+                                Uri.parse("package:${context.packageName}")
+                            )
+                        )
+                    }
+                }
+                VendorSideKeyManager.Outcome.FAILED -> {
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.side_key_assistant_failed),
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(writeSettingsGrantReturns) {
+        val pending = pendingSideKeyEnable
+        if (writeSettingsGrantReturns > 0 && pending != null) {
+            pendingSideKeyEnable = null
+            applySideKeyBinding(pending)
+        }
     }
 
     BackHandler { onBack() }
@@ -113,7 +216,53 @@ fun VoiceSettingsScreen(
                 }
             )
 
+            VoiceSwitchRow(
+                title = stringResource(R.string.side_key_assistant_title),
+                description = stringResource(R.string.side_key_assistant_description),
+                checked = sideKeyAssistant,
+                enabled = !sideKeyBusy,
+                onCheckedChange = { enabled -> applySideKeyBinding(enabled) }
+            )
+            VoiceSwitchRow(
+                title = stringResource(R.string.sym_long_press_assistant_title),
+                description = stringResource(R.string.sym_long_press_assistant_description),
+                checked = symLongPressAssistant && !symUsedByTrackpad,
+                enabled = !symUsedByTrackpad,
+                onCheckedChange = { enabled ->
+                    symLongPressAssistant = enabled
+                    SettingsManager.setSymLongPressAssistantEnabled(context, enabled)
+                }
+            )
+
+            VoiceNavigationRow(
+                title = stringResource(R.string.assistant_action_title),
+                description = assistantActions.firstOrNull { it.first == assistantAction }
+                    ?.let { stringResource(it.second) }
+                    ?: stringResource(R.string.assistant_action_auto),
+                icon = Icons.Filled.RecordVoiceOver,
+                onClick = { showAssistantActionPicker = true }
+            )
+
             VoiceSectionHeader(text = stringResource(R.string.voice_section_transcription))
+            VoiceNavigationRow(
+                title = stringResource(R.string.dictation_engine_title),
+                description = engines.firstOrNull { it.id == dictationEngine }
+                    ?.let { engine ->
+                        engine.detail?.let { "${engine.label} \u2014 $it" } ?: engine.label
+                    }
+                    ?: stringResource(R.string.dictation_engine_system_default),
+                icon = Icons.Filled.RecordVoiceOver,
+                onClick = { showEnginePicker = true }
+            )
+            VoiceSwitchRow(
+                title = stringResource(R.string.dictation_auto_punctuation_title),
+                description = stringResource(R.string.dictation_auto_punctuation_description),
+                checked = dictationAutoPunctuation,
+                onCheckedChange = { enabled ->
+                    dictationAutoPunctuation = enabled
+                    SettingsManager.setDictationAutoPunctuation(context, enabled)
+                }
+            )
             VoiceSwitchRow(
                 title = stringResource(R.string.dictation_mask_offensive_title),
                 description = stringResource(R.string.dictation_mask_offensive_description),
@@ -165,6 +314,15 @@ fun VoiceSettingsScreen(
                     )
                 }
             }
+            VoiceSwitchRow(
+                title = stringResource(R.string.dictation_continuous_title),
+                description = stringResource(R.string.dictation_continuous_description),
+                checked = dictationContinuous,
+                onCheckedChange = { enabled ->
+                    dictationContinuous = enabled
+                    SettingsManager.setDictationContinuousSession(context, enabled)
+                }
+            )
 
             VoiceSectionHeader(text = stringResource(R.string.voice_section_feedback))
             VoiceNavigationRow(
@@ -175,6 +333,114 @@ fun VoiceSettingsScreen(
             )
 
             Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        if (showAssistantActionPicker) {
+            AlertDialog(
+                onDismissRequest = { showAssistantActionPicker = false },
+                title = { Text(text = stringResource(R.string.assistant_action_title)) },
+                text = {
+                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                        Text(
+                            text = stringResource(R.string.assistant_action_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        assistantActions.forEach { (mode, labelRes, detailRes) ->
+                            val select = {
+                                assistantAction = mode
+                                SettingsManager.setAssistantAction(context, mode)
+                                showAssistantActionPicker = false
+                            }
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable(onClick = select)
+                                    .padding(vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                RadioButton(selected = mode == assistantAction, onClick = select)
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = stringResource(labelRes),
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                    Text(
+                                        text = stringResource(detailRes),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showAssistantActionPicker = false }) {
+                        Text(text = stringResource(android.R.string.cancel))
+                    }
+                }
+            )
+        }
+
+        if (showEnginePicker) {
+            AlertDialog(
+                onDismissRequest = { showEnginePicker = false },
+                title = { Text(text = stringResource(R.string.dictation_engine_picker_title)) },
+                text = {
+                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                        Text(
+                            text = stringResource(R.string.dictation_engine_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        engines.forEach { engine ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        dictationEngine = engine.id
+                                        SettingsManager.setDictationEngine(context, engine.id)
+                                        showEnginePicker = false
+                                    }
+                                    .padding(vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                RadioButton(
+                                    selected = engine.id == dictationEngine,
+                                    onClick = {
+                                        dictationEngine = engine.id
+                                        SettingsManager.setDictationEngine(context, engine.id)
+                                        showEnginePicker = false
+                                    }
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = engine.label,
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                    engine.detail?.let { detail ->
+                                        Text(
+                                            text = detail,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showEnginePicker = false }) {
+                        Text(text = stringResource(android.R.string.cancel))
+                    }
+                }
+            )
         }
     }
 }
@@ -210,6 +476,7 @@ private fun VoiceSwitchRow(
     title: String,
     description: String? = null,
     checked: Boolean,
+    enabled: Boolean = true,
     onCheckedChange: (Boolean) -> Unit
 ) {
     Surface(
@@ -247,6 +514,7 @@ private fun VoiceSwitchRow(
             }
             Switch(
                 checked = checked,
+                enabled = enabled,
                 onCheckedChange = onCheckedChange
             )
         }

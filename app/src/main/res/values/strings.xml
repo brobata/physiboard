@@ -146,6 +146,34 @@
     <string name="dictation_end_silence_system_default">System default</string>
     <string name="dictation_end_silence_seconds">%1$.1f s of silence before dictation stops</string>
     <string name="dictation_end_silence_hint">How long you can pause before dictation stops. The speech service may not honor this on all devices.</string>
+    <string name="assistant_action_title">How the assistant opens</string>
+    <string name="assistant_action_description">Which request PhysiBoard sends. Nothing reproduces the system assist gesture exactly, and each assistant decides whether it starts listening — if yours opens without listening, try another.</string>
+    <string name="assistant_action_auto">Automatic</string>
+    <string name="assistant_action_auto_detail">Try each in turn, listening first</string>
+    <string name="assistant_action_voice_command">Voice command</string>
+    <string name="assistant_action_voice_command_detail">Meant to take a spoken question straight away</string>
+    <string name="assistant_action_hands_free">Hands-free voice</string>
+    <string name="assistant_action_hands_free_detail">Listens without needing the screen</string>
+    <string name="assistant_action_assist">Assist</string>
+    <string name="assistant_action_assist_detail">The assist gesture\'s own request; may just open the app</string>
+    <string name="side_key_assistant_title">Orange key opens the assistant</string>
+    <string name="side_key_assistant_description">Long-press the orange side key to start your assistant already listening, instead of opening the Gemini app. Changes a system setting that stays after uninstall — undo it here or with Reset device settings to stock.</string>
+    <string name="side_key_assistant_needs_permission">PhysiBoard needs permission to change system settings, or a paired wireless-debugging session.</string>
+    <string name="side_key_assistant_failed">Could not change the side key setting.</string>
+    <string name="sym_long_press_assistant_title">Hold Sym for the assistant</string>
+    <string name="sym_long_press_assistant_description">Hold Sym to open your assistant already listening, so you can just ask. A tap of Sym still opens the symbol pages. Unavailable while Sym is the screen trackpad trigger.</string>
+    <string name="assistant_unavailable">No voice assistant is set up on this device.</string>
+    <string name="dictation_engine_title">Speech engine</string>
+    <string name="dictation_engine_description">Which service transcribes your dictation. Engines differ in accuracy, punctuation and whether they need a network connection.</string>
+    <string name="dictation_engine_system_default">System default</string>
+    <string name="dictation_engine_system_default_detail">Follows Android\'s voice input setting</string>
+    <string name="dictation_engine_on_device">On-device recognizer</string>
+    <string name="dictation_engine_on_device_detail">Works offline, lower latency, smaller vocabulary</string>
+    <string name="dictation_engine_picker_title">Speech engine</string>
+    <string name="dictation_continuous_title">Let the engine time the pause</string>
+    <string name="dictation_continuous_description">Asks the speech service to hold one session open and end it on your pause (Android 13+). Turn off if dictation cuts out early or never stops.</string>
+    <string name="dictation_auto_punctuation_title">Automatic punctuation</string>
+    <string name="dictation_auto_punctuation_description">Let the speech engine add punctuation and capitalization to what you dictate (Android 13+).</string>
     <string name="fn_long_press_speech_description">Start speech input by holding the Fn key alone. Short presses and key combos keep their normal behavior. On Titan devices, set the Fn key to Ctrl in the system Shortcut keys settings so the key reaches the keyboard.</string>
 
     <!-- Voice / dictation settings screen -->

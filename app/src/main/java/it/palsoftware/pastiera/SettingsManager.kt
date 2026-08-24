@@ -70,8 +70,31 @@ object SettingsManager {
     private const val KEY_FN_LONG_PRESS_SPEECH = "fn_long_press_speech"
     private const val KEY_FN_SPEECH_SCAN_CODE = "fn_speech_scan_code"
     private const val KEY_DICTATION_HAPTICS = "dictation_haptics"
+    private const val KEY_SYM_LONG_PRESS_ASSISTANT = "sym_long_press_assistant"
+    private const val KEY_SIDE_KEY_ASSISTANT = "side_key_assistant"
+    private const val KEY_ASSISTANT_ACTION = "assistant_action"
+
+    // Which request opens the assistant. No intent reproduces the system assist gesture, and each
+    // assistant decides for itself whether a given one starts listening, so this is the user's
+    // choice rather than a constant. AUTO tries them in a listening-first order.
+    const val ASSISTANT_ACTION_AUTO = "auto"
+    const val ASSISTANT_ACTION_VOICE_COMMAND = "voice_command"
+    const val ASSISTANT_ACTION_HANDS_FREE = "hands_free"
+    const val ASSISTANT_ACTION_ASSIST = "assist"
+    private const val KEY_SIDE_KEY_CAPTURED = "side_key_original_captured"
+    private const val KEY_SIDE_KEY_PREV_PACKAGE = "side_key_original_package"
+    private const val KEY_SIDE_KEY_PREV_ACTIVITY = "side_key_original_activity"
     private const val KEY_DICTATION_END_SILENCE_MS = "dictation_end_silence_ms"
     private const val KEY_DICTATION_MASK_OFFENSIVE = "dictation_mask_offensive"
+    private const val KEY_DICTATION_ENGINE = "dictation_engine"
+
+    /** Follow the system's voice-input service (Settings > Apps > Default apps). */
+    const val DICTATION_ENGINE_SYSTEM_DEFAULT = ""
+    /** Pin the platform's on-device recognizer: no network, lower latency. */
+    const val DICTATION_ENGINE_ON_DEVICE = "ondevice"
+
+    private const val KEY_DICTATION_CONTINUOUS = "dictation_continuous_session"
+    private const val KEY_DICTATION_AUTO_PUNCTUATION = "dictation_auto_punctuation"
     private const val KEY_APP_RAW_MODE_PACKAGES = "app_raw_mode_packages"
     private const val KEY_SMART_BACKLIGHT_ENABLED = "smart_backlight_enabled"
     // "The persistent always-on vendor value has been successfully written at least once."
@@ -2219,6 +2242,75 @@ object SettingsManager {
     /**
      * Sets whether Alt+Ctrl shortcut for speech recognition is enabled.
      */
+    /**
+     * Whether holding Sym opens the device assistant already listening. Off by default: it
+     * changes what an existing key does, and a tap of Sym must keep opening the SYM pages.
+     */
+    fun getSymLongPressAssistantEnabled(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_SYM_LONG_PRESS_ASSISTANT, false)
+    }
+
+    fun setSymLongPressAssistantEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_SYM_LONG_PRESS_ASSISTANT, enabled)
+            .apply()
+    }
+
+    /** Which request opens the assistant; one of the ASSISTANT_ACTION_* constants. */
+    fun getAssistantAction(context: Context): String {
+        return getPreferences(context).getString(KEY_ASSISTANT_ACTION, ASSISTANT_ACTION_AUTO)
+            ?: ASSISTANT_ACTION_AUTO
+    }
+
+    fun setAssistantAction(context: Context, mode: String) {
+        getPreferences(context).edit()
+            .putString(KEY_ASSISTANT_ACTION, mode)
+            .apply()
+    }
+
+    /** Whether the user asked for the orange side key's long press to open the assistant. */
+    fun getSideKeyAssistantEnabled(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_SIDE_KEY_ASSISTANT, false)
+    }
+
+    fun setSideKeyAssistantEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_SIDE_KEY_ASSISTANT, enabled)
+            .apply()
+    }
+
+    /** True once we've stashed what the side key's long press did before PhysiBoard took it. */
+    fun isSideKeyOriginalCaptured(context: Context): Boolean =
+        getPreferences(context).getBoolean(KEY_SIDE_KEY_CAPTURED, false)
+
+    /**
+     * Stash the vendor's original side-key target ONCE, before the first overwrite, so repeated
+     * applies can never record PhysiBoard itself as the thing to restore.
+     */
+    fun captureSideKeyOriginal(context: Context, packageName: String?, activity: String?) {
+        if (isSideKeyOriginalCaptured(context)) return
+        if (packageName == context.packageName) return
+        getPreferences(context).edit()
+            .putString(KEY_SIDE_KEY_PREV_PACKAGE, packageName)
+            .putString(KEY_SIDE_KEY_PREV_ACTIVITY, activity)
+            .putBoolean(KEY_SIDE_KEY_CAPTURED, true)
+            .apply()
+    }
+
+    fun getSideKeyOriginalPackage(context: Context): String? =
+        getPreferences(context).getString(KEY_SIDE_KEY_PREV_PACKAGE, null)
+
+    fun getSideKeyOriginalActivity(context: Context): String? =
+        getPreferences(context).getString(KEY_SIDE_KEY_PREV_ACTIVITY, null)
+
+    fun clearSideKeyOriginal(context: Context) {
+        getPreferences(context).edit()
+            .remove(KEY_SIDE_KEY_CAPTURED)
+            .remove(KEY_SIDE_KEY_PREV_PACKAGE)
+            .remove(KEY_SIDE_KEY_PREV_ACTIVITY)
+            .apply()
+    }
+
     fun setAltCtrlSpeechShortcutEnabled(context: Context, enabled: Boolean) {
         getPreferences(context).edit()
             .putBoolean(KEY_ALT_CTRL_SPEECH_SHORTCUT, enabled)
@@ -2324,6 +2416,50 @@ object SettingsManager {
     fun setDictationMaskOffensive(context: Context, enabled: Boolean) {
         getPreferences(context).edit()
             .putBoolean(KEY_DICTATION_MASK_OFFENSIVE, enabled)
+            .apply()
+    }
+
+    /**
+     * Which recognition service transcribes dictation.
+     *
+     * [DICTATION_ENGINE_SYSTEM_DEFAULT] follows the system's assistant/voice-input choice,
+     * [DICTATION_ENGINE_ON_DEVICE] pins the platform's offline recognizer, and any other
+     * value is a flattened ComponentName naming one installed RecognitionService.
+     */
+    fun getDictationEngine(context: Context): String {
+        return getPreferences(context).getString(KEY_DICTATION_ENGINE, DICTATION_ENGINE_SYSTEM_DEFAULT)
+            ?: DICTATION_ENGINE_SYSTEM_DEFAULT
+    }
+
+    fun setDictationEngine(context: Context, engineId: String) {
+        getPreferences(context).edit()
+            .putString(KEY_DICTATION_ENGINE, engineId)
+            .apply()
+    }
+
+    /**
+     * Whether to ask the engine to hold one long session open and end it on the configured
+     * pause (Android 13+). When off — or when the engine ignores the request — the keyboard
+     * falls back to restarting the recognizer after every result and timing the pause itself.
+     */
+    fun getDictationContinuousSession(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_DICTATION_CONTINUOUS, true)
+    }
+
+    fun setDictationContinuousSession(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_DICTATION_CONTINUOUS, enabled)
+            .apply()
+    }
+
+    /** Whether the engine should punctuate and capitalize the transcript itself (Android 13+). */
+    fun getDictationAutoPunctuation(context: Context): Boolean {
+        return getPreferences(context).getBoolean(KEY_DICTATION_AUTO_PUNCTUATION, true)
+    }
+
+    fun setDictationAutoPunctuation(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_DICTATION_AUTO_PUNCTUATION, enabled)
             .apply()
     }
 

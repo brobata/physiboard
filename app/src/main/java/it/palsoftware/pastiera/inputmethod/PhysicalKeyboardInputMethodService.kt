@@ -257,6 +257,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     private val FN_SPEECH_TRIGGER_EVENT_COUNT = 5
     // Longer than the ~50ms repeat interval, short enough to separate two distinct holds.
     private val FN_SPEECH_BURST_RESET_MS = 200L
+    // Hold-Sym-for-the-assistant. Well clear of the ~250ms the screen trackpad uses for its own
+    // hold, and of any tap the user means as "open the SYM page".
+    private val SYM_ASSIST_HOLD_MS = 600L
 
     // Modifier/nav/SYM controllers
     private lateinit var modifierStateController: ModifierStateController
@@ -302,6 +305,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     private var lastAltTapUpTime: Long = 0L
     private var symTogglePendingOnKeyUp: Boolean = false
     private var symChordUsedSinceKeyDown: Boolean = false
+    // Hold-Sym-for-the-assistant. Unlike Fn, Sym delivers a clean down and release, so a plain
+    // timer is enough: it is armed on the down, cancelled by the release or by any other key
+    // (that is a Sym chord, not a hold), and suppresses the SYM page toggle once it has fired.
+    private var symAssistArmed: Boolean = false
+    private var symAssistTriggered: Boolean = false
     private var nativeTrackpadGestureStart: NativeTrackpadGestureStart? = null
     private var nativeTrackpadLastX: Float = 0f
     private var nativeTrackpadLastY: Float = 0f
@@ -727,6 +735,47 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     }
 
     private fun openQuickLauncher(): Boolean = QuickLauncherOpener.open(this)
+
+    private val symAssistRunnable = Runnable {
+        symAssistArmed = false
+        // Held long enough: this press is no longer a SYM page tap.
+        symAssistTriggered = true
+        symTogglePendingOnKeyUp = false
+        if (!AssistantLauncher.launch(this)) {
+            symAssistTriggered = false
+            Toast.makeText(
+                this,
+                getString(R.string.assistant_unavailable),
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    /**
+     * Starts the hold timer for Sym. Skipped when the screen trackpad already uses Sym as its
+     * trigger — two things reacting to the same hold would fight over it.
+     */
+    private fun armSymAssistHold() {
+        // Cleared up front so a hold whose release never arrived — the assistant took focus and
+        // the IME was torn down — cannot swallow the next tap of Sym.
+        symAssistArmed = false
+        symAssistTriggered = false
+        if (!SettingsManager.getSymLongPressAssistantEnabled(this)) return
+        if (symTriggersScreenTrackpad()) return
+        symAssistArmed = true
+        uiHandler.removeCallbacks(symAssistRunnable)
+        uiHandler.postDelayed(symAssistRunnable, SYM_ASSIST_HOLD_MS)
+    }
+
+    private fun cancelSymAssistHold() {
+        symAssistArmed = false
+        uiHandler.removeCallbacks(symAssistRunnable)
+    }
+
+    private fun symTriggersScreenTrackpad(): Boolean =
+        SettingsManager.isScreenTrackpadEnabled(this) &&
+            SettingsManager.getScreenTrackpadTriggerKey(this) ==
+            SettingsManager.SCREEN_TRACKPAD_TRIGGER_SYM
     
     /**
      * Starts voice input using SpeechRecognizer via SpeechRecognitionManager.
@@ -4240,6 +4289,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
             }
         }
 
+        if (keyCode == KEYCODE_SYM) {
+            if (event?.repeatCount == 0) armSymAssistHold()
+        } else if (symAssistArmed && !isPureModifierKey(keyCode)) {
+            // Sym is being used as a chord modifier, not held on its own.
+            cancelSymAssistHold()
+        }
+
         if (SettingsManager.getFnLongPressSpeechEnabled(this)) {
             if (isFnSpeechKey(keyCode, event)) {
                 uiHandler.removeCallbacks(fnSpeechBurstResetRunnable)
@@ -4930,6 +4986,17 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
             if (::screenTrackpadController.isInitialized &&
                 screenTrackpadController.onKeyUp(keyCode, event, keyCode_, event_)
             ) {
+                return true
+            }
+        }
+
+        if (keyCode == KEYCODE_SYM && (symAssistArmed || symAssistTriggered)) {
+            cancelSymAssistHold()
+            if (symAssistTriggered) {
+                // The assistant is already up; this release must not also toggle a SYM page.
+                symAssistTriggered = false
+                symTogglePendingOnKeyUp = false
+                symChordUsedSinceKeyDown = false
                 return true
             }
         }

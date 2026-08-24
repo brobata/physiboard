@@ -33,6 +33,22 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
+
+        <!-- Dictation engine picker: list every installed speech recognition service -->
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+
+        <!-- Hold Sym for the assistant: resolve whichever voice-interaction intent it honours -->
+        <intent>
+            <action android:name="android.intent.action.VOICE_COMMAND" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.ASSIST" />
+        </intent>
+        <intent>
+            <action android:name="android.speech.action.VOICE_SEARCH_HANDS_FREE" />
+        </intent>
         
         <!-- Query per vedere i launcher -->
         <intent>
@@ -92,6 +108,18 @@
         </activity>
         
         <!-- Activity per la personalizzazione SYM -->
+        <!-- The orange side key can only be aimed at an activity, so this is the address the
+             vendor layer launches; it starts the assistant listening and finishes. -->
+        <activity
+            android:name=".inputmethod.AssistantTriggerActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:finishOnTaskLaunch="true"
+            android:label="@string/side_key_assistant_title"
+            android:launchMode="singleTop"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.NoDisplay" />
+
         <activity
             android:name=".SymCustomizationActivity"
             android:exported="false"
