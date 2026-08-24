@@ -4,6 +4,33 @@ PhysiBoard is a GPLv3 fork of [Pastiera](https://github.com/palsoftware/pastiera
 Andrea Palumbo (PalSoftware) and contributors. This file documents the fork's changes,
 as required by GPLv3 §5(a). Package: `brobata.physiboard` (`physi` product flavor).
 
+## 1.0.7 (2026-08-24)
+
+- **Ask the assistant without opening its app** — hold Sym, or long-press the orange
+  side key, and the assistant opens already listening. Nothing reproduces the system
+  assist gesture exactly (it calls the voice-interaction session directly, which is
+  closed to apps), and each assistant decides for itself whether a request starts
+  listening, so **How the assistant opens** lets you pick which request is sent. A tap
+  of Sym still opens the symbol pages; the hold is unavailable while Sym is the screen
+  trackpad trigger. The same action is bindable to any shortcut key as the new "Voice
+  assistant" command. The side key never reaches a keyboard, so it is redirected via
+  the vendor's `func1` settings — a system-level change that stays after uninstall, so
+  the previous target is captured and restored by Reset device settings to stock.
+- **Choose which speech engine transcribes** — dictation followed whatever the system
+  set as its recognizer. **Speech engine** now lists every installed recognition service
+  plus the on-device recognizer. Engines differ in accuracy, punctuation, endpointing
+  and whether they need a network, and a chosen engine that is later uninstalled falls
+  back to the system default rather than leaving dictation dead.
+- **The engine can time the end-of-speech pause** (Android 13+) — the keyboard used to
+  restart the recognizer after every result and time the pause itself, because the pause
+  extras are only hints. It now asks for one long session that the engine ends on your
+  pause. The old behaviour remains as the fallback, automatically when an engine refuses
+  or never closes a session, and manually via **Let the engine time the pause**.
+- **Automatic punctuation** — the engine can punctuate and capitalise what you dictate.
+- **Fixed: dictation ended with an error message** — the pause cancelled the recognizer
+  while its restarted request was still in flight, and that request reported the silence
+  as an error. Nothing had failed, so nothing is reported.
+
 ## 1.0.6 (2026-08-23)
 
 - **Fixed: Sym key did nothing with the status bar hidden** — the SYM pages render in

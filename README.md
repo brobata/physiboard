@@ -2,7 +2,7 @@
 
 ![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Android-3ddc84.svg)
-![Version](https://img.shields.io/badge/version-1.0.6-f59e0b.svg)
+![Version](https://img.shields.io/badge/version-1.0.7-f59e0b.svg)
 
 Input method for physical-keyboard Android devices (e.g. Unihertz Titan 2 Elite), designed to make typing faster through shortcuts, gestures, dictation, and customization.
 
