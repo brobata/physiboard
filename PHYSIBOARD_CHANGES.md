@@ -4,6 +4,23 @@ PhysiBoard is a GPLv3 fork of [Pastiera](https://github.com/palsoftware/pastiera
 Andrea Palumbo (PalSoftware) and contributors. This file documents the fork's changes,
 as required by GPLv3 §5(a). Package: `brobata.physiboard` (`physi` product flavor).
 
+## 1.0.8 (2026-08-24)
+
+- **Fixed: the assistant flashed PhysiBoard on the way through** — holding Sym or the
+  orange side key briefly showed the app, and whatever screen had been left open in it,
+  before the assistant appeared. The activity that hands off to the assistant now runs
+  in a task of its own and draws nothing at all.
+- **The speech engine picker says what the engines are** — it listed package names as
+  descriptions and showed Google twice, once as "System default" and again under its
+  app-drawer name, with nothing to tell them apart. Every engine now has a recognisable
+  name and a line saying what choosing it means: whether it runs on the phone, needs a
+  signal, or sends your speech to a server. The engine that "System default" currently
+  points at is marked as such.
+- **Vibration strength for dictation** — the start and stop cues already ran at the
+  phone's maximum amplitude, so the only way to make them firmer was to make the pulses
+  longer. Light, Standard and Strong do exactly that, and tapping one plays it so you
+  can feel the difference. New installs get Strong.
+
 ## 1.0.7 (2026-08-24)
 
 - **Ask the assistant without opening its app** — hold Sym, or long-press the orange
