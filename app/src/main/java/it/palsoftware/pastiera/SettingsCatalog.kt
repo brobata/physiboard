@@ -68,6 +68,7 @@ object SettingsCatalog {
         SettingsSearchEntry(R.string.fn_long_press_speech_title, R.string.settings_category_voice, SettingsSearchTarget.VOICE, "voice dictation microphone speech fn hold"),
         SettingsSearchEntry(R.string.alt_ctrl_speech_shortcut_title, R.string.settings_category_voice, SettingsSearchTarget.VOICE, "voice dictation speech shortcut"),
         SettingsSearchEntry(R.string.dictation_haptics_title, R.string.settings_category_voice, SettingsSearchTarget.VOICE, "vibrate vibration haptic dictation voice"),
+        SettingsSearchEntry(R.string.dictation_haptic_strength_title, R.string.settings_category_voice, SettingsSearchTarget.VOICE, "vibration strength stronger firmer haptic dictation voice"),
         SettingsSearchEntry(R.string.dictation_end_silence_title, R.string.settings_category_voice, SettingsSearchTarget.VOICE, "pause silence timeout cutoff dictation voice"),
         SettingsSearchEntry(R.string.dictation_mask_offensive_title, R.string.settings_category_voice, SettingsSearchTarget.VOICE, "profanity censor swear offensive f***"),
         SettingsSearchEntry(R.string.sym_long_press_assistant_title, R.string.settings_category_voice, SettingsSearchTarget.VOICE, "assistant gemini sym hold long press voice ask siri"),

@@ -26,12 +26,16 @@ object RecognitionEngines {
     /**
      * @param id the value stored in [SettingsManager.getDictationEngine].
      * @param label what the picker shows.
-     * @param detail the package or service backing it, or null for the abstract choices.
+     * @param detail why someone would choose it — never a package name, which tells a reader
+     *   nothing about how the engine behaves.
+     * @param isSystemDefault whether this is the engine "System default" currently resolves to,
+     *   so the picker can say so instead of listing the same engine twice unexplained.
      */
     data class Engine(
         val id: String,
         val label: String,
-        val detail: String?
+        val detail: String?,
+        val isSystemDefault: Boolean = false
     )
 
     /** The component the system currently routes voice input to, or null if unset/unreadable. */
@@ -45,13 +49,14 @@ object RecognitionEngines {
     /** Every installed [RecognitionService], plus the "system default" and on-device choices. */
     fun available(context: Context): List<Engine> {
         val engines = mutableListOf<Engine>()
+        val defaultPackage = systemDefaultComponent(context)?.packageName
 
-        val defaultLabel = systemDefaultComponent(context)
-            ?.let { appLabel(context, it.packageName) }
         engines += Engine(
             id = SettingsManager.DICTATION_ENGINE_SYSTEM_DEFAULT,
             label = context.getString(R.string.dictation_engine_system_default),
-            detail = defaultLabel
+            detail = defaultPackage
+                ?.let { context.getString(R.string.dictation_engine_system_default_is, engineName(context, it)) }
+                ?: context.getString(R.string.dictation_engine_system_default_detail)
         )
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
@@ -67,13 +72,39 @@ object RecognitionEngines {
         installedServices(context).forEach { component ->
             engines += Engine(
                 id = component.flattenToString(),
-                label = appLabel(context, component.packageName) ?: component.packageName,
-                detail = component.packageName
+                label = engineName(context, component.packageName),
+                detail = describe(context, component.packageName),
+                isSystemDefault = component.packageName == defaultPackage
             )
         }
 
         return engines
     }
+
+    /**
+     * A name someone would recognise. App labels are written for the app drawer, not for a
+     * chooser — Google's ships as "Speech Recognition and Synthesis from Google", which says
+     * nothing useful next to three other rows.
+     */
+    private fun engineName(context: Context, packageName: String): String = when (packageName) {
+        PACKAGE_GOOGLE_SPEECH -> context.getString(R.string.dictation_engine_google)
+        PACKAGE_SYSTEM_INTELLIGENCE -> context.getString(R.string.dictation_engine_asi)
+        else -> appLabel(context, packageName) ?: packageName
+    }
+
+    /** What choosing it means in practice — the only thing that helps someone decide. */
+    private fun describe(context: Context, packageName: String): String = when (packageName) {
+        PACKAGE_GOOGLE_SPEECH -> context.getString(R.string.dictation_engine_google_detail)
+        PACKAGE_SYSTEM_INTELLIGENCE -> context.getString(R.string.dictation_engine_asi_detail)
+        PACKAGE_HOME_ASSISTANT -> context.getString(R.string.dictation_engine_home_assistant_detail)
+        PACKAGE_CLAUDE -> context.getString(R.string.dictation_engine_claude_detail)
+        else -> context.getString(R.string.dictation_engine_other_detail)
+    }
+
+    private const val PACKAGE_GOOGLE_SPEECH = "com.google.android.tts"
+    private const val PACKAGE_SYSTEM_INTELLIGENCE = "com.google.android.as"
+    private const val PACKAGE_HOME_ASSISTANT = "io.homeassistant.companion.android"
+    private const val PACKAGE_CLAUDE = "com.anthropic.claude"
 
     /**
      * Resolves a stored id to a live recognizer, falling back to the system default whenever the

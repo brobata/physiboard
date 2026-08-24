@@ -70,6 +70,14 @@ object SettingsManager {
     private const val KEY_FN_LONG_PRESS_SPEECH = "fn_long_press_speech"
     private const val KEY_FN_SPEECH_SCAN_CODE = "fn_speech_scan_code"
     private const val KEY_DICTATION_HAPTICS = "dictation_haptics"
+    private const val KEY_DICTATION_HAPTIC_STRENGTH = "dictation_haptic_strength"
+
+    // How firm the dictation start/stop cues are. Amplitude is already pinned to the hardware
+    // maximum, so these differ in how LONG the pulses run — that, not amplitude, is what makes
+    // a cue feel firmer once you are at 255.
+    const val DICTATION_HAPTIC_LIGHT = "light"
+    const val DICTATION_HAPTIC_STANDARD = "standard"
+    const val DICTATION_HAPTIC_STRONG = "strong"
     private const val KEY_SYM_LONG_PRESS_ASSISTANT = "sym_long_press_assistant"
     private const val KEY_SIDE_KEY_ASSISTANT = "side_key_assistant"
     private const val KEY_ASSISTANT_ACTION = "assistant_action"
@@ -2381,6 +2389,18 @@ object SettingsManager {
         } catch (_: Exception) {
             true
         }
+    }
+
+    /** How firm the dictation cues are; one of the DICTATION_HAPTIC_* constants. */
+    fun getDictationHapticStrength(context: Context): String {
+        return getPreferences(context).getString(KEY_DICTATION_HAPTIC_STRENGTH, DICTATION_HAPTIC_STRONG)
+            ?: DICTATION_HAPTIC_STRONG
+    }
+
+    fun setDictationHapticStrength(context: Context, strength: String) {
+        getPreferences(context).edit()
+            .putString(KEY_DICTATION_HAPTIC_STRENGTH, strength)
+            .apply()
     }
 
     fun setDictationHapticsEnabled(context: Context, enabled: Boolean) {

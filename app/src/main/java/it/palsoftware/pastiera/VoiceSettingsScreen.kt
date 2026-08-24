@@ -246,10 +246,7 @@ fun VoiceSettingsScreen(
             VoiceSectionHeader(text = stringResource(R.string.voice_section_transcription))
             VoiceNavigationRow(
                 title = stringResource(R.string.dictation_engine_title),
-                description = engines.firstOrNull { it.id == dictationEngine }
-                    ?.let { engine ->
-                        engine.detail?.let { "${engine.label} \u2014 $it" } ?: engine.label
-                    }
+                description = engines.firstOrNull { it.id == dictationEngine }?.label
                     ?: stringResource(R.string.dictation_engine_system_default),
                 icon = Icons.Filled.RecordVoiceOver,
                 onClick = { showEnginePicker = true }
@@ -423,6 +420,13 @@ fun VoiceSettingsScreen(
                                         text = engine.label,
                                         style = MaterialTheme.typography.bodyLarge
                                     )
+                                    if (engine.isSystemDefault) {
+                                        Text(
+                                            text = stringResource(R.string.dictation_engine_is_system_default),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
                                     engine.detail?.let { detail ->
                                         Text(
                                             text = detail,

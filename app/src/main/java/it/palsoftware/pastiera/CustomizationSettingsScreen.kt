@@ -65,6 +65,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import it.palsoftware.pastiera.R
+import it.palsoftware.pastiera.inputmethod.DictationHaptics
 import it.palsoftware.pastiera.commands.CommandRegistry
 import it.palsoftware.pastiera.commands.CommandIcon
 import it.palsoftware.pastiera.commands.CommandSourceId
@@ -2092,6 +2093,60 @@ private fun DictationHapticsSettingsRow() {
                     SettingsManager.setDictationHapticsEnabled(context, enabled)
                 }
             )
+        }
+    }
+    if (dictationHaptics) {
+        DictationHapticStrengthRow()
+    }
+}
+
+/** Only shown while the cues are on — a strength for a cue that never plays is noise. */
+@Composable
+private fun DictationHapticStrengthRow() {
+    val context = LocalContext.current
+    var strength by remember {
+        mutableStateOf(SettingsManager.getDictationHapticStrength(context))
+    }
+    val levels = listOf(
+        SettingsManager.DICTATION_HAPTIC_LIGHT to R.string.dictation_haptic_light,
+        SettingsManager.DICTATION_HAPTIC_STANDARD to R.string.dictation_haptic_standard,
+        SettingsManager.DICTATION_HAPTIC_STRONG to R.string.dictation_haptic_strong
+    )
+    Surface(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.dictation_haptic_strength_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                text = stringResource(R.string.dictation_haptic_strength_description),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                levels.forEach { (value, labelRes) ->
+                    FilterChip(
+                        selected = strength == value,
+                        onClick = {
+                            strength = value
+                            SettingsManager.setDictationHapticStrength(context, value)
+                            // Play it now: the only way to judge a haptic is to feel it.
+                            DictationHaptics.play(context, value)
+                        },
+                        label = { Text(stringResource(labelRes)) }
+                    )
+                }
+            }
         }
     }
 }

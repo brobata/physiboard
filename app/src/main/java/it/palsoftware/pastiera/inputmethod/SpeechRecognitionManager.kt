@@ -846,27 +846,10 @@ class SpeechRecognitionManager(
             if (!stopCuePending) return
             stopCuePending = false
         }
-        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)?.defaultVibrator
-        } else {
-            @Suppress("DEPRECATION")
-            context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
-        } ?: return
-        // Full-strength cues: the phone is usually on a desk or in a hand at arm's length
-        // while dictating, so the default (touch-feedback) amplitude is easy to miss.
-        val effect = if (started) {
-            // Two firm ticks: listening.
-            VibrationEffect.createWaveform(
-                longArrayOf(0, 60, 70, 60),
-                intArrayOf(0, 255, 0, 255),
-                -1
-            )
-        } else {
-            // One long pulse: stopped.
-            VibrationEffect.createOneShot(160, 255)
-        }
-        // Plain vibrate(): notification-class attributes are muted whenever the phone's
-        // notification vibration is off, which silenced the cues entirely.
-        vibrator.vibrate(effect)
+        DictationHaptics.play(
+            context = context,
+            strength = SettingsManager.getDictationHapticStrength(context),
+            started = started
+        )
     }
 }
