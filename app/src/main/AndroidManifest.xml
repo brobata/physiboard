@@ -116,9 +116,10 @@
             android:excludeFromRecents="true"
             android:finishOnTaskLaunch="true"
             android:label="@string/side_key_assistant_title"
-            android:launchMode="singleTop"
+            android:launchMode="singleInstance"
             android:noHistory="true"
-            android:theme="@android:style/Theme.NoDisplay" />
+            android:taskAffinity=""
+            android:theme="@style/Theme.Pastiera.Trampoline" />
 
         <activity
             android:name=".SymCustomizationActivity"
