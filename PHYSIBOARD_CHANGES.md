@@ -8,8 +8,9 @@ as required by GPLv3 §5(a). Package: `brobata.physiboard` (`physi` product flav
 
 - **The status bar can be per app.** *Show status bar* is now Always, Never, or *Only in these
   apps*: pick the apps where the on-screen bar earns its space (messaging, mail) and it stays
-  out of the way everywhere else, including the launcher's search box. Existing on/off settings
-  carry over as Always/Never.
+  out of the way everywhere else, including the launcher's search box. Messaging, mail and
+  social apps (Messages, Gmail, WhatsApp, Messenger, Facebook, Instagram, Telegram, Signal and
+  friends) are listed to start with. Existing on/off settings carry over as Always/Never.
 
 ## 1.2.1 (2026-08-26)
 

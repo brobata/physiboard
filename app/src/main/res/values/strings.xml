@@ -1807,7 +1807,7 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="show_status_bar_always">Always</string>
     <string name="show_status_bar_never">Never</string>
     <string name="show_status_bar_apps">Only in these apps</string>
-    <string name="show_status_bar_apps_description">The bar shows while typing in a listed app and stays hidden everywhere else, like the launcher\'s search box.</string>
+    <string name="show_status_bar_apps_description">The bar shows while typing in a listed app and stays hidden everywhere else, like the launcher\'s search box. Messaging, mail and social apps are listed to start with.</string>
     <string name="show_status_bar_apps_add">Add an app</string>
     <string name="show_status_bar_apps_remove">Remove</string>
     <string name="status_bar_buttons_title">Status Bar</string>

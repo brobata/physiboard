@@ -713,9 +713,40 @@ object SettingsManager {
             .apply()
     }
 
+    /**
+     * Where the bar earns its space out of the box: messaging, mail and social apps. Seeded
+     * the first time the list is read, so a user who picks "Only in these apps" does not start
+     * from an empty list; entries for apps that are not installed are harmless.
+     */
+    val STATUS_BAR_DEFAULT_APPS: Set<String> = setOf(
+        "com.google.android.gm",                 // Gmail
+        "com.google.android.apps.messaging",     // Google Messages
+        "com.android.mms",                       // AOSP Messaging
+        "com.whatsapp",
+        "com.whatsapp.w4b",                      // WhatsApp Business
+        "com.facebook.orca",                     // Messenger
+        "com.facebook.mlite",                    // Messenger Lite
+        "com.facebook.katana",                   // Facebook
+        "com.instagram.android",
+        "org.telegram.messenger",
+        "org.thoughtcrime.securesms",            // Signal
+        "com.discord",
+        "com.Slack",
+        "com.microsoft.teams",
+        "com.microsoft.office.outlook",
+        "com.snapchat.android",
+        "com.twitter.android",                   // X
+        "com.reddit.frontpage",
+        "com.linkedin.android",
+        "com.google.android.talk"                // Google Chat
+    )
+
     /** Packages the strip shows in when visibility is [StatusBarVisibility.APPS]. */
     fun getStatusBarAppPackages(context: Context): Set<String> {
-        return getPreferences(context).getStringSet(KEY_STATUS_BAR_APPS, emptySet()) ?: emptySet()
+        val prefs = getPreferences(context)
+        prefs.getStringSet(KEY_STATUS_BAR_APPS, null)?.let { return it }
+        prefs.edit().putStringSet(KEY_STATUS_BAR_APPS, STATUS_BAR_DEFAULT_APPS).apply()
+        return STATUS_BAR_DEFAULT_APPS
     }
 
     fun setStatusBarApp(context: Context, packageName: String, enabled: Boolean) {

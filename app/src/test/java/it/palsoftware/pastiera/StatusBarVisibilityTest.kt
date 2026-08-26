@@ -31,6 +31,16 @@ class StatusBarVisibilityTest {
     }
 
     @Test
+    fun appListStartsWithMessagingApps() {
+        context.getSharedPreferences("pastiera_prefs", 0).edit().clear().apply()
+        val seeded = SettingsManager.getStatusBarAppPackages(context)
+        assertTrue("com.whatsapp" in seeded)
+        assertTrue("com.google.android.gm" in seeded)
+        SettingsManager.setStatusBarApp(context, "com.whatsapp", false)
+        assertFalse("com.whatsapp" in SettingsManager.getStatusBarAppPackages(context))
+    }
+
+    @Test
     fun legacyBooleanMapsToAlwaysOrNever() {
         val prefs = context.getSharedPreferences("pastiera_prefs", 0)
         prefs.edit().clear().putBoolean(SettingsManager.KEY_SHOW_STATUS_BAR, true).apply()

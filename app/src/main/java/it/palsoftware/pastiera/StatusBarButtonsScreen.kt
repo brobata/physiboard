@@ -437,7 +437,9 @@ private fun StatusBarVisibilitySection(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 16.dp)
         )
-        apps.sortedBy { statusBarAppLabel(context, it).lowercase() }.forEach { pkg ->
+        apps.filter { isPackageInstalled(context, it) }
+            .sortedBy { statusBarAppLabel(context, it).lowercase() }
+            .forEach { pkg ->
             Surface(modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
@@ -463,6 +465,9 @@ private fun StatusBarVisibilitySection(
         ) { Text(stringResource(R.string.show_status_bar_apps_add)) }
     }
 }
+
+private fun isPackageInstalled(context: android.content.Context, packageName: String): Boolean =
+    runCatching { context.packageManager.getApplicationInfo(packageName, 0) }.isSuccess
 
 private fun statusBarAppLabel(context: android.content.Context, packageName: String): String =
     runCatching {
