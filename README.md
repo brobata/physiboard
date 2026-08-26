@@ -4,7 +4,13 @@
 ![Platform](https://img.shields.io/badge/platform-Android-3ddc84.svg)
 ![Version](https://img.shields.io/badge/version-1.0.8-f59e0b.svg)
 
-Input method for physical-keyboard Android devices (e.g. Unihertz Titan 2 Elite), designed to make typing faster through shortcuts, gestures, dictation, and customization.
+**A keyboard and a toolbox for the Unihertz Titan 2 Elite.**
+
+PhysiBoard started as an input method for physical-keyboard Android devices, and it still is one — shortcuts, gestures, dictation, layouts. But an input method is always running, starts at boot, and can hold a paired ADB session, which turns out to be the only practical way to reach the things Unihertz locks away on this phone. So it also does those.
+
+**As a keyboard:** hold-Fn dictation, a screen-wide trackpad, SYM pages, layouts, autocorrection, clipboard history.
+
+**As a device toolbox:** remove the vendor apps Android refuses to uninstall, change screen density, unbury settings Android supports and this ROM hides, keep the keyboard backlight on, remap the Fn and orange side keys — all through one wireless-debugging pairing, no root and no companion app.
 
 PhysiBoard is a **fork of [Pastiera](https://github.com/palsoftware/pastiera)** by Andrea Palumbo (PalSoftware) and its contributors — the keyboard engine is their work. This fork adds a physical-keyboard-focused feature set (hold-Fn dictation, an always-on-in-the-dark backlight, a terminal-style UI) on top of it.
 
@@ -13,6 +19,17 @@ PhysiBoard is a **fork of [Pastiera](https://github.com/palsoftware/pastiera)** 
 <p align="center">
   <img src="docs/screenshots/home.png" width="300" alt="PhysiBoard home screen">
 </p>
+
+## The toolbox *(fork)*
+
+Everything here needs privileges Android will not grant an ordinary app. PhysiBoard reaches them through a vendored ADB pairing you do once — the same one the backlight has used since 1.0.1. Every change is reversible, and **Reset device settings to stock** undoes all of them at once.
+
+- **Remove bloat** — Unihertz ships packages Android offers no way to remove. A curated catalog of 29, inventoried on a real Titan 2 Elite and pinned to the firmware version it was checked against, grouped from production-line test tools through to features that merely duplicate what Android already does. Disabling is the default and is instantly reversible; uninstalling is a second, deliberate step. **Restore all** puts everything back, driven by a journal rather than the catalog, so packages you disabled two releases ago still come back. Packages the phone or PhysiBoard depend on are protected in code and can never be offered.
+- **Android Auto stabilizer** — one tap disables the six vendor tools whose job is stopping background apps from running. Android Auto is a long-running session, which is exactly what those interrupt. Reversible, and honest about being the most likely cause rather than a proven one.
+- **Screen density** — fit more on a short screen. Applied with a fifteen-second countdown that reverts itself unless you confirm the screen is still readable, because a confirmation dialog is no use for a change that makes the screen unreadable.
+- **System tweaks** — animation speed (all three globals, not the one everybody sets), notification history and one-handed mode: supported by Android, never surfaced by this ROM.
+- **Key mapping** — every physical key and what it currently does, assembled from both the vendor rows the firmware reads and PhysiBoard's own handling.
+- **Orange side key** — long-press it to open your assistant already listening, instead of the assistant's app.
 
 ## What this fork adds
 
