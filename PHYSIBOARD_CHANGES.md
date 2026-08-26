@@ -4,6 +4,40 @@ PhysiBoard is a GPLv3 fork of [Pastiera](https://github.com/palsoftware/pastiera
 Andrea Palumbo (PalSoftware) and contributors. This file documents the fork's changes,
 as required by GPLv3 §5(a). Package: `brobata.physiboard` (`physi` product flavor).
 
+## 1.1.0 (2026-08-25)
+
+PhysiBoard becomes a toolbox as well as a keyboard. It has held a paired ADB session
+since 1.0.1 to keep the backlight on; this release uses that access for the rest of what
+Unihertz locks away. Everything is reversible, and Reset device settings to stock still
+undoes all of it at once.
+
+- **Remove bloat** — the vendor packages Android gives you no way to remove. A curated
+  catalog of 29, inventoried on a real Titan 2 Elite and pinned to the firmware it was
+  checked against, tiered from production-line test tools to features that merely
+  duplicate what Android already does. **Disabling is the default** and is instantly
+  reversible; uninstalling is a second, deliberate step behind a warning. **Restore all**
+  is driven by a journal rather than the catalog, so a package disabled two releases ago
+  still comes back. Packages the phone or PhysiBoard depend on are protected in code and
+  can never be offered — including the one that owns the orange side key.
+- **Android Auto stabilizer** — one tap disables the six vendor tools whose job is
+  stopping background apps from running. Android Auto is a long-running session, which is
+  exactly what those interrupt. This is the most likely cause of a connection that keeps
+  dropping, not a proven one; it is reversible, which is what makes it worth trying.
+- **Screen density** — fit more on a short screen, applied with a fifteen-second countdown
+  that reverts itself unless you confirm the screen is still readable. A confirmation
+  dialog is no help for a change that makes the screen unreadable.
+- **System tweaks** — animation speed across all three of Android's animation settings
+  rather than the one most guides mention, plus notification history and one-handed mode:
+  supported by Android, never surfaced by this ROM.
+- **Key mapping** — every physical key and what it currently does, assembled from both the
+  vendor rows the firmware reads before any app sees the key and PhysiBoard's own handling.
+  Including the keys bound to nothing.
+- **Settings rebuilt around three hubs** — Device, Keyboard and Extras. Settings had grown
+  to sixteen top-level rows and the home screen to eight tiles, several opening the same
+  places. Every destination now lives on exactly one hub. Nothing was removed: the long
+  tail moved to Extras.
+- **Fixed: Back from a home tile** walked out through a Settings screen you never opened.
+
 ## 1.0.8 (2026-08-24)
 
 - **Fixed: the assistant flashed PhysiBoard on the way through** — holding Sym or the

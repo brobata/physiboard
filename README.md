@@ -2,7 +2,7 @@
 
 ![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Android-3ddc84.svg)
-![Version](https://img.shields.io/badge/version-1.0.8-f59e0b.svg)
+![Version](https://img.shields.io/badge/version-1.1.0-f59e0b.svg)
 
 **A keyboard and a toolbox for the Unihertz Titan 2 Elite.**
 
