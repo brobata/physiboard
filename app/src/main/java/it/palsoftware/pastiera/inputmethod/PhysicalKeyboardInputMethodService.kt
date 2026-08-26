@@ -2239,7 +2239,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
             } else if (
                 key == SettingsManager.KEY_SHOW_STATUS_BAR ||
                 key == SettingsManager.KEY_STATUS_BAR_VISIBILITY ||
-                key == SettingsManager.KEY_STATUS_BAR_APPS
+                key == SettingsManager.KEY_STATUS_BAR_APPS ||
+                key == SettingsManager.KEY_STATUS_BAR_HEIGHT_DP
             ) {
                 // Master status-bar toggle. Purely visual: re-render the strip so it
                 // collapses/expands without restarting the IME. The snapshot itself is

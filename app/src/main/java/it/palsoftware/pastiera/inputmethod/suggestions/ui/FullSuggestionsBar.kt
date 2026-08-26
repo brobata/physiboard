@@ -125,8 +125,21 @@ class FullSuggestionsBar(
         announceForAccessibility(text)
     }
 
+    /**
+     * Fixed height for the hardware-keyboard strip, in dp; null lets the theme's suggestions
+     * height scale size the bar (the on-screen keyboard case).
+     */
+    var fixedHeightDp: Int? = null
+        set(value) {
+            if (field == value) return
+            field = value
+            if (lastSlots.isNotEmpty()) lastSlots = emptyList()
+            applyHeight()
+        }
+
     private val targetHeightPx: Int
-        get() = dpToPx(BASE_HEIGHT_DP * (themeOverride?.suggestionsHeightScale ?: 1f).coerceIn(it.palsoftware.pastiera.KEYBOARD_THEME_BAR_HEIGHT_MIN, it.palsoftware.pastiera.KEYBOARD_THEME_BAR_HEIGHT_MAX))
+        get() = fixedHeightDp?.let { dpToPx(it.toFloat()) }
+            ?: dpToPx(BASE_HEIGHT_DP * (themeOverride?.suggestionsHeightScale ?: 1f).coerceIn(it.palsoftware.pastiera.KEYBOARD_THEME_BAR_HEIGHT_MIN, it.palsoftware.pastiera.KEYBOARD_THEME_BAR_HEIGHT_MAX))
 
     /**
      * Sets the assets and IME service class needed for subtype cycling.

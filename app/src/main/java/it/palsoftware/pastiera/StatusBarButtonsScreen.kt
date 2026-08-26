@@ -44,6 +44,7 @@ fun StatusBarButtonsScreen(
     var statusBarVisibility by remember { mutableStateOf(SettingsManager.getStatusBarVisibility(context)) }
     var statusBarApps by remember { mutableStateOf(SettingsManager.getStatusBarAppPackages(context)) }
     var pickingStatusBarApp by remember { mutableStateOf(false) }
+    var statusBarHeightDp by remember { mutableStateOf(SettingsManager.getStatusBarHeightDp(context)) }
     var leftSlots by remember { mutableStateOf(SettingsManager.getStatusBarSlotsLeft(context)) }
     var rightSlots by remember { mutableStateOf(SettingsManager.getStatusBarSlotsRight(context)) }
     var pastierinaLeftSlots by remember {
@@ -188,6 +189,13 @@ fun StatusBarButtonsScreen(
             onRemoveApp = { pkg ->
                 SettingsManager.setStatusBarApp(context, pkg, false)
                 statusBarApps = SettingsManager.getStatusBarAppPackages(context)
+            }
+        )
+        StatusBarHeightRow(
+            heightDp = statusBarHeightDp,
+            onHeightChange = { dp ->
+                statusBarHeightDp = dp
+                SettingsManager.setStatusBarHeightDp(context, dp)
             }
         )
         if (pickingStatusBarApp) {
@@ -463,6 +471,36 @@ private fun StatusBarVisibilitySection(
             onClick = onAddApp,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         ) { Text(stringResource(R.string.show_status_bar_apps_add)) }
+    }
+}
+
+@Composable
+private fun StatusBarHeightRow(heightDp: Int, onHeightChange: (Int) -> Unit) {
+    Surface(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Text(
+                text = stringResource(R.string.status_bar_height_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                text = stringResource(R.string.status_bar_height_description),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                SettingsManager.STATUS_BAR_HEIGHT_OPTIONS_DP.forEach { dp ->
+                    FilterChip(
+                        selected = heightDp == dp,
+                        onClick = { onHeightChange(dp) },
+                        label = { Text(stringResource(R.string.status_bar_height_option, dp)) }
+                    )
+                }
+            }
+        }
     }
 }
 

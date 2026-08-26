@@ -1809,6 +1809,9 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="show_status_bar_apps">Only in these apps</string>
     <string name="show_status_bar_apps_description">The bar shows while typing in a listed app and stays hidden everywhere else, like the launcher\'s search box. Messaging, mail and social apps are listed to start with.</string>
     <string name="show_status_bar_apps_add">Add an app</string>
+    <string name="status_bar_height_title">Bar height</string>
+    <string name="status_bar_height_description">How tall the strip is with the physical keyboard. 56 matches a text box; 48 is the smallest comfortable tap.</string>
+    <string name="status_bar_height_option">%1$d</string>
     <string name="show_status_bar_apps_remove">Remove</string>
     <string name="status_bar_buttons_title">Status Bar</string>
     <string name="status_bar_buttons_description">Configure the Status Bar and Pastierina Mode.</string>

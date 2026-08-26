@@ -289,6 +289,10 @@ object SettingsManager {
     const val KEY_STATUS_BAR_VISIBILITY = "status_bar_visibility"
     private const val KEY_HARDWARE_BAR_HEIGHT_MIGRATED = "hardware_bar_height_migrated"
     const val KEY_STATUS_BAR_APPS = "status_bar_apps"
+    const val KEY_STATUS_BAR_HEIGHT_DP = "status_bar_height_dp"
+    /** Hardware-strip heights on offer: compact, touch minimum, a text box, and bigger. */
+    val STATUS_BAR_HEIGHT_OPTIONS_DP = listOf(36, 48, 56, 64)
+    const val STATUS_BAR_DEFAULT_HEIGHT_DP = 56
     private const val KEY_STATUS_BAR_SLOT_LEFT = "status_bar_slot_left"
     private const val KEY_STATUS_BAR_SLOT_RIGHT_1 = "status_bar_slot_right_1"
     private const val KEY_STATUS_BAR_SLOT_RIGHT_2 = "status_bar_slot_right_2"
@@ -686,6 +690,18 @@ object SettingsManager {
             context,
             if (show) StatusBarVisibility.ALWAYS else StatusBarVisibility.NEVER
         )
+    }
+
+    /**
+     * Height of the hardware-keyboard strip in dp. Independent of the theme's suggestions
+     * height scale, which only sizes the bar above the on-screen keyboard: the strip is a
+     * touch target on its own and needs to be at least a text box tall.
+     */
+    fun getStatusBarHeightDp(context: Context): Int =
+        getPreferences(context).getInt(KEY_STATUS_BAR_HEIGHT_DP, STATUS_BAR_DEFAULT_HEIGHT_DP)
+
+    fun setStatusBarHeightDp(context: Context, heightDp: Int) {
+        getPreferences(context).edit().putInt(KEY_STATUS_BAR_HEIGHT_DP, heightDp).apply()
     }
 
     /** Where the on-screen strip is allowed to appear. */

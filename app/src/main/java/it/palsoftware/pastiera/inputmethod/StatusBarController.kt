@@ -2727,6 +2727,8 @@ class StatusBarController(
             isSoftwareKeyboardSymbolPage || isSoftwareKeyboardClipboardPage || isSoftwareKeyboardEmojiPage
         val activeTheme = activeThemeSettings(isFullSoftwareKeyboardMode)
         val activeColors = activeTheme.toKeyboardThemeColors()
+        fullSuggestionsBar?.fixedHeightDp =
+            if (isFullSoftwareKeyboardMode) null else SettingsManager.getStatusBarHeightDp(context)
         val softwareThemeSettings = if (isFullSoftwareKeyboardMode) activeTheme else softwareTheme()
         variationBarView?.onVariationSelectedListener = onVariationSelectedListener
         variationBarView?.onCursorMovedListener = onCursorMovedListener
