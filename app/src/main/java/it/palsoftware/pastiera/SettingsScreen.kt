@@ -34,6 +34,12 @@ import androidx.compose.material.icons.filled.SmartButton
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.FormatSize
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Code
@@ -83,7 +89,14 @@ enum class SettingsDestination {
     Modifiers,
     AppRawMode,
     SmartBacklight,
-    Voice
+    Voice,
+    Toolbox,
+    BloatRemover,
+    DisplayDensity,
+    SystemTweaks,
+    KeyboardHub,
+    Extras,
+    KeyMapping
 }
 
 private val settingsNavigationStackSaver =
@@ -134,6 +147,15 @@ fun SettingsScreen(
             } else if (initialDestination == SettingsActivity.DESTINATION_SMART_BACKLIGHT) {
                 add(SettingsDestination.Main)
                 add(SettingsDestination.SmartBacklight)
+            } else if (initialDestination == SettingsActivity.DESTINATION_TOOLBOX) {
+                add(SettingsDestination.Toolbox)
+            } else if (initialDestination == SettingsActivity.DESTINATION_KEYBOARD_HUB) {
+                add(SettingsDestination.KeyboardHub)
+            } else if (initialDestination == SettingsActivity.DESTINATION_EXTRAS) {
+                add(SettingsDestination.Extras)
+            } else if (initialDestination == SettingsActivity.DESTINATION_REMOVE_BLOAT) {
+                add(SettingsDestination.Toolbox)
+                add(SettingsDestination.BloatRemover)
             } else if (initialDestination == SettingsActivity.DESTINATION_SCREEN_TRACKPAD) {
                 add(SettingsDestination.Main)
                 add(SettingsDestination.ScreenTrackpad)
@@ -240,6 +262,9 @@ fun SettingsScreen(
                     checkingForUpdates = checkingForUpdates,
                     onCheckingForUpdatesChange = { checkingForUpdates = it },
                     onStatusClick = { navigateTo(SettingsDestination.Status) },
+                    onToolboxClick = { navigateTo(SettingsDestination.Toolbox) },
+                    onKeyboardHubClick = { navigateTo(SettingsDestination.KeyboardHub) },
+                    onExtrasClick = { navigateTo(SettingsDestination.Extras) },
                     onModifiersClick = { navigateTo(SettingsDestination.Modifiers) },
                     onKeyboardsDevicesClick = { navigateTo(SettingsDestination.KeyboardsDevices) },
                     onTextInputClick = { navigateTo(SettingsDestination.TextInput) },
@@ -335,6 +360,208 @@ fun SettingsScreen(
                     onBack = { navigateBack() }
                 )
             }
+            SettingsDestination.Toolbox -> {
+                SettingsHubScreen(
+                    modifier = modifier,
+                    title = stringResource(R.string.toolbox_title),
+                    intro = stringResource(R.string.toolbox_intro),
+                    onBack = { navigateBack() },
+                    rows = listOf(
+                        HubRow(
+                            icon = Icons.Filled.LightMode,
+                            title = stringResource(R.string.smart_backlight_title),
+                            description = stringResource(R.string.smart_backlight_row_description),
+                            onClick = { navigateTo(SettingsDestination.SmartBacklight) }
+                        ),
+                        HubRow(
+                            icon = Icons.Filled.DeleteSweep,
+                            title = stringResource(R.string.bloat_title),
+                            description = stringResource(R.string.bloat_row_description),
+                            onClick = { navigateTo(SettingsDestination.BloatRemover) }
+                        ),
+                        HubRow(
+                            icon = Icons.Filled.FormatSize,
+                            title = stringResource(R.string.density_title),
+                            description = stringResource(R.string.density_row_description),
+                            onClick = { navigateTo(SettingsDestination.DisplayDensity) }
+                        ),
+                        HubRow(
+                            icon = Icons.Filled.Speed,
+                            title = stringResource(R.string.tweaks_title),
+                            description = stringResource(R.string.tweaks_row_description),
+                            onClick = { navigateTo(SettingsDestination.SystemTweaks) }
+                        ),
+                        HubRow(
+                            icon = Icons.Filled.Keyboard,
+                            title = stringResource(R.string.keymap_title),
+                            description = stringResource(R.string.keymap_row_description),
+                            onClick = { navigateTo(SettingsDestination.KeyMapping) }
+                        )
+                    )
+                )
+            }
+            SettingsDestination.KeyMapping -> {
+                KeyMappingScreen(
+                    modifier = modifier,
+                    onBack = { navigateBack() },
+                    onFnLayer = {
+                        requestedNavModeKeyCode = null
+                        navigateTo(SettingsDestination.NavMode)
+                    },
+                    onVoice = { navigateTo(SettingsDestination.Voice) },
+                    onTrackpad = { navigateTo(SettingsDestination.ScreenTrackpad) }
+                )
+            }
+            SettingsDestination.KeyboardHub -> {
+                SettingsHubScreen(
+                    modifier = modifier,
+                    title = stringResource(R.string.keyboard_hub_title),
+                    intro = stringResource(R.string.keyboard_hub_intro),
+                    onBack = { navigateBack() },
+                    rows = listOf(
+                        HubRow(
+                            icon = Icons.Filled.TextFields,
+                            title = stringResource(R.string.settings_category_text_input),
+                            description = stringResource(R.string.keyboard_hub_typing_description),
+                            onClick = { navigateTo(SettingsDestination.TextInput) }
+                        ),
+                        HubRow(
+                            icon = Icons.Filled.Spellcheck,
+                            title = stringResource(R.string.settings_category_auto_correction),
+                            description = stringResource(R.string.keyboard_hub_autocorrect_description),
+                            onClick = { navigateTo(SettingsDestination.AutoCorrection) }
+                        ),
+                        HubRow(
+                            icon = Icons.Filled.Mic,
+                            title = stringResource(R.string.settings_category_voice),
+                            description = stringResource(R.string.keyboard_hub_voice_description),
+                            onClick = { navigateTo(SettingsDestination.Voice) }
+                        ),
+                        HubRow(
+                            icon = Icons.Filled.Gesture,
+                            title = stringResource(R.string.screen_trackpad_title),
+                            description = stringResource(R.string.screen_trackpad_description),
+                            onClick = { navigateTo(SettingsDestination.ScreenTrackpad) }
+                        ),
+                        HubRow(
+                            icon = Icons.Filled.Palette,
+                            title = stringResource(R.string.keyboard_theme_title),
+                            description = stringResource(R.string.keyboard_hub_theme_description),
+                            onClick = {
+                                openCustomization(SettingsActivity.CUSTOMIZATION_DESTINATION_KEYBOARD_THEME)
+                            }
+                        ),
+                        HubRow(
+                            icon = Icons.AutoMirrored.Filled.VolumeUp,
+                            title = stringResource(R.string.settings_category_sounds),
+                            description = stringResource(R.string.settings_sounds_description),
+                            onClick = {
+                                openCustomization(SettingsActivity.CUSTOMIZATION_DESTINATION_SOUNDS)
+                            }
+                        ),
+                        HubRow(
+                            icon = ImageVector.vectorResource(R.drawable.modifier_keys_24),
+                            title = stringResource(R.string.modifiers_title),
+                            description = stringResource(R.string.modifiers_description),
+                            onClick = { navigateTo(SettingsDestination.Modifiers) }
+                        )
+                    )
+                )
+            }
+            SettingsDestination.Extras -> {
+                SettingsHubScreen(
+                    modifier = modifier,
+                    title = stringResource(R.string.extras_title),
+                    intro = stringResource(R.string.extras_intro),
+                    onBack = { navigateBack() },
+                    rows = listOf(
+                        HubRow(
+                            icon = Icons.Filled.Block,
+                            title = stringResource(R.string.app_raw_mode_title),
+                            description = stringResource(R.string.app_raw_mode_row_description),
+                            onClick = { navigateTo(SettingsDestination.AppRawMode) }
+                        ),
+                        HubRow(
+                            icon = Icons.AutoMirrored.Filled.KeyboardReturn,
+                            title = stringResource(R.string.app_enter_behaviour_title),
+                            description = stringResource(R.string.app_enter_behaviour_description),
+                            onClick = {
+                                openCustomization(SettingsActivity.CUSTOMIZATION_DESTINATION_APP_ENTER_BEHAVIOR)
+                            }
+                        ),
+                        HubRow(
+                            icon = Icons.AutoMirrored.Filled.ManageSearch,
+                            title = stringResource(R.string.starter_launcher_shortcuts_title),
+                            description = stringResource(R.string.starter_launcher_shortcuts_description),
+                            onClick = {
+                                openCustomization(SettingsActivity.CUSTOMIZATION_DESTINATION_LAUNCHER_SHORTCUTS)
+                            }
+                        ),
+                        HubRow(
+                            icon = Icons.Filled.SmartButton,
+                            title = stringResource(R.string.status_bar_buttons_title),
+                            description = stringResource(R.string.status_bar_buttons_description),
+                            onClick = {
+                                openCustomization(SettingsActivity.CUSTOMIZATION_DESTINATION_STATUS_BAR_BUTTONS)
+                            }
+                        ),
+                        HubRow(
+                            icon = Icons.Filled.Tune,
+                            title = stringResource(R.string.settings_category_customization),
+                            description = stringResource(R.string.extras_customization_description),
+                            onClick = { openCustomization(null) }
+                        ),
+                        HubRow(
+                            icon = Icons.Filled.Language,
+                            title = stringResource(R.string.custom_input_styles_title),
+                            description = stringResource(R.string.extras_languages_description),
+                            onClick = { navigateTo(SettingsDestination.CustomInputStyles) }
+                        ),
+                        HubRow(
+                            icon = Icons.Filled.TouchApp,
+                            title = stringResource(R.string.settings_category_accessibility),
+                            description = stringResource(R.string.extras_accessibility_description),
+                            onClick = { navigateTo(SettingsDestination.Accessibility) }
+                        ),
+                        HubRow(
+                            icon = Icons.Filled.Engineering,
+                            title = stringResource(R.string.settings_category_advanced),
+                            description = stringResource(R.string.toolbox_advanced_description),
+                            onClick = { navigateTo(SettingsDestination.Advanced) }
+                        ),
+                        HubRow(
+                            icon = Icons.Filled.Info,
+                            title = stringResource(R.string.about_title),
+                            description = stringResource(
+                                R.string.settings_about_version_summary,
+                                BuildConfig.VERSION_NAME
+                            ),
+                            onClick = { navigateTo(SettingsDestination.About) }
+                        )
+                    )
+                )
+            }
+            SettingsDestination.SystemTweaks -> {
+                SystemTweaksScreen(
+                    modifier = modifier,
+                    onBack = { navigateBack() },
+                    onOpenPairing = { navigateTo(SettingsDestination.SmartBacklight) }
+                )
+            }
+            SettingsDestination.DisplayDensity -> {
+                DisplayDensityScreen(
+                    modifier = modifier,
+                    onBack = { navigateBack() },
+                    onOpenPairing = { navigateTo(SettingsDestination.SmartBacklight) }
+                )
+            }
+            SettingsDestination.BloatRemover -> {
+                BloatRemoverScreen(
+                    modifier = modifier,
+                    onBack = { navigateBack() },
+                    onOpenPairing = { navigateTo(SettingsDestination.SmartBacklight) }
+                )
+            }
             SettingsDestination.Voice -> {
                 VoiceSettingsScreen(
                     modifier = modifier,
@@ -420,6 +647,9 @@ private fun SettingsMainScreen(
     checkingForUpdates: Boolean,
     onCheckingForUpdatesChange: (Boolean) -> Unit,
     onStatusClick: () -> Unit,
+    onToolboxClick: () -> Unit,
+    onKeyboardHubClick: () -> Unit,
+    onExtrasClick: () -> Unit,
     onModifiersClick: () -> Unit,
     onKeyboardsDevicesClick: () -> Unit,
     onTextInputClick: () -> Unit,
@@ -457,6 +687,8 @@ private fun SettingsMainScreen(
             SettingsSearchTarget.STATUS_BAR_BUTTONS -> onStatusBarButtonsClick()
             SettingsSearchTarget.KEYBOARD_THEME -> onKeyboardThemeClick()
             SettingsSearchTarget.QUICK_LAUNCHER -> onQuickLauncherClick()
+            SettingsSearchTarget.TOOLBOX -> onToolboxClick()
+            SettingsSearchTarget.REMOVE_BLOAT -> onToolboxClick()
             SettingsSearchTarget.NAV_MODE -> onNavModeClick()
             SettingsSearchTarget.SCREEN_TRACKPAD -> onScreenTrackpadClick()
             SettingsSearchTarget.ENTER_BEHAVIOR -> onEnterBehaviorClick()
@@ -552,116 +784,26 @@ private fun SettingsMainScreen(
                 onClick = onStatusClick
             )
 
-            SettingsGroupDivider(stringResource(R.string.settings_group_keys))
-
             SettingsCategoryRow(
-                iconRes = R.drawable.modifier_keys_24,
-                title = stringResource(R.string.modifiers_title),
-                description = stringResource(R.string.modifiers_description),
-                onClick = onModifiersClick
+                icon = Icons.Filled.Build,
+                title = stringResource(R.string.toolbox_title),
+                description = stringResource(R.string.toolbox_row_description),
+                onClick = onToolboxClick
             )
             SettingsCategoryRow(
-                icon = ImageVector.vectorResource(R.drawable.navigation_24),
-                title = stringResource(R.string.nav_mode_title),
-                description = stringResource(R.string.settings_nav_mode_configure),
-                onClick = onNavModeClick
+                icon = Icons.Filled.Keyboard,
+                title = stringResource(R.string.keyboard_hub_title),
+                description = stringResource(R.string.keyboard_hub_row_description),
+                onClick = onKeyboardHubClick
             )
             SettingsCategoryRow(
-                icon = Icons.Filled.Gesture,
-                title = stringResource(R.string.screen_trackpad_title),
-                description = stringResource(R.string.screen_trackpad_description),
-                onClick = onScreenTrackpadClick
-            )
-
-            SettingsGroupDivider(stringResource(R.string.settings_group_typing_corrections))
-
-            SettingsCategoryRow(
-                icon = Icons.Filled.TextFields,
-                title = stringResource(R.string.settings_category_text_input),
-                onClick = onTextInputClick
-            )
-            SettingsCategoryRow(
-                icon = Icons.Filled.Spellcheck,
-                title = stringResource(R.string.settings_category_auto_correction),
-                onClick = onAutoCorrectionClick
-            )
-            SettingsCategoryRow(
-                icon = Icons.AutoMirrored.Filled.KeyboardReturn,
-                title = stringResource(R.string.app_enter_behaviour_title),
-                description = stringResource(R.string.app_enter_behaviour_description),
-                onClick = onEnterBehaviorClick
-            )
-            SettingsCategoryRow(
-                icon = Icons.Filled.Block,
-                title = stringResource(R.string.app_raw_mode_title),
-                description = stringResource(R.string.app_raw_mode_row_description),
-                onClick = onAppRawModeClick
-            )
-
-            SettingsGroupDivider(stringResource(R.string.settings_group_appearance))
-
-            SettingsCategoryRow(
-                icon = Icons.Filled.Palette,
-                title = stringResource(R.string.keyboard_theme_title),
-                onClick = onKeyboardThemeClick
-            )
-            SettingsCategoryRow(
-                icon = Icons.Filled.SmartButton,
-                title = stringResource(R.string.status_bar_buttons_title),
-                description = stringResource(R.string.status_bar_buttons_description),
-                onClick = onStatusBarButtonsClick
-            )
-            SettingsCategoryRow(
-                icon = Icons.Filled.LightMode,
-                title = stringResource(R.string.smart_backlight_title),
-                description = stringResource(R.string.smart_backlight_row_description),
-                onClick = onSmartBacklightClick
-            )
-            SettingsCategoryRow(
-                icon = Icons.AutoMirrored.Filled.VolumeUp,
-                title = stringResource(R.string.settings_category_sounds),
-                description = stringResource(R.string.settings_sounds_description),
-                onClick = onSoundHapticsClick
-            )
-            SettingsCategoryRow(
-                icon = Icons.Filled.Tune,
-                title = stringResource(R.string.settings_category_customization),
-                onClick = onCustomizationClick
-            )
-
-            SettingsGroupDivider(stringResource(R.string.settings_group_shortcuts_language))
-
-            SettingsCategoryRow(
-                icon = Icons.AutoMirrored.Filled.ManageSearch,
-                title = stringResource(R.string.starter_launcher_shortcuts_title),
-                description = stringResource(R.string.starter_launcher_shortcuts_description),
-                onClick = onQuickLauncherClick
-            )
-
-            SettingsGroupDivider(stringResource(R.string.settings_group_system))
-
-            SettingsCategoryRow(
-                icon = Icons.Filled.Engineering,
-                title = stringResource(R.string.settings_category_advanced),
-                onClick = onAdvancedClick
-            )
-            SettingsCategoryRow(
-                icon = Icons.Filled.TouchApp,
-                title = stringResource(R.string.settings_category_accessibility),
-                onClick = onAccessibilityClick
+                icon = Icons.Filled.MoreHoriz,
+                title = stringResource(R.string.extras_title),
+                description = stringResource(R.string.extras_row_description),
+                onClick = onExtrasClick
             )
 
             SettingsGroupDivider(stringResource(R.string.settings_group_pastiera))
-
-            SettingsCategoryRow(
-                icon = Icons.Filled.Info,
-                title = stringResource(R.string.about_title),
-                description = stringResource(
-                    R.string.settings_about_version_summary,
-                    BuildConfig.VERSION_NAME
-                ),
-                onClick = onAboutClick
-            )
 
             if (shouldUseGithubUpdateChecks(context)) {
                 SettingsCategoryRow(

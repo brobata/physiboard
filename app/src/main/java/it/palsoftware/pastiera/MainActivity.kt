@@ -42,6 +42,9 @@ import androidx.compose.material.icons.filled.Gesture
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Settings
@@ -399,56 +402,31 @@ fun KeyboardSetupScreen(
             val backlightSublabel = if (backlightNeedsAttention) {
                 stringResource(R.string.home_tile_backlight_needs_setup)
             } else null
+            // Three doors, each opening on something the others do not contain. The backlight
+            // warning rides the Device tile rather than getting its own, so "needs setup" stays
+            // visible without putting the same destination on two screens.
             val tiles = buildList {
                 add(
                     HomeTile(
-                        icon = Icons.Filled.LightMode,
-                        label = stringResource(R.string.home_tile_backlight),
+                        icon = Icons.Filled.Build,
+                        label = stringResource(R.string.toolbox_title),
                         attention = backlightNeedsAttention,
                         sublabel = backlightSublabel,
-                        onClick = { launchSettings(SettingsActivity.DESTINATION_SMART_BACKLIGHT) }
-                    )
-                )
-                add(
-                    HomeTile(
-                        icon = Icons.Filled.Gesture,
-                        label = stringResource(R.string.home_tile_screen_trackpad),
-                        onClick = { launchSettings(SettingsActivity.DESTINATION_SCREEN_TRACKPAD) }
-                    )
-                )
-                add(
-                    HomeTile(
-                        icon = Icons.Filled.Palette,
-                        label = stringResource(R.string.home_tile_theme),
-                        onClick = launchKeyboardTheme
-                    )
-                )
-                add(
-                    HomeTile(
-                        icon = Icons.Filled.Mic,
-                        label = stringResource(R.string.home_tile_voice),
-                        onClick = { launchSettings(SettingsActivity.DESTINATION_VOICE) }
-                    )
-                )
-                add(
-                    HomeTile(
-                        icon = Icons.Filled.AutoAwesome,
-                        label = stringResource(R.string.home_tile_smart_features),
-                        onClick = { launchSettings(SettingsActivity.DESTINATION_SMART_FEATURES) }
-                    )
-                )
-                add(
-                    HomeTile(
-                        icon = Icons.Filled.Code,
-                        label = stringResource(R.string.home_tile_raw_mode),
-                        onClick = { launchSettings(SettingsActivity.DESTINATION_RAW_MODE) }
+                        onClick = { launchSettings(SettingsActivity.DESTINATION_TOOLBOX) }
                     )
                 )
                 add(
                     HomeTile(
                         icon = Icons.Filled.Keyboard,
-                        label = stringResource(R.string.home_tile_fn_layer),
-                        onClick = { launchSettings(SettingsActivity.DESTINATION_FN_LAYER) }
+                        label = stringResource(R.string.keyboard_hub_title),
+                        onClick = { launchSettings(SettingsActivity.DESTINATION_KEYBOARD_HUB) }
+                    )
+                )
+                add(
+                    HomeTile(
+                        icon = Icons.Filled.MoreHoriz,
+                        label = stringResource(R.string.extras_title),
+                        onClick = { launchSettings(SettingsActivity.DESTINATION_EXTRAS) }
                     )
                 )
                 add(
@@ -458,15 +436,6 @@ fun KeyboardSetupScreen(
                         onClick = { launchSettings(null) }
                     )
                 )
-                if (enabledLanguageCount > 1) {
-                    add(
-                        HomeTile(
-                            icon = Icons.Filled.Language,
-                            label = stringResource(R.string.home_tile_language),
-                            onClick = { launchSettings(SettingsActivity.DESTINATION_INPUT_LANGUAGES) }
-                        )
-                    )
-                }
             }
 
             tiles.chunked(2).forEach { rowTiles ->

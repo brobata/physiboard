@@ -20,6 +20,8 @@ enum class SettingsSearchTarget {
     NAV_MODE,
     SCREEN_TRACKPAD,
     ENTER_BEHAVIOR,
+    TOOLBOX,
+    REMOVE_BLOAT,
     ADVANCED,
     ABOUT,
     CUSTOM_INPUT_STYLES,
@@ -62,6 +64,13 @@ object SettingsCatalog {
         SettingsSearchEntry(R.string.status_bar_buttons_title, R.string.status_bar_buttons_title, SettingsSearchTarget.STATUS_BAR_BUTTONS, "microphone mic emoji hamburger bottom bar pastierina slots"),
         SettingsSearchEntry(R.string.starter_launcher_shortcuts_title, R.string.starter_launcher_shortcuts_title, SettingsSearchTarget.QUICK_LAUNCHER, "quick launcher apps shortcut launch"),
         SettingsSearchEntry(R.string.app_enter_behaviour_title, R.string.app_enter_behaviour_title, SettingsSearchTarget.ENTER_BEHAVIOR, "enter send newline whatsapp per app"),
+
+        // Device toolbox
+        SettingsSearchEntry(R.string.toolbox_title, R.string.toolbox_title, SettingsSearchTarget.TOOLBOX, "device toolbox titan unihertz system tools"),
+        SettingsSearchEntry(R.string.bloat_title, R.string.toolbox_title, SettingsSearchTarget.REMOVE_BLOAT, "bloat bloatware debloat uninstall remove disable unihertz vendor apps agui"),
+        SettingsSearchEntry(R.string.density_title, R.string.toolbox_title, SettingsSearchTarget.TOOLBOX, "density dpi screen size scale smaller bigger fit more zoom"),
+        SettingsSearchEntry(R.string.tweaks_title, R.string.toolbox_title, SettingsSearchTarget.TOOLBOX, "animation speed faster notification history one handed pixel tweaks"),
+        SettingsSearchEntry(R.string.keymap_title, R.string.toolbox_title, SettingsSearchTarget.TOOLBOX, "key mapping keys remap fn sym orange side button shortcut bindings"),
 
         // Voice / dictation
         SettingsSearchEntry(R.string.settings_category_voice, R.string.settings_category_voice, SettingsSearchTarget.VOICE, "voice dictation microphone speech talk transcribe"),
