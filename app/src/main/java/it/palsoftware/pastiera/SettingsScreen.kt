@@ -472,17 +472,7 @@ fun SettingsScreen(
                             title = stringResource(R.string.modifiers_title),
                             description = stringResource(R.string.modifiers_description),
                             onClick = { navigateTo(SettingsDestination.Modifiers) }
-                        )
-                    )
-                )
-            }
-            SettingsDestination.Extras -> {
-                SettingsHubScreen(
-                    modifier = modifier,
-                    title = stringResource(R.string.extras_title),
-                    intro = stringResource(R.string.extras_intro),
-                    onBack = { navigateBack() },
-                    rows = listOf(
+                        ),
                         HubRow(
                             icon = Icons.Filled.Block,
                             title = stringResource(R.string.app_raw_mode_title),
@@ -496,7 +486,17 @@ fun SettingsScreen(
                             onClick = {
                                 openCustomization(SettingsActivity.CUSTOMIZATION_DESTINATION_APP_ENTER_BEHAVIOR)
                             }
-                        ),
+                        )
+                    )
+                )
+            }
+            SettingsDestination.Extras -> {
+                SettingsHubScreen(
+                    modifier = modifier,
+                    title = stringResource(R.string.extras_title),
+                    intro = stringResource(R.string.extras_intro),
+                    onBack = { navigateBack() },
+                    rows = listOf(
                         HubRow(
                             icon = Icons.AutoMirrored.Filled.ManageSearch,
                             title = stringResource(R.string.starter_launcher_shortcuts_title),

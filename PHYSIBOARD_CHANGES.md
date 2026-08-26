@@ -4,6 +4,15 @@ PhysiBoard is a GPLv3 fork of [Pastiera](https://github.com/palsoftware/pastiera
 Andrea Palumbo (PalSoftware) and contributors. This file documents the fork's changes,
 as required by GPLv3 §5(a). Package: `brobata.physiboard` (`physi` product flavor).
 
+## Unreleased
+
+- **T2E Tools** is what the device hub is called now, since that is what it is.
+- **Exact typing** and **Enter key behaviour** moved to the Keyboard hub, where they belong, and
+  Exact typing now says what it is for: terminals, SSH and code, where a helpful correction
+  turns a command into a typo.
+- **The notification ring is fitted to the lens out of the box.** The fit-it-yourself screen from
+  1.2.0 is gone — every Titan 2 Elite is the same phone, and the measured fit is now the default.
+
 ## 1.2.0 (2026-08-26)
 
 The screen learns to say something while it is off.

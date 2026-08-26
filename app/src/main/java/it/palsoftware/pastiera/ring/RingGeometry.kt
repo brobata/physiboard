@@ -28,13 +28,14 @@ object RingGeometry {
     private const val TITAN_CUTOUT_PX = 123
 
     /**
-     * The ring fitted by eye to the Titan 2 Elite's actual lens (2026-08-26): the lens sits
-     * lower and further right than the centre of the reported box, and is smaller than it.
-     * Pixels at the panel's 300 dpi, scaled for anything else.
+     * The ring fitted to the Titan 2 Elite's actual lens, measured off the panel (2026-08-26):
+     * the lens sits lower and further right than the centre of the reported box, and is
+     * smaller than it. Pixels at the panel's 300 dpi, scaled for anything else. Every Titan
+     * is the same phone, so this is not a setting.
      */
     fun titanFitted(densityDpi: Int): Ring {
         val k = densityDpi / 300f
-        return Ring(cx = 78f * k, cy = 80f * k, radius = 45f * k, stroke = 4f * k)
+        return Ring(cx = 78f * k, cy = 80f * k, radius = 46f * k, stroke = 6f * k)
     }
 
     /** True when [left, top, right, bottom] is the Titan's own cutout, so the fitted ring applies. */

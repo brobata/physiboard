@@ -22,8 +22,6 @@ import androidx.lifecycle.LifecycleEventObserver
 import it.palsoftware.pastiera.inputmethod.EmbeddedAdbShell
 import it.palsoftware.pastiera.ring.NotificationRingActivity
 import it.palsoftware.pastiera.ring.NotificationRingSetup
-import it.palsoftware.pastiera.ring.RingAdjustActivity
-import android.content.Intent
 import it.palsoftware.pastiera.ring.RingBrightness
 
 /**
@@ -286,17 +284,6 @@ fun NotificationRingScreen(
             }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-            Text(
-                text = stringResource(R.string.ring_adjust_description),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
-            OutlinedButton(
-                onClick = { context.startActivity(Intent(context, RingAdjustActivity::class.java)) },
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-            ) { Text(stringResource(R.string.ring_adjust)) }
 
             Text(
                 text = stringResource(R.string.ring_try_description),

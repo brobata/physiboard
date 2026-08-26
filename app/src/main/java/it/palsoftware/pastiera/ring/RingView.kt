@@ -31,12 +31,8 @@ class RingView(context: Context) : View(context) {
     private val glow = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
     private val density = context.resources.displayMetrics.density
 
-    /** Black for the real ring; the adjust screen uses white so the lens shows as a dark hole. */
-    var canvasColor: Int = Color.BLACK
-        set(value) { field = value; setBackgroundColor(value) }
-
     init {
-        setBackgroundColor(canvasColor)
+        setBackgroundColor(Color.BLACK)
         // The blur is a software effect; the view is tiny in draw cost either way.
         setLayerType(LAYER_TYPE_SOFTWARE, null)
     }

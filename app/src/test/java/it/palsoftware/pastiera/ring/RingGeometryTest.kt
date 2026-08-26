@@ -38,6 +38,6 @@ class RingGeometryTest {
         val fitted = RingGeometry.titanFitted(300)
         assertEquals(78f, fitted.cx, 0f)
         assertEquals(80f, fitted.cy, 0f)
-        assertEquals(45f, fitted.radius, 0f)
+        assertEquals(46f, fitted.radius, 0f)
     }
 }

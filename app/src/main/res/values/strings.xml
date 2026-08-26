@@ -136,8 +136,8 @@
     <string name="smart_backlight_guide_open_about">Open About phone</string>
     <string name="smart_backlight_guide_open_failed">Couldn\'t open that screen on this device — open it manually from Settings.</string>
     <string name="app_raw_mode_title">Exact typing</string>
-    <string name="app_raw_mode_row_description">Type exactly — no autocorrect in the apps you pick</string>
-    <string name="app_raw_mode_description">Smart typing features (suggestions, auto-correction, auto-capitalization, double-space period) are disabled while typing in the apps you enable here. Useful for terminals and code editors where corrections break commands.</string>
+    <string name="app_raw_mode_row_description">For terminals, SSH and code: what you type is what goes in, nothing corrected or capitalised</string>
+    <string name="app_raw_mode_description">In the apps you pick here, PhysiBoard sends every keystroke as-is: no suggestions, no auto-correction, no capital at the start of a line, no full stop from a double space. Meant for terminals, SSH clients, code editors and anything else where a helpful correction turns a command into a typo — `ls -la` should never become `Ls -la.`</string>
     <string name="dictation_mask_offensive_title">Block offensive words</string>
     <string name="dictation_mask_offensive_description">Mask profanity in dictation results (e.g. f***). Turn off to transcribe words exactly as spoken.</string>
     <string name="dictation_haptics_title">Vibrate on dictation start/stop</string>
@@ -152,7 +152,7 @@
     <string name="dictation_end_silence_seconds">%1$.1f s of silence before dictation stops</string>
     <string name="dictation_end_silence_hint">How long you can pause before dictation stops. The speech service may not honor this on all devices.</string>
     <!-- Toolbox / device section -->
-    <string name="toolbox_title">Device</string>
+    <string name="toolbox_title">T2E Tools</string>
     <string name="toolbox_row_description">Backlight, bloat removal and the system-level changes only this phone needs</string>
     <string name="toolbox_intro">Titan-specific tools. These change the phone itself rather than the keyboard, so anything here that outlives an uninstall can be undone with Reset device settings to stock.</string>
     <string name="toolbox_group_system">Device tools</string>
@@ -169,7 +169,7 @@
     <string name="keyboard_hub_voice_description">Hold Fn to dictate, and the assistant triggers</string>
     <string name="keyboard_hub_theme_description">Colors and the on-screen bar</string>
     <string name="extras_title">Extras</string>
-    <string name="extras_row_description">The long tail: per-app behaviour, shortcuts, accessibility, about</string>
+    <string name="extras_row_description">The long tail: shortcuts, status bar, accessibility, about</string>
     <string name="extras_intro">Everything that did not earn a place on the first two screens. Nothing here is needed to use the phone or the keyboard.</string>
     <string name="extras_customization_description">Variations, the on-screen keyboard and other tuning</string>
     <string name="extras_languages_description">Input languages and layouts</string>
@@ -212,18 +212,9 @@
     <string name="ring_brightness_normal">Normal</string>
     <string name="ring_brightness_bright">Bright</string>
     <string name="ring_try">Try it</string>
-    <string name="ring_try_description">Shows the ring for a few seconds with PhysiBoard\'s own icon. Lock the phone first to see it the way it will really look.</string>
+    <string name="ring_try_description">Shows the ring for a few seconds with PhysiBoard\'s own icon. Lock the phone first to see it the way it will really look. The ring is already fitted to the Titan 2 Elite\'s lens.</string>
     <string name="ring_icons_title">Show app icons</string>
     <string name="ring_icons_description">Draw the waiting apps\' icons below the ring. Off, it is just the ring.</string>
-    <string name="ring_adjust">Fit the ring to the lens</string>
-    <string name="ring_adjust_description">The system only reports the box around the camera hole. On a white screen the lens shows as a dark spot: drag the ring onto it, resize it and set the thickness you want.</string>
-    <string name="ring_adjust_hint">Drag to move · arrows nudge · + and − resize · [ and ] change thickness · Enter saves</string>
-    <string name="ring_adjust_smaller">−</string>
-    <string name="ring_adjust_larger">+</string>
-    <string name="ring_adjust_thinner">Thinner</string>
-    <string name="ring_adjust_thicker">Thicker</string>
-    <string name="ring_adjust_reset">Auto</string>
-    <string name="ring_adjust_done">Done</string>
     <string name="ring_launcher_text">Turning the screen on for a notification</string>
     <string name="ring_channel_name">Notification ring</string>
     <string name="ring_channel_description">Used only to turn the screen on for the ring. Silent, and dismissed on its own.</string>

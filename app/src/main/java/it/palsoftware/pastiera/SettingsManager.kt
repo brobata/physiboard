@@ -111,10 +111,6 @@ object SettingsManager {
     private const val KEY_NOTIFICATION_RING_ENABLED = "notification_ring_enabled"
     private const val KEY_NOTIFICATION_RING_MINUTES = "notification_ring_minutes"
     private const val KEY_NOTIFICATION_RING_BRIGHTNESS = "notification_ring_brightness"
-    private const val KEY_NOTIFICATION_RING_CX = "notification_ring_cx"
-    private const val KEY_NOTIFICATION_RING_CY = "notification_ring_cy"
-    private const val KEY_NOTIFICATION_RING_RADIUS = "notification_ring_radius"
-    private const val KEY_NOTIFICATION_RING_STROKE = "notification_ring_stroke"
     private const val KEY_NOTIFICATION_RING_ICONS = "notification_ring_icons"
     const val NOTIFICATION_RING_DEFAULT_MINUTES = 10
     val NOTIFICATION_RING_MINUTE_OPTIONS = listOf(2, 10, 30)
@@ -2576,39 +2572,6 @@ object SettingsManager {
 
     fun setNotificationRingBrightness(context: Context, brightness: it.palsoftware.pastiera.ring.RingBrightness) {
         getPreferences(context).edit().putString(KEY_NOTIFICATION_RING_BRIGHTNESS, brightness.name).apply()
-    }
-
-    /**
-     * A hand-fitted ring, in window pixels, or null to place it from the system's cutout. The
-     * cutout is only a bounding box; the lens is smaller and off its centre by a few pixels.
-     */
-    fun getNotificationRingOverride(context: Context): it.palsoftware.pastiera.ring.RingGeometry.Ring? {
-        val prefs = getPreferences(context)
-        if (!prefs.contains(KEY_NOTIFICATION_RING_RADIUS)) return null
-        return it.palsoftware.pastiera.ring.RingGeometry.Ring(
-            cx = prefs.getFloat(KEY_NOTIFICATION_RING_CX, 0f),
-            cy = prefs.getFloat(KEY_NOTIFICATION_RING_CY, 0f),
-            radius = prefs.getFloat(KEY_NOTIFICATION_RING_RADIUS, 0f),
-            stroke = prefs.getFloat(KEY_NOTIFICATION_RING_STROKE, 0f)
-        )
-    }
-
-    fun setNotificationRingOverride(context: Context, ring: it.palsoftware.pastiera.ring.RingGeometry.Ring) {
-        getPreferences(context).edit()
-            .putFloat(KEY_NOTIFICATION_RING_CX, ring.cx)
-            .putFloat(KEY_NOTIFICATION_RING_CY, ring.cy)
-            .putFloat(KEY_NOTIFICATION_RING_RADIUS, ring.radius)
-            .putFloat(KEY_NOTIFICATION_RING_STROKE, ring.stroke)
-            .apply()
-    }
-
-    fun clearNotificationRingOverride(context: Context) {
-        getPreferences(context).edit()
-            .remove(KEY_NOTIFICATION_RING_CX)
-            .remove(KEY_NOTIFICATION_RING_CY)
-            .remove(KEY_NOTIFICATION_RING_RADIUS)
-            .remove(KEY_NOTIFICATION_RING_STROKE)
-            .apply()
     }
 
     enum class ClicksPowerButtonMode(val persistedValue: String) {
