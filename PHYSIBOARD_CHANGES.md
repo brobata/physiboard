@@ -4,7 +4,9 @@ PhysiBoard is a GPLv3 fork of [Pastiera](https://github.com/palsoftware/pastiera
 Andrea Palumbo (PalSoftware) and contributors. This file documents the fork's changes,
 as required by GPLv3 §5(a). Package: `brobata.physiboard` (`physi` product flavor).
 
-## Unreleased
+## 1.2.0 (2026-08-26)
+
+The screen learns to say something while it is off.
 
 - **Open notifications / Open quick settings from a key** — two new device controls in the
   command list, so any key you can assign a command to can pull the shade down.
