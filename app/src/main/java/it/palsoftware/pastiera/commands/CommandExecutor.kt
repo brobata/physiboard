@@ -8,6 +8,7 @@ import android.media.AudioManager
 import android.net.Uri
 import android.os.SystemClock
 import android.util.Log
+import it.palsoftware.pastiera.inputmethod.EmbeddedAdbShell
 import android.view.KeyEvent
 import android.view.inputmethod.InputConnection
 import android.widget.Toast
@@ -121,6 +122,8 @@ class CommandExecutor(
             DeviceControlCommandSource.ACTION_VOLUME_MUTE -> adjustVolume(AudioManager.ADJUST_TOGGLE_MUTE)
             DeviceControlCommandSource.ACTION_BRIGHTNESS_UP -> sendShellKeyEvent(KeyEvent.KEYCODE_BRIGHTNESS_UP)
             DeviceControlCommandSource.ACTION_BRIGHTNESS_DOWN -> sendShellKeyEvent(KeyEvent.KEYCODE_BRIGHTNESS_DOWN)
+            DeviceControlCommandSource.ACTION_EXPAND_NOTIFICATIONS -> expandShade(quickSettings = false)
+            DeviceControlCommandSource.ACTION_EXPAND_QUICK_SETTINGS -> expandShade(quickSettings = true)
             else -> fail("Unknown action")
         }
     }
@@ -168,6 +171,27 @@ class CommandExecutor(
         val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
             ?: return fail("Audio unavailable")
         audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC, direction, AudioManager.FLAG_SHOW_UI)
+        return CommandExecutionResult.Success
+    }
+
+    /**
+     * Pull the shade down from a key. StatusBarManager's expand calls are hidden but reachable
+     * with the EXPAND_STATUS_BAR permission, which is a normal one; when the platform refuses
+     * the reflection, the paired broker's `cmd statusbar` does the same thing a beat later.
+     */
+    private fun expandShade(quickSettings: Boolean): CommandExecutionResult {
+        val method = if (quickSettings) "expandSettingsPanel" else "expandNotificationsPanel"
+        val direct = runCatching {
+            val manager = context.getSystemService("statusbar") ?: return@runCatching false
+            manager.javaClass.getMethod(method).invoke(manager)
+            true
+        }.getOrDefault(false)
+        if (direct) return CommandExecutionResult.Success
+        if (!EmbeddedAdbShell.isPaired(context)) return fail("Shade unavailable")
+        val verb = if (quickSettings) "expand-settings" else "expand-notifications"
+        shadeExecutor.execute {
+            runCatching { EmbeddedAdbShell.runShell(context, "cmd statusbar $verb") }
+        }
         return CommandExecutionResult.Success
     }
 
@@ -221,6 +245,7 @@ class CommandExecutor(
     }
 
     companion object {
+        private val shadeExecutor = java.util.concurrent.Executors.newSingleThreadExecutor()
         private const val TAG = "CommandExecutor"
     }
 }

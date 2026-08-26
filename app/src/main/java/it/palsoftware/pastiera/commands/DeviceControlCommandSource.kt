@@ -20,6 +20,8 @@ class DeviceControlCommandSource : CommandSource {
             add(deviceAction("device.volume.mute", "Mute volume", "Audio", ACTION_VOLUME_MUTE))
             add(deviceAction("device.brightness.up", "Brightness up", "Display", ACTION_BRIGHTNESS_UP))
             add(deviceAction("device.brightness.down", "Brightness down", "Display", ACTION_BRIGHTNESS_DOWN))
+            add(deviceAction("device.shade.notifications", "Open notifications", "System", ACTION_EXPAND_NOTIFICATIONS))
+            add(deviceAction("device.shade.quick_settings", "Open quick settings", "System", ACTION_EXPAND_QUICK_SETTINGS))
             add(settingsCommand("settings.android.main", "Settings", Settings.ACTION_SETTINGS))
             add(settingsCommand("settings.android.apps", "Apps", Settings.ACTION_APPLICATION_SETTINGS))
             add(settingsCommand("settings.android.default_apps", "Default apps", Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS))
@@ -124,6 +126,8 @@ class DeviceControlCommandSource : CommandSource {
         const val ACTION_VOLUME_MUTE = "device.volume.mute"
         const val ACTION_BRIGHTNESS_UP = "device.brightness.up"
         const val ACTION_BRIGHTNESS_DOWN = "device.brightness.down"
+        const val ACTION_EXPAND_NOTIFICATIONS = "device.shade.notifications"
+        const val ACTION_EXPAND_QUICK_SETTINGS = "device.shade.quick_settings"
         private const val ACTION_NOTIFICATION_SETTINGS = "android.settings.NOTIFICATION_SETTINGS"
     }
 }
