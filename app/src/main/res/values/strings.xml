@@ -211,6 +211,11 @@
     <string name="ring_brightness_dim">Dim</string>
     <string name="ring_brightness_normal">Normal</string>
     <string name="ring_brightness_bright">Bright</string>
+    <string name="ring_app_colors_title">App colours</string>
+    <string name="ring_app_colors_description">Give an app its own ring colour, so you know who it is before you pick the phone up. Apps not listed use the colour they declare for their notifications, or green.</string>
+    <string name="ring_app_colors_add">Add an app</string>
+    <string name="ring_app_colors_remove">Remove</string>
+    <string name="ring_app_colors_pick">Pick the ring colour for this app.</string>
     <string name="ring_try">Try it</string>
     <string name="ring_try_description">Shows the ring for a few seconds with PhysiBoard\'s own icon. Lock the phone first to see it the way it will really look. The ring is already fitted to the Titan 2 Elite\'s lens.</string>
     <string name="ring_icons_title">Show app icons</string>

@@ -414,11 +414,33 @@ private fun WhatsNewNote(onDone: () -> Unit) {
             )
         }
         Spacer(Modifier.height(10.dp))
-        Text(
-            text = "Your keyboard is up to date. Fixes and improvements are live.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        val context = LocalContext.current
+        val notes = remember { loadWhatsNew(context) }
+        if (notes.isEmpty()) {
+            Text(
+                text = "Your keyboard is up to date. Fixes and improvements are live.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else {
+            notes.forEach { (title, body) ->
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                if (body.isNotBlank()) {
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = body,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
         Spacer(Modifier.height(28.dp))
         Button(
             onClick = onDone,
@@ -474,5 +496,31 @@ private fun checkOnboardingImeStatus(
     } catch (e: Exception) {
         android.util.Log.e("OnboardingScreen", "Error checking IME status", e)
         callback(false, false)
+    }
+}
+
+/**
+ * The release's own notes, bundled at `assets/common/whats_new.md` as the bullets from the
+ * change log: `- **Title** — body`, wrapped over any number of lines. Returns title/body pairs;
+ * empty when the flavour ships no notes, in which case the card falls back to a single line.
+ */
+private fun loadWhatsNew(context: Context): List<Pair<String, String>> {
+    val text = runCatching {
+        context.assets.open("common/whats_new.md").bufferedReader().use { it.readText() }
+    }.getOrNull() ?: return emptyList()
+    val bullets = mutableListOf<String>()
+    text.lines().forEach { raw ->
+        val line = raw.trim()
+        when {
+            line.startsWith("- ") -> bullets.add(line.removePrefix("- "))
+            line.isEmpty() -> Unit
+            bullets.isNotEmpty() -> bullets[bullets.lastIndex] = bullets.last() + " " + line
+        }
+    }
+    return bullets.map { bullet ->
+        val clean = bullet.replace("**", "").replace("`", "")
+        val split = clean.indexOf(" — ")
+        if (split > 0) clean.substring(0, split) to clean.substring(split + 3)
+        else clean to ""
     }
 }

@@ -23,6 +23,13 @@ import it.palsoftware.pastiera.inputmethod.EmbeddedAdbShell
 import it.palsoftware.pastiera.ring.NotificationRingActivity
 import it.palsoftware.pastiera.ring.NotificationRingSetup
 import it.palsoftware.pastiera.ring.RingBrightness
+import it.palsoftware.pastiera.ring.RingPalette
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 
 /**
  * The ring's own page: the switch, the three grants it needs and where each stands, and the
@@ -42,6 +49,9 @@ fun NotificationRingScreen(
     var minutes by remember { mutableIntStateOf(SettingsManager.getNotificationRingMinutes(context)) }
     var brightness by remember { mutableStateOf(SettingsManager.getNotificationRingBrightness(context)) }
     var icons by remember { mutableStateOf(SettingsManager.isNotificationRingIconsEnabled(context)) }
+    var appColors by remember { mutableStateOf(SettingsManager.getNotificationRingAppColors(context)) }
+    var pickingApp by remember { mutableStateOf(false) }
+    var colouringPackage by remember { mutableStateOf<String?>(null) }
     var listenerGranted by remember { mutableStateOf(NotificationRingSetup.isListenerGranted(context)) }
     var fullScreenAllowed by remember { mutableStateOf(NotificationRingSetup.canUseFullScreenIntent(context)) }
     var postAllowed by remember { mutableStateOf(NotificationRingSetup.canPostNotifications(context)) }
@@ -74,6 +84,25 @@ fun NotificationRingScreen(
     }
 
     BackHandler { onBack() }
+
+    if (pickingApp) {
+        AppPickerDialog(
+            onAppSelected = { app -> colouringPackage = app.packageName },
+            onDismiss = { pickingApp = false }
+        )
+    }
+    colouringPackage?.let { pkg ->
+        RingColorDialog(
+            packageName = pkg,
+            current = appColors[pkg],
+            onPick = { argb ->
+                SettingsManager.setNotificationRingAppColor(context, pkg, argb)
+                appColors = SettingsManager.getNotificationRingAppColors(context)
+                colouringPackage = null
+            },
+            onDismiss = { colouringPackage = null }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -285,6 +314,50 @@ fun NotificationRingScreen(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
+            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+                Text(
+                    text = stringResource(R.string.ring_app_colors_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = stringResource(R.string.ring_app_colors_description),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            appColors.entries.sortedBy { appLabel(context, it.key).lowercase() }.forEach { (pkg, argb) ->
+                Surface(
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
+                        .clickable { colouringPackage = pkg }
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        ColorDot(argb = argb, selected = false, size = 22.dp)
+                        Text(
+                            text = appLabel(context, pkg),
+                            style = MaterialTheme.typography.bodyLarge,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+                        TextButton(onClick = {
+                            SettingsManager.setNotificationRingAppColor(context, pkg, null)
+                            appColors = SettingsManager.getNotificationRingAppColors(context)
+                        }) { Text(stringResource(R.string.ring_app_colors_remove)) }
+                    }
+                }
+            }
+            OutlinedButton(
+                onClick = { pickingApp = true },
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            ) { Text(stringResource(R.string.ring_app_colors_add)) }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
             Text(
                 text = stringResource(R.string.ring_try_description),
                 style = MaterialTheme.typography.bodySmall,
@@ -300,6 +373,63 @@ fun NotificationRingScreen(
         }
     }
 }
+
+@Composable
+private fun ColorDot(argb: Int, selected: Boolean, size: androidx.compose.ui.unit.Dp, onClick: (() -> Unit)? = null) {
+    val outline = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outlineVariant
+    Box(
+        modifier = Modifier
+            .size(size)
+            .border(if (selected) 3.dp else 1.dp, outline, CircleShape)
+            .padding(3.dp)
+            .background(Color(argb), CircleShape)
+            .let { m -> if (onClick != null) m.clickable(onClick = onClick) else m }
+    )
+}
+
+@Composable
+private fun RingColorDialog(
+    packageName: String,
+    current: Int?,
+    onPick: (Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(appLabel(context, packageName)) },
+        text = {
+            Column {
+                Text(
+                    text = stringResource(R.string.ring_app_colors_pick),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(12.dp))
+                RingPalette.entries.chunked(5).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(vertical = 6.dp)) {
+                        row.forEach { swatch ->
+                            ColorDot(
+                                argb = swatch.argb,
+                                selected = swatch.argb == current,
+                                size = 40.dp,
+                                onClick = { onPick(swatch.argb) }
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) } }
+    )
+}
+
+private fun appLabel(context: android.content.Context, packageName: String): String =
+    runCatching {
+        val pm = context.packageManager
+        pm.getApplicationLabel(pm.getApplicationInfo(packageName, 0)).toString()
+    }.getOrDefault(packageName)
 
 @Composable
 private fun GrantRow(

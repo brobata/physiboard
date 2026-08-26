@@ -112,6 +112,7 @@ object SettingsManager {
     private const val KEY_NOTIFICATION_RING_MINUTES = "notification_ring_minutes"
     private const val KEY_NOTIFICATION_RING_BRIGHTNESS = "notification_ring_brightness"
     private const val KEY_NOTIFICATION_RING_ICONS = "notification_ring_icons"
+    private const val KEY_NOTIFICATION_RING_APP_COLORS = "notification_ring_app_colors"
     const val NOTIFICATION_RING_DEFAULT_MINUTES = 10
     val NOTIFICATION_RING_MINUTE_OPTIONS = listOf(2, 10, 30)
     private const val KEY_LAYOUT_AWARE_CTRL_SHORTCUTS = "layout_aware_ctrl_shortcuts"
@@ -2555,6 +2556,24 @@ object SettingsManager {
 
     fun setNotificationRingIconsEnabled(context: Context, enabled: Boolean) {
         getPreferences(context).edit().putBoolean(KEY_NOTIFICATION_RING_ICONS, enabled).apply()
+    }
+
+    /** Per-app ring colours, package -> ARGB. Apps not listed use the app's own notification colour. */
+    fun getNotificationRingAppColors(context: Context): Map<String, Int> {
+        val raw = getPreferences(context).getString(KEY_NOTIFICATION_RING_APP_COLORS, null) ?: return emptyMap()
+        return runCatching {
+            val json = JSONObject(raw)
+            json.keys().asSequence().associateWith { json.getInt(it) }
+        }.getOrDefault(emptyMap())
+    }
+
+    /** Null [color] removes the app from the list. */
+    fun setNotificationRingAppColor(context: Context, packageName: String, color: Int?) {
+        val current = getNotificationRingAppColors(context).toMutableMap()
+        if (color == null) current.remove(packageName) else current[packageName] = color
+        val json = JSONObject()
+        current.forEach { (pkg, argb) -> json.put(pkg, argb) }
+        getPreferences(context).edit().putString(KEY_NOTIFICATION_RING_APP_COLORS, json.toString()).apply()
     }
 
     /** How long the ring keeps the screen on before letting it sleep. */
