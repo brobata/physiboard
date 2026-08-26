@@ -126,7 +126,7 @@ class FullSuggestionsBar(
     }
 
     private val targetHeightPx: Int
-        get() = dpToPx(BASE_HEIGHT_DP * (themeOverride?.suggestionsHeightScale ?: 1f).coerceIn(0.65f, 1.6f))
+        get() = dpToPx(BASE_HEIGHT_DP * (themeOverride?.suggestionsHeightScale ?: 1f).coerceIn(it.palsoftware.pastiera.KEYBOARD_THEME_BAR_HEIGHT_MIN, it.palsoftware.pastiera.KEYBOARD_THEME_BAR_HEIGHT_MAX))
 
     /**
      * Sets the assets and IME service class needed for subtype cycling.
@@ -865,7 +865,7 @@ class FullSuggestionsBar(
         bar.minimumHeight = targetHeightPx
         frameContainer?.minimumHeight = targetHeightPx
 
-        val heightScale = (themeOverride?.suggestionsHeightScale ?: 1f).coerceIn(0.65f, 1.6f)
+        val heightScale = (themeOverride?.suggestionsHeightScale ?: 1f).coerceIn(it.palsoftware.pastiera.KEYBOARD_THEME_BAR_HEIGHT_MIN, it.palsoftware.pastiera.KEYBOARD_THEME_BAR_HEIGHT_MAX)
         val maxTextSp = (14f * heightScale).coerceIn(12f, 20f).toInt()
         val minTextSp = (7f * heightScale).coerceIn(7f, 12f).toInt()
         val padV = dpToPx(3f * heightScale)

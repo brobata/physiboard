@@ -6,6 +6,10 @@ as required by GPLv3 §5(a). Package: `brobata.physiboard` (`physi` product flav
 
 ## Unreleased
 
+- **A status bar you can actually hit.** The hardware-keyboard strip was 36dp tall, under
+  Android's 48dp touch minimum. It is now ~50dp out of the box, the *Suggestions height* slider
+  in the theme editor goes up to 2.2× (≈79dp), and an untouched stock height is lifted once on
+  update — a height you set yourself is left alone.
 - **The status bar can be per app.** *Show status bar* is now Always, Never, or *Only in these
   apps*: pick the apps where the on-screen bar earns its space (messaging, mail) and it stays
   out of the way everywhere else, including the launcher's search box. Messaging, mail and

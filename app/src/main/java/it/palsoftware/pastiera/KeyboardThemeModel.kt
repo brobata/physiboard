@@ -51,6 +51,15 @@ internal const val SOFTWARE_THEME_DEFAULT_KEY_HEIGHT = 1.5489256f
 internal const val SOFTWARE_THEME_DEFAULT_NUMBER_ROW_HEIGHT = 0.8f
 internal const val SOFTWARE_THEME_DEFAULT_ROW_GAP = 0.47933885f
 internal const val SOFTWARE_THEME_DEFAULT_SUGGESTIONS_HEIGHT = 0.8982954f
+/**
+ * Hardware-keyboard strip: 36dp × 1.4 ≈ 50dp, so the buttons clear the 48dp touch minimum on
+ * the Titan's 300dpi screen. The stock 1.0 made a 36dp bar nobody could hit.
+ */
+internal const val HARDWARE_THEME_DEFAULT_SUGGESTIONS_HEIGHT = 1.4f
+/** Allowed range for the suggestions/variations bar height scales (36dp base → 23dp…79dp). */
+internal const val KEYBOARD_THEME_BAR_HEIGHT_MIN = 0.65f
+internal const val KEYBOARD_THEME_BAR_HEIGHT_MAX = 2.2f
+internal val KEYBOARD_THEME_BAR_HEIGHT_RANGE = KEYBOARD_THEME_BAR_HEIGHT_MIN..KEYBOARD_THEME_BAR_HEIGHT_MAX
 internal const val SOFTWARE_THEME_DEFAULT_VARIATIONS_HEIGHT = 0.95914257f
 
 internal fun KeyboardThemePreset.withSoftwareKeyboardDefaults(): KeyboardThemePreset =

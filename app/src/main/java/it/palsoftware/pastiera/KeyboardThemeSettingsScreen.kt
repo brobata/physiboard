@@ -1863,8 +1863,8 @@ private fun KeyboardThemeDraftKeysEditor(
         KeyboardThemeDraftSliderRow(DRAFT_NUMBER_ROW_HEIGHT, stringResource(R.string.keyboard_theme_number_row_height), theme.numberRowHeightScale, 0.45f..1.4f, populatedFields) { onFieldChanged(DRAFT_NUMBER_ROW_HEIGHT, theme.copy(numberRowHeightScale = it)) }
         KeyboardThemeDraftSliderRow(DRAFT_KEY_WIDTH, stringResource(R.string.keyboard_theme_key_width), theme.keyWidthScale, 0.72f..1.12f, populatedFields) { onFieldChanged(DRAFT_KEY_WIDTH, theme.copy(keyWidthScale = it)) }
         KeyboardThemeDraftSliderRow(DRAFT_ROW_SPACING, stringResource(R.string.keyboard_theme_row_spacing), theme.rowGapScale, 0f..2f, populatedFields) { onFieldChanged(DRAFT_ROW_SPACING, theme.copy(rowGapScale = it)) }
-        KeyboardThemeDraftSliderRow(DRAFT_SUGGESTIONS_HEIGHT, stringResource(R.string.keyboard_theme_suggestions_height), theme.suggestionsHeightScale, 0.65f..1.6f, populatedFields) { onFieldChanged(DRAFT_SUGGESTIONS_HEIGHT, theme.copy(suggestionsHeightScale = it)) }
-        KeyboardThemeDraftSliderRow(DRAFT_VARIATIONS_HEIGHT, stringResource(R.string.keyboard_theme_variations_height), theme.variationsHeightScale, 0.65f..1.6f, populatedFields) { onFieldChanged(DRAFT_VARIATIONS_HEIGHT, theme.copy(variationsHeightScale = it)) }
+        KeyboardThemeDraftSliderRow(DRAFT_SUGGESTIONS_HEIGHT, stringResource(R.string.keyboard_theme_suggestions_height), theme.suggestionsHeightScale, KEYBOARD_THEME_BAR_HEIGHT_RANGE, populatedFields) { onFieldChanged(DRAFT_SUGGESTIONS_HEIGHT, theme.copy(suggestionsHeightScale = it)) }
+        KeyboardThemeDraftSliderRow(DRAFT_VARIATIONS_HEIGHT, stringResource(R.string.keyboard_theme_variations_height), theme.variationsHeightScale, KEYBOARD_THEME_BAR_HEIGHT_RANGE, populatedFields) { onFieldChanged(DRAFT_VARIATIONS_HEIGHT, theme.copy(variationsHeightScale = it)) }
         KeyboardThemeDraftSwitchRow(DRAFT_SHOW_LEDS, stringResource(R.string.keyboard_theme_show_leds), theme.showLeds, populatedFields) { onFieldChanged(DRAFT_SHOW_LEDS, theme.copy(showLeds = it)) }
         KeyboardThemeDraftSwitchRow(DRAFT_DISTRIBUTE_SPACING, stringResource(R.string.keyboard_theme_distribute_spacing), theme.distributeHorizontalSpacing, populatedFields) { onFieldChanged(DRAFT_DISTRIBUTE_SPACING, theme.copy(distributeHorizontalSpacing = it)) }
         KeyboardThemeDraftSwitchRow(DRAFT_ORTHOLINEAR, stringResource(R.string.keyboard_theme_ortholinear), theme.ortholinear, populatedFields) { onFieldChanged(DRAFT_ORTHOLINEAR, theme.copy(ortholinear = it)) }
@@ -2160,14 +2160,14 @@ private fun KeyboardThemeKeysEditor(
             label = "Suggestions height",
             value = theme.suggestionsHeightScale,
             presetValue = preset.suggestionsHeightScale,
-            valueRange = 0.65f..1.6f,
+            valueRange = KEYBOARD_THEME_BAR_HEIGHT_RANGE,
             onValueChanged = { onThemeChanged(theme.copy(suggestionsHeightScale = it)) }
         )
         KeyboardThemeSliderRow(
             label = "Variations height",
             value = theme.variationsHeightScale,
             presetValue = preset.variationsHeightScale,
-            valueRange = 0.65f..1.6f,
+            valueRange = KEYBOARD_THEME_BAR_HEIGHT_RANGE,
             onValueChanged = { onThemeChanged(theme.copy(variationsHeightScale = it)) }
         )
         if (isSoftware) {

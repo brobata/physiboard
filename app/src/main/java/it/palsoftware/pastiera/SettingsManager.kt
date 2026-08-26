@@ -287,6 +287,7 @@ object SettingsManager {
     // Public so the running IME's SharedPreferences listener can match it for live apply.
     const val KEY_SHOW_STATUS_BAR = "show_status_bar"
     const val KEY_STATUS_BAR_VISIBILITY = "status_bar_visibility"
+    private const val KEY_HARDWARE_BAR_HEIGHT_MIGRATED = "hardware_bar_height_migrated"
     const val KEY_STATUS_BAR_APPS = "status_bar_apps"
     private const val KEY_STATUS_BAR_SLOT_LEFT = "status_bar_slot_left"
     private const val KEY_STATUS_BAR_SLOT_RIGHT_1 = "status_bar_slot_right_1"
@@ -1012,9 +1013,52 @@ object SettingsManager {
             chromeCornerRadiusRatio = 0.10f
         )
 
+    /**
+     * Hardware themes saved before the taller default carry the stock 1.0 scale in their JSON,
+     * which would pin the strip at 36dp forever. Once, lift exactly that value to the new default
+     * in every place a hardware theme lives — the fixed theme, both follow-system slots and the
+     * per-layout overrides. Any other value was chosen on purpose and stays.
+     */
+    private fun migrateHardwareBarHeight(context: Context) {
+        val prefs = getPreferences(context)
+        if (prefs.getBoolean(KEY_HARDWARE_BAR_HEIGHT_MIGRATED, false)) return
+        val editor = prefs.edit().putBoolean(KEY_HARDWARE_BAR_HEIGHT_MIGRATED, true)
+        val target = KeyboardThemeTarget.HARDWARE
+        listOf(
+            KEY_KEYBOARD_THEME_HARDWARE,
+            keyboardThemeDarkKeyForTarget(target),
+            keyboardThemeLightKeyForTarget(target)
+        ).forEach { key ->
+            val stored = prefs.getString(key, null) ?: return@forEach
+            runCatching { JSONObject(stored) }.getOrNull()
+                ?.takeIf { liftStockHardwareBarHeight(it) }
+                ?.let { editor.putString(key, it.toString()) }
+        }
+        prefs.getString(KEY_KEYBOARD_THEME_LAYOUT_OVERRIDES_HARDWARE, null)?.let { stored ->
+            runCatching { JSONArray(stored) }.getOrNull()?.let { array ->
+                var changed = false
+                for (index in 0 until array.length()) {
+                    val theme = array.optJSONObject(index)?.optJSONObject("theme") ?: continue
+                    if (liftStockHardwareBarHeight(theme)) changed = true
+                }
+                if (changed) editor.putString(KEY_KEYBOARD_THEME_LAYOUT_OVERRIDES_HARDWARE, array.toString())
+            }
+        }
+        editor.apply()
+    }
+
+    /** True when [json] carried the stock 1.0 and was lifted in place. */
+    private fun liftStockHardwareBarHeight(json: JSONObject): Boolean {
+        if (json.optDouble("suggestions_height_scale", 1.0) != 1.0) return false
+        json.put("suggestions_height_scale", HARDWARE_THEME_DEFAULT_SUGGESTIONS_HEIGHT.toDouble())
+        return true
+    }
+
     private fun defaultKeyboardTheme(target: KeyboardThemeTarget): KeyboardThemeSettings =
         when (target) {
-            KeyboardThemeTarget.HARDWARE -> defaultKeyboardTheme()
+            KeyboardThemeTarget.HARDWARE -> defaultKeyboardTheme().copy(
+                suggestionsHeightScale = HARDWARE_THEME_DEFAULT_SUGGESTIONS_HEIGHT
+            )
             KeyboardThemeTarget.SOFTWARE -> defaultKeyboardTheme().copy(
                 keyCornerRadiusRatio = SOFTWARE_THEME_DEFAULT_KEY_CORNER_RADIUS,
                 chromeCornerRadiusRatio = SOFTWARE_THEME_DEFAULT_CHROME_CORNER_RADIUS,
@@ -1069,7 +1113,9 @@ object SettingsManager {
             )
         }
         return when (target) {
-            KeyboardThemeTarget.HARDWARE -> base
+            KeyboardThemeTarget.HARDWARE -> base.copy(
+                suggestionsHeightScale = HARDWARE_THEME_DEFAULT_SUGGESTIONS_HEIGHT
+            )
             KeyboardThemeTarget.SOFTWARE -> base.copy(
                 keyCornerRadiusRatio = SOFTWARE_THEME_DEFAULT_KEY_CORNER_RADIUS,
                 chromeCornerRadiusRatio = SOFTWARE_THEME_DEFAULT_CHROME_CORNER_RADIUS,
@@ -1141,6 +1187,7 @@ object SettingsManager {
 
     fun getKeyboardTheme(context: Context, target: KeyboardThemeTarget): KeyboardThemeSettings {
         val defaults = defaultKeyboardTheme(target)
+        if (target == KeyboardThemeTarget.HARDWARE) migrateHardwareBarHeight(context)
         val stored = getPreferences(context).getString(keyboardThemeKeyForTarget(target), null)
             ?: return defaults
         return try {
@@ -1213,6 +1260,7 @@ object SettingsManager {
         dark: Boolean
     ): KeyboardThemeSettings {
         val defaults = defaultSystemKeyboardTheme(target, dark)
+        if (target == KeyboardThemeTarget.HARDWARE) migrateHardwareBarHeight(context)
         val key = if (dark) keyboardThemeDarkKeyForTarget(target) else keyboardThemeLightKeyForTarget(target)
         val stored = getPreferences(context).getString(key, null) ?: return defaults
         return try {
@@ -1230,6 +1278,7 @@ object SettingsManager {
         theme: KeyboardThemeSettings
     ) {
         val key = if (dark) keyboardThemeDarkKeyForTarget(target) else keyboardThemeLightKeyForTarget(target)
+        if (target == KeyboardThemeTarget.HARDWARE) migrateHardwareBarHeight(context)
         getPreferences(context).edit()
             .putString(key, keyboardThemeToJson(theme).toString())
             .apply()
@@ -1262,6 +1311,7 @@ object SettingsManager {
         context: Context,
         target: KeyboardThemeTarget
     ): List<KeyboardThemeLayoutOverride> {
+        if (target == KeyboardThemeTarget.HARDWARE) migrateHardwareBarHeight(context)
         val stored = getPreferences(context).getString(keyboardThemeLayoutOverridesKeyForTarget(target), null)
             ?: return emptyList()
         return try {
@@ -1399,6 +1449,9 @@ object SettingsManager {
         theme: KeyboardThemeSettings
     ) {
         val json = keyboardThemeToJson(theme)
+        // An explicit save is a choice: run the one-time lift on what was there first, so it
+        // never rewrites this value later.
+        if (target == KeyboardThemeTarget.HARDWARE) migrateHardwareBarHeight(context)
         getPreferences(context).edit()
             .putString(keyboardThemeKeyForTarget(target), json.toString())
             .apply()

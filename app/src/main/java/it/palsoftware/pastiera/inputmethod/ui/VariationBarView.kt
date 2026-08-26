@@ -251,7 +251,7 @@ class VariationBarView(
     private fun targetHeightPx(): Int =
         TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP,
-            BASE_HEIGHT_DP * (themeOverride?.variationsHeightScale ?: 1f).coerceIn(0.65f, 1.6f),
+            BASE_HEIGHT_DP * (themeOverride?.variationsHeightScale ?: 1f).coerceIn(it.palsoftware.pastiera.KEYBOARD_THEME_BAR_HEIGHT_MIN, it.palsoftware.pastiera.KEYBOARD_THEME_BAR_HEIGHT_MAX),
             context.resources.displayMetrics
         ).toInt()
 
@@ -259,7 +259,7 @@ class VariationBarView(
         TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP,
             BASE_VERTICAL_PADDING_DP * min(
-                (themeOverride?.variationsHeightScale ?: 1f).coerceIn(0.65f, 1.6f),
+                (themeOverride?.variationsHeightScale ?: 1f).coerceIn(it.palsoftware.pastiera.KEYBOARD_THEME_BAR_HEIGHT_MIN, it.palsoftware.pastiera.KEYBOARD_THEME_BAR_HEIGHT_MAX),
                 1f
             ),
             context.resources.displayMetrics

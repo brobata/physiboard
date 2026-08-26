@@ -936,10 +936,10 @@ private fun virtualKeyboardSurfaceHeightPx(
 }
 
 private fun suggestionsPreviewHeightDp(theme: KeyboardThemePreset): Float =
-    SUGGESTIONS_PREVIEW_BASE_HEIGHT_DP * theme.suggestionsHeightScale.coerceIn(0.65f, 1.6f)
+    SUGGESTIONS_PREVIEW_BASE_HEIGHT_DP * theme.suggestionsHeightScale.coerceIn(KEYBOARD_THEME_BAR_HEIGHT_MIN, KEYBOARD_THEME_BAR_HEIGHT_MAX)
 
 private fun variationsPreviewHeightDp(theme: KeyboardThemePreset): Float =
-    VARIATIONS_PREVIEW_BASE_HEIGHT_DP * theme.variationsHeightScale.coerceIn(0.65f, 1.6f)
+    VARIATIONS_PREVIEW_BASE_HEIGHT_DP * theme.variationsHeightScale.coerceIn(KEYBOARD_THEME_BAR_HEIGHT_MIN, KEYBOARD_THEME_BAR_HEIGHT_MAX)
 
 private fun hardwarePreviewVariationsSnapshot(): StatusBarController.StatusSnapshot =
     StatusBarController.StatusSnapshot(
