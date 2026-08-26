@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.provider.Settings
 import it.palsoftware.pastiera.inputmethod.EmbeddedAdbShell
+import it.palsoftware.pastiera.ring.NotificationRingSetup
 import it.palsoftware.pastiera.inputmethod.KeyboardBacklightManager
 
 /**
@@ -45,19 +46,16 @@ object SystemChangeManager {
         val fnCtrl: StepOutcome,
         val backlight: StepOutcome,
         val qsBacklight: StepOutcome,
-        val sideKey: StepOutcome
+        val sideKey: StepOutcome,
+        val notificationRing: StepOutcome
     ) {
+        private val steps get() = listOf(fnCtrl, backlight, qsBacklight, sideKey, notificationRing)
+
         val allSucceeded: Boolean
-            get() = fnCtrl == StepOutcome.SUCCESS &&
-                backlight == StepOutcome.SUCCESS &&
-                qsBacklight == StepOutcome.SUCCESS &&
-                sideKey == StepOutcome.SUCCESS
+            get() = steps.all { it == StepOutcome.SUCCESS }
 
         val needsPermission: Boolean
-            get() = fnCtrl == StepOutcome.NEEDS_PERMISSION ||
-                backlight == StepOutcome.NEEDS_PERMISSION ||
-                qsBacklight == StepOutcome.NEEDS_PERMISSION ||
-                sideKey == StepOutcome.NEEDS_PERMISSION
+            get() = steps.any { it == StepOutcome.NEEDS_PERMISSION }
     }
 
     /**
@@ -69,7 +67,24 @@ object SystemChangeManager {
         val backlight = runCatching { revertBacklight(context) }.getOrDefault(StepOutcome.FAILED)
         val qs = runCatching { revertQsBacklight(context) }.getOrDefault(StepOutcome.FAILED)
         val sideKey = runCatching { revertSideKey(context) }.getOrDefault(StepOutcome.FAILED)
-        return ResetResult(fnCtrl = fn, backlight = backlight, qsBacklight = qs, sideKey = sideKey)
+        val ring = runCatching { revertNotificationRing(context) }.getOrDefault(StepOutcome.FAILED)
+        return ResetResult(
+            fnCtrl = fn, backlight = backlight, qsBacklight = qs, sideKey = sideKey, notificationRing = ring
+        )
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // 5. Notification ring. Switch the feature off and hand back notification access and the
+    //    full-screen permission; both were granted through the broker, so the broker is what
+    //    takes them back. Never granted -> nothing to undo.
+    // ---------------------------------------------------------------------------------------
+    private fun revertNotificationRing(context: Context): StepOutcome {
+        runCatching { SettingsManager.setNotificationRingEnabled(context, false) }
+        val granted = NotificationRingSetup.isListenerGranted(context) ||
+            NotificationRingSetup.canUseFullScreenIntent(context)
+        if (!granted) return StepOutcome.SUCCESS
+        if (!EmbeddedAdbShell.isPaired(context)) return StepOutcome.NEEDS_PERMISSION
+        return if (NotificationRingSetup.revokeViaBroker(context)) StepOutcome.SUCCESS else StepOutcome.FAILED
     }
 
     // ---------------------------------------------------------------------------------------

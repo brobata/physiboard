@@ -3,6 +3,7 @@ package it.palsoftware.pastiera.inputmethod
 import android.content.Context
 import android.util.Log
 import it.palsoftware.pastiera.SettingsManager
+import it.palsoftware.pastiera.ring.NotificationRingSetup
 
 /**
  * Single entry point for everything the app wants to do through the embedded ADB broker.
@@ -23,5 +24,8 @@ object PrivilegedSetup {
             KeyboardBacklightManager.applyAlwaysOn(appContext)
         }
         ScreenTrackpadSetup.grantOverlayPermissionViaBroker(appContext)
+        if (SettingsManager.isNotificationRingEnabled(appContext)) {
+            NotificationRingSetup.grantViaBroker(appContext)
+        }
     }
 }

@@ -4,6 +4,26 @@ PhysiBoard is a GPLv3 fork of [Pastiera](https://github.com/palsoftware/pastiera
 Andrea Palumbo (PalSoftware) and contributors. This file documents the fork's changes,
 as required by GPLv3 §5(a). Package: `brobata.physiboard` (`physi` product flavor).
 
+## Unreleased
+
+- **Open notifications / Open quick settings from a key** — two new device controls in the
+  command list, so any key you can assign a command to can pull the shade down.
+
+- **Notification ring** — a glow around the camera hole when a notification arrives and
+  the screen is off, in the app's colour, with the waiting apps' icons below it if you want them. The Titan 2
+  Elite has always-on display compiled out of its firmware (the product overlay sets
+  `config_dozeAlwaysOnDisplayAvailable` false), so this is not AOD: it is a black,
+  lock-screen-topping screen on an AMOLED panel, where black pixels are off. It ends on a
+  touch, a key or an unlock, and after the time you choose it stops holding the screen on and
+  lets the phone's own timeout put it to sleep — black to black, nothing flashes. Only
+  notifications you could dismiss qualify: nothing for downloads, playback or apps running in
+  the background, and the proximity sensor keeps it from lighting in a pocket. The
+  screen is launched the way alarms and calls are launched, through a silent full-screen
+  notification the ring cancels the moment it appears, because that is the one route Android
+  still leaves an app for turning on a dark screen. Notification access and the full-screen
+  permission are granted by the one existing pairing; Reset device settings to stock hands
+  both back.
+
 ## 1.1.0 (2026-08-25)
 
 PhysiBoard becomes a toolbox as well as a keyboard. It has held a paired ADB session

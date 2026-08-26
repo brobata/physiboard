@@ -28,6 +28,7 @@ Everything here needs privileges Android will not grant an ordinary app. PhysiBo
 - **Android Auto stabilizer** — one tap disables the six vendor tools whose job is stopping background apps from running. Android Auto is a long-running session, which is exactly what those interrupt. Reversible, and honest about being the most likely cause rather than a proven one.
 - **Screen density** — fit more on a short screen. Applied with a fifteen-second countdown that reverts itself unless you confirm the screen is still readable, because a confirmation dialog is no use for a change that makes the screen unreadable.
 - **System tweaks** — animation speed (all three globals, not the one everybody sets), notification history and one-handed mode: supported by Android, never surfaced by this ROM.
+- **Notification ring** — a glow around the camera hole when a notification arrives and the screen is off, in the app's colour. The firmware compiles always-on display out, so this is a black lock-screen-topping screen on an AMOLED panel — black pixels are off — that ends on a touch, a key or an unlock, and stops holding the screen on after the time you choose. Only notifications you could dismiss; never in a pocket.
 - **Key mapping** — every physical key and what it currently does, assembled from both the vendor rows the firmware reads and PhysiBoard's own handling.
 - **Orange side key** — long-press it to open your assistant already listening, instead of the assistant's app.
 

@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.TouchApp
@@ -94,6 +95,7 @@ enum class SettingsDestination {
     BloatRemover,
     DisplayDensity,
     SystemTweaks,
+    NotificationRing,
     KeyboardHub,
     Extras,
     KeyMapping
@@ -392,6 +394,12 @@ fun SettingsScreen(
                             onClick = { navigateTo(SettingsDestination.SystemTweaks) }
                         ),
                         HubRow(
+                            icon = Icons.Filled.NotificationsActive,
+                            title = stringResource(R.string.ring_title),
+                            description = stringResource(R.string.ring_row_description),
+                            onClick = { navigateTo(SettingsDestination.NotificationRing) }
+                        ),
+                        HubRow(
                             icon = Icons.Filled.Keyboard,
                             title = stringResource(R.string.keymap_title),
                             description = stringResource(R.string.keymap_row_description),
@@ -543,6 +551,13 @@ fun SettingsScreen(
             }
             SettingsDestination.SystemTweaks -> {
                 SystemTweaksScreen(
+                    modifier = modifier,
+                    onBack = { navigateBack() },
+                    onOpenPairing = { navigateTo(SettingsDestination.SmartBacklight) }
+                )
+            }
+            SettingsDestination.NotificationRing -> {
+                NotificationRingScreen(
                     modifier = modifier,
                     onBack = { navigateBack() },
                     onOpenPairing = { navigateTo(SettingsDestination.SmartBacklight) }

@@ -10,6 +10,8 @@
 
     <!-- Riavvia il timeout dello schermo dopo un tocco sulla tastiera -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
     
     <!-- Permesso per il riconoscimento vocale -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
@@ -176,6 +178,34 @@
                 android:name="android.view.im"
                 android:resource="@xml/method" />
         </service>
+
+        <!-- Notification ring: a glow around the camera hole while the screen is otherwise off.
+             The listener is bound by the system once notification access is granted; the
+             activity is what the system launches for the ring's full-screen notification. -->
+        <service
+            android:name=".ring.NotificationRingListener"
+            android:exported="true"
+            android:label="@string/ring_title"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+        <activity
+            android:name=".ring.NotificationRingActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:noHistory="true"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:taskAffinity="brobata.physiboard.ring"
+            android:theme="@style/Theme.Pastiera.Ring" />
+        <activity
+            android:name=".ring.RingAdjustActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.Pastiera.Ring" />
 
         <service
             android:name=".inputmethod.ClicksLauncherButtonAccessibilityService"

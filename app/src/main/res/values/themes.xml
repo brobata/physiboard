@@ -46,6 +46,16 @@
     <!-- Launch trampoline. This activity exists only to hand off to the assistant and must never
          be seen. windowDisablePreview suppresses the starting window Android draws while an
          activity launches — that placeholder IS the app flashing on screen. -->
+    <style name="Theme.Pastiera.Ring" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowDisablePreview">true</item>
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:statusBarColor">@android:color/black</item>
+        <item name="android:navigationBarColor">@android:color/black</item>
+    </style>
+
     <style name="Theme.Pastiera.Trampoline" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowIsTranslucent">true</item>
         <item name="android:windowBackground">@android:color/transparent</item>
