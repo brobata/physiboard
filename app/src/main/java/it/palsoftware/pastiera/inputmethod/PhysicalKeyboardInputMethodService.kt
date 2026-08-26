@@ -2236,7 +2236,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
                 attachTrackpadDecorViewMotionHook("provider_changed")
             } else if (key == "pastierina_mode_override") {
                 keyboardVisibilityController.syncStatusBarPresentationModeFromSettings()
-            } else if (key == SettingsManager.KEY_SHOW_STATUS_BAR) {
+            } else if (
+                key == SettingsManager.KEY_SHOW_STATUS_BAR ||
+                key == SettingsManager.KEY_STATUS_BAR_VISIBILITY ||
+                key == SettingsManager.KEY_STATUS_BAR_APPS
+            ) {
                 // Master status-bar toggle. Purely visual: re-render the strip so it
                 // collapses/expands without restarting the IME. The snapshot itself is
                 // unchanged by this pref, so invalidate the render cache first to force
@@ -2946,6 +2950,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         val baseSuggestions = if (suggestionsEnabled) visibleSuggestionStrings() else emptyList()
         suggestionsMs = ImePerfLogger.elapsedMs(suggestionsStart)
         val snapshot = StatusBarController.StatusSnapshot(
+            editorPackageName = currentPackageName,
             capsLockEnabled = modifierSnapshot.capsLockEnabled,
             shiftPhysicallyPressed = modifierSnapshot.shiftPhysicallyPressed,
             shiftOneShot = modifierSnapshot.shiftOneShot,

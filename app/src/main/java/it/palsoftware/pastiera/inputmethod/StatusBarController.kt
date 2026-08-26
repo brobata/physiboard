@@ -285,7 +285,9 @@ class StatusBarController(
         val softwareAltPreviewLabels: Map<Int, String> = emptyMap(),
         val softwareAltPreviewActive: Boolean = false,
         // Legacy flag for backward compatibility
-        val shouldDisableSmartFeatures: Boolean = false
+        val shouldDisableSmartFeatures: Boolean = false,
+        /** App being typed into; decides the strip's per-app visibility. */
+        val editorPackageName: String? = null
     ) {
         val navModeActive: Boolean
             get() = ctrlLatchActive && ctrlLatchFromNavMode
@@ -2757,7 +2759,7 @@ class StatusBarController(
         val symSurfaceStackView = symSurfaceStack ?: return
         emojiView.visibility = View.GONE
 
-        // Master "Show status bar" toggle. When OFF, collapse the root chrome container to
+        // Master "Show status bar" mode (always / never / only in listed apps). When hidden, collapse the root chrome container to
         // zero height (GONE + height 0) so the strip contributes no on-screen footprint,
         // regardless of presentation mode / suggestions / LED state. This is purely visual:
         // the IME stays active and hardware key events are still processed, the input view
@@ -2766,7 +2768,7 @@ class StatusBarController(
         // Exception: an open SYM page (emoji, symbols, clipboard, picker) IS the content the
         // user asked for with the Sym key, so it still shows; the strip collapses again when
         // the page closes.
-        if (!SettingsManager.getShowStatusBar(context) && snapshot.symPage == 0) {
+        if (!SettingsManager.isStatusBarShownFor(context, snapshot.editorPackageName) && snapshot.symPage == 0) {
             collapseLayout()
             return
         }

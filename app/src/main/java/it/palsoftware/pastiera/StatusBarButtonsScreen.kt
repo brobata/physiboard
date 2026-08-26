@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBars
@@ -40,7 +41,9 @@ fun StatusBarButtonsScreen(
     onOpenModifiers: () -> Unit
 ) {
     val context = LocalContext.current
-    var showStatusBar by remember { mutableStateOf(SettingsManager.getShowStatusBar(context)) }
+    var statusBarVisibility by remember { mutableStateOf(SettingsManager.getStatusBarVisibility(context)) }
+    var statusBarApps by remember { mutableStateOf(SettingsManager.getStatusBarAppPackages(context)) }
+    var pickingStatusBarApp by remember { mutableStateOf(false) }
     var leftSlots by remember { mutableStateOf(SettingsManager.getStatusBarSlotsLeft(context)) }
     var rightSlots by remember { mutableStateOf(SettingsManager.getStatusBarSlotsRight(context)) }
     var pastierinaLeftSlots by remember {
@@ -172,15 +175,31 @@ fun StatusBarButtonsScreen(
             }
         }
 
-        ShowStatusBarToggleRow(
-            checked = showStatusBar,
-            onCheckedChange = { enabled ->
-                showStatusBar = enabled
+        StatusBarVisibilitySection(
+            visibility = statusBarVisibility,
+            apps = statusBarApps,
+            onVisibilityChange = { mode ->
+                statusBarVisibility = mode
                 // Persist first; the running IME's SharedPreferences listener picks this
                 // up and re-renders the strip live (collapse/expand, no IME restart).
-                SettingsManager.setShowStatusBar(context, enabled)
+                SettingsManager.setStatusBarVisibility(context, mode)
+            },
+            onAddApp = { pickingStatusBarApp = true },
+            onRemoveApp = { pkg ->
+                SettingsManager.setStatusBarApp(context, pkg, false)
+                statusBarApps = SettingsManager.getStatusBarAppPackages(context)
             }
         )
+        if (pickingStatusBarApp) {
+            AppPickerDialog(
+                onAppSelected = { app ->
+                    SettingsManager.setStatusBarApp(context, app.packageName, true)
+                    statusBarApps = SettingsManager.getStatusBarAppPackages(context)
+                    pickingStatusBarApp = false
+                },
+                onDismiss = { pickingStatusBarApp = false }
+            )
+        }
 
         Surface(modifier = Modifier.fillMaxWidth()) {
             Text(
@@ -354,40 +373,102 @@ fun StatusBarButtonsScreen(
     }
 }
 @Composable
-private fun ShowStatusBarToggleRow(
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+private fun StatusBarVisibilitySection(
+    visibility: SettingsManager.StatusBarVisibility,
+    apps: Set<String>,
+    onVisibilityChange: (SettingsManager.StatusBarVisibility) -> Unit,
+    onAddApp: () -> Unit,
+    onRemoveApp: (String) -> Unit
 ) {
+    val context = LocalContext.current
     Surface(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Visibility,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp)
-            )
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(R.string.show_status_bar_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Visibility,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
                 )
-                Text(
-                    text = stringResource(R.string.show_status_bar_description),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.show_status_bar_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = stringResource(R.string.show_status_bar_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
-            Switch(checked = checked, onCheckedChange = onCheckedChange)
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                SettingsManager.StatusBarVisibility.entries.forEach { mode ->
+                    FilterChip(
+                        selected = visibility == mode,
+                        onClick = { onVisibilityChange(mode) },
+                        label = {
+                            Text(
+                                stringResource(
+                                    when (mode) {
+                                        SettingsManager.StatusBarVisibility.ALWAYS -> R.string.show_status_bar_always
+                                        SettingsManager.StatusBarVisibility.NEVER -> R.string.show_status_bar_never
+                                        SettingsManager.StatusBarVisibility.APPS -> R.string.show_status_bar_apps
+                                    }
+                                )
+                            )
+                        }
+                    )
+                }
+            }
         }
     }
+    if (visibility == SettingsManager.StatusBarVisibility.APPS) {
+        Text(
+            text = stringResource(R.string.show_status_bar_apps_description),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+        apps.sortedBy { statusBarAppLabel(context, it).lowercase() }.forEach { pkg ->
+            Surface(modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = statusBarAppLabel(context, pkg),
+                        style = MaterialTheme.typography.bodyLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    TextButton(onClick = { onRemoveApp(pkg) }) {
+                        Text(stringResource(R.string.show_status_bar_apps_remove))
+                    }
+                }
+            }
+        }
+        OutlinedButton(
+            onClick = onAddApp,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        ) { Text(stringResource(R.string.show_status_bar_apps_add)) }
+    }
 }
+
+private fun statusBarAppLabel(context: android.content.Context, packageName: String): String =
+    runCatching {
+        val pm = context.packageManager
+        pm.getApplicationLabel(pm.getApplicationInfo(packageName, 0)).toString()
+    }.getOrDefault(packageName)
 
 @Composable
 private fun StatusBarLayoutPreview(

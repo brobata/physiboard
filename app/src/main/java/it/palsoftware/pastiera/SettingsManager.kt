@@ -286,6 +286,8 @@ object SettingsManager {
     // Status bar button slot configuration keys
     // Public so the running IME's SharedPreferences listener can match it for live apply.
     const val KEY_SHOW_STATUS_BAR = "show_status_bar"
+    const val KEY_STATUS_BAR_VISIBILITY = "status_bar_visibility"
+    const val KEY_STATUS_BAR_APPS = "status_bar_apps"
     private const val KEY_STATUS_BAR_SLOT_LEFT = "status_bar_slot_left"
     private const val KEY_STATUS_BAR_SLOT_RIGHT_1 = "status_bar_slot_right_1"
     private const val KEY_STATUS_BAR_SLOT_RIGHT_2 = "status_bar_slot_right_2"
@@ -674,13 +676,72 @@ object SettingsManager {
      * Independent of the PASTIERINA vs FULL_STATUS_BAR presentation mode. Defaults to true.
      */
     fun getShowStatusBar(context: Context): Boolean {
-        return getPreferences(context).getBoolean(KEY_SHOW_STATUS_BAR, false)
+        return getStatusBarVisibility(context) != StatusBarVisibility.NEVER
     }
 
+    /** Convenience for the plain on/off case: ALWAYS or NEVER. */
     fun setShowStatusBar(context: Context, show: Boolean) {
+        setStatusBarVisibility(
+            context,
+            if (show) StatusBarVisibility.ALWAYS else StatusBarVisibility.NEVER
+        )
+    }
+
+    /** Where the on-screen strip is allowed to appear. */
+    enum class StatusBarVisibility { ALWAYS, NEVER, APPS }
+
+    /**
+     * Installs from before the three-way mode stored a boolean; read it as ALWAYS/NEVER so
+     * nobody's strip changes on update. The strip is hidden by default in this fork.
+     */
+    fun getStatusBarVisibility(context: Context): StatusBarVisibility {
+        val prefs = getPreferences(context)
+        prefs.getString(KEY_STATUS_BAR_VISIBILITY, null)?.let { stored ->
+            StatusBarVisibility.entries.firstOrNull { it.name == stored }?.let { return it }
+        }
+        return if (prefs.getBoolean(KEY_SHOW_STATUS_BAR, false)) {
+            StatusBarVisibility.ALWAYS
+        } else {
+            StatusBarVisibility.NEVER
+        }
+    }
+
+    fun setStatusBarVisibility(context: Context, visibility: StatusBarVisibility) {
         getPreferences(context).edit()
-            .putBoolean(KEY_SHOW_STATUS_BAR, show)
+            .putString(KEY_STATUS_BAR_VISIBILITY, visibility.name)
+            .putBoolean(KEY_SHOW_STATUS_BAR, visibility != StatusBarVisibility.NEVER)
             .apply()
+    }
+
+    /** Packages the strip shows in when visibility is [StatusBarVisibility.APPS]. */
+    fun getStatusBarAppPackages(context: Context): Set<String> {
+        return getPreferences(context).getStringSet(KEY_STATUS_BAR_APPS, emptySet()) ?: emptySet()
+    }
+
+    fun setStatusBarApp(context: Context, packageName: String, enabled: Boolean) {
+        val current = getStatusBarAppPackages(context).toMutableSet()
+        if (enabled) current.add(packageName) else current.remove(packageName)
+        getPreferences(context).edit()
+            .putStringSet(KEY_STATUS_BAR_APPS, current)
+            .apply()
+    }
+
+    /** Whether the strip should be on screen while typing into [packageName]. */
+    fun isStatusBarShownFor(context: Context, packageName: String?): Boolean =
+        isStatusBarShownFor(
+            getStatusBarVisibility(context),
+            getStatusBarAppPackages(context),
+            packageName
+        )
+
+    fun isStatusBarShownFor(
+        visibility: StatusBarVisibility,
+        apps: Set<String>,
+        packageName: String?
+    ): Boolean = when (visibility) {
+        StatusBarVisibility.ALWAYS -> true
+        StatusBarVisibility.NEVER -> false
+        StatusBarVisibility.APPS -> packageName != null && packageName in apps
     }
 
     /** True once we've stashed the device's original Fn programmable-key values. */

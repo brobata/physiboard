@@ -4,6 +4,13 @@ PhysiBoard is a GPLv3 fork of [Pastiera](https://github.com/palsoftware/pastiera
 Andrea Palumbo (PalSoftware) and contributors. This file documents the fork's changes,
 as required by GPLv3 §5(a). Package: `brobata.physiboard` (`physi` product flavor).
 
+## Unreleased
+
+- **The status bar can be per app.** *Show status bar* is now Always, Never, or *Only in these
+  apps*: pick the apps where the on-screen bar earns its space (messaging, mail) and it stays
+  out of the way everywhere else, including the launcher's search box. Existing on/off settings
+  carry over as Always/Never.
+
 ## 1.2.1 (2026-08-26)
 
 - **A colour per app for the ring** — give Messages one colour and work mail another, and
