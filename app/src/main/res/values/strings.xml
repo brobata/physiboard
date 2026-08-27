@@ -1871,7 +1871,7 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="status_bar_button_redo">Redo</string>
     <string name="status_bar_button_redo_description">Send Ctrl+Y</string>
     <string name="status_bar_variations_visible_title">Show variations</string>
-    <string name="status_bar_variations_visible_description">Show the configured variation row between the status bar buttons. When off, buttons use the full status bar; swipe cursor control still works.</string>
+    <string name="status_bar_variations_visible_description">A row of accented and alternative characters for the letter before the cursor — è é ê ë for e. When off, the status bar buttons take the full width; swipe cursor control still works.</string>
     <string name="status_bar_swipe_cursor_info">Swipe across the status bar to move the cursor.</string>
     <string name="dynamic_variation_slot_count_title">Dynamic variation slots</string>
     <string name="dynamic_variation_slot_count_description">Aim to show %1$d dynamic entries between the status bar buttons.</string>

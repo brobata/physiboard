@@ -360,7 +360,10 @@ object SettingsManager {
     private const val DEFAULT_SLOT_RIGHT_2 = STATUS_BAR_BUTTON_MICROPHONE
     private const val DEFAULT_PASTIERINA_SLOT_LEFT = STATUS_BAR_BUTTON_LANGUAGE
     private const val DEFAULT_PASTIERINA_SLOT_RIGHT = STATUS_BAR_BUTTON_HAMBURGER
-    private const val DEFAULT_STATUS_BAR_VARIATIONS_VISIBLE = true
+    // The variation row is off unless asked for: on a physical keyboard the accent row costs a
+    // second strip of screen and Alt/Sym already reach the same characters. Resetting the status
+    // bar must land here too, not on the upstream default.
+    private const val DEFAULT_STATUS_BAR_VARIATIONS_VISIBLE = false
     private const val DEFAULT_DYNAMIC_VARIATION_BAR_SLOT_COUNT = 7
     private const val DEFAULT_DYNAMIC_VARIATION_BAR_RESIZE_TO_CONTENT = false
     private val DEFAULT_MODIFIER_INDICATORS = setOf(MODIFIER_INDICATOR_BOTTOM_STRIP)

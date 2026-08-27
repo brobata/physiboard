@@ -198,6 +198,13 @@ fun StatusBarButtonsScreen(
                 SettingsManager.setStatusBarHeightDp(context, dp)
             }
         )
+        ShowVariationsRow(
+            enabled = variationsVisible,
+            onEnabledChange = { enabled ->
+                variationsVisible = enabled
+                SettingsManager.setStatusBarVariationsEnabled(context, enabled)
+            }
+        )
         if (pickingStatusBarApp) {
             AppPickerDialog(
                 onAppSelected = { app ->
@@ -471,6 +478,31 @@ private fun StatusBarVisibilitySection(
             onClick = onAddApp,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         ) { Text(stringResource(R.string.show_status_bar_apps_add)) }
+    }
+}
+
+@Composable
+private fun ShowVariationsRow(enabled: Boolean, onEnabledChange: (Boolean) -> Unit) {
+    Surface(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.status_bar_variations_visible_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = stringResource(R.string.status_bar_variations_visible_description),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(checked = enabled, onCheckedChange = onEnabledChange)
+        }
     }
 }
 
