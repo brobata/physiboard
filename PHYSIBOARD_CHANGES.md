@@ -4,7 +4,7 @@ PhysiBoard is a GPLv3 fork of [Pastiera](https://github.com/palsoftware/pastiera
 Andrea Palumbo (PalSoftware) and contributors. This file documents the fork's changes,
 as required by GPLv3 §5(a). Package: `brobata.physiboard` (`physi` product flavor).
 
-## Unreleased
+## 1.2.3 (2026-08-27)
 
 - **Sym+C / Sym+V copy and paste.** They did not: Sym+letter was reserved for the symbol
   layer and app shortcuts, and copy/paste lived on Ctrl — the Fn key, but only once you have
