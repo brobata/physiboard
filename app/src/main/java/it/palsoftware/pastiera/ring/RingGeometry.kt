@@ -30,8 +30,8 @@ object RingGeometry {
     /**
      * The ring fitted to the Titan 2 Elite's actual lens, measured off the panel (2026-08-26):
      * the lens sits lower and further right than the centre of the reported box, and is
-     * smaller than it. Pixels at the panel's 300 dpi, scaled for anything else. Every Titan
-     * is the same phone, so this is not a setting.
+     * smaller than it. Pixels at the panel's 300 dpi, scaled for anything else. Panels differ
+     * by a few pixels, so this is the default and the fit screen can override it.
      */
     fun titanFitted(densityDpi: Int): Ring {
         val k = densityDpi / 300f

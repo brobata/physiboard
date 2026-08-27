@@ -4,6 +4,13 @@ PhysiBoard is a GPLv3 fork of [Pastiera](https://github.com/palsoftware/pastiera
 Andrea Palumbo (PalSoftware) and contributors. This file documents the fork's changes,
 as required by GPLv3 §5(a). Package: `brobata.physiboard` (`physi` product flavor).
 
+## Unreleased
+
+- **Fit the ring yourself again.** The ring is fitted to one Titan 2 Elite, and it turns out
+  panels differ by a few pixels — a user's ring sat off the lens. The fit screen from 1.2.0 is
+  back on the Notification ring page: white canvas, drag the ring onto the dark spot, resize,
+  set thickness; *Auto* returns the fitted default.
+
 ## 1.2.2 (2026-08-26)
 
 - **A status bar you can actually hit.** The hardware-keyboard strip was 32–36dp tall, under

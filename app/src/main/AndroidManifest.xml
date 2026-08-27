@@ -201,6 +201,11 @@
             android:turnScreenOn="true"
             android:taskAffinity="brobata.physiboard.ring"
             android:theme="@style/Theme.Pastiera.Ring" />
+        <activity
+            android:name=".ring.RingAdjustActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.Pastiera.Ring" />
 
         <service
             android:name=".inputmethod.ClicksLauncherButtonAccessibilityService"

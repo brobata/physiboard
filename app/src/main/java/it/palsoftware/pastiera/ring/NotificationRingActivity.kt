@@ -118,7 +118,9 @@ class NotificationRingActivity : Activity() {
     }
 
     private fun placeRing(fromCutout: RingGeometry.Ring?) {
-        view.ring = fromCutout
+        view.ring = SettingsManager.getNotificationRingOverride(this)
+            ?.let { if (it.stroke > 0f) it else it.copy(stroke = strokePx()) }
+            ?: fromCutout
             ?: RingGeometry.titanFallback(resources.displayMetrics.densityDpi, gapPx(), strokePx())
     }
 
