@@ -4768,11 +4768,20 @@ object SettingsManager {
     
     // Power Shortcuts settings
     private const val KEY_POWER_SHORTCUTS_ENABLED = "power_shortcuts_enabled"
+    private const val KEY_SYM_EDIT_SHORTCUTS = "sym_edit_shortcuts"
     private const val DEFAULT_POWER_SHORTCUTS_ENABLED = true
     
     /**
      * Restituisce se i Power Shortcuts sono abilitati.
      */
+    /** Sym+C/V/X/A copy, paste, cut and select all in text fields; on by default. */
+    fun getSymEditShortcutsEnabled(context: Context): Boolean =
+        getPreferences(context).getBoolean(KEY_SYM_EDIT_SHORTCUTS, true)
+
+    fun setSymEditShortcutsEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit().putBoolean(KEY_SYM_EDIT_SHORTCUTS, enabled).apply()
+    }
+
     fun getPowerShortcutsEnabled(context: Context): Boolean {
         return getPreferences(context).getBoolean(KEY_POWER_SHORTCUTS_ENABLED, DEFAULT_POWER_SHORTCUTS_ENABLED)
     }

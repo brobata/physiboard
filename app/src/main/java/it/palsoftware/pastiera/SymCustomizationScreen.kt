@@ -60,6 +60,9 @@ fun SymCustomizationScreen(
     val screenScrollState = rememberScrollState()
     
     // Load saved auto-close SYM value
+    var symEditShortcuts by remember {
+        mutableStateOf(SettingsManager.getSymEditShortcutsEnabled(context))
+    }
     var symAutoClose by remember { 
         mutableStateOf(SettingsManager.getSymAutoClose(context))
     }
@@ -508,6 +511,40 @@ fun SymCustomizationScreen(
         }
 
         SettingsSectionDivider(stringResource(R.string.sym_behavior_section_title))
+
+        Surface(modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Keyboard,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.sym_edit_shortcuts_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = stringResource(R.string.sym_edit_shortcuts_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = symEditShortcuts,
+                    onCheckedChange = { enabled ->
+                        symEditShortcuts = enabled
+                        SettingsManager.setSymEditShortcutsEnabled(context, enabled)
+                    }
+                )
+            }
+        }
 
 
         // Auto-Close SYM Layout option (in alto)

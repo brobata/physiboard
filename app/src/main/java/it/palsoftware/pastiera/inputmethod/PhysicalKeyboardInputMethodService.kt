@@ -4468,6 +4468,30 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
             return true
         }
 
+        // Sym+C/V/X/A edit the text before any app shortcut or symbol chord gets the key.
+        if (
+            hasEditableField &&
+            (symTogglePendingOnKeyUp || event?.isSymPressed == true) &&
+            event?.repeatCount == 0 &&
+            !event.isAltPressed &&
+            SettingsManager.getSymEditShortcutsEnabled(this)
+        ) {
+            val action = SymEditShortcuts.actionFor(keyCode)
+            if (action != null) {
+                symChordUsedSinceKeyDown = true
+                currentInputConnection?.performContextMenuAction(action)
+                KeyboardEventTracker.notifyKeyEvent(
+                    keyCode = keyCode,
+                    event = event,
+                    action = "KEY_DOWN",
+                    origin = "ime_service",
+                    outputKeyCode = null,
+                    outputKeyCodeName = "sym_edit_${resources.getResourceEntryName(action)}"
+                )
+                return true
+            }
+        }
+
         if (
             hasEditableField &&
             (symTogglePendingOnKeyUp || event?.isSymPressed == true) &&

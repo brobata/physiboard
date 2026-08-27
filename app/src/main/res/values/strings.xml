@@ -484,6 +484,8 @@
     
     <!-- SYM Customization Screen -->
     <string name="sym_customize_title">Customize SYM Keyboard</string>
+    <string name="sym_edit_shortcuts_title">Sym+C/V/X/A: copy, paste, cut, select all</string>
+    <string name="sym_edit_shortcuts_description">In a text field, Sym with C, V, X or A edits the text instead of typing a symbol or launching an app. Off, those four chords go back to the SYM layer.</string>
     <string name="sym_auto_close_title">Auto-Close SYM Layout</string>
     <string name="sym_auto_close_description">Automatically close SYM layout after inserting a character, pressing Alt, or pressing Enter. Does not close with Control or Shift.</string>
     <string name="sym_auto_close_touch_title">Also close after on-screen SYM keys</string>
