@@ -4,7 +4,7 @@ PhysiBoard is a GPLv3 fork of [Pastiera](https://github.com/palsoftware/pastiera
 Andrea Palumbo (PalSoftware) and contributors. This file documents the fork's changes,
 as required by GPLv3 §5(a). Package: `brobata.physiboard` (`physi` product flavor).
 
-## Unreleased
+## 1.2.2 (2026-08-26)
 
 - **A status bar you can actually hit.** The hardware-keyboard strip was 32–36dp tall, under
   Android's 48dp touch minimum, and its height was buried in the theme's *Suggestions height*
@@ -16,6 +16,7 @@ as required by GPLv3 §5(a). Package: `brobata.physiboard` (`physi` product flav
   out of the way everywhere else, including the launcher's search box. Messaging, mail and
   social apps (Messages, Gmail, WhatsApp, Messenger, Facebook, Instagram, Telegram, Signal and
   friends) are listed to start with. Existing on/off settings carry over as Always/Never.
+- **Clipboard and mic a third narrower**, and the three suggestion slots take the space back.
 
 ## 1.2.1 (2026-08-26)
 
