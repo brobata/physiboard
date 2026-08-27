@@ -65,7 +65,7 @@ class FullSuggestionsBar(
         private const val BACKLIGHT_MIN_SHOW_BEFORE_KEYPRESS_MS = 350L
         // How much wider a rounded corner-edge button (clipboard / mic) is vs a normal button.
         // The center suggestion container is inset by the extra width so nothing overlaps.
-        private const val EDGE_WIDTH_MULTIPLIER = 2.15f
+        private const val EDGE_WIDTH_MULTIPLIER = 1.45f
     }
 
     private var container: LinearLayout? = null
