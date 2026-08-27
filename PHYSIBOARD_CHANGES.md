@@ -4,6 +4,13 @@ PhysiBoard is a GPLv3 fork of [Pastiera](https://github.com/palsoftware/pastiera
 Andrea Palumbo (PalSoftware) and contributors. This file documents the fork's changes,
 as required by GPLv3 §5(a). Package: `brobata.physiboard` (`physi` product flavor).
 
+## 1.2.4 (2026-08-27)
+
+- **Turn the accent row off again.** The row of è é ê ë under the suggestions had no switch:
+  it went missing in the settings redesign, and *Reset* on the Status Bar screen turned the row
+  on rather than off, with no way back. *Show variations* is on the Status Bar screen again,
+  under *Bar height*, and it now says what it is — off stays off, including after a reset.
+
 ## 1.2.3 (2026-08-27)
 
 - **Sym+C / Sym+V copy and paste.** They did not: Sym+letter was reserved for the symbol
