@@ -41,7 +41,8 @@ fun SettingsHubScreen(
     title: String,
     intro: String,
     rows: List<HubRow>,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    header: (@Composable () -> Unit)? = null
 ) {
     BackHandler { onBack() }
 
@@ -80,6 +81,7 @@ fun SettingsHubScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
             )
+            header?.invoke()
             rows.forEach { row ->
                 Surface(
                     modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp)

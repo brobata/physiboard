@@ -356,6 +356,7 @@ fun SettingsScreen(
                     title = stringResource(R.string.toolbox_title),
                     intro = stringResource(R.string.toolbox_intro),
                     onBack = { navigateBack() },
+                    header = { DeviceSetupCard() },
                     rows = listOf(
                         HubRow(
                             icon = Icons.Filled.LightMode,

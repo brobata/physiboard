@@ -34,39 +34,7 @@ import brobata.physiboard.inputmethod.PrivilegedSetup
 import kotlinx.coroutines.delay
 import moe.shizuku.manager.adb.AdbPairingService
 
-/**
- * Starts the app's OWN embedded wireless-ADB pairing flow (same [AdbPairingService] the
- * test activity uses) so the user can pair without any separate app. Requests the
- * notification permission first on Android 13+ (the pairing PIN arrives as a notification).
- */
-private fun startPairing(context: Context, showToast: Boolean = true) {
-    try {
-        ContextCompat.startForegroundService(context, AdbPairingService.startIntent(context))
-        if (showToast) {
-            Toast.makeText(
-                context,
-                context.getString(R.string.smart_backlight_setup_pair_hint),
-                Toast.LENGTH_LONG
-            ).show()
-        }
-    } catch (t: Throwable) {
-        if (showToast) {
-            Toast.makeText(context, "Pairing failed: ${t.message}", Toast.LENGTH_LONG).show()
-        }
-    }
-}
 
-/**
- * Stops the pairing watcher and dismisses its PIN notification. Uses stopService so
- * it also works when the service was auto-armed and the caller isn't holding a start.
- */
-private fun stopPairing(context: Context) {
-    try {
-        context.stopService(AdbPairingService.stopIntent(context))
-    } catch (_: Throwable) {
-        // Service may already be gone; nothing to stop.
-    }
-}
 
 /**
  * Opens a system settings screen, trying [action] first and falling back to
@@ -123,57 +91,6 @@ fun SmartBacklightScreen(
         }
     }
 
-    // Auto-arm the pairing watcher while this screen is open and the device isn't paired
-    // yet, so the PIN-entry notification is already listening BEFORE the user reaches
-    // Android's "Pair device with pairing code" prompt. Foreground-only (this is not the
-    // boot scenario) so starting the foreground service here is allowed. If notification
-    // permission isn't granted the service simply won't post — it won't crash.
-    var pairingArmed by remember { mutableStateOf(false) }
-    LaunchedEffect(paired) {
-        if (!paired && !pairingArmed) {
-            startPairing(context, showToast = false)
-            pairingArmed = true
-        } else if (paired && pairingArmed) {
-            // Pairing succeeded — stop the watcher and drop the PIN notification.
-            stopPairing(context)
-            pairingArmed = false
-        }
-    }
-    // Stop the watcher (and its notification) when the user leaves this screen, so the
-    // PIN notification only exists while setup is actively on screen.
-    DisposableEffect(Unit) {
-        onDispose {
-            if (pairingArmed) {
-                stopPairing(context)
-                pairingArmed = false
-            }
-        }
-    }
-
-    // Guided one-time-setup walkthrough (collapsed by default; auto-open until ready).
-    var guideExpanded by rememberSaveable { mutableStateOf(false) }
-
-    // Pairing PIN arrives as a notification; ask for POST_NOTIFICATIONS on Android 13+.
-    val notifPermLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) {
-        startPairing(context)
-        pairingArmed = true
-    }
-
-    // Manual re-arm / retry. Auto-arm already runs on entry; this restarts the watcher
-    // (and requests notification permission if needed) if the user wants to retry.
-    fun onPairClicked() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
-            PackageManager.PERMISSION_GRANTED
-        ) {
-            notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-        } else {
-            startPairing(context)
-            pairingArmed = true
-        }
-    }
 
     BackHandler { onBack() }
 
@@ -212,95 +129,9 @@ fun SmartBacklightScreen(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
                 )
             } else if (enabled) {
-                // Not set up yet — a compact, non-alarming prompt. The step-by-step walkthrough
-                // stays tucked behind a collapsed "How?" toggle so it isn't clutter for most.
-                Surface(
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    shape = MaterialTheme.shapes.medium,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = stringResource(
-                                if (!paired) R.string.smart_backlight_setup_not_paired
-                                else R.string.smart_backlight_setup_wireless_off
-                            ),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        if (!paired) {
-                            Spacer(modifier = Modifier.height(10.dp))
-                            Button(onClick = { onPairClicked() }) {
-                                Text(stringResource(R.string.smart_backlight_setup_pair_button))
-                            }
-                        }
-
-                        // Collapsed "How do I turn on Wireless debugging?" walkthrough.
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { guideExpanded = !guideExpanded }
-                                .padding(vertical = 4.dp),
-                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = stringResource(R.string.smart_backlight_guide_toggle),
-                                style = MaterialTheme.typography.bodySmall,
-                                fontFamily = FontFamily.Monospace,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.weight(1f)
-                            )
-                            Icon(
-                                imageVector = if (guideExpanded) Icons.Filled.ExpandLess
-                                              else Icons.Filled.ExpandMore,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-
-                        if (guideExpanded) {
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = stringResource(R.string.smart_backlight_guide_intro),
-                                style = MaterialTheme.typography.bodySmall,
-                                fontFamily = FontFamily.Monospace,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            listOf(
-                                R.string.smart_backlight_guide_step1,
-                                R.string.smart_backlight_guide_step2,
-                                R.string.smart_backlight_guide_step3,
-                                R.string.smart_backlight_guide_step4
-                            ).forEach { stepRes ->
-                                Text(
-                                    text = stringResource(stepRes),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontFamily = FontFamily.Monospace,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(bottom = 6.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(4.dp))
-                            OutlinedButton(
-                                onClick = {
-                                    openSystemSettings(
-                                        context,
-                                        Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS
-                                    )
-                                }
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.smart_backlight_guide_open_dev),
-                                    fontFamily = FontFamily.Monospace
-                                )
-                            }
-                        }
-                    }
-                }
+                // One pairing serves every privileged feature, so the card lives in T2E Tools and
+                // is shown here too rather than reimplemented.
+                DeviceSetupCard()
             }
 
             Row(

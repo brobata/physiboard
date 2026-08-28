@@ -381,7 +381,7 @@
     <string name="home_tile_fn_layer">Fn Layer</string>
     <string name="home_tile_all_settings">Settings</string>
     <string name="home_tile_language">Language</string>
-    <string name="home_tile_backlight_needs_setup">needs setup</string>
+    <string name="home_tile_backlight_needs_setup">needs pairing</string>
     <string name="home_tile_backlight_wireless_off">turn on Wi-Fi debug</string>
     <string name="diagnostics_title">Diagnostics</string>
     <string name="diagnostics_row_description">Physical key-event logger and debug export</string>
@@ -1713,4 +1713,16 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="v2_notice_dismiss">Got it</string>
     <string name="v2_notice_restore">Restore my old settings</string>
     <string name="v2_notice_restored">Your previous settings are back.</string>
+    <string name="device_setup_needed_title">Setup needed</string>
+    <string name="device_setup_ready_title">Paired</string>
+    <string name="device_setup_ready_body">The tools below can reach the system. Survives reboots.</string>
+    <string name="device_setup_step_dev_1">Open Settings → About phone</string>
+    <string name="device_setup_step_dev_2">Tap Build number seven times</string>
+    <string name="device_setup_step_dev_3">Come back here</string>
+    <string name="device_setup_step_pair_1">Turn on Wireless debugging</string>
+    <string name="device_setup_step_pair_2">Tap Pair device with pairing code</string>
+    <string name="device_setup_step_pair_3">Type the code into the PhysiBoard notification</string>
+    <string name="device_setup_open_about">Open About phone</string>
+    <string name="device_setup_open_wireless">Open Wireless debugging</string>
+    <string name="device_setup_open_pairing">Open Wireless debugging</string>
 </resources>

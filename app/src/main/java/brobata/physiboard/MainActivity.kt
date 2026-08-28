@@ -255,8 +255,7 @@ fun KeyboardSetupScreen(
     // when the light is enabled but has never been configured (the persistent value has
     // not been written yet). Once configured it survives reboots, so live Wireless-debugging
     // state is irrelevant to the badge.
-    var backlightEnabled by remember { mutableStateOf(false) }
-    var backlightApplied by remember { mutableStateOf(false) }
+    var devicePaired by remember { mutableStateOf(true) }
 
     fun refreshStatus() {
         checkImeStatus(context) { enabled, selected ->
@@ -264,8 +263,7 @@ fun KeyboardSetupScreen(
             isPastieraSelected = selected
         }
         enabledLanguageCount = getEnabledInputLanguageCount(context)
-        backlightEnabled = SettingsManager.getSmartBacklightEnabled(context)
-        backlightApplied = SettingsManager.getSmartBacklightApplied(context)
+        devicePaired = brobata.physiboard.inputmethod.EmbeddedAdbShell.isPaired(context)
     }
 
     // Initial IME + language + backlight status
@@ -279,9 +277,10 @@ fun KeyboardSetupScreen(
         }
     }
 
-    // Backlight attention: enabled but never configured (persistent value never written).
-    // Clears once configured, regardless of current Wireless-debugging state.
-    val backlightNeedsAttention = backlightEnabled && !backlightApplied
+    // The tile flags the one pairing every privileged tool depends on, not one feature's state.
+    // Flagging the backlight instead meant a user who had never switched the backlight on was
+    // never told that the toolbox needed setting up at all.
+    val backlightNeedsAttention = !devicePaired
 
     // Request notification permission (Android 13+)
     val requestPermissionLauncher = rememberLauncherForActivityResult(
