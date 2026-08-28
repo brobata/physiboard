@@ -88,6 +88,11 @@ class AdbPairingService : Service() {
                 setSound(null, null)
                 setShowBadge(false)
                 setAllowBubbles(false)
+                // The pairing code is time-limited and the user is standing in front of the phone
+                // waiting for it, so Do Not Disturb swallowing it is never what anyone wants.
+                // Android only honours this if the app has notification-policy access; when it
+                // does not the flag is ignored, which is why DeviceSetupCard warns as well.
+                setBypassDnd(true)
             })
     }
 

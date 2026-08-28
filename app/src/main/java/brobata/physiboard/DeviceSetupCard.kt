@@ -73,6 +73,7 @@ fun DeviceSetupCard(modifier: Modifier = Modifier) {
     val wirelessDebuggingOn = remember(statusTick) {
         EmbeddedAdbShell.isWirelessDebuggingEnabled(context)
     }
+    val doNotDisturbOn = remember(statusTick) { doNotDisturbActive(context) }
 
     var notificationsAllowed by remember {
         mutableStateOf(notificationPermissionGranted(context))
@@ -162,10 +163,15 @@ fun DeviceSetupCard(modifier: Modifier = Modifier) {
                 Step(number = index + 1, text = stringResource(res))
             }
 
-            if (!notificationsAllowed) {
+            val warning = when {
+                !notificationsAllowed -> R.string.device_setup_needs_notifications
+                doNotDisturbOn -> R.string.device_setup_dnd_on
+                else -> null
+            }
+            if (warning != null) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = stringResource(R.string.device_setup_needs_notifications),
+                    text = stringResource(warning),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.error
                 )
@@ -207,6 +213,12 @@ private fun Step(number: Int, text: String) {
         )
     }
 }
+
+/** Bedtime mode and Do Not Disturb both land here, and both can hide the pairing code. */
+private fun doNotDisturbActive(context: Context): Boolean =
+    runCatching {
+        Settings.Global.getInt(context.contentResolver, "zen_mode", 0) != 0
+    }.getOrDefault(false)
 
 private fun notificationPermissionGranted(context: Context): Boolean =
     Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
