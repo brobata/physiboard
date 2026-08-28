@@ -25,7 +25,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -75,36 +74,37 @@ fun DeviceSetupCard(modifier: Modifier = Modifier) {
         EmbeddedAdbShell.isWirelessDebuggingEnabled(context)
     }
 
+    var notificationsAllowed by remember {
+        mutableStateOf(notificationPermissionGranted(context))
+    }
     val notifPermLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { armPairing(context) }
+    ) { granted ->
+        notificationsAllowed = granted
+        // Re-arm so the watcher is running under the permission that just arrived.
+        if (granted && !paired) armPairing(context)
+    }
 
-    // Arm while on screen, stop on the way out so the PIN notification never outlives the screen
-    // that asked for it. Exactly one place does this: broker calls are serialised and overlapping
-    // mDNS discoveries fail silently, so two screens arming at once would break pairing quietly.
+    // Arm the watcher whenever we are not paired. Deliberately NOT torn down when this leaves the
+    // screen: the button's whole job is to send the user to Android's Wireless debugging page, and
+    // stopping the watcher as they walk out of the door is precisely how they arrive at "Pair
+    // device" with nothing listening. AdbPairingService stops itself once pairing succeeds.
     var armed by remember { mutableStateOf(false) }
     LaunchedEffect(paired) {
         if (!paired && !armed) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
-                PackageManager.PERMISSION_GRANTED
-            ) {
-                notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            } else {
-                armPairing(context)
-            }
+            armPairing(context)
             armed = true
         } else if (paired && armed) {
             stopPairing(context)
             armed = false
         }
     }
-    DisposableEffect(Unit) {
-        onDispose {
-            if (armed) {
-                stopPairing(context)
-                armed = false
-            }
+
+    // Asked for separately, and never as a precondition for arming. The pairing code arrives as a
+    // notification, so a denied permission means no code - but the watcher itself still has to run.
+    LaunchedEffect(Unit) {
+        if (!notificationsAllowed) {
+            notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
 
@@ -162,6 +162,15 @@ fun DeviceSetupCard(modifier: Modifier = Modifier) {
                 Step(number = index + 1, text = stringResource(res))
             }
 
+            if (!notificationsAllowed) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = stringResource(R.string.device_setup_needs_notifications),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+
             Spacer(modifier = Modifier.height(12.dp))
             Button(onClick = {
                 if (developerOptionsOn) openWirelessDebugging(context) else openAboutPhone(context)
@@ -198,6 +207,11 @@ private fun Step(number: Int, text: String) {
         )
     }
 }
+
+private fun notificationPermissionGranted(context: Context): Boolean =
+    Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
+        PackageManager.PERMISSION_GRANTED
 
 private fun developerOptionsEnabled(context: Context): Boolean =
     runCatching {
