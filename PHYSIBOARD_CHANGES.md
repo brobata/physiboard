@@ -2,7 +2,55 @@
 
 PhysiBoard is a GPLv3 fork of [Pastiera](https://github.com/palsoftware/pastiera) by
 Andrea Palumbo (PalSoftware) and contributors. This file documents the fork's changes,
-as required by GPLv3 §5(a). Package: `brobata.physiboard` (`physi` product flavor).
+as required by GPLv3 §5(a). Package: `brobata.physiboard`.
+
+## 2.0.0 (2026-08-28)
+
+**You will have to pick PhysiBoard as your keyboard again.** This release renames
+part of the app internally, and Android treats a renamed keyboard as a new one, so
+it switches you to whatever else you have installed. Every setting you had is still
+here — only the selection is lost. PhysiBoard now notices this on the first launch
+after updating and offers you one tap back to setup, but that notice needs
+notification permission, so this note is the backstop.
+
+- **Settings had two of several things and none of one.** The Extras button on the
+  home screen opened the same page as All settings, because Extras had never
+  actually been built as a screen. It exists now, and holds the quick launcher,
+  input languages and text expansion. Screen trackpad and the SYM layer editor were
+  each listed in two places; the duplicates are gone.
+- **Advanced is gone.** Backup, restore, diagnostics and reset to stock are on the
+  settings list itself. They were the substance of that screen and there was no
+  reason to keep them a level down once everything else had moved out.
+- **About is reachable again.** It could only be found by typing "about" into the
+  search box, which is not where a fork's licence and credits should live.
+- **The status bar and the keyboard theme are one page.** The buttons, the cursor
+  colours, the LEDs and the theme are all the same subject, and were two separate
+  trips. It is called Status Bar Theme and sits under Keyboard.
+- **Custom themes work.** The tools to build one were already in the app with no
+  way to open them. There is now a button, a colour wheel for each part of the
+  keyboard, and a new theme starts as a copy of the one you are already using so
+  you can change one colour and save. Seven louder presets added: Synthwave,
+  Vapourwave, Hazard, Blueprint, Forest Floor, Rose Gold and Ink and Paper.
+- **Theme assignment removed.** Choosing separate light and dark themes and having
+  the system pick between them was more explaining than it was worth. You pick a
+  theme, and that is the theme you get.
+- **The colour wheel fits the screen.** On the Titan the dialog was taller than the
+  display, so the brightness slider was cut off at the bottom.
+- **Remove bloat has more one-tap sets.** Factory and lab tools, vendor apps and
+  games, and a set for the packages that report or record. The Android Auto
+  stabiliser is now labelled as in testing, because it is a reasonable hypothesis
+  and not a proven fix.
+- **The notification ring's screen time is a slider**, anywhere from one minute to
+  an hour, rather than a choice of three.
+- **Emoji and symbol shortcodes are gone.** Snippets stay, and moved to Extras.
+- **Sound and haptics, and the quick launcher's behaviour screen, stop hiding
+  their own settings** behind a collapsed Advanced heading.
+- **Going back returns you where you were**, rather than to the top of the
+  previous screen. The home screen also gained a Status button that tells you
+  whether anything still needs setting up.
+- **The app is called PhysiBoard in every language now.** All nine translations
+  still called it Pastiera, including the name under the icon and in the keyboard
+  picker.
 
 ## 1.2.4 (2026-08-27)
 
