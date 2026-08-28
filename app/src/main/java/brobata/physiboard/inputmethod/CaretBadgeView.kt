@@ -112,6 +112,14 @@ class CaretBadgeView(context: Context) : View(context) {
      */
     val glyphCenterOffset: Float get() = haloWidth * 2f + ascent - glyphHeight / 2f
 
+    /**
+     * Distance from the view's top edge to the foot of the glyphs.
+     *
+     * Below it the view still carries the font's descent and room for a lock bar, so measuring from
+     * the view's own bottom edge would leave the ink floating well clear of wherever it was aimed.
+     */
+    val glyphBottomOffset: Float get() = haloWidth * 2f + ascent
+
     private fun glyphPaint(item: Item) =
         if (item.shape == Shape.ALT && altHasGlyph) symbol else text
 
