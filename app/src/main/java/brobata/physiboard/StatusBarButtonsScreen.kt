@@ -28,6 +28,10 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.activity.compose.BackHandler
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
+import kotlinx.coroutines.delay
 import brobata.physiboard.R
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -50,6 +54,15 @@ fun StatusBarButtonsScreen(
     var caretBadgeEnabled by remember {
         mutableStateOf(SettingsManager.getCaretModifierBadgeEnabled(context))
     }
+    // Poll the overlay permission so the row updates when the user comes back from system settings.
+    var overlayTick by remember { mutableStateOf(0) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            overlayTick++
+            delay(1500)
+        }
+    }
+    val overlayGranted = remember(overlayTick) { Settings.canDrawOverlays(context) }
     BackHandler { onBack() }
 
     fun selectExtendedButton(buttonId: String, targetSide: String, targetIndex: Int) {
@@ -150,9 +163,17 @@ fun StatusBarButtonsScreen(
 
         CaretBadgeRow(
             checked = caretBadgeEnabled,
+            overlayGranted = overlayGranted,
             onCheckedChange = { enabled ->
                 caretBadgeEnabled = enabled
                 SettingsManager.setCaretModifierBadgeEnabled(context, enabled)
+            },
+            onGrantOverlay = {
+                val intent = Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:${context.packageName}")
+                ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                runCatching { context.startActivity(intent) }
             }
         )
 
@@ -710,8 +731,14 @@ private fun getButtonIconRes(buttonId: String): Int {
  * keyboard tells you what Shift and Alt are doing.
  */
 @Composable
-private fun CaretBadgeRow(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+private fun CaretBadgeRow(
+    checked: Boolean,
+    overlayGranted: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    onGrantOverlay: () -> Unit
+) {
     Surface(modifier = Modifier.fillMaxWidth()) {
+      Column {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -739,5 +766,21 @@ private fun CaretBadgeRow(checked: Boolean, onCheckedChange: (Boolean) -> Unit) 
             }
             Switch(checked = checked, onCheckedChange = onCheckedChange)
         }
+        // Drawing beside the cursor means drawing over the app being typed into, which Android
+        // gates behind a permission the user grants themselves - no ADB, no developer options.
+        if (checked && !overlayGranted) {
+            Column(modifier = Modifier.padding(start = 52.dp, end = 16.dp, bottom = 12.dp)) {
+                Text(
+                    text = stringResource(R.string.caret_modifier_badge_needs_overlay),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(onClick = onGrantOverlay) {
+                    Text(stringResource(R.string.caret_modifier_badge_grant_overlay))
+                }
+            }
+        }
+      }
     }
 }

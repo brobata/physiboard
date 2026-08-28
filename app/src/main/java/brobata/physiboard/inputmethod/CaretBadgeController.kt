@@ -44,7 +44,20 @@ class CaretBadgeController(private val service: InputMethodService) {
 
     private var currentLabel: String? = null
 
-    /** True while a modifier is armed, i.e. while the editor should be publishing cursor updates. */
+    /**
+     * The last caret position the editor reported, so pressing a modifier can put the badge on
+     * screen straight away instead of waiting a round trip for a fresh one.
+     */
+    private var lastCaret: PointF? = null
+
+    /**
+     * True while the feature is on, i.e. while the editor should be publishing cursor updates.
+     *
+     * Monitoring deliberately stays on for the whole editing session rather than being switched on
+     * when a modifier is pressed: the caret moves as you type, so a position cached from before the
+     * last few keystrokes would put the badge in the wrong place, and waiting for a fresh one would
+     * show it a frame or two late on every capital letter.
+     */
     var wantsCursorUpdates: Boolean = false
         private set
 
@@ -56,18 +69,29 @@ class CaretBadgeController(private val service: InputMethodService) {
     fun onSnapshot(snapshot: StatusBarController.StatusSnapshot, enabled: Boolean): Boolean {
         val label = if (enabled) labelFor(snapshot) else null
         currentLabel = label
-        if (label == null) hide()
-        val want = label != null
-        if (want == wantsCursorUpdates) return false
-        wantsCursorUpdates = want
+        if (label == null) {
+            hide()
+        } else {
+            lastCaret?.let { show(label, it.x.toInt(), it.y.toInt()) }
+        }
+        if (enabled == wantsCursorUpdates) return false
+        wantsCursorUpdates = enabled
+        if (!enabled) lastCaret = null
         return true
     }
 
     /** Positions the badge from the caret the editor just reported. */
     fun onCursorAnchorInfo(info: CursorAnchorInfo?) {
+        val caret = caretTopLeft(info)
+        lastCaret = caret
         val label = currentLabel ?: return
-        val caret = caretTopLeft(info) ?: run { hide(); return }
-        show(label, caret.x.toInt(), caret.y.toInt())
+        if (caret == null) hide() else show(label, caret.x.toInt(), caret.y.toInt())
+    }
+
+    /** Called when the editor goes away - the cached caret belongs to it, not to the next one. */
+    fun onEditorGone() {
+        lastCaret = null
+        hide()
     }
 
     fun hide() {
@@ -82,6 +106,7 @@ class CaretBadgeController(private val service: InputMethodService) {
         badgeView = null
         windowManager = null
         currentLabel = null
+        lastCaret = null
         wantsCursorUpdates = false
     }
 
@@ -183,24 +208,25 @@ class CaretBadgeController(private val service: InputMethodService) {
         const val BADGE_BACKGROUND = 0xE0202124.toInt()
 
         /**
-         * Mirrors the LED strip: only armed one-shots and locks are reported. A plain physical hold
-         * is left alone, or the badge would flash beside the cursor on every capital letter.
+         * Every way a modifier can be on, including a plain physical hold. This is a read-out of
+         * what the keyboard is actually doing, so it reports a held Shift exactly like a latched
+         * one - if it is on, it is shown.
          */
         fun labelFor(snapshot: StatusBarController.StatusSnapshot): String? {
             val parts = mutableListOf<String>()
             when {
                 snapshot.capsLockEnabled -> parts += "CAPS"
-                snapshot.shiftOneShot -> parts += "SHIFT"
+                snapshot.shiftOneShot || snapshot.shiftPhysicallyPressed -> parts += "SHIFT"
             }
             when {
                 snapshot.altLatchActive -> parts += "ALT LOCK"
-                snapshot.altOneShot -> parts += "ALT"
+                snapshot.altOneShot || snapshot.altPhysicallyPressed -> parts += "ALT"
             }
-            // Nav mode drives its own Ctrl latch and has its own on-screen story; reporting it here
-            // would leave CTRL pinned beside the cursor for as long as nav mode is on.
+            // The one exclusion: nav mode holds Ctrl latched for as long as it is on, so reporting
+            // that would pin CTRL LOCK beside the cursor permanently rather than report a keypress.
             when {
                 snapshot.ctrlLatchActive && !snapshot.ctrlLatchFromNavMode -> parts += "CTRL LOCK"
-                snapshot.ctrlOneShot -> parts += "CTRL"
+                snapshot.ctrlOneShot || snapshot.ctrlPhysicallyPressed -> parts += "CTRL"
             }
             if (snapshot.symPage != 0) parts += "SYM"
             return parts.takeIf { it.isNotEmpty() }?.joinToString(" ")

@@ -1706,5 +1706,7 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="ring_default_color_description">Used by apps that set no colour of their own, and by apps whose colour is too dark to see on a black screen.</string>
     <string name="ring_color_too_dark">This is too dark to see on the screen while it is off. Slide the brightness up.</string>
     <string name="caret_modifier_badge_title">Show modifiers at the cursor</string>
-    <string name="caret_modifier_badge_description">Shift, Alt, Ctrl and Sym appear next to the text cursor while they are armed. Needs the screen overlay permission, and only works in apps that report where the cursor is.</string>
+    <string name="caret_modifier_badge_description">Shift, Alt, Ctrl and Sym appear next to the text cursor whenever they are on. Only works in apps that report where the cursor is.</string>
+    <string name="caret_modifier_badge_needs_overlay">Drawing next to the cursor means drawing over the app you are typing in, so Android needs permission first.</string>
+    <string name="caret_modifier_badge_grant_overlay">Allow drawing over apps</string>
 </resources>

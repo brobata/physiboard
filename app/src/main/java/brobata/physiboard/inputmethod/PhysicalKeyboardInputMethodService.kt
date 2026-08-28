@@ -3339,7 +3339,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
 
     override fun onFinishInput() {
         super.onFinishInput()
-        caretBadgeController.hide()
+        caretBadgeController.onEditorGone()
         if (::textExpansionController.isInitialized) textExpansionController.clear()
         keyboardVisibilityController.cancelPendingSurfaceTransition()
         accidentalKeyPressFilter.reset()
@@ -3363,7 +3363,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
-        caretBadgeController.hide()
+        caretBadgeController.onEditorGone()
         if (::textExpansionController.isInitialized) textExpansionController.clear()
         isInputViewActive = false
         if (::candidatesBarController.isInitialized) {
