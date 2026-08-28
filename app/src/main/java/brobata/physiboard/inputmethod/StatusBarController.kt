@@ -2052,7 +2052,7 @@ class StatusBarController(
             text = content
             textSize = contentTextSize // textSize è in sp
             gravity = Gravity.CENTER
-            // Per pagina 2 (caratteri), rendi bianco e in grassetto
+            // Page 2 (characters) is drawn white and bold
             if (page == 2) {
                 setTextColor(theme.textAndIcons)
                 setTypeface(null, android.graphics.Typeface.BOLD)
@@ -2309,7 +2309,7 @@ class StatusBarController(
     fun createCustomizableEmojiKeyboard(
         symMappings: Map<Int, String>,
         onKeyClick: (Int, String) -> Unit,
-        page: Int = 1 // Default a pagina 1 (emoji)
+        page: Int = 1 // Defaults to page 1 (emoji)
     ): View {
         isTitan2Layout = SettingsManager.isTitan2LayoutEnabled(context)
         val container = LinearLayout(context).apply {

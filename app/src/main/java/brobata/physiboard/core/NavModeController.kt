@@ -213,7 +213,7 @@ class NavModeController(
         try {
             if (context is android.inputmethodservice.InputMethodService) {
                 val imeClass = android.inputmethodservice.InputMethodService::class.java
-                val iconResId = R.drawable.ic_settings_24 // Placeholder: icona impostazioni per nav mode
+                val iconResId = R.drawable.ic_settings_24 // Placeholder: settings icon for nav mode
 
                 // Prova prima showStatusIcon(int), poi setStatusIcon(int)
                 val methodNames = listOf("showStatusIcon", "setStatusIcon")
