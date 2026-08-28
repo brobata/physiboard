@@ -234,9 +234,9 @@ class StatusBarController(
         val altLatchActive: Boolean,
         val altPhysicallyPressed: Boolean,
         val altOneShot: Boolean,
-        val symPage: Int, // 0=disattivato, 1=pagina1 emoji, 2=pagina2 caratteri
+        val symPage: Int, // 0 = off, 1 = emoji page, 2 = characters page
         val clipboardOverlay: Boolean = false, // show the clipboard as its own view
-        val clipboardCount: Int = 0, // numero di elementi in clipboard
+        val clipboardCount: Int = 0, // number of clipboard entries
         val variations: List<String> = emptyList(),
         val suggestions: List<String> = emptyList(),
         val addWordCandidate: String? = null,

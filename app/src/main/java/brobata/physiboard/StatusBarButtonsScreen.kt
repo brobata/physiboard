@@ -47,6 +47,9 @@ fun StatusBarButtonsScreen(
     var titan2EliteRoundedCornerInsetsEnabled by remember {
         mutableStateOf(SettingsManager.getTitan2EliteRoundedCornerInsetsEnabled(context))
     }
+    var caretBadgeEnabled by remember {
+        mutableStateOf(SettingsManager.getCaretModifierBadgeEnabled(context))
+    }
     BackHandler { onBack() }
 
     fun selectExtendedButton(buttonId: String, targetSide: String, targetIndex: Int) {
@@ -144,6 +147,14 @@ fun StatusBarButtonsScreen(
                 onDismiss = { pickingStatusBarApp = false }
             )
         }
+
+        CaretBadgeRow(
+            checked = caretBadgeEnabled,
+            onCheckedChange = { enabled ->
+                caretBadgeEnabled = enabled
+                SettingsManager.setCaretModifierBadgeEnabled(context, enabled)
+            }
+        )
 
         Surface(modifier = Modifier.fillMaxWidth()) {
             Text(
@@ -690,5 +701,43 @@ private fun getButtonIconRes(buttonId: String): Int {
         SettingsManager.STATUS_BAR_BUTTON_UNDO -> R.drawable.ic_undo_24
         SettingsManager.STATUS_BAR_BUTTON_REDO -> R.drawable.ic_redo_24
         else -> R.drawable.ic_settings_24 // Fallback
+    }
+}
+
+/**
+ * Reporting the armed modifier beside the text cursor, rather than on an LED strip the user has to
+ * look down at. Kept beside the status-bar options because it answers the same question - where the
+ * keyboard tells you what Shift and Alt are doing.
+ */
+@Composable
+private fun CaretBadgeRow(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Surface(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.modifier_keys_24),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.caret_modifier_badge_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = stringResource(R.string.caret_modifier_badge_description),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(checked = checked, onCheckedChange = onCheckedChange)
+        }
     }
 }

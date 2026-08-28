@@ -324,6 +324,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private val accidentalKeyPressFilter = AccidentalKeyPressFilter()
     private var screenTrackpadReplaying = false
     private lateinit var screenTrackpadController: ScreenTrackpadController
+
+    /** Reports the armed modifier beside the text cursor, in place of watching an LED strip. */
+    private val caretBadgeController by lazy { CaretBadgeController(this) }
     private val uiHandler = Handler(Looper.getMainLooper())
     // Fn long-press speech shortcut. The physical Fn key is matched by scan code because the
     // system may remap it to an arbitrary key code (Ctrl on Titan devices). On Titan 2 the
@@ -2598,6 +2601,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     }
     
     override fun onDestroy() {
+        caretBadgeController.destroy()
         if (::screenTrackpadController.isInitialized) screenTrackpadController.deactivate()
         keyboardBacklightManager.stop()
         accidentalKeyPressFilter.reset()
@@ -2751,6 +2755,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
 
     override fun onUpdateCursorAnchorInfo(cursorAnchorInfo: CursorAnchorInfo?) {
         super.onUpdateCursorAnchorInfo(cursorAnchorInfo)
+        caretBadgeController.onCursorAnchorInfo(cursorAnchorInfo)
         if (
             symPage != 4 ||
             !::candidatesBarController.isInitialized ||
@@ -2797,7 +2802,24 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         emojiSearchExternalSelectionEnd = null
         emojiSearchCursorAnchorMonitoringRequested = false
         ignoreNextEmojiSearchCursorAnchorUpdate = false
-        currentInputConnection?.requestCursorUpdates(0)
+        syncCursorAnchorMonitoring()
+    }
+
+    /**
+     * Two features want the editor's caret position - the emoji-picker search and the modifier
+     * badge - and [InputConnection.requestCursorUpdates] is a single switch, so whichever one
+     * finished last used to turn it off underneath the other. Both needs are resolved here instead.
+     */
+    private fun syncCursorAnchorMonitoring() {
+        val inputConnection = currentInputConnection ?: return
+        val wanted = emojiSearchCursorAnchorMonitoringRequested ||
+            caretBadgeController.wantsCursorUpdates
+        val flags = if (wanted) {
+            InputConnection.CURSOR_UPDATE_IMMEDIATE or InputConnection.CURSOR_UPDATE_MONITOR
+        } else {
+            0
+        }
+        inputConnection.requestCursorUpdates(flags)
     }
 
     private fun updateEmojiSearchExternalSelectionSnapshot(inputConnection: InputConnection?) {
@@ -2902,6 +2924,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             shouldDisableSmartFeatures = shouldDisableSmartFeatures
         )
         updateSystemStatusModifierIcon(snapshot, effectiveSoftwareKeyboardMode)
+        if (caretBadgeController.onSnapshot(snapshot, SettingsManager.getCaretModifierBadgeEnabled(this))) {
+            syncCursorAnchorMonitoring()
+        }
         // Also pass the emoji map while SYM is active (page 1 only)
         val emojiMapText = symLayoutController.emojiMapText()
         // Pass the SYM mappings for the emoji/character grid
@@ -3314,6 +3339,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
 
     override fun onFinishInput() {
         super.onFinishInput()
+        caretBadgeController.hide()
         if (::textExpansionController.isInitialized) textExpansionController.clear()
         keyboardVisibilityController.cancelPendingSurfaceTransition()
         accidentalKeyPressFilter.reset()
@@ -3337,6 +3363,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
+        caretBadgeController.hide()
         if (::textExpansionController.isInitialized) textExpansionController.clear()
         isInputViewActive = false
         if (::candidatesBarController.isInitialized) {

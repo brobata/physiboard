@@ -27,7 +27,7 @@ internal data class KeyboardThemePreset(
     val rowGapScale: Float = 0f,
     val distributeHorizontalSpacing: Boolean = true,
     val ortholinear: Boolean = false,
-    val showLeds: Boolean = true,
+    val showLeds: Boolean = false,
     val suggestionsHeightScale: Float = 1f,
     val variationsHeightScale: Float = 1f,
     val keepsSoftwareGeometry: Boolean = false,

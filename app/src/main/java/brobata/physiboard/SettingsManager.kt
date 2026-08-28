@@ -124,6 +124,7 @@ object SettingsManager {
     private const val KEY_AUTO_CORRECT_ENABLED = "auto_correct_enabled"
     private const val KEY_AUTO_CORRECT_ENABLED_LANGUAGES = "auto_correct_enabled_languages"
     private const val KEY_SUGGESTIONS_ENABLED = "suggestions_enabled"
+    private const val KEY_CARET_MODIFIER_BADGE = "caret_modifier_badge"
     private const val KEY_SNIPPETS_ENABLED = "snippets_enabled"
     private const val KEY_SNIPPETS_PREFIX = "snippets_prefix"
     private const val KEY_SNIPPETS = "snippets_v1"
@@ -398,6 +399,7 @@ object SettingsManager {
     private const val DEFAULT_LAYOUT_AWARE_CTRL_SHORTCUTS = false
     private const val DEFAULT_AUTO_CORRECT_ENABLED = true
     private const val DEFAULT_SUGGESTIONS_ENABLED = true
+    private const val DEFAULT_CARET_MODIFIER_BADGE = true
     private const val DEFAULT_SNIPPETS_ENABLED = false
     private const val DEFAULT_SNIPPETS_PREFIX = "!"
     private const val DEFAULT_ACCENT_MATCHING_ENABLED = true
@@ -553,7 +555,7 @@ object SettingsManager {
         val rowGapScale: Float = 0f,
         val distributeHorizontalSpacing: Boolean = true,
         val ortholinear: Boolean = false,
-        val showLeds: Boolean = true,
+        val showLeds: Boolean = false,
         val suggestionsHeightScale: Float = 1f,
         val variationsHeightScale: Float = 1f,
         val keyPopupStyle: String = KEYBOARD_THEME_POPUP_STYLE_FLOATING,
@@ -3318,6 +3320,23 @@ object SettingsManager {
     fun setSuggestionsEnabled(context: Context, enabled: Boolean) {
         getPreferences(context).edit()
             .putBoolean(KEY_SUGGESTIONS_ENABLED, enabled)
+            .apply()
+    }
+
+    /**
+     * Returns whether the active modifier is shown as a label beside the text cursor.
+     */
+    fun getCaretModifierBadgeEnabled(context: Context): Boolean {
+        return getPreferences(context)
+            .getBoolean(KEY_CARET_MODIFIER_BADGE, DEFAULT_CARET_MODIFIER_BADGE)
+    }
+
+    /**
+     * Shows or hides the modifier label beside the text cursor.
+     */
+    fun setCaretModifierBadgeEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit()
+            .putBoolean(KEY_CARET_MODIFIER_BADGE, enabled)
             .apply()
     }
 
