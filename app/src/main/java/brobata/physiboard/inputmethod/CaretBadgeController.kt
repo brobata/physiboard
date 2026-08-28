@@ -44,11 +44,13 @@ class CaretBadgeController(private val service: InputMethodService) {
     private var currentLabel: Badge? = null
 
     /**
-     * What to draw. [held] is true only while every active modifier is a plain physical hold, which
-     * is drawn muted - a hold ends when the user lets go, so it does not need to shout. Anything
-     * armed or locked stays on after the key is released and is drawn solid.
+     * How long a modifier will outlive the key being released, which is what decides whether the
+     * next twenty keystrokes are affected or only the next one. Colour-coded: grey for a plain
+     * hold, blue for one click, red for two.
      */
-    private data class Badge(val text: String, val held: Boolean)
+    private enum class Tier { HELD, ARMED, LOCKED }
+
+    private data class Badge(val text: String, val tier: Tier)
 
     /**
      * The last caret position the editor reported, so pressing a modifier can put the badge on
@@ -129,7 +131,11 @@ class CaretBadgeController(private val service: InputMethodService) {
         val view = badgeView ?: createBadge().also { badgeView = it }
         view.text = badge.text
         (view.background as? GradientDrawable)?.setColor(
-            if (badge.held) BADGE_HELD else BADGE_LATCHED
+            when (badge.tier) {
+                Tier.HELD -> BADGE_HELD
+                Tier.ARMED -> BADGE_ARMED
+                Tier.LOCKED -> BADGE_LOCKED
+            }
         )
 
         val metrics = context.resources.displayMetrics
@@ -190,7 +196,7 @@ class CaretBadgeController(private val service: InputMethodService) {
         background = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = dp(4).toFloat()
-            setColor(BADGE_LATCHED)
+            setColor(BADGE_ARMED)
         }
     }
 
@@ -203,11 +209,14 @@ class CaretBadgeController(private val service: InputMethodService) {
     private companion object {
         const val TAG = "CaretBadge"
 
-        /** Armed or locked: it outlives the keypress, so it is drawn at full strength. */
-        const val BADGE_LATCHED = 0xF03B82F6.toInt()
-
         /** A plain hold, which ends the moment the key is released. Present, but muted. */
         const val BADGE_HELD = 0xC064748B.toInt()
+
+        /** One click: armed for the next key only, then gone by itself. */
+        const val BADGE_ARMED = 0xF03B82F6.toInt()
+
+        /** Two clicks: stuck on until it is deliberately turned off. */
+        const val BADGE_LOCKED = 0xF0EF4444.toInt()
 
         /**
          * Every way a modifier can be on, including a plain physical hold. This is a read-out of
@@ -216,31 +225,37 @@ class CaretBadgeController(private val service: InputMethodService) {
          */
         fun badgeFor(snapshot: StatusBarController.StatusSnapshot): Badge? {
             val parts = mutableListOf<String>()
-            // Tracked separately from the text: the style says whether this outlives the keypress,
-            // which is the part that actually changes what the next letter will do.
-            var anyLatched = false
-            when {
-                snapshot.capsLockEnabled -> { parts += "CAPS"; anyLatched = true }
-                snapshot.shiftOneShot -> { parts += "SHIFT"; anyLatched = true }
-                snapshot.shiftPhysicallyPressed -> parts += "SHIFT"
+            var tier: Tier? = null
+            // A locked modifier is spelled out as well as recoloured. Colour alone would leave
+            // "ALT" armed and "ALT" locked identical to anyone who does not catch the shade, and
+            // those two do very different things to the next twenty keystrokes.
+            fun add(label: String, at: Tier) {
+                parts += label
+                if (tier == null || at > tier!!) tier = at
             }
             when {
-                snapshot.altLatchActive -> { parts += "ALT"; anyLatched = true }
-                snapshot.altOneShot -> { parts += "ALT"; anyLatched = true }
-                snapshot.altPhysicallyPressed -> parts += "ALT"
+                snapshot.capsLockEnabled -> add("CAPS", Tier.LOCKED)
+                snapshot.shiftOneShot -> add("SHIFT", Tier.ARMED)
+                snapshot.shiftPhysicallyPressed -> add("SHIFT", Tier.HELD)
+            }
+            when {
+                snapshot.altLatchActive -> add("ALT LOCK", Tier.LOCKED)
+                snapshot.altOneShot -> add("ALT", Tier.ARMED)
+                snapshot.altPhysicallyPressed -> add("ALT", Tier.HELD)
             }
             // The one exclusion: nav mode holds Ctrl latched for as long as it is on, so reporting
             // that would pin a Ctrl badge beside the cursor permanently rather than report a press.
             when {
-                snapshot.ctrlLatchActive && !snapshot.ctrlLatchFromNavMode -> {
-                    parts += "CTRL"; anyLatched = true
-                }
-                snapshot.ctrlOneShot -> { parts += "CTRL"; anyLatched = true }
-                snapshot.ctrlPhysicallyPressed -> parts += "CTRL"
+                snapshot.ctrlLatchActive && !snapshot.ctrlLatchFromNavMode ->
+                    add("CTRL LOCK", Tier.LOCKED)
+                snapshot.ctrlOneShot -> add("CTRL", Tier.ARMED)
+                snapshot.ctrlPhysicallyPressed -> add("CTRL", Tier.HELD)
             }
-            if (snapshot.symPage != 0) { parts += "SYM"; anyLatched = true }
-            if (parts.isEmpty()) return null
-            return Badge(text = parts.joinToString(" "), held = !anyLatched)
+            // A Sym page stays open until it is left, but "SYM LOCK" reads as a stuck modifier
+            // rather than an open layer, so it keeps the plain label.
+            if (snapshot.symPage != 0) add("SYM", Tier.ARMED)
+            val resolved = tier ?: return null
+            return Badge(text = parts.joinToString(" "), tier = resolved)
         }
     }
 }
