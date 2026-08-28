@@ -2690,9 +2690,11 @@ class StatusBarController(
         }
         
         modifiersContainerView.visibility = View.GONE
-        // Modifier state always shows in the status bar on the hardware keyboard: it is the one
-        // strip already on screen, and choosing where to put it was never a real question.
-        fullSuggestionsBar?.setModifierMenuIndicatorsEnabled(!isFullSoftwareKeyboardMode)
+        // Modifier state lives in the system status bar - the shade area at the top of the
+        // screen - and optionally on the LED strip. It is deliberately not in the keyboard's own
+        // strip: that space belongs to suggestions, and Shift and Alt were eating the left edge
+        // of it every time either was held.
+        fullSuggestionsBar?.setModifierMenuIndicatorsEnabled(false)
         fullSuggestionsBar?.updateModifierIndicators(snapshot)
         // In-context nudge: smart backlight enabled but never configured (the persistent
         // always-on value has not been written yet). Once configured it survives reboots, so
