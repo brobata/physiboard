@@ -33,8 +33,6 @@ class KeyboardVisibilityController(
     private val refreshStatusBar: () -> Unit
 ) {
 
-    private var statusBarPresentationMode: SettingsManager.StatusBarPresentationMode =
-        SettingsManager.getStatusBarPresentationMode(context)
     private var evaluationGeneration = 0
     private var surfaceTransitionGeneration = 0
     private var pendingSurfaceTransition: PendingSurfaceTransition? = null
@@ -120,29 +118,8 @@ class KeyboardVisibilityController(
         }
     }
 
-    fun togglePastierinaMode() {
-        statusBarPresentationMode = when (statusBarPresentationMode) {
-            SettingsManager.StatusBarPresentationMode.PASTIERINA ->
-                SettingsManager.StatusBarPresentationMode.FULL_STATUS_BAR
-            SettingsManager.StatusBarPresentationMode.FULL_STATUS_BAR ->
-                SettingsManager.StatusBarPresentationMode.PASTIERINA
-        }
-        SettingsManager.setStatusBarPresentationMode(context, statusBarPresentationMode)
-        applyStatusBarPresentationMode()
-    }
 
-    private fun applyStatusBarPresentationMode() {
-        val pastierinaModeActive =
-            statusBarPresentationMode == SettingsManager.StatusBarPresentationMode.PASTIERINA
-        candidatesBarController.setPastierinaModeActive(pastierinaModeActive)
-        SettingsManager.setPastierinaModeActive(context, pastierinaModeActive)
-        refreshStatusBar()
-    }
 
-    fun syncStatusBarPresentationModeFromSettings() {
-        statusBarPresentationMode = SettingsManager.getStatusBarPresentationMode(context)
-        applyStatusBarPresentationMode()
-    }
 
     fun onKeyboardSurfaceChanged(
         ensureInputViewShown: Boolean,

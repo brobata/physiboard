@@ -291,7 +291,6 @@ class InputEventRouter(
         val getMapping: (Int) -> LayoutMapping?,
         val handleMultiTapCommit: (Int, LayoutMapping, Boolean, InputConnection?, Boolean) -> Boolean,
         val isLongPressSuppressed: (Int) -> Boolean,
-        val toggleMinimalUi: () -> Unit,
         val onShiftOneShotToggledOff: () -> Unit = {}
     )
 
@@ -513,7 +512,6 @@ class InputEventRouter(
                     },
                     updateStatusBar = callbacks.updateStatusBar,
                     callSuper = callbacks.callSuper,
-                    toggleMinimalUi = callbacks.toggleMinimalUi
                 )
             ) {
                 return EditableFieldRoutingResult.Consume
@@ -1229,7 +1227,6 @@ class InputEventRouter(
         clearCtrlOneShot: () -> Unit,
         updateStatusBar: () -> Unit,
         callSuper: () -> Boolean,
-        toggleMinimalUi: () -> Unit
     ): Boolean {
         val isPhysicalCtrlCombo = event?.isCtrlPressed == true || ctrlPhysicallyPressed
         val useNavModeForHeldCtrl = SettingsManager.getNavModeCtrlHoldEnabled(context)
@@ -1408,18 +1405,6 @@ class InputEventRouter(
                             Handler(Looper.getMainLooper()).postDelayed({
                                 updateStatusBar()
                             }, 50)
-                            return true
-                        }
-                        "toggle_minimal_ui" -> {
-                            KeyboardEventTracker.notifyKeyEvent(
-                                keyCode,
-                                event,
-                                "KEY_DOWN",
-                                origin = "ime_router",
-                                outputKeyCode = null,
-                                outputKeyCodeName = "toggle_minimal_ui"
-                            )
-                            toggleMinimalUi()
                             return true
                         }
                         "media_play_pause", "media_previous", "media_next" -> {

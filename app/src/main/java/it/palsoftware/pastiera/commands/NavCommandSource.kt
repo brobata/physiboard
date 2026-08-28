@@ -43,7 +43,6 @@ class NavCommandSource : CommandSource {
             "expand_selection_word_right" to "Select word right",
             "page_start" to "Page start",
             "page_end" to "Page end",
-            "toggle_minimal_ui" to "Pastierina",
             "media_play_pause" to "Play/Pause",
             "media_previous" to "Media previous",
             "media_next" to "Media next"

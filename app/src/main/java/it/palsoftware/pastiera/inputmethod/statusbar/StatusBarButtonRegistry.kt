@@ -156,8 +156,9 @@ class StatusBarButtonRegistry {
         )
     }
 
-    fun getEnabledPastierinaButtons(context: Context): List<StatusBarButtonConfig> {
+    fun getEnabledStatusBarButtons(context: Context): List<StatusBarButtonConfig> {
         return getEnabledButtons(
+            // Still the pastierina_* keys on disk; the 2.0 preference migration renames them.
             leftSlots = SettingsManager.getPastierinaStatusBarSlotsLeft(context),
             rightSlots = SettingsManager.getPastierinaStatusBarSlotsRight(context)
         )
@@ -205,7 +206,6 @@ class StatusBarButtonRegistry {
             SettingsManager.STATUS_BAR_BUTTON_EMOJI -> StatusBarButtonId.Emoji
             SettingsManager.STATUS_BAR_BUTTON_LANGUAGE -> StatusBarButtonId.Language
             SettingsManager.STATUS_BAR_BUTTON_HAMBURGER -> StatusBarButtonId.Hamburger
-            SettingsManager.STATUS_BAR_BUTTON_MINIMAL_UI -> StatusBarButtonId.MinimalUi
             SettingsManager.STATUS_BAR_BUTTON_SOFTWARE_KEYBOARD_MODE -> StatusBarButtonId.SoftwareKeyboardMode
             SettingsManager.STATUS_BAR_BUTTON_SETTINGS -> StatusBarButtonId.Settings
             SettingsManager.STATUS_BAR_BUTTON_SYMBOLS -> StatusBarButtonId.Symbols

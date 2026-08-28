@@ -248,10 +248,6 @@ class CandidatesBarController(
             visibleBounds.height() > 0
     }
 
-    fun setPastierinaModeActive(active: Boolean) {
-        inputStatusBar.setPastierinaModeActive(active)
-        candidatesStatusBar.setPastierinaModeActive(active)
-    }
 
     fun handleBackPressed(): Boolean {
         return inputStatusBar.handleBackPressed() || candidatesStatusBar.handleBackPressed()
@@ -286,7 +282,6 @@ class CandidatesBarController(
             ?: candidatesStatusBar.createEmojiPickerSearchInputConnection()
     }
 
-    fun isPastierinaModeActive(): Boolean = inputStatusBar.isPastierinaModeActive()
 
     fun refreshWindowInsets() {
         inputStatusBar.refreshWindowInsets()

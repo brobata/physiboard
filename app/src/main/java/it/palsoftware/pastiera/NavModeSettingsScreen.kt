@@ -942,7 +942,6 @@ private fun KeyMappingDialog(
                             "move_word_left", "move_word_right",
                             "expand_selection_word_left", "expand_selection_word_right",
                             "page_start", "page_end",
-                            "toggle_minimal_ui",
                             "media_play_pause", "media_previous", "media_next"
                         )
                         LazyVerticalGrid(
@@ -1089,7 +1088,6 @@ private fun getActionLabel(action: String): String {
         "move_word_right" -> stringResource(R.string.nav_mode_action_move_word_right)
         "expand_selection_word_left" -> stringResource(R.string.nav_mode_action_expand_selection_word_left)
         "expand_selection_word_right" -> stringResource(R.string.nav_mode_action_expand_selection_word_right)
-        "toggle_minimal_ui" -> stringResource(R.string.nav_mode_action_toggle_pastierina)
         "media_play_pause" -> stringResource(R.string.nav_mode_action_media_play_pause)
         "media_previous" -> stringResource(R.string.nav_mode_action_media_previous)
         "media_next" -> stringResource(R.string.nav_mode_action_media_next)
@@ -1129,7 +1127,6 @@ private fun getMappingLabelShort(mapping: KeyMappingLoader.CtrlMapping): String?
             "expand_selection_word_right" -> stringResource(R.string.nav_mode_action_expand_selection_word_right)
             "page_start" -> stringResource(R.string.nav_mode_action_page_start)
             "page_end" -> stringResource(R.string.nav_mode_action_page_end)
-            "toggle_minimal_ui" -> stringResource(R.string.nav_mode_action_toggle_pastierina)
             "media_play_pause" -> stringResource(R.string.nav_mode_action_media_play_pause)
             "media_previous" -> stringResource(R.string.nav_mode_action_media_previous)
             "media_next" -> stringResource(R.string.nav_mode_action_media_next)

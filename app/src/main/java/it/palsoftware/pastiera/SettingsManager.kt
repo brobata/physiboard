@@ -295,7 +295,6 @@ object SettingsManager {
     const val STATUS_BAR_BUTTON_EMOJI = "emoji"
     const val STATUS_BAR_BUTTON_LANGUAGE = "language"
     const val STATUS_BAR_BUTTON_HAMBURGER = "hamburger"
-    const val STATUS_BAR_BUTTON_MINIMAL_UI = "minimal_ui"
     const val STATUS_BAR_BUTTON_SOFTWARE_KEYBOARD_MODE = "software_keyboard_mode"
     const val STATUS_BAR_BUTTON_SETTINGS = "settings"
     const val STATUS_BAR_BUTTON_SYMBOLS = "symbols"
@@ -522,10 +521,6 @@ object SettingsManager {
     private val STATIC_VARIATION_SHIFT_PRESET_DEFAULT = listOf("{", "}", "€", "=", "~", ";", "¿")
     private val STATIC_VARIATION_ALT_PRESET_DEFAULT = listOf("<", ">", "¥", "|", "`", "´", "°")
 
-    enum class StatusBarPresentationMode(val storageValue: String) {
-        PASTIERINA("pastierina"),
-        FULL_STATUS_BAR("full_status_bar")
-    }
 
     enum class SoftwareKeyboardMode(val storageValue: String) {
         AUTO("auto"),
@@ -639,23 +634,7 @@ object SettingsManager {
             .apply()
     }
 
-    fun getStatusBarPresentationMode(context: Context): StatusBarPresentationMode {
-        val value = getPreferences(context).getString(
-            KEY_PASTIERINA_MODE_OVERRIDE,
-            StatusBarPresentationMode.FULL_STATUS_BAR.storageValue
-        )
-        return when (value) {
-            StatusBarPresentationMode.PASTIERINA.storageValue,
-            "force_minimal" -> StatusBarPresentationMode.PASTIERINA
-            else -> StatusBarPresentationMode.FULL_STATUS_BAR
-        }
-    }
 
-    fun setStatusBarPresentationMode(context: Context, mode: StatusBarPresentationMode) {
-        getPreferences(context).edit()
-            .putString(KEY_PASTIERINA_MODE_OVERRIDE, mode.storageValue)
-            .apply()
-    }
 
     /**
      * Master toggle for the on-screen IME status-bar strip. When false, the strip is
@@ -843,11 +822,6 @@ object SettingsManager {
         return getPreferences(context).getBoolean(KEY_PASTIERINA_MODE_ACTIVE, false)
     }
 
-    fun setPastierinaModeActive(context: Context, isActive: Boolean) {
-        getPreferences(context).edit()
-            .putBoolean(KEY_PASTIERINA_MODE_ACTIVE, isActive)
-            .apply()
-    }
 
     fun getSoftwareKeyboardMode(context: Context): SoftwareKeyboardMode {
         val value = getPreferences(context).getString(
@@ -6486,7 +6460,6 @@ object SettingsManager {
             STATUS_BAR_BUTTON_MICROPHONE,
             STATUS_BAR_BUTTON_LANGUAGE,
             STATUS_BAR_BUTTON_HAMBURGER,
-            STATUS_BAR_BUTTON_MINIMAL_UI,
             STATUS_BAR_BUTTON_SOFTWARE_KEYBOARD_MODE,
             STATUS_BAR_BUTTON_SETTINGS,
             STATUS_BAR_BUTTON_SYMBOLS,

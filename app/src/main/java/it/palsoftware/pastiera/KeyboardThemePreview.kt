@@ -818,7 +818,6 @@ private fun virtualPreviewCtrlIconRes(mapping: KeyMappingLoader.CtrlMapping): In
             "expand_selection_word_right" -> R.drawable.text_select_move_forward_word_filled_24
             "page_start" -> R.drawable.first_page_24
             "page_end" -> R.drawable.last_page_24
-            "toggle_minimal_ui" -> R.drawable.collapse_content_24
             "media_play_pause" -> R.drawable.play_pause_24
             "media_previous" -> R.drawable.skip_previous_24
             "media_next" -> R.drawable.skip_next_24

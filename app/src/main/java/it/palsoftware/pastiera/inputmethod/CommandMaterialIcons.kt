@@ -104,7 +104,6 @@ fun commandMaterialIcon(command: CommandTarget): ImageVector {
         command.id == "nav.action.expand_selection_word_right" -> Icons.AutoMirrored.Filled.KeyboardArrowRight
         command.id == "nav.action.page_start" -> Icons.Default.FirstPage
         command.id == "nav.action.page_end" -> Icons.AutoMirrored.Filled.LastPage
-        command.id == "nav.action.toggle_minimal_ui" -> Icons.Default.KeyboardHide
         command.id == "nav.action.media_play_pause" -> Icons.Default.PlayArrow
         command.id == "nav.action.media_previous" -> Icons.Default.SkipPrevious
         command.id == "nav.action.media_next" -> Icons.Default.SkipNext

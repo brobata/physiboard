@@ -99,7 +99,6 @@ class StatusBarButtonHost(
     }
 
     fun setMinimalUiActive(isActive: Boolean) {
-        updateButton(StatusBarButtonId.MinimalUi, ButtonState.MinimalUiState(isActive))
     }
 
     fun detachAll() {
@@ -198,7 +197,7 @@ class StatusBarButtonHost(
             ?: view.height.takeIf { it > 0 }
             ?: fallbackHeight?.takeIf { it > 0 }
         if (height != null) {
-            val active = state is ButtonState.MinimalUiState && state.isActive
+            val active = false
             view.background = StatusBarButtonStyles.createButtonDrawable(
                 heightPx = height,
                 normalColor = if (active) theme.pressedColor else theme.normalColor,

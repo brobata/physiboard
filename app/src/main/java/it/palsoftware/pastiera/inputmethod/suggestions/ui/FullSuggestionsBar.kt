@@ -44,7 +44,7 @@ import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils.langua
  * Renders the full-width suggestion bar with up to 3 items. Always occupies
  * a row (with placeholders) so the UI stays stable. Hidden when minimal UI
  * is forced or smart features are disabled by the caller.
- * Includes configurable Pastierina mode buttons on the left/right edges.
+ * Includes the configurable status-bar buttons on the left and right edges.
  */
 class FullSuggestionsBar(
     private val context: Context,
@@ -399,7 +399,7 @@ class FullSuggestionsBar(
         val bar = container ?: return
         val frame = frameContainer ?: return
         
-        // Hide suggestions when unavailable, but keep Pastierina buttons visible.
+        // Hide suggestions when unavailable, but keep the status-bar buttons visible.
         val hasDictionary = !requireDictionaryForSuggestions || hasDictionaryForCurrentSubtype()
         val canShowSuggestions = shouldShow && hasDictionary
         if (!canShowSuggestions && !showMinimalUiButtons) {
@@ -746,7 +746,7 @@ class FullSuggestionsBar(
             target.addView(hosted.container)
         }
 
-        val enabledButtons = registry.getEnabledPastierinaButtons(context)
+        val enabledButtons = registry.getEnabledStatusBarButtons(context)
         val leftButtons = enabledButtons
             .filter { it.position == StatusBarButtonPosition.LEFT }
             .sortedBy { it.order }

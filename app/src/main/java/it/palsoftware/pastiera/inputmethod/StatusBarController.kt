@@ -299,9 +299,7 @@ class StatusBarController(
         get() = dpToPx(600f) // fallback when nothing measured yet
     private val ledStatusView = LedStatusView(context)
     private val buttonRegistry = StatusBarButtonRegistry()
-    private var variationsWrapper: View? = null
     private var hamburgerMenuView: HamburgerMenuView? = null
-    private var pastierinaModeActive: Boolean = false
     private var fullSuggestionsBar: FullSuggestionsBar? = null
     private var expansionSuggestions: List<String> = emptyList()
     private var onExpansionSuggestionSelected: ((String) -> Unit)? = null
@@ -427,7 +425,6 @@ class StatusBarController(
             onEmojiPickerRequested = onEmojiPickerRequested,
             onLanguageSwitchRequested = onLanguageSwitchRequested,
             onHamburgerMenuRequested = onHamburgerMenuRequested,
-            onMinimalUiToggleRequested = { handleMinimalUiToggleFromMenu() },
             onSoftwareKeyboardModeToggleRequested = onSoftwareKeyboardModeToggleRequested,
             onOpenSettings = { openSettings() },
             onSymbolsPageRequested = onSymbolsPageRequested,
@@ -443,10 +440,6 @@ class StatusBarController(
             elevation = 0f
             translationZ = 0f
         }
-        variationsWrapper?.apply {
-            elevation = 0f
-            translationZ = 0f
-        }
         symSurfaceContainer?.translationZ = 0f
         symSurfaceStack?.translationZ = 0f
         emojiKeyboardContainer?.translationZ = 0f
@@ -456,9 +449,8 @@ class StatusBarController(
         val layout = statusBarLayout ?: return
         val suggestions = fullSuggestionsBar?.ensureView()
         val modifiers = modifiersContainer
-        val variations = variationsWrapper
         val surface = symSurfaceContainer
-        val children = listOf(suggestions, modifiers, variations, surface).filterNotNull()
+        val children = listOf(suggestions, modifiers, surface).filterNotNull()
         val alreadyOrdered = children.withIndex().all { (index, child) ->
             child.parent === layout && layout.indexOfChild(child) == index
         }
@@ -503,18 +495,7 @@ class StatusBarController(
             ortholinear = ortholinear
         )
 
-    fun setPastierinaModeActive(active: Boolean) {
-        if (pastierinaModeActive == active) {
-            return
-        }
-        pastierinaModeActive = active
-        updatePastierinaModeState()
-        if (active) {
-            hideHamburgerMenu()
-        }
-    }
 
-    fun isPastierinaModeActive(): Boolean = pastierinaModeActive
 
     fun getLayout(): LinearLayout? = statusBarLayout
 
@@ -686,9 +667,7 @@ class StatusBarController(
                 visibility = View.GONE
             }
 
-            attachHamburgerMenu(variationsWrapper)
             val ledStrip = ledStatusView.ensureView()
-            ledStatusView.onLongPressListener = { handleMinimalUiToggleFromMenu() }
 
             fullSuggestionsBar = FullSuggestionsBar(
                 context,
@@ -727,7 +706,6 @@ class StatusBarController(
             statusBarLayout?.apply {
                 addView(fullSuggestionsBar?.ensureView())
                 addView(modifiersContainer)
-                variationsWrapper?.let { addView(it) }
                 addView(symSurfaceContainer)
             }
             (statusBarLayout as? ImeChromeLayout)?.apply {
@@ -757,9 +735,8 @@ class StatusBarController(
         menu.attachTo(frame)
     }
 
-    private fun activeHamburgerWrapper(): View? {
-        return variationsWrapper
-    }
+    /** The hamburger now lives in the suggestions bar; there is no second row to anchor to. */
+    private fun activeHamburgerWrapper(): View? = null
 
     private fun showHamburgerMenu() {
         if (hamburgerMenuView == null) {
@@ -803,16 +780,9 @@ class StatusBarController(
         }
     }
 
-    private fun updatePastierinaModeState() {
-        hamburgerMenuView?.setMinimalUiActive(pastierinaModeActive)
-        fullSuggestionsBar?.setMinimalUiActive(pastierinaModeActive)
-    }
-
-    private fun handleMinimalUiToggleFromMenu() {
-        onMinimalUiToggleRequested?.invoke()
-        if (!pastierinaModeActive) {
-            hideHamburgerMenu()
-        }
+    private fun updateStatusBarButtonState() {
+        hamburgerMenuView?.setMinimalUiActive(true)
+        fullSuggestionsBar?.setMinimalUiActive(true)
     }
 
     fun handleBackPressed(): Boolean {
@@ -2707,12 +2677,12 @@ class StatusBarController(
         updateClipboardCount(snapshot.clipboardCount)
         hamburgerMenuView?.refreshLanguageText()
         fullSuggestionsBar?.refreshLanguageText()
-        updatePastierinaModeState()
+        updateStatusBarButtonState()
         if (inputConnection !== lastHamburgerInputConnection) {
             hideHamburgerMenu()
             lastHamburgerInputConnection = inputConnection
         }
-        if ((snapshot.symPage > 0 && !isFullSoftwareKeyboardMode) || snapshot.clipboardOverlay || (pastierinaModeActive && !isFullSoftwareKeyboardMode)) {
+        if ((snapshot.symPage > 0 && !isFullSoftwareKeyboardMode) || snapshot.clipboardOverlay || !isFullSoftwareKeyboardMode) {
             hideHamburgerMenu()
         }
         
@@ -2976,11 +2946,6 @@ class StatusBarController(
             View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
         }
 
-        variationsWrapper?.let { wrapper ->
-            if (wrapper.importantForAccessibility != importance) {
-                wrapper.importantForAccessibility = importance
-            }
-        }
         modifiersContainer?.let { container ->
             if (container.importantForAccessibility != importance) {
                 container.importantForAccessibility = importance

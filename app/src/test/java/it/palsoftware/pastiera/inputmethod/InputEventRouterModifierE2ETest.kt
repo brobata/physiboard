@@ -849,7 +849,6 @@ class InputEventRouterModifierE2ETest {
                 getMapping = mappingProvider,
                 handleMultiTapCommit = multiTapCommitHandler,
                 isLongPressSuppressed = { false },
-                toggleMinimalUi = { }
             )
         }
     }

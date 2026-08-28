@@ -60,7 +60,6 @@ class InputEventRouterCtrlHoldNavModeTest {
             clearCtrlOneShot = {},
             updateStatusBar = {},
             callSuper = { false },
-            toggleMinimalUi = {}
         )
 
         assertTrue(handled)
@@ -85,7 +84,6 @@ class InputEventRouterCtrlHoldNavModeTest {
             clearCtrlOneShot = {},
             updateStatusBar = {},
             callSuper = { false },
-            toggleMinimalUi = {}
         )
 
         assertTrue(handled)
@@ -109,7 +107,6 @@ class InputEventRouterCtrlHoldNavModeTest {
             clearCtrlOneShot = {},
             updateStatusBar = {},
             callSuper = { false },
-            toggleMinimalUi = {}
         )
 
         assertTrue(handled)
@@ -134,7 +131,6 @@ class InputEventRouterCtrlHoldNavModeTest {
             clearCtrlOneShot = {},
             updateStatusBar = {},
             callSuper = { false },
-            toggleMinimalUi = {}
         )
 
         assertTrue(handled)
@@ -162,7 +158,6 @@ class InputEventRouterCtrlHoldNavModeTest {
             clearCtrlOneShot = {},
             updateStatusBar = {},
             callSuper = { false },
-            toggleMinimalUi = {}
         )
 
         assertTrue(handled)
@@ -185,7 +180,6 @@ class InputEventRouterCtrlHoldNavModeTest {
             clearCtrlOneShot = {},
             updateStatusBar = {},
             callSuper = { false },
-            toggleMinimalUi = {}
         )
 
         assertTrue(handled)
@@ -216,7 +210,6 @@ class InputEventRouterCtrlHoldNavModeTest {
             clearCtrlOneShot = {},
             updateStatusBar = {},
             callSuper = { false },
-            toggleMinimalUi = {}
         )
 
         assertTrue(handled)
@@ -245,7 +238,6 @@ class InputEventRouterCtrlHoldNavModeTest {
             clearCtrlOneShot = {},
             updateStatusBar = {},
             callSuper = { false },
-            toggleMinimalUi = {}
         )
 
         assertTrue(handled)
@@ -270,7 +262,6 @@ class InputEventRouterCtrlHoldNavModeTest {
             clearCtrlOneShot = {},
             updateStatusBar = {},
             callSuper = { false },
-            toggleMinimalUi = {}
         )
 
         assertTrue(handled)
@@ -328,7 +319,6 @@ class InputEventRouterCtrlHoldNavModeTest {
             clearCtrlOneShot = {},
             updateStatusBar = {},
             callSuper = { false },
-            toggleMinimalUi = {}
         )
 
         assertTrue(handled)
@@ -359,7 +349,6 @@ class InputEventRouterCtrlHoldNavModeTest {
             clearCtrlOneShot = {},
             updateStatusBar = {},
             callSuper = { false },
-            toggleMinimalUi = {}
         )
 
         assertTrue(handled)
@@ -394,7 +383,6 @@ class InputEventRouterCtrlHoldNavModeTest {
             clearCtrlOneShot = {},
             updateStatusBar = {},
             callSuper = { false },
-            toggleMinimalUi = {}
         )
 
         assertTrue(handled)
@@ -458,7 +446,6 @@ class InputEventRouterCtrlHoldNavModeTest {
             clearCtrlOneShot = {},
             updateStatusBar = {},
             callSuper = { false },
-            toggleMinimalUi = {}
         )
 
         assertTrue(handled)

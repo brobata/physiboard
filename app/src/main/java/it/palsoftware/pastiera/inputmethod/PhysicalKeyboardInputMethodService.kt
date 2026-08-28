@@ -280,7 +280,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private var lastRenderedEmojiMapText: String? = null
     private var lastRenderedSymMappings: Map<Int, String>? = null
     private var lastRenderedStatusInputConnection: android.view.inputmethod.InputConnection? = null
-    private var lastRenderedPastierinaModeActive: Boolean? = null
     private var lastRenderedSoftwareKeyboardMode: SettingsManager.SoftwareKeyboardMode? = null
     private var lastRenderedModifierIndicators: Set<String>? = null
     private var requestedInputViewShown: Boolean = true
@@ -616,7 +615,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         lastRenderedEmojiMapText = null
         lastRenderedSymMappings = null
         lastRenderedStatusInputConnection = null
-        lastRenderedPastierinaModeActive = null
         lastRenderedSoftwareKeyboardMode = null
         lastRenderedModifierIndicators = null
     }
@@ -1888,9 +1886,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             }
             handled
         }
-        candidatesBarController.onMinimalUiToggleRequested = {
-            keyboardVisibilityController.togglePastierinaMode()
-        }
         candidatesBarController.onSoftwareKeyboardModeToggleRequested = {
             toggleSoftwareKeyboardModeFromStatusBar()
         }
@@ -2017,7 +2012,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         variationStateController = VariationStateController(
             VariationRepository.loadVariations(assets, this, activeKeyboardLayoutName)
         )
-        keyboardVisibilityController.syncStatusBarPresentationModeFromSettings()
         
         // Load auto-correction rules
         AutoCorrector.loadCorrections(assets, this)
@@ -2174,7 +2168,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 }
                 attachTrackpadDecorViewMotionHook("provider_changed")
             } else if (key == "pastierina_mode_override") {
-                keyboardVisibilityController.syncStatusBarPresentationModeFromSettings()
             } else if (
                 key == SettingsManager.KEY_SHOW_STATUS_BAR ||
                 key == SettingsManager.KEY_STATUS_BAR_VISIBILITY ||
@@ -2862,19 +2855,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         var suggestionsMs = 0L
         var updateBarsMs = 0L
 
-        val pastierinaModeActive = candidatesBarController.isPastierinaModeActive()
         val effectiveSoftwareKeyboardMode = SettingsManager.resolveEffectiveSoftwareKeyboardMode(this)
-        val variationStart = ImePerfLogger.mark()
-        val variationSnapshot = if (pastierinaModeActive) {
+        // The status bar has no variation row to feed, so the per-keystroke cursor read that
+        // used to populate it is gone. Long-press variations still use variationStateController.
+        val variationSnapshot =
             VariationStateController.Snapshot(isActive = false, lastInsertedChar = null, variations = emptyList())
-        } else {
-            variationStateController.refreshFromCursor(
-                currentInputConnection,
-                inputContextState.shouldDisableVariations,
-                hasActiveSelection = editorHasActiveSelection
-            )
-        }
-        variationMs = ImePerfLogger.elapsedMs(variationStart)
         val clipboardCount = clipboardHistoryManager?.getHistorySize() ?: 0
         
         val modifierSnapshot = modifierStateController.snapshot()
@@ -2935,7 +2920,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 emojiMapText == lastRenderedEmojiMapText &&
                 symMappings == lastRenderedSymMappings &&
                 inputConnection === lastRenderedStatusInputConnection &&
-                pastierinaModeActive == lastRenderedPastierinaModeActive &&
                 effectiveSoftwareKeyboardMode == lastRenderedSoftwareKeyboardMode &&
                 modifierIndicators == lastRenderedModifierIndicators
         if (!unchangedRenderedState) {
@@ -2946,7 +2930,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             lastRenderedEmojiMapText = emojiMapText
             lastRenderedSymMappings = symMappings
             lastRenderedStatusInputConnection = inputConnection
-            lastRenderedPastierinaModeActive = pastierinaModeActive
             lastRenderedSoftwareKeyboardMode = effectiveSoftwareKeyboardMode
             lastRenderedModifierIndicators = modifierIndicators
         }
@@ -4229,8 +4212,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 ctrlPhysicallyPressed = ctrlPhysicallyPressed || ctrlPressed,
                 clearCtrlOneShot = { ctrlOneShot = false },
                 updateStatusBar = { updateStatusBarText() },
-                callSuper = { false },
-                toggleMinimalUi = { keyboardVisibilityController.togglePastierinaMode() }
+                callSuper = { false }
             )
             if (handled) {
                 updateEmojiSearchExternalSelectionSnapshot(initialInputConnection)
@@ -4759,7 +4741,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 isLongPressSuppressed = { code ->
                     multiTapController.isLongPressSuppressed(code)
                 },
-                toggleMinimalUi = { keyboardVisibilityController.togglePastierinaMode() },
                 onShiftOneShotToggledOff = { suppressAutoCapRenderingAtCursorIfNeeded() }
             )
         )
