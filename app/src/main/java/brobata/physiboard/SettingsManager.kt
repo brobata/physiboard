@@ -332,7 +332,10 @@ object SettingsManager {
     // The variation row is off unless asked for: on a physical keyboard the accent row costs a
     // second strip of screen and Alt/Sym already reach the same characters. Resetting the status
     // bar must land here too, not on the upstream default.
-    private val DEFAULT_MODIFIER_INDICATORS = setOf(MODIFIER_INDICATOR_BOTTOM_STRIP)
+    // Pinned, not chosen. Shift/Ctrl/Alt/SYM state belongs where the user is already looking -
+    // the strip at the top - and offering three placements plus every combination of them was a
+    // question nobody benefited from answering.
+    private val DEFAULT_MODIFIER_INDICATORS = setOf(MODIFIER_INDICATOR_STATUS_BAR)
 
     private const val VARIATIONS_FILE_NAME = "variations.json"
     

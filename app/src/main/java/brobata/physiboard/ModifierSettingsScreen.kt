@@ -64,7 +64,6 @@ fun ModifierSettingsScreen(
     var altLatchStaysOnSpace by remember { mutableStateOf(SettingsManager.getAltLatchStaysOnSpace(context)) }
     var ctrlTapLatches by remember { mutableStateOf(SettingsManager.getCtrlTapLatches(context)) }
     var ctrlLatchStaysOnSpace by remember { mutableStateOf(SettingsManager.getCtrlLatchStaysOnSpace(context)) }
-    var modifierIndicators by remember { mutableStateOf(SettingsManager.getModifierIndicators(context)) }
     var showSymShortcutCompatibilityInfo by remember { mutableStateOf(false) }
     var longPressExpanded by remember { mutableStateOf(false) }
     var altBindingExpanded by remember { mutableStateOf(false) }
@@ -137,24 +136,6 @@ fun ModifierSettingsScreen(
 
             SettingsSectionDivider(stringResource(R.string.modifiers_section_indicators))
             Surface(modifier = Modifier.fillMaxWidth()) {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Text(
-                        text = stringResource(R.string.modifier_indicators_description),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    ModifierIndicatorMultiSelect(
-                        modifier = Modifier.fillMaxWidth(),
-                        selectedIndicators = modifierIndicators,
-                        onIndicatorsSelected = { indicators ->
-                            modifierIndicators = indicators
-                            SettingsManager.setModifierIndicators(context, indicators)
-                        }
-                    )
-                }
             }
 
             SettingsSectionDivider(stringResource(R.string.modifiers_section_sym))

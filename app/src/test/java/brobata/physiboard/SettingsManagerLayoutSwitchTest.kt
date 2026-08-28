@@ -116,16 +116,17 @@ class SettingsManagerLayoutSwitchTest {
     }
 
     @Test
-    fun modifierIndicators_defaultToBottomStripAndPersistMultipleTargets() {
+    fun modifierIndicators_defaultToTheStatusBarAndPersistMultipleTargets() {
         val context = RuntimeEnvironment.getApplication()
 
+        // Pinned to the status bar: it is the one place always on screen.
         assertEquals(
-            setOf(SettingsManager.MODIFIER_INDICATOR_BOTTOM_STRIP),
+            setOf(SettingsManager.MODIFIER_INDICATOR_STATUS_BAR),
             SettingsManager.getModifierIndicators(context)
         )
-        assertTrue(SettingsManager.getModifierIndicatorShowsBottomStrip(context))
+        assertTrue(SettingsManager.getModifierIndicatorShowsStatusBar(context))
+        assertFalse(SettingsManager.getModifierIndicatorShowsBottomStrip(context))
         assertFalse(SettingsManager.getModifierIndicatorShowsMenuBar(context))
-        assertFalse(SettingsManager.getModifierIndicatorShowsStatusBar(context))
 
         SettingsManager.setModifierIndicators(
             context,
@@ -148,7 +149,7 @@ class SettingsManagerLayoutSwitchTest {
     }
 
     @Test
-    fun modifierIndicators_fallBackToBottomStripForUnknownStoredValue() {
+    fun modifierIndicators_fallBackToTheStatusBarForUnknownStoredValue() {
         val context = RuntimeEnvironment.getApplication()
 
         SettingsManager.getPreferences(context).edit()
@@ -156,7 +157,7 @@ class SettingsManagerLayoutSwitchTest {
             .commit()
 
         assertEquals(
-            setOf(SettingsManager.MODIFIER_INDICATOR_BOTTOM_STRIP),
+            setOf(SettingsManager.MODIFIER_INDICATOR_STATUS_BAR),
             SettingsManager.getModifierIndicators(context)
         )
     }
