@@ -85,6 +85,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         private const val TRACKPAD_DEBUG_TAG = "TrackpadDebug"
         private const val NATIVE_TRACKPAD_MIN_SWIPE_VELOCITY_PX_PER_MS = 2f
         private const val KEYBOARD_SURFACE_TRANSITION_DELAY_MS = 32L
+        /** Enough to cover an editor that is slow to wire up, few enough to give up on one that never will. */
+        private const val MAX_CURSOR_UPDATE_ATTEMPTS = 8
         private const val KEYBOARD_DEVICE_SURFACE_TRANSITION_DELAY_MS = 250L
         private const val MODIFIER_ICON_OFF = 0
         private const val MODIFIER_ICON_ACTIVE = 1
@@ -328,6 +330,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     /** Reports the armed modifier beside the text cursor, in place of watching an LED strip. */
     private val caretBadgeController by lazy { CaretBadgeController(this) }
     private var lastCaretBadgeEnabled: Boolean? = null
+    /**
+     * Whether the editor accepted the last cursor-update request. Some editors refuse it at
+     * onStartInputView and accept the identical request moments later, so a single attempt per
+     * field silently loses the caret badge in those apps.
+     */
+    private var cursorUpdatesAccepted = false
+    private var cursorUpdateAttempts = 0
     private val uiHandler = Handler(Looper.getMainLooper())
     // Fn long-press speech shortcut. The physical Fn key is matched by scan code because the
     // system may remap it to an arbitrary key code (Ctrl on Titan devices). On Titan 2 the
@@ -2820,7 +2829,19 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         } else {
             0
         }
-        inputConnection.requestCursorUpdates(flags)
+        val accepted = inputConnection.requestCursorUpdates(flags)
+        cursorUpdatesAccepted = accepted || flags == 0
+        cursorUpdateAttempts++
+        Log.d(TAG, "requestCursorUpdates(flags=$flags) accepted=$accepted attempt=$cursorUpdateAttempts pkg=$currentPackageName")
+    }
+
+    /**
+     * Asks again for cursor updates when the editor turned the first request down, up to a small
+     * cap so an editor that genuinely does not support them is not retried on every keystroke.
+     */
+    private fun retryCursorAnchorMonitoringIfNeeded() {
+        if (cursorUpdatesAccepted || cursorUpdateAttempts >= MAX_CURSOR_UPDATE_ATTEMPTS) return
+        syncCursorAnchorMonitoring()
     }
 
     private fun updateEmojiSearchExternalSelectionSnapshot(inputConnection: InputConnection?) {
@@ -2929,7 +2950,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         caretBadgeController.onSnapshot(snapshot, caretBadgeEnabled)
         if (caretBadgeEnabled != lastCaretBadgeEnabled) {
             lastCaretBadgeEnabled = caretBadgeEnabled
+            cursorUpdatesAccepted = false
+            cursorUpdateAttempts = 0
             syncCursorAnchorMonitoring()
+        } else if (caretBadgeEnabled) {
+            retryCursorAnchorMonitoringIfNeeded()
         }
         // Also pass the emoji map while SYM is active (page 1 only)
         val emojiMapText = symLayoutController.emojiMapText()
@@ -3279,7 +3304,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // it has to be asked for again. Without this the caret badge worked in the first field of a
         // session and nowhere after it.
         caretBadgeController.onEditorGone()
+        cursorUpdatesAccepted = false
+        cursorUpdateAttempts = 0
         syncCursorAnchorMonitoring()
+        // Editors that are not ready to answer at this point often are a beat later.
+        uiHandler.postDelayed({ retryCursorAnchorMonitoringIfNeeded() }, 250L)
         if (::textExpansionController.isInitialized) textExpansionController.clear()
         updateDebugImeContextSnapshot(info)
         attachTrackpadDecorViewMotionHook("onStartInputView")

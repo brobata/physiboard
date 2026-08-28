@@ -126,14 +126,14 @@ class CaretBadgeController(private val service: InputMethodService) {
         view.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
         val width = view.measuredWidth
         val height = view.measuredHeight
-        // Beside the caret and centred on its line, the way a subscript glyph sits next to a
-        // cursor. The caret is normally at the end of what has been typed, so the space to its
-        // right is empty and the badge covers nothing.
-        var x = (caret.x + dp(3)).toInt()
-        var y = (((caret.top + caret.bottom) / 2f) - height / 2f).toInt()
-        // At the right-hand edge there is no room beside it, so flip to the other side of the caret
-        // rather than let it be pushed over the text that is already there.
-        if (x + width > metrics.widthPixels) x = (caret.x - dp(3)).toInt() - width
+        // Above the caret rather than beside it. Beside reads better in the abstract, but the
+        // caret is not always at the end of a line - put it in a field with text after the cursor
+        // and a badge to its right sits straight on top of that text.
+        val gap = dp(2)
+        var x = (caret.x - dp(2)).toInt()
+        var y = (caret.top - height - gap).toInt()
+        // At the top of the screen there is no room above, so it drops below the line instead.
+        if (y < 0) y = (caret.bottom + gap).toInt()
         x = x.coerceIn(0, (metrics.widthPixels - width).coerceAtLeast(0))
         y = y.coerceIn(0, (metrics.heightPixels - height).coerceAtLeast(0))
 
@@ -167,18 +167,19 @@ class CaretBadgeController(private val service: InputMethodService) {
         this.y = y
     }
 
-    // Small and tight on purpose: this is a subscript beside the cursor, not a banner. Anything
-    // bigger competes with the text for attention in exactly the place the eye is already resting.
+    // Small, but not so small it cannot be read at a glance. It also has to carry its own contrast:
+    // it floats over an app whose background could be any colour, so a near-black pill disappears
+    // on a dark theme and a pale one disappears on a light theme. A saturated accent reads on both.
     private fun createBadge(): TextView = TextView(context).apply {
         setTextColor(Color.WHITE)
-        setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f)
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
         typeface = android.graphics.Typeface.DEFAULT_BOLD
         includeFontPadding = false
         letterSpacing = 0.04f
-        setPadding(dp(4), dp(2), dp(4), dp(2))
+        setPadding(dp(5), dp(2), dp(5), dp(2))
         background = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            cornerRadius = dp(3).toFloat()
+            cornerRadius = dp(4).toFloat()
             setColor(BADGE_BACKGROUND)
         }
     }
@@ -192,8 +193,8 @@ class CaretBadgeController(private val service: InputMethodService) {
     private companion object {
         const val TAG = "CaretBadge"
 
-        /** Dark enough to read white text on any app background, light enough not to be a block. */
-        const val BADGE_BACKGROUND = 0xE0202124.toInt()
+        /** Saturated so white text on it reads over a light app and a dark one alike. */
+        const val BADGE_BACKGROUND = 0xF03B82F6.toInt()
 
         /**
          * Every way a modifier can be on, including a plain physical hold. This is a read-out of
