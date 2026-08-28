@@ -1708,4 +1708,9 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="backlight_tile_label">Keyboard light</string>
     <string name="backlight_tile_permission_missing">PhysiBoard needs WRITE_SECURE_SETTINGS. Grant once via ADB: adb shell pm grant brobata.physiboard android.permission.WRITE_SECURE_SETTINGS</string>
     <string name="backlight_tile_no_permission_subtitle">Needs ADB grant</string>
+    <string name="v2_notice_title">You will need to enable PhysiBoard again</string>
+    <string name="v2_notice_message">This update renamed the app\'s internals, so Android sees the keyboard as a new one and has switched you to another. Turn PhysiBoard back on in the keyboard settings and pick it again.\n\nYour shortcuts, key mappings, themes, word list and the ring you fitted all came across. Settings that are just on-or-off choices were reset to the current defaults, because a lot of them no longer meant what they used to.</string>
+    <string name="v2_notice_dismiss">Got it</string>
+    <string name="v2_notice_restore">Restore my old settings</string>
+    <string name="v2_notice_restored">Your previous settings are back.</string>
 </resources>

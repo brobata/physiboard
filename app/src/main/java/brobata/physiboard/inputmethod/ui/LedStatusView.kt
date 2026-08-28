@@ -1,0 +1,175 @@
+package brobata.physiboard.inputmethod.ui
+
+import android.animation.ValueAnimator
+import android.content.Context
+import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
+import android.util.TypedValue
+import android.view.Gravity
+import android.view.View
+import android.view.animation.AccelerateDecelerateInterpolator
+import android.widget.LinearLayout
+import brobata.physiboard.R
+import brobata.physiboard.inputmethod.StatusBarController
+
+/**
+ * Compact controller around the LED strip at the bottom of the IME status bar.
+ */
+class LedStatusView(
+    private val context: Context
+) {
+    companion object {
+        private val LED_COLOR_GRAY_OFF = Color.argb(100, 17, 17, 17)
+        private val LED_COLOR_RED_LOCKED = Color.rgb(247, 99, 0)
+        private val LED_COLOR_BLUE_ACTIVE = Color.rgb(100, 150, 255)
+    }
+
+    private val ledHeight: Int by lazy {
+        TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            5.5f,
+            context.resources.displayMetrics
+        ).toInt()
+    }
+    private val topPadding: Int by lazy {
+        TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            1f,
+            context.resources.displayMetrics
+        ).toInt()
+    }
+    private val ledGap: Int by lazy {
+        TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            1.5f,
+            context.resources.displayMetrics
+        ).toInt()
+    }
+    private val cornerRadius: Float by lazy {
+        TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            3f,
+            context.resources.displayMetrics
+        )
+    }
+
+    private var container: LinearLayout? = null
+    private var shiftLed: View? = null
+    private var symLed: View? = null
+    private var ctrlLed: View? = null
+    private var altLed: View? = null
+
+    var onLongPressListener: (() -> Unit)? = null
+    var themeOverride: KeyboardThemeColors? = null
+
+    fun ensureView(): LinearLayout {
+        container?.let { return it }
+
+        container = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.BOTTOM
+            setPadding(0, topPadding, 0, 0)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            setOnLongClickListener {
+                onLongPressListener?.invoke()
+                true
+            }
+        }
+
+        shiftLed = createLedView(LED_COLOR_GRAY_OFF)
+        symLed = createLedView(LED_COLOR_GRAY_OFF)
+        val unused1 = createLedView(LED_COLOR_GRAY_OFF).apply { visibility = View.INVISIBLE }
+        val unused2 = createLedView(LED_COLOR_GRAY_OFF).apply { visibility = View.INVISIBLE }
+        ctrlLed = createLedView(LED_COLOR_GRAY_OFF)
+        altLed = createLedView(LED_COLOR_GRAY_OFF)
+
+        container?.apply {
+            addView(shiftLed, LinearLayout.LayoutParams(0, ledHeight, 1f).apply { marginEnd = ledGap })
+            addView(symLed, LinearLayout.LayoutParams(0, ledHeight, 1f).apply { marginEnd = ledGap })
+            addView(unused1, LinearLayout.LayoutParams(0, ledHeight, 1f).apply { marginEnd = ledGap })
+            addView(unused2, LinearLayout.LayoutParams(0, ledHeight, 1f).apply { marginEnd = ledGap })
+            addView(ctrlLed, LinearLayout.LayoutParams(0, ledHeight, 1f).apply { marginEnd = ledGap })
+            addView(altLed, LinearLayout.LayoutParams(0, ledHeight, 1f))
+        }
+
+        return container!!
+    }
+
+    fun getView(): LinearLayout? = container
+
+    fun update(snapshot: StatusBarController.StatusSnapshot) {
+        // Only light for armed (one-shot) or locked states; a plain physical hold is
+        // ignored so the strip does not flash during every keypress.
+        val shiftLocked = snapshot.capsLockEnabled
+        updateLed(shiftLed, shiftLocked, snapshot.shiftOneShot && !shiftLocked)
+
+        val ctrlLocked = snapshot.ctrlLatchActive
+        updateLed(ctrlLed, ctrlLocked, snapshot.ctrlOneShot && !ctrlLocked)
+
+        val altLocked = snapshot.altLatchActive
+        updateLed(altLed, altLocked, snapshot.altOneShot && !altLocked)
+
+        updateSymLed(symLed, snapshot.symPage)
+    }
+
+    private fun createLedView(initialColor: Int): View {
+        return View(context).apply {
+            layoutParams = LinearLayout.LayoutParams(0, ledHeight, 1f)
+            background = createDrawable(initialColor)
+            setTag(R.id.led_previous_color, initialColor)
+        }
+    }
+
+    private fun createDrawable(color: Int): GradientDrawable {
+        return GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            setColor(color)
+            cornerRadius = this@LedStatusView.cornerRadius
+        }
+    }
+
+    private fun updateLed(led: View?, isLocked: Boolean, isActive: Boolean = false) {
+        val theme = themeOverride
+        val targetColor = when {
+            isLocked -> theme?.ledLocked ?: LED_COLOR_RED_LOCKED
+            isActive -> theme?.ledActive ?: LED_COLOR_BLUE_ACTIVE
+            else -> theme?.ledInactive ?: LED_COLOR_GRAY_OFF
+        }
+        animateLedColor(led, targetColor)
+    }
+
+    private fun updateSymLed(led: View?, symPage: Int) {
+        val theme = themeOverride
+        val targetColor = when (symPage) {
+            1 -> theme?.ledActive ?: LED_COLOR_BLUE_ACTIVE
+            2 -> theme?.ledLocked ?: LED_COLOR_RED_LOCKED
+            3 -> theme?.ledActive ?: LED_COLOR_BLUE_ACTIVE
+            4 -> theme?.ledActive ?: LED_COLOR_BLUE_ACTIVE
+            else -> theme?.ledInactive ?: LED_COLOR_GRAY_OFF
+        }
+        animateLedColor(led, targetColor)
+    }
+
+    private fun animateLedColor(led: View?, targetColor: Int) {
+        led ?: return
+        val previousColor = (led.getTag(R.id.led_previous_color) as? Int) ?: LED_COLOR_GRAY_OFF
+        led.setTag(R.id.led_previous_color, targetColor)
+
+        if (previousColor == targetColor) {
+            led.background = createDrawable(targetColor)
+            return
+        }
+
+        ValueAnimator.ofArgb(previousColor, targetColor).apply {
+            duration = 200
+            interpolator = AccelerateDecelerateInterpolator()
+            addUpdateListener { animator ->
+                val color = animator.animatedValue as Int
+                led.background = createDrawable(color)
+            }
+        }.start()
+    }
+}

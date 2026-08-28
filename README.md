@@ -135,27 +135,29 @@ Full change notes (per GPLv3 §5(a)) are in [PHYSIBOARD_CHANGES.md](PHYSIBOARD_C
 
 ## Development
 
-Standard Gradle Android project. The physical-keyboard release flavor is `physi` (application id `brobata.physiboard`):
+Standard Gradle Android project, one build, application id `brobata.physiboard`:
 
 ```bash
-./gradlew :app:assemblePhysiDebug
+./gradlew :app:assembleDebug        # development build
+./gradlew :app:assembleSideload     # release-signed, installs alongside the real app
+./gradlew :app:assembleRelease      # the shipped build
 ```
 
 Run the core + routing + service modifier regression tests:
 
 ```bash
-./gradlew :app:testStableDebugUnitTest \
-  --tests it.palsoftware.pastiera.core.ModifierStateControllerTest \
-  --tests it.palsoftware.pastiera.inputmethod.InputEventRouterModifierE2ETest
+./gradlew :app:testDebugUnitTest \
+  --tests brobata.physiboard.core.ModifierStateControllerTest \
+  --tests brobata.physiboard.inputmethod.InputEventRouterModifierE2ETest
 ```
 
 Release signing is read from Gradle properties / environment variables (`PASTIERA_KEYSTORE_PATH`, `PASTIERA_KEYSTORE_PASSWORD`, `PASTIERA_KEY_ALIAS`, `PASTIERA_KEY_PASSWORD`) — no keys are committed. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-The internal source namespace remains `it.palsoftware.pastiera` on purpose: it keeps the fork lineage honest and merges from upstream possible. Only the user-facing application id and branding are PhysiBoard.
+The source namespace is `brobata.physiboard`. It was `it.palsoftware.pastiera` until 2.0, when the fork stopped tracking upstream; the application id has always been `brobata.physiboard` and does not change, because it is what Android uses to identify the installed app. Attribution lives in [NOTICE.md](NOTICE.md) and [PHYSIBOARD_CHANGES.md](PHYSIBOARD_CHANGES.md), where the licence requires it.
 
 ## Continuous Integration
 
-Pushes to `main` and pull requests run `.github/workflows/ci.yml` (inherited from Pastiera), which runs the stable and nightly unit-test suites.
+Pushes to `main` and pull requests run `.github/workflows/ci.yml`.
 
 ## Based on Pastiera
 

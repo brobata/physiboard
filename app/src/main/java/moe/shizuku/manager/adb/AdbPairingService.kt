@@ -17,8 +17,8 @@ import androidx.lifecycle.Observer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import it.palsoftware.pastiera.R
-import it.palsoftware.pastiera.inputmethod.PrivilegedSetup
+import brobata.physiboard.R
+import brobata.physiboard.inputmethod.PrivilegedSetup
 import java.net.ConnectException
 
 @TargetApi(Build.VERSION_CODES.R)

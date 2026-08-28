@@ -1,0 +1,875 @@
+package brobata.physiboard
+
+import androidx.compose.foundation.clickable
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.filled.TextFields
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.size
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.activity.compose.BackHandler
+import brobata.physiboard.R
+import brobata.physiboard.core.Punctuation
+
+/**
+ * Text Input settings screen.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TextInputSettingsScreen(
+    modifier: Modifier = Modifier,
+    onBack: () -> Unit,
+    onNavModeSettingsClick: () -> Unit = {}
+) {
+    val context = LocalContext.current
+    var showTextExpansion by remember { mutableStateOf(false) }
+    
+    var autoCapitalizeFirstLetter by remember {
+        mutableStateOf(SettingsManager.getAutoCapitalizeFirstLetter(context))
+    }
+
+    var autoCapitalizeAfterPeriod by remember {
+        mutableStateOf(SettingsManager.getAutoCapitalizeAfterPeriod(context))
+    }
+
+    var autoCapitalizeRespectManualShiftOff by remember {
+        mutableStateOf(SettingsManager.getAutoCapitalizeRespectManualShiftOff(context))
+    }
+
+    var autoCapitalizeRestrictedFields by remember {
+        mutableStateOf(SettingsManager.getAutoCapitalizeRestrictedFields(context))
+    }
+
+    var doubleSpaceToPeriod by remember {
+        mutableStateOf(SettingsManager.getDoubleSpaceToPeriod(context))
+    }
+
+    var spacedHyphenToEnDash by remember {
+        mutableStateOf(SettingsManager.getSpacedHyphenToEnDash(context))
+    }
+
+    var spacedHyphenDashStyle by remember {
+        mutableStateOf(SettingsManager.getSpacedHyphenDashStyle(context))
+    }
+
+    var spacedHyphenDashExpanded by remember { mutableStateOf(false) }
+
+    var midWordQuoteToApostrophe by remember {
+        mutableStateOf(SettingsManager.getMidWordQuoteToApostrophe(context))
+    }
+
+    var frenchPunctuationSpacing by remember {
+        mutableStateOf(SettingsManager.getFrenchPunctuationSpacing(context))
+    }
+
+    var frenchPunctuationOnlyFrenchLayouts by remember {
+        mutableStateOf(SettingsManager.getFrenchPunctuationOnlyFrenchLayouts(context))
+    }
+
+    var commaSpace by remember {
+        mutableStateOf(SettingsManager.getCommaSpace(context))
+    }
+
+    var autoSpacePunctuation by remember {
+        mutableStateOf(SettingsManager.getAutoSpacePunctuation(context))
+    }
+    var spaceAfterPunctuation by remember {
+        mutableStateOf(SettingsManager.getSpaceAfterPunctuation(context))
+    }
+
+    var autoSpacePunctuationDialogVisible by remember { mutableStateOf(false) }
+    var autoSpacePunctuationHelpVisible by remember { mutableStateOf(false) }
+
+    var smartQuotes by remember {
+        mutableStateOf(SettingsManager.getSmartQuotes(context))
+    }
+
+    var smartQuotesStyle by remember {
+        mutableStateOf(SettingsManager.getSmartQuotesStyle(context))
+    }
+
+    var smartQuotesExpanded by remember { mutableStateOf(false) }
+
+    var clearAltOnSpace by remember {
+        mutableStateOf(SettingsManager.getClearAltOnSpace(context))
+    }
+    
+    var autoShowKeyboard by remember {
+        mutableStateOf(SettingsManager.getAutoShowKeyboard(context))
+    }
+
+    var shiftBackspaceDelete by remember {
+        mutableStateOf(SettingsManager.getShiftBackspaceDelete(context))
+    }
+
+    var altBackspaceDelete by remember {
+        mutableStateOf(SettingsManager.getAltBackspaceDelete(context))
+    }
+
+    var backspaceAtStartDelete by remember {
+        mutableStateOf(SettingsManager.getBackspaceAtStartDelete(context))
+    }
+
+    var currencySymbol by remember {
+        mutableStateOf(SettingsManager.getPhysicalKeyboardCurrencySymbol(context))
+    }
+    
+    // Handle system back button
+    BackHandler {
+        if (showTextExpansion) showTextExpansion = false else onBack()
+    }
+
+    if (showTextExpansion) {
+        TextExpansionSettingsScreen(onBack = { showTextExpansion = false })
+        return
+    }
+
+    if (autoSpacePunctuationDialogVisible) {
+        AlertDialog(
+            onDismissRequest = { autoSpacePunctuationDialogVisible = false },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(R.string.auto_space_punctuation_title),
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(onClick = { autoSpacePunctuationHelpVisible = true }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.HelpOutline,
+                            contentDescription = stringResource(R.string.auto_space_punctuation_help_action)
+                        )
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Text(
+                        text = stringResource(R.string.auto_space_punctuation_dialog_instruction),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = stringResource(R.string.auto_space_punctuation_character_column),
+                            style = MaterialTheme.typography.labelMedium,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            text = stringResource(R.string.auto_space_punctuation_before_column),
+                            style = MaterialTheme.typography.labelMedium,
+                            modifier = Modifier.width(72.dp)
+                        )
+                        Text(
+                            text = stringResource(R.string.auto_space_punctuation_after_column),
+                            style = MaterialTheme.typography.labelMedium,
+                            modifier = Modifier.width(72.dp)
+                        )
+                    }
+                    Column {
+                        autoSpacePunctuationOptions().forEach { punctuation ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(48.dp)
+                                    .padding(horizontal = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    text = autoSpacePunctuationLabel(punctuation),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Checkbox(
+                                    checked = punctuation in autoSpacePunctuation,
+                                    onCheckedChange = { checked ->
+                                        autoSpacePunctuation = if (checked) {
+                                            addAutoSpacePunctuation(autoSpacePunctuation, punctuation)
+                                        } else {
+                                            autoSpacePunctuation.filterNot { it == punctuation }
+                                        }
+                                        SettingsManager.setAutoSpacePunctuation(context, autoSpacePunctuation)
+                                    },
+                                    modifier = Modifier.width(72.dp)
+                                )
+                                Checkbox(
+                                    checked = punctuation in spaceAfterPunctuation,
+                                    onCheckedChange = { checked ->
+                                        spaceAfterPunctuation = if (checked) {
+                                            addAutoSpacePunctuation(spaceAfterPunctuation, punctuation)
+                                        } else {
+                                            spaceAfterPunctuation.filterNot { it == punctuation }
+                                        }
+                                        SettingsManager.setSpaceAfterPunctuation(context, spaceAfterPunctuation)
+                                    },
+                                    modifier = Modifier.width(72.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { autoSpacePunctuationDialogVisible = false }) {
+                    Text(stringResource(android.R.string.ok))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        autoSpacePunctuation = Punctuation.DEFAULT_AUTO_SPACE
+                        spaceAfterPunctuation = ""
+                        SettingsManager.setAutoSpacePunctuation(context, autoSpacePunctuation)
+                        SettingsManager.setSpaceAfterPunctuation(context, spaceAfterPunctuation)
+                    }
+                ) {
+                    Text(stringResource(R.string.auto_space_punctuation_reset))
+                }
+            }
+        )
+    }
+    if (autoSpacePunctuationHelpVisible) {
+        AlertDialog(
+            onDismissRequest = { autoSpacePunctuationHelpVisible = false },
+            title = { Text(stringResource(R.string.auto_space_punctuation_help_title)) },
+            text = { Text(stringResource(R.string.auto_space_punctuation_help_text)) },
+            confirmButton = {
+                TextButton(onClick = { autoSpacePunctuationHelpVisible = false }) {
+                    Text(stringResource(android.R.string.ok))
+                }
+            }
+        )
+    }
+    
+    Scaffold(
+        topBar = {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.statusBars),
+                tonalElevation = 1.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.settings_back_content_description)
+                        )
+                    }
+                    Text(
+                        text = stringResource(R.string.settings_category_text_input),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
+            }
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(paddingValues)
+                .verticalScroll(rememberScrollState())
+        ) {
+            SettingsSectionHeader(text = stringResource(R.string.text_expansion_title))
+            SettingsNavigationRow(
+                title = stringResource(R.string.text_expansion_title),
+                description = stringResource(R.string.text_expansion_description),
+                onClick = { showTextExpansion = true }
+            )
+
+            SettingsSectionHeader(text = stringResource(R.string.text_input_section_capitalization))
+            SettingsSwitchRow(
+                title = stringResource(R.string.auto_capitalize_title),
+                description = stringResource(R.string.auto_capitalize_description),
+                checked = autoCapitalizeFirstLetter,
+                onCheckedChange = { enabled ->
+                    autoCapitalizeFirstLetter = enabled
+                    SettingsManager.setAutoCapitalizeFirstLetter(context, enabled)
+                }
+            )
+            SettingsSwitchRow(
+                title = stringResource(R.string.auto_capitalize_after_period_title),
+                description = stringResource(R.string.auto_capitalize_after_period_description),
+                checked = autoCapitalizeAfterPeriod,
+                onCheckedChange = { enabled ->
+                    autoCapitalizeAfterPeriod = enabled
+                    SettingsManager.setAutoCapitalizeAfterPeriod(context, enabled)
+                }
+            )
+
+            SettingsSectionHeader(text = stringResource(R.string.text_input_section_spacing_punctuation))
+            SettingsSwitchRow(
+                title = stringResource(R.string.double_space_to_period_title),
+                description = stringResource(R.string.double_space_to_period_description),
+                checked = doubleSpaceToPeriod,
+                onCheckedChange = { enabled ->
+                    doubleSpaceToPeriod = enabled
+                    SettingsManager.setDoubleSpaceToPeriod(context, enabled)
+                }
+            )
+
+            SettingsSectionHeader(text = stringResource(R.string.text_input_section_keyboard_behavior))
+            SettingsSwitchRow(
+                title = stringResource(R.string.clear_alt_on_space_title),
+                description = stringResource(R.string.clear_alt_on_space_description),
+                checked = clearAltOnSpace,
+                onCheckedChange = { enabled ->
+                    clearAltOnSpace = enabled
+                    SettingsManager.setClearAltOnSpace(context, enabled)
+                }
+            )
+            SettingsSwitchRow(
+                title = stringResource(R.string.auto_show_keyboard_title),
+                description = stringResource(R.string.auto_show_keyboard_description),
+                checked = autoShowKeyboard,
+                onCheckedChange = { enabled ->
+                    autoShowKeyboard = enabled
+                    SettingsManager.setAutoShowKeyboard(context, enabled)
+                }
+            )
+            SettingsSectionHeader(text = stringResource(R.string.keyboard_currency_symbol_title))
+            Text(
+                text = stringResource(R.string.keyboard_currency_symbol_description),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                SettingsManager.physicalKeyboardCurrencySymbols().forEach { symbol ->
+                    Surface(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable {
+                                currencySymbol = symbol
+                                SettingsManager.setPhysicalKeyboardCurrencySymbol(context, symbol)
+                            },
+                        color = if (currencySymbol == symbol) {
+                            MaterialTheme.colorScheme.primaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.surface
+                        },
+                        shape = MaterialTheme.shapes.small
+                    ) {
+                        Text(
+                            text = symbol,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = if (currencySymbol == symbol) {
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            },
+                            modifier = Modifier.padding(vertical = 12.dp),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                    }
+                }
+            }
+
+            SettingsSectionHeader(text = stringResource(R.string.text_input_section_delete))
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth(),
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.delete_alternatives_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = stringResource(R.string.shift_backspace_delete_title),
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Switch(
+                            checked = shiftBackspaceDelete,
+                            onCheckedChange = { enabled ->
+                                shiftBackspaceDelete = enabled
+                                SettingsManager.setShiftBackspaceDelete(context, enabled)
+                            }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = stringResource(R.string.alt_backspace_delete_title),
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Switch(
+                            checked = altBackspaceDelete,
+                            onCheckedChange = { enabled ->
+                                altBackspaceDelete = enabled
+                                SettingsManager.setAltBackspaceDelete(context, enabled)
+                            }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text(
+                        text = stringResource(R.string.delete_alternatives_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    SettingsNavigationRow(
+                        title = stringResource(R.string.delete_alternatives_nav_mode_title),
+                        description = stringResource(R.string.settings_nav_mode_configure),
+                        iconInset = 0.dp,
+                        onClick = onNavModeSettingsClick
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = stringResource(R.string.delete_alternatives_selection_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                    )
+                }
+            }
+
+            SettingsAdvancedSection {
+                AnimatedVisibility(visible = autoCapitalizeFirstLetter) {
+                    Column {
+                        SettingsSwitchRow(
+                            title = stringResource(R.string.auto_capitalize_respect_manual_shift_off_title),
+                            description = stringResource(R.string.auto_capitalize_respect_manual_shift_off_description),
+                            checked = autoCapitalizeRespectManualShiftOff,
+                            onCheckedChange = { enabled ->
+                                autoCapitalizeRespectManualShiftOff = enabled
+                                SettingsManager.setAutoCapitalizeRespectManualShiftOff(context, enabled)
+                            }
+                        )
+                        SettingsSwitchRow(
+                            title = stringResource(R.string.auto_capitalize_restricted_fields_title),
+                            description = stringResource(R.string.auto_capitalize_restricted_fields_description),
+                            checked = autoCapitalizeRestrictedFields,
+                            onCheckedChange = { enabled ->
+                                autoCapitalizeRestrictedFields = enabled
+                                SettingsManager.setAutoCapitalizeRestrictedFields(context, enabled)
+                            }
+                        )
+                    }
+                }
+                SettingsNavigationRow(
+                    title = stringResource(R.string.auto_space_punctuation_title),
+                    description = autoSpacePunctuationSummary(
+                        beforePunctuation = autoSpacePunctuation,
+                        afterPunctuation = spaceAfterPunctuation,
+                        beforeLabel = stringResource(R.string.auto_space_punctuation_before_column),
+                        afterLabel = stringResource(R.string.auto_space_punctuation_after_column),
+                        offLabel = stringResource(R.string.auto_space_punctuation_choose_off)
+                    ),
+                    onClick = { autoSpacePunctuationDialogVisible = true }
+                )
+                SettingsSwitchRow(
+                    title = stringResource(R.string.comma_space_title),
+                    description = stringResource(R.string.comma_space_description),
+                    checked = commaSpace,
+                    onCheckedChange = { enabled ->
+                        commaSpace = enabled
+                        SettingsManager.setCommaSpace(context, enabled)
+                    }
+                )
+                SettingsDropdownSwitchRow(
+                    title = stringResource(R.string.spaced_hyphen_to_en_dash_title),
+                    checked = spacedHyphenToEnDash,
+                    onCheckedChange = { enabled ->
+                        spacedHyphenToEnDash = enabled
+                        SettingsManager.setSpacedHyphenToEnDash(context, enabled)
+                        if (!enabled) {
+                            spacedHyphenDashExpanded = false
+                        }
+                    },
+                    expanded = spacedHyphenDashExpanded,
+                    onExpandedChange = { spacedHyphenDashExpanded = it },
+                    value = dashStyleLabel(spacedHyphenDashStyle),
+                    options = dashStyleOptions(),
+                    optionLabel = ::dashStyleLabel,
+                    onOptionSelected = { style ->
+                        spacedHyphenDashStyle = style
+                        SettingsManager.setSpacedHyphenDashStyle(context, style)
+                        spacedHyphenDashExpanded = false
+                    }
+                )
+                SettingsSwitchRow(
+                    title = stringResource(R.string.mid_word_quote_to_apostrophe_title),
+                    description = stringResource(R.string.mid_word_quote_to_apostrophe_description),
+                    checked = midWordQuoteToApostrophe,
+                    onCheckedChange = { enabled ->
+                        midWordQuoteToApostrophe = enabled
+                        SettingsManager.setMidWordQuoteToApostrophe(context, enabled)
+                    }
+                )
+                SettingsDropdownSwitchRow(
+                    title = stringResource(R.string.smart_quotes_title),
+                    checked = smartQuotes,
+                    onCheckedChange = { enabled ->
+                        smartQuotes = enabled
+                        SettingsManager.setSmartQuotes(context, enabled)
+                        if (!enabled) {
+                            smartQuotesExpanded = false
+                        }
+                    },
+                    expanded = smartQuotesExpanded,
+                    onExpandedChange = { smartQuotesExpanded = it },
+                    value = smartQuotesStyleLabel(smartQuotesStyle),
+                    options = smartQuoteStyleOptions(),
+                    optionLabel = ::smartQuotesStyleLabel,
+                    onOptionSelected = { style ->
+                        smartQuotesStyle = style
+                        SettingsManager.setSmartQuotesStyle(context, style)
+                        smartQuotesExpanded = false
+                    }
+                )
+                SettingsSwitchRow(
+                    title = stringResource(R.string.backspace_at_start_delete_title),
+                    checked = backspaceAtStartDelete,
+                    onCheckedChange = { enabled ->
+                        backspaceAtStartDelete = enabled
+                        SettingsManager.setBackspaceAtStartDelete(context, enabled)
+                    }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+}
+
+@Composable
+private fun SettingsSectionHeader(text: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        HorizontalDivider(
+            modifier = Modifier.weight(1f),
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.Medium
+        )
+        HorizontalDivider(
+            modifier = Modifier.weight(1f),
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
+    }
+}
+
+@Composable
+private fun SettingsRowFrame(
+    modifier: Modifier = Modifier,
+    minHeight: androidx.compose.ui.unit.Dp = 64.dp,
+    inset: androidx.compose.ui.unit.Dp = 16.dp,
+    content: @Composable RowScope.() -> Unit
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = minHeight)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = inset, end = 16.dp, top = 10.dp, bottom = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            content = content
+        )
+    }
+}
+
+@Composable
+private fun SettingsSwitchRow(
+    title: String,
+    description: String? = null,
+    checked: Boolean,
+    inset: androidx.compose.ui.unit.Dp = 16.dp,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    SettingsRowFrame(inset = inset, minHeight = if (description == null) 64.dp else 72.dp) {
+        Icon(
+            imageVector = Icons.Filled.TextFields,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(24.dp)
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium,
+                maxLines = 2
+            )
+            if (description != null) {
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange
+        )
+    }
+}
+
+@Composable
+private fun SettingsNavigationRow(
+    title: String,
+    description: String,
+    iconInset: androidx.compose.ui.unit.Dp = 16.dp,
+    onClick: () -> Unit
+) {
+    SettingsRowFrame(
+        modifier = Modifier.clickable(onClick = onClick),
+        minHeight = 72.dp,
+        inset = iconInset
+    ) {
+        Icon(
+            imageVector = Icons.Filled.TextFields,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(24.dp)
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium,
+                maxLines = 2
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(20.dp)
+        )
+    }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun SettingsDropdownSwitchRow(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    value: String,
+    options: List<String>,
+    optionLabel: (String) -> String,
+    onOptionSelected: (String) -> Unit
+) {
+    SettingsRowFrame(minHeight = 88.dp) {
+        Icon(
+            imageVector = Icons.Filled.TextFields,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(24.dp)
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium,
+                maxLines = 2
+            )
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { onExpandedChange(!expanded) }
+            ) {
+                OutlinedTextField(
+                    value = value,
+                    onValueChange = {},
+                    readOnly = true,
+                    singleLine = true,
+                    enabled = checked,
+                    textStyle = MaterialTheme.typography.bodySmall,
+                    trailingIcon = {
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                    },
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .menuAnchor(
+                            type = MenuAnchorType.PrimaryNotEditable,
+                            enabled = checked
+                        )
+                )
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { onExpandedChange(false) }
+                ) {
+                    options.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(optionLabel(option)) },
+                            onClick = { onOptionSelected(option) },
+                            enabled = checked
+                        )
+                    }
+                }
+            }
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange
+        )
+    }
+}
+
+private fun dashStyleOptions(): List<String> {
+    return listOf(
+        SettingsManager.DASH_STYLE_EN,
+        SettingsManager.DASH_STYLE_EM
+    )
+}
+
+private fun dashStyleLabel(style: String): String {
+    return when (style) {
+        SettingsManager.DASH_STYLE_EM -> "—"
+        else -> "–"
+    }
+}
+
+private fun smartQuoteStyleOptions(): List<String> {
+    return listOf(
+        SettingsManager.SMART_QUOTES_STYLE_GERMAN_GUILLEMETS,
+        SettingsManager.SMART_QUOTES_STYLE_FRENCH_GUILLEMETS,
+        SettingsManager.SMART_QUOTES_STYLE_FRENCH_GUILLEMETS_NARROW_SPACED,
+        SettingsManager.SMART_QUOTES_STYLE_GERMAN_LOW_HIGH,
+        SettingsManager.SMART_QUOTES_STYLE_ENGLISH_CURLY
+    )
+}
+
+// These labels intentionally use explicit quote pairs instead of generic placeholders.
+// Change them only with care: quotation marks are interpreted visually and some
+// combinations render ambiguously in Android text fields and dropdowns.
+private fun smartQuotesStyleLabel(style: String): String {
+    return when (style) {
+        SettingsManager.SMART_QUOTES_STYLE_FRENCH_GUILLEMETS -> "«...»"
+        SettingsManager.SMART_QUOTES_STYLE_FRENCH_GUILLEMETS_NARROW_SPACED -> "« ... »"
+        SettingsManager.SMART_QUOTES_STYLE_GERMAN_LOW_HIGH -> "„...“"
+        SettingsManager.SMART_QUOTES_STYLE_ENGLISH_CURLY -> "“...”"
+        else -> "»...«"
+    }
+}
+
+internal fun autoSpacePunctuationOptions(): List<Char> {
+    return Punctuation.AUTO_SPACE_CANDIDATES.toList()
+}
+
+private fun autoSpacePunctuationSummary(
+    beforePunctuation: String,
+    afterPunctuation: String,
+    beforeLabel: String,
+    afterLabel: String,
+    offLabel: String
+): String {
+    val parts = buildList {
+        beforePunctuation.takeIf { it.isNotEmpty() }?.let {
+            add("$beforeLabel: ${it.map(::autoSpacePunctuationLabel).joinToString(" ")}")
+        }
+        afterPunctuation.takeIf { it.isNotEmpty() }?.let {
+            add("$afterLabel: ${it.map(::autoSpacePunctuationLabel).joinToString(" ")}")
+        }
+    }
+    return parts.joinToString(" · ").ifEmpty { offLabel }
+}
+
+internal fun autoSpacePunctuationLabel(punctuation: Char): String {
+    return when (punctuation) {
+        '\\' -> "\\"
+        '"' -> "\""
+        else -> punctuation.toString()
+    }
+}
+
+private fun addAutoSpacePunctuation(current: String, punctuation: Char): String {
+    val selected = current.toSet() + punctuation
+    return Punctuation.AUTO_SPACE_CANDIDATES.filter { it in selected }
+}
+
+internal fun toggleAutoSpacePunctuation(current: String, punctuation: Char): String {
+    return if (punctuation in current) {
+        current.filterNot { it == punctuation }
+    } else {
+        addAutoSpacePunctuation(current, punctuation)
+    }
+}

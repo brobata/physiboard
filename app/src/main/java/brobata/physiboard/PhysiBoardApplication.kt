@@ -1,0 +1,53 @@
+package brobata.physiboard
+
+import android.app.Application
+import android.content.Intent
+import android.content.pm.ShortcutInfo
+import android.content.pm.ShortcutManager
+import android.graphics.drawable.Icon
+import android.os.Build
+import android.os.Handler
+import android.os.Looper
+import brobata.physiboard.inputmethod.subtype.AdditionalSubtypeUtils
+
+class PhysiBoardApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        // Order matters. The migration has to land before the first read, and the first-run
+        // defaults have to be stamped here rather than in MainActivity: setting the keyboard up
+        // from Android's own settings never opens the app, and those users spent 1.x running
+        // upstream's defaults because of exactly that.
+        SettingsMigration.migrateIfNeeded(this)
+        SettingsManager.applyImpactDefaultsIfNeeded(this)
+        SettingsManager.initializeAltShiftLayoutSwitchDefault(this)
+        AppPackageChangeMonitor.register(this)
+        publishSoftwareKeyboardModeShortcut()
+        Handler(Looper.getMainLooper()).post {
+            AdditionalSubtypeUtils.registerAdditionalSubtypes(this)
+        }
+    }
+
+    private fun publishSoftwareKeyboardModeShortcut() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N_MR1) {
+            return
+        }
+        val shortcutManager = getSystemService(ShortcutManager::class.java) ?: return
+        val shortcut = ShortcutInfo.Builder(this, SOFTWARE_KEYBOARD_MODE_SHORTCUT_ID)
+            .setShortLabel(getString(R.string.software_keyboard_mode_toggle_shortcut_short))
+            .setLongLabel(getString(R.string.software_keyboard_mode_toggle_shortcut_long))
+            .setIcon(Icon.createWithResource(this, R.mipmap.ic_launcher))
+            .setIntent(
+                Intent(SoftwareKeyboardModeActions.ACTION_TOGGLE)
+                    .setClass(this, SoftwareKeyboardModeActionActivity::class.java)
+            )
+            .build()
+        runCatching {
+            shortcutManager.removeDynamicShortcuts(listOf(SOFTWARE_KEYBOARD_MODE_SHORTCUT_ID))
+            shortcutManager.addDynamicShortcuts(listOf(shortcut))
+        }
+    }
+
+    companion object {
+        private const val SOFTWARE_KEYBOARD_MODE_SHORTCUT_ID = "software_keyboard_mode_toggle"
+    }
+}

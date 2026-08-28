@@ -17,13 +17,13 @@ devices (primarily the Unihertz Titan 2 Elite). Contributions are welcome.
 Standard Gradle Android project. The physical-keyboard release flavor is `physi`:
 
 ```bash
-./gradlew :app:assemblePhysiDebug
+./gradlew :app:assembleDebug
 ```
 
-The build has three product flavors: `physi` (PhysiBoard, app id `brobata.physiboard`),
-`stable`, and `nightly`. The internal source namespace stays `it.palsoftware.pastiera` — this
-is intentional (it keeps the fork lineage honest and merges from upstream possible). Only the
-user-facing application id and branding differ.
+One build, no flavors, application id `brobata.physiboard`. `assembleSideload` produces a
+release-signed build with its own application id suffix, so it installs alongside the real app for
+testing on a phone you rely on. The source namespace is `brobata.physiboard`; attribution lives in
+NOTICE.md.
 
 Release signing is read from Gradle properties / environment variables
 (`PASTIERA_KEYSTORE_PATH`, `PASTIERA_KEYSTORE_PASSWORD`, `PASTIERA_KEY_ALIAS`,

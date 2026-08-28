@@ -72,7 +72,7 @@ fun shouldValidateReleaseSigning(taskNames: List<String>): Boolean {
 }
 
 android {
-    namespace = "it.palsoftware.pastiera"
+    namespace = "brobata.physiboard"
     compileSdk = 36
 
     val defaultVersionCode = 10204

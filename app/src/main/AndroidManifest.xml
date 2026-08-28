@@ -73,7 +73,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
-        android:name=".PastieraApplication"
+        android:name=".PhysiBoardApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -111,7 +111,7 @@
             android:noHistory="true"
             android:theme="@android:style/Theme.NoDisplay">
             <intent-filter>
-                <action android:name="it.palsoftware.pastiera.action.TOGGLE_SOFTWARE_KEYBOARD_MODE" />
+                <action android:name="brobata.physiboard.action.TOGGLE_SOFTWARE_KEYBOARD_MODE" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
@@ -284,7 +284,7 @@
         </provider>
     
         <service
-            android:name="it.palsoftware.pastiera.physi.KeyboardBacklightTileService"
+            android:name="brobata.physiboard.KeyboardBacklightTileService"
             android:exported="true"
             android:icon="@drawable/ic_lightbulb_24"
             android:label="@string/backlight_tile_label"

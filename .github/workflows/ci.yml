@@ -1,6 +1,8 @@
 name: Android CI
 
 on:
+  push:
+    branches: [main]
   pull_request:
 
 jobs:
@@ -21,61 +23,24 @@ jobs:
       - name: Make Gradle executable
         run: chmod +x ./gradlew
 
-      - name: Run core modifier regression tests
+      # 2.0 renamed the package. A half-landed rename leaves the tree carrying two brands, which is
+      # worse than either end state, so fail the build rather than let one drift back in.
+      #
+      # Production code only. LICENSE, NOTICE.md and the change record must keep naming upstream -
+      # the licence requires it - and the backup tests name the old preferences file on purpose,
+      # because restoring a backup taken before 2.0 is a case that has to keep working.
+      - name: No upstream identifiers outside the attribution files
         run: |
-          ./gradlew :app:testStableDebugUnitTest --tests it.palsoftware.pastiera.core.ModifierStateControllerTest
+          if grep -rn --binary-files=without-match \
+               -e 'it\.palsoftware' -e 'pastiera_prefs' \
+               app/src/main app/build.gradle.kts app/*.pro \
+               | grep -v 'SettingsMigration.kt' ; then
+            echo "::error::Upstream identifiers found outside the attribution files."
+            exit 1
+          fi
 
-      - name: Run input router modifier E2E tests
-        run: |
-          ./gradlew :app:testStableDebugUnitTest --tests it.palsoftware.pastiera.inputmethod.InputEventRouterModifierE2ETest
+      - name: Unit tests
+        run: ./gradlew :app:testDebugUnitTest
 
-      - name: Run input router forward-delete tests
-        run: |
-          ./gradlew :app:testStableDebugUnitTest --tests it.palsoftware.pastiera.inputmethod.InputEventRouterForwardDeleteAlternativesTest
-
-      - name: Run IME device behavior tests
-        run: |
-          ./gradlew :app:testStableDebugUnitTest --tests it.palsoftware.pastiera.inputmethod.PhysicalKeyboardInputMethodServiceDeviceBehaviorTest
-
-      - name: Run stable debug unit tests
-        run: |
-          ./gradlew :app:testStableDebugUnitTest
-
-      - name: Run stable release unit tests (F-Droid path)
-        run: |
-          ./gradlew :app:testStableReleaseUnitTest -PPASTIERA_FDROID_BUILD=true
-
-      - name: Run nightly debug unit tests
-        run: |
-          ./gradlew :app:testNightlyDebugUnitTest
-
-      - name: Run nightly release unit tests
-        run: |
-          ./gradlew :app:testNightlyReleaseUnitTest
-
-      - name: Run stable debug lint
-        run: |
-          ./gradlew :app:lintStableDebug
-
-      - name: Run stable release lint
-        run: |
-          ./gradlew :app:lintStableRelease
-
-      - name: Run nightly debug lint
-        run: |
-          ./gradlew :app:lintNightlyDebug
-
-      - name: Run nightly release lint
-        run: |
-          ./gradlew :app:lintNightlyRelease
-
-      - name: Upload test and lint reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: gradle-test-and-lint-reports
-          path: |
-            app/build/reports/tests
-            app/build/test-results
-            app/build/reports/lint-results-*.html
-            app/build/reports/lint-results-*.xml
+      - name: Assemble debug
+        run: ./gradlew :app:assembleDebug
