@@ -1,18 +1,14 @@
 package brobata.physiboard.inputmethod
 
 import android.content.Context
-import android.graphics.Color
 import android.graphics.PixelFormat
-import android.graphics.drawable.GradientDrawable
 import android.inputmethodservice.InputMethodService
 import android.provider.Settings
 import android.util.Log
-import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
 import android.view.inputmethod.CursorAnchorInfo
-import android.widget.TextView
 
 /**
  * Shows the active modifier as a small label beside the text cursor, the way a hardware-keyboard
@@ -31,7 +27,7 @@ class CaretBadgeController(private val service: InputMethodService) {
 
     private val context: Context = service
     private var windowManager: WindowManager? = null
-    private var badgeView: TextView? = null
+    private var badgeView: CaretBadgeView? = null
     private var attached = false
 
     /**
@@ -41,16 +37,7 @@ class CaretBadgeController(private val service: InputMethodService) {
      */
     private var overlayRejected = false
 
-    private var currentLabel: Badge? = null
-
-    /**
-     * How long a modifier will outlive the key being released, which is what decides whether the
-     * next twenty keystrokes are affected or only the next one. Colour-coded: grey for a plain
-     * hold, blue for one click, red for two.
-     */
-    private enum class Tier { HELD, ARMED, LOCKED }
-
-    private data class Badge(val text: String, val tier: Tier)
+    private var currentItems: List<CaretBadgeView.Item> = emptyList()
 
     /**
      * The last caret position the editor reported, so pressing a modifier can put the badge on
@@ -67,18 +54,18 @@ class CaretBadgeController(private val service: InputMethodService) {
      * @return true if the need for cursor updates changed, so the caller can re-issue the request.
      */
     fun onSnapshot(snapshot: StatusBarController.StatusSnapshot, enabled: Boolean) {
-        val badge = if (enabled) badgeFor(snapshot) else null
-        if (badge == currentLabel) return
-        currentLabel = badge
-        if (badge == null) hide() else lastCaret?.let { show(badge, it) }
+        val items = if (enabled) itemsFor(snapshot) else emptyList()
+        if (items == currentItems) return
+        currentItems = items
+        if (items.isEmpty()) hide() else lastCaret?.let { show(items, it) }
     }
 
     /** Positions the badge from the caret the editor just reported. */
     fun onCursorAnchorInfo(info: CursorAnchorInfo?) {
         val caret = caretRect(info)
         lastCaret = caret
-        val badge = currentLabel ?: return
-        if (caret == null) hide() else show(badge, caret)
+        if (currentItems.isEmpty()) return
+        if (caret == null) hide() else show(currentItems, caret)
     }
 
     /** Called when the editor goes away - the cached caret belongs to it, not to the next one. */
@@ -98,7 +85,7 @@ class CaretBadgeController(private val service: InputMethodService) {
         hide()
         badgeView = null
         windowManager = null
-        currentLabel = null
+        currentItems = emptyList()
         lastCaret = null
     }
 
@@ -126,17 +113,10 @@ class CaretBadgeController(private val service: InputMethodService) {
         return Caret(x = points[0], top = points[1], bottom = points[3])
     }
 
-    private fun show(badge: Badge, caret: Caret) {
+    private fun show(items: List<CaretBadgeView.Item>, caret: Caret) {
         if (overlayRejected || !canDrawOverlays()) return
-        val view = badgeView ?: createBadge().also { badgeView = it }
-        view.text = badge.text
-        (view.background as? GradientDrawable)?.setColor(
-            when (badge.tier) {
-                Tier.HELD -> BADGE_HELD
-                Tier.ARMED -> BADGE_ARMED
-                Tier.LOCKED -> BADGE_LOCKED
-            }
-        )
+        val view = badgeView ?: CaretBadgeView(context).also { badgeView = it }
+        view.items = items
 
         val metrics = context.resources.displayMetrics
         view.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
@@ -183,23 +163,6 @@ class CaretBadgeController(private val service: InputMethodService) {
         this.y = y
     }
 
-    // It has to carry its own contrast: it floats over an app whose background could be any colour,
-    // so a near-black pill disappears on a dark theme and a pale one disappears on a light theme.
-    // White bold text on a saturated fill reads on both.
-    private fun createBadge(): TextView = TextView(context).apply {
-        setTextColor(Color.WHITE)
-        setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-        typeface = android.graphics.Typeface.DEFAULT_BOLD
-        includeFontPadding = false
-        letterSpacing = 0.06f
-        setPadding(dp(6), dp(3), dp(6), dp(3))
-        background = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = dp(4).toFloat()
-            setColor(BADGE_ARMED)
-        }
-    }
-
     private fun canDrawOverlays(): Boolean =
         runCatching { Settings.canDrawOverlays(context) }.getOrDefault(false)
 
@@ -210,52 +173,53 @@ class CaretBadgeController(private val service: InputMethodService) {
         const val TAG = "CaretBadge"
 
         /** A plain hold, which ends the moment the key is released. Present, but muted. */
-        const val BADGE_HELD = 0xC064748B.toInt()
+        const val HELD = 0xE0607080.toInt()
 
         /** One click: armed for the next key only, then gone by itself. */
-        const val BADGE_ARMED = 0xF03B82F6.toInt()
+        const val ARMED = 0xFF2563EB.toInt()
 
         /** Two clicks: stuck on until it is deliberately turned off. */
-        const val BADGE_LOCKED = 0xF0EF4444.toInt()
+        const val LOCKED = 0xFFDC2626.toInt()
 
         /**
          * Every way a modifier can be on, including a plain physical hold. This is a read-out of
          * what the keyboard is actually doing, so it reports a held Shift exactly like a latched
          * one - if it is on, it is shown.
          */
-        fun badgeFor(snapshot: StatusBarController.StatusSnapshot): Badge? {
-            val parts = mutableListOf<String>()
-            var tier: Tier? = null
-            // A locked modifier is spelled out as well as recoloured. Colour alone would leave
-            // "ALT" armed and "ALT" locked identical to anyone who does not catch the shade, and
-            // those two do very different things to the next twenty keystrokes.
-            fun add(label: String, at: Tier) {
-                parts += label
-                if (tier == null || at > tier!!) tier = at
+        fun itemsFor(snapshot: StatusBarController.StatusSnapshot): List<CaretBadgeView.Item> {
+            val items = mutableListOf<CaretBadgeView.Item>()
+
+            fun arrow(locked: Boolean, color: Int) = items.add(
+                CaretBadgeView.Item(
+                    shape = if (locked) CaretBadgeView.Shape.ARROW_LOCK
+                    else CaretBadgeView.Shape.ARROW,
+                    label = null,
+                    color = color
+                )
+            )
+            fun text(label: String, color: Int) = items.add(
+                CaretBadgeView.Item(CaretBadgeView.Shape.TEXT, label, color)
+            )
+
+            when {
+                snapshot.capsLockEnabled -> arrow(locked = true, color = LOCKED)
+                snapshot.shiftOneShot -> arrow(locked = false, color = ARMED)
+                snapshot.shiftPhysicallyPressed -> arrow(locked = false, color = HELD)
             }
             when {
-                snapshot.capsLockEnabled -> add("CAPS", Tier.LOCKED)
-                snapshot.shiftOneShot -> add("SHIFT", Tier.ARMED)
-                snapshot.shiftPhysicallyPressed -> add("SHIFT", Tier.HELD)
-            }
-            when {
-                snapshot.altLatchActive -> add("ALT LOCK", Tier.LOCKED)
-                snapshot.altOneShot -> add("ALT", Tier.ARMED)
-                snapshot.altPhysicallyPressed -> add("ALT", Tier.HELD)
+                snapshot.altLatchActive -> text("ALT", LOCKED)
+                snapshot.altOneShot -> text("ALT", ARMED)
+                snapshot.altPhysicallyPressed -> text("ALT", HELD)
             }
             // The one exclusion: nav mode holds Ctrl latched for as long as it is on, so reporting
             // that would pin a Ctrl badge beside the cursor permanently rather than report a press.
             when {
-                snapshot.ctrlLatchActive && !snapshot.ctrlLatchFromNavMode ->
-                    add("CTRL LOCK", Tier.LOCKED)
-                snapshot.ctrlOneShot -> add("CTRL", Tier.ARMED)
-                snapshot.ctrlPhysicallyPressed -> add("CTRL", Tier.HELD)
+                snapshot.ctrlLatchActive && !snapshot.ctrlLatchFromNavMode -> text("CTRL", LOCKED)
+                snapshot.ctrlOneShot -> text("CTRL", ARMED)
+                snapshot.ctrlPhysicallyPressed -> text("CTRL", HELD)
             }
-            // A Sym page stays open until it is left, but "SYM LOCK" reads as a stuck modifier
-            // rather than an open layer, so it keeps the plain label.
-            if (snapshot.symPage != 0) add("SYM", Tier.ARMED)
-            val resolved = tier ?: return null
-            return Badge(text = parts.joinToString(" "), tier = resolved)
+            if (snapshot.symPage != 0) text("SYM", ARMED)
+            return items
         }
     }
 }
