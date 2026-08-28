@@ -723,7 +723,11 @@ object SettingsManager {
         prefs.getString(KEY_STATUS_BAR_VISIBILITY, null)?.let { stored ->
             StatusBarVisibility.entries.firstOrNull { it.name == stored }?.let { return it }
         }
-        return if (prefs.getBoolean(KEY_SHOW_STATUS_BAR, false)) {
+        // Absent means never chosen, not chosen-off: before 1.2.2 the strip was on by default,
+        // and the strip is where suggestions live. Defaulting to NEVER here silently took the
+        // suggestion bar away from everyone who set the keyboard up from Android's settings and
+        // never opened the app. An explicit false still means NEVER.
+        return if (prefs.getBoolean(KEY_SHOW_STATUS_BAR, true)) {
             StatusBarVisibility.ALWAYS
         } else {
             StatusBarVisibility.NEVER
@@ -5828,7 +5832,6 @@ object SettingsManager {
         editor.putBoolean("static_variation_bar_base_layer_enabled", false)
         editor.putBoolean("dynamic_variation_bar_resize_to_content", false)
         editor.putBoolean("screen_trackpad_enabled", true)
-        editor.putBoolean("show_status_bar", false)
 
         // Ints
         editor.putInt("dynamic_variation_bar_slot_count", 7)

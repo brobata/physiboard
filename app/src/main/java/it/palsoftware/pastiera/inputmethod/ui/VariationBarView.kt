@@ -385,6 +385,13 @@ class VariationBarView(
         // Decide whether to use suggestions, dynamic variations (from cursor) or static utility keys.
         val staticModeEnabled = SettingsManager.isStaticVariationBarModeEnabled(context)
         val statusBarVariationsEnabled = forceVariationAreaVisible || SettingsManager.areStatusBarVariationsEnabled(context)
+        // Nothing to draw: variations are off and no buttons sit in this row. Collapse it
+        // instead of leaving a full-height empty strip. Swipe-to-move-cursor lives here, so
+        // keeping any one button keeps the row — and the swipe — alive.
+        if (!statusBarVariationsEnabled && buttonRegistry?.getEnabledButtons(context).orEmpty().isEmpty()) {
+            hideImmediate()
+            return
+        }
         // Variations are controlled separately from suggestions
         val canShowVariations = !snapshot.shouldDisableVariations
         val canShowSuggestions = !snapshot.shouldDisableSuggestions

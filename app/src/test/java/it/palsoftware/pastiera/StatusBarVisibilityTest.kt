@@ -45,8 +45,16 @@ class StatusBarVisibilityTest {
         val prefs = context.getSharedPreferences("pastiera_prefs", 0)
         prefs.edit().clear().putBoolean(SettingsManager.KEY_SHOW_STATUS_BAR, true).apply()
         assertEquals(StatusBarVisibility.ALWAYS, SettingsManager.getStatusBarVisibility(context))
-        prefs.edit().clear().apply()
+        prefs.edit().clear().putBoolean(SettingsManager.KEY_SHOW_STATUS_BAR, false).apply()
         assertEquals(StatusBarVisibility.NEVER, SettingsManager.getStatusBarVisibility(context))
+    }
+
+    @Test
+    fun neverChosenShowsTheStrip() {
+        // The strip carries the suggestions. Silence about it is not a request to hide it.
+        context.getSharedPreferences("pastiera_prefs", 0).edit().clear().apply()
+        assertEquals(StatusBarVisibility.ALWAYS, SettingsManager.getStatusBarVisibility(context))
+        assertTrue(SettingsManager.getShowStatusBar(context))
     }
 
     @Test
