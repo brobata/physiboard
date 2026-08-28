@@ -88,6 +88,15 @@ class CaretBadgeView(context: Context) : View(context) {
     private val arrowWidth = glyphHeight * 0.68f
     private val path = Path()
 
+    /**
+     * Distance from the view's top edge to the middle of the ink.
+     *
+     * The view is taller than the glyphs - it carries the font's descent and the halo's overhang -
+     * so centring the view on a line of text would leave the glyphs sitting visibly high. The caller
+     * centres by this instead.
+     */
+    val glyphCenterOffset: Float get() = haloWidth * 2f + ascent - glyphHeight / 2f
+
     private fun altPaint() = if (altHasGlyph) symbol else text
     private fun altLabel() = if (altHasGlyph) ALT_SYMBOL else ALT_FALLBACK
 

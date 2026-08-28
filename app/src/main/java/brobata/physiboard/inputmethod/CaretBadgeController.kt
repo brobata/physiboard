@@ -122,18 +122,15 @@ class CaretBadgeController(private val service: InputMethodService) {
         view.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
         val width = view.measuredWidth
         val height = view.measuredHeight
-        // Above the caret rather than beside it. Beside reads better in the abstract, but the
-        // caret is not always at the end of a line - put it in a field with text after the cursor
-        // and a badge to its right sits straight on top of that text.
-        //
-        // It is dropped into the top of the line box rather than parked clear above it. A line box
-        // is taller than the letters in it, so this reads as attached to the text being typed
-        // instead of floating in the gap above, and still clears the letters themselves.
-        val lineHeight = caret.bottom - caret.top
-        var x = (caret.x - dp(2)).toInt()
-        var y = (caret.top + lineHeight * LINE_OVERLAP - height).toInt()
-        // At the top of the screen there is no room above, so it drops below the line instead.
-        if (y < 0) y = (caret.bottom + dp(2)).toInt()
+        // Beside the caret and on the same line as the text, the way a subscript sits next to a
+        // cursor. The caret is normally at the end of what has been typed, so the space to its right
+        // is empty; when it is not, these are bare glyphs with a halo rather than a filled panel, so
+        // what is underneath still shows through.
+        var x = (caret.x + dp(3)).toInt()
+        var y = ((caret.top + caret.bottom) / 2f - view.glyphCenterOffset).toInt()
+        // At the right-hand edge there is no room beside it, so it flips to the other side of the
+        // caret rather than being shoved back over the text it was trying to sit next to.
+        if (x + width > metrics.widthPixels) x = (caret.x - dp(3)).toInt() - width
         x = x.coerceIn(0, (metrics.widthPixels - width).coerceAtLeast(0))
         y = y.coerceIn(0, (metrics.heightPixels - height).coerceAtLeast(0))
 
@@ -175,9 +172,6 @@ class CaretBadgeController(private val service: InputMethodService) {
 
     private companion object {
         const val TAG = "CaretBadge"
-
-        /** How far into the top of the line box the badge is allowed to sit. */
-        const val LINE_OVERLAP = 0.3f
 
         /** A plain hold, which ends the moment the key is released. Present, but muted. */
         const val HELD = 0xE0607080.toInt()
