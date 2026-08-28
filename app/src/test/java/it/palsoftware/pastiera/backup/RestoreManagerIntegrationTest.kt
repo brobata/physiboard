@@ -11,6 +11,7 @@ import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -40,12 +41,10 @@ class RestoreManagerIntegrationTest {
         originalUserDefaultsExisted = userDefaultsFile.exists()
         originalUserDefaultsContent = userDefaultsFile.takeIf { it.exists() }?.readText()
 
-        context.getSharedPreferences("pastiera_prefs", Context.MODE_PRIVATE)
+        context.getSharedPreferences(it.palsoftware.pastiera.SettingsMigration.PREFS, Context.MODE_PRIVATE)
             .edit()
             .remove("user_dictionary_entries")
             .remove("keyboard_layout")
-            .remove("clicks_power_keyboard_snapshots_v1")
-            .remove("clicks_power_soc_calibration_PK-42")
             .commit()
         if (userDefaultsFile.exists()) {
             userDefaultsFile.delete()
@@ -54,12 +53,10 @@ class RestoreManagerIntegrationTest {
 
     @After
     fun tearDown() {
-        context.getSharedPreferences("pastiera_prefs", Context.MODE_PRIVATE)
+        context.getSharedPreferences(it.palsoftware.pastiera.SettingsMigration.PREFS, Context.MODE_PRIVATE)
             .edit()
             .remove("user_dictionary_entries")
             .remove("keyboard_layout")
-            .remove("clicks_power_keyboard_snapshots_v1")
-            .remove("clicks_power_soc_calibration_PK-42")
             .commit()
 
         if (originalUserDefaultsExisted) {
@@ -71,12 +68,52 @@ class RestoreManagerIntegrationTest {
     }
 
     @Test
-    fun restore_withUserDictionaryPref_appliesPrefAndSendsRefreshBroadcast() = runBlocking {
+    fun restore_aBackupTakenBeforeTheRename_stillLandsAndDropsRetiredSettings() = runBlocking {
+        // Backups people already hold name the old prefs file and can carry settings 2.0 removed.
         val backupZip = createBackupZip(
             includeMetadata = true,
             prefsFiles = mapOf(
                 "pastiera_prefs.json" to prefsBackupJson(
                     prefName = "pastiera_prefs",
+                    entries = mapOf(
+                        "user_dictionary_entries" to PreferenceValue(
+                            PreferenceValueType.STRING,
+                            """["alpha","beta"]"""
+                        ),
+                        "pastierina_status_bar_slots_left" to PreferenceValue(
+                            PreferenceValueType.STRING,
+                            """["clipboard"]"""
+                        ),
+                        "status_bar_variations_visible" to PreferenceValue(
+                            PreferenceValueType.BOOLEAN,
+                            "true"
+                        )
+                    )
+                )
+            ),
+            fileEntries = emptyMap()
+        )
+
+        val result = RestoreManager.restore(context, Uri.fromFile(backupZip))
+        assertTrue(result is RestoreResult.Success)
+
+        val prefs = context.getSharedPreferences(
+            it.palsoftware.pastiera.SettingsMigration.PREFS,
+            Context.MODE_PRIVATE
+        )
+        assertEquals("""["alpha","beta"]""", prefs.getString("user_dictionary_entries", null))
+        assertEquals("""["clipboard"]""", prefs.getString("status_bar_slots_left", null))
+        assertFalse(prefs.contains("status_bar_variations_visible"))
+        Unit
+    }
+
+    @Test
+    fun restore_withUserDictionaryPref_appliesPrefAndSendsRefreshBroadcast() = runBlocking {
+        val backupZip = createBackupZip(
+            includeMetadata = true,
+            prefsFiles = mapOf(
+                "physiboard_prefs.json" to prefsBackupJson(
+                    prefName = it.palsoftware.pastiera.SettingsMigration.PREFS,
                     entries = mapOf(
                         "user_dictionary_entries" to PreferenceValue(
                             PreferenceValueType.STRING,
@@ -92,12 +129,12 @@ class RestoreManagerIntegrationTest {
             val result = RestoreManager.restore(context, Uri.fromFile(backupZip))
             val success = result as RestoreResult.Success
 
-            assertTrue(success.preferencesSummary.appliedKeys.contains("pastiera_prefs:user_dictionary_entries"))
+            assertTrue(success.preferencesSummary.appliedKeys.contains("${it.palsoftware.pastiera.SettingsMigration.PREFS}:user_dictionary_entries"))
             assertEquals(
                 setOf(RestoreManager.PostRestoreAction.REFRESH_USER_DICTIONARY),
                 success.postActionsTriggered
             )
-            val restoredValue = context.getSharedPreferences("pastiera_prefs", Context.MODE_PRIVATE)
+            val restoredValue = context.getSharedPreferences(it.palsoftware.pastiera.SettingsMigration.PREFS, Context.MODE_PRIVATE)
                 .getString("user_dictionary_entries", null)
             assertEquals("""["alpha","beta"]""", restoredValue)
         }
@@ -110,8 +147,8 @@ class RestoreManagerIntegrationTest {
         val backupZip = createBackupZip(
             includeMetadata = true,
             prefsFiles = mapOf(
-                "pastiera_prefs.json" to prefsBackupJson(
-                    prefName = "pastiera_prefs",
+                "physiboard_prefs.json" to prefsBackupJson(
+                    prefName = it.palsoftware.pastiera.SettingsMigration.PREFS,
                     entries = mapOf(
                         "keyboard_layout" to PreferenceValue(PreferenceValueType.STRING, "qwerty")
                     )
@@ -134,7 +171,7 @@ class RestoreManagerIntegrationTest {
             assertTrue(File(context.filesDir, "user_defaults.json").exists())
             assertEquals(
                 "qwerty",
-                context.getSharedPreferences("pastiera_prefs", Context.MODE_PRIVATE)
+                context.getSharedPreferences(it.palsoftware.pastiera.SettingsMigration.PREFS, Context.MODE_PRIVATE)
                     .getString("keyboard_layout", null)
             )
         }
@@ -147,8 +184,8 @@ class RestoreManagerIntegrationTest {
         val backupZip = createBackupZip(
             includeMetadata = true,
             prefsFiles = mapOf(
-                "pastiera_prefs.json" to prefsBackupJson(
-                    prefName = "pastiera_prefs",
+                "physiboard_prefs.json" to prefsBackupJson(
+                    prefName = it.palsoftware.pastiera.SettingsMigration.PREFS,
                     entries = mapOf(
                         "keyboard_layout" to PreferenceValue(PreferenceValueType.STRING, "colemak")
                     )
@@ -162,7 +199,7 @@ class RestoreManagerIntegrationTest {
             val success = result as RestoreResult.Success
             assertEquals(
                 "colemak",
-                context.getSharedPreferences("pastiera_prefs", Context.MODE_PRIVATE)
+                context.getSharedPreferences(it.palsoftware.pastiera.SettingsMigration.PREFS, Context.MODE_PRIVATE)
                     .getString("keyboard_layout", null)
             )
             assertTrue(success.postActionsTriggered.isEmpty())
@@ -172,39 +209,6 @@ class RestoreManagerIntegrationTest {
         assertEquals(0, broadcastCount)
     }
 
-    @Test
-    fun restore_clicksPowerStateAndCalibration_onFreshInstall() {
-        val snapshot = "[{\"deviceName\":\"Power Keyboard\"}]"
-        val calibration = "3:8,4:9"
-
-        val summary = PreferencesBackupHelper.restorePreferences(
-            context,
-            mapOf(
-                "pastiera_prefs" to mapOf(
-                    "clicks_power_keyboard_snapshots_v1" to PreferenceValue(
-                        PreferenceValueType.STRING,
-                        snapshot
-                    ),
-                    "clicks_power_soc_calibration_PK-42" to PreferenceValue(
-                        PreferenceValueType.STRING,
-                        calibration
-                    )
-                )
-            )
-        )
-
-        assertTrue(summary.skippedKeys.isEmpty())
-        assertEquals(
-            setOf(
-                "pastiera_prefs:clicks_power_keyboard_snapshots_v1",
-                "pastiera_prefs:clicks_power_soc_calibration_PK-42"
-            ),
-            summary.appliedKeys.toSet()
-        )
-        val preferences = context.getSharedPreferences("pastiera_prefs", Context.MODE_PRIVATE)
-        assertEquals(snapshot, preferences.getString("clicks_power_keyboard_snapshots_v1", null))
-        assertEquals(calibration, preferences.getString("clicks_power_soc_calibration_PK-42", null))
-    }
 
     private suspend fun countUserDictionaryBroadcastsDuring(block: suspend () -> Unit): Int {
         var count = 0

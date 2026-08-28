@@ -12,7 +12,7 @@ import org.robolectric.annotation.Config
 @Config(sdk = [33])
 class HardwareBarHeightMigrationTest {
     private val context = RuntimeEnvironment.getApplication()
-    private val prefs = context.getSharedPreferences("pastiera_prefs", 0)
+    private val prefs = context.getSharedPreferences(it.palsoftware.pastiera.SettingsMigration.PREFS, 0)
 
     @Test
     fun freshInstallGetsTheTallerStrip() {

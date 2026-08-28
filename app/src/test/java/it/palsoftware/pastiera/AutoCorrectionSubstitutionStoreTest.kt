@@ -17,7 +17,7 @@ class AutoCorrectionSubstitutionStoreTest {
     @Before
     fun setUp() {
         RuntimeEnvironment.getApplication()
-            .getSharedPreferences("pastiera_prefs", android.content.Context.MODE_PRIVATE)
+            .getSharedPreferences(it.palsoftware.pastiera.SettingsMigration.PREFS, android.content.Context.MODE_PRIVATE)
             .edit()
             .clear()
             .commit()

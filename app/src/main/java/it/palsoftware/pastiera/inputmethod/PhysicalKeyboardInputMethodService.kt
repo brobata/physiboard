@@ -1577,7 +1577,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     override fun onCreate() {
         super.onCreate()
         lastSystemLocalesSignature = resources.configuration.locales.toLanguageTags()
-        prefs = getSharedPreferences("pastiera_prefs", Context.MODE_PRIVATE)
+        prefs = getSharedPreferences(it.palsoftware.pastiera.SettingsMigration.PREFS, Context.MODE_PRIVATE)
         clearAltOnSpaceEnabled = SettingsManager.getClearAltOnSpace(this)
         physicalKeyboardProfileOverride = SettingsManager.getPhysicalKeyboardProfileOverride(this)
 
@@ -1746,8 +1746,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // Register listener for variation selection (both controllers)
         val variationListener = object : VariationButtonHandler.OnVariationSelectedListener {
             override fun onVariationSelected(variation: String) {
-                val keepLayerLatchedAfterVariation =
-                    SettingsManager.isStaticVariationBarLayerStickyEnabled(this@PhysicalKeyboardInputMethodService)
+                // Was a setting on the retired variation bar, always defaulted true. Only the
+                // long-press variation path reaches this now, so the default is the behaviour.
+                val keepLayerLatchedAfterVariation = true
                 val hasLatchedLayer = shiftLayerLatched || altLayerLatched
                 if (hasLatchedLayer && !keepLayerLatchedAfterVariation) {
                     shiftLayerLatched = false
@@ -4901,7 +4902,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 val downTime = modifierDownTimes[keyCode] ?: 0L
                 val holdDuration = if (downTime > 0) event?.eventTime?.minus(downTime) ?: 0L else 0L
                 val isLongHold = holdDuration > 300L
-                val stickyEnabled = SettingsManager.isStaticVariationBarLayerStickyEnabled(this)
+                val stickyEnabled = true
                 val isIntentionalHold = variationInteractedDuringHold || (isLongHold && !otherKeyInteractedDuringHold)
 
                 if (isIntentionalHold) {
@@ -4981,7 +4982,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 val downTime = modifierDownTimes[keyCode] ?: 0L
                 val holdDuration = if (downTime > 0) event?.eventTime?.minus(downTime) ?: 0L else 0L
                 val isLongHold = holdDuration > 300L
-                val stickyEnabled = SettingsManager.isStaticVariationBarLayerStickyEnabled(this)
+                val stickyEnabled = true
                 val isIntentionalHold = variationInteractedDuringHold || (isLongHold && !otherKeyInteractedDuringHold)
 
                 if (isIntentionalHold) {

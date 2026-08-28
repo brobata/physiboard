@@ -179,7 +179,7 @@ data class PreferenceFileSchema(
 
 object PreferenceSchemas {
     private val pastieraPrefsSchema = PreferenceFileSchema(
-        prefName = "pastiera_prefs",
+        prefName = it.palsoftware.pastiera.SettingsMigration.PREFS,
         fixedKeys = mapOf(
             "long_press_threshold" to PreferenceValueType.LONG,
             "auto_capitalize_first_letter" to PreferenceValueType.BOOLEAN,

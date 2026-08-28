@@ -1978,7 +1978,7 @@ class StatusBarController(
     }
 
     private fun openSymCustomization(page: Int, keyCode: Int?, openPicker: Boolean) {
-        val prefs = context.getSharedPreferences("pastiera_prefs", Context.MODE_PRIVATE)
+        val prefs = context.getSharedPreferences(it.palsoftware.pastiera.SettingsMigration.PREFS, Context.MODE_PRIVATE)
         val currentSymPage = prefs.getInt("current_sym_page", 0)
         if (currentSymPage > 0) {
             SettingsManager.setPendingRestoreSymPage(context, currentSymPage)

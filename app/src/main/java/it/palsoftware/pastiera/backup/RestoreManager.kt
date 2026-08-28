@@ -11,7 +11,10 @@ import java.io.File
 
 object RestoreManager {
     private const val TAG = "RestoreManager"
-    private const val USER_DICTIONARY_PREF_KEY = "pastiera_prefs:user_dictionary_entries"
+    // Applied keys are reported as "<prefs file>:<key>", so this has to follow the file's name
+    // rather than hardcode it - otherwise the rename silently stops the refresh from firing.
+    private val USER_DICTIONARY_PREF_KEY =
+        "${it.palsoftware.pastiera.SettingsMigration.PREFS}:user_dictionary_entries"
     private const val USER_DEFAULTS_FILE_NAME = "user_defaults.json"
 
     enum class PostRestoreAction {

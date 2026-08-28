@@ -32,7 +32,7 @@ class StatusBarVisibilityTest {
 
     @Test
     fun appListStartsWithMessagingApps() {
-        context.getSharedPreferences("pastiera_prefs", 0).edit().clear().apply()
+        context.getSharedPreferences(it.palsoftware.pastiera.SettingsMigration.PREFS, 0).edit().clear().apply()
         val seeded = SettingsManager.getStatusBarAppPackages(context)
         assertTrue("com.whatsapp" in seeded)
         assertTrue("com.google.android.gm" in seeded)
@@ -42,7 +42,7 @@ class StatusBarVisibilityTest {
 
     @Test
     fun legacyBooleanMapsToAlwaysOrNever() {
-        val prefs = context.getSharedPreferences("pastiera_prefs", 0)
+        val prefs = context.getSharedPreferences(it.palsoftware.pastiera.SettingsMigration.PREFS, 0)
         prefs.edit().clear().putBoolean(SettingsManager.KEY_SHOW_STATUS_BAR, true).apply()
         assertEquals(StatusBarVisibility.ALWAYS, SettingsManager.getStatusBarVisibility(context))
         prefs.edit().clear().putBoolean(SettingsManager.KEY_SHOW_STATUS_BAR, false).apply()
@@ -52,7 +52,7 @@ class StatusBarVisibilityTest {
     @Test
     fun neverChosenShowsTheStrip() {
         // The strip carries the suggestions. Silence about it is not a request to hide it.
-        context.getSharedPreferences("pastiera_prefs", 0).edit().clear().apply()
+        context.getSharedPreferences(it.palsoftware.pastiera.SettingsMigration.PREFS, 0).edit().clear().apply()
         assertEquals(StatusBarVisibility.ALWAYS, SettingsManager.getStatusBarVisibility(context))
         assertTrue(SettingsManager.getShowStatusBar(context))
     }

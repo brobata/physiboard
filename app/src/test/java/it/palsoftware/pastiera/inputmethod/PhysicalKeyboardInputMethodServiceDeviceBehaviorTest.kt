@@ -37,10 +37,12 @@ class PhysicalKeyboardInputMethodServiceDeviceBehaviorTest {
     fun setUp() {
         val context = RuntimeEnvironment.getApplication()
         DeviceSpecific.clearTestOverrides()
+        // The screen trackpad also arms on Space; these cases are about the SYM chord, so take
+        // the trackpad out of the picture rather than depend on which one wins.
+        SettingsManager.setScreenTrackpadEnabled(context, false)
         SettingsManager.setSymPagesConfig(context, SymPagesConfig())
         SettingsManager.resetSymMappings(context)
         SettingsManager.resetSymMappingsPage2(context)
-        SettingsManager.setStaticVariationBarLayerStickyEnabled(context, true)
         SettingsManager.setAutoCapitalizeRespectManualShiftOff(context, true)
         SettingsManager.setAutoCapitalizeRestrictedFields(context, false)
 

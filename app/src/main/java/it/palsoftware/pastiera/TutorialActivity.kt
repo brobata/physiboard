@@ -1596,18 +1596,12 @@ internal fun applyDevsChoiceSettings(context: Context) {
     SettingsManager.setKeyboardLayoutAutoByLocale(context, false)
     SettingsManager.setKeyboardLayout(context, "qwertz")
     SettingsManager.setKeyboardLayoutList(context, listOf("qwertz"))
-    SettingsManager.setStaticVariationBarPreset(context, SettingsManager.STATIC_VARIATION_PRESET_DEV_CHOICE)
     val activeVariations = VariationRepository.loadVariations(
         assets = context.assets,
         context = context
     ).mapKeys { it.key.toString() }
-    SettingsManager.saveVariations(
-        context = context,
-        variations = activeVariations,
-        staticVariations = SettingsManager.getDevChoiceStaticVariationBasePreset(),
-        staticVariationsShift = SettingsManager.getDevChoiceStaticVariationBasePreset(),
-        staticVariationsAlt = SettingsManager.getDevChoiceStaticVariationBasePreset()
-    )
+    // Long-press variations only; the static variation bar they used to seed is gone.
+    SettingsManager.saveVariations(context = context, variations = activeVariations)
 }
 
 @Composable

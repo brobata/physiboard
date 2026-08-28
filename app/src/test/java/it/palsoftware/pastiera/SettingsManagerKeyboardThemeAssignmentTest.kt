@@ -19,7 +19,7 @@ class SettingsManagerKeyboardThemeAssignmentTest {
     fun setUp() {
         RuntimeEnvironment.setQualifiers("+notnight")
         RuntimeEnvironment.getApplication()
-            .getSharedPreferences("pastiera_prefs", android.content.Context.MODE_PRIVATE)
+            .getSharedPreferences(it.palsoftware.pastiera.SettingsMigration.PREFS, android.content.Context.MODE_PRIVATE)
             .edit()
             .clear()
             .commit()
@@ -267,7 +267,7 @@ class SettingsManagerKeyboardThemeAssignmentTest {
         ).forEach { key ->
             assertEquals(
                 PreferenceValueType.STRING,
-                PreferenceSchemas.expectedType("pastiera_prefs", key)
+                PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, key)
             )
         }
     }

@@ -121,7 +121,14 @@ object PreferencesBackupHelper {
                     val prefValue = PreferenceValue.fromJson(valueJson) ?: continue
                     entries[key] = prefValue
                 }
-                result[file.nameWithoutExtension] = entries
+                val name = file.nameWithoutExtension
+                if (name == it.palsoftware.pastiera.SettingsMigration.LEGACY_PREFS) {
+                    // A backup taken before 2.0 renamed the file.
+                    result[it.palsoftware.pastiera.SettingsMigration.PREFS] =
+                        it.palsoftware.pastiera.SettingsMigration.translateRestoredEntries(entries)
+                } else {
+                    result[name] = entries
+                }
             } catch (e: Exception) {
                 Log.w(TAG, "Skipping malformed prefs backup file: ${file.name}", e)
             }

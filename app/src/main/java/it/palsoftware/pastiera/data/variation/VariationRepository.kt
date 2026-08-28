@@ -67,32 +67,20 @@ object VariationRepository {
      * These are shown in the variation bar when static mode is enabled
      * or when smart features are disabled for the current field.
      */
-    fun loadStaticVariations(assets: AssetManager, context: Context? = null): List<String> {
-        return loadVariationsArray(assets, context, "staticVariations")
-    }
 
     /**
      * Loads static utility variations for Shift layer.
      */
-    fun loadStaticVariationsShift(assets: AssetManager, context: Context? = null): List<String> {
-        return loadVariationsArray(assets, context, "staticVariationsShift")
-    }
 
     /**
      * Loads static utility variations for the Device SYM layer.
      */
-    fun loadStaticVariationsAlt(assets: AssetManager, context: Context? = null): List<String> {
-        return loadVariationsArray(assets, context, "staticVariationsAlt")
-    }
 
     /**
      * Loads email-specific variations from JSON assets or custom file.
      * Always loads from JSON, returns empty list if not found.
      * These are shown in the variation bar when the current field is an email field.
      */
-    fun loadEmailVariations(assets: AssetManager, context: Context? = null): List<String> {
-        return loadVariationsArray(assets, context, "emailVariations")
-    }
 
     /**
      * Common method to load a JSON array of variations.

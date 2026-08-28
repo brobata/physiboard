@@ -35,7 +35,7 @@ import java.util.zip.ZipInputStream
  */
 object SettingsManager {
     private const val TAG = "SettingsManager"
-    private const val PREFS_NAME = "pastiera_prefs"
+    private val PREFS_NAME get() = SettingsMigration.PREFS
     
     // Settings keys
     private const val KEY_LONG_PRESS_THRESHOLD = "long_press_threshold"
@@ -174,10 +174,6 @@ object SettingsManager {
     private const val KEY_IMPACT_DEFAULTS_APPLIED = "impact_defaults_applied" // One-shot opinionated first-run defaults
     private const val KEY_LAST_SEEN_WHATS_NEW_VERSION = "last_seen_whats_new_version"
     private const val KEY_SWIPE_INCREMENTAL_THRESHOLD = "swipe_incremental_threshold" // Distance in DIP for cursor movement
-    private const val KEY_STATIC_VARIATION_BAR_MODE = "static_variation_bar_mode" // Use static variation bar instead of dynamic cursor-based variations
-    private const val KEY_STATIC_VARIATION_BAR_PRESET = "static_variation_bar_preset"
-    private const val KEY_STATIC_VARIATION_BAR_BASE_LAYER_ENABLED = "static_variation_bar_base_layer_enabled" // Toggle top-row preset
-    private const val KEY_STATIC_VARIATION_BAR_MODIFIER_HOLD_RESTORATION = "static_variation_bar_modifier_hold_restoration"
     private const val KEY_VARIATIONS_UPDATED = "variations_updated" // Trigger for reloading variations in input method service
     private const val KEY_ADDITIONAL_IME_SUBTYPES = "additional_ime_subtypes" // Comma-separated list of language codes for additional IME subtypes
     private const val KEY_CLIPBOARD_HISTORY_ENABLED = "clipboard_history_enabled" // Whether clipboard history is enabled
@@ -283,9 +279,6 @@ object SettingsManager {
     private const val KEY_STATUS_BAR_SLOTS_RIGHT = "status_bar_slots_right"
     private const val KEY_PASTIERINA_STATUS_BAR_SLOTS_LEFT = "pastierina_status_bar_slots_left"
     private const val KEY_PASTIERINA_STATUS_BAR_SLOTS_RIGHT = "pastierina_status_bar_slots_right"
-    private const val KEY_STATUS_BAR_VARIATIONS_VISIBLE = "status_bar_variations_visible"
-    private const val KEY_DYNAMIC_VARIATION_BAR_SLOT_COUNT = "dynamic_variation_bar_slot_count"
-    private const val KEY_DYNAMIC_VARIATION_BAR_RESIZE_TO_CONTENT = "dynamic_variation_bar_resize_to_content"
     const val KEY_MODIFIER_INDICATOR_MODE = "modifier_indicator_mode"
     
     // Public constants for button IDs
@@ -341,12 +334,7 @@ object SettingsManager {
     // The variation row is off unless asked for: on a physical keyboard the accent row costs a
     // second strip of screen and Alt/Sym already reach the same characters. Resetting the status
     // bar must land here too, not on the upstream default.
-    private const val DEFAULT_STATUS_BAR_VARIATIONS_VISIBLE = false
-    private const val DEFAULT_DYNAMIC_VARIATION_BAR_SLOT_COUNT = 7
-    private const val DEFAULT_DYNAMIC_VARIATION_BAR_RESIZE_TO_CONTENT = false
     private val DEFAULT_MODIFIER_INDICATORS = setOf(MODIFIER_INDICATOR_BOTTOM_STRIP)
-    const val MIN_DYNAMIC_VARIATION_BAR_SLOT_COUNT = 1
-    const val MAX_DYNAMIC_VARIATION_BAR_SLOT_COUNT = 9
 
     private const val VARIATIONS_FILE_NAME = "variations.json"
     
@@ -445,8 +433,6 @@ object SettingsManager {
     private const val DEFAULT_OVERLAPPING_KEYS_ENABLED = false
     private const val DEFAULT_EMOJI_PICKER_EXPANDED_HEIGHT = true
     private val DEFAULT_SYM_PAGES_CONFIG = SymPagesConfig()
-    private const val DEFAULT_STATIC_VARIATION_BAR_MODE = false
-    private const val DEFAULT_STATIC_VARIATION_BAR_BASE_LAYER_ENABLED = false
     private const val DEFAULT_EXPERIMENTAL_SUGGESTIONS_ENABLED = true
     private const val DEFAULT_SUGGESTION_DEBUG_LOGGING = true
     private const val KEY_EXPERIMENTAL_SUGGESTIONS_ENABLED = "experimental_suggestions_enabled"
@@ -3047,149 +3033,41 @@ object SettingsManager {
      * When enabled, the variation row shows a fixed set of utility keys
      * instead of dynamic cursor-based character variations.
      */
-    fun isStaticVariationBarModeEnabled(context: Context): Boolean {
-        return getStaticVariationBarPreset(context) != STATIC_VARIATION_PRESET_OFF
-    }
 
     /**
      * Sets whether the static variation bar mode is enabled.
      */
-    fun setStaticVariationBarModeEnabled(context: Context, enabled: Boolean) {
-        getPreferences(context).edit()
-            .putBoolean(KEY_STATIC_VARIATION_BAR_MODE, enabled)
-            .putString(
-                KEY_STATIC_VARIATION_BAR_PRESET,
-                if (enabled) STATIC_VARIATION_PRESET_SYMBOLS else STATIC_VARIATION_PRESET_OFF
-            )
-            .apply()
-    }
 
-    fun getStaticVariationBarPreset(context: Context): String {
-        val prefs = getPreferences(context)
-        val stored = prefs.getString(KEY_STATIC_VARIATION_BAR_PRESET, null)
-        val fallback = if (prefs.getBoolean(KEY_STATIC_VARIATION_BAR_MODE, DEFAULT_STATIC_VARIATION_BAR_MODE)) {
-            if (prefs.getBoolean(
-                    KEY_STATIC_VARIATION_BAR_BASE_LAYER_ENABLED,
-                    DEFAULT_STATIC_VARIATION_BAR_BASE_LAYER_ENABLED
-                )
-            ) {
-                STATIC_VARIATION_PRESET_ALTERNATIVE
-            } else {
-                STATIC_VARIATION_PRESET_SYMBOLS
-            }
-        } else {
-            STATIC_VARIATION_PRESET_OFF
-        }
-        return when (stored ?: fallback) {
-            STATIC_VARIATION_PRESET_OFF,
-            STATIC_VARIATION_PRESET_SYMBOLS,
-            STATIC_VARIATION_PRESET_NUMBERS,
-            STATIC_VARIATION_PRESET_ALTERNATIVE,
-            STATIC_VARIATION_PRESET_DEV_CHOICE -> stored ?: fallback
-            else -> fallback
-        }
-    }
 
-    fun setStaticVariationBarPreset(context: Context, preset: String) {
-        val normalized = when (preset) {
-            STATIC_VARIATION_PRESET_OFF,
-            STATIC_VARIATION_PRESET_SYMBOLS,
-            STATIC_VARIATION_PRESET_NUMBERS,
-            STATIC_VARIATION_PRESET_ALTERNATIVE,
-            STATIC_VARIATION_PRESET_DEV_CHOICE -> preset
-            else -> STATIC_VARIATION_PRESET_OFF
-        }
-        getPreferences(context).edit()
-            .putString(KEY_STATIC_VARIATION_BAR_PRESET, normalized)
-            .putBoolean(KEY_STATIC_VARIATION_BAR_MODE, normalized != STATIC_VARIATION_PRESET_OFF)
-            .putBoolean(KEY_STATIC_VARIATION_BAR_BASE_LAYER_ENABLED, normalized == STATIC_VARIATION_PRESET_ALTERNATIVE)
-            .apply()
-
-        if (normalized != STATIC_VARIATION_PRESET_OFF) {
-            saveStaticVariationRows(
-                context = context,
-                staticVariations = getStaticVariationBasePreset(normalized),
-                staticVariationsShift = getStaticVariationShiftPreset(normalized),
-                staticVariationsAlt = getStaticVariationAltPreset(normalized)
-            )
-        }
-    }
 
     /**
      * Returns whether the base (top) static variation row is enabled.
      * Shift/Alt static layers remain available independently.
      */
-    fun isStaticVariationBarBaseLayerEnabled(context: Context): Boolean {
-        return getPreferences(context).getBoolean(
-            KEY_STATIC_VARIATION_BAR_BASE_LAYER_ENABLED,
-            DEFAULT_STATIC_VARIATION_BAR_BASE_LAYER_ENABLED
-        )
-    }
 
     /**
      * Sets whether the base (top) static variation row is enabled.
      */
-    fun setStaticVariationBarBaseLayerEnabled(context: Context, enabled: Boolean) {
-        getPreferences(context).edit()
-            .putBoolean(KEY_STATIC_VARIATION_BAR_BASE_LAYER_ENABLED, enabled)
-            .apply()
-    }
 
     /**
      * Returns the top-row preset for the static variation bar based on toggle state.
      */
-    fun getStaticVariationBasePreset(context: Context): List<String> {
-        return getStaticVariationBasePreset(getStaticVariationBarPreset(context))
-    }
 
-    private fun getStaticVariationBasePreset(preset: String): List<String> {
-        return when (preset) {
-            STATIC_VARIATION_PRESET_NUMBERS -> STATIC_VARIATION_BASE_PRESET_NUMBERS
-            STATIC_VARIATION_PRESET_ALTERNATIVE -> STATIC_VARIATION_BASE_PRESET_ALTERNATIVE
-            STATIC_VARIATION_PRESET_DEV_CHOICE -> STATIC_VARIATION_BASE_PRESET_DEV_CHOICE
-            else -> STATIC_VARIATION_BASE_PRESET_DEFAULT
-        }
-    }
 
-    fun getDefaultStaticVariationShiftPreset(): List<String> = STATIC_VARIATION_SHIFT_PRESET_DEFAULT
 
-    fun getDefaultStaticVariationAltPreset(): List<String> = STATIC_VARIATION_ALT_PRESET_DEFAULT
 
-    private fun getStaticVariationShiftPreset(preset: String): List<String> {
-        return when (preset) {
-            STATIC_VARIATION_PRESET_NUMBERS -> STATIC_VARIATION_BASE_PRESET_NUMBERS
-            STATIC_VARIATION_PRESET_DEV_CHOICE -> STATIC_VARIATION_BASE_PRESET_DEV_CHOICE
-            else -> STATIC_VARIATION_SHIFT_PRESET_DEFAULT
-        }
-    }
 
-    private fun getStaticVariationAltPreset(preset: String): List<String> {
-        return when (preset) {
-            STATIC_VARIATION_PRESET_NUMBERS -> STATIC_VARIATION_BASE_PRESET_NUMBERS
-            STATIC_VARIATION_PRESET_DEV_CHOICE -> STATIC_VARIATION_BASE_PRESET_DEV_CHOICE
-            else -> STATIC_VARIATION_ALT_PRESET_DEFAULT
-        }
-    }
 
     fun getStaticVariationNumbersPreset(): List<String> = STATIC_VARIATION_BASE_PRESET_NUMBERS
 
-    fun getDevChoiceStaticVariationBasePreset(): List<String> = STATIC_VARIATION_BASE_PRESET_DEV_CHOICE
 
     /**
      * Returns true if the static variation layer should remain latched after modifier hold.
      */
-    fun isStaticVariationBarLayerStickyEnabled(context: Context): Boolean {
-        return getPreferences(context).getBoolean(KEY_STATIC_VARIATION_BAR_MODIFIER_HOLD_RESTORATION, true)
-    }
 
     /**
      * Sets whether static variation layers should stay latched after modifier hold.
      */
-    fun setStaticVariationBarLayerStickyEnabled(context: Context, enabled: Boolean) {
-        getPreferences(context).edit()
-            .putBoolean(KEY_STATIC_VARIATION_BAR_MODIFIER_HOLD_RESTORATION, enabled)
-            .apply()
-    }
 
     /**
      * Returns whether Alt/Alt-Lock should be cleared when pressing Space.
@@ -5479,24 +5357,18 @@ object SettingsManager {
         editor.putBoolean("dictation_haptics", true)
         editor.putBoolean("dictation_mask_offensive", false)
         editor.putBoolean("smart_backlight_enabled", true)
-        editor.putBoolean("pastierina_mode_active", true)
-        editor.putBoolean("status_bar_variations_visible", false)
         editor.putBoolean("titan2_elite_rounded_corner_insets", true)
         editor.putBoolean("use_keyboard_proximity", true)
         editor.putBoolean("alt_shift_layout_switch", true)
         editor.putBoolean("alt_ctrl_speech_shortcut", false)
         editor.putBoolean("auto_show_keyboard", true)
         editor.putBoolean("emoji_picker_expanded_height", false)
-        editor.putBoolean("static_variation_bar_mode", false)
-        editor.putBoolean("static_variation_bar_base_layer_enabled", false)
-        editor.putBoolean("dynamic_variation_bar_resize_to_content", false)
         editor.putBoolean("screen_trackpad_enabled", true)
         editor.putBoolean("auto_replace_on_space_enter", true)
         editor.putBoolean("side_key_assistant", true)
         editor.putBoolean("notification_ring_enabled", true)
 
         // Ints
-        editor.putInt("dynamic_variation_bar_slot_count", 7)
         editor.putInt("dictation_end_silence_ms", 2000)
         editor.putInt("status_bar_height_dp", 56)
         editor.putInt("screen_trackpad_step_px", 32)
@@ -5509,21 +5381,17 @@ object SettingsManager {
         // the bug this release exists to fix.
         editor.putString("status_bar_visibility", "ALWAYS")
         editor.putString("modifier_indicator_mode", "menu_bar")
-        editor.putString("pastierina_mode_override", "pastierina")
         editor.putString("status_bar_slot_left", "clipboard")
         editor.putString("status_bar_slot_right_1", "microphone")
         editor.putString("status_bar_slot_right_2", "none")
         editor.putString("physical_keyboard_currency_symbol", "$")
         editor.putString("keyboard_layout", "qwerty")
         editor.putString("software_keyboard_mode", "auto")
-        editor.putString("static_variation_bar_preset", "off")
         editor.putString("app_enter_behavior_preset", "enter_send_shift_newline")
 
         // JSON strings (written as literal strings)
         editor.putString("status_bar_slots_left", "[\"clipboard\"]")
         editor.putString("status_bar_slots_right", "[\"microphone\",\"none\"]")
-        editor.putString("pastierina_status_bar_slots_left", "[\"clipboard\"]")
-        editor.putString("pastierina_status_bar_slots_right", "[\"microphone\"]")
         editor.putString(
             "sym_pages_config",
             "{\"emojiEnabled\":false,\"symbolsEnabled\":true,\"clipboardEnabled\":false,\"emojiPickerEnabled\":true,\"emojiFirst\":false,\"symPageOrder\":[\"emoji_picker\",\"symbols\",\"clipboard\",\"emoji\"]}"
@@ -5880,23 +5748,6 @@ object SettingsManager {
         }
     }
 
-    fun saveStaticVariationBasePreset(context: Context, staticVariations: List<String>) {
-        try {
-            val jsonObject = loadCurrentJson(context) ?: JSONObject()
-            val staticArray = org.json.JSONArray()
-            staticVariations.forEach { staticArray.put(it) }
-            jsonObject.put("staticVariations", staticArray)
-
-            FileOutputStream(getVariationsFile(context)).use { outputStream ->
-                outputStream.write(jsonObject.toString(2).toByteArray(Charsets.UTF_8))
-            }
-
-            notifyVariationsUpdated(context)
-            Log.d(TAG, "Static variation base preset saved to ${getVariationsFile(context).absolutePath}")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error saving static variation base preset", e)
-        }
-    }
     
     /**
      * Resets variations back to defaults by copying defaultvariations.json from assets.
@@ -6175,9 +6026,6 @@ object SettingsManager {
         setStatusBarSlotRight2(context, defaults.right2)
         setStatusBarSlotsLeft(context, getDefaultStatusBarSlotsLeft())
         setStatusBarSlotsRight(context, getDefaultStatusBarSlotsRight())
-        setStatusBarVariationsVisible(context, DEFAULT_STATUS_BAR_VARIATIONS_VISIBLE)
-        setDynamicVariationBarSlotCount(context, DEFAULT_DYNAMIC_VARIATION_BAR_SLOT_COUNT)
-        setDynamicVariationBarResizeToContent(context, DEFAULT_DYNAMIC_VARIATION_BAR_RESIZE_TO_CONTENT)
         return defaults
     }
 
@@ -6329,55 +6177,13 @@ object SettingsManager {
         return array.toString()
     }
 
-    fun getStatusBarVariationsVisible(context: Context): Boolean {
-        return getPreferences(context).getBoolean(
-            KEY_STATUS_BAR_VARIATIONS_VISIBLE,
-            DEFAULT_STATUS_BAR_VARIATIONS_VISIBLE
-        )
-    }
 
-    fun setStatusBarVariationsVisible(context: Context, visible: Boolean) {
-        getPreferences(context).edit()
-            .putBoolean(KEY_STATUS_BAR_VARIATIONS_VISIBLE, visible)
-            .apply()
-    }
 
-    fun areStatusBarVariationsEnabled(context: Context): Boolean {
-        return getStatusBarVariationsVisible(context)
-    }
 
-    fun setStatusBarVariationsEnabled(context: Context, enabled: Boolean) {
-        setStatusBarVariationsVisible(context, enabled)
-    }
 
-    fun getDynamicVariationBarSlotCount(context: Context): Int {
-        return getPreferences(context).getInt(
-            KEY_DYNAMIC_VARIATION_BAR_SLOT_COUNT,
-            DEFAULT_DYNAMIC_VARIATION_BAR_SLOT_COUNT
-        ).coerceIn(MIN_DYNAMIC_VARIATION_BAR_SLOT_COUNT, MAX_DYNAMIC_VARIATION_BAR_SLOT_COUNT)
-    }
 
-    fun setDynamicVariationBarSlotCount(context: Context, count: Int) {
-        getPreferences(context).edit()
-            .putInt(
-                KEY_DYNAMIC_VARIATION_BAR_SLOT_COUNT,
-                count.coerceIn(MIN_DYNAMIC_VARIATION_BAR_SLOT_COUNT, MAX_DYNAMIC_VARIATION_BAR_SLOT_COUNT)
-            )
-            .apply()
-    }
 
-    fun getDynamicVariationBarResizeToContent(context: Context): Boolean {
-        return getPreferences(context).getBoolean(
-            KEY_DYNAMIC_VARIATION_BAR_RESIZE_TO_CONTENT,
-            DEFAULT_DYNAMIC_VARIATION_BAR_RESIZE_TO_CONTENT
-        )
-    }
 
-    fun setDynamicVariationBarResizeToContent(context: Context, enabled: Boolean) {
-        getPreferences(context).edit()
-            .putBoolean(KEY_DYNAMIC_VARIATION_BAR_RESIZE_TO_CONTENT, enabled)
-            .apply()
-    }
 
     fun getModifierIndicators(context: Context): Set<String> {
         return normalizeModifierIndicators(

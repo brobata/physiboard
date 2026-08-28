@@ -26,7 +26,7 @@ class SoftwareKeyboardTextInputHandlerTest {
     @Before
     fun setUp() {
         context = RuntimeEnvironment.getApplication()
-        context.getSharedPreferences("pastiera_prefs", Context.MODE_PRIVATE)
+        context.getSharedPreferences(it.palsoftware.pastiera.SettingsMigration.PREFS, Context.MODE_PRIVATE)
             .edit()
             .clear()
             .commit()

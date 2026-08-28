@@ -10,7 +10,7 @@ class RestoreManagerAndBackupContractTest {
     @Test
     fun userDictionaryEntries_isRecognizedForFreshInstallRestore() {
         val recognized = PreferenceSchemas.isRecognized(
-            prefName = "pastiera_prefs",
+            prefName = it.palsoftware.pastiera.SettingsMigration.PREFS,
             key = "user_dictionary_entries",
             currentKeys = emptySet()
         )
@@ -18,7 +18,7 @@ class RestoreManagerAndBackupContractTest {
         assertTrue(recognized)
         assertEquals(
             PreferenceValueType.STRING,
-            PreferenceSchemas.expectedType("pastiera_prefs", "user_dictionary_entries")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "user_dictionary_entries")
         )
     }
 
@@ -35,8 +35,8 @@ class RestoreManagerAndBackupContractTest {
             "snippets_accept_with_enter" to PreferenceValueType.BOOLEAN
         )
         expected.forEach { (key, type) ->
-            assertTrue(PreferenceSchemas.isRecognized("pastiera_prefs", key, emptySet()))
-            assertEquals(type, PreferenceSchemas.expectedType("pastiera_prefs", key))
+            assertTrue(PreferenceSchemas.isRecognized(it.palsoftware.pastiera.SettingsMigration.PREFS, key, emptySet()))
+            assertEquals(type, PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, key))
         }
     }
 
@@ -53,8 +53,8 @@ class RestoreManagerAndBackupContractTest {
             "emoji_symbols_exact_on_close" to PreferenceValueType.BOOLEAN
         )
         expected.forEach { (key, type) ->
-            assertTrue(PreferenceSchemas.isRecognized("pastiera_prefs", key, emptySet()))
-            assertEquals(type, PreferenceSchemas.expectedType("pastiera_prefs", key))
+            assertTrue(PreferenceSchemas.isRecognized(it.palsoftware.pastiera.SettingsMigration.PREFS, key, emptySet()))
+            assertEquals(type, PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, key))
         }
     }
 
@@ -62,31 +62,31 @@ class RestoreManagerAndBackupContractTest {
     fun layoutSwitchPreferences_areRecognizedForRestore() {
         assertEquals(
             PreferenceValueType.BOOLEAN,
-            PreferenceSchemas.expectedType("pastiera_prefs", "alt_shift_layout_switch")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "alt_shift_layout_switch")
         )
         assertEquals(
             PreferenceValueType.BOOLEAN,
-            PreferenceSchemas.expectedType("pastiera_prefs", "alt_enter_layout_switch")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "alt_enter_layout_switch")
         )
         assertEquals(
             PreferenceValueType.BOOLEAN,
-            PreferenceSchemas.expectedType("pastiera_prefs", "toast_on_layout_switch")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "toast_on_layout_switch")
         )
         assertEquals(
             PreferenceValueType.BOOLEAN,
-            PreferenceSchemas.expectedType("pastiera_prefs", "software_keyboard_mode_toggle_toasts")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "software_keyboard_mode_toggle_toasts")
         )
         assertEquals(
             PreferenceValueType.STRING,
-            PreferenceSchemas.expectedType("pastiera_prefs", "software_keyboard_mode")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "software_keyboard_mode")
         )
         assertEquals(
             PreferenceValueType.STRING,
-            PreferenceSchemas.expectedType("pastiera_prefs", "input_style_suggestion_locales")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "input_style_suggestion_locales")
         )
         assertEquals(
             PreferenceValueType.STRING,
-            PreferenceSchemas.expectedType("pastiera_prefs", "hidden_system_input_styles")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "hidden_system_input_styles")
         )
     }
 
@@ -94,7 +94,7 @@ class RestoreManagerAndBackupContractTest {
     fun quickLauncherPreferences_areRecognizedForRestore() {
         assertEquals(
             PreferenceValueType.STRING,
-            PreferenceSchemas.expectedType("pastiera_prefs", "quick_launcher_behavior")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "quick_launcher_behavior")
         )
     }
 
@@ -102,23 +102,23 @@ class RestoreManagerAndBackupContractTest {
     fun accidentalKeyProtectionPreferences_areRecognizedForRestore() {
         assertEquals(
             PreferenceValueType.BOOLEAN,
-            PreferenceSchemas.expectedType("pastiera_prefs", "overlapping_keys_enabled")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "overlapping_keys_enabled")
         )
         assertEquals(
             PreferenceValueType.BOOLEAN,
-            PreferenceSchemas.expectedType("pastiera_prefs", "clicks_overlapping_keys_enabled")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "clicks_overlapping_keys_enabled")
         )
         assertEquals(
             PreferenceValueType.STRING,
-            PreferenceSchemas.expectedType("pastiera_prefs", "clicks_overlapping_keys_mode")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "clicks_overlapping_keys_mode")
         )
         assertEquals(
             PreferenceValueType.STRING,
-            PreferenceSchemas.expectedType("pastiera_prefs", "clicks_number_row_input_mode")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "clicks_number_row_input_mode")
         )
         assertEquals(
             PreferenceValueType.BOOLEAN,
-            PreferenceSchemas.expectedType("pastiera_prefs", "clicks_number_row_repeat_enabled")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "clicks_number_row_repeat_enabled")
         )
     }
 
@@ -126,43 +126,43 @@ class RestoreManagerAndBackupContractTest {
     fun clicksButtonModes_areRecognizedForRestore() {
         assertEquals(
             PreferenceValueType.STRING,
-            PreferenceSchemas.expectedType("pastiera_prefs", "clicks_button_mode")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "clicks_button_mode")
         )
         assertEquals(
             PreferenceValueType.STRING,
-            PreferenceSchemas.expectedType("pastiera_prefs", "clicks_meta_button_mode")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "clicks_meta_button_mode")
         )
         assertEquals(
             PreferenceValueType.STRING,
-            PreferenceSchemas.expectedType("pastiera_prefs", "clicks_alt_button_mode")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "clicks_alt_button_mode")
         )
         assertEquals(
             PreferenceValueType.STRING,
-            PreferenceSchemas.expectedType("pastiera_prefs", "clicks_microphone_button_mode")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "clicks_microphone_button_mode")
         )
         assertEquals(
             PreferenceValueType.STRING,
-            PreferenceSchemas.expectedType("pastiera_prefs", "clicks_red_button_binding_choice")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "clicks_red_button_binding_choice")
         )
         assertEquals(
             PreferenceValueType.STRING,
-            PreferenceSchemas.expectedType("pastiera_prefs", "clicks_red_button_binding_output")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "clicks_red_button_binding_output")
         )
         assertEquals(
             PreferenceValueType.STRING,
-            PreferenceSchemas.expectedType("pastiera_prefs", "clicks_keyboard_button_binding_choice")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "clicks_keyboard_button_binding_choice")
         )
         assertEquals(
             PreferenceValueType.STRING,
-            PreferenceSchemas.expectedType("pastiera_prefs", "clicks_keyboard_button_binding_output")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "clicks_keyboard_button_binding_output")
         )
         assertEquals(
             PreferenceValueType.STRING,
-            PreferenceSchemas.expectedType("pastiera_prefs", "clicks_microphone_button_binding_choice")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "clicks_microphone_button_binding_choice")
         )
         assertEquals(
             PreferenceValueType.STRING,
-            PreferenceSchemas.expectedType("pastiera_prefs", "clicks_microphone_button_binding_output")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "clicks_microphone_button_binding_output")
         )
     }
 
@@ -171,27 +171,27 @@ class RestoreManagerAndBackupContractTest {
         assertEquals(
             PreferenceValueType.STRING,
             PreferenceSchemas.expectedType(
-                "pastiera_prefs",
+                it.palsoftware.pastiera.SettingsMigration.PREFS,
                 "clicks_power_keyboard_snapshots_v1"
             )
         )
         assertEquals(
             PreferenceValueType.STRING,
             PreferenceSchemas.expectedType(
-                "pastiera_prefs",
+                it.palsoftware.pastiera.SettingsMigration.PREFS,
                 "clicks_power_soc_calibration_PK-42"
             )
         )
         assertTrue(
             PreferenceSchemas.isRecognized(
-                prefName = "pastiera_prefs",
+                prefName = it.palsoftware.pastiera.SettingsMigration.PREFS,
                 key = "clicks_power_keyboard_snapshots_v1",
                 currentKeys = emptySet()
             )
         )
         assertTrue(
             PreferenceSchemas.isRecognized(
-                prefName = "pastiera_prefs",
+                prefName = it.palsoftware.pastiera.SettingsMigration.PREFS,
                 key = "clicks_power_soc_calibration_PK-42",
                 currentKeys = emptySet()
             )
@@ -202,11 +202,11 @@ class RestoreManagerAndBackupContractTest {
     fun punctuationSpacingPreferences_areRecognizedForRestore() {
         assertEquals(
             PreferenceValueType.STRING,
-            PreferenceSchemas.expectedType("pastiera_prefs", "auto_space_punctuation")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "auto_space_punctuation")
         )
         assertEquals(
             PreferenceValueType.STRING,
-            PreferenceSchemas.expectedType("pastiera_prefs", "space_after_punctuation")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "space_after_punctuation")
         )
     }
 
@@ -214,15 +214,15 @@ class RestoreManagerAndBackupContractTest {
     fun deleteMethodsPreferences_areRecognizedForRestore() {
         assertEquals(
             PreferenceValueType.BOOLEAN,
-            PreferenceSchemas.expectedType("pastiera_prefs", "shift_backspace_delete")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "shift_backspace_delete")
         )
         assertEquals(
             PreferenceValueType.BOOLEAN,
-            PreferenceSchemas.expectedType("pastiera_prefs", "alt_backspace_delete")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "alt_backspace_delete")
         )
         assertEquals(
             PreferenceValueType.BOOLEAN,
-            PreferenceSchemas.expectedType("pastiera_prefs", "backspace_at_start_delete")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "backspace_at_start_delete")
         )
     }
 
@@ -230,35 +230,35 @@ class RestoreManagerAndBackupContractTest {
     fun statusBarAndVariationPreferences_areRecognizedForRestore() {
         assertEquals(
             PreferenceValueType.BOOLEAN,
-            PreferenceSchemas.expectedType("pastiera_prefs", "titan2_elite_rounded_corner_insets")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "titan2_elite_rounded_corner_insets")
         )
         assertEquals(
             PreferenceValueType.STRING,
-            PreferenceSchemas.expectedType("pastiera_prefs", "static_variation_bar_preset")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "static_variation_bar_preset")
         )
         assertEquals(
             PreferenceValueType.BOOLEAN,
-            PreferenceSchemas.expectedType("pastiera_prefs", "status_bar_variations_visible")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "status_bar_variations_visible")
         )
         assertEquals(
             PreferenceValueType.STRING,
-            PreferenceSchemas.expectedType("pastiera_prefs", "status_bar_slot_left")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "status_bar_slot_left")
         )
         assertEquals(
             PreferenceValueType.STRING,
-            PreferenceSchemas.expectedType("pastiera_prefs", "status_bar_slot_right_1")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "status_bar_slot_right_1")
         )
         assertEquals(
             PreferenceValueType.STRING,
-            PreferenceSchemas.expectedType("pastiera_prefs", "status_bar_slot_right_2")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "status_bar_slot_right_2")
         )
         assertEquals(
             PreferenceValueType.STRING,
-            PreferenceSchemas.expectedType("pastiera_prefs", "status_bar_slots_left")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "status_bar_slots_left")
         )
         assertEquals(
             PreferenceValueType.STRING,
-            PreferenceSchemas.expectedType("pastiera_prefs", "status_bar_slots_right")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "status_bar_slots_right")
         )
     }
 
@@ -266,14 +266,14 @@ class RestoreManagerAndBackupContractTest {
     fun symPreferences_areRecognizedForRestore() {
         assertEquals(
             PreferenceValueType.BOOLEAN,
-            PreferenceSchemas.expectedType("pastiera_prefs", "emoji_picker_expanded_height")
+            PreferenceSchemas.expectedType(it.palsoftware.pastiera.SettingsMigration.PREFS, "emoji_picker_expanded_height")
         )
     }
 
     @Test
     fun shouldNotifyUserDictionaryRefresh_whenUserDictionaryPrefsRestored() {
         val prefs = PreferencesRestoreSummary(
-            appliedKeys = listOf("pastiera_prefs:user_dictionary_entries"),
+            appliedKeys = listOf("${it.palsoftware.pastiera.SettingsMigration.PREFS}:user_dictionary_entries"),
             skippedKeys = emptyList()
         )
         val files = FileRestoreSummary(
@@ -318,7 +318,7 @@ class RestoreManagerAndBackupContractTest {
     @Test
     fun collectTriggeredPostRestoreActions_deduplicatesWhenPrefAndFileBothMatch() {
         val prefs = PreferencesRestoreSummary(
-            appliedKeys = listOf("pastiera_prefs:user_dictionary_entries"),
+            appliedKeys = listOf("${it.palsoftware.pastiera.SettingsMigration.PREFS}:user_dictionary_entries"),
             skippedKeys = emptyList()
         )
         val files = FileRestoreSummary(

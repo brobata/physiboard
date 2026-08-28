@@ -158,9 +158,6 @@ class MainActivity : LocalizedComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Ship opinionated defaults on first run (once).
-        SettingsManager.applyImpactDefaultsIfNeeded(this)
-
         // Check if tutorial has been completed
         if (!SettingsManager.isTutorialCompleted(this)) {
             val intent = Intent(this, TutorialActivity::class.java)

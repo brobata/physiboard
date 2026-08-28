@@ -13,6 +13,12 @@ import it.palsoftware.pastiera.inputmethod.subtype.AdditionalSubtypeUtils
 class PastieraApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+        // Order matters. The migration has to land before the first read, and the first-run
+        // defaults have to be stamped here rather than in MainActivity: setting the keyboard up
+        // from Android's own settings never opens the app, and those users spent 1.x running
+        // upstream's defaults because of exactly that.
+        SettingsMigration.migrateIfNeeded(this)
+        SettingsManager.applyImpactDefaultsIfNeeded(this)
         SettingsManager.initializeAltShiftLayoutSwitchDefault(this)
         AppPackageChangeMonitor.register(this)
         publishSoftwareKeyboardModeShortcut()

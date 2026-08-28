@@ -34,7 +34,7 @@ class SettingsManagerLayoutSwitchTest {
     @Before
     fun setUp() {
         RuntimeEnvironment.getApplication()
-            .getSharedPreferences("pastiera_prefs", android.content.Context.MODE_PRIVATE)
+            .getSharedPreferences(it.palsoftware.pastiera.SettingsMigration.PREFS, android.content.Context.MODE_PRIVATE)
             .edit()
             .clear()
             .commit()
@@ -546,7 +546,7 @@ class SettingsManagerLayoutSwitchTest {
     @Test
     fun autoSpacePunctuation_legacyStoredDefaultWithoutSemicolonStaysWithoutSemicolon() {
         val context = RuntimeEnvironment.getApplication()
-        context.getSharedPreferences("pastiera_prefs", android.content.Context.MODE_PRIVATE)
+        context.getSharedPreferences(it.palsoftware.pastiera.SettingsMigration.PREFS, android.content.Context.MODE_PRIVATE)
             .edit()
             .putString("auto_space_punctuation", ".,!?\\/\"")
             .commit()
