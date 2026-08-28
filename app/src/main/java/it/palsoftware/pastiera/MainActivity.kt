@@ -34,6 +34,8 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -187,6 +189,7 @@ class MainActivity : LocalizedComponentActivity() {
         enableEdgeToEdge()
         setContent {
             PastieraTheme {
+                UntestedDeviceNotice()
                 Box(modifier = Modifier.fillMaxSize()) {
                     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                         KeyboardSetupScreen(
@@ -669,4 +672,34 @@ private fun checkImeStatus(
         android.util.Log.e("MainActivity", "Error checking IME status", e)
         callback(false, false)
     }
+}
+
+/**
+ * One-time notice on a Titan 2 that is not an Elite: the keyboard should work, but nothing has
+ * been tested against that hardware and it is not supported.
+ */
+@Composable
+private fun UntestedDeviceNotice() {
+    val context = LocalContext.current
+    var show by remember {
+        mutableStateOf(
+            it.palsoftware.pastiera.inputmethod.DeviceSpecific.isUntestedTitanDevice() &&
+                SettingsManager.shouldShowUntestedDeviceNotice(context)
+        )
+    }
+    if (!show) return
+    AlertDialog(
+        onDismissRequest = {
+            SettingsManager.markUntestedDeviceNoticeSeen(context)
+            show = false
+        },
+        title = { Text(stringResource(R.string.untested_device_notice_title)) },
+        text = { Text(stringResource(R.string.untested_device_notice_message)) },
+        confirmButton = {
+            TextButton(onClick = {
+                SettingsManager.markUntestedDeviceNoticeSeen(context)
+                show = false
+            }) { Text(stringResource(R.string.untested_device_notice_dismiss)) }
+        }
+    )
 }

@@ -63,24 +63,6 @@ class PhysicalKeyboardInputMethodServiceDeviceBehaviorTest {
         setField(service, "inputContextState", InputContextState.fromEditorInfo(editorInfo))
     }
 
-    @Test
-    fun mp01DedicatedEmojiKey_isIgnoredWhenMp01IsNotActive() {
-        DeviceSpecific.setBuildFingerprintForTests(
-            brand = "unihertz",
-            manufacturer = "unihertz",
-            model = "Titan 2",
-            device = "titan2",
-            product = "titan2"
-        )
-        setField(service, "physicalKeyboardProfileOverride", "auto")
-
-        val handled = service.onKeyDown(
-            666,
-            keyEvent(KeyEvent.ACTION_DOWN, 666, 6_000L, 6_000L)
-        )
-
-        assertFalse(handled)
-    }
 
     @Test
     fun mp01DedicatedEmojiKey_isHandledWhenManualMp01OverrideIsActive() {

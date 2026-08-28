@@ -8,7 +8,6 @@ import androidx.annotation.StringRes
  */
 enum class SettingsSearchTarget {
     MODIFIERS,
-    KEYBOARDS_DEVICES,
     TEXT_INPUT,
     ACCESSIBILITY,
     AUTO_CORRECTION,
@@ -49,7 +48,6 @@ object SettingsCatalog {
         // Screens
         SettingsSearchEntry(R.string.screen_trackpad_title, R.string.screen_trackpad_title, SettingsSearchTarget.SCREEN_TRACKPAD, "trackpad cursor swipe screen spacebar hold arrow select"),
         SettingsSearchEntry(R.string.modifiers_title, R.string.modifiers_title, SettingsSearchTarget.MODIFIERS, "shift alt ctrl sym sticky latch lock"),
-        SettingsSearchEntry(R.string.keyboards_devices_title, R.string.keyboards_devices_title, SettingsSearchTarget.KEYBOARDS_DEVICES, "hardware physical layout device profile"),
         SettingsSearchEntry(R.string.settings_category_text_input, R.string.settings_category_text_input, SettingsSearchTarget.TEXT_INPUT, "typing punctuation spaces"),
         SettingsSearchEntry(R.string.settings_category_accessibility, R.string.settings_category_accessibility, SettingsSearchTarget.ACCESSIBILITY, "a11y vibration haptics"),
         SettingsSearchEntry(R.string.settings_category_auto_correction, R.string.settings_category_auto_correction, SettingsSearchTarget.AUTO_CORRECTION, "autocorrect spell dictionary suggestions typo"),

@@ -74,7 +74,6 @@ import it.palsoftware.pastiera.update.shouldUseGithubUpdateChecks
 enum class SettingsDestination {
     Main,
     Status,
-    KeyboardsDevices,
     KeyboardTiming,
     TextInput,
     Accessibility,
@@ -268,7 +267,6 @@ fun SettingsScreen(
                     onKeyboardHubClick = { navigateTo(SettingsDestination.KeyboardHub) },
                     onExtrasClick = { navigateTo(SettingsDestination.Extras) },
                     onModifiersClick = { navigateTo(SettingsDestination.Modifiers) },
-                    onKeyboardsDevicesClick = { navigateTo(SettingsDestination.KeyboardsDevices) },
                     onTextInputClick = { navigateTo(SettingsDestination.TextInput) },
                     onVoiceClick = { navigateTo(SettingsDestination.Voice) },
                     onScreenTrackpadClick = { navigateTo(SettingsDestination.ScreenTrackpad) },
@@ -313,16 +311,6 @@ fun SettingsScreen(
                 ScreenTrackpadSettingsScreen(
                     modifier = modifier,
                     onBack = { navigateBack() }
-                )
-            }
-            SettingsDestination.KeyboardsDevices -> {
-                KeyboardsDevicesSettingsScreen(
-                    modifier = modifier,
-                    onBack = { navigateBack() },
-                    onNavModeSettingsClick = { keyCode ->
-                        requestedNavModeKeyCode = keyCode
-                        navigateTo(SettingsDestination.NavMode)
-                    }
                 )
             }
             SettingsDestination.KeyboardTiming -> {
@@ -666,7 +654,6 @@ private fun SettingsMainScreen(
     onKeyboardHubClick: () -> Unit,
     onExtrasClick: () -> Unit,
     onModifiersClick: () -> Unit,
-    onKeyboardsDevicesClick: () -> Unit,
     onTextInputClick: () -> Unit,
     onVoiceClick: () -> Unit,
     onScreenTrackpadClick: () -> Unit,
@@ -692,7 +679,6 @@ private fun SettingsMainScreen(
         searchQuery = ""
         when (target) {
             SettingsSearchTarget.MODIFIERS -> onModifiersClick()
-            SettingsSearchTarget.KEYBOARDS_DEVICES -> onKeyboardsDevicesClick()
             SettingsSearchTarget.TEXT_INPUT -> onTextInputClick()
             SettingsSearchTarget.VOICE -> onVoiceClick()
             SettingsSearchTarget.ACCESSIBILITY -> onAccessibilityClick()

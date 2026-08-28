@@ -2,43 +2,26 @@ package it.palsoftware.pastiera.inputmethod
 
 import android.view.KeyEvent
 
-/** Filters accidental physical-key overlaps and Clicks number-row presses. */
+/**
+ * Suppresses a key that goes down while another key on the same device is still held - the
+ * classic fat-finger overlap on a small physical keyboard. Modifiers are never suppressed, and a
+ * suppressed key's matching key-up is swallowed too so the two stay balanced.
+ */
 class AccidentalKeyPressFilter {
     enum class OverlapRule {
         NONE,
-        ADJACENT,
         ALL
     }
 
-    enum class NumberRowAcceptance {
-        NORMAL,
-        LONG_PRESS,
-        NEVER
-    }
-
-    data class NumberRowPolicy(
-        val acceptance: NumberRowAcceptance = NumberRowAcceptance.NORMAL,
-        val overlapMinimum: OverlapRule = OverlapRule.NONE
-    )
-
     data class Configuration(
-        val overlapRule: OverlapRule = OverlapRule.NONE,
-        val numberRowPolicy: NumberRowPolicy = NumberRowPolicy(),
-        val longPressThresholdMs: Long = 500L,
-        val numberRowRepeatEnabled: Boolean = true
+        val overlapRule: OverlapRule = OverlapRule.NONE
     ) {
         val needsHeldKeyTracking: Boolean
-            get() = overlapRule != OverlapRule.NONE ||
-                numberRowPolicy.overlapMinimum != OverlapRule.NONE
+            get() = overlapRule != OverlapRule.NONE
     }
 
     enum class Reason(val debugName: String) {
-        OVERLAPPING_KEY("overlapping_key"),
-        ADJACENT_KEY("adjacent_key"),
-        NUMBER_ROW_DISABLED("number_row_disabled"),
-        NUMBER_ROW_SHORT_PRESS("number_row_short_press"),
-        NUMBER_ROW_LONG_PRESS_PENDING("number_row_long_press_pending"),
-        NUMBER_ROW_REPEAT_DISABLED("number_row_repeat_disabled")
+        OVERLAPPING_KEY("overlapping_key")
     }
 
     data class SuppressedEvent(
@@ -51,11 +34,6 @@ class AccidentalKeyPressFilter {
 
     sealed interface KeyUpResult {
         data class Suppressed(val event: SuppressedEvent) : KeyUpResult
-
-        data class ReplayTap(
-            val downEvent: KeyEvent,
-            val upEvent: KeyEvent
-        ) : KeyUpResult
     }
 
     private data class KeyIdentity(
@@ -66,86 +44,29 @@ class AccidentalKeyPressFilter {
         override fun toString(): String = "$deviceId:$scanCode:$keyCode"
     }
 
-    private data class ActiveKey(
-        val identity: KeyIdentity,
-        val resolution: PhysicalKeyResolver.Resolution
-    )
-
-    private data class PendingLongPress(
-        val downEvent: KeyEvent,
-        val thresholdMs: Long
-    )
-
-    private val activeKeysByDevice = mutableMapOf<Int, MutableMap<KeyIdentity, ActiveKey>>()
+    private val activeKeysByDevice = mutableMapOf<Int, MutableMap<KeyIdentity, KeyIdentity>>()
     private val suppressedKeyUps = mutableMapOf<KeyIdentity, SuppressedEvent>()
-    private val pendingLongPresses = mutableMapOf<KeyIdentity, PendingLongPress>()
-    private val heldNumberRowKeys = mutableSetOf<KeyIdentity>()
 
     fun shouldConsumeKeyDown(
         keyCode: Int,
         event: KeyEvent?,
-        resolution: PhysicalKeyResolver.Resolution,
+        isModifier: Boolean,
         configuration: Configuration
     ): SuppressedEvent? {
-        if (event == null || resolution.isModifier) return null
+        if (event == null || isModifier) return null
 
         val identity = identityFor(keyCode, event)
         suppressedKeyUps[identity]?.let { return it }
-        pendingLongPresses[identity]?.let {
-            return suppressed(Reason.NUMBER_ROW_LONG_PRESS_PENDING, identity)
-        }
-
-        val isNumberRowKey = resolution.isDefinitelyNumberRowKey() || identity in heldNumberRowKeys
-        if (event.repeatCount > 0) {
-            return if (isNumberRowKey && !configuration.numberRowRepeatEnabled) {
-                suppressed(Reason.NUMBER_ROW_REPEAT_DISABLED, identity)
-            } else {
-                null
-            }
-        }
-
-        if (isNumberRowKey) heldNumberRowKeys += identity
-
-        val numberPolicy = configuration.numberRowPolicy
-        if (isNumberRowKey && numberPolicy.acceptance == NumberRowAcceptance.NEVER) {
-            return suppressUntilKeyUp(Reason.NUMBER_ROW_DISABLED, identity)
-        }
+        if (event.repeatCount > 0) return null
 
         val activeKeys = activeKeysByDevice.getOrPut(event.deviceId) { linkedMapOf() }
-        val otherActiveKeys = activeKeys.values.filter { it.identity != identity }
-        val overlapRule = if (isNumberRowKey) {
-            maxOf(configuration.overlapRule, numberPolicy.overlapMinimum)
-        } else {
-            configuration.overlapRule
-        }
-        when (overlapRule) {
-            OverlapRule.ALL -> if (otherActiveKeys.isNotEmpty()) {
-                return suppressUntilKeyUp(Reason.OVERLAPPING_KEY, identity)
-            }
-            OverlapRule.ADJACENT -> if (otherActiveKeys.any { active ->
-                    areDefinitelyAdjacent(active.resolution, resolution)
-                }
-            ) {
-                return suppressUntilKeyUp(Reason.ADJACENT_KEY, identity)
-            }
-            OverlapRule.NONE -> Unit
-        }
-
-        if (isNumberRowKey && numberPolicy.acceptance == NumberRowAcceptance.LONG_PRESS) {
-            pendingLongPresses[identity] = PendingLongPress(
-                downEvent = KeyEvent(event),
-                thresholdMs = configuration.longPressThresholdMs.coerceAtLeast(1L)
-            )
-            if (configuration.needsHeldKeyTracking) {
-                activeKeys[identity] = ActiveKey(identity, resolution)
-            } else if (activeKeys.isEmpty()) {
-                activeKeysByDevice.remove(event.deviceId)
-            }
-            return suppressed(Reason.NUMBER_ROW_LONG_PRESS_PENDING, identity)
+        val otherActiveKeys = activeKeys.values.filter { it != identity }
+        if (configuration.overlapRule == OverlapRule.ALL && otherActiveKeys.isNotEmpty()) {
+            return suppressUntilKeyUp(Reason.OVERLAPPING_KEY, identity)
         }
 
         if (configuration.needsHeldKeyTracking) {
-            activeKeys[identity] = ActiveKey(identity, resolution)
+            activeKeys[identity] = identity
         } else if (activeKeys.isEmpty()) {
             activeKeysByDevice.remove(event.deviceId)
         }
@@ -153,56 +74,21 @@ class AccidentalKeyPressFilter {
     }
 
     fun onKeyUp(keyCode: Int, event: KeyEvent?): KeyUpResult? {
-        if (event == null || PhysicalKeyResolver.isModifierKey(keyCode)) return null
+        if (event == null || isModifierKey(keyCode)) return null
 
         val identity = identityFor(keyCode, event)
         removeActive(identity)
-        heldNumberRowKeys.remove(identity)
-
-        pendingLongPresses.remove(identity)?.let { pending ->
-            val durationMs = event.eventTime - pending.downEvent.eventTime
-            return if (!event.isCanceled && durationMs >= pending.thresholdMs) {
-                KeyUpResult.ReplayTap(
-                    downEvent = KeyEvent(pending.downEvent),
-                    upEvent = KeyEvent(event)
-                )
-            } else {
-                KeyUpResult.Suppressed(suppressed(Reason.NUMBER_ROW_SHORT_PRESS, identity))
-            }
-        }
-
         return suppressedKeyUps.remove(identity)?.let(KeyUpResult::Suppressed)
     }
 
     fun resetDevice(deviceId: Int) {
         activeKeysByDevice.remove(deviceId)
         suppressedKeyUps.keys.removeAll { it.deviceId == deviceId }
-        pendingLongPresses.keys.removeAll { it.deviceId == deviceId }
-        heldNumberRowKeys.removeAll { it.deviceId == deviceId }
     }
 
     fun reset() {
         activeKeysByDevice.clear()
         suppressedKeyUps.clear()
-        pendingLongPresses.clear()
-        heldNumberRowKeys.clear()
-    }
-
-    private fun areDefinitelyAdjacent(
-        active: PhysicalKeyResolver.Resolution,
-        incoming: PhysicalKeyResolver.Resolution
-    ): Boolean {
-        val profile = incoming.profile ?: return false
-        if (active.profile?.profileId != profile.profileId ||
-            active.candidates.isEmpty() || incoming.candidates.isEmpty()
-        ) {
-            return false
-        }
-        return active.candidates.all { activeKey ->
-            incoming.candidates.all { incomingKey ->
-                profile.isAdjacent(activeKey, incomingKey)
-            }
-        }
     }
 
     private fun suppressUntilKeyUp(reason: Reason, identity: KeyIdentity): SuppressedEvent {
@@ -225,4 +111,11 @@ class AccidentalKeyPressFilter {
             scanCode = event.scanCode,
             keyCode = keyCode
         )
+
+    companion object {
+        fun isModifierKey(keyCode: Int): Boolean =
+            KeyEvent.isModifierKey(keyCode) ||
+                keyCode == KeyEvent.KEYCODE_SYM ||
+                keyCode == KeyEvent.KEYCODE_FUNCTION
+    }
 }

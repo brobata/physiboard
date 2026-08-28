@@ -23,18 +23,6 @@ class KeyMappingLoaderTest {
         DeviceSpecific.clearTestOverrides()
     }
 
-    @Test
-    fun loadAltMappings_mp01ManualOverride_exposesCustomDedicatedKeys() {
-        val context = RuntimeEnvironment.getApplication()
-        SettingsManager.setPhysicalKeyboardProfileOverride(context, "mp01")
-
-        val mappings = KeyMappingLoader.loadAltKeyMappings(context.assets, context)
-
-        assertTrue(mappings.isNotEmpty())
-        assertEquals("&", mappings[KeyEvent.KEYCODE_Q])
-        assertEquals("0", mappings[666])
-        assertEquals(".", mappings[667])
-    }
 
     @Test
     fun loadAltMappings_unknownDevice_usesCompleteTitan2FallbackForVirtualKeyboard() {
@@ -56,46 +44,7 @@ class KeyMappingLoaderTest {
         assertEquals("?", mappings[KeyEvent.KEYCODE_M])
     }
 
-    @Test
-    fun loadAltMappings_originalTitanAutoDetection_usesOriginalTitanAsset() {
-        val context = RuntimeEnvironment.getApplication()
-        SettingsManager.setPhysicalKeyboardProfileOverride(context, "auto")
-        DeviceSpecific.setBuildFingerprintForTests(
-            brand = "Unihertz",
-            manufacturer = "A-gold",
-            model = "Titan",
-            device = "Titan",
-            product = "Titan",
-            board = "g61v71c2k_dfl_tee",
-            display = "Titan_20221121"
-        )
 
-        val mappings = KeyMappingLoader.loadAltKeyMappings(context.assets, context)
-
-        assertTrue(mappings.size >= 26)
-        assertEquals(":", mappings[KeyEvent.KEYCODE_Q])
-        assertEquals("1", mappings[KeyEvent.KEYCODE_U])
-        assertEquals("9", mappings[KeyEvent.KEYCODE_M])
-    }
-
-    @Test
-    fun loadDeviceSymMappings_clicksBuiltInProfiles_matchPrintedLegends() {
-        val context = RuntimeEnvironment.getApplication()
-
-        listOf("clicks_razr", "clicks_pixel").forEach { profile ->
-            SettingsManager.setPhysicalKeyboardProfileOverride(context, profile)
-            val mappings = KeyMappingLoader.loadDeviceSymKeyMappings(context.assets, context)
-
-            assertEquals("#", mappings[KeyEvent.KEYCODE_Q])
-            assertEquals("1", mappings[KeyEvent.KEYCODE_W])
-            assertEquals("_", mappings[KeyEvent.KEYCODE_U])
-            assertEquals(";", mappings[KeyEvent.KEYCODE_J])
-            assertEquals("%", mappings[KeyEvent.KEYCODE_V])
-            assertEquals("?", mappings[KeyEvent.KEYCODE_B])
-            assertEquals("\$", mappings[KeyEvent.KEYCODE_PERIOD])
-            assertEquals("0", mappings[KeyEvent.KEYCODE_CTRL_LEFT])
-        }
-    }
 
     @Test
     fun loadSymPage2Mappings_exposesExpandedTypographyDefaults() {

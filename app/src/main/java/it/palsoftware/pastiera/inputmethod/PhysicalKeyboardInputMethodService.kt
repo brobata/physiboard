@@ -7,7 +7,6 @@ import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.content.res.Configuration
 import it.palsoftware.pastiera.AppBroadcastActions
-import it.palsoftware.pastiera.ClicksPowerKeyboardController
 import it.palsoftware.pastiera.SettingsManager
 import it.palsoftware.pastiera.SoftwareKeyboardModeActions
 import android.inputmethodservice.InputMethodService
@@ -79,7 +78,7 @@ import rikka.shizuku.Shizuku
  * Input method service specialized for physical keyboards.
  * Handles advanced features such as long press that simulates Alt+key.
  */
-class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibilityKeyBridge.Target {
+class PhysicalKeyboardInputMethodService : InputMethodService() {
 
     companion object {
         private const val TAG = "PastieraInputMethod"
@@ -325,10 +324,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     )
     private val bounceKeyFilter = BounceKeyFilter()
     private val accidentalKeyPressFilter = AccidentalKeyPressFilter()
-    private val physicalKeyResolver = PhysicalKeyResolver()
-    private val clicksPowerButtonEventMapper = ClicksPowerButtonEventMapper()
-    private var dispatchingClicksAccessibilityKeyEvent = false
-    private var replayingProtectedNumberKey = false
     private var screenTrackpadReplaying = false
     private lateinit var screenTrackpadController: ScreenTrackpadController
     private val uiHandler = Handler(Looper.getMainLooper())
@@ -357,51 +352,22 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     private var lastObservedAutoSoftwareKeyboardMode: SettingsManager.SoftwareKeyboardMode? = null
     private var pendingInputDeviceModeRefresh: Runnable? = null
     private var pendingKeyboardSurfaceTransition: Runnable? = null
-    private var clicksConnectionChangePending: Boolean = false
-    private var clicksDisconnectPending: Boolean = false
-    private val connectedClicksInputDeviceIds = mutableSetOf<Int>()
     private val inputDeviceListener = object : InputManager.InputDeviceListener {
         override fun onInputDeviceAdded(deviceId: Int) {
             SoftwareKeyboardAutoDetector.onInputDevicesChanged()
-            val clicksConnected = InputDevice.getDevice(deviceId)
-                ?.takeIf(DeviceSpecific::isClicksPowerKeyboard)
-                ?.let { connectedClicksInputDeviceIds.add(deviceId) } == true
-            scheduleInputDeviceModeRefresh(clicksConnectionChanged = clicksConnected)
+            scheduleInputDeviceModeRefresh()
         }
 
         override fun onInputDeviceRemoved(deviceId: Int) {
             accidentalKeyPressFilter.resetDevice(deviceId)
-            clicksPowerButtonEventMapper.resetDevice(deviceId)
-            val clicksDisconnected = connectedClicksInputDeviceIds.remove(deviceId)
-            if (
-                clicksDisconnected &&
-                SettingsManager.getClicksCloseInputOnDisconnect(this@PhysicalKeyboardInputMethodService)
-            ) {
-                SoftwareKeyboardAutoDetector.beginClosingInputForClicksDisconnect()
-                requestHideSelf(0)
-            }
             SoftwareKeyboardAutoDetector.onInputDevicesChanged()
-            scheduleInputDeviceModeRefresh(
-                clicksConnectionChanged = clicksDisconnected,
-                clicksDisconnected = clicksDisconnected
-            )
+            scheduleInputDeviceModeRefresh()
         }
 
         override fun onInputDeviceChanged(deviceId: Int) {
             accidentalKeyPressFilter.resetDevice(deviceId)
-            clicksPowerButtonEventMapper.resetDevice(deviceId)
             SoftwareKeyboardAutoDetector.onInputDevicesChanged()
-            val wasClicksKeyboard = deviceId in connectedClicksInputDeviceIds
-            val device = InputDevice.getDevice(deviceId)
-            val isClicksKeyboard = device != null && DeviceSpecific.isClicksPowerKeyboard(device)
-            if (isClicksKeyboard) {
-                connectedClicksInputDeviceIds += deviceId
-            } else {
-                connectedClicksInputDeviceIds -= deviceId
-            }
-            scheduleInputDeviceModeRefresh(
-                clicksConnectionChanged = wasClicksKeyboard != isClicksKeyboard
-            )
+            scheduleInputDeviceModeRefresh()
         }
     }
     private var pendingStatusBarUpdate: Runnable? = null
@@ -556,32 +522,17 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         updateStatusBarText()
     }
 
-    private fun scheduleInputDeviceModeRefresh(
-        clicksConnectionChanged: Boolean = false,
-        clicksDisconnected: Boolean = false
-    ) {
-        clicksConnectionChangePending = clicksConnectionChangePending || clicksConnectionChanged
-        clicksDisconnectPending = clicksDisconnectPending || clicksDisconnected
+    private fun scheduleInputDeviceModeRefresh() {
         pendingInputDeviceModeRefresh?.let { uiHandler.removeCallbacks(it) }
         val refresh = Runnable {
             pendingInputDeviceModeRefresh = null
-            val didClicksConnectionChange = clicksConnectionChangePending
-            val didClicksDisconnect = clicksDisconnectPending
-            clicksConnectionChangePending = false
-            clicksDisconnectPending = false
-            refreshSoftwareKeyboardModeForConnectedDevices(
-                clicksConnectionChanged = didClicksConnectionChange,
-                clicksDisconnected = didClicksDisconnect
-            )
+            refreshSoftwareKeyboardModeForConnectedDevices()
         }
         pendingInputDeviceModeRefresh = refresh
         uiHandler.postDelayed(refresh, 120L)
     }
 
-    private fun refreshSoftwareKeyboardModeForConnectedDevices(
-        clicksConnectionChanged: Boolean,
-        clicksDisconnected: Boolean
-    ) {
+    private fun refreshSoftwareKeyboardModeForConnectedDevices() {
         val autoMode = SoftwareKeyboardAutoDetector.resolve(this)
         val previousAutoMode = lastObservedAutoSoftwareKeyboardMode
         lastObservedAutoSoftwareKeyboardMode = autoMode
@@ -589,18 +540,15 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         val transition = SoftwareKeyboardDeviceTransitionPolicy.plan(
             configuredMode = configuredMode,
             previousAutoMode = previousAutoMode,
-            autoMode = autoMode,
-            clicksConnectionChanged = clicksConnectionChanged,
-            clicksDisconnected = clicksDisconnected,
-            closeInputOnClicksDisconnect = SettingsManager.getClicksCloseInputOnDisconnect(this)
+            autoMode = autoMode
         ) ?: return
         if (transition.clearTemporaryOverride) {
             SoftwareKeyboardModeActions.clearTemporaryMode(this)
         }
         scheduleKeyboardSurfaceTransition(
             mode = transition.mode,
-            closeInput = transition.closeInput,
-            requireActiveTextField = SettingsManager.getClicksShowKeyboardOnlyWithTextFocus(this),
+            closeInput = false,
+            requireActiveTextField = false,
             delayMs = KEYBOARD_DEVICE_SURFACE_TRANSITION_DELAY_MS
         )
     }
@@ -730,9 +678,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
             keyCode == KEYCODE_SYM
     }
 
-    private fun isMinimalPhoneHardwareActive(): Boolean {
-        return DeviceSpecific.isMinimalPhoneDevice(physicalKeyboardProfileOverride)
-    }
 
     private fun openQuickLauncher(): Boolean = QuickLauncherOpener.open(this)
 
@@ -1633,7 +1578,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
 
     override fun onCreate() {
         super.onCreate()
-        ClicksAccessibilityKeyBridge.register(this)
         lastSystemLocalesSignature = resources.configuration.locales.toLanguageTags()
         prefs = getSharedPreferences("pastiera_prefs", Context.MODE_PRIVATE)
         clearAltOnSpaceEnabled = SettingsManager.getClearAltOnSpace(this)
@@ -2055,11 +1999,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
             }
         )
         inputManager = getSystemService(InputManager::class.java)
-        InputDevice.getDeviceIds().forEach { deviceId ->
-            InputDevice.getDevice(deviceId)
-                ?.takeIf(DeviceSpecific::isClicksPowerKeyboard)
-                ?.let { connectedClicksInputDeviceIds += deviceId }
-        }
         lastObservedAutoSoftwareKeyboardMode = SoftwareKeyboardAutoDetector.resolve(this)
         inputManager?.registerInputDeviceListener(inputDeviceListener, uiHandler)
         launcherShortcutController = LauncherShortcutController(this)
@@ -2674,18 +2613,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     override fun onDestroy() {
         if (::screenTrackpadController.isInitialized) screenTrackpadController.deactivate()
         keyboardBacklightManager.stop()
-        ClicksAccessibilityKeyBridge.unregister(this)
         accidentalKeyPressFilter.reset()
-        clicksPowerButtonEventMapper.reset()
         expansionAssetScope.cancel()
         super.onDestroy()
         pendingInputDeviceModeRefresh?.let { uiHandler.removeCallbacks(it) }
         pendingInputDeviceModeRefresh = null
         pendingKeyboardSurfaceTransition?.let { uiHandler.removeCallbacks(it) }
         pendingKeyboardSurfaceTransition = null
-        clicksConnectionChangePending = false
-        clicksDisconnectPending = false
-        connectedClicksInputDeviceIds.clear()
         inputManager?.unregisterInputDeviceListener(inputDeviceListener)
         inputManager = null
         stopClipboardCleanupTimer()
@@ -4047,63 +3981,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         )
     }
 
-    private fun remapHardwareEvent(keyCode: Int, event: KeyEvent?): ClicksPowerButtonEventMapper.Result {
-        val remapped = DeviceSpecific.remapHardwareKeyEvent(
-            keyCode,
-            event,
-            physicalKeyboardProfileOverride
-        )
-        val isClicksPowerKeyboard = !dispatchingClicksAccessibilityKeyEvent &&
-            (event
-                ?.takeIf { it.deviceId >= 0 }
-                ?.let { inputEvent ->
-                    inputEvent.deviceId in connectedClicksInputDeviceIds ||
-                        InputDevice.getDevice(inputEvent.deviceId)
-                            ?.let(DeviceSpecific::isClicksPowerKeyboard) == true
-                } == true)
-        return clicksPowerButtonEventMapper.map(
-            keyCode = remapped.keyCode,
-            event = remapped.event,
-            isClicksPowerKeyboard = isClicksPowerKeyboard,
-            clicksButtonMode = SettingsManager.getClicksButtonMode(this),
-            metaButtonMode = SettingsManager.getClicksMetaButtonMode(this),
-            altButtonMode = SettingsManager.getClicksAltButtonMode(this),
-            microphoneButtonMode = SettingsManager.getClicksMicrophoneButtonMode(this)
-        )
-    }
+    private fun remapHardwareEvent(keyCode: Int, event: KeyEvent?): DeviceSpecific.RemappedHardwareEvent =
+        DeviceSpecific.remapHardwareKeyEvent(keyCode, event, physicalKeyboardProfileOverride)
 
-    override fun dispatchClicksAccessibilityKeyEvent(event: KeyEvent): Boolean {
-        if (currentInputConnection == null || !inputContextState.isEditable) return false
 
-        val dispatch = {
-            dispatchingClicksAccessibilityKeyEvent = true
-            try {
-                when (event.action) {
-                    KeyEvent.ACTION_DOWN -> onKeyDown(event.keyCode, event)
-                    KeyEvent.ACTION_UP -> onKeyUp(event.keyCode, event)
-                }
-            } finally {
-                dispatchingClicksAccessibilityKeyEvent = false
-            }
-        }
-        if (Looper.myLooper() == Looper.getMainLooper()) {
-            dispatch()
-        } else {
-            uiHandler.post(dispatch)
-        }
-        return true
-    }
-
-    override fun dispatchClicksDirectAction(action: ClicksButtonDirectAction): Boolean {
-        if (action != ClicksButtonDirectAction.TOGGLE_EMOJI_PICKER ||
-            currentInputConnection == null || !inputContextState.isEditable
-        ) {
-            return false
-        }
-        val dispatch = { toggleEmojiPicker() }
-        if (Looper.myLooper() == Looper.getMainLooper()) dispatch() else uiHandler.post(dispatch)
-        return true
-    }
 
     private fun toggleEmojiPicker() {
         ensureInputViewCreated()
@@ -4112,7 +3993,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     }
 
     private data class AccidentalKeyInput(
-        val resolution: PhysicalKeyResolver.Resolution,
+        val isModifier: Boolean,
         val configuration: AccidentalKeyPressFilter.Configuration
     )
 
@@ -4123,49 +4004,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         val isPhysicalKeyboard = device != null &&
             !device.isVirtual &&
             device.sources and InputDevice.SOURCE_KEYBOARD == InputDevice.SOURCE_KEYBOARD
-        val isClicksPowerKeyboard = device?.let(DeviceSpecific::isClicksPowerKeyboard) == true
-        val resolved = physicalKeyResolver.resolve(
-                keyCode = keyCode,
-                event = event,
-                profile = ClicksPowerKeyboardLayout.takeIf { isClicksPowerKeyboard },
-                clicksState = if (isClicksPowerKeyboard) {
-                    ClicksPowerKeyboardController.currentState().keyboard
-                } else {
-                    null
-                }
-            )
-        val configuredButtonMode = if (isClicksPowerKeyboard) {
-            when (keyCode) {
-                KeyEvent.KEYCODE_TAB -> SettingsManager.getClicksButtonMode(this)
-                KeyEvent.KEYCODE_META_LEFT -> SettingsManager.getClicksMetaButtonMode(this)
-                KeyEvent.KEYCODE_F12 -> SettingsManager.getClicksAltButtonMode(this)
-                KeyEvent.KEYCODE_F11 -> SettingsManager.getClicksMicrophoneButtonMode(this)
-                else -> null
-            }
-        } else {
-            null
-        }
-        val isConfiguredModifier = when (configuredButtonMode) {
-            SettingsManager.ClicksPowerButtonMode.ALT,
-            SettingsManager.ClicksPowerButtonMode.SYM,
-            SettingsManager.ClicksPowerButtonMode.QUICK_LAUNCHER,
-            SettingsManager.ClicksPowerButtonMode.OPEN_PASTIERA,
-            SettingsManager.ClicksPowerButtonMode.TOGGLE_KEYBOARD_MODE,
-            SettingsManager.ClicksPowerButtonMode.TOGGLE_EMOJI_PICKER -> true
-            SettingsManager.ClicksPowerButtonMode.TAB -> false
-            SettingsManager.ClicksPowerButtonMode.NATIVE,
-            null -> resolved.isModifier
-        }
         return AccidentalKeyInput(
-            resolution = resolved.copy(isModifier = isConfiguredModifier),
+            isModifier = AccidentalKeyPressFilter.isModifierKey(keyCode),
             configuration = AccidentalKeyPressPolicy.configuration(
                 isPhysicalKeyboard = isPhysicalKeyboard,
-                isClicksPowerKeyboard = isClicksPowerKeyboard,
-                globalOverlapEnabled = SettingsManager.getOverlappingKeysEnabled(this),
-                clicksOverlapMode = SettingsManager.getClicksOverlappingKeysMode(this),
-                clicksNumberRowMode = SettingsManager.getClicksNumberRowInputMode(this),
-                clicksNumberRowRepeatEnabled = SettingsManager.isClicksNumberRowRepeatEnabled(this),
-                longPressThresholdMs = SettingsManager.getLongPressThreshold(this)
+                globalOverlapEnabled = SettingsManager.getOverlappingKeysEnabled(this)
             )
         )
     }
@@ -4192,38 +4035,18 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         }
     }
 
-    private fun replayProtectedNumberKey(
-        keyCode: Int,
-        replay: AccidentalKeyPressFilter.KeyUpResult.ReplayTap
-    ) {
-        replayingProtectedNumberKey = true
-        try {
-            val downHandled = onKeyDown(keyCode, replay.downEvent)
-            if (downHandled) {
-                onKeyUp(keyCode, replay.upEvent)
-            } else {
-                currentInputConnection?.let { inputConnection ->
-                    inputConnection.sendKeyEvent(replay.downEvent)
-                    inputConnection.sendKeyEvent(replay.upEvent)
-                }
-            }
-        } finally {
-            replayingProtectedNumberKey = false
-        }
-    }
 
     override fun onKeyLongPress(keyCode_: Int, event_: KeyEvent?): Boolean {
-        if (!replayingProtectedNumberKey) {
+        run {
             val accidentalInput = accidentalKeyInput(keyCode_, event_)
             accidentalKeyPressFilter.shouldConsumeKeyDown(
                 keyCode = keyCode_,
                 event = event_,
-                resolution = accidentalInput.resolution,
+                isModifier = accidentalInput.isModifier,
                 configuration = accidentalInput.configuration
             )?.let { return true }
         }
         val remapped = remapHardwareEvent(keyCode_, event_)
-        if (remapped.consume) return true
         val keyCode = remapped.keyCode
         val event = remapped.event
         // Handle long press even when the keyboard is hidden but we still have a valid InputConnection.
@@ -4252,12 +4075,12 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     override fun onKeyDown(keyCode_: Int, event_: KeyEvent?): Boolean {
         val perfStart = ImePerfLogger.mark()
         try {
-        if (!replayingProtectedNumberKey && !screenTrackpadReplaying) {
+        if (!screenTrackpadReplaying) {
             val accidentalInput = accidentalKeyInput(keyCode_, event_)
             accidentalKeyPressFilter.shouldConsumeKeyDown(
                 keyCode = keyCode_,
                 event = event_,
-                resolution = accidentalInput.resolution,
+                isModifier = accidentalInput.isModifier,
                 configuration = accidentalInput.configuration
             )?.let { suppressed ->
                 notifyDebugKeyEvent(
@@ -4271,10 +4094,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
             }
         }
         val remapped = remapHardwareEvent(keyCode_, event_)
-        if (remapped.consume) {
-            remapped.directAction?.let { ClicksButtonDirectActionExecutor.execute(this, it) }
-            return true
-        }
         val keyCode = remapped.keyCode
         val event = remapped.event
         if (!screenTrackpadReplaying) {
@@ -4442,7 +4261,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         val altActiveForDedicatedKeys = event?.isAltPressed == true || altLatchActive || altOneShot
         if (
             hasEditableField &&
-            isMinimalPhoneHardwareActive() &&
             keyCode == KEYCODE_EM &&
             event?.repeatCount == 0 &&
             !altActiveForDedicatedKeys
@@ -4459,7 +4277,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         }
         if (
             hasEditableField &&
-            isMinimalPhoneHardwareActive() &&
             keyCode == KEYCODE_MIC &&
             event?.repeatCount == 0 &&
             !altActiveForDedicatedKeys
@@ -4975,7 +4792,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     }
 
     override fun onKeyUp(keyCode_: Int, event_: KeyEvent?): Boolean {
-        if (!replayingProtectedNumberKey && !screenTrackpadReplaying) {
+        if (!screenTrackpadReplaying) {
             when (val result = accidentalKeyPressFilter.onKeyUp(keyCode_, event_)) {
                 is AccidentalKeyPressFilter.KeyUpResult.Suppressed -> {
                     notifyDebugKeyEvent(
@@ -4987,15 +4804,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
                     )
                     return true
                 }
-                is AccidentalKeyPressFilter.KeyUpResult.ReplayTap -> {
-                    replayProtectedNumberKey(keyCode_, result)
-                    return true
-                }
                 null -> Unit
             }
         }
         val remapped = remapHardwareEvent(keyCode_, event_)
-        if (remapped.consume) return true
         val keyCode = remapped.keyCode
         val event = remapped.event
         if (keyCode == KeyEvent.KEYCODE_ENTER && consumeAltEnterUntilKeyUp) {

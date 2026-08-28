@@ -82,15 +82,8 @@ fun ModifierSettingsScreen(
         "first" to stringResource(R.string.alt_binding_first_key_layer),
         "emoji" to stringResource(R.string.sym_cycle_emoji_layer),
         "symbols" to stringResource(R.string.sym_cycle_symbols_layer),
-        "device:key2" to stringResource(R.string.keyboard_profile_option_key2),
-        "device:Q25" to stringResource(R.string.keyboard_profile_option_q25),
-        "device:titan" to stringResource(R.string.keyboard_profile_option_titan),
         "device:titan2" to stringResource(R.string.keyboard_profile_option_titan2),
-        "device:titan2elite_qwerty" to stringResource(R.string.keyboard_profile_option_titan2elite_qwerty),
-        "device:mp01" to stringResource(R.string.keyboard_profile_option_mp01),
-        "device:clicks_razr" to stringResource(R.string.keyboard_profile_option_clicks_razr),
-        "device:clicks_pixel" to stringResource(R.string.keyboard_profile_option_clicks_pixel),
-        "device:clicks_power" to stringResource(R.string.clicks_power_keyboard_title)
+        "device:titan2elite_qwerty" to stringResource(R.string.keyboard_profile_option_titan2elite_qwerty)
     )
 
     BackHandler { onBack() }

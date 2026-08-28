@@ -579,8 +579,6 @@
     <string name="keyboard_profile_override_auto_description">Auto detect from device fingerprint (current: %1$s).</string>
     <string name="keyboard_profile_override_manual_description">Manual override for device-specific key mappings.</string>
     <string name="keyboard_profile_option_auto">Auto</string>
-    <string name="keyboard_profile_option_key2">BlackBerry Key2</string>
-    <string name="keyboard_profile_option_q25">BlackBerry Q25</string>
     <string name="keyboard_profile_option_titan2">Unihertz Titan 2</string>
     <string name="emoji_picker_search_label">Search</string>
     <string name="emoji_picker_search_placeholder">Search emoji...</string>
@@ -644,7 +642,6 @@
     <string name="toast_on_layout_switch_title">Toast khi chuyển bố cục</string>
     <string name="toast_on_layout_switch_description">Hiển thị toast khi chuyển ngôn ngữ/bố cục.</string>
     <string name="keyboard_profile_option_titan2elite_qwerty">Titan 2 Elite (QWERTY)</string>
-    <string name="keyboard_profile_option_mp01">Minimal Phone (MP01)</string>
     <string name="keyboard_currency_symbol_title">Ký hiệu tiền tệ</string>
     <string name="keyboard_currency_symbol_description">Ký hiệu được chèn bởi các phím tiền tệ phần cứng chuyên dụng.</string>
     <string name="starter_launcher_shortcuts_title">Pastiera-QuickLauncher</string>

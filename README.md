@@ -129,7 +129,9 @@ Full change notes (per GPLv3 §5(a)) are in [PHYSIBOARD_CHANGES.md](PHYSIBOARD_C
 ## Requirements
 
 - Android 11 (API 30) or higher.
-- A device with a physical keyboard (profiled on the Unihertz Titan 2 Elite; adaptable via JSON). The always-on backlight is Titan 2 Elite-specific; the screen trackpad and everything else work on any hardware-keyboard Android phone.
+- **A Unihertz Titan 2 Elite.** That is the phone PhysiBoard is built for, tested on, and supported on.
+- **A plain Titan 2 will probably work, but is untested and unsupported.** It shares the Elite's keyboard and scancodes, so most things should behave — but nothing here has been verified against that hardware, and bugs specific to it may not be fixable. The app says so once, on first run.
+- No other device is supported. Support for the BlackBerry KEY2 and Q25, the Titan Pocket, Slim and original Titan, the Minimal Phone, and the Clicks keyboards was removed in 2.0.
 
 ## Development
 

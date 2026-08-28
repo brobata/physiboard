@@ -49,15 +49,8 @@ import it.palsoftware.pastiera.inputmethod.DeviceSpecific
 
 private val hardwareKeyboardProfiles = listOf(
     "auto" to R.string.keyboard_profile_option_auto,
-    "key2" to R.string.keyboard_profile_option_key2,
-    "Q25" to R.string.keyboard_profile_option_q25,
-    "titan" to R.string.keyboard_profile_option_titan,
     "titan2" to R.string.keyboard_profile_option_titan2,
-    "titan2elite_qwerty" to R.string.keyboard_profile_option_titan2elite_qwerty,
-    "mp01" to R.string.keyboard_profile_option_mp01,
-    "clicks_razr" to R.string.keyboard_profile_option_clicks_razr,
-    "clicks_pixel" to R.string.keyboard_profile_option_clicks_pixel,
-    "clicks_power" to R.string.keyboard_profile_option_clicks_power_converted
+    "titan2elite_qwerty" to R.string.keyboard_profile_option_titan2elite_qwerty
 )
 
 @Composable

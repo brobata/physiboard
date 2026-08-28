@@ -469,8 +469,6 @@
     <string name="keyboard_profile_override_auto_description">Auto detect from device fingerprint (current: %1$s).</string>
     <string name="keyboard_profile_override_manual_description">Manual override for device-specific key mappings.</string>
     <string name="keyboard_profile_option_auto">Auto</string>
-    <string name="keyboard_profile_option_key2">BlackBerry Key2</string>
-    <string name="keyboard_profile_option_q25">BlackBerry Q25</string>
     <string name="keyboard_profile_option_titan2">Unihertz Titan 2</string>
     <string name="about_github">GitHub</string>
     <string name="about_build_info">Pastiera IME - Palsoftware 2026</string>
@@ -644,7 +642,6 @@
     <string name="toast_on_layout_switch_title">Toast դասավորությունը փոխելիս</string>
     <string name="toast_on_layout_switch_description">Ցույց տալ toast լեզուն/դասավորությունը փոխելիս։</string>
     <string name="keyboard_profile_option_titan2elite_qwerty">Titan 2 Elite (QWERTY)</string>
-    <string name="keyboard_profile_option_mp01">Minimal Phone (MP01)</string>
     <string name="keyboard_currency_symbol_title">Արժույթի նշան</string>
     <string name="keyboard_currency_symbol_description">Նշան, որը մուտքագրվում է արժույթի հատուկ ապարատային ստեղներով։</string>
     <string name="starter_launcher_shortcuts_title">Pastiera-QuickLauncher</string>

@@ -19,9 +19,6 @@
     <!-- Internet permission (required for the update check) -->
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <!-- Reads Clicks Power Keyboard information over BLE GATT -->
-    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
-    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 
     <!-- Permission to show overlay windows (screen trackpad) -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
@@ -207,18 +204,6 @@
             android:excludeFromRecents="true"
             android:theme="@style/Theme.Pastiera.Ring" />
 
-        <service
-            android:name=".inputmethod.ClicksLauncherButtonAccessibilityService"
-            android:exported="true"
-            android:label="@string/clicks_launcher_interception_service_label"
-            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
-            <intent-filter>
-                <action android:name="android.accessibilityservice.AccessibilityService" />
-            </intent-filter>
-            <meta-data
-                android:name="android.accessibilityservice"
-                android:resource="@xml/clicks_launcher_button_accessibility_service" />
-        </service>
 
         <!-- Helper activity for speech recognition -->
         <activity
