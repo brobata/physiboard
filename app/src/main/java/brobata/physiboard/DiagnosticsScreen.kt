@@ -769,7 +769,7 @@ private fun buildKeyboardDebugReport(
         .joinToString("\n") { (key, value) -> "$key=${flattenPreferenceValue(value)}" }
 
     val header = buildString {
-        appendLine("=== Pastiera Keyboard Debug Export ===")
+        appendLine("=== PhysiBoard Debug Export ===")
         appendLine("exported_at=${formatDebugTimestamp(nowMs)}")
         appendLine("timezone_id=${tz.id}")
         appendLine("timezone_offset=${tz.getOffset(nowMs) / 1000}s")

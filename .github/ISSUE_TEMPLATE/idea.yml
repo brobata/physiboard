@@ -1,0 +1,20 @@
+name: Feature or change request
+description: Something PhysiBoard should do, or should do differently.
+labels: ["idea"]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What should it do?
+      description: What you want, and what you are trying to get done with it.
+      placeholder: |
+        I want to ...
+        so that I can ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: today
+    attributes:
+      label: How do you handle it today?
+      description: Optional. What you do now, and why it is not good enough.

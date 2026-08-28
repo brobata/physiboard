@@ -33,8 +33,8 @@ jobs:
         run: |
           if grep -rn --binary-files=without-match \
                -e 'it\.palsoftware' -e 'pastiera_prefs' \
-               app/src/main app/build.gradle.kts app/*.pro \
-               | grep -v 'SettingsMigration.kt' ; then
+               app/src/main app/build.gradle.kts app/*.pro .github \
+               | grep -vE 'SettingsMigration.kt|workflows/ci.yml' ; then
             echo "::error::Upstream identifiers found outside the attribution files."
             exit 1
           fi

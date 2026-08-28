@@ -1,0 +1,56 @@
+name: Bug report
+description: Something in PhysiBoard does not work the way it should.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Only the first two boxes are required — fill in what you know.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened
+      description: What you did, and what the keyboard did instead.
+      placeholder: |
+        I pressed ...
+        I expected ...
+        Instead ...
+    validations:
+      required: true
+
+  - type: input
+    id: app_version
+    attributes:
+      label: PhysiBoard version
+      description: Settings → About, or the version on the release you installed.
+      placeholder: "2.0.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: device
+    attributes:
+      label: Phone
+      options:
+        - Unihertz Titan 2 Elite
+        - Unihertz Titan 2 (untested/unsupported)
+        - Something else
+    validations:
+      required: true
+
+  - type: input
+    id: app_where
+    attributes:
+      label: Which app were you typing in?
+      description: Some problems only happen in particular apps.
+      placeholder: "Messages, WhatsApp, a terminal, the launcher search box…"
+
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: |
+        Optional but very helpful. In PhysiBoard: **Settings → Advanced → Diagnostics → copy**, then paste here.
+        It contains your app version, phone model and firmware — no message content and no personal data.
+      render: text

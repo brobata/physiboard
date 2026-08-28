@@ -1700,4 +1700,6 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="device_setup_open_pairing">Open Wireless debugging</string>
     <string name="device_setup_dnd_on">Do Not Disturb is on and may hide the pairing code. Turn it off until you are paired.</string>
     <string name="device_setup_needs_notifications">Allow PhysiBoard notifications first — the pairing code arrives as one.</string>
+    <string name="report_problem_title">Report a problem</string>
+    <string name="report_problem_description">Opens a bug report with your version, phone and firmware already filled in. You write what happened.</string>
 </resources>

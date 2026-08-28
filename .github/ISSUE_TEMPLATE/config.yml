@@ -1,5 +1,8 @@
 blank_issues_enabled: true
 contact_links:
-  - name: Pastiera discussions
-    url: https://github.com/palsoftware/pastiera/discussions
-    about: Use discussions for open-ended questions, ideas, and community feedback.
+  - name: Not on GitHub? Email instead
+    url: mailto:j.levy@brobata.com
+    about: Bugs and ideas are welcome by email if you would rather not open an account.
+  - name: r/unihertz
+    url: https://www.reddit.com/r/unihertz/
+    about: Open-ended questions and chat about the Titan 2 Elite.

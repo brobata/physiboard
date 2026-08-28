@@ -6,6 +6,8 @@
 
 **A keyboard and a toolbox for the Unihertz Titan 2 Elite.**
 
+**Found a bug, or want something changed?** [Open an issue](https://github.com/brobata/physiboard/issues/new/choose). In the app, **About → Report a problem** fills in your version, phone and firmware for you. Not on GitHub? <j.levy@brobata.com>.
+
 PhysiBoard started as an input method for physical-keyboard Android devices, and it still is one — shortcuts, gestures, dictation, layouts. But an input method is always running, starts at boot, and can hold a paired ADB session, which turns out to be the only practical way to reach the things Unihertz locks away on this phone. So it also does those.
 
 **As a keyboard:** hold-Fn dictation, a screen-wide trackpad, SYM pages, layouts, autocorrection, clipboard history.

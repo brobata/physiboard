@@ -7,6 +7,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.gestures.detectTapGestures
+import android.os.Build
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -126,6 +128,10 @@ fun AboutScreen(
                     )
                 }
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            ReportProblemRow()
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -790,5 +796,77 @@ private fun openUrl(context: android.content.Context, url: String) {
         context.startActivity(intent)
     } catch (e: Exception) {
         android.util.Log.e("AboutScreen", "Error opening URL: $url", e)
+    }
+}
+
+/**
+ * Opens a GitHub issue with the version, phone and firmware already filled in.
+ *
+ * Reports arrive vague because the reporter has to go and find all of that, and none of it is
+ * where they are standing. The app knows it, so the app supplies it, and what is left to write is
+ * the only part a person can actually answer: what happened.
+ */
+@Composable
+private fun ReportProblemRow() {
+    val context = LocalContext.current
+    Surface(
+        modifier = Modifier.fillMaxWidth().clickable { openBugReport(context) },
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = MaterialTheme.shapes.medium
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.BugReport,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.report_problem_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = stringResource(R.string.report_problem_description),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+private fun openBugReport(context: android.content.Context) {
+    val device = when {
+        DeviceSpecific.isTitan2EliteDevice() -> "Unihertz Titan 2 Elite"
+        DeviceSpecific.isUntestedTitanDevice() -> "Unihertz Titan 2 (untested/unsupported)"
+        else -> "Something else"
+    }
+    val diagnostics = buildString {
+        appendLine("android=${Build.VERSION.RELEASE} (sdk ${Build.VERSION.SDK_INT})")
+        appendLine("build=${Build.DISPLAY}")
+        appendLine("model=${Build.MANUFACTURER} ${Build.MODEL}")
+    }
+    val url = Uri.parse("https://github.com/${BuildConfig.GITHUB_REPO}/issues/new")
+        .buildUpon()
+        .appendQueryParameter("template", "bug.yml")
+        .appendQueryParameter("app_version", BuildConfig.VERSION_NAME)
+        .appendQueryParameter("device", device)
+        .appendQueryParameter("diagnostics", diagnostics)
+        .build()
+    runCatching {
+        context.startActivity(
+            Intent(Intent.ACTION_VIEW, url).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
     }
 }
