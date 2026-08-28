@@ -787,7 +787,6 @@ private fun buildKeyboardDebugReport(
         appendLine("version_name=${BuildConfig.VERSION_NAME}")
         appendLine("version_code=${BuildConfig.VERSION_CODE}")
         appendLine("build_type=${BuildConfig.BUILD_TYPE}")
-        appendLine("flavor=${BuildConfig.FLAVOR}")
         appendLine("release_channel=${BuildConfig.RELEASE_CHANNEL}")
         appendLine()
         appendLine("[device]")

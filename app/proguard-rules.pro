@@ -12,14 +12,7 @@
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
 
-# Remove logging in release builds (removes Log.d, Log.v, Log.i calls)
--assumenosideeffects class android.util.Log {
-    public static boolean isLoggable(java.lang.String, int);
-    public static int v(...);
-    public static int i(...);
-    public static int d(...);
-    public static int w(...);
-}
+# Log stripping lives in proguard-rules-strip-logs.pro so the test build type can keep logs.
 
 # Keep org.json classes (though they're in Android SDK, better safe than sorry)
 -keep class org.json.** { *; }

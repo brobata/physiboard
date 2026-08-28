@@ -44,18 +44,18 @@ fun shouldValidateNightlySigning(taskNames: List<String>): Boolean {
         return true
     }
     val signingTaskHints = listOf(
-        "assembleNightlyRelease",
-        "bundleNightlyRelease",
-        "packageNightlyRelease",
-        "publishNightlyRelease",
-        "installNightlyRelease"
+        "assembleRelease",
+        "bundleRelease",
+        "packageRelease",
+        "publishRelease",
+        "installRelease"
     )
     return taskNames.any { task ->
         signingTaskHints.any { hint -> task.contains(hint, ignoreCase = true) }
     }
 }
 
-fun shouldValidateStableSigning(taskNames: List<String>): Boolean {
+fun shouldValidateReleaseSigning(taskNames: List<String>): Boolean {
     if (taskNames.isEmpty()) {
         return true
     }
@@ -84,7 +84,13 @@ android {
     val isFdroidBuild = gradleBooleanProperty("PASTIERA_FDROID_BUILD")
 
     defaultConfig {
-        applicationId = "it.palsoftware.pastiera"
+        applicationId = "brobata.physiboard"
+        manifestPlaceholders["appLabel"] = "PhysiBoard"
+        manifestPlaceholders["imeLabel"] = "PhysiBoard"
+        buildConfigField("String", "RELEASE_CHANNEL", "\"physi\"")
+        buildConfigField("String", "GITHUB_REPO", "\"brobata/physiboard\"")
+        buildConfigField("boolean", "IS_FDROID_BUILD", "false")
+        buildConfigField("boolean", "ENABLE_GITHUB_UPDATE_CHECKS", "true")
         minSdk = 29
         targetSdk = 36
         versionCode = ciVersionCode ?: defaultVersionCode
@@ -109,73 +115,17 @@ android {
                 keyPassword = keyPass
             }
         }
-        create("nightly") {
-            val storePath = signingProp("nightlyStoreFile", "PASTIERA_NIGHTLY_KEYSTORE_PATH")
-            val storePass = signingProp("nightlyStorePassword", "PASTIERA_NIGHTLY_KEYSTORE_PASSWORD")
-            val alias = signingProp("nightlyKeyAlias", "PASTIERA_NIGHTLY_KEY_ALIAS")
-            val keyPass = signingProp("nightlyKeyPassword", "PASTIERA_NIGHTLY_KEY_PASSWORD")
-
-            if (hasSigningConfig(storePath, storePass, alias, keyPass)) {
-                val resolvedStoreFile = resolveSigningStoreFile(storePath!!)
-                storeFile = resolvedStoreFile
-                storePassword = storePass
-                keyAlias = alias
-                keyPassword = keyPass
-            }
-        }
-    }
-
-    flavorDimensions += "channel"
-
-    productFlavors {
-        create("stable") {
-            dimension = "channel"
-            manifestPlaceholders["appLabel"] = "Pastiera"
-            manifestPlaceholders["imeLabel"] = "Pastiera"
-            buildConfigField("String", "RELEASE_CHANNEL", "\"stable\"")
-            buildConfigField("String", "GITHUB_REPO", "\"palsoftware/pastiera\"")
-            buildConfigField("boolean", "IS_FDROID_BUILD", if (isFdroidBuild) "true" else "false")
-            buildConfigField("boolean", "ENABLE_GITHUB_UPDATE_CHECKS", if (isFdroidBuild) "false" else "true")
-        }
-        create("physi") {
-            dimension = "channel"
-            applicationId = "brobata.physiboard"
-            manifestPlaceholders["appLabel"] = "PhysiBoard"
-            manifestPlaceholders["imeLabel"] = "PhysiBoard"
-            buildConfigField("String", "RELEASE_CHANNEL", "\"physi\"")
-            buildConfigField("String", "GITHUB_REPO", "\"brobata/physiboard\"")
-            buildConfigField("boolean", "IS_FDROID_BUILD", "false")
-            buildConfigField("boolean", "ENABLE_GITHUB_UPDATE_CHECKS", "true")
-        }
-        create("nightly") {
-            dimension = "channel"
-            applicationIdSuffix = ".nightly"
-            if (nightlyVersionCode != null) {
-                versionCode = nightlyVersionCode
-            }
-            versionNameSuffix = nightlyVersionNameSuffix
-            manifestPlaceholders["appLabel"] = "Pastiera Nightly"
-            manifestPlaceholders["imeLabel"] = "Pastiera Nightly"
-            buildConfigField("String", "RELEASE_CHANNEL", "\"nightly\"")
-            buildConfigField("String", "GITHUB_REPO", "\"palsoftware/pastiera\"")
-            buildConfigField("boolean", "IS_FDROID_BUILD", if (isFdroidBuild) "true" else "false")
-            buildConfigField("boolean", "ENABLE_GITHUB_UPDATE_CHECKS", if (isFdroidBuild) "false" else "true")
-            val storePath = signingProp("nightlyStoreFile", "PASTIERA_NIGHTLY_KEYSTORE_PATH")
-            val storePass = signingProp("nightlyStorePassword", "PASTIERA_NIGHTLY_KEYSTORE_PASSWORD")
-            val alias = signingProp("nightlyKeyAlias", "PASTIERA_NIGHTLY_KEY_ALIAS")
-            val keyPass = signingProp("nightlyKeyPassword", "PASTIERA_NIGHTLY_KEY_PASSWORD")
-            if (hasSigningConfig(storePath, storePass, alias, keyPass)) {
-                signingConfig = signingConfigs.getByName("nightly")
-            }
-        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+            setProguardFiles(
+                listOf(
+                    getDefaultProguardFile("proguard-android-optimize.txt"),
+                    "proguard-rules.pro",
+                    "proguard-rules-strip-logs.pro"
+                )
             )
             // Only use signing config if it's properly configured
             val storePath = signingProp("storeFile", "PASTIERA_KEYSTORE_PATH")
@@ -189,13 +139,31 @@ android {
             // Disable lint for release to avoid file lock issues
             isDebuggable = false
         }
+
+        // Side-by-side build for testing on the real phone (AGP forbids a build type
+        // named 'test'): same R8 pipeline as release so it
+        // catches ProGuard breakage, but with logging kept and its own applicationId so it can
+        // never touch the daily driver's data or its IME registration.
+        create("sideload") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".sideload"
+            manifestPlaceholders["appLabel"] = "PhysiBoard (sideload)"
+            manifestPlaceholders["imeLabel"] = "PhysiBoard (sideload)"
+            setProguardFiles(
+                listOf(
+                    getDefaultProguardFile("proguard-android-optimize.txt"),
+                    "proguard-rules.pro"
+                )
+            )
+            matchingFallbacks += listOf("release")
+        }
     }
     
     // Validate signing config only when building release
     tasks.whenTaskAdded {
-        if (!isFdroidBuild && name.equals("preStableReleaseBuild", ignoreCase = true)) {
+        if (!isFdroidBuild && name.equals("preReleaseBuild", ignoreCase = true)) {
             doFirst {
-                if (!shouldValidateStableSigning(gradle.startParameter.taskNames)) {
+                if (!shouldValidateReleaseSigning(gradle.startParameter.taskNames)) {
                     logger.lifecycle("Skipping stable signing validation for non-packaging task(s): ${gradle.startParameter.taskNames}")
                     return@doFirst
                 }

@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <color name="physi_ic_background">#1E293B</color>
-    <color name="physi_ic_bg_light">#FFFFFF</color>
-    <!-- PhysiBoard Terminal: Ink adaptive-icon background -->
-    <color name="physi_ic_bg_ink">#0F172A</color>
-</resources>
