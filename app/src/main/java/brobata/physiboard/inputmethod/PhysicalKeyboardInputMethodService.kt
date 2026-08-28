@@ -87,6 +87,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         private const val KEYBOARD_SURFACE_TRANSITION_DELAY_MS = 32L
         /** Enough to cover an editor that is slow to wire up, few enough to give up on one that never will. */
         private const val MAX_CURSOR_UPDATE_ATTEMPTS = 8
+        private val CURSOR_UPDATE_RETRY_DELAYS_MS = longArrayOf(80L, 250L, 600L, 1200L)
         private const val KEYBOARD_DEVICE_SURFACE_TRANSITION_DELAY_MS = 250L
         private const val MODIFIER_ICON_OFF = 0
         private const val MODIFIER_ICON_ACTIVE = 1
@@ -2832,7 +2833,28 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         val accepted = inputConnection.requestCursorUpdates(flags)
         cursorUpdatesAccepted = accepted || flags == 0
         cursorUpdateAttempts++
-        Log.d(TAG, "requestCursorUpdates(flags=$flags) accepted=$accepted attempt=$cursorUpdateAttempts pkg=$currentPackageName")
+        Log.d(TAG, "requestCursorUpdates flags=$flags accepted=$accepted attempt=$cursorUpdateAttempts pkg=$currentPackageName")
+    }
+
+    /**
+     * Starts asking a newly connected editor for cursor updates.
+     *
+     * Hooked from onStartInput rather than onStartInputView: with a hardware keyboard the IME
+     * frequently never creates an input view at all, so onStartInputView does not fire and a field
+     * focused in, say, Messages was never asked for its caret position.
+     *
+     * Editors are not always ready to answer immediately and some refuse the first request outright,
+     * so a few attempts are staged over the first second rather than relying on the user pressing a
+     * key to drive a retry - the first Shift of a field would otherwise be spent establishing this.
+     */
+    private fun beginCursorAnchorMonitoring() {
+        caretBadgeController.onEditorGone()
+        cursorUpdatesAccepted = false
+        cursorUpdateAttempts = 0
+        syncCursorAnchorMonitoring()
+        for (delay in CURSOR_UPDATE_RETRY_DELAYS_MS) {
+            uiHandler.postDelayed({ retryCursorAnchorMonitoringIfNeeded() }, delay)
+        }
     }
 
     /**
@@ -3209,6 +3231,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
 
     override fun onStartInput(info: EditorInfo?, restarting: Boolean) {
         super.onStartInput(info, restarting)
+        beginCursorAnchorMonitoring()
         if (::textExpansionController.isInitialized) textExpansionController.clear()
         if (!restarting) {
             // A manual Shift-off suppresses auto-cap only for the current field session.
@@ -3303,12 +3326,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // requestCursorUpdates is scoped to one InputConnection, so every new editor drops it and
         // it has to be asked for again. Without this the caret badge worked in the first field of a
         // session and nowhere after it.
-        caretBadgeController.onEditorGone()
-        cursorUpdatesAccepted = false
-        cursorUpdateAttempts = 0
-        syncCursorAnchorMonitoring()
-        // Editors that are not ready to answer at this point often are a beat later.
-        uiHandler.postDelayed({ retryCursorAnchorMonitoringIfNeeded() }, 250L)
+        beginCursorAnchorMonitoring()
         if (::textExpansionController.isInitialized) textExpansionController.clear()
         updateDebugImeContextSnapshot(info)
         attachTrackpadDecorViewMotionHook("onStartInputView")
