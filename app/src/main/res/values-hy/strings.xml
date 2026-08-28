@@ -226,7 +226,6 @@
     <string name="unicode_category_arrows">Սլաքներ</string>
     <string name="unicode_category_misc">Այլ</string>
     <string name="unicode_category_variations">Տարբերակներ</string>
-    <string name="variation_customize_title">Փոփոխել տարբերակները</string>
     <string name="variation_instructions_title">Հրահանգներ</string>
     <string name="variation_instructions_description">Հպեք տարբերակի վանդակին՝ սիմվոլ ընտրելու համար։ Յուրաքանչյուր տառ կարող է ունենալ մինչև 7 տարբերակի սիմվոլներ:</string>
     <string name="variation_picker_title">Ընտրել տարբերակ %1$s-ի համար</string>
@@ -303,9 +302,6 @@
     <string name="nav_mode_action_select_all">Ընտր. բոլորը</string>
     <string name="nav_mode_action_expand_selection_left">←Ընտր</string>
     <string name="nav_mode_action_expand_selection_right">→Ընտր</string>
-    <string name="nav_mode_action_toggle_pastierina">Pastierina</string>
-    <string name="pastierina_mode_title">Pastierina ռեժիմ</string>
-    <string name="pastierina_mode_description">Փոխարկել նվազագույն UI</string>
     <string name="backup_now">Ստեղծել պահուստային պատճեն</string>
     <string name="backup_now_description">Արտահանել բոլոր կարգավորումները ZIP ֆայլում</string>
     <string name="restore_from_file">Վերականգնել ֆայլից</string>
@@ -405,7 +401,6 @@
     <string name="status_bar_button_clipboard_state_empty">Դատարկ</string>
     <string name="status_bar_button_clipboard_state_items">%1$d տարր</string>
     <string name="sym_key_content_description">%1$s, %2$s</string>
-    <string name="status_bar_button_minimal_ui_description">Փոխարկել ստեղնաշարի կոմպակտ միջերեսը</string>
     <string name="status_bar_buttons_reset">Վերակայել</string>
     <string name="layout_import_from_file">Ներմուծել ֆայլից</string>
     <string name="layout_download_from_cloud">Ներբեռնել պահոցից</string>
@@ -448,7 +443,6 @@
     <string name="backspace_at_start_delete_title">Backspace տողի սկզբում</string>
     <string name="delete_alternatives_hint">Հուշում․ Ctrl + ստեղնը կարելի է կարգավորել Nav Mode-ի կարգավորումներում</string>
     <string name="static_variation_bar_mode_title">Static Variation Bar</string>
-    <string name="static_variation_bar_mode_description">Always show a fixed set of utility keys in the variation row instead of context-based variations.</string>
     <string name="keyboard_title">Pastiera Keyboard</string>
     <string name="ignore_back_short">Ignore BACK</string>
     <string name="long_press_mappings_line1">Q→0, W→1, E→2, R→3, T→(, Y→), U→-, I→_, O→\', P→:</string>
@@ -522,7 +516,6 @@
     <string name="tutorial_page_nav_mode_description">Nav Mode lets you navigate the device UI with letter shortcuts such as IJKL or ESDF.\nTo activate:\n• Press Ctrl twice quickly\n• Letter keys become navigation controls\n• Press Ctrl again to exit\nEvery shortcut can be remapped in Advanced Settings.</string>
     <string name="tutorial_nav_mode_bullet_selection">Ընտրության գործողությունները կարող են ընդլայնել նշված տեքստը ձախ, աջ կամ բառ առ բառ։</string>
     <string name="tutorial_nav_mode_bullet_words">Բառային գործողությունները տեքստային դաշտերում կուրսորը արագ տեղափոխում են ամբողջական բառերով։</string>
-    <string name="tutorial_nav_mode_bullet_media">Քարտեզագրումները կարող են նաև գործարկել app shortcut-ներ, media control-ներ, Escape, Tab, Page Up/Down և Pastierina։</string>
     <string name="tutorial_quick_launcher_title">QuickLauncher</string>
     <string name="tutorial_quick_launcher_description">Բացեք հավելվածներ ստեղնաշարից՝ չլքելով մուտքագրման հոսքը։</string>
     <string name="tutorial_quick_launcher_bullet_sym_space">Պահեք SYM-ը և սեղմեք Space՝ QuickLauncher-ը ցանկացած տեղից բացելու համար։</string>
@@ -599,7 +592,6 @@
     <string name="tutorial_page_software_keyboard_title">Ստեղնաշարի ռեժիմ</string>
     <string name="tutorial_page_software_keyboard_description">Ընտրեք, թե Pastiera-ն այստեղ որ ստեղնաշարի մակերեսը օգտագործի։</string>
     <string name="software_keyboard_mode_title">Ստեղնաշարի ռեժիմ</string>
-    <string name="software_keyboard_mode_description">Անկախ է Pastierina-ից։ Կառավարում է ապարատային կամ վիրտուալ ստեղնաշարը։</string>
     <string name="software_keyboard_mode_auto_current">Ավտո (այժմ՝ %1$s)</string>
     <string name="software_keyboard_mode_always_virtual">Միշտ վիրտուալ ստեղնաշար</string>
     <string name="software_keyboard_mode_always_hardware">Միշտ ապարատային ստեղնաշար</string>
@@ -843,13 +835,6 @@ Nav Mode-ը օգտագործում է ստեղնի ֆիզիկական դիրքը
     <string name="status_bar_button_undo_description">Ուղարկել Ctrl+Z</string>
     <string name="status_bar_button_redo">Կրկնել</string>
     <string name="status_bar_button_redo_description">Ուղարկել Ctrl+Y</string>
-    <string name="status_bar_variations_visible_title">Ցույց տալ տարբերակները</string>
-    <string name="status_bar_variations_visible_description">Ցույց տալ կազմաձևված տարբերակների շարքը կարգավիճակի գոտու կոճակների միջև։ Անջատված լինելու դեպքում կոճակները օգտագործում են ամբողջ գոտին, իսկ կուրսորի swipe կառավարումը շարունակում է աշխատել։</string>
-    <string name="status_bar_swipe_cursor_info">Սահեցրեք կարգավիճակի գոտու վրայով՝ կուրսորը տեղափոխելու համար։</string>
-    <string name="dynamic_variation_slot_count_title">Դինամիկ տարբերակների տեղեր</string>
-    <string name="dynamic_variation_slot_count_description">Փորձել ցույց տալ %1$d դինամիկ տարր կարգավիճակի գոտու կոճակների միջև։</string>
-    <string name="dynamic_variation_resize_to_content_title">Փոխել դինամիկ տարբերակների չափը</string>
-    <string name="dynamic_variation_resize_to_content_description">Միացված լինելու դեպքում դինամիկ տարրերը լրացնում են հասանելի շարքը՝ ըստ ցուցադրվող քանակի։ Անջատված լինելու դեպքում դրանք պահում են սահիկի տեղամասի չափը և մնում ձախից հավասարեցված։</string>
     <string name="keyboard_theme_tab_colors">Գույներ</string>
     <string name="keyboard_theme_tab_keys">Ստեղներ</string>
 </resources>

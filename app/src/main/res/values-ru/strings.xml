@@ -34,7 +34,6 @@
     <string name="alt_ctrl_speech_shortcut_title">Alt+Ctrl распознавание речи</string>
     <string name="alt_ctrl_speech_shortcut_description">Включить сочетание Alt+Ctrl для запуска распознавания речи</string>
     <string name="static_variation_bar_mode_title">Статическая панель вариантов</string>
-    <string name="static_variation_bar_mode_description">Всегда отображать фиксированный набор служебных клавиш в строке вариантов вместо контекстно-зависимых вариантов.</string>
     <string name="swipe_to_move_cursor">Свайп для перемещения курсора</string>
     <string name="info_title">Информация</string>
     <string name="info_description">Настройки моментально автоматически сохраняются и применяются.</string>
@@ -257,7 +256,6 @@
     <string name="emoji_category_recents">Недавние</string>
     <string name="emoji_category_emoticons">Эмотиконы</string>
     <string name="emoji_picker_error">Не удалось загрузить эмодзи</string>
-    <string name="variation_customize_title">Настройка вариаций</string>
     <string name="variation_instructions_title">Инструкция</string>
     <string name="variation_instructions_description">Нажмите на любую вариацию, чтобы выбрать символ. Каждая буква может иметь до 7 вариаций символов.</string>
     <string name="variation_picker_title">Выберите вариацию для %1$s</string>
@@ -345,7 +343,6 @@
     <string name="nav_mode_action_select_all">Выд.Всё</string>
     <string name="nav_mode_action_expand_selection_left">←Выб</string>
     <string name="nav_mode_action_expand_selection_right">→Выб</string>
-    <string name="nav_mode_action_toggle_pastierina">Pastierina</string>
     <string name="nav_mode_keycode_up">↑</string>
     <string name="nav_mode_keycode_down">↓</string>
     <string name="nav_mode_keycode_left">←</string>
@@ -373,7 +370,6 @@
     <string name="tutorial_page_nav_mode_description">Режим навигации позволяет перемещаться по пользовательскому интерфейсу устройства с помощью буквенных сочетаний клавиш, таких как IJKL или ESDF.\nДля активации:\n• Быстро нажмите CTRL дважды\n• Буквенные клавиши становятся элементами управления навигацией\n• Нажмите CTRL ещё раз для выхода\nКаждое сочетание клавиш можно переназначить в расширенных настройках.</string>
     <string name="tutorial_nav_mode_bullet_selection">Действия выделения расширяют выделенный текст влево, вправо или по словам.</string>
     <string name="tutorial_nav_mode_bullet_words">Действия по словам быстрее перемещают курсор целыми словами в текстовых полях.</string>
-    <string name="tutorial_nav_mode_bullet_media">Назначения также могут выполнять ярлыки приложений, медиа-кнопки, Escape, Tab, Page Up/Down и Pastierina.</string>
     <string name="tutorial_quick_launcher_title">QuickLauncher</string>
     <string name="tutorial_quick_launcher_description">Открывайте приложения с клавиатуры, не прерывая ввод.</string>
     <string name="tutorial_quick_launcher_bullet_sym_space">Удерживайте SYM и нажмите Пробел, чтобы открыть QuickLauncher из любого места.</string>
@@ -401,8 +397,6 @@
     <string name="tutorial_selected_message">Pastiera выбрана!</string>
     <string name="tutorial_show">Показать руководство</string>
     <string name="tutorial_review_description">Просмотрите вводное руководство</string>
-    <string name="pastierina_mode_title">Режим Pastierina</string>
-    <string name="pastierina_mode_description">Переключить минимальный интерфейс</string>
     <string name="backup_now">Сделать резервную копию сейчас</string>
     <string name="backup_now_description">Экспортировать все настройки в ZIP-файл</string>
     <string name="restore_from_file">Восстановить из файла</string>
@@ -542,7 +536,6 @@
     <string name="status_bar_button_clipboard_state_empty">Пусто</string>
     <string name="status_bar_button_clipboard_state_items">%1$d элементов</string>
     <string name="sym_key_content_description">%1$s, %2$s</string>
-    <string name="status_bar_button_minimal_ui_description">Переключить компактный интерфейс клавиатуры</string>
     <string name="status_bar_buttons_reset">Сброс</string>
     <string name="layout_import_from_file">Импортировать из файла</string>
     <string name="layout_download_from_cloud">Скачать из репозитория</string>
@@ -599,7 +592,6 @@
     <string name="tutorial_page_software_keyboard_title">Режим клавиатуры</string>
     <string name="tutorial_page_software_keyboard_description">Выберите, какую клавиатурную поверхность Pastiera должна использовать.</string>
     <string name="software_keyboard_mode_title">Режим клавиатуры</string>
-    <string name="software_keyboard_mode_description">Независимо от Pastierina. Управляет аппаратной или виртуальной клавиатурой.</string>
     <string name="software_keyboard_mode_auto_current">Авто (сейчас: %1$s)</string>
     <string name="software_keyboard_mode_always_virtual">Всегда виртуальная клавиатура</string>
     <string name="software_keyboard_mode_always_hardware">Всегда аппаратная клавиатура</string>
@@ -843,13 +835,6 @@ Nav Mode использует физическое положение клави
     <string name="status_bar_button_undo_description">Отправить Ctrl+Z</string>
     <string name="status_bar_button_redo">Повторить</string>
     <string name="status_bar_button_redo_description">Отправить Ctrl+Y</string>
-    <string name="status_bar_variations_visible_title">Показывать варианты</string>
-    <string name="status_bar_variations_visible_description">Показывать настроенную строку вариантов между кнопками панели состояния. Если выключено, кнопки используют всю панель; управление курсором свайпом продолжает работать.</string>
-    <string name="status_bar_swipe_cursor_info">Проведите по панели состояния, чтобы переместить курсор.</string>
-    <string name="dynamic_variation_slot_count_title">Слоты динамических вариантов</string>
-    <string name="dynamic_variation_slot_count_description">Стремиться показывать %1$d динамических элементов между кнопками панели состояния.</string>
-    <string name="dynamic_variation_resize_to_content_title">Изменять размер динамических вариантов</string>
-    <string name="dynamic_variation_resize_to_content_description">Если включено, динамические элементы заполняют доступную строку в зависимости от их количества. Если выключено, они сохраняют размер слота из ползунка и остаются выровненными слева.</string>
     <string name="keyboard_theme_tab_colors">Цвета</string>
     <string name="keyboard_theme_tab_keys">Клавиши</string>
 </resources>

@@ -34,7 +34,6 @@
     <string name="alt_ctrl_speech_shortcut_title">Розпізнавання мовлення Alt+Ctrl</string>
     <string name="alt_ctrl_speech_shortcut_description">Увімкнути комбінацію Alt+Ctrl для запуску розпізнавання мовлення</string>
     <string name="static_variation_bar_mode_title">Статична панель варіацій</string>
-    <string name="static_variation_bar_mode_description">Завжди показувати фіксований набір утиліт замість контекстних варіацій.</string>
     <string name="swipe_to_move_cursor">Свайп для переміщення курсора</string>
     <string name="info_title">Інформація</string>
     <string name="info_description">Налаштування автоматично зберігаються та застосовуються миттєво.</string>
@@ -255,7 +254,6 @@
     <string name="emoji_category_recents">Нещодавні</string>
     <string name="emoji_category_emoticons">Емотикони</string>
     <string name="emoji_picker_error">Не вдалося завантажити емодзі</string>
-    <string name="variation_customize_title">Налаштувати варіації</string>
     <string name="variation_instructions_title">Інструкція</string>
     <string name="variation_instructions_description">Натисніть на будь-яке поле варіації щоб обрати символ. Кожна літера може мати до 7 варіацій.</string>
     <string name="variation_picker_title">Обрати варіацію для %1$s</string>
@@ -362,7 +360,6 @@
     <string name="tutorial_page_nav_mode_description">Режим навігації дозволяє керувати інтерфейсом пристрою за допомогою літерних скорочень, таких як IJKL або ESDF.\nЩоб активувати:\n• Натисніть Ctrl двічі швидко\n• Літерні клавіші стають елементами керування навігацією\n• Натисніть Ctrl знову, щоб вийти\nКожне скорочення можна переналаштувати в Додаткових налаштуваннях.</string>
     <string name="tutorial_nav_mode_bullet_selection">Дії виділення розширюють виділений текст ліворуч, праворуч або по словах.</string>
     <string name="tutorial_nav_mode_bullet_words">Дії зі словами швидше переміщують курсор цілими словами в текстових полях.</string>
-    <string name="tutorial_nav_mode_bullet_media">Призначення також можуть запускати ярлики застосунків, медіакерування, Escape, Tab, Page Up/Down і Pastierina.</string>
     <string name="tutorial_quick_launcher_title">QuickLauncher</string>
     <string name="tutorial_quick_launcher_description">Відкривайте застосунки з клавіатури, не виходячи з потоку введення.</string>
     <string name="tutorial_quick_launcher_bullet_sym_space">Утримуйте SYM і натисніть Пробіл, щоб відкрити QuickLauncher будь-де.</string>
@@ -484,7 +481,6 @@
     <string name="trackpad_tutorial_previous">Назад</string>
     <string name="trackpad_debug_service_description">Показує події тачпада в маленькому оверлеї для відладки</string>
     <string name="status_bar_button_close_menu_description">Закрити швидкі дії</string>
-    <string name="status_bar_button_minimal_ui_description">Перемкнути компактний інтерфейс клавіатури</string>
     <string name="status_bar_state_on">Увімкнено</string>
     <string name="status_bar_state_off">Вимкнено</string>
     <string name="status_bar_button_clipboard_state_empty">Порожньо</string>
@@ -549,9 +545,6 @@
     <string name="event_action_label">Дія: </string>
     <string name="event_keycode_label">KeyCode: </string>
     <string name="event_scancode_label">ScanCode: </string>
-    <string name="nav_mode_action_toggle_pastierina">Pastierina</string>
-    <string name="pastierina_mode_title">Pastierina Mode</string>
-    <string name="pastierina_mode_description">Toggle minimal ui</string>
     <string name="titan2_layout_title">Titan 2 Layout Alignment</string>
     <string name="titan2_layout_description">Align on-screen keyboard with Titan 2 physical keys</string>
     <string name="installed_dictionaries_installed_badge">Installed</string>
@@ -599,7 +592,6 @@
     <string name="tutorial_page_software_keyboard_title">Режим клавіатури</string>
     <string name="tutorial_page_software_keyboard_description">Виберіть, яку клавіатурну поверхню Pastiera має використовувати.</string>
     <string name="software_keyboard_mode_title">Режим клавіатури</string>
-    <string name="software_keyboard_mode_description">Незалежно від Pastierina. Керує апаратною або віртуальною клавіатурою.</string>
     <string name="software_keyboard_mode_auto_current">Авто (зараз: %1$s)</string>
     <string name="software_keyboard_mode_always_virtual">Завжди віртуальна клавіатура</string>
     <string name="software_keyboard_mode_always_hardware">Завжди апаратна клавіатура</string>
@@ -843,13 +835,6 @@ Ctrl-ярлики застосунків із урахуванням розкл�
     <string name="status_bar_button_undo_description">Надіслати Ctrl+Z</string>
     <string name="status_bar_button_redo">Повторити</string>
     <string name="status_bar_button_redo_description">Надіслати Ctrl+Y</string>
-    <string name="status_bar_variations_visible_title">Показувати варіації</string>
-    <string name="status_bar_variations_visible_description">Показувати налаштований рядок варіацій між кнопками панелі стану. Якщо вимкнено, кнопки використовують всю панель; керування курсором свайпом усе ще працює.</string>
-    <string name="status_bar_swipe_cursor_info">Проведіть по панелі стану, щоб перемістити курсор.</string>
-    <string name="dynamic_variation_slot_count_title">Слоти динамічних варіацій</string>
-    <string name="dynamic_variation_slot_count_description">Прагнути показувати %1$d динамічних елементів між кнопками панелі стану.</string>
-    <string name="dynamic_variation_resize_to_content_title">Змінювати розмір динамічних варіацій</string>
-    <string name="dynamic_variation_resize_to_content_description">Якщо ввімкнено, динамічні елементи заповнюють доступний рядок залежно від їх кількості. Якщо вимкнено, вони зберігають розмір слота зі слайдера й лишаються вирівняними ліворуч.</string>
     <string name="keyboard_theme_tab_colors">Кольори</string>
     <string name="keyboard_theme_tab_keys">Клавіші</string>
 </resources>

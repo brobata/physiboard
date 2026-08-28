@@ -215,7 +215,6 @@
     <string name="unicode_category_arrows">Strzałki</string>
     <string name="unicode_category_misc">Różne</string>
     <string name="unicode_category_variations">Wariacje</string>
-    <string name="variation_customize_title">Dostosuj warianty</string>
     <string name="variation_instructions_title">Instrukcje</string>
     <string name="variation_instructions_description">Naciśnij pole wariantu, aby wybrać znak. Każda litera może mieć do 7 znaków wariantów.</string>
     <string name="variation_picker_title">Wybierz wariant dla %1$s</string>
@@ -229,7 +228,6 @@
     <string name="static_variation_input_label">Wartość</string>
     <string name="static_variation_input_hint">Pozostaw puste i zapisz, aby usunąć slot.</string>
     <string name="static_variation_bar_mode_title">Statyczny pasek wariantów</string>
-    <string name="static_variation_bar_mode_description">Zawsze wyświetlaj stały zestaw klawiszy narzędziowych w rzędzie wariantów zamiast wariantów kontekstowych.</string>
     <string name="static_variation_base_layer_title">Wstepnie wypelnij gorny rzad</string>
     <string name="static_variation_base_layer_description">Wlacza domyslne symbole dla gornego rzedu bazowego. Warstwy Shift i Alt pozostaja dostepne niezaleznie.</string>
     <string name="static_variation_layer_sticky_title">Warstwa zatrzaskiwana</string>
@@ -290,7 +288,6 @@
     <string name="nav_mode_action_select_all">ZaznWsz</string>
     <string name="nav_mode_action_expand_selection_left">←Zazn</string>
     <string name="nav_mode_action_expand_selection_right">→Zazn</string>
-    <string name="nav_mode_action_toggle_pastierina">Pastierina</string>
     <string name="nav_mode_keycode_up">↑</string>
     <string name="nav_mode_keycode_down">↓</string>
     <string name="nav_mode_keycode_left">←</string>
@@ -318,7 +315,6 @@
     <string name="tutorial_page_nav_mode_description">Tryb Nav pozwala nawigować po interfejsie urządzenia skrótami jak IJKL lub ESDF.\nJak aktywować:\n• Naciśnij Ctrl dwa razy szybko\n• Klawisze liter stają się kontrolkami nawigacji\n• Naciśnij Ctrl ponownie, aby wyjść\nKażdy skrót da się przemapować w Ustawieniach zaawansowanych.</string>
     <string name="tutorial_nav_mode_bullet_selection">Akcje zaznaczania rozszerzają zaznaczony tekst w lewo, w prawo albo słowo po słowie.</string>
     <string name="tutorial_nav_mode_bullet_words">Akcje słów przeskakują całe słowa, aby szybciej przesuwać kursor w polach tekstowych.</string>
-    <string name="tutorial_nav_mode_bullet_media">Mapowania mogą też obsługiwać skróty aplikacji, multimedia, Escape, Tab, Page Up/Down i Pastierina.</string>
     <string name="tutorial_quick_launcher_title">QuickLauncher</string>
     <string name="tutorial_quick_launcher_description">Otwieraj aplikacje z klawiatury bez wychodzenia z pisania.</string>
     <string name="tutorial_quick_launcher_bullet_sym_space">Przytrzymaj SYM i naciśnij Spację, aby otworzyć QuickLauncher z dowolnego miejsca.</string>
@@ -346,8 +342,6 @@
     <string name="tutorial_selected_message">Pastiera jest wybrana!</string>
     <string name="tutorial_show">Pokaż Samouczek</string>
     <string name="tutorial_review_description">Przejrzyj wprowadzający samouczek</string>
-    <string name="pastierina_mode_title">Tryb Pastierina</string>
-    <string name="pastierina_mode_description">Przełącz minimalny interfejs</string>
     <string name="backup_now">Utwórz kopię zapasową teraz</string>
     <string name="backup_now_description">Eksportuj wszystkie ustawienia i niestandardowe układy do pliku ZIP</string>
     <string name="restore_from_file">Przywróć z pliku</string>
@@ -476,7 +470,6 @@
     <string name="status_bar_button_clipboard_state_empty">Pusty</string>
     <string name="status_bar_button_clipboard_state_items">%1$d elementów</string>
     <string name="sym_key_content_description">%1$s, %2$s</string>
-    <string name="status_bar_button_minimal_ui_description">Przełącz kompaktowy interfejs klawiatury</string>
     <string name="status_bar_buttons_reset">Resetuj</string>
     <string name="layout_import_from_file">Importuj z pliku</string>
     <string name="layout_download_from_cloud">Pobierz z repozytorium</string>
@@ -599,7 +592,6 @@
     <string name="tutorial_page_software_keyboard_title">Tryb klawiatury</string>
     <string name="tutorial_page_software_keyboard_description">Wybierz, której powierzchni klawiatury ma tu używać Pastiera.</string>
     <string name="software_keyboard_mode_title">Tryb klawiatury</string>
-    <string name="software_keyboard_mode_description">Niezależne od Pastieriny. Steruje trybem sprzętowym vs wirtualnym.</string>
     <string name="software_keyboard_mode_auto_current">Auto (teraz: %1$s)</string>
     <string name="software_keyboard_mode_always_virtual">Zawsze klawiatura wirtualna</string>
     <string name="software_keyboard_mode_always_hardware">Zawsze klawiatura sprzętowa</string>
@@ -843,13 +835,6 @@ Każdy klawisz można skonfigurować jako Keycode, Akcja, Native Ctrl lub Brak. 
     <string name="status_bar_button_undo_description">Wyślij Ctrl+Z</string>
     <string name="status_bar_button_redo">Ponów</string>
     <string name="status_bar_button_redo_description">Wyślij Ctrl+Y</string>
-    <string name="status_bar_variations_visible_title">Pokaż wariacje</string>
-    <string name="status_bar_variations_visible_description">Pokaż skonfigurowany wiersz wariacji między przyciskami paska stanu. Gdy wyłączone, przyciski używają całego paska; sterowanie kursorem przez przesuwanie nadal działa.</string>
-    <string name="status_bar_swipe_cursor_info">Przesuń po pasku stanu, aby poruszyć kursorem.</string>
-    <string name="dynamic_variation_slot_count_title">Sloty wariacji dynamicznych</string>
-    <string name="dynamic_variation_slot_count_description">Staraj się pokazać %1$d dynamicznych pozycji między przyciskami paska stanu.</string>
-    <string name="dynamic_variation_resize_to_content_title">Zmieniaj rozmiar wariacji dynamicznych</string>
-    <string name="dynamic_variation_resize_to_content_description">Gdy włączone, dynamiczne pozycje wypełniają dostępny wiersz zależnie od liczby wyświetlanych elementów. Gdy wyłączone, zachowują rozmiar slotu z suwaka i pozostają wyrównane do lewej.</string>
     <string name="keyboard_theme_tab_colors">Kolory</string>
     <string name="keyboard_theme_tab_keys">Klawisze</string>
 </resources>

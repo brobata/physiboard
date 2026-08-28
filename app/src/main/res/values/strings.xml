@@ -322,7 +322,6 @@
 
     <!-- Static Variation Bar Mode -->
     <string name="static_variation_bar_mode_title">Static Variation Bar</string>
-    <string name="static_variation_bar_mode_description">Always show a fixed set of utility keys in the variation row instead of context-based variations.</string>
     <string name="static_variation_preset_title">Static variation preset</string>
     <string name="static_variation_preset_off">Off</string>
     <string name="static_variation_preset_off_description">Use dynamic variations and suggestions only.</string>
@@ -991,7 +990,6 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="emoji_picker_no_results">No emoji found</string>
     
     <!-- Variation Customization -->
-    <string name="variation_customize_title">Customize Variations</string>
     <string name="app_enter_behaviour_title">Enter key behaviour</string>
     <string name="app_enter_behaviour_description">Configure app-specific Enter and newline handling</string>
     <string name="app_enter_behaviour_enable_title">App-specific Enter behaviour</string>
@@ -1242,7 +1240,6 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="nav_mode_action_expand_selection_word_right">WordSel→</string>
     <string name="nav_mode_action_page_start">DocStart</string>
     <string name="nav_mode_action_page_end">DocEnd</string>
-    <string name="nav_mode_action_toggle_pastierina">PhysiBar</string>
     <string name="nav_mode_action_media_play_pause">Play/Pause</string>
     <string name="nav_mode_action_media_previous">Media Previous</string>
     <string name="nav_mode_action_media_next">Media Next</string>
@@ -1309,7 +1306,7 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="tutorial_page_nav_mode_description">Fn Layer turns letter keys into navigation and editing controls. Press Ctrl twice to latch it, or enable Ctrl-hold navigation below.</string>
     <string name="tutorial_nav_mode_bullet_selection">Selection actions can extend text selection left, right, or word by word.</string>
     <string name="tutorial_nav_mode_bullet_words">Word actions jump by whole words for faster cursor movement in text fields.</string>
-    <string name="tutorial_nav_mode_bullet_media">Mappings can also handle app shortcuts, media controls, Escape, Tab, Page Up/Down, and PhysiBar.</string>
+    <string name="tutorial_nav_mode_bullet_media">Mappings can also handle app shortcuts, media controls, Escape, Tab and Page Up/Down.</string>
     <string name="tutorial_page_customization_title">Customization</string>
     <string name="tutorial_page_customization_description">PhysiBoard offers many customization options:\n• Customizable keyboard layouts\n• Launcher shortcuts &amp; Power Shortcuts\n• IME bar can act as a swipe bar to move the cursor\n• Custom mappings for Fn Layer\nExplore the settings to find the perfect configuration for you!</string>
     <string name="tutorial_quick_launcher_title">QuickLauncher</string>
@@ -1348,10 +1345,7 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="tutorial_show_release_notes">Show release notes tutorial</string>
     <string name="tutorial_show_release_notes_description">Preview the update intro without installing an upgrade</string>
 
-    <string name="pastierina_mode_title">PhysiBar Mode</string>
-    <string name="pastierina_mode_description">Toggle minimal ui</string>
     <string name="software_keyboard_mode_title">Keyboard Mode</string>
-    <string name="software_keyboard_mode_description">Separate from PhysiBar. Controls hardware vs virtual keyboard behaviour.</string>
     <string name="software_keyboard_mode_auto_current">Auto (current: %1$s)</string>
     <string name="software_keyboard_mode_virtual">Virtual</string>
     <string name="software_keyboard_mode_hardware">Hardware</string>
@@ -1617,24 +1611,19 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="status_bar_height_option">%1$d</string>
     <string name="show_status_bar_apps_remove">Remove</string>
     <string name="status_bar_buttons_title">Status Bar</string>
-    <string name="status_bar_buttons_description">Configure the Status Bar and PhysiBar Mode.</string>
+    <string name="status_bar_buttons_description">Where the on-screen bar appears, how tall it is, and which buttons sit on its edges.</string>
     <string name="status_bar_style_section">Status bar style</string>
     <string name="extended_status_bar_title">Extended Status Bar</string>
     <string name="extended_status_bar_features_section">Extended features</string>
     <string name="status_bar_buttons_section">Buttons</string>
-    <string name="pastierina_preview_suggestions">Suggestions</string>
+    <string name="status_bar_preview_suggestions">Suggestions</string>
     <string name="device_specific_interface_section">Device-specific interface</string>
     <string name="titan2_elite_rounded_corners_title">Titan 2 Elite rounded corners</string>
-    <string name="titan2_elite_rounded_corners_description">Keep PhysiBar and the extended status bar controls inside the Elite’s rounded display corners.</string>
     <string name="status_bar_slot_left">Left Slot</string>
     <string name="status_bar_slot_right_1">Right Slot 1</string>
     <string name="status_bar_slot_right_2">Right Slot 2</string>
     <string name="status_bar_slots_left">Left buttons</string>
     <string name="status_bar_slots_right">Right buttons</string>
-    <string name="pastierina_status_bar_buttons_title">PhysiBar mode</string>
-    <string name="pastierina_status_bar_buttons_description">Choose which buttons appear on the left and right edges of the compact PhysiBar row.</string>
-    <string name="pastierina_status_bar_slots_left">PhysiBar left buttons</string>
-    <string name="pastierina_status_bar_slots_right">PhysiBar right buttons</string>
     <string name="status_bar_slot_add">Add status bar button</string>
     <string name="status_bar_slot_remove">Remove status bar button</string>
     <string name="status_bar_button_none">None</string>
@@ -1650,7 +1639,6 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="status_bar_button_language_state_description">Language %1$s, layout %2$s</string>
     <string name="status_bar_button_hamburger">Menu</string>
     <string name="status_bar_button_hamburger_description">Quick actions</string>
-    <string name="status_bar_button_minimal_ui">PhysiBar</string>
     <string name="status_bar_button_software_keyboard_mode">Keyboard mode</string>
     <string name="status_bar_button_software_keyboard_mode_description">Temporarily open / close the on-screen keyboard (Ctrl+B)</string>
     <string name="status_bar_button_close_menu_description">Close quick actions</string>
@@ -1662,13 +1650,6 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="status_bar_button_undo_description">Send Ctrl+Z</string>
     <string name="status_bar_button_redo">Redo</string>
     <string name="status_bar_button_redo_description">Send Ctrl+Y</string>
-    <string name="status_bar_variations_visible_title">Show variations</string>
-    <string name="status_bar_variations_visible_description">A row of accented and alternative characters for the letter before the cursor — è é ê ë for e. When off, the status bar buttons take the full width; swipe cursor control still works.</string>
-    <string name="status_bar_swipe_cursor_info">Swipe across the status bar to move the cursor.</string>
-    <string name="dynamic_variation_slot_count_title">Dynamic variation slots</string>
-    <string name="dynamic_variation_slot_count_description">Aim to show %1$d dynamic entries between the status bar buttons.</string>
-    <string name="dynamic_variation_resize_to_content_title">Resize dynamic variations</string>
-    <string name="dynamic_variation_resize_to_content_description">When enabled, dynamic entries fill the available row based on how many are shown. When off, entries keep the slot size from the slider and stay left-aligned.</string>
     <string name="modifier_indicators_title">Modifier indicators</string>
     <string name="modifier_indicators_description">Choose where Shift, Ctrl, Alt, and SYM state appears for the hardware keyboard.</string>
     <string name="modifier_indicators_bottom_strip">Bottom Strip LEDs</string>
@@ -1683,7 +1664,6 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="status_bar_button_clipboard_state_empty">Empty</string>
     <string name="status_bar_button_clipboard_state_items">%1$d items</string>
     <string name="sym_key_content_description">%1$s, %2$s</string>
-    <string name="status_bar_button_minimal_ui_description">Toggle compact keyboard UI</string>
     <string name="status_bar_buttons_reset">Reset</string>
     <string name="text_expansion_title">Text expansion</string>
     <string name="text_expansion_description">Configure snippets and typed emoji or symbol shortcodes.</string>

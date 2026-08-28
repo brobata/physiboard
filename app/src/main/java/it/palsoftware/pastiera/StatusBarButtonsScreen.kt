@@ -206,7 +206,7 @@ fun StatusBarButtonsScreen(
         StatusBarLayoutPreview(
             leftSlots = leftSlots,
             rightSlots = rightSlots,
-            centerText = stringResource(R.string.pastierina_preview_suggestions)
+            centerText = stringResource(R.string.status_bar_preview_suggestions)
         )
 
         // Titan2-Elite rounded-corner insets option hidden (still reachable via prefs/backup).
