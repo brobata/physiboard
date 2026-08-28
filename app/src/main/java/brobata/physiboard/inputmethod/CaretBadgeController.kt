@@ -122,7 +122,11 @@ class CaretBadgeController(private val service: InputMethodService) {
         view.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
         val width = view.measuredWidth
         val height = view.measuredHeight
-        // Centred over the caret, with the glyphs' feet just inside the top of the line box.
+        // Just right of the caret, with the glyphs' feet inside the top of the line box.
+        //
+        // Not centred on the caret: half the glyph then sits over the last letter typed, which is
+        // what made it read as overlapping. Starting at the caret puts all of it in the empty space
+        // the cursor is about to move into.
         //
         // One placement, always. Sitting beside the caret reads better when the space there happens
         // to be empty, but it is not empty in an empty field - the editor draws its hint exactly
@@ -132,8 +136,11 @@ class CaretBadgeController(private val service: InputMethodService) {
         // Measured from the foot of the ink rather than the bottom of the view, which also carries
         // the font's descent and room for a lock bar.
         val lineHeight = caret.bottom - caret.top
-        var x = (caret.x - width / 2f).toInt()
+        var x = (caret.x + dp(4)).toInt()
         var y = (caret.top + lineHeight * LINE_OVERLAP - view.glyphBottomOffset).toInt()
+        // At the right-hand edge there is no room after the caret, so it flips to the other side
+        // rather than being clamped back over the text it was clearing.
+        if (x + width > metrics.widthPixels) x = (caret.x - dp(4)).toInt() - width
         // No room above at the top of the screen, so it drops below the line instead.
         if (y < 0) y = (caret.bottom - lineHeight * LINE_OVERLAP).toInt()
         x = x.coerceIn(0, (metrics.widthPixels - width).coerceAtLeast(0))
