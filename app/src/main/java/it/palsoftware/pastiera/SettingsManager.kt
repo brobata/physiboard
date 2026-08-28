@@ -5488,10 +5488,16 @@ object SettingsManager {
         val prefs = getPreferences(context)
         if (prefs.getBoolean(KEY_IMPACT_DEFAULTS_APPLIED, false)) return
         val editor = prefs.edit()
-        // Curated first-run defaults: the user's real, dialed-in PhysiBoard config
-        // (scrubbed of personal/state/device data). Written as raw pref keys that
-        // map 1:1 to how the app reads them. Gated by KEY_IMPACT_DEFAULTS_APPLIED so
-        // this never clobbers a returning user's own changes.
+        // Curated first-run defaults: the maintainer's real, dialed-in config, scrubbed of
+        // personal, state and device data. Written as raw pref keys that map 1:1 to how the app
+        // reads them, and gated by KEY_IMPACT_DEFAULTS_APPLIED so a returning user is never
+        // clobbered.
+        //
+        // Re-captured from the phone on 2026-08-27 (app 1.2.3). The previous snapshot was taken
+        // at 1.0.4 and had drifted: it still wrote show_status_bar=false, a key that predates
+        // status_bar_visibility and that collapsed the whole strip - suggestions included - for
+        // every freshly stamped install. Keep this in step with the phone or delete it; a stale
+        // snapshot is worse than none.
 
         // Booleans
         editor.putBoolean("auto_capitalize_first_letter", true)
@@ -5511,12 +5517,23 @@ object SettingsManager {
         editor.putBoolean("static_variation_bar_base_layer_enabled", false)
         editor.putBoolean("dynamic_variation_bar_resize_to_content", false)
         editor.putBoolean("screen_trackpad_enabled", true)
+        editor.putBoolean("auto_replace_on_space_enter", true)
+        editor.putBoolean("side_key_assistant", true)
+        editor.putBoolean("notification_ring_enabled", true)
 
         // Ints
         editor.putInt("dynamic_variation_bar_slot_count", 7)
-        editor.putInt("dictation_end_silence_ms", 2500)
+        editor.putInt("dictation_end_silence_ms", 2000)
+        editor.putInt("status_bar_height_dp", 56)
+        editor.putInt("screen_trackpad_step_px", 32)
+        editor.putInt("notification_ring_minutes", 2)
 
         // Strings
+        // The maintainer runs this as APPS with a hand-picked app list. ALWAYS is shipped
+        // instead: a new user has to see the strip work before they can sensibly choose to
+        // restrict it, and "on, but only somewhere you haven't looked yet" is the exact shape of
+        // the bug this release exists to fix.
+        editor.putString("status_bar_visibility", "ALWAYS")
         editor.putString("modifier_indicator_mode", "menu_bar")
         editor.putString("pastierina_mode_override", "pastierina")
         editor.putString("status_bar_slot_left", "clipboard")
