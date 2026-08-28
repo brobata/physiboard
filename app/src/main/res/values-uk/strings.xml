@@ -31,8 +31,6 @@
     <string name="swipe_incremental_threshold_title">Чутливість свайпу</string>
     <string name="swipe_incremental_threshold_description">Відстань для переміщення курсора на одну позицію. Менші числа прискорюють курсор.</string>
     <string name="auto_show_keyboard_title">Автопоказ клавіатури</string>
-    <string name="alt_ctrl_speech_shortcut_title">Розпізнавання мовлення Alt+Ctrl</string>
-    <string name="alt_ctrl_speech_shortcut_description">Увімкнути комбінацію Alt+Ctrl для запуску розпізнавання мовлення</string>
     <string name="static_variation_bar_mode_title">Статична панель варіацій</string>
     <string name="swipe_to_move_cursor">Свайп для переміщення курсора</string>
     <string name="info_title">Інформація</string>
@@ -285,7 +283,6 @@
     <string name="auto_correct_ricette_pastiera_name">Ricette Pastiera</string>
     <string name="settings_category_keyboard_timing">Клавіатура і тайминг</string>
     <string name="settings_category_text_input">Розумні функції</string>
-    <string name="settings_category_accessibility">Доступність</string>
     <string name="settings_category_auto_correction">Автокорекція</string>
     <string name="settings_category_customization">Персоналізація</string>
     <string name="settings_category_advanced">Додатково</string>
@@ -297,7 +294,6 @@
     <string name="settings_accessibility_suggestions_delay_value">%1$d ms</string>
     <string name="settings_accessibility_delay_decrease">Зменшити затримку на 50 мілісекунд</string>
     <string name="settings_accessibility_delay_increase">Збільшити затримку на 50 мілісекунд</string>
-    <string name="settings_accessibility_delay_feedback">Затримка підказок: %1$d ms</string>
     <string name="languages_title">Мови</string>
     <string name="languages_description">Додавайте мови до вибору методів введення Android. Показуються лише мови зі словниками, які не є системними мовами.</string>
     <string name="languages_no_available">Усі доступні мови вже додані або є системними.</string>

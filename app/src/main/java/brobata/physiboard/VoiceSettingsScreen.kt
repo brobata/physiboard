@@ -41,16 +41,12 @@ import kotlinx.coroutines.withContext
 @Composable
 fun VoiceSettingsScreen(
     modifier: Modifier = Modifier,
-    onBack: () -> Unit,
-    onOpenSoundHaptics: () -> Unit = {}
+    onBack: () -> Unit
 ) {
     val context = LocalContext.current
 
     var fnLongPressSpeech by remember {
         mutableStateOf(SettingsManager.getFnLongPressSpeechEnabled(context))
-    }
-    var altCtrlSpeechShortcut by remember {
-        mutableStateOf(SettingsManager.getAltCtrlSpeechShortcutEnabled(context))
     }
     var dictationMaskOffensive by remember {
         mutableStateOf(SettingsManager.getDictationMaskOffensive(context))
@@ -207,16 +203,6 @@ fun VoiceSettingsScreen(
                 }
             )
             VoiceSwitchRow(
-                title = stringResource(R.string.alt_ctrl_speech_shortcut_title),
-                description = stringResource(R.string.alt_ctrl_speech_shortcut_description),
-                checked = altCtrlSpeechShortcut,
-                onCheckedChange = { enabled ->
-                    altCtrlSpeechShortcut = enabled
-                    SettingsManager.setAltCtrlSpeechShortcutEnabled(context, enabled)
-                }
-            )
-
-            VoiceSwitchRow(
                 title = stringResource(R.string.side_key_assistant_title),
                 description = stringResource(R.string.side_key_assistant_description),
                 checked = sideKeyAssistant,
@@ -319,14 +305,6 @@ fun VoiceSettingsScreen(
                     dictationContinuous = enabled
                     SettingsManager.setDictationContinuousSession(context, enabled)
                 }
-            )
-
-            VoiceSectionHeader(text = stringResource(R.string.voice_section_feedback))
-            VoiceNavigationRow(
-                title = stringResource(R.string.voice_vibration_link_title),
-                description = stringResource(R.string.voice_vibration_link_description),
-                icon = Icons.AutoMirrored.Filled.VolumeUp,
-                onClick = onOpenSoundHaptics
             )
 
             Spacer(modifier = Modifier.height(16.dp))

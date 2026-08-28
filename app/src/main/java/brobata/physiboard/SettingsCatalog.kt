@@ -9,7 +9,6 @@ import androidx.annotation.StringRes
 enum class SettingsSearchTarget {
     MODIFIERS,
     TEXT_INPUT,
-    ACCESSIBILITY,
     AUTO_CORRECTION,
     APP_RAW_MODE,
     CUSTOMIZATION,
@@ -49,7 +48,6 @@ object SettingsCatalog {
         SettingsSearchEntry(R.string.screen_trackpad_title, R.string.screen_trackpad_title, SettingsSearchTarget.SCREEN_TRACKPAD, "trackpad cursor swipe screen spacebar hold arrow select"),
         SettingsSearchEntry(R.string.modifiers_title, R.string.modifiers_title, SettingsSearchTarget.MODIFIERS, "shift alt ctrl sym sticky latch lock"),
         SettingsSearchEntry(R.string.settings_category_text_input, R.string.settings_category_text_input, SettingsSearchTarget.TEXT_INPUT, "typing punctuation spaces"),
-        SettingsSearchEntry(R.string.settings_category_accessibility, R.string.settings_category_accessibility, SettingsSearchTarget.ACCESSIBILITY, "a11y vibration haptics"),
         SettingsSearchEntry(R.string.settings_category_auto_correction, R.string.settings_category_auto_correction, SettingsSearchTarget.AUTO_CORRECTION, "autocorrect spell dictionary suggestions typo"),
         SettingsSearchEntry(R.string.settings_category_customization, R.string.settings_category_customization, SettingsSearchTarget.CUSTOMIZATION, "customize variations shortcuts"),
         SettingsSearchEntry(R.string.settings_category_advanced, R.string.settings_category_advanced, SettingsSearchTarget.ADVANCED, "trackpad clipboard backup restore export import debug"),
@@ -73,7 +71,6 @@ object SettingsCatalog {
         // Voice / dictation
         SettingsSearchEntry(R.string.settings_category_voice, R.string.settings_category_voice, SettingsSearchTarget.VOICE, "voice dictation microphone speech talk transcribe"),
         SettingsSearchEntry(R.string.fn_long_press_speech_title, R.string.settings_category_voice, SettingsSearchTarget.VOICE, "voice dictation microphone speech fn hold"),
-        SettingsSearchEntry(R.string.alt_ctrl_speech_shortcut_title, R.string.settings_category_voice, SettingsSearchTarget.VOICE, "voice dictation speech shortcut"),
         SettingsSearchEntry(R.string.dictation_haptics_title, R.string.settings_category_voice, SettingsSearchTarget.VOICE, "vibrate vibration haptic dictation voice"),
         SettingsSearchEntry(R.string.dictation_haptic_strength_title, R.string.settings_category_voice, SettingsSearchTarget.VOICE, "vibration strength stronger firmer haptic dictation voice"),
         SettingsSearchEntry(R.string.dictation_end_silence_title, R.string.settings_category_voice, SettingsSearchTarget.VOICE, "pause silence timeout cutoff dictation voice"),

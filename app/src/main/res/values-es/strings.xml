@@ -244,7 +244,6 @@
     <string name="auto_correct_ricette_pastiera_name">Ricette Pastiera</string>
     <string name="settings_category_keyboard_timing">Teclado &amp; Temporización</string>
     <string name="settings_category_text_input">Entrada de Texto</string>
-    <string name="settings_category_accessibility">Accesibilidad</string>
     <string name="settings_category_auto_correction">Auto-corrección</string>
     <string name="settings_category_customization">Personalización</string>
     <string name="settings_category_advanced">Avanzado</string>
@@ -256,7 +255,6 @@
     <string name="settings_accessibility_suggestions_delay_value">%1$d ms</string>
     <string name="settings_accessibility_delay_decrease">Reducir retraso en 50 milisegundos</string>
     <string name="settings_accessibility_delay_increase">Aumentar retraso en 50 milisegundos</string>
-    <string name="settings_accessibility_delay_feedback">Retraso de sugerencias: %1$d ms</string>
     <string name="layout_save_content_description">Guardar layout</string>
     <string name="layout_import_content_description">Importar layout</string>
     <string name="layout_imported_successfully">Layout importado exitosamente</string>
@@ -504,8 +502,6 @@
     <string name="alt_backspace_delete_title">Alt + Retroceso</string>
     <string name="backspace_at_start_delete_title">Retroceso al inicio de línea</string>
     <string name="delete_alternatives_hint">Sugerencia: Ctrl + tecla se puede configurar en los ajustes del modo navegación</string>
-    <string name="alt_ctrl_speech_shortcut_title">Reconocimiento de voz Alt+Ctrl</string>
-    <string name="alt_ctrl_speech_shortcut_description">Activa el atajo de teclado Alt+Ctrl para iniciar el reconocimiento de voz</string>
     <string name="ignore_back_short">Ignore BACK</string>
     <string name="save">Guardar</string>
     <string name="sym_enable_emoji_picker_page_title">Activar página del selector de emoji</string>

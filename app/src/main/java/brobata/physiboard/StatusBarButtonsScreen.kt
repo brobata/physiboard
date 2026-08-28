@@ -134,13 +134,6 @@ fun StatusBarButtonsScreen(
                 statusBarApps = SettingsManager.getStatusBarAppPackages(context)
             }
         )
-        StatusBarHeightRow(
-            heightDp = statusBarHeightDp,
-            onHeightChange = { dp ->
-                statusBarHeightDp = dp
-                SettingsManager.setStatusBarHeightDp(context, dp)
-            }
-        )
         if (pickingStatusBarApp) {
             AppPickerDialog(
                 onAppSelected = { app ->
@@ -343,35 +336,6 @@ private fun StatusBarVisibilitySection(
     }
 }
 
-@Composable
-private fun StatusBarHeightRow(heightDp: Int, onHeightChange: (Int) -> Unit) {
-    Surface(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
-            Text(
-                text = stringResource(R.string.status_bar_height_title),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium
-            )
-            Text(
-                text = stringResource(R.string.status_bar_height_description),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                SettingsManager.STATUS_BAR_HEIGHT_OPTIONS_DP.forEach { dp ->
-                    FilterChip(
-                        selected = heightDp == dp,
-                        onClick = { onHeightChange(dp) },
-                        label = { Text(stringResource(R.string.status_bar_height_option, dp)) }
-                    )
-                }
-            }
-        }
-    }
-}
 
 private fun isPackageInstalled(context: android.content.Context, packageName: String): Boolean =
     runCatching { context.packageManager.getApplicationInfo(packageName, 0) }.isSuccess

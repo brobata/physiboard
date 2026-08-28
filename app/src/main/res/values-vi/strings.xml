@@ -38,8 +38,6 @@
     <string name="swipe_incremental_threshold_title">Độ nhạy thanh vuốt</string>
     <string name="swipe_incremental_threshold_description">Khoảng cách cần để di chuyển con trỏ một vị trí. Giá trị thấp làm con trỏ di chuyển nhanh hơn.</string>
     <string name="auto_show_keyboard_title">Tự động hiển thị bàn phím</string>
-    <string name="alt_ctrl_speech_shortcut_title">Nhận dạng giọng nói Alt+Ctrl</string>
-    <string name="alt_ctrl_speech_shortcut_description">Bật phím tắt Alt+Ctrl để bắt đầu nhận dạng giọng nói</string>
     <string name="static_variation_bar_mode_title">Thanh biến thể tĩnh</string>
     <string name="static_variation_base_layer_title">Mẫu hàng trên thay thế</string>
     <string name="static_variation_base_layer_description">Chuyển hàng tĩnh trên cùng giữa bộ ký hiệu mặc định và bộ ngoặc/ký tự đặc biệt thay thế. Lớp Shift và Alt vẫn độc lập.</string>
@@ -303,7 +301,6 @@
     <string name="auto_correct_ricette_pastiera_name">Ricette Pastiera</string>
     <string name="settings_category_keyboard_timing">Bàn phím &amp; Thời gian</string>
     <string name="settings_category_text_input">Tính năng thông minh</string>
-    <string name="settings_category_accessibility">Trợ năng</string>
     <string name="settings_category_auto_correction">Sửa tự động</string>
     <string name="settings_category_customization">Tùy chỉnh</string>
     <string name="settings_category_advanced">Nâng cao</string>
@@ -315,7 +312,6 @@
     <string name="settings_accessibility_suggestions_delay_value">%1$d ms</string>
     <string name="settings_accessibility_delay_decrease">Giảm độ trễ 50 mili giây</string>
     <string name="settings_accessibility_delay_increase">Tăng độ trễ 50 mili giây</string>
-    <string name="settings_accessibility_delay_feedback">Độ trễ gợi ý: %1$d ms</string>
     <string name="languages_title">Ngôn ngữ</string>
     <string name="languages_description">Thêm ngôn ngữ vào bộ chọn phương thức nhập của Android. Chỉ hiển thị ngôn ngữ có từ điển và không phải ngôn ngữ hệ thống.</string>
     <string name="languages_no_available">Tất cả ngôn ngữ có sẵn đã được thêm hoặc là ngôn ngữ hệ thống.</string>

@@ -76,7 +76,6 @@ enum class SettingsDestination {
     Status,
     KeyboardTiming,
     TextInput,
-    Accessibility,
     AutoCorrection,
     Customization,
     NavMode,
@@ -273,7 +272,6 @@ fun SettingsScreen(
                     onSoundHapticsClick = {
                         openCustomization(SettingsActivity.CUSTOMIZATION_DESTINATION_SOUNDS)
                     },
-                    onAccessibilityClick = { navigateTo(SettingsDestination.Accessibility) },
                     onAutoCorrectionClick = { navigateTo(SettingsDestination.AutoCorrection) },
                     onAppRawModeClick = { navigateTo(SettingsDestination.AppRawMode) },
                     onSmartBacklightClick = { navigateTo(SettingsDestination.SmartBacklight) },
@@ -324,12 +322,6 @@ fun SettingsScreen(
                     modifier = modifier,
                     onBack = { navigateBack() },
                     onNavModeSettingsClick = { navigateTo(SettingsDestination.NavMode) }
-                )
-            }
-            SettingsDestination.Accessibility -> {
-                AccessibilitySettingsScreen(
-                    modifier = modifier,
-                    onBack = { navigateBack() }
                 )
             }
             SettingsDestination.AutoCorrection -> {
@@ -503,22 +495,10 @@ fun SettingsScreen(
                             }
                         ),
                         HubRow(
-                            icon = Icons.Filled.Tune,
-                            title = stringResource(R.string.settings_category_customization),
-                            description = stringResource(R.string.extras_customization_description),
-                            onClick = { openCustomization(null) }
-                        ),
-                        HubRow(
                             icon = Icons.Filled.Language,
                             title = stringResource(R.string.custom_input_styles_title),
                             description = stringResource(R.string.extras_languages_description),
                             onClick = { navigateTo(SettingsDestination.CustomInputStyles) }
-                        ),
-                        HubRow(
-                            icon = Icons.Filled.TouchApp,
-                            title = stringResource(R.string.settings_category_accessibility),
-                            description = stringResource(R.string.extras_accessibility_description),
-                            onClick = { navigateTo(SettingsDestination.Accessibility) }
                         ),
                         HubRow(
                             icon = Icons.Filled.Engineering,
@@ -569,10 +549,7 @@ fun SettingsScreen(
             SettingsDestination.Voice -> {
                 VoiceSettingsScreen(
                     modifier = modifier,
-                    onBack = { navigateBack() },
-                    onOpenSoundHaptics = {
-                        openCustomization(SettingsActivity.CUSTOMIZATION_DESTINATION_SOUNDS)
-                    }
+                    onBack = { navigateBack() }
                 )
             }
             SettingsDestination.Customization -> {
@@ -659,7 +636,6 @@ private fun SettingsMainScreen(
     onVoiceClick: () -> Unit,
     onScreenTrackpadClick: () -> Unit,
     onSoundHapticsClick: () -> Unit,
-    onAccessibilityClick: () -> Unit,
     onAutoCorrectionClick: () -> Unit,
     onAppRawModeClick: () -> Unit,
     onSmartBacklightClick: () -> Unit,
@@ -682,7 +658,6 @@ private fun SettingsMainScreen(
             SettingsSearchTarget.MODIFIERS -> onModifiersClick()
             SettingsSearchTarget.TEXT_INPUT -> onTextInputClick()
             SettingsSearchTarget.VOICE -> onVoiceClick()
-            SettingsSearchTarget.ACCESSIBILITY -> onAccessibilityClick()
             SettingsSearchTarget.AUTO_CORRECTION -> onAutoCorrectionClick()
             SettingsSearchTarget.APP_RAW_MODE -> onAppRawModeClick()
             SettingsSearchTarget.CUSTOMIZATION -> onCustomizationClick()

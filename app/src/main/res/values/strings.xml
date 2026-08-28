@@ -106,8 +106,6 @@
     <string name="auto_show_keyboard_description">Show the on-screen keyboard automatically in text fields.</string>
     
     <!-- Alt+Ctrl Speech Recognition Shortcut Section -->
-    <string name="alt_ctrl_speech_shortcut_title">Alt+Ctrl for speech input</string>
-    <string name="alt_ctrl_speech_shortcut_description">Start speech input with Alt+Ctrl.</string>
 
     <!-- Fn Long-Press Speech Recognition Shortcut Section -->
     <string name="fn_long_press_speech_title">Long-press Fn for speech input</string>
@@ -171,9 +169,7 @@
     <string name="extras_title">Extras</string>
     <string name="extras_row_description">The long tail: shortcuts, status bar, accessibility, about</string>
     <string name="extras_intro">Everything that did not earn a place on the first two screens. Nothing here is needed to use the phone or the keyboard.</string>
-    <string name="extras_customization_description">Variations, the on-screen keyboard and other tuning</string>
     <string name="extras_languages_description">Input languages and layouts</string>
-    <string name="extras_accessibility_description">Timing, hold delays and assistive behaviour</string>
     <string name="tweaks_title">System tweaks</string>
     <string name="tweaks_row_description">Settings Android supports that this phone never shows you</string>
     <string name="tweaks_intro">Android supports all of these; Unihertz just never surfaced them. Each one applies straight away and every one can be put back.</string>
@@ -316,9 +312,6 @@
     <string name="voice_screen_intro">Hold the Fn key in any text field to dictate. Speak, then release — your words are transcribed inline.</string>
     <string name="voice_section_triggers">Triggers</string>
     <string name="voice_section_transcription">Transcription</string>
-    <string name="voice_section_feedback">Feedback</string>
-    <string name="voice_vibration_link_title">Vibrate on dictation start/stop</string>
-    <string name="voice_vibration_link_description">Set the start &amp; stop vibration in Sound &amp; Haptics.</string>
 
     <!-- Static Variation Bar Mode -->
     <string name="static_variation_bar_mode_title">Static Variation Bar</string>
@@ -1092,7 +1085,6 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <!-- Settings Categories -->
     <string name="settings_category_keyboard_timing">Key Behaviour &amp; Timing</string>
     <string name="settings_category_text_input">Smart Features</string>
-    <string name="settings_category_accessibility">Accessibility</string>
     <string name="settings_category_auto_correction">Auto-correction</string>
     <string name="settings_category_customization">More Customization</string>
     <string name="settings_category_sounds">Sound &amp; Haptics</string>
@@ -1134,7 +1126,6 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="settings_accessibility_suggestions_delay_value">%1$d ms</string>
     <string name="settings_accessibility_delay_decrease">Decrease delay by 50 milliseconds</string>
     <string name="settings_accessibility_delay_increase">Increase delay by 50 milliseconds</string>
-    <string name="settings_accessibility_delay_feedback">Suggestions delay: %1$d ms</string>
     <string name="settings_accessibility_bounce_keys_title">Bounce Keys</string>
     <string name="settings_accessibility_bounce_keys_description">Ignore accidental repeated presses of the same physical key.</string>
     <string name="settings_accessibility_bounce_keys_delay_title">Minimum same-key delay: %1$d ms</string>
@@ -1606,9 +1597,6 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="show_status_bar_apps">Only in these apps</string>
     <string name="show_status_bar_apps_description">The bar shows while typing in a listed app and stays hidden everywhere else, like the launcher\'s search box. Messaging, mail and social apps are listed to start with.</string>
     <string name="show_status_bar_apps_add">Add an app</string>
-    <string name="status_bar_height_title">Bar height</string>
-    <string name="status_bar_height_description">How tall the strip is with the physical keyboard. 56 matches a text box; 48 is the smallest comfortable tap.</string>
-    <string name="status_bar_height_option">%1$d</string>
     <string name="show_status_bar_apps_remove">Remove</string>
     <string name="status_bar_buttons_title">Status Bar</string>
     <string name="status_bar_buttons_description">Where the on-screen bar appears, how tall it is, and which buttons sit on its edges.</string>

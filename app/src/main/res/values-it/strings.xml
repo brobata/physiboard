@@ -62,8 +62,6 @@
     <string name="auto_show_keyboard_title">Mostra Automaticamente la Tastiera</string>
 
     <!-- Alt+Ctrl Speech Recognition Shortcut Section -->
-    <string name="alt_ctrl_speech_shortcut_title">Riconoscimento vocale Alt+Ctrl</string>
-    <string name="alt_ctrl_speech_shortcut_description">Abilita la scorciatoia da tastiera Alt+Ctrl per avviare il riconoscimento vocale</string>
 
     <!-- Static Variation Bar Mode -->
     <string name="static_variation_preset_title">Preset variazione statica</string>
@@ -575,7 +573,6 @@ Ogni tasto può essere configurato come Keycode, Azione, Native Ctrl o Nessuno. 
     <!-- Settings Categories -->
     <string name="settings_category_keyboard_timing">Tastiera &amp; Temporizzazione</string>
     <string name="settings_category_text_input">Smart Features</string>
-    <string name="settings_category_accessibility">Accessibilità</string>
     <string name="settings_category_auto_correction">Auto-correzione</string>
     <string name="settings_category_customization">Personalizzazione</string>
     <string name="settings_category_sounds">Suoni e feedback aptico</string>
@@ -589,7 +586,6 @@ Ogni tasto può essere configurato come Keycode, Azione, Native Ctrl o Nessuno. 
     <string name="settings_accessibility_suggestions_delay_value">%1$d ms</string>
     <string name="settings_accessibility_delay_decrease">Riduci ritardo di 50 millisecondi</string>
     <string name="settings_accessibility_delay_increase">Aumenta ritardo di 50 millisecondi</string>
-    <string name="settings_accessibility_delay_feedback">Ritardo suggerimenti: %1$d ms</string>
 
     <!-- Languages (Input Method Subtypes) -->
     <string name="languages_title">Lingue</string>

@@ -178,8 +178,6 @@
     <string name="notification_nav_mode_channel_description">Notifications pour le mode nav de Pastiera</string>
     <string name="notification_nav_mode_activated_title">Mode Nav Activé</string>
     <string name="notification_nav_mode_activated_text">Mode nav activé</string>
-    <string name="alt_ctrl_speech_shortcut_title">Reconnaissance vocale Alt+Ctrl</string>
-    <string name="alt_ctrl_speech_shortcut_description">Activer le raccourci clavier Alt+Ctrl pour lancer la reconnaissance vocale</string>
     <string name="speech_recognition_prompt">Parlez maintenant…</string>
     <string name="auto_correct_search_placeholder">Rechercher des corrections…</string>
     <string name="auto_correct_search_description">Rechercher</string>
@@ -239,7 +237,6 @@
     <string name="auto_correct_ricette_pastiera_name">Ricette Pastiera</string>
     <string name="settings_category_keyboard_timing">Clavier &amp; Temporisation</string>
     <string name="settings_category_text_input">Saisie de Texte</string>
-    <string name="settings_category_accessibility">Accessibilité</string>
     <string name="settings_category_auto_correction">Auto-correction</string>
     <string name="settings_category_customization">Personnalisation</string>
     <string name="settings_category_advanced">Avancé</string>
@@ -251,7 +248,6 @@
     <string name="settings_accessibility_suggestions_delay_value">%1$d ms</string>
     <string name="settings_accessibility_delay_decrease">Réduire le délai de 50 millisecondes</string>
     <string name="settings_accessibility_delay_increase">Augmenter le délai de 50 millisecondes</string>
-    <string name="settings_accessibility_delay_feedback">Délai des suggestions : %1$d ms</string>
     <string name="keyboard_layout_title">Disposition du clavier</string>
     <string name="layout_save_content_description">Enregistrer la disposition</string>
     <string name="layout_import_content_description">Importer une disposition</string>

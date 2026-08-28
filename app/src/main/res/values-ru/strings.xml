@@ -31,8 +31,6 @@
     <string name="swipe_incremental_threshold_title">Чувствительность полоски свайпа</string>
     <string name="swipe_incremental_threshold_description">Расстояние, необходимая чтобы сдвинуть курсор на одну позицию. Уменьшение значения заставляет курсор двигаться быстрее.</string>
     <string name="auto_show_keyboard_title">Автопоказ клавиатуры</string>
-    <string name="alt_ctrl_speech_shortcut_title">Alt+Ctrl распознавание речи</string>
-    <string name="alt_ctrl_speech_shortcut_description">Включить сочетание Alt+Ctrl для запуска распознавания речи</string>
     <string name="static_variation_bar_mode_title">Статическая панель вариантов</string>
     <string name="swipe_to_move_cursor">Свайп для перемещения курсора</string>
     <string name="info_title">Информация</string>
@@ -295,7 +293,6 @@
     <string name="auto_correct_ricette_pastiera_name">Рецепты Pastiera</string>
     <string name="settings_category_keyboard_timing">Клавиатура и тайминг</string>
     <string name="settings_category_text_input">Умные возможности</string>
-    <string name="settings_category_accessibility">Спецвозможности</string>
     <string name="settings_category_auto_correction">Автоисправление</string>
     <string name="settings_category_customization">Персонализация</string>
     <string name="settings_category_advanced">Продвинутые</string>
@@ -307,7 +304,6 @@
     <string name="settings_accessibility_suggestions_delay_value">%1$d ms</string>
     <string name="settings_accessibility_delay_decrease">Уменьшить задержку на 50 миллисекунд</string>
     <string name="settings_accessibility_delay_increase">Увеличить задержку на 50 миллисекунд</string>
-    <string name="settings_accessibility_delay_feedback">Задержка подсказок: %1$d ms</string>
     <string name="languages_title">Языки</string>
     <string name="languages_description">Добавляйте языки в селектор методов ввода Android. Показаны только языки со словарями, которые не являются системными.</string>
     <string name="languages_no_available">Все доступные языки уже добавлены или являются системными.</string>

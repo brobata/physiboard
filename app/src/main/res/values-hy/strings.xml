@@ -22,8 +22,6 @@
     <string name="swipe_incremental_threshold_description">Հեռավորությունը՝ կուրսորը մեկ դիրքով տեղափոխելու համար։ Ավելի փոքր արժեքները արագացնում են կուրսորը։</string>
     <string name="swipe_to_move_cursor">Սվայփ՝ կուրսորը տեղափոխելու համար</string>
     <string name="auto_show_keyboard_title">Ավտոմատ ցույց տալ ստեղնաշարը</string>
-    <string name="alt_ctrl_speech_shortcut_title">Alt+Ctrl խոսքի ճանաչում</string>
-    <string name="alt_ctrl_speech_shortcut_description">Միացնել Alt+Ctrl դյուրանցումը՝ խոսքի ճանաչումը սկսելու համար</string>
     <string name="info_title">Տեղեկատվություն</string>
     <string name="info_description">Կարգավորումները ավտոմատ պահվում և կիրառվում են անմիջապես։</string>
     <string name="keyboard_subtitle">Ֆիզիկական ստեղնաշար երկար սեղմման աջակցությամբ</string>
@@ -259,7 +257,6 @@
     <string name="settings_update_check_failed">Չհաջողվեց կապ հաստատել GitHub-ի հետ։</string>
     <string name="settings_category_keyboard_timing">Ստեղնաշար և ժամանակավորում</string>
     <string name="settings_category_text_input">Խելացի հնարավորություններ</string>
-    <string name="settings_category_accessibility">Հասանելիություն</string>
     <string name="settings_category_auto_correction">Ավտո-ուղղում</string>
     <string name="settings_category_customization">Անհատականացում</string>
     <string name="settings_category_advanced">Ընդլայնված</string>
@@ -271,7 +268,6 @@
     <string name="settings_accessibility_suggestions_delay_value">%1$d ms</string>
     <string name="settings_accessibility_delay_decrease">Նվազեցնել ուշացումը 50 միլիվայրկյանով</string>
     <string name="settings_accessibility_delay_increase">Ավելացնել ուշացումը 50 միլիվայրկյանով</string>
-    <string name="settings_accessibility_delay_feedback">Առաջարկների ուշացում՝ %1$d ms</string>
     <string name="layout_save_content_description">Պահպանել դասավորությունը</string>
     <string name="layout_import_content_description">Ներմուծել դասավորություն</string>
     <string name="layout_imported_successfully">Դասավորությունը հաջող ներմուծվեց</string>

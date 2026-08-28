@@ -244,7 +244,6 @@
     <string name="auto_correct_ricette_pastiera_name">Ricette Pastiera</string>
     <string name="settings_category_keyboard_timing">Klawiatura &amp; Czasowanie</string>
     <string name="settings_category_text_input">Wprowadzanie Tekstu</string>
-    <string name="settings_category_accessibility">Ułatwienia dostępu</string>
     <string name="settings_category_auto_correction">Auto-korekta</string>
     <string name="settings_category_customization">Dostosowanie</string>
     <string name="settings_category_advanced">Zaawansowane</string>
@@ -256,7 +255,6 @@
     <string name="settings_accessibility_suggestions_delay_value">%1$d ms</string>
     <string name="settings_accessibility_delay_decrease">Zmniejsz opóźnienie o 50 milisekund</string>
     <string name="settings_accessibility_delay_increase">Zwiększ opóźnienie o 50 milisekund</string>
-    <string name="settings_accessibility_delay_feedback">Opóźnienie sugestii: %1$d ms</string>
     <string name="layout_save_content_description">Zapisz layout</string>
     <string name="layout_import_content_description">Importuj layout</string>
     <string name="layout_imported_successfully">Layout zaimportowany pomyślnie</string>
@@ -504,8 +502,6 @@
     <string name="alt_backspace_delete_title">Alt + Backspace</string>
     <string name="backspace_at_start_delete_title">Backspace na początku wiersza</string>
     <string name="delete_alternatives_hint">Wskazówka: Ctrl + klawisz można skonfigurować w ustawieniach trybu nawigacji</string>
-    <string name="alt_ctrl_speech_shortcut_title">Rozpoznawanie mowy Alt+Ctrl</string>
-    <string name="alt_ctrl_speech_shortcut_description">Włącz skrót Alt+Ctrl, aby uruchamiać rozpoznawanie mowy</string>
     <string name="ignore_back_short">Ignore BACK</string>
     <string name="save">Zapisz</string>
     <string name="sym_enable_emoji_picker_page_title">Włącz stronę wyboru emoji</string>
