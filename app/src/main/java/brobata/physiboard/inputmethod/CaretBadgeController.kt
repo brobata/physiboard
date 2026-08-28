@@ -125,11 +125,15 @@ class CaretBadgeController(private val service: InputMethodService) {
         // Above the caret rather than beside it. Beside reads better in the abstract, but the
         // caret is not always at the end of a line - put it in a field with text after the cursor
         // and a badge to its right sits straight on top of that text.
-        val gap = dp(2)
+        //
+        // It is dropped into the top of the line box rather than parked clear above it. A line box
+        // is taller than the letters in it, so this reads as attached to the text being typed
+        // instead of floating in the gap above, and still clears the letters themselves.
+        val lineHeight = caret.bottom - caret.top
         var x = (caret.x - dp(2)).toInt()
-        var y = (caret.top - height - gap).toInt()
+        var y = (caret.top + lineHeight * LINE_OVERLAP - height).toInt()
         // At the top of the screen there is no room above, so it drops below the line instead.
-        if (y < 0) y = (caret.bottom + gap).toInt()
+        if (y < 0) y = (caret.bottom + dp(2)).toInt()
         x = x.coerceIn(0, (metrics.widthPixels - width).coerceAtLeast(0))
         y = y.coerceIn(0, (metrics.heightPixels - height).coerceAtLeast(0))
 
@@ -172,6 +176,9 @@ class CaretBadgeController(private val service: InputMethodService) {
     private companion object {
         const val TAG = "CaretBadge"
 
+        /** How far into the top of the line box the badge is allowed to sit. */
+        const val LINE_OVERLAP = 0.3f
+
         /** A plain hold, which ends the moment the key is released. Present, but muted. */
         const val HELD = 0xE0607080.toInt()
 
@@ -206,10 +213,13 @@ class CaretBadgeController(private val service: InputMethodService) {
                 snapshot.shiftOneShot -> arrow(locked = false, color = ARMED)
                 snapshot.shiftPhysicallyPressed -> arrow(locked = false, color = HELD)
             }
+            fun alt(color: Int) = items.add(
+                CaretBadgeView.Item(CaretBadgeView.Shape.ALT, label = null, color = color)
+            )
             when {
-                snapshot.altLatchActive -> text("ALT", LOCKED)
-                snapshot.altOneShot -> text("ALT", ARMED)
-                snapshot.altPhysicallyPressed -> text("ALT", HELD)
+                snapshot.altLatchActive -> alt(LOCKED)
+                snapshot.altOneShot -> alt(ARMED)
+                snapshot.altPhysicallyPressed -> alt(HELD)
             }
             // The one exclusion: nav mode holds Ctrl latched for as long as it is on, so reporting
             // that would pin a Ctrl badge beside the cursor permanently rather than report a press.

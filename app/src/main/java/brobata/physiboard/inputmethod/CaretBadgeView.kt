@@ -27,7 +27,14 @@ class CaretBadgeView(context: Context) : View(context) {
     /** One modifier's report: how to draw it, and the colour that says how long it will last. */
     data class Item(val shape: Shape, val label: String?, val color: Int)
 
-    enum class Shape { ARROW, ARROW_LOCK, TEXT }
+    enum class Shape {
+        ARROW,
+        ARROW_LOCK,
+
+        /** The option/alt key symbol, with a spelled-out fallback if the font has no glyph for it. */
+        ALT,
+        TEXT
+    }
 
     var items: List<Item> = emptyList()
         set(value) {
@@ -61,11 +68,32 @@ class CaretBadgeView(context: Context) : View(context) {
         color = HALO_COLOR
     }
 
+    // Symbol glyphs are drawn small inside their em box, so they need a larger point size to carry
+    // the same visual weight as the words beside them.
+    private val symbol = Paint(text).apply { textSize = glyphHeight * 1.3f }
+    private val symbolHalo = Paint(textHalo).apply { textSize = glyphHeight * 1.3f }
+
+    /**
+     * U+2325 is not guaranteed to be in the system font, and a missing glyph draws as tofu - worse
+     * than the word it replaced. Resolved once, here, where the font is actually known.
+     */
+    private val altHasGlyph = symbol.hasGlyph(ALT_SYMBOL)
+
+    // Everything shares one baseline, so an arrow's foot lines up with the foot of the word beside
+    // it. The view is sized from whichever paint reaches highest above that baseline - the symbol is
+    // set larger than the words, and sizing to the words alone would shear its top off.
+    private val ascent = maxOf(glyphHeight, -text.fontMetrics.ascent, -symbol.fontMetrics.ascent)
+    private val descent = maxOf(text.fontMetrics.descent, symbol.fontMetrics.descent)
+
     private val arrowWidth = glyphHeight * 0.68f
     private val path = Path()
 
+    private fun altPaint() = if (altHasGlyph) symbol else text
+    private fun altLabel() = if (altHasGlyph) ALT_SYMBOL else ALT_FALLBACK
+
     private fun itemWidth(item: Item): Float = when (item.shape) {
         Shape.TEXT -> text.measureText(item.label.orEmpty())
+        Shape.ALT -> altPaint().measureText(altLabel())
         else -> arrowWidth
     }
 
@@ -80,29 +108,43 @@ class CaretBadgeView(context: Context) : View(context) {
         val pad = haloWidth * 2f
         setMeasuredDimension(
             (width + pad * 2).toInt().coerceAtLeast(1),
-            (glyphHeight + pad * 2).toInt().coerceAtLeast(1)
+            (ascent + descent + pad * 2).toInt().coerceAtLeast(1)
         )
     }
 
     override fun onDraw(canvas: Canvas) {
         var x = haloWidth * 2f
-        val top = haloWidth * 2f
+        val baseline = haloWidth * 2f + ascent
         for (item in items) {
             when (item.shape) {
-                Shape.TEXT -> drawText(canvas, item, x, top)
-                else -> drawArrow(canvas, item, x, top, locked = item.shape == Shape.ARROW_LOCK)
+                Shape.TEXT ->
+                    drawGlyph(canvas, item, x, baseline, item.label.orEmpty(), text, textHalo)
+                Shape.ALT -> drawGlyph(
+                    canvas, item, x, baseline, altLabel(), altPaint(),
+                    if (altHasGlyph) symbolHalo else textHalo
+                )
+                // Hung from the baseline so the arrow's foot and the words' feet agree.
+                else -> drawArrow(
+                    canvas, item, x, baseline - glyphHeight,
+                    locked = item.shape == Shape.ARROW_LOCK
+                )
             }
             x += itemWidth(item) + gap
         }
     }
 
-    private fun drawText(canvas: Canvas, item: Item, x: Float, top: Float) {
-        val label = item.label ?: return
-        // Baseline from the font's own ascent so text and arrows sit on the same line.
-        val baseline = top + glyphHeight - text.fontMetrics.descent
-        canvas.drawText(label, x, baseline, textHalo)
-        text.color = item.color
-        canvas.drawText(label, x, baseline, text)
+    private fun drawGlyph(
+        canvas: Canvas,
+        item: Item,
+        x: Float,
+        baseline: Float,
+        label: String,
+        paint: Paint,
+        halo: Paint
+    ) {
+        canvas.drawText(label, x, baseline, halo)
+        paint.color = item.color
+        canvas.drawText(label, x, baseline, paint)
     }
 
     private fun drawArrow(canvas: Canvas, item: Item, x: Float, top: Float, locked: Boolean) {
@@ -140,5 +182,9 @@ class CaretBadgeView(context: Context) : View(context) {
          * lifts them off a dark app and is simply not noticed against a light one.
          */
         val HALO_COLOR = Color.argb(235, 255, 255, 255)
+
+        /** U+2325 OPTION KEY. */
+        const val ALT_SYMBOL = "\u2325"
+        const val ALT_FALLBACK = "ALT"
     }
 }
