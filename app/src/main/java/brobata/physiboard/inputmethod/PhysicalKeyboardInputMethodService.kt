@@ -327,6 +327,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
 
     /** Reports the armed modifier beside the text cursor, in place of watching an LED strip. */
     private val caretBadgeController by lazy { CaretBadgeController(this) }
+    private var lastCaretBadgeEnabled: Boolean? = null
     private val uiHandler = Handler(Looper.getMainLooper())
     // Fn long-press speech shortcut. The physical Fn key is matched by scan code because the
     // system may remap it to an arbitrary key code (Ctrl on Titan devices). On Titan 2 the
@@ -2813,7 +2814,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private fun syncCursorAnchorMonitoring() {
         val inputConnection = currentInputConnection ?: return
         val wanted = emojiSearchCursorAnchorMonitoringRequested ||
-            caretBadgeController.wantsCursorUpdates
+            SettingsManager.getCaretModifierBadgeEnabled(this)
         val flags = if (wanted) {
             InputConnection.CURSOR_UPDATE_IMMEDIATE or InputConnection.CURSOR_UPDATE_MONITOR
         } else {
@@ -2924,7 +2925,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             shouldDisableSmartFeatures = shouldDisableSmartFeatures
         )
         updateSystemStatusModifierIcon(snapshot, effectiveSoftwareKeyboardMode)
-        if (caretBadgeController.onSnapshot(snapshot, SettingsManager.getCaretModifierBadgeEnabled(this))) {
+        val caretBadgeEnabled = SettingsManager.getCaretModifierBadgeEnabled(this)
+        caretBadgeController.onSnapshot(snapshot, caretBadgeEnabled)
+        if (caretBadgeEnabled != lastCaretBadgeEnabled) {
+            lastCaretBadgeEnabled = caretBadgeEnabled
             syncCursorAnchorMonitoring()
         }
         // Also pass the emoji map while SYM is active (page 1 only)
@@ -3271,6 +3275,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
+        // requestCursorUpdates is scoped to one InputConnection, so every new editor drops it and
+        // it has to be asked for again. Without this the caret badge worked in the first field of a
+        // session and nowhere after it.
+        caretBadgeController.onEditorGone()
+        syncCursorAnchorMonitoring()
         if (::textExpansionController.isInitialized) textExpansionController.clear()
         updateDebugImeContextSnapshot(info)
         attachTrackpadDecorViewMotionHook("onStartInputView")

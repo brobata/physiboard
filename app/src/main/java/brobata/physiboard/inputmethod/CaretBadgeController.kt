@@ -3,7 +3,6 @@ package brobata.physiboard.inputmethod
 import android.content.Context
 import android.graphics.Color
 import android.graphics.PixelFormat
-import android.graphics.PointF
 import android.graphics.drawable.GradientDrawable
 import android.inputmethodservice.InputMethodService
 import android.provider.Settings
@@ -48,44 +47,29 @@ class CaretBadgeController(private val service: InputMethodService) {
      * The last caret position the editor reported, so pressing a modifier can put the badge on
      * screen straight away instead of waiting a round trip for a fresh one.
      */
-    private var lastCaret: PointF? = null
+    private var lastCaret: Caret? = null
 
-    /**
-     * True while the feature is on, i.e. while the editor should be publishing cursor updates.
-     *
-     * Monitoring deliberately stays on for the whole editing session rather than being switched on
-     * when a modifier is pressed: the caret moves as you type, so a position cached from before the
-     * last few keystrokes would put the badge in the wrong place, and waiting for a fresh one would
-     * show it a frame or two late on every capital letter.
-     */
-    var wantsCursorUpdates: Boolean = false
-        private set
+    /** The caret the editor reported, in screen pixels. */
+    private data class Caret(val x: Float, val top: Float, val bottom: Float)
 
     /**
      * Recomputes the label from the modifier state.
      *
      * @return true if the need for cursor updates changed, so the caller can re-issue the request.
      */
-    fun onSnapshot(snapshot: StatusBarController.StatusSnapshot, enabled: Boolean): Boolean {
+    fun onSnapshot(snapshot: StatusBarController.StatusSnapshot, enabled: Boolean) {
         val label = if (enabled) labelFor(snapshot) else null
+        if (label == currentLabel) return
         currentLabel = label
-        if (label == null) {
-            hide()
-        } else {
-            lastCaret?.let { show(label, it.x.toInt(), it.y.toInt()) }
-        }
-        if (enabled == wantsCursorUpdates) return false
-        wantsCursorUpdates = enabled
-        if (!enabled) lastCaret = null
-        return true
+        if (label == null) hide() else lastCaret?.let { show(label, it) }
     }
 
     /** Positions the badge from the caret the editor just reported. */
     fun onCursorAnchorInfo(info: CursorAnchorInfo?) {
-        val caret = caretTopLeft(info)
+        val caret = caretRect(info)
         lastCaret = caret
         val label = currentLabel ?: return
-        if (caret == null) hide() else show(label, caret.x.toInt(), caret.y.toInt())
+        if (caret == null) hide() else show(label, caret)
     }
 
     /** Called when the editor goes away - the cached caret belongs to it, not to the next one. */
@@ -107,19 +91,19 @@ class CaretBadgeController(private val service: InputMethodService) {
         windowManager = null
         currentLabel = null
         lastCaret = null
-        wantsCursorUpdates = false
     }
 
     /**
      * The caret in screen coordinates, or null when the editor is not reporting one or has scrolled
-     * it out of sight. Anchored to the top of the insertion marker so the badge can sit above the
-     * line rather than over the text being typed.
+     * it out of sight. The whole insertion marker is kept, not just its top, so the badge can be
+     * centred on the line the way a subscript glyph sits beside a cursor.
      */
-    private fun caretTopLeft(info: CursorAnchorInfo?): PointF? {
+    private fun caretRect(info: CursorAnchorInfo?): Caret? {
         if (info == null) return null
         val horizontal = info.insertionMarkerHorizontal
         val top = info.insertionMarkerTop
-        if (horizontal.isNaN() || top.isNaN()) return null
+        val bottom = info.insertionMarkerBottom
+        if (horizontal.isNaN() || top.isNaN() || bottom.isNaN()) return null
         // The editor tells us when the caret is scrolled out of its own viewport; a badge floating
         // over the app where the cursor is not actually visible is worse than no badge.
         val flags = info.insertionMarkerFlags
@@ -128,12 +112,12 @@ class CaretBadgeController(private val service: InputMethodService) {
         ) {
             return null
         }
-        val point = floatArrayOf(horizontal, top)
-        info.matrix.mapPoints(point)
-        return PointF(point[0], point[1])
+        val points = floatArrayOf(horizontal, top, horizontal, bottom)
+        info.matrix.mapPoints(points)
+        return Caret(x = points[0], top = points[1], bottom = points[3])
     }
 
-    private fun show(label: String, caretX: Int, caretTopY: Int) {
+    private fun show(label: String, caret: Caret) {
         if (overlayRejected || !canDrawOverlays()) return
         val view = badgeView ?: createBadge().also { badgeView = it }
         view.text = label
@@ -142,12 +126,14 @@ class CaretBadgeController(private val service: InputMethodService) {
         view.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
         val width = view.measuredWidth
         val height = view.measuredHeight
-        // Sit above the caret and slightly right of it, then keep it on screen: near the top of a
-        // field there is no room above, so it drops below the line instead of being clipped away.
-        val gap = dp(4)
-        var x = caretX + dp(2)
-        var y = caretTopY - height - gap
-        if (y < 0) y = caretTopY + dp(20) + gap
+        // Beside the caret and centred on its line, the way a subscript glyph sits next to a
+        // cursor. The caret is normally at the end of what has been typed, so the space to its
+        // right is empty and the badge covers nothing.
+        var x = (caret.x + dp(3)).toInt()
+        var y = (((caret.top + caret.bottom) / 2f) - height / 2f).toInt()
+        // At the right-hand edge there is no room beside it, so flip to the other side of the caret
+        // rather than let it be pushed over the text that is already there.
+        if (x + width > metrics.widthPixels) x = (caret.x - dp(3)).toInt() - width
         x = x.coerceIn(0, (metrics.widthPixels - width).coerceAtLeast(0))
         y = y.coerceIn(0, (metrics.heightPixels - height).coerceAtLeast(0))
 
@@ -181,16 +167,18 @@ class CaretBadgeController(private val service: InputMethodService) {
         this.y = y
     }
 
+    // Small and tight on purpose: this is a subscript beside the cursor, not a banner. Anything
+    // bigger competes with the text for attention in exactly the place the eye is already resting.
     private fun createBadge(): TextView = TextView(context).apply {
         setTextColor(Color.WHITE)
-        setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f)
         typeface = android.graphics.Typeface.DEFAULT_BOLD
         includeFontPadding = false
-        letterSpacing = 0.08f
-        setPadding(dp(6), dp(3), dp(6), dp(3))
+        letterSpacing = 0.04f
+        setPadding(dp(4), dp(2), dp(4), dp(2))
         background = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            cornerRadius = dp(4).toFloat()
+            cornerRadius = dp(3).toFloat()
             setColor(BADGE_BACKGROUND)
         }
     }
@@ -215,17 +203,18 @@ class CaretBadgeController(private val service: InputMethodService) {
         fun labelFor(snapshot: StatusBarController.StatusSnapshot): String? {
             val parts = mutableListOf<String>()
             when {
-                snapshot.capsLockEnabled -> parts += "CAPS"
-                snapshot.shiftOneShot || snapshot.shiftPhysicallyPressed -> parts += "SHIFT"
+                // Locked states carry the lock arrow; a one-shot or a hold is the plain glyph.
+                snapshot.capsLockEnabled -> parts += "\u21EA"
+                snapshot.shiftOneShot || snapshot.shiftPhysicallyPressed -> parts += "\u21E7"
             }
             when {
-                snapshot.altLatchActive -> parts += "ALT LOCK"
+                snapshot.altLatchActive -> parts += "ALT\u21EA"
                 snapshot.altOneShot || snapshot.altPhysicallyPressed -> parts += "ALT"
             }
             // The one exclusion: nav mode holds Ctrl latched for as long as it is on, so reporting
-            // that would pin CTRL LOCK beside the cursor permanently rather than report a keypress.
+            // that would pin a Ctrl badge beside the cursor permanently rather than report a press.
             when {
-                snapshot.ctrlLatchActive && !snapshot.ctrlLatchFromNavMode -> parts += "CTRL LOCK"
+                snapshot.ctrlLatchActive && !snapshot.ctrlLatchFromNavMode -> parts += "CTRL\u21EA"
                 snapshot.ctrlOneShot || snapshot.ctrlPhysicallyPressed -> parts += "CTRL"
             }
             if (snapshot.symPage != 0) parts += "SYM"
