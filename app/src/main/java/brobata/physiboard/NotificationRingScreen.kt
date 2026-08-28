@@ -23,6 +23,8 @@ import brobata.physiboard.inputmethod.EmbeddedAdbShell
 import brobata.physiboard.ring.NotificationRingActivity
 import brobata.physiboard.ring.NotificationRingSetup
 import brobata.physiboard.ring.RingAdjustActivity
+import brobata.physiboard.ring.ColorWheel
+import brobata.physiboard.ring.NotificationRingPolicy
 import android.content.Intent
 import brobata.physiboard.ring.RingBrightness
 import brobata.physiboard.ring.RingPalette
@@ -445,6 +447,7 @@ private fun RingColorDialog(
     onPick: (Int) -> Unit,
     onDismiss: () -> Unit
 ) {
+    var live by remember(current) { mutableStateOf(current ?: RingPalette.GREEN.argb) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
@@ -461,16 +464,32 @@ private fun RingColorDialog(
                         row.forEach { swatch ->
                             ColorDot(
                                 argb = swatch.argb,
-                                selected = swatch.argb == current,
+                                selected = swatch.argb == live,
                                 size = 40.dp,
-                                onClick = { onPick(swatch.argb) }
+                                onClick = { live = swatch.argb }
                             )
                         }
                     }
                 }
+
+                Spacer(Modifier.height(8.dp))
+                ColorWheel(
+                    selected = live,
+                    onColorChange = { live = it },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                if (NotificationRingPolicy.isTooDarkForRing(live)) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = stringResource(R.string.ring_color_too_dark),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
             }
         },
-        confirmButton = {},
+        confirmButton = { TextButton(onClick = { onPick(live) }) { Text(stringResource(android.R.string.ok)) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) } }
     )
 }

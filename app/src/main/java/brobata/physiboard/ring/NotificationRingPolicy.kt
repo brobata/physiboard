@@ -44,8 +44,11 @@ object NotificationRingPolicy {
      */
     fun ringColor(notificationColor: Int, fallback: Int = DEFAULT_COLOR): Int {
         if (notificationColor == 0) return fallback
-        return if (relativeLuminance(notificationColor) < 0.12) fallback else notificationColor
+        return if (isTooDarkForRing(notificationColor)) fallback else notificationColor
     }
+
+    /** Below this a ring cannot be made out against an AMOLED panel with the screen off. */
+    fun isTooDarkForRing(argb: Int): Boolean = relativeLuminance(argb) < 0.12
 
     /** WCAG relative luminance, written out so the test suite does not need android.graphics. */
     private fun relativeLuminance(argb: Int): Double {
