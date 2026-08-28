@@ -116,6 +116,10 @@ class CaretBadgeController(private val service: InputMethodService) {
     private fun show(items: List<CaretBadgeView.Item>, caret: Caret) {
         if (overlayRejected || !canDrawOverlays()) return
         val view = badgeView ?: CaretBadgeView(context).also { badgeView = it }
+        // Read here rather than cached: the settings screen writes straight to preferences, and a
+        // colour picked while a field is open should take effect on the very next keypress.
+        view.armedColor = brobata.physiboard.SettingsManager.getCaretBadgeArmedColor(context)
+        view.lockedColor = brobata.physiboard.SettingsManager.getCaretBadgeLockedColor(context)
         view.items = items
 
         val metrics = context.resources.displayMetrics

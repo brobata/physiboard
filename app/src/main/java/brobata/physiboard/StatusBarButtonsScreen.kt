@@ -63,6 +63,13 @@ fun StatusBarButtonsScreen(
         }
     }
     val overlayGranted = remember(overlayTick) { Settings.canDrawOverlays(context) }
+    var caretArmedColor by remember {
+        mutableStateOf(SettingsManager.getCaretBadgeArmedColor(context))
+    }
+    var caretLockedColor by remember {
+        mutableStateOf(SettingsManager.getCaretBadgeLockedColor(context))
+    }
+    var pickingCaretColor by remember { mutableStateOf<String?>(null) }
     BackHandler { onBack() }
 
     fun selectExtendedButton(buttonId: String, targetSide: String, targetIndex: Int) {
@@ -176,6 +183,44 @@ fun StatusBarButtonsScreen(
                 runCatching { context.startActivity(intent) }
             }
         )
+
+        if (caretBadgeEnabled) {
+            CaretBadgeColorRow(
+                title = stringResource(R.string.caret_badge_color_armed),
+                description = stringResource(R.string.caret_badge_color_armed_description),
+                argb = caretArmedColor,
+                onClick = { pickingCaretColor = "armed" }
+            )
+            CaretBadgeColorRow(
+                title = stringResource(R.string.caret_badge_color_locked),
+                description = stringResource(R.string.caret_badge_color_locked_description),
+                argb = caretLockedColor,
+                onClick = { pickingCaretColor = "locked" }
+            )
+        }
+        pickingCaretColor?.let { which ->
+            val armed = which == "armed"
+            ColorPickerDialog(
+                title = stringResource(
+                    if (armed) R.string.caret_badge_color_armed
+                    else R.string.caret_badge_color_locked
+                ),
+                current = if (armed) caretArmedColor else caretLockedColor,
+                swatches = CARET_BADGE_SWATCHES,
+                subtitle = stringResource(R.string.caret_badge_color_pick),
+                onPick = { argb ->
+                    if (armed) {
+                        caretArmedColor = argb
+                        SettingsManager.setCaretBadgeArmedColor(context, argb)
+                    } else {
+                        caretLockedColor = argb
+                        SettingsManager.setCaretBadgeLockedColor(context, argb)
+                    }
+                    pickingCaretColor = null
+                },
+                onDismiss = { pickingCaretColor = null }
+            )
+        }
 
         Surface(modifier = Modifier.fillMaxWidth()) {
             Text(
@@ -782,5 +827,44 @@ private fun CaretBadgeRow(
             }
         }
       }
+    }
+}
+
+/**
+ * The quick picks offered for the cursor modifiers. Saturated mid-tones, because these glyphs are
+ * drawn over an app whose background is unknown - a very pale or very dark pick reads on one theme
+ * and vanishes on the other. The wheel underneath still allows anything.
+ */
+private val CARET_BADGE_SWATCHES = listOf(
+    0xFF2563EB.toInt(), 0xFFDC2626.toInt(), 0xFF16A34A.toInt(), 0xFFEA580C.toInt(),
+    0xFF9333EA.toInt(), 0xFF0891B2.toInt(), 0xFFDB2777.toInt(), 0xFFCA8A04.toInt(),
+    0xFF475569.toInt(), 0xFF111827.toInt()
+)
+
+@Composable
+private fun CaretBadgeColorRow(
+    title: String,
+    description: String,
+    argb: Int,
+    onClick: () -> Unit
+) {
+    Surface(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 52.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = title, style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            ColorSwatch(argb = argb, selected = false, size = 32.dp)
+        }
     }
 }

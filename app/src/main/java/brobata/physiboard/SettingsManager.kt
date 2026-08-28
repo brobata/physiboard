@@ -125,6 +125,8 @@ object SettingsManager {
     private const val KEY_AUTO_CORRECT_ENABLED_LANGUAGES = "auto_correct_enabled_languages"
     private const val KEY_SUGGESTIONS_ENABLED = "suggestions_enabled"
     private const val KEY_CARET_MODIFIER_BADGE = "caret_modifier_badge"
+    private const val KEY_CARET_BADGE_ARMED_COLOR = "caret_badge_armed_color"
+    private const val KEY_CARET_BADGE_LOCKED_COLOR = "caret_badge_locked_color"
     private const val KEY_SNIPPETS_ENABLED = "snippets_enabled"
     private const val KEY_SNIPPETS_PREFIX = "snippets_prefix"
     private const val KEY_SNIPPETS = "snippets_v1"
@@ -400,6 +402,10 @@ object SettingsManager {
     private const val DEFAULT_AUTO_CORRECT_ENABLED = true
     private const val DEFAULT_SUGGESTIONS_ENABLED = true
     private const val DEFAULT_CARET_MODIFIER_BADGE = true
+    /** One click: armed for the next key only. */
+    const val DEFAULT_CARET_BADGE_ARMED_COLOR = 0xFF2563EB.toInt()
+    /** Two clicks: stuck on until it is turned off. */
+    const val DEFAULT_CARET_BADGE_LOCKED_COLOR = 0xFFDC2626.toInt()
     private const val DEFAULT_SNIPPETS_ENABLED = false
     private const val DEFAULT_SNIPPETS_PREFIX = "!"
     private const val DEFAULT_ACCENT_MATCHING_ENABLED = true
@@ -3338,6 +3344,24 @@ object SettingsManager {
         getPreferences(context).edit()
             .putBoolean(KEY_CARET_MODIFIER_BADGE, enabled)
             .apply()
+    }
+
+    /** Colour of a modifier that is armed for one key only. */
+    fun getCaretBadgeArmedColor(context: Context): Int =
+        getPreferences(context)
+            .getInt(KEY_CARET_BADGE_ARMED_COLOR, DEFAULT_CARET_BADGE_ARMED_COLOR)
+
+    fun setCaretBadgeArmedColor(context: Context, argb: Int) {
+        getPreferences(context).edit().putInt(KEY_CARET_BADGE_ARMED_COLOR, argb).apply()
+    }
+
+    /** Colour of a modifier that stays on until it is turned off. */
+    fun getCaretBadgeLockedColor(context: Context): Int =
+        getPreferences(context)
+            .getInt(KEY_CARET_BADGE_LOCKED_COLOR, DEFAULT_CARET_BADGE_LOCKED_COLOR)
+
+    fun setCaretBadgeLockedColor(context: Context, argb: Int) {
+        getPreferences(context).edit().putInt(KEY_CARET_BADGE_LOCKED_COLOR, argb).apply()
     }
 
     /**

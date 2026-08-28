@@ -575,8 +575,6 @@
     <string name="typing_sound_import_success">Typing sound pack imported</string>
     <string name="typing_sound_import_failed">Could not import this sound pack. Use a ZIP with audio files in normal/, space/, backspace/, enter/, and modifier/ folders.</string>
     <string name="typing_sound_docs_title">Sound pack format</string>
-    <string name="typing_sound_docs_description">Open the import guide on pastiera.eu</string>
-    <string name="typing_sound_docs_url">https://pastiera.eu/guides/typing-soundpacks/</string>
     <string name="tap_haptic_system_title">Tap vibration</string>
     <string name="tap_haptic_system_description">Use Android keyboard haptics for suggestions and variations on compatible devices.</string>
     <string name="tap_haptic_duration_title">Custom vibration: %1$d ms</string>
@@ -1709,4 +1707,9 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="caret_modifier_badge_description">Shift, Alt, Ctrl and Sym appear next to the text cursor whenever they are on. Only works in apps that report where the cursor is.</string>
     <string name="caret_modifier_badge_needs_overlay">Drawing next to the cursor means drawing over the app you are typing in, so Android needs permission first.</string>
     <string name="caret_modifier_badge_grant_overlay">Allow drawing over apps</string>
+    <string name="caret_badge_color_armed">One press colour</string>
+    <string name="caret_badge_color_armed_description">Shift, Alt or Ctrl armed for the next key only</string>
+    <string name="caret_badge_color_locked">Locked colour</string>
+    <string name="caret_badge_color_locked_description">Caps lock, Alt lock and Ctrl lock, which stay on until you turn them off</string>
+    <string name="caret_badge_color_pick">A modifier being held down is shown in a faded version of these.</string>
 </resources>

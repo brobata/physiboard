@@ -46,6 +46,22 @@ class CaretBadgeView(context: Context) : View(context) {
         TEXT
     }
 
+    /** Colour of a modifier armed for one key only. User-settable. */
+    var armedColor: Int = 0xFF2563EB.toInt()
+        set(value) {
+            if (field == value) return
+            field = value
+            invalidate()
+        }
+
+    /** Colour of a modifier that stays on until it is turned off. User-settable. */
+    var lockedColor: Int = 0xFFDC2626.toInt()
+        set(value) {
+            if (field == value) return
+            field = value
+            invalidate()
+        }
+
     var items: List<Item> = emptyList()
         set(value) {
             if (field == value) return
@@ -208,7 +224,7 @@ class CaretBadgeView(context: Context) : View(context) {
     }
 
     private fun tint(item: Item): Int {
-        val base = if (item.locked) LOCKED_COLOR else ARMED_COLOR
+        val base = if (item.locked) lockedColor else armedColor
         val alpha = if (item.faint) FAINT_ALPHA else FULL_ALPHA
         return Color.argb(alpha, Color.red(base), Color.green(base), Color.blue(base))
     }
@@ -219,12 +235,6 @@ class CaretBadgeView(context: Context) : View(context) {
     )
 
     private companion object {
-        /** One click: armed for the next key only, then gone by itself. */
-        val ARMED_COLOR = Color.rgb(0x25, 0x63, 0xEB)
-
-        /** Two clicks: stuck on until it is deliberately turned off. */
-        val LOCKED_COLOR = Color.rgb(0xDC, 0x26, 0x26)
-
         /**
          * A light halo rather than a dark one: the glyphs are mid-tone, so a pale outline lifts them
          * off a dark app and is simply not noticed against a light one.

@@ -429,15 +429,7 @@ fun NotificationRingScreen(
 
 @Composable
 private fun ColorDot(argb: Int, selected: Boolean, size: androidx.compose.ui.unit.Dp, onClick: (() -> Unit)? = null) {
-    val outline = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outlineVariant
-    Box(
-        modifier = Modifier
-            .size(size)
-            .border(if (selected) 3.dp else 1.dp, outline, CircleShape)
-            .padding(3.dp)
-            .background(Color(argb), CircleShape)
-            .let { m -> if (onClick != null) m.clickable(onClick = onClick) else m }
-    )
+    ColorSwatch(argb = argb, selected = selected, size = size, onClick = onClick)
 }
 
 @Composable
@@ -447,50 +439,15 @@ private fun RingColorDialog(
     onPick: (Int) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var live by remember(current) { mutableStateOf(current ?: RingPalette.GREEN.argb) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
-            Column {
-                Text(
-                    text = stringResource(R.string.ring_app_colors_pick),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(12.dp))
-                RingPalette.entries.chunked(5).forEach { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(vertical = 6.dp)) {
-                        row.forEach { swatch ->
-                            ColorDot(
-                                argb = swatch.argb,
-                                selected = swatch.argb == live,
-                                size = 40.dp,
-                                onClick = { live = swatch.argb }
-                            )
-                        }
-                    }
-                }
-
-                Spacer(Modifier.height(8.dp))
-                ColorWheel(
-                    selected = live,
-                    onColorChange = { live = it },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                if (NotificationRingPolicy.isTooDarkForRing(live)) {
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = stringResource(R.string.ring_color_too_dark),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
-            }
-        },
-        confirmButton = { TextButton(onClick = { onPick(live) }) { Text(stringResource(android.R.string.ok)) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) } }
+    val tooDark = stringResource(R.string.ring_color_too_dark)
+    ColorPickerDialog(
+        title = title,
+        current = current ?: RingPalette.GREEN.argb,
+        swatches = RingPalette.entries.map { it.argb },
+        subtitle = stringResource(R.string.ring_app_colors_pick),
+        warning = { argb -> if (NotificationRingPolicy.isTooDarkForRing(argb)) tooDark else null },
+        onPick = onPick,
+        onDismiss = onDismiss
     )
 }
 
