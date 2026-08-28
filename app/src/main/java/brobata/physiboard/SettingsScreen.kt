@@ -94,7 +94,6 @@ enum class SettingsDestination {
     SystemTweaks,
     NotificationRing,
     KeyboardHub,
-    Extras,
     KeyMapping
 }
 
@@ -149,7 +148,7 @@ fun SettingsScreen(
             } else if (initialDestination == SettingsActivity.DESTINATION_KEYBOARD_HUB) {
                 add(SettingsDestination.KeyboardHub)
             } else if (initialDestination == SettingsActivity.DESTINATION_EXTRAS) {
-                add(SettingsDestination.Extras)
+                add(SettingsDestination.Main)
             } else if (initialDestination == SettingsActivity.DESTINATION_REMOVE_BLOAT) {
                 add(SettingsDestination.Toolbox)
                 add(SettingsDestination.BloatRemover)
@@ -251,6 +250,36 @@ fun SettingsScreen(
         label = "settings_navigation",
         contentKey = { it }
     ) { destination ->
+    // One mapping from a search hit to a destination, shared by Settings and the hubs, so a
+    // search started anywhere lands in the same place.
+    val searchTargetNavigation: (SettingsSearchTarget) -> Unit = { target ->
+        when (target) {
+            SettingsSearchTarget.TEXT_INPUT -> navigateTo(SettingsDestination.TextInput)
+            SettingsSearchTarget.AUTO_CORRECTION -> navigateTo(SettingsDestination.AutoCorrection)
+            SettingsSearchTarget.APP_RAW_MODE -> navigateTo(SettingsDestination.AppRawMode)
+            SettingsSearchTarget.CUSTOMIZATION -> openCustomization(null)
+            SettingsSearchTarget.STATUS_BAR_BUTTONS ->
+                openCustomization(SettingsActivity.CUSTOMIZATION_DESTINATION_STATUS_BAR_BUTTONS)
+            SettingsSearchTarget.KEYBOARD_THEME ->
+                openCustomization(SettingsActivity.CUSTOMIZATION_DESTINATION_KEYBOARD_THEME)
+            SettingsSearchTarget.QUICK_LAUNCHER ->
+                openCustomization(SettingsActivity.CUSTOMIZATION_DESTINATION_LAUNCHER_SHORTCUTS)
+            SettingsSearchTarget.NAV_MODE -> {
+                requestedNavModeKeyCode = null
+                navigateTo(SettingsDestination.NavMode)
+            }
+            SettingsSearchTarget.SCREEN_TRACKPAD -> navigateTo(SettingsDestination.ScreenTrackpad)
+            SettingsSearchTarget.ENTER_BEHAVIOR ->
+                openCustomization(SettingsActivity.CUSTOMIZATION_DESTINATION_APP_ENTER_BEHAVIOR)
+            SettingsSearchTarget.TOOLBOX -> navigateTo(SettingsDestination.Toolbox)
+            SettingsSearchTarget.REMOVE_BLOAT -> navigateTo(SettingsDestination.BloatRemover)
+            SettingsSearchTarget.ADVANCED -> navigateTo(SettingsDestination.Advanced)
+            SettingsSearchTarget.ABOUT -> navigateTo(SettingsDestination.About)
+            SettingsSearchTarget.CUSTOM_INPUT_STYLES -> navigateTo(SettingsDestination.CustomInputStyles)
+            SettingsSearchTarget.APP_LANGUAGE -> navigateTo(SettingsDestination.AppLanguage)
+            SettingsSearchTarget.VOICE -> navigateTo(SettingsDestination.Voice)
+        }
+    }
         when (destination) {
             SettingsDestination.Main -> {
                 SettingsMainScreen(
@@ -261,7 +290,7 @@ fun SettingsScreen(
                     onStatusClick = { navigateTo(SettingsDestination.Status) },
                     onToolboxClick = { navigateTo(SettingsDestination.Toolbox) },
                     onKeyboardHubClick = { navigateTo(SettingsDestination.KeyboardHub) },
-                    onExtrasClick = { navigateTo(SettingsDestination.Extras) },
+                    onInputLanguagesClick = { navigateTo(SettingsDestination.CustomInputStyles) },
                     onTextInputClick = { navigateTo(SettingsDestination.TextInput) },
                     onVoiceClick = { navigateTo(SettingsDestination.Voice) },
                     onScreenTrackpadClick = { navigateTo(SettingsDestination.ScreenTrackpad) },
@@ -345,6 +374,7 @@ fun SettingsScreen(
                     intro = stringResource(R.string.toolbox_intro),
                     onBack = { navigateBack() },
                     header = { DeviceSetupCard() },
+                    onSearchResult = searchTargetNavigation,
                     rows = listOf(
                         HubRow(
                             icon = Icons.Filled.LightMode,
@@ -377,6 +407,12 @@ fun SettingsScreen(
                             onClick = { navigateTo(SettingsDestination.NotificationRing) }
                         ),
                         HubRow(
+                            icon = Icons.Filled.TouchApp,
+                            title = stringResource(R.string.screen_trackpad_title),
+                            description = stringResource(R.string.screen_trackpad_description),
+                            onClick = { navigateTo(SettingsDestination.ScreenTrackpad) }
+                        ),
+                        HubRow(
                             icon = Icons.Filled.Keyboard,
                             title = stringResource(R.string.keymap_title),
                             description = stringResource(R.string.keymap_row_description),
@@ -403,6 +439,7 @@ fun SettingsScreen(
                     title = stringResource(R.string.keyboard_hub_title),
                     intro = stringResource(R.string.keyboard_hub_intro),
                     onBack = { navigateBack() },
+                    onSearchResult = searchTargetNavigation,
                     rows = listOf(
                         HubRow(
                             icon = Icons.Filled.TextFields,
@@ -457,53 +494,6 @@ fun SettingsScreen(
                             onClick = {
                                 openCustomization(SettingsActivity.CUSTOMIZATION_DESTINATION_APP_ENTER_BEHAVIOR)
                             }
-                        )
-                    )
-                )
-            }
-            SettingsDestination.Extras -> {
-                SettingsHubScreen(
-                    modifier = modifier,
-                    title = stringResource(R.string.extras_title),
-                    intro = stringResource(R.string.extras_intro),
-                    onBack = { navigateBack() },
-                    rows = listOf(
-                        HubRow(
-                            icon = Icons.AutoMirrored.Filled.ManageSearch,
-                            title = stringResource(R.string.starter_launcher_shortcuts_title),
-                            description = stringResource(R.string.starter_launcher_shortcuts_description),
-                            onClick = {
-                                openCustomization(SettingsActivity.CUSTOMIZATION_DESTINATION_LAUNCHER_SHORTCUTS)
-                            }
-                        ),
-                        HubRow(
-                            icon = Icons.Filled.SmartButton,
-                            title = stringResource(R.string.status_bar_buttons_title),
-                            description = stringResource(R.string.status_bar_buttons_description),
-                            onClick = {
-                                openCustomization(SettingsActivity.CUSTOMIZATION_DESTINATION_STATUS_BAR_BUTTONS)
-                            }
-                        ),
-                        HubRow(
-                            icon = Icons.Filled.Language,
-                            title = stringResource(R.string.custom_input_styles_title),
-                            description = stringResource(R.string.extras_languages_description),
-                            onClick = { navigateTo(SettingsDestination.CustomInputStyles) }
-                        ),
-                        HubRow(
-                            icon = Icons.Filled.Engineering,
-                            title = stringResource(R.string.settings_category_advanced),
-                            description = stringResource(R.string.toolbox_advanced_description),
-                            onClick = { navigateTo(SettingsDestination.Advanced) }
-                        ),
-                        HubRow(
-                            icon = Icons.Filled.Info,
-                            title = stringResource(R.string.about_title),
-                            description = stringResource(
-                                R.string.settings_about_version_summary,
-                                BuildConfig.VERSION_NAME
-                            ),
-                            onClick = { navigateTo(SettingsDestination.About) }
                         )
                     )
                 )
@@ -603,7 +593,7 @@ private fun SettingsMainScreen(
     onStatusClick: () -> Unit,
     onToolboxClick: () -> Unit,
     onKeyboardHubClick: () -> Unit,
-    onExtrasClick: () -> Unit,
+    onInputLanguagesClick: () -> Unit,
     onTextInputClick: () -> Unit,
     onVoiceClick: () -> Unit,
     onScreenTrackpadClick: () -> Unit,
@@ -745,10 +735,28 @@ private fun SettingsMainScreen(
                 onClick = onKeyboardHubClick
             )
             SettingsCategoryRow(
-                icon = Icons.Filled.MoreHoriz,
-                title = stringResource(R.string.extras_title),
-                description = stringResource(R.string.extras_row_description),
-                onClick = onExtrasClick
+                icon = Icons.AutoMirrored.Filled.ManageSearch,
+                title = stringResource(R.string.quick_launcher_title),
+                description = stringResource(R.string.starter_launcher_shortcuts_description),
+                onClick = onQuickLauncherClick
+            )
+            SettingsCategoryRow(
+                icon = Icons.Filled.SmartButton,
+                title = stringResource(R.string.status_bar_buttons_title),
+                description = stringResource(R.string.status_bar_buttons_description),
+                onClick = onStatusBarButtonsClick
+            )
+            SettingsCategoryRow(
+                icon = Icons.Filled.Language,
+                title = stringResource(R.string.custom_input_styles_title),
+                description = stringResource(R.string.extras_languages_description),
+                onClick = onInputLanguagesClick
+            )
+            SettingsCategoryRow(
+                icon = Icons.Filled.Engineering,
+                title = stringResource(R.string.settings_category_advanced),
+                description = stringResource(R.string.toolbox_advanced_description),
+                onClick = onAdvancedClick
             )
 
             SettingsGroupDivider(stringResource(R.string.settings_group_pastiera))

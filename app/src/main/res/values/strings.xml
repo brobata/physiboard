@@ -308,6 +308,7 @@
     <!-- Voice / dictation settings screen -->
     <string name="settings_category_voice">Voice</string>
     <string name="voice_screen_intro">Hold the Fn key in any text field to dictate. Speak, then release — your words are transcribed inline.</string>
+    <string name="voice_section_assistant">Voice assistant</string>
     <string name="voice_section_triggers">Triggers</string>
     <string name="voice_section_transcription">Transcription</string>
 

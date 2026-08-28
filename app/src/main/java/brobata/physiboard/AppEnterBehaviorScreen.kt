@@ -73,8 +73,6 @@ fun AppEnterBehaviorScreen(
     var preset by remember { mutableStateOf(SettingsManager.getAppEnterBehaviorPreset(context)) }
     var overrides by remember { mutableStateOf(loadInitialEnterBehaviorOverrides(context, preset)) }
     var showAddDialog by remember { mutableStateOf(false) }
-    val quickLauncherUsesSymEnter = SettingsManager.getQuickLauncherShortcutKey(context) == android.view.KeyEvent.KEYCODE_ENTER
-    val selectedAdditionalSendShortcut = commonAdditionalSendShortcut(overrides)
 
     BackHandler { onBack() }
 
@@ -208,54 +206,6 @@ fun AppEnterBehaviorScreen(
             )
         }
 
-        SettingsAdvancedSection {
-            EnterAdditionalSendShortcutSelector(
-                shortcut = selectedAdditionalSendShortcut,
-                onShortcutSelected = { shortcut ->
-                    val updated = overrides.map { it.copy(additionalSendShortcut = shortcut) }
-                    overrides = updated
-                    SettingsManager.setAppEnterBehaviorOverrides(context, updated)
-                }
-            )
-
-            if (
-                selectedAdditionalSendShortcut == SettingsManager.ENTER_ADDITIONAL_SEND_SHORTCUT_SYM_ENTER &&
-                quickLauncherUsesSymEnter
-            ) {
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    color = MaterialTheme.colorScheme.tertiaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                    shape = MaterialTheme.shapes.medium
-                ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Icon(Icons.Filled.WarningAmber, contentDescription = null)
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = stringResource(R.string.app_enter_behaviour_sym_enter_conflict_title),
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Text(
-                                text = stringResource(R.string.app_enter_behaviour_sym_enter_conflict_description),
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                        if (onOpenLauncherShortcutAssignments != null) {
-                            TextButton(onClick = onOpenLauncherShortcutAssignments) {
-                                Text(stringResource(R.string.app_enter_behaviour_sym_enter_conflict_action))
-                            }
-                        }
-                    }
-                }
-            }
-        }
 
         Spacer(modifier = Modifier.height(24.dp))
     }
@@ -327,60 +277,6 @@ private fun EnterPresetSelector(
                             onClick = {
                                 expanded = false
                                 onPresetSelected(option)
-                            }
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun EnterAdditionalSendShortcutSelector(
-    shortcut: String,
-    onShortcutSelected: (String) -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-    Surface(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-            Text(
-                text = stringResource(R.string.app_enter_behaviour_additional_send_shortcut_label),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium
-            )
-            Text(
-                text = stringResource(R.string.app_enter_behaviour_additional_send_shortcut_description),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            ExposedDropdownMenuBox(
-                expanded = expanded,
-                onExpandedChange = { expanded = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp)
-            ) {
-                OutlinedTextField(
-                    value = getEnterAdditionalSendShortcutLabel(shortcut),
-                    onValueChange = {},
-                    readOnly = true,
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                )
-                ExposedDropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false }
-                ) {
-                    enterAdditionalSendShortcutOptions().forEach { option ->
-                        DropdownMenuItem(
-                            text = { Text(getEnterAdditionalSendShortcutLabel(option)) },
-                            onClick = {
-                                expanded = false
-                                onShortcutSelected(option)
                             }
                         )
                     }

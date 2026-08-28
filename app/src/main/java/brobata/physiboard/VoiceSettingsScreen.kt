@@ -202,33 +202,6 @@ fun VoiceSettingsScreen(
                     SettingsManager.setFnLongPressSpeechEnabled(context, enabled)
                 }
             )
-            VoiceSwitchRow(
-                title = stringResource(R.string.side_key_assistant_title),
-                description = stringResource(R.string.side_key_assistant_description),
-                checked = sideKeyAssistant,
-                enabled = !sideKeyBusy,
-                onCheckedChange = { enabled -> applySideKeyBinding(enabled) }
-            )
-            VoiceSwitchRow(
-                title = stringResource(R.string.sym_long_press_assistant_title),
-                description = stringResource(R.string.sym_long_press_assistant_description),
-                checked = symLongPressAssistant && !symUsedByTrackpad,
-                enabled = !symUsedByTrackpad,
-                onCheckedChange = { enabled ->
-                    symLongPressAssistant = enabled
-                    SettingsManager.setSymLongPressAssistantEnabled(context, enabled)
-                }
-            )
-
-            VoiceNavigationRow(
-                title = stringResource(R.string.assistant_action_title),
-                description = assistantActions.firstOrNull { it.first == assistantAction }
-                    ?.let { stringResource(it.second) }
-                    ?: stringResource(R.string.assistant_action_auto),
-                icon = Icons.Filled.RecordVoiceOver,
-                onClick = { showAssistantActionPicker = true }
-            )
-
             VoiceSectionHeader(text = stringResource(R.string.voice_section_transcription))
             VoiceNavigationRow(
                 title = stringResource(R.string.dictation_engine_title),
@@ -305,6 +278,33 @@ fun VoiceSettingsScreen(
                     dictationContinuous = enabled
                     SettingsManager.setDictationContinuousSession(context, enabled)
                 }
+            )
+
+            VoiceSectionHeader(text = stringResource(R.string.voice_section_assistant))
+            VoiceSwitchRow(
+                title = stringResource(R.string.side_key_assistant_title),
+                description = stringResource(R.string.side_key_assistant_description),
+                checked = sideKeyAssistant,
+                enabled = !sideKeyBusy,
+                onCheckedChange = { enabled -> applySideKeyBinding(enabled) }
+            )
+            VoiceSwitchRow(
+                title = stringResource(R.string.sym_long_press_assistant_title),
+                description = stringResource(R.string.sym_long_press_assistant_description),
+                checked = symLongPressAssistant && !symUsedByTrackpad,
+                enabled = !symUsedByTrackpad,
+                onCheckedChange = { enabled ->
+                    symLongPressAssistant = enabled
+                    SettingsManager.setSymLongPressAssistantEnabled(context, enabled)
+                }
+            )
+            VoiceNavigationRow(
+                title = stringResource(R.string.assistant_action_title),
+                description = assistantActions.firstOrNull { it.first == assistantAction }
+                    ?.let { stringResource(it.second) }
+                    ?: stringResource(R.string.assistant_action_auto),
+                icon = Icons.Filled.RecordVoiceOver,
+                onClick = { showAssistantActionPicker = true }
             )
 
             Spacer(modifier = Modifier.height(16.dp))
