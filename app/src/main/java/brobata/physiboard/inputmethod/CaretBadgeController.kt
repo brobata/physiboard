@@ -126,11 +126,11 @@ class CaretBadgeController(private val service: InputMethodService) {
         // cursor. The caret is normally at the end of what has been typed, so the space to its right
         // is empty; when it is not, these are bare glyphs with a halo rather than a filled panel, so
         // what is underneath still shows through.
-        var x = (caret.x + dp(3)).toInt()
+        var x = (caret.x + dp(9)).toInt()
         var y = ((caret.top + caret.bottom) / 2f - view.glyphCenterOffset).toInt()
         // At the right-hand edge there is no room beside it, so it flips to the other side of the
         // caret rather than being shoved back over the text it was trying to sit next to.
-        if (x + width > metrics.widthPixels) x = (caret.x - dp(3)).toInt() - width
+        if (x + width > metrics.widthPixels) x = (caret.x - dp(9)).toInt() - width
         x = x.coerceIn(0, (metrics.widthPixels - width).coerceAtLeast(0))
         y = y.coerceIn(0, (metrics.heightPixels - height).coerceAtLeast(0))
 
@@ -173,15 +173,6 @@ class CaretBadgeController(private val service: InputMethodService) {
     private companion object {
         const val TAG = "CaretBadge"
 
-        /** A plain hold, which ends the moment the key is released. Present, but muted. */
-        const val HELD = 0xE0607080.toInt()
-
-        /** One click: armed for the next key only, then gone by itself. */
-        const val ARMED = 0xFF2563EB.toInt()
-
-        /** Two clicks: stuck on until it is deliberately turned off. */
-        const val LOCKED = 0xFFDC2626.toInt()
-
         /**
          * Every way a modifier can be on, including a plain physical hold. This is a read-out of
          * what the keyboard is actually doing, so it reports a held Shift exactly like a latched
@@ -190,39 +181,32 @@ class CaretBadgeController(private val service: InputMethodService) {
         fun itemsFor(snapshot: StatusBarController.StatusSnapshot): List<CaretBadgeView.Item> {
             val items = mutableListOf<CaretBadgeView.Item>()
 
-            fun arrow(locked: Boolean, color: Int) = items.add(
-                CaretBadgeView.Item(
-                    shape = if (locked) CaretBadgeView.Shape.ARROW_LOCK
-                    else CaretBadgeView.Shape.ARROW,
-                    label = null,
-                    color = color
-                )
-            )
-            fun text(label: String, color: Int) = items.add(
-                CaretBadgeView.Item(CaretBadgeView.Shape.TEXT, label, color)
-            )
+            fun add(shape: CaretBadgeView.Shape, label: String?, locked: Boolean, faint: Boolean) =
+                items.add(CaretBadgeView.Item(shape, label, locked, faint))
+
+            val arrow = CaretBadgeView.Shape.ARROW
+            val alt = CaretBadgeView.Shape.ALT
+            val word = CaretBadgeView.Shape.TEXT
 
             when {
-                snapshot.capsLockEnabled -> arrow(locked = true, color = LOCKED)
-                snapshot.shiftOneShot -> arrow(locked = false, color = ARMED)
-                snapshot.shiftPhysicallyPressed -> arrow(locked = false, color = HELD)
+                snapshot.capsLockEnabled -> add(arrow, null, locked = true, faint = false)
+                snapshot.shiftOneShot -> add(arrow, null, locked = false, faint = false)
+                snapshot.shiftPhysicallyPressed -> add(arrow, null, locked = false, faint = true)
             }
-            fun alt(color: Int) = items.add(
-                CaretBadgeView.Item(CaretBadgeView.Shape.ALT, label = null, color = color)
-            )
             when {
-                snapshot.altLatchActive -> alt(LOCKED)
-                snapshot.altOneShot -> alt(ARMED)
-                snapshot.altPhysicallyPressed -> alt(HELD)
+                snapshot.altLatchActive -> add(alt, null, locked = true, faint = false)
+                snapshot.altOneShot -> add(alt, null, locked = false, faint = false)
+                snapshot.altPhysicallyPressed -> add(alt, null, locked = false, faint = true)
             }
             // The one exclusion: nav mode holds Ctrl latched for as long as it is on, so reporting
             // that would pin a Ctrl badge beside the cursor permanently rather than report a press.
             when {
-                snapshot.ctrlLatchActive && !snapshot.ctrlLatchFromNavMode -> text("CTRL", LOCKED)
-                snapshot.ctrlOneShot -> text("CTRL", ARMED)
-                snapshot.ctrlPhysicallyPressed -> text("CTRL", HELD)
+                snapshot.ctrlLatchActive && !snapshot.ctrlLatchFromNavMode ->
+                    add(word, "CTRL", locked = true, faint = false)
+                snapshot.ctrlOneShot -> add(word, "CTRL", locked = false, faint = false)
+                snapshot.ctrlPhysicallyPressed -> add(word, "CTRL", locked = false, faint = true)
             }
-            if (snapshot.symPage != 0) text("SYM", ARMED)
+            if (snapshot.symPage != 0) add(word, "SYM", locked = false, faint = false)
             return items
         }
     }
