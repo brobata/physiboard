@@ -11,10 +11,10 @@ import android.view.View
 /**
  * Draws the active modifiers as small glyphs beside the text cursor, with no panel behind them.
  *
- * Everything is one colour. The two distinctions that matter are carried by shape and weight
- * instead: a locked modifier gets a bar under it, the way a caps-lock key has always been drawn, and
- * a modifier that is merely being held is drawn faint because it goes away the moment the key comes
- * up. That keeps one click and two clicks apart without needing a second hue.
+ * Blue for one click, red for two - a modifier that expires by itself against one that is stuck on
+ * until it is turned off. A modifier that is only being held is drawn faint, because it goes away
+ * the moment the key comes up. Shift also keeps the bar under its arrow when locked, since an arrow
+ * over a bar is what a caps-lock key has always been rather than a decoration.
  *
  * Shift is drawn as a path rather than set as text because Android's shift and caps-lock characters
  * (U+21E7, U+21EA) are hairline outlines: legible in a document, mush at this size over an app.
@@ -148,27 +148,30 @@ class CaretBadgeView(context: Context) : View(context) {
         val baseline = haloWidth * 2f + ascent
         for (item in items) {
             val width = itemWidth(item)
-            val alpha = if (item.faint) FAINT_ALPHA else FULL_ALPHA
             if (item.shape == Shape.ARROW) {
                 // Hung from the baseline so the arrow's foot and the words' feet agree.
-                drawArrow(canvas, x, baseline - glyphHeight, alpha)
+                drawArrow(canvas, x, baseline - glyphHeight, item)
             } else {
-                drawGlyph(canvas, item, x, baseline, alpha)
+                drawGlyph(canvas, item, x, baseline, item)
             }
-            if (item.locked) drawLockBar(canvas, x, baseline, width, alpha)
+            // Only Shift: an arrow above a bar is the caps-lock glyph. Underlining a word or the
+            // option symbol would just read as an artefact, and the colour already says "locked".
+            if (item.locked && item.shape == Shape.ARROW) {
+                drawLockBar(canvas, x, baseline, width, item)
+            }
             x += width + gap
         }
     }
 
-    private fun drawGlyph(canvas: Canvas, item: Item, x: Float, baseline: Float, alpha: Int) {
+    private fun drawGlyph(canvas: Canvas, item: Item, x: Float, baseline: Float, source: Item) {
         val label = labelOf(item)
         val paint = glyphPaint(item)
         canvas.drawText(label, x, baseline, haloPaint(item))
-        paint.color = tint(alpha)
+        paint.color = tint(source)
         canvas.drawText(label, x, baseline, paint)
     }
 
-    private fun drawArrow(canvas: Canvas, x: Float, top: Float, alpha: Int) {
+    private fun drawArrow(canvas: Canvas, x: Float, top: Float, source: Item) {
         val w = arrowWidth
         val h = glyphHeight
         val headBottom = top + h * 0.46f
@@ -182,23 +185,25 @@ class CaretBadgeView(context: Context) : View(context) {
         path.lineTo(x, headBottom)
         path.close()
         canvas.drawPath(path, halo)
-        fill.color = tint(alpha)
+        fill.color = tint(source)
         canvas.drawPath(path, fill)
     }
 
-    /** Underlines a locked modifier, the way a caps-lock key carries a bar under its arrow. */
-    private fun drawLockBar(canvas: Canvas, x: Float, baseline: Float, width: Float, alpha: Int) {
+    /** The bar under a locked Shift, which together with the arrow is the caps-lock glyph. */
+    private fun drawLockBar(canvas: Canvas, x: Float, baseline: Float, width: Float, source: Item) {
         val top = baseline + lockBarGap
         path.reset()
         path.addRect(x, top, x + width, top + lockBarHeight, Path.Direction.CW)
         canvas.drawPath(path, halo)
-        fill.color = tint(alpha)
+        fill.color = tint(source)
         canvas.drawPath(path, fill)
     }
 
-    private fun tint(alpha: Int) = Color.argb(
-        alpha, Color.red(GLYPH_COLOR), Color.green(GLYPH_COLOR), Color.blue(GLYPH_COLOR)
-    )
+    private fun tint(item: Item): Int {
+        val base = if (item.locked) LOCKED_COLOR else ARMED_COLOR
+        val alpha = if (item.faint) FAINT_ALPHA else FULL_ALPHA
+        return Color.argb(alpha, Color.red(base), Color.green(base), Color.blue(base))
+    }
 
     private fun dp(value: Float) = value * density
     private fun sp(value: Float) = TypedValue.applyDimension(
@@ -206,12 +211,11 @@ class CaretBadgeView(context: Context) : View(context) {
     )
 
     private companion object {
-        /**
-         * One colour for every modifier, and a true mid-grey so that it reads on a dark app and a
-         * light one without knowing which it is sitting on. A darker slate looked right on white
-         * and disappeared into a dark theme, leaving only the halo behind.
-         */
-        val GLYPH_COLOR = Color.rgb(0x7C, 0x84, 0x90)
+        /** One click: armed for the next key only, then gone by itself. */
+        val ARMED_COLOR = Color.rgb(0x25, 0x63, 0xEB)
+
+        /** Two clicks: stuck on until it is deliberately turned off. */
+        val LOCKED_COLOR = Color.rgb(0xDC, 0x26, 0x26)
 
         /**
          * A light halo rather than a dark one: the glyphs are mid-tone, so a pale outline lifts them
@@ -219,8 +223,8 @@ class CaretBadgeView(context: Context) : View(context) {
          */
         val HALO_COLOR = Color.argb(225, 255, 255, 255)
 
-        const val FULL_ALPHA = 230
-        const val FAINT_ALPHA = 115
+        const val FULL_ALPHA = 245
+        const val FAINT_ALPHA = 140
 
         /** U+2325 OPTION KEY. */
         const val ALT_SYMBOL = "⌥"

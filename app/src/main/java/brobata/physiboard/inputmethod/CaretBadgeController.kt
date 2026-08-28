@@ -40,6 +40,16 @@ class CaretBadgeController(private val service: InputMethodService) {
     private var currentItems: List<CaretBadgeView.Item> = emptyList()
 
     /**
+     * Whether the badge can sit on the line beside the caret, or has to go above it.
+     *
+     * Beside is the better place to read, but it is only free when nothing is drawn there. With the
+     * caret mid-line the badge lands on the text that follows it, and in an empty field it lands on
+     * whatever hint the editor is showing - which is how it ended up sitting across the middle of
+     * "Text message".
+     */
+    private var beside = true
+
+    /**
      * The last caret position the editor reported, so pressing a modifier can put the badge on
      * screen straight away instead of waiting a round trip for a fresh one.
      */
@@ -53,11 +63,25 @@ class CaretBadgeController(private val service: InputMethodService) {
      *
      * @return true if the need for cursor updates changed, so the caller can re-issue the request.
      */
-    fun onSnapshot(snapshot: StatusBarController.StatusSnapshot, enabled: Boolean) {
+    /**
+     * @param spaceToTheRight reports whether the room just past the caret is actually empty. Only
+     * consulted when there is something to draw, because answering it costs a round trip to the
+     * editor.
+     */
+    fun onSnapshot(
+        snapshot: StatusBarController.StatusSnapshot,
+        enabled: Boolean,
+        spaceToTheRight: () -> Boolean
+    ) {
         val items = if (enabled) itemsFor(snapshot) else emptyList()
         if (items == currentItems) return
         currentItems = items
-        if (items.isEmpty()) hide() else lastCaret?.let { show(items, it) }
+        if (items.isEmpty()) {
+            hide()
+            return
+        }
+        beside = spaceToTheRight()
+        lastCaret?.let { show(items, it) }
     }
 
     /** Positions the badge from the caret the editor just reported. */
@@ -122,15 +146,23 @@ class CaretBadgeController(private val service: InputMethodService) {
         view.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
         val width = view.measuredWidth
         val height = view.measuredHeight
-        // Beside the caret and on the same line as the text, the way a subscript sits next to a
-        // cursor. The caret is normally at the end of what has been typed, so the space to its right
-        // is empty; when it is not, these are bare glyphs with a halo rather than a filled panel, so
-        // what is underneath still shows through.
-        var x = (caret.x + dp(9)).toInt()
-        var y = ((caret.top + caret.bottom) / 2f - view.glyphCenterOffset).toInt()
-        // At the right-hand edge there is no room beside it, so it flips to the other side of the
-        // caret rather than being shoved back over the text it was trying to sit next to.
-        if (x + width > metrics.widthPixels) x = (caret.x - dp(9)).toInt() - width
+        // Beside the caret and on the same line as the text when that space is free, which is the
+        // ordinary case of typing at the end of a line. When it is not free the badge steps up out
+        // of the line instead of being drawn across whatever is there.
+        var x: Int
+        var y: Int
+        if (beside) {
+            x = (caret.x + dp(9)).toInt()
+            y = ((caret.top + caret.bottom) / 2f - view.glyphCenterOffset).toInt()
+            // At the right-hand edge there is no room beside it either, so it flips to the other
+            // side of the caret rather than being shoved back over the text it was avoiding.
+            if (x + width > metrics.widthPixels) x = (caret.x - dp(9)).toInt() - width
+        } else {
+            x = (caret.x - dp(2)).toInt()
+            y = (caret.top - height + dp(3)).toInt()
+            // No room above at the top of the screen, so it drops below the line instead.
+            if (y < 0) y = (caret.bottom - dp(3)).toInt()
+        }
         x = x.coerceIn(0, (metrics.widthPixels - width).coerceAtLeast(0))
         y = y.coerceIn(0, (metrics.heightPixels - height).coerceAtLeast(0))
 

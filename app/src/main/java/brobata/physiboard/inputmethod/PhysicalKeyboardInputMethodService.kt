@@ -2837,6 +2837,21 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     }
 
     /**
+     * Whether the room immediately right of the caret is free, so the modifier badge can sit on the
+     * line there rather than above it.
+     *
+     * An empty field counts as occupied: editors draw a hint in it, which is exactly where the badge
+     * would land. Costs one round trip, so it is only asked when a modifier has just come on.
+     */
+    private fun caretHasClearSpaceToTheRight(): Boolean {
+        val inputConnection = currentInputConnection ?: return false
+        val after = inputConnection.getTextAfterCursor(1, 0)
+        if (!after.isNullOrEmpty()) return false
+        val before = inputConnection.getTextBeforeCursor(1, 0)
+        return !before.isNullOrEmpty()
+    }
+
+    /**
      * Starts asking a newly connected editor for cursor updates.
      *
      * Hooked from onStartInput rather than onStartInputView: with a hardware keyboard the IME
@@ -2969,7 +2984,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         )
         updateSystemStatusModifierIcon(snapshot, effectiveSoftwareKeyboardMode)
         val caretBadgeEnabled = SettingsManager.getCaretModifierBadgeEnabled(this)
-        caretBadgeController.onSnapshot(snapshot, caretBadgeEnabled)
+        caretBadgeController.onSnapshot(snapshot, caretBadgeEnabled) { caretHasClearSpaceToTheRight() }
         if (caretBadgeEnabled != lastCaretBadgeEnabled) {
             lastCaretBadgeEnabled = caretBadgeEnabled
             cursorUpdatesAccepted = false
