@@ -51,7 +51,10 @@ class NotificationRingListener : NotificationListenerService() {
             key = sbn.key,
             packageName = sbn.packageName,
             color = SettingsManager.getNotificationRingAppColors(this)[sbn.packageName]
-                ?: NotificationRingPolicy.ringColor(n.color)
+                ?: NotificationRingPolicy.ringColor(
+                    n.color,
+                    fallback = SettingsManager.getNotificationRingDefaultColor(this)
+                )
         )
         val showing = NotificationRingActivity.current
         if (showing != null) {

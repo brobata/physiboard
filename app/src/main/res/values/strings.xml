@@ -1702,4 +1702,6 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="device_setup_needs_notifications">Allow PhysiBoard notifications first — the pairing code arrives as one.</string>
     <string name="report_problem_title">Report a problem</string>
     <string name="report_problem_description">Opens a bug report with your version, phone and firmware already filled in. You write what happened.</string>
+    <string name="ring_default_color_title">Default colour</string>
+    <string name="ring_default_color_description">Used by apps that set no colour of their own, and by apps whose colour is too dark to see on a black screen.</string>
 </resources>

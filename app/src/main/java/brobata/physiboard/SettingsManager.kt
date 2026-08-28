@@ -115,6 +115,7 @@ object SettingsManager {
     private const val KEY_NOTIFICATION_RING_RADIUS = "notification_ring_radius"
     private const val KEY_NOTIFICATION_RING_STROKE = "notification_ring_stroke"
     private const val KEY_NOTIFICATION_RING_APP_COLORS = "notification_ring_app_colors"
+    private const val KEY_NOTIFICATION_RING_DEFAULT_COLOR = "notification_ring_default_color"
     const val NOTIFICATION_RING_DEFAULT_MINUTES = 10
     val NOTIFICATION_RING_MINUTE_OPTIONS = listOf(2, 10, 30)
     private const val KEY_LAYOUT_AWARE_CTRL_SHORTCUTS = "layout_aware_ctrl_shortcuts"
@@ -2650,6 +2651,20 @@ object SettingsManager {
 
     fun setNotificationRingIconsEnabled(context: Context, enabled: Boolean) {
         getPreferences(context).edit().putBoolean(KEY_NOTIFICATION_RING_ICONS, enabled).apply()
+    }
+
+    /**
+     * The colour the ring falls back to: for an app with no colour of its own, and for one whose
+     * colour is too dark to read against a black screen.
+     */
+    fun getNotificationRingDefaultColor(context: Context): Int =
+        getPreferences(context).getInt(
+            KEY_NOTIFICATION_RING_DEFAULT_COLOR,
+            brobata.physiboard.ring.NotificationRingPolicy.DEFAULT_COLOR
+        )
+
+    fun setNotificationRingDefaultColor(context: Context, argb: Int) {
+        getPreferences(context).edit().putInt(KEY_NOTIFICATION_RING_DEFAULT_COLOR, argb).apply()
     }
 
     /** Per-app ring colours, package -> ARGB. Apps not listed use the app's own notification colour. */

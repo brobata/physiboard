@@ -52,6 +52,8 @@ fun NotificationRingScreen(
     var brightness by remember { mutableStateOf(SettingsManager.getNotificationRingBrightness(context)) }
     var icons by remember { mutableStateOf(SettingsManager.isNotificationRingIconsEnabled(context)) }
     var appColors by remember { mutableStateOf(SettingsManager.getNotificationRingAppColors(context)) }
+    var defaultColor by remember { mutableStateOf(SettingsManager.getNotificationRingDefaultColor(context)) }
+    var pickingDefaultColor by remember { mutableStateOf(false) }
     var pickingApp by remember { mutableStateOf(false) }
     var colouringPackage by remember { mutableStateOf<String?>(null) }
     var listenerGranted by remember { mutableStateOf(NotificationRingSetup.isListenerGranted(context)) }
@@ -93,9 +95,21 @@ fun NotificationRingScreen(
             onDismiss = { pickingApp = false }
         )
     }
+    if (pickingDefaultColor) {
+        RingColorDialog(
+            title = stringResource(R.string.ring_default_color_title),
+            current = defaultColor,
+            onPick = { argb ->
+                SettingsManager.setNotificationRingDefaultColor(context, argb)
+                defaultColor = argb
+                pickingDefaultColor = false
+            },
+            onDismiss = { pickingDefaultColor = false }
+        )
+    }
     colouringPackage?.let { pkg ->
         RingColorDialog(
-            packageName = pkg,
+            title = appLabel(context, pkg),
             current = appColors[pkg],
             onPick = { argb ->
                 SettingsManager.setNotificationRingAppColor(context, pkg, argb)
@@ -316,6 +330,30 @@ fun NotificationRingScreen(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
+            Surface(
+                modifier = Modifier.fillMaxWidth().clickable { pickingDefaultColor = true }
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.ring_default_color_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = stringResource(R.string.ring_default_color_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    ColorDot(argb = defaultColor, selected = false, size = 28.dp)
+                }
+            }
+
             Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
                 Text(
                     text = stringResource(R.string.ring_app_colors_title),
@@ -402,15 +440,14 @@ private fun ColorDot(argb: Int, selected: Boolean, size: androidx.compose.ui.uni
 
 @Composable
 private fun RingColorDialog(
-    packageName: String,
+    title: String,
     current: Int?,
     onPick: (Int) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val context = LocalContext.current
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(appLabel(context, packageName)) },
+        title = { Text(title) },
         text = {
             Column {
                 Text(

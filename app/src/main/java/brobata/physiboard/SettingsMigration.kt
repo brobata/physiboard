@@ -56,6 +56,7 @@ object SettingsMigration {
         "status_bar_apps",
         "additional_ime_subtypes",
         "notification_ring_app_colors",
+        "notification_ring_default_color",
         // a ring fitted to this particular panel - see the 1.2.3 fit screen
         "notification_ring_cx",
         "notification_ring_cy",
