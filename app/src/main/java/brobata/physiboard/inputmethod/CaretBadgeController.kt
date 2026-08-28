@@ -35,8 +35,12 @@ class CaretBadgeController(private val service: InputMethodService) {
     private var badgeView: TextView? = null
     private var attached = false
 
-    /** One failure to add the overlay is enough - do not thrash the window manager on every key. */
-    private var overlayUnavailable = false
+    /**
+     * Latched only when the window manager actually rejects the view, so a broken overlay is not
+     * retried on every keystroke. A missing permission is NOT latched here: it is re-checked each
+     * time, so granting it takes effect without restarting the keyboard.
+     */
+    private var overlayRejected = false
 
     private var currentLabel: String? = null
 
@@ -105,11 +109,7 @@ class CaretBadgeController(private val service: InputMethodService) {
     }
 
     private fun show(label: String, caretX: Int, caretTopY: Int) {
-        if (overlayUnavailable) return
-        if (!canDrawOverlays()) {
-            overlayUnavailable = true
-            return
-        }
+        if (overlayRejected || !canDrawOverlays()) return
         val view = badgeView ?: createBadge().also { badgeView = it }
         view.text = label
 
@@ -133,8 +133,8 @@ class CaretBadgeController(private val service: InputMethodService) {
             if (attached) wm.updateViewLayout(view, params) else wm.addView(view, params)
             attached = true
         } catch (e: Exception) {
-            Log.e(TAG, "caret badge overlay unavailable", e)
-            overlayUnavailable = true
+            Log.e(TAG, "caret badge overlay rejected", e)
+            overlayRejected = true
             attached = false
         }
     }
