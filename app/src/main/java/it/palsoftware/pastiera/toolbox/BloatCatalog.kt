@@ -68,6 +68,10 @@ object BloatCatalog {
      *  - update is the OTA client; removing it ends firmware updates permanently.
      *  - spacebarkey handles a spacebar that is also the fingerprint sensor and this
      *    keyboard's trackpad trigger.
+     *  - bbkeyboard is the only other keyboard a stock T2E ships with. PhysiBoard is an input
+     *    method: if it is ever disabled, uninstalled, or replaced by an update that changes its
+     *    component name, the phone falls back to this one. Letting our own toolbox remove it
+     *    means a user can end up holding a phone that cannot type.
      */
     val DENYLIST: Set<String> = setOf(
         "com.agui.shortcutsettings",
@@ -80,7 +84,8 @@ object BloatCatalog {
         "com.agold.networkmanager.service",
         "com.agold.networkmanager.ui",
         "com.agui.systemui.fixed_status_bar_icon_size",
-        "com.agui.internal.fixed_status_bar_icon_size"
+        "com.agui.internal.fixed_status_bar_icon_size",
+        "com.iqqijni.bbkeyboard"
     )
 
     /**
@@ -142,8 +147,6 @@ object BloatCatalog {
         Entry("com.agui.rotationcontrol", "Rotation Control", "Vendor rotation lock helper.", Tier.OPTIONAL),
         Entry("com.agold.autopoweronoff", "Auto Power On/Off", "Scheduled power on and off.", Tier.OPTIONAL, setOf(Preset.BACKGROUND_KILLERS)),
         Entry("com.agui.nfc", "NFC Tools", "Vendor NFC helper. Does not affect NFC itself.", Tier.OPTIONAL),
-        Entry("com.iqqijni.bbkeyboard", "BB Keyboard",
-            "A second preinstalled on-screen keyboard.", Tier.OPTIONAL),
         Entry("com.agold.cyclocomputer", "Cyclocomputer",
             "Vendor cycling speedometer.", Tier.OPTIONAL),
 
