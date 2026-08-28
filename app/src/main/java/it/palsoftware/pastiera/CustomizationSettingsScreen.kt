@@ -162,8 +162,6 @@ fun CustomizationSettingsScreen(
     val navigationStack = rememberSaveable(saver = customizationNavigationStackSaver) {
         mutableStateListOf<CustomizationDestination>().apply {
             val deepLinkedDestination = when (initialDestination) {
-                SettingsActivity.CUSTOMIZATION_DESTINATION_VARIATIONS ->
-                    CustomizationDestination.Variations
                 SettingsActivity.CUSTOMIZATION_DESTINATION_LAUNCHER_SHORTCUTS ->
                     CustomizationDestination.LauncherShortcuts
                 SettingsActivity.CUSTOMIZATION_DESTINATION_APP_ENTER_BEHAVIOR ->
@@ -344,51 +342,11 @@ fun CustomizationSettingsScreen(
                             .padding(paddingValues)
                             .verticalScroll(rememberScrollState())
                     ) {
-                        Surface(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(64.dp)
-                                    .clickable { navigateTo(CustomizationDestination.Variations) }
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Tune,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = stringResource(R.string.variation_customize_title),
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Medium,
-                                            maxLines = 1
-                                        )
-                                    }
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
 
                     }
                 }
             }
 
-            CustomizationDestination.Variations -> {
-                VariationCustomizationScreen(
-                    modifier = modifier,
-                    onBack = { navigateBack() }
-                )
-            }
 
             CustomizationDestination.AppEnterBehavior -> {
                 AppEnterBehaviorScreen(
@@ -537,7 +495,6 @@ fun CustomizationSettingsScreen(
                 StatusBarButtonsScreen(
                     modifier = modifier,
                     onBack = { navigateBack() },
-                    onCustomizeVariations = { navigateTo(CustomizationDestination.Variations) },
                     onOpenModifiers = onOpenModifiers
                 )
             }
@@ -2153,7 +2110,6 @@ private fun DictationHapticStrengthRow() {
 
 private enum class CustomizationDestination {
     Main,
-    Variations,
     AppEnterBehavior,
     LauncherShortcuts,
     LauncherShortcutBehavior,

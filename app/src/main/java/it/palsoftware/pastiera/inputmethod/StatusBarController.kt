@@ -38,7 +38,6 @@ import it.palsoftware.pastiera.inputmethod.ui.ClipboardHistoryView
 import it.palsoftware.pastiera.inputmethod.ui.EmojiPickerView
 import it.palsoftware.pastiera.inputmethod.ui.HamburgerMenuView
 import it.palsoftware.pastiera.inputmethod.ui.LedStatusView
-import it.palsoftware.pastiera.inputmethod.ui.VariationBarView
 import it.palsoftware.pastiera.inputmethod.ui.KeyboardThemeColors
 import it.palsoftware.pastiera.inputmethod.suggestions.ui.FullSuggestionsBar
 import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonRegistry
@@ -76,33 +75,28 @@ class StatusBarController(
     var onVariationSelectedListener: VariationButtonHandler.OnVariationSelectedListener? = null
         set(value) {
             field = value
-            variationBarView?.onVariationSelectedListener = value
         }
     
     // Listener for cursor movement (to update variations)
     var onCursorMovedListener: (() -> Unit)? = null
         set(value) {
             field = value
-            variationBarView?.onCursorMovedListener = value
         }
     
     // Listener for speech recognition request
     var onSpeechRecognitionRequested: (() -> Unit)? = null
         set(value) {
             field = value
-            variationBarView?.onSpeechRecognitionRequested = value
         }
 
     var onAddUserWord: ((String) -> Unit)? = null
         set(value) {
             field = value
-            variationBarView?.onAddUserWord = value
         }
 
     var onAddUserWordSubstitutionRequested: ((String) -> Unit)? = null
         set(value) {
             field = value
-            variationBarView?.onAddUserWordSubstitutionRequested = value
         }
 
     var onSuggestionCommitted: (() -> Unit)? = null
@@ -116,19 +110,16 @@ class StatusBarController(
     var onLanguageSwitchRequested: (() -> Unit)? = null
         set(value) {
             field = value
-            variationBarView?.onLanguageSwitchRequested = value
         }
     
     var onClipboardRequested: (() -> Unit)? = null
         set(value) {
             field = value
-            variationBarView?.onClipboardRequested = value
         }
     
     var onEmojiPickerRequested: (() -> Unit)? = null
         set(value) {
             field = value
-            variationBarView?.onEmojiPickerRequested = value
         }
 
     var onEmojiPageRequested: (() -> Unit)? = null
@@ -136,7 +127,6 @@ class StatusBarController(
     var onSymbolsPageRequested: (() -> Unit)? = null
         set(value) {
             field = value
-            variationBarView?.onSymbolsPageRequested = value
         }
 
     var onSoftwareKeyboardSymToggleRequested: (() -> Unit)? = null
@@ -146,13 +136,11 @@ class StatusBarController(
     var onUndoRequested: (() -> Unit)? = null
         set(value) {
             field = value
-            variationBarView?.onUndoRequested = value
         }
 
     var onRedoRequested: (() -> Unit)? = null
         set(value) {
             field = value
-            variationBarView?.onRedoRequested = value
         }
 
     var onSoftwareKeyboardKeyPressed: ((Int) -> Unit)? = null
@@ -172,37 +160,31 @@ class StatusBarController(
     var onHamburgerMenuRequested: (() -> Unit)? = null
         set(value) {
             field = value
-            variationBarView?.onHamburgerMenuRequested = value
         }
 
     var onMinimalUiToggleRequested: (() -> Unit)? = null
         set(value) {
             field = value
-            variationBarView?.onMinimalUiToggleRequested = value
         }
 
     var onSoftwareKeyboardModeToggleRequested: (() -> Unit)? = null
         set(value) {
             field = value
-            variationBarView?.onSoftwareKeyboardModeToggleRequested = value
         }
     
     // Callback for speech recognition state changes (active/inactive)
     var onSpeechRecognitionStateChanged: ((Boolean) -> Unit)? = null
         set(value) {
             field = value
-            // Note: VariationBarView doesn't need this directly, but we can add it if needed
         }
     
     fun invalidateStaticVariations() {
-        variationBarView?.invalidateStaticVariations()
     }
     
     /**
      * Sets the microphone button active state.
      */
     fun setMicrophoneButtonActive(isActive: Boolean) {
-        variationBarView?.setMicrophoneButtonActive(isActive)
         hamburgerMenuView?.setMicrophoneActive(isActive)
         fullSuggestionsBar?.setMicrophoneButtonActive(isActive)
     }
@@ -212,7 +194,6 @@ class StatusBarController(
      * @param rmsdB The RMS audio level in decibels (typically -10 to 0)
      */
     fun updateMicrophoneAudioLevel(rmsdB: Float) {
-        variationBarView?.updateMicrophoneAudioLevel(rmsdB)
         hamburgerMenuView?.updateMicrophoneAudioLevel(rmsdB)
         fullSuggestionsBar?.updateMicrophoneAudioLevel(rmsdB)
     }
@@ -222,14 +203,12 @@ class StatusBarController(
      * When showing, replaces the swipe hint with speech recognition message.
      */
     fun showSpeechRecognitionHint(show: Boolean) {
-        variationBarView?.showSpeechRecognitionHint(show)
     }
 
     /**
      * Updates only the clipboard badge count without re-rendering variations.
      */
     fun updateClipboardCount(count: Int) {
-        variationBarView?.updateClipboardCount(count)
         hamburgerMenuView?.updateClipboardCount(count)
         fullSuggestionsBar?.updateClipboardCount(count)
     }
@@ -320,8 +299,6 @@ class StatusBarController(
         get() = dpToPx(600f) // fallback when nothing measured yet
     private val ledStatusView = LedStatusView(context)
     private val buttonRegistry = StatusBarButtonRegistry()
-    private val variationBarView: VariationBarView? =
-        VariationBarView(context, assets, imeServiceClass, buttonRegistry)
     private var variationsWrapper: View? = null
     private var hamburgerMenuView: HamburgerMenuView? = null
     private var pastierinaModeActive: Boolean = false
@@ -435,7 +412,6 @@ class StatusBarController(
         symSurfaceStack?.setBackgroundColor(activeColors.background)
         symSurfaceContainer?.setBackgroundColor(activeColors.background)
         emojiKeyboardContainer?.setBackgroundColor(activeColors.background)
-        variationBarView?.themeOverride = activeColors
         ledStatusView.themeOverride = activeColors
         fullSuggestionsBar?.themeOverride = activeColors
         hamburgerMenuView?.themeOverride = activeColors
@@ -534,7 +510,6 @@ class StatusBarController(
         pastierinaModeActive = active
         updatePastierinaModeState()
         if (active) {
-            variationBarView?.hideImmediate()
             hideHamburgerMenu()
         }
     }
@@ -711,7 +686,6 @@ class StatusBarController(
                 visibility = View.GONE
             }
 
-            variationsWrapper = variationBarView?.ensureView()
             attachHamburgerMenu(variationsWrapper)
             val ledStrip = ledStatusView.ensureView()
             ledStatusView.onLongPressListener = { handleMinimalUiToggleFromMenu() }
@@ -2730,12 +2704,6 @@ class StatusBarController(
         fullSuggestionsBar?.fixedHeightDp =
             if (isFullSoftwareKeyboardMode) null else SettingsManager.getStatusBarHeightDp(context)
         val softwareThemeSettings = if (isFullSoftwareKeyboardMode) activeTheme else softwareTheme()
-        variationBarView?.onVariationSelectedListener = onVariationSelectedListener
-        variationBarView?.onCursorMovedListener = onCursorMovedListener
-        variationBarView?.updateInputConnection(inputConnection)
-        variationBarView?.forceVariationAreaVisible = isFullSoftwareKeyboardMode
-        variationBarView?.setSymModeActive((snapshot.symPage > 0 && !isSoftwareKeyboardOverlayPage) || snapshot.clipboardOverlay)
-        variationBarView?.updateLanguageButtonText()
         updateClipboardCount(snapshot.clipboardCount)
         hamburgerMenuView?.refreshLanguageText()
         fullSuggestionsBar?.refreshLanguageText()
@@ -2817,12 +2785,6 @@ class StatusBarController(
         if (showLedStrip) {
             ledStatusView.update(snapshot)
         }
-        val showSecondRow = !pastierinaModeActive
-        val variationsBar = if (showSecondRow) variationBarView else null
-        val variationsWrapperView = if (showSecondRow) variationsWrapper else null
-        if (!showSecondRow) {
-            variationBarView?.hideImmediate()
-        }
         val experimentalEnabled = SettingsManager.isExperimentalSuggestionsEnabled(context)
         val suggestionsEnabledSetting = SettingsManager.getSuggestionsEnabled(context)
         // Keep the suggestion/status row stable in both full-status-bar and Pastierina mode.
@@ -2865,19 +2827,12 @@ class StatusBarController(
                 inputConnection,
                 softwareKeyboardHeight = lastSoftwareKeyboardHeight.takeIf { isFullSoftwareKeyboardMode && it > 0 }
             )
-            variationsBar?.resetVariationsState()
 
             // Pin background and hide variations while showing clipboard grid
             if (layout.background !is ColorDrawable) {
                 layout.background = ColorDrawable(activeColors.background)
             }
             (layout.background as? ColorDrawable)?.alpha = 255
-            variationsWrapperView?.apply {
-                visibility = View.INVISIBLE
-                isEnabled = false
-                isClickable = false
-            }
-            variationsBar?.hideImmediate()
 
             val measured = ensureEmojiKeyboardMeasuredHeight(emojiKeyboardView, layout, forceReMeasure = true)
             val animationHeight = if (measured > 0) measured else defaultSymHeightPx
@@ -2902,24 +2857,6 @@ class StatusBarController(
 
         if (shouldShowSoftwareKeyboard && (snapshot.symPage == 0 || isSoftwareKeyboardSymbolPage)) {
             updateSoftwareKeyboard(snapshot, inputConnection, symMappings)
-            if (showSecondRow) {
-                variationsWrapperView?.apply {
-                    visibility = View.VISIBLE
-                    isEnabled = true
-                    isClickable = true
-                }
-                val snapshotForVariations = snapshot.copy(
-                    suggestions = emptyList(),
-                    addWordCandidate = null,
-                    variations = snapshot.variations.ifEmpty {
-                        SettingsManager.getStaticVariationBasePreset(context)
-                    },
-                    shouldDisableVariations = false
-                )
-                variationsBar?.showVariations(snapshotForVariations, inputConnection)
-            } else {
-                variationBarView?.hideImmediate()
-            }
             val measured = measureSoftwareKeyboardDesiredHeight(emojiKeyboardView, layout)
             val keyboardHeight = if (measured > 0) measured else defaultSymHeightPx
             lastSoftwareKeyboardHeight = keyboardHeight
@@ -2956,7 +2893,6 @@ class StatusBarController(
             } else if (symMappings != null) {
                 updateEmojiKeyboard(symMappings, snapshot.symPage, inputConnection)
             }
-            variationsBar?.resetVariationsState()
 
             // Pin background to opaque IME color and hide variations so SYM animates on a solid canvas.
             if (layout.background !is ColorDrawable) {
@@ -2964,22 +2900,7 @@ class StatusBarController(
             }
             (layout.background as? ColorDrawable)?.alpha = 255
             if (isSoftwareKeyboardOverlayPage) {
-                variationsWrapperView?.apply {
-                    visibility = View.VISIBLE
-                    isEnabled = true
-                    isClickable = true
-                }
-                val snapshotForVariations = if (snapshot.suggestions.isNotEmpty()) {
-                    snapshot.copy(suggestions = emptyList(), addWordCandidate = null)
-                } else snapshot
-                variationsBar?.showVariations(snapshotForVariations, inputConnection)
             } else {
-                variationsWrapperView?.apply {
-                    visibility = View.INVISIBLE // keep space to avoid shrink/flash
-                    isEnabled = false
-                    isClickable = false
-                }
-                variationsBar?.hideImmediate()
             }
 
             val measured = ensureEmojiKeyboardMeasuredHeight(emojiKeyboardView, layout, forceReMeasure = true)
@@ -3010,15 +2931,6 @@ class StatusBarController(
         
         if (emojiKeyboardView.visibility == View.VISIBLE) {
             animateEmojiKeyboardOut(emojiKeyboardView, layout) {
-                variationsWrapperView?.apply {
-                    visibility = View.VISIBLE
-                    isEnabled = true
-                    isClickable = true
-                }
-                val snapshotForVariations = if (snapshot.suggestions.isNotEmpty()) {
-                    snapshot.copy(suggestions = emptyList(), addWordCandidate = null)
-                } else snapshot
-                variationsBar?.showVariations(snapshotForVariations, inputConnection)
                 setSurfaceCloseVisible(false)
                 resetSymSurfaceToLedOnly(symSurfaceView)
             }
@@ -3027,15 +2939,6 @@ class StatusBarController(
             lastSymPageRendered = 0 // Reset when closing SYM page
         } else {
             emojiKeyboardView.visibility = View.GONE
-            variationsWrapperView?.apply {
-                visibility = View.VISIBLE
-                isEnabled = true
-                isClickable = true
-            }
-            val snapshotForVariations = if (snapshot.suggestions.isNotEmpty()) {
-                snapshot.copy(suggestions = emptyList(), addWordCandidate = null)
-            } else snapshot
-            variationsBar?.showVariations(snapshotForVariations, inputConnection)
             setSurfaceCloseVisible(false)
             resetSymSurfaceToLedOnly(symSurfaceView)
             symShown = false

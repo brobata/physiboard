@@ -7,7 +7,6 @@ import it.palsoftware.pastiera.inputmethod.statusbar.button.ClipboardButtonFacto
 import it.palsoftware.pastiera.inputmethod.statusbar.button.EmojiButtonFactory
 import it.palsoftware.pastiera.inputmethod.statusbar.button.HamburgerButtonFactory
 import it.palsoftware.pastiera.inputmethod.statusbar.button.LanguageButtonFactory
-import it.palsoftware.pastiera.inputmethod.statusbar.button.MinimalUiButtonFactory
 import it.palsoftware.pastiera.inputmethod.statusbar.button.MicrophoneButtonFactory
 import it.palsoftware.pastiera.inputmethod.statusbar.button.SettingsButtonFactory
 import it.palsoftware.pastiera.inputmethod.statusbar.button.SoftwareKeyboardModeButtonFactory
@@ -43,7 +42,6 @@ class StatusBarButtonRegistry {
     private val languageFactory = LanguageButtonFactory()
     private val emojiFactory = EmojiButtonFactory()
     private val hamburgerFactory = HamburgerButtonFactory()
-    private val minimalUiFactory = MinimalUiButtonFactory()
     private val softwareKeyboardModeFactory = SoftwareKeyboardModeButtonFactory()
     private val settingsFactory = SettingsButtonFactory()
     private val symbolsFactory = SymbolsButtonFactory()
@@ -57,7 +55,6 @@ class StatusBarButtonRegistry {
         factories[StatusBarButtonId.Language] = languageFactory
         factories[StatusBarButtonId.Emoji] = emojiFactory
         factories[StatusBarButtonId.Hamburger] = hamburgerFactory
-        factories[StatusBarButtonId.MinimalUi] = minimalUiFactory
         factories[StatusBarButtonId.SoftwareKeyboardMode] = softwareKeyboardModeFactory
         factories[StatusBarButtonId.Settings] = settingsFactory
         factories[StatusBarButtonId.Symbols] = symbolsFactory
@@ -84,7 +81,7 @@ class StatusBarButtonRegistry {
      * @return true if the factory was removed, false if it wasn't registered or is built-in
      */
     fun unregister(id: StatusBarButtonId): Boolean {
-        if (id in listOf(StatusBarButtonId.Clipboard, StatusBarButtonId.Microphone, StatusBarButtonId.Language, StatusBarButtonId.Emoji, StatusBarButtonId.Hamburger, StatusBarButtonId.MinimalUi, StatusBarButtonId.SoftwareKeyboardMode, StatusBarButtonId.Settings, StatusBarButtonId.Symbols, StatusBarButtonId.Undo, StatusBarButtonId.Redo)) {
+        if (id in listOf(StatusBarButtonId.Clipboard, StatusBarButtonId.Microphone, StatusBarButtonId.Language, StatusBarButtonId.Emoji, StatusBarButtonId.Hamburger, StatusBarButtonId.SoftwareKeyboardMode, StatusBarButtonId.Settings, StatusBarButtonId.Symbols, StatusBarButtonId.Undo, StatusBarButtonId.Redo)) {
             return false // Cannot unregister built-in buttons
         }
         return factories.remove(id) != null

@@ -34,8 +34,6 @@ class CandidatesBarControllerTest {
         SettingsManager.setShowStatusBar(context, false)
         SettingsManager.setSoftwareKeyboardMode(context, SettingsManager.SoftwareKeyboardMode.AUTO)
         SettingsManager.setSuggestionsEnabled(context, true)
-        SettingsManager.setStaticVariationBarPreset(context, SettingsManager.STATIC_VARIATION_PRESET_OFF)
-        SettingsManager.setStatusBarVariationsVisible(context, true)
         SoftwareKeyboardAutoDetector.onInputDevicesChanged()
     }
 
@@ -120,40 +118,6 @@ class CandidatesBarControllerTest {
         assertEquals(ViewGroup.LayoutParams.WRAP_CONTENT, candidatesView.layoutParams.height)
     }
 
-    @Test
-    fun onScreenToPhysicalKeepsUtilitySymbolsWhenSuggestionsAreDisabled() {
-        SettingsManager.setSuggestionsEnabled(context, false)
-        SettingsManager.setStaticVariationBarPreset(
-            context,
-            SettingsManager.STATIC_VARIATION_PRESET_DEV_CHOICE
-        )
-        SettingsManager.setStatusBarVariationsVisible(context, true)
-        SettingsManager.setSoftwareKeyboardMode(
-            context,
-            SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL
-        )
-        val controller = CandidatesBarController(context)
-
-        controller.getInputView()
-        controller.updateStatusBars(emptyStatusSnapshot(), "", null, null)
-
-        SettingsManager.setSoftwareKeyboardMode(
-            context,
-            SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE
-        )
-        val candidatesView = controller.getCandidatesView()
-        controller.updateStatusBars(emptyStatusSnapshot(), "", null, null)
-        candidatesView.measure(
-            View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.EXACTLY),
-            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-        )
-        candidatesView.layout(0, 0, candidatesView.measuredWidth, candidatesView.measuredHeight)
-
-        val visibleTexts = collectLaidOutVisibleTexts(candidatesView)
-        assertTrue(
-            visibleTexts.containsAll(SettingsManager.getDevChoiceStaticVariationBasePreset())
-        )
-    }
 
     private fun collectLaidOutVisibleTexts(view: View): List<String> {
         if (view.visibility != View.VISIBLE || view.width <= 0 || view.height <= 0) return emptyList()

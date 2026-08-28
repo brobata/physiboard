@@ -30,14 +30,11 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.activity.compose.BackHandler
 import it.palsoftware.pastiera.R
 
-private enum class StatusBarEditorMode { Extended, Pastierina }
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatusBarButtonsScreen(
     modifier: Modifier = Modifier,
     onBack: () -> Unit,
-    onCustomizeVariations: () -> Unit,
     onOpenModifiers: () -> Unit
 ) {
     val context = LocalContext.current
@@ -47,35 +44,8 @@ fun StatusBarButtonsScreen(
     var statusBarHeightDp by remember { mutableStateOf(SettingsManager.getStatusBarHeightDp(context)) }
     var leftSlots by remember { mutableStateOf(SettingsManager.getStatusBarSlotsLeft(context)) }
     var rightSlots by remember { mutableStateOf(SettingsManager.getStatusBarSlotsRight(context)) }
-    var pastierinaLeftSlots by remember {
-        mutableStateOf(SettingsManager.getPastierinaStatusBarSlotsLeft(context))
-    }
-    var pastierinaRightSlots by remember {
-        mutableStateOf(SettingsManager.getPastierinaStatusBarSlotsRight(context))
-    }
-    var variationsVisible by remember {
-        mutableStateOf(SettingsManager.areStatusBarVariationsEnabled(context))
-    }
-    var dynamicVariationSlotCount by remember {
-        mutableStateOf(SettingsManager.getDynamicVariationBarSlotCount(context))
-    }
-    var dynamicVariationsResizeToContent by remember {
-        mutableStateOf(SettingsManager.getDynamicVariationBarResizeToContent(context))
-    }
     var titan2EliteRoundedCornerInsetsEnabled by remember {
         mutableStateOf(SettingsManager.getTitan2EliteRoundedCornerInsetsEnabled(context))
-    }
-    var editorMode by remember {
-        mutableStateOf(
-            if (
-                SettingsManager.getStatusBarPresentationMode(context) ==
-                    SettingsManager.StatusBarPresentationMode.PASTIERINA
-            ) {
-                StatusBarEditorMode.Pastierina
-            } else {
-                StatusBarEditorMode.Extended
-            }
-        )
     }
     BackHandler { onBack() }
 
@@ -101,27 +71,6 @@ fun StatusBarButtonsScreen(
         SettingsManager.setStatusBarSlotsRight(context, rightSlots)
     }
 
-    fun selectPastierinaButton(buttonId: String, targetSide: String, targetIndex: Int) {
-        if (buttonId != SettingsManager.STATUS_BAR_BUTTON_NONE) {
-            pastierinaLeftSlots = pastierinaLeftSlots.mapIndexed { index, current ->
-                if (current == buttonId && !(targetSide == "left" && targetIndex == index)) {
-                    SettingsManager.STATUS_BAR_BUTTON_NONE
-                } else current
-            }
-            pastierinaRightSlots = pastierinaRightSlots.mapIndexed { index, current ->
-                if (current == buttonId && !(targetSide == "right" && targetIndex == index)) {
-                    SettingsManager.STATUS_BAR_BUTTON_NONE
-                } else current
-            }
-        }
-        if (targetSide == "left") {
-            pastierinaLeftSlots = pastierinaLeftSlots.toMutableList().also { it[targetIndex] = buttonId }
-        } else {
-            pastierinaRightSlots = pastierinaRightSlots.toMutableList().also { it[targetIndex] = buttonId }
-        }
-        SettingsManager.setPastierinaStatusBarSlotsLeft(context, pastierinaLeftSlots)
-        SettingsManager.setPastierinaStatusBarSlotsRight(context, pastierinaRightSlots)
-    }
 
     Column(
         modifier = modifier
@@ -159,12 +108,6 @@ fun StatusBarButtonsScreen(
                         val defaults = SettingsManager.resetStatusBarSlotsToDefault(context)
                         leftSlots = listOf(defaults.left)
                         rightSlots = listOf(defaults.right1, defaults.right2)
-                        SettingsManager.resetPastierinaStatusBarSlotsToDefault(context)
-                        pastierinaLeftSlots = SettingsManager.getPastierinaStatusBarSlotsLeft(context)
-                        pastierinaRightSlots = SettingsManager.getPastierinaStatusBarSlotsRight(context)
-                        variationsVisible = SettingsManager.areStatusBarVariationsEnabled(context)
-                        dynamicVariationSlotCount = SettingsManager.getDynamicVariationBarSlotCount(context)
-                        dynamicVariationsResizeToContent = SettingsManager.getDynamicVariationBarResizeToContent(context)
                     }
                 ) {
                     Icon(
@@ -196,13 +139,6 @@ fun StatusBarButtonsScreen(
             onHeightChange = { dp ->
                 statusBarHeightDp = dp
                 SettingsManager.setStatusBarHeightDp(context, dp)
-            }
-        )
-        ShowVariationsRow(
-            enabled = variationsVisible,
-            onEnabledChange = { enabled ->
-                variationsVisible = enabled
-                SettingsManager.setStatusBarVariationsEnabled(context, enabled)
             }
         )
         if (pickingStatusBarApp) {
@@ -268,121 +204,47 @@ fun StatusBarButtonsScreen(
         // Status bar "style" picker hidden to simplify to a single presentation.
 
         StatusBarLayoutPreview(
-            leftSlots = if (editorMode == StatusBarEditorMode.Extended) leftSlots else pastierinaLeftSlots,
-            rightSlots = if (editorMode == StatusBarEditorMode.Extended) rightSlots else pastierinaRightSlots,
-            centerText = if (editorMode == StatusBarEditorMode.Extended && variationsVisible) {
-                "· · ·"
-            } else if (editorMode == StatusBarEditorMode.Pastierina) {
-                stringResource(R.string.pastierina_preview_suggestions)
-            } else null
+            leftSlots = leftSlots,
+            rightSlots = rightSlots,
+            centerText = stringResource(R.string.pastierina_preview_suggestions)
         )
 
         // Titan2-Elite rounded-corner insets option hidden (still reachable via prefs/backup).
 
-        if (editorMode == StatusBarEditorMode.Extended) {
-            // Swipe-cursor info row hidden to declutter.
+        // Swipe-cursor info row hidden to declutter.
 
-            SettingsAdvancedSection {
-                Surface(
-                    modifier = Modifier.fillMaxWidth().clickable(onClick = onCustomizeVariations)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Tune,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Text(
-                            text = stringResource(R.string.variation_customize_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
+
+        SettingsSectionDivider(stringResource(R.string.status_bar_buttons_section))
+        SlotGroup(
+            title = stringResource(R.string.status_bar_slots_left),
+            slots = leftSlots,
+            slotPrefix = "L",
+            onSlotSelected = { index, buttonId -> selectExtendedButton(buttonId, "left", index) },
+            onAddSlot = {
+                leftSlots = leftSlots + SettingsManager.STATUS_BAR_BUTTON_NONE
+                SettingsManager.setStatusBarSlotsLeft(context, leftSlots)
+            },
+            onRemoveSlot = { index ->
+                leftSlots = leftSlots.toMutableList().also { it.removeAt(index) }
+                SettingsManager.setStatusBarSlotsLeft(context, leftSlots)
             }
-
-            SettingsSectionDivider(stringResource(R.string.status_bar_buttons_section))
-            SlotGroup(
-                title = stringResource(R.string.status_bar_slots_left),
-                slots = leftSlots,
-                slotPrefix = "L",
-                onSlotSelected = { index, buttonId -> selectExtendedButton(buttonId, "left", index) },
-                onAddSlot = {
-                    leftSlots = leftSlots + SettingsManager.STATUS_BAR_BUTTON_NONE
-                    SettingsManager.setStatusBarSlotsLeft(context, leftSlots)
-                },
-                onRemoveSlot = { index ->
-                    leftSlots = leftSlots.toMutableList().also { it.removeAt(index) }
-                    SettingsManager.setStatusBarSlotsLeft(context, leftSlots)
-                }
-                ,allowMultiple = false
-            )
-            SlotGroup(
-                title = stringResource(R.string.status_bar_slots_right),
-                slots = rightSlots,
-                slotPrefix = "R",
-                onSlotSelected = { index, buttonId -> selectExtendedButton(buttonId, "right", index) },
-                onAddSlot = {
-                    rightSlots = rightSlots + SettingsManager.STATUS_BAR_BUTTON_NONE
-                    SettingsManager.setStatusBarSlotsRight(context, rightSlots)
-                },
-                onRemoveSlot = { index ->
-                    rightSlots = rightSlots.toMutableList().also { it.removeAt(index) }
-                    SettingsManager.setStatusBarSlotsRight(context, rightSlots)
-                }
-                ,allowMultiple = false
-            )
-        } else {
-            SettingsSectionDivider(stringResource(R.string.pastierina_status_bar_buttons_title))
-            Text(
-                text = stringResource(R.string.pastierina_status_bar_buttons_description),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-            )
-            SettingsSectionDivider(stringResource(R.string.status_bar_buttons_section))
-            SlotGroup(
-                title = stringResource(R.string.status_bar_slots_left),
-                slots = pastierinaLeftSlots,
-                slotPrefix = "L",
-                onSlotSelected = { index, buttonId -> selectPastierinaButton(buttonId, "left", index) },
-                onAddSlot = {
-                    pastierinaLeftSlots = pastierinaLeftSlots + SettingsManager.STATUS_BAR_BUTTON_NONE
-                    SettingsManager.setPastierinaStatusBarSlotsLeft(context, pastierinaLeftSlots)
-                },
-                onRemoveSlot = { index ->
-                    pastierinaLeftSlots = pastierinaLeftSlots.toMutableList().also { it.removeAt(index) }
-                    SettingsManager.setPastierinaStatusBarSlotsLeft(context, pastierinaLeftSlots)
-                }
-                ,allowMultiple = false
-            )
-            SlotGroup(
-                title = stringResource(R.string.status_bar_slots_right),
-                slots = pastierinaRightSlots,
-                slotPrefix = "R",
-                onSlotSelected = { index, buttonId -> selectPastierinaButton(buttonId, "right", index) },
-                onAddSlot = {
-                    pastierinaRightSlots = pastierinaRightSlots + SettingsManager.STATUS_BAR_BUTTON_NONE
-                    SettingsManager.setPastierinaStatusBarSlotsRight(context, pastierinaRightSlots)
-                },
-                onRemoveSlot = { index ->
-                    pastierinaRightSlots = pastierinaRightSlots.toMutableList().also { it.removeAt(index) }
-                    SettingsManager.setPastierinaStatusBarSlotsRight(context, pastierinaRightSlots)
-                }
-                ,allowMultiple = false
-            )
-        }
+            ,allowMultiple = false
+        )
+        SlotGroup(
+            title = stringResource(R.string.status_bar_slots_right),
+            slots = rightSlots,
+            slotPrefix = "R",
+            onSlotSelected = { index, buttonId -> selectExtendedButton(buttonId, "right", index) },
+            onAddSlot = {
+                rightSlots = rightSlots + SettingsManager.STATUS_BAR_BUTTON_NONE
+                SettingsManager.setStatusBarSlotsRight(context, rightSlots)
+            },
+            onRemoveSlot = { index ->
+                rightSlots = rightSlots.toMutableList().also { it.removeAt(index) }
+                SettingsManager.setStatusBarSlotsRight(context, rightSlots)
+            }
+            ,allowMultiple = false
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
     }
@@ -478,31 +340,6 @@ private fun StatusBarVisibilitySection(
             onClick = onAddApp,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         ) { Text(stringResource(R.string.show_status_bar_apps_add)) }
-    }
-}
-
-@Composable
-private fun ShowVariationsRow(enabled: Boolean, onEnabledChange: (Boolean) -> Unit) {
-    Surface(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(R.string.status_bar_variations_visible_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text = stringResource(R.string.status_bar_variations_visible_description),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Switch(checked = enabled, onCheckedChange = onEnabledChange)
-        }
     }
 }
 

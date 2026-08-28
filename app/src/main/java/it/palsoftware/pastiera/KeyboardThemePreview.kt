@@ -28,13 +28,11 @@ import it.palsoftware.pastiera.inputmethod.aospkeyboard.SoftwareKeyboardSymLabel
 import it.palsoftware.pastiera.inputmethod.statusbar.StatusBarButtonRegistry
 import it.palsoftware.pastiera.inputmethod.suggestions.ui.FullSuggestionsBar
 import it.palsoftware.pastiera.inputmethod.ui.LedStatusView
-import it.palsoftware.pastiera.inputmethod.ui.VariationBarView
 
 private const val HARDWARE_PREVIEW_MAX_CHROME_SCALE = 1.6f
 private const val HARDWARE_PREVIEW_EXTRA_HEIGHT_DP = 12f
 private const val HARDWARE_PREVIEW_BOTTOM_INDICATOR_HEIGHT_DP = 6.5f
 private const val SUGGESTIONS_PREVIEW_BASE_HEIGHT_DP = 36f
-private const val VARIATIONS_PREVIEW_BASE_HEIGHT_DP = 55f
 private const val SOFTWARE_PREVIEW_TALL_SCREEN_HEIGHT_FRACTION = 0.46f
 private const val SOFTWARE_PREVIEW_SQUARE_SCREEN_HEIGHT_FRACTION = 0.78f
 private const val SOFTWARE_PREVIEW_SQUARE_SCREEN_RATIO = 1.25f
@@ -123,12 +121,6 @@ private fun createHardwareKeyboardThemePreviewView(
     suggestionsBar.setModifierMenuIndicatorsEnabled(SettingsManager.getModifierIndicatorShowsStatusBar(context))
     suggestionsBar.updateModifierIndicators(hardwarePreviewLedSnapshot())
 
-    val variationBar = VariationBarView(context, buttonRegistry = StatusBarButtonRegistry()).apply {
-        themeOverride = theme.toKeyboardThemeColors()
-    }
-    root.addView(variationBar.ensureView())
-    variationBar.showVariations(hardwarePreviewVariationsSnapshot(), inputConnection = null)
-
     val leds = LedStatusView(context).apply {
         themeOverride = theme.toKeyboardThemeColors()
     }
@@ -138,7 +130,6 @@ private fun createHardwareKeyboardThemePreviewView(
     }
 
     root.setTag(R.id.keyboard_theme_preview_suggestions_bar, suggestionsBar)
-    root.setTag(R.id.keyboard_theme_preview_variation_bar, variationBar)
     root.setTag(R.id.keyboard_theme_preview_led_view, leds)
     return root
 }
@@ -151,11 +142,6 @@ private fun updateHardwareKeyboardThemePreviewView(view: android.view.View, them
         showPreview(listOf("Werk", "Team", "Park"))
         setModifierMenuIndicatorsEnabled(SettingsManager.getModifierIndicatorShowsStatusBar(view.context))
         updateModifierIndicators(hardwarePreviewLedSnapshot())
-    }
-    (view.getTag(R.id.keyboard_theme_preview_variation_bar) as? VariationBarView)?.apply {
-        themeOverride = colors
-        resetVariationsState()
-        showVariations(hardwarePreviewVariationsSnapshot(), inputConnection = null)
     }
     (view.getTag(R.id.keyboard_theme_preview_led_view) as? LedStatusView)?.apply {
         themeOverride = colors
@@ -197,13 +183,6 @@ private fun createVirtualKeyboardThemePreviewView(
     }
     root.addView(suggestionsBar.ensureView())
     suggestionsBar.showPreview(listOf("Werk", "Team", "Park"))
-
-    val variationBar = VariationBarView(context, buttonRegistry = StatusBarButtonRegistry()).apply {
-        themeOverride = colors
-        forceVariationAreaVisible = true
-    }
-    root.addView(variationBar.ensureView())
-    showVirtualPreviewVariations(variationBar)
 
     val keyboardView = AospKeyboardView(context).apply {
         layoutName = SettingsManager.getKeyboardLayout(context)
@@ -259,7 +238,6 @@ private fun createVirtualKeyboardThemePreviewView(
     }
 
     root.setTag(R.id.keyboard_theme_preview_suggestions_bar, suggestionsBar)
-    root.setTag(R.id.keyboard_theme_preview_variation_bar, variationBar)
     root.setTag(R.id.keyboard_theme_preview_aosp_keyboard, keyboardView)
     root.setTag(R.id.keyboard_theme_preview_led_view, leds)
     frame.addView(
@@ -291,12 +269,6 @@ private fun updateVirtualKeyboardThemePreviewView(view: android.view.View, theme
         themeOverride = colors
         requireDictionaryForSuggestions = false
         showPreview(listOf("Werk", "Team", "Park"))
-    }
-    (root.getTag(R.id.keyboard_theme_preview_variation_bar) as? VariationBarView)?.apply {
-        themeOverride = colors
-        forceVariationAreaVisible = true
-        resetVariationsState()
-        showVirtualPreviewVariations(this)
     }
     (root.getTag(R.id.keyboard_theme_preview_aosp_keyboard) as? AospKeyboardView)?.apply {
         layoutName = SettingsManager.getKeyboardLayout(context)
@@ -884,13 +856,11 @@ private fun hardwareKeyboardPreviewHeightDp(
     showBottomIndicators: Boolean
 ): Float =
     suggestionsPreviewHeightDp(theme) +
-        variationsPreviewHeightDp(theme) +
         HARDWARE_PREVIEW_EXTRA_HEIGHT_DP -
         if (showBottomIndicators) 0f else HARDWARE_PREVIEW_BOTTOM_INDICATOR_HEIGHT_DP
 
 private fun hardwareKeyboardPreviewViewportHeightDp(showBottomIndicators: Boolean): Float =
     SUGGESTIONS_PREVIEW_BASE_HEIGHT_DP * HARDWARE_PREVIEW_MAX_CHROME_SCALE +
-        VARIATIONS_PREVIEW_BASE_HEIGHT_DP * HARDWARE_PREVIEW_MAX_CHROME_SCALE +
         HARDWARE_PREVIEW_EXTRA_HEIGHT_DP -
         if (showBottomIndicators) 0f else HARDWARE_PREVIEW_BOTTOM_INDICATOR_HEIGHT_DP
 
@@ -917,7 +887,6 @@ private fun virtualKeyboardPreviewHeightPx(
     theme: KeyboardThemePreset
 ): Int {
     return dpToPx(context, suggestionsPreviewHeightDp(theme)) +
-        dpToPx(context, variationsPreviewHeightDp(theme)) +
         virtualKeyboardSurfaceHeightPx(context, theme) +
         if (theme.showLeds) dpToPx(context, SOFTWARE_PREVIEW_LED_HEIGHT_DP) else 0
 }
@@ -938,53 +907,8 @@ private fun virtualKeyboardSurfaceHeightPx(
 private fun suggestionsPreviewHeightDp(theme: KeyboardThemePreset): Float =
     SUGGESTIONS_PREVIEW_BASE_HEIGHT_DP * theme.suggestionsHeightScale.coerceIn(KEYBOARD_THEME_BAR_HEIGHT_MIN, KEYBOARD_THEME_BAR_HEIGHT_MAX)
 
-private fun variationsPreviewHeightDp(theme: KeyboardThemePreset): Float =
-    VARIATIONS_PREVIEW_BASE_HEIGHT_DP * theme.variationsHeightScale.coerceIn(KEYBOARD_THEME_BAR_HEIGHT_MIN, KEYBOARD_THEME_BAR_HEIGHT_MAX)
-
-private fun hardwarePreviewVariationsSnapshot(): StatusBarController.StatusSnapshot =
-    StatusBarController.StatusSnapshot(
-        capsLockEnabled = false,
-        shiftPhysicallyPressed = false,
-        shiftOneShot = false,
-        ctrlLatchActive = true,
-        ctrlPhysicallyPressed = false,
-        ctrlOneShot = false,
-        ctrlLatchFromNavMode = true,
-        altLatchActive = false,
-        altPhysicallyPressed = false,
-        altOneShot = false,
-        symPage = 1,
-        clipboardCount = 2,
-        variations = listOf("@", "\"", ":", "!", "?", ",", ".")
-    )
-
 private fun hardwarePreviewLedSnapshot(): StatusBarController.StatusSnapshot =
-    hardwarePreviewVariationsSnapshot().copy(
-        shiftPhysicallyPressed = true,
-        symPage = 2,
-        variations = emptyList()
-    )
-
-private fun showVirtualPreviewVariations(variationBar: VariationBarView) {
-    variationBar.showVariations(
-        StatusBarController.StatusSnapshot(
-            capsLockEnabled = false,
-            shiftPhysicallyPressed = false,
-            shiftOneShot = false,
-            ctrlLatchActive = false,
-            ctrlPhysicallyPressed = false,
-            ctrlOneShot = false,
-            ctrlLatchFromNavMode = false,
-            altLatchActive = false,
-            altPhysicallyPressed = false,
-            altOneShot = false,
-            symPage = 0,
-            clipboardCount = 2,
-            variations = listOf("@", "\"", ":", "!", "?", ",", ".")
-        ),
-        inputConnection = null
-    )
-}
+    virtualPreviewLedSnapshot().copy(symPage = 2)
 
 private fun virtualPreviewLedSnapshot(): StatusBarController.StatusSnapshot =
     StatusBarController.StatusSnapshot(
