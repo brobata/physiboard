@@ -36,7 +36,6 @@ import android.view.KeyEvent
 import android.view.inputmethod.InputMethodManager
 import it.palsoftware.pastiera.inputmethod.ui.ClipboardHistoryView
 import it.palsoftware.pastiera.inputmethod.ui.EmojiPickerView
-import it.palsoftware.pastiera.inputmethod.ui.HamburgerMenuView
 import it.palsoftware.pastiera.inputmethod.ui.LedStatusView
 import it.palsoftware.pastiera.inputmethod.ui.KeyboardThemeColors
 import it.palsoftware.pastiera.inputmethod.suggestions.ui.FullSuggestionsBar
@@ -185,7 +184,6 @@ class StatusBarController(
      * Sets the microphone button active state.
      */
     fun setMicrophoneButtonActive(isActive: Boolean) {
-        hamburgerMenuView?.setMicrophoneActive(isActive)
         fullSuggestionsBar?.setMicrophoneButtonActive(isActive)
     }
     
@@ -194,7 +192,6 @@ class StatusBarController(
      * @param rmsdB The RMS audio level in decibels (typically -10 to 0)
      */
     fun updateMicrophoneAudioLevel(rmsdB: Float) {
-        hamburgerMenuView?.updateMicrophoneAudioLevel(rmsdB)
         fullSuggestionsBar?.updateMicrophoneAudioLevel(rmsdB)
     }
     
@@ -209,7 +206,6 @@ class StatusBarController(
      * Updates only the clipboard badge count without re-rendering variations.
      */
     fun updateClipboardCount(count: Int) {
-        hamburgerMenuView?.updateClipboardCount(count)
         fullSuggestionsBar?.updateClipboardCount(count)
     }
 
@@ -299,7 +295,6 @@ class StatusBarController(
         get() = dpToPx(600f) // fallback when nothing measured yet
     private val ledStatusView = LedStatusView(context)
     private val buttonRegistry = StatusBarButtonRegistry()
-    private var hamburgerMenuView: HamburgerMenuView? = null
     private var fullSuggestionsBar: FullSuggestionsBar? = null
     private var expansionSuggestions: List<String> = emptyList()
     private var onExpansionSuggestionSelected: ((String) -> Unit)? = null
@@ -315,7 +310,6 @@ class StatusBarController(
     private var lastSoftwareKeyboardSymStyleRendered: AospKeyboardView.SoftwareLayoutStyle? = null
     
     init {
-        onHamburgerMenuRequested = { toggleHamburgerMenu() }
     }
 
     private fun logImeOverlayInsetsIfEnabled(
@@ -412,7 +406,6 @@ class StatusBarController(
         emojiKeyboardContainer?.setBackgroundColor(activeColors.background)
         ledStatusView.themeOverride = activeColors
         fullSuggestionsBar?.themeOverride = activeColors
-        hamburgerMenuView?.themeOverride = activeColors
         clipboardHistoryView?.themeOverride = activeColors
         emojiPickerView?.themeOverride = activeColors
         applySurfaceCloseButtonTheme(activeColors)
@@ -729,28 +722,8 @@ class StatusBarController(
         layout.layoutParams = params
     }
 
-    private fun attachHamburgerMenu(wrapper: View?) {
-        val frame = wrapper as? FrameLayout ?: return
-        val menu = hamburgerMenuView ?: HamburgerMenuView(context, buttonRegistry).also { hamburgerMenuView = it }
-        menu.attachTo(frame)
-    }
-
-    /** The hamburger now lives in the suggestions bar; there is no second row to anchor to. */
-    private fun activeHamburgerWrapper(): View? = null
-
-    private fun showHamburgerMenu() {
-        if (hamburgerMenuView == null) {
-            attachHamburgerMenu(activeHamburgerWrapper())
-        } else {
-            attachHamburgerMenu(activeHamburgerWrapper())
-        }
-        val menu = hamburgerMenuView ?: return
-        val callbacks = statusBarCallbacks().copy(onHamburgerMenuRequested = null)
-        menu.show(callbacks) { hideHamburgerMenu() }
-    }
-
+    /** The hamburger menu belongs to the suggestions bar, which owns and attaches its own. */
     private fun hideHamburgerMenu() {
-        hamburgerMenuView?.hide()
         fullSuggestionsBar?.hideHamburgerMenu()
     }
 
@@ -772,21 +745,12 @@ class StatusBarController(
         (emojiKeyboardContainer?.getChildAt(0) as? AospKeyboardView)?.cancelActiveTouchState()
     }
 
-    private fun toggleHamburgerMenu() {
-        if (hamburgerMenuView?.isVisible() == true) {
-            hideHamburgerMenu()
-        } else {
-            showHamburgerMenu()
-        }
-    }
-
     private fun updateStatusBarButtonState() {
-        hamburgerMenuView?.setMinimalUiActive(true)
         fullSuggestionsBar?.setMinimalUiActive(true)
     }
 
     fun handleBackPressed(): Boolean {
-        if (fullSuggestionsBar?.isHamburgerMenuVisible() == true || hamburgerMenuView?.isVisible() == true) {
+        if (fullSuggestionsBar?.isHamburgerMenuVisible() == true) {
             hideHamburgerMenu()
             return true
         }
@@ -2675,7 +2639,6 @@ class StatusBarController(
             if (isFullSoftwareKeyboardMode) null else SettingsManager.getStatusBarHeightDp(context)
         val softwareThemeSettings = if (isFullSoftwareKeyboardMode) activeTheme else softwareTheme()
         updateClipboardCount(snapshot.clipboardCount)
-        hamburgerMenuView?.refreshLanguageText()
         fullSuggestionsBar?.refreshLanguageText()
         updateStatusBarButtonState()
         if (inputConnection !== lastHamburgerInputConnection) {
