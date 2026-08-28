@@ -2,6 +2,7 @@ package brobata.physiboard
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
 
 /**
  * Moves settings out of the preferences file named after the upstream project.
@@ -20,6 +21,8 @@ import android.content.SharedPreferences
  * anyone who wants their old behaviour back. 2.1 deletes it.
  */
 object SettingsMigration {
+
+    private const val TAG = "SettingsMigration"
 
     const val LEGACY_PREFS = "pastiera_prefs"
     const val PREFS = "physiboard_prefs"
@@ -77,7 +80,20 @@ object SettingsMigration {
         "side_key_original_captured",
         "fn_ctrl_original_enable",
         "fn_ctrl_original_function",
-        "fn_ctrl_captured"
+        "fn_ctrl_captured",
+        "fn_ctrl_prev_captured",
+        "qs_backlight_prev_captured",
+        // "we already did this once" markers. These are not preferences, they are guards: reset
+        // them and the one-time seeding they hold back runs again, on top of the content this
+        // migration just carried. quick_launcher_default_assigned stops a default Space binding
+        // being written over the user's own; nav_mode_default_mappings_version stops a mapping
+        // migration re-running across their ctrl_key_mappings.json; tutorial_completed stops an
+        // existing user being dropped back into first-run setup instead of the screen that tells
+        // them why their keyboard needs re-enabling.
+        "tutorial_completed",
+        "quick_launcher_default_assigned",
+        "alt_shift_default_initialized",
+        "nav_mode_default_mappings_version"
     ) + RENAMES.keys
 
     /** Settings for features 2.0 removed. Nothing reads these any more. */
@@ -138,12 +154,18 @@ object SettingsMigration {
         val target = preferences(context)
         if (target.getBoolean(KEY_MIGRATED, false)) return
 
+        val legacy = legacyPreferences(context).all
         val editor = target.edit()
-        legacyPreferences(context).all.forEach { (key, value) ->
+        var carried = 0
+        legacy.forEach { (key, value) ->
             if (key !in CONTENT_KEYS) return@forEach
             put(editor, RENAMES[key] ?: key, value)
+            carried++
         }
         editor.putBoolean(KEY_MIGRATED, true)
+        // Log.e survives the release build's log stripping. This runs once per install and is the
+        // only record of whether an upgrade found anything to carry.
+        Log.e(TAG, "settings migration: found ${legacy.size} legacy keys, carried $carried")
         // commit, not apply: the IME can read a setting microseconds from now and apply() is async.
         editor.commit()
     }

@@ -107,6 +107,29 @@ class SettingsMigrationTest {
     }
 
     @Test
+    fun seedOnceGuardsSurviveSoOneTimeSetupCannotRunOverCarriedContent() {
+        // Each of these holds back a one-time write. Reset them and that write happens again,
+        // on top of the very content the migration just preserved.
+        legacy.edit()
+            .putBoolean("tutorial_completed", true)
+            .putBoolean("quick_launcher_default_assigned", true)
+            .putBoolean("alt_shift_default_initialized", true)
+            .putInt("nav_mode_default_mappings_version", 3)
+            .putBoolean("side_key_original_captured", true)
+            .putString("side_key_original_package", "com.google.android.apps.bard")
+            .commit()
+
+        SettingsMigration.migrateIfNeeded(context)
+
+        assertTrue(current.getBoolean("tutorial_completed", false))
+        assertTrue(current.getBoolean("quick_launcher_default_assigned", false))
+        assertTrue(current.getBoolean("alt_shift_default_initialized", false))
+        assertEquals(3, current.getInt("nav_mode_default_mappings_version", 0))
+        assertTrue(current.getBoolean("side_key_original_captured", false))
+        assertEquals("com.google.android.apps.bard", current.getString("side_key_original_package", null))
+    }
+
+    @Test
     fun theFirstRunDefaultsStampAfterMigrationRatherThanBeingInherited() {
         // Inheriting impact_defaults_applied would leave a 1.x user on 1.x defaults forever.
         legacy.edit().putBoolean("impact_defaults_applied", true).commit()
