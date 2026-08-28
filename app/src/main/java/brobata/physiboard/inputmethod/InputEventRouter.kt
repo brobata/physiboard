@@ -79,13 +79,13 @@ class InputEventRouter(
 
     private fun commitTextWithTracking(ic: InputConnection?, text: CharSequence, trackWord: Boolean = true) {
         if (isSuggestionDebugLoggingEnabled()) {
-            Log.d("PastieraIME", "commitTextWithTracking enter: '$text', trackWord=$trackWord")
+            Log.d("PhysiBoardIME", "commitTextWithTracking enter: '$text', trackWord=$trackWord")
         }
         onCommitText?.invoke()
         ic?.commitText(text, 1)
         if (trackWord) {
             if (isSuggestionDebugLoggingEnabled()) {
-                Log.d("PastieraIME", "commitTextWithTracking notify SC: '$text'")
+                Log.d("PhysiBoardIME", "commitTextWithTracking notify SC: '$text'")
             }
             suggestionController?.onCharacterCommitted(text, ic)
         }
@@ -727,7 +727,7 @@ class InputEventRouter(
             )
             if (char.isNotEmpty() && char[0].isLetter()) {
                 if (isSuggestionDebugLoggingEnabled()) {
-                    Log.d("PastieraIME", "layout commit: '$char'")
+                    Log.d("PhysiBoardIME", "layout commit: '$char'")
                 }
                 commitTextWithTracking(ic, char)
                 Handler(Looper.getMainLooper()).postDelayed({
@@ -745,7 +745,7 @@ class InputEventRouter(
             val ch = event.unicodeChar.toChar()
             if (ch.isLetter()) {
                 if (isSuggestionDebugLoggingEnabled()) {
-                    Log.d("PastieraIME", "fallback commit: '$ch'")
+                    Log.d("PhysiBoardIME", "fallback commit: '$ch'")
                 }
                 commitTextWithTracking(ic, ch.toString())
                 Handler(Looper.getMainLooper()).postDelayed({
@@ -1540,7 +1540,7 @@ class InputEventRouter(
                 return callSuper()
             }
 
-            // No explicit Pastiera mapping: preserve app-native Ctrl shortcuts (e.g. Ctrl+B/Ctrl+I).
+            // No explicit PhysiBoard mapping: preserve app-native Ctrl shortcuts (e.g. Ctrl+B/Ctrl+I).
             if (isPhysicalCtrlCombo && !ctrlLatchFromNavMode) {
                 return passThroughCtrlCombo()
             }

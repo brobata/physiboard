@@ -47,7 +47,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.vector.ImageVector
 import brobata.physiboard.commands.CommandLaunchSpec
 import brobata.physiboard.commands.CommandSourceId
-import brobata.physiboard.commands.PastieraCommandSource
+import brobata.physiboard.commands.PhysiBoardCommandSource
 
 /**
  * Screen for managing launcher shortcuts.
@@ -270,7 +270,7 @@ fun LauncherShortcutsScreen(
                             if (keyCode != null) {
                                 val shortcut = shortcuts[keyCode]
                                 val isQuickLauncher = shortcut?.type == SettingsManager.LauncherShortcut.TYPE_QUICK_LAUNCHER ||
-                                    shortcut?.commandId == PastieraCommandSource.COMMAND_QUICK_LAUNCHER
+                                    shortcut?.commandId == PhysiBoardCommandSource.COMMAND_QUICK_LAUNCHER
                                 val hasCommand = shortcut?.type == SettingsManager.LauncherShortcut.TYPE_COMMAND
                                 val shortcutPackage = shortcut?.packageName
                                     ?: (shortcut?.commandLaunch as? CommandLaunchSpec.AppPackage)?.packageName

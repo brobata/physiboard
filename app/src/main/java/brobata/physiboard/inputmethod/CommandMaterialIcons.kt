@@ -109,7 +109,7 @@ fun commandMaterialIcon(command: CommandTarget): ImageVector {
         command.id == "nav.action.media_next" -> Icons.Default.SkipNext
 
         command.source == CommandSourceId.DeviceControl -> Icons.Default.Settings
-        command.source == CommandSourceId.Pastiera -> Icons.Default.KeyboardCommandKey
+        command.source == CommandSourceId.PhysiBoard -> Icons.Default.KeyboardCommandKey
         command.source == CommandSourceId.NavActions -> Icons.Default.KeyboardCommandKey
         command.icon == CommandIcon.Settings -> Icons.Default.Settings
         command.icon == CommandIcon.DeviceControl -> Icons.Default.Settings

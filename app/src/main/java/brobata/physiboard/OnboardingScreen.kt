@@ -459,11 +459,11 @@ private fun checkOnboardingImeStatus(
 ) {
     try {
         val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-        val pastieraPackageName = ImeIdentity.packageName
+        val physiBoardPackageName = ImeIdentity.packageName
 
         val enabledInputMethods = imm.enabledInputMethodList
         val isEnabled = enabledInputMethods.any { info ->
-            info.packageName == pastieraPackageName || ImeIdentity.matchesImeId(info.id)
+            info.packageName == physiBoardPackageName || ImeIdentity.matchesImeId(info.id)
         }
 
         var isSelected = false
@@ -478,11 +478,11 @@ private fun checkOnboardingImeStatus(
                 // Android 14+ may block reading the secure setting; fall back.
                 try {
                     val currentSubtype = imm.currentInputMethodSubtype
-                    val pastieraInputMethod = imm.inputMethodList.find {
-                        it.packageName == pastieraPackageName || ImeIdentity.matchesImeId(it.id)
+                    val physiBoardInputMethod = imm.inputMethodList.find {
+                        it.packageName == physiBoardPackageName || ImeIdentity.matchesImeId(it.id)
                     }
                     isSelected = currentSubtype != null &&
-                        pastieraInputMethod != null &&
+                        physiBoardInputMethod != null &&
                         enabledInputMethods.size == 1
                 } catch (_: Exception) {
                     isSelected = false

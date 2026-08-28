@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-   Backup rules for Pastiera keyboard app.
+   Backup rules for the PhysiBoard keyboard app.
    Ensures user customizations (layouts, mappings, settings) are preserved during updates.
    See https://developer.android.com/guide/topics/data/autobackup for details.
    Note: This file is ignored for devices older than API 31

@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Pastiera</string>
-    <string name="input_method_name">Pastiera</string>
+    <string name="app_name">PhysiBoard</string>
+    <string name="input_method_name">PhysiBoard</string>
     <string name="input_method_name_uk">Українська</string>
     <string name="back">Հետ</string>
     <string name="settings_back_content_description">Հետ</string>
@@ -28,13 +28,13 @@
     <string name="settings_content_description">Կարգավորումներ</string>
     <string name="installation_title">Տեղակայում</string>
     <string name="installation_step1">1. Սեղմեք ներքևի կոճակը՝ կարգավորումները բացելու համար</string>
-    <string name="installation_step2">2. Միացրեք "Pastiera Physical Keyboard"-ը</string>
+    <string name="installation_step2">2. Միացրեք "PhysiBoard Physical Keyboard"-ը</string>
     <string name="installation_step3">3. Ներդարձեք այստեղ և փորձարկեք ստեղնաշարը</string>
     <string name="open_keyboard_settings">Բացել ստեղնաշարի կարգավորումները</string>
-    <string name="enable_pastiera">Միացնել Pastiera-ն</string>
-    <string name="pastiera_not_enabled">Pastiera-ը միացված չէ</string>
+    <string name="enable_physiboard">Միացնել PhysiBoard-ն</string>
+    <string name="physiboard_not_enabled">PhysiBoard-ը միացված չէ</string>
     <string name="choose_input_method">Ընտրեք մուտքագրման մեթոդը</string>
-    <string name="pastiera_not_selected">Pastiera-ը ընտրված չէ</string>
+    <string name="physiboard_not_selected">PhysiBoard-ը ընտրված չէ</string>
     <string name="test_keyboard_title">Ստեղնաշարի թեստ</string>
     <string name="test_keyboard_description">Միացրեք ֆիզիկական ստեղնաշար և փորձարկեք ստորև.</string>
     <string name="test_keyboard_normal">• Սովորական սեղմում՝ մուտքագրում է սիմվոլ</string>
@@ -59,7 +59,7 @@
     <string name="auto_correct_settings_title">Տեքստի փոխարինումներ</string>
     <string name="auto_correct_settings_description">Ընտրեք ակտիվ կանոնների հավաքածուները։ Այս ճշգրիտ կանոնները կիրառվում են բառարանի վրա հիմնված ավտոմատ ուղղումից առաջ։</string>
     <string name="auto_correct_system_language">Համակարգի լեզու</string>
-    <string name="auto_correct_ricette_pastiera_description">Կիրառվում է բոլոր փոխարինումների համար</string>
+    <string name="auto_correct_recipes_description">Կիրառվում է բոլոր փոխարինումների համար</string>
     <string name="auto_correct_other_languages">Այլ փոխարինումներ</string>
     <string name="auto_correct_custom_languages">Սեփական փոխարինումներ</string>
     <string name="auto_correct_at_least_one_language_required">Պետք է առնվազն մեկ փոխարինում</string>
@@ -87,7 +87,7 @@
     <string name="auto_correct_max_distance_off">Անջատված</string>
     <string name="auto_correct_max_distance_description">Նիշերի առավելագույն քանակի տարբերություններ, թույլատրված ավտո-ուղղման համար։ 0 = անջատված, 1-3 = աճող հանդուրժողականություն։</string>
     <string name="auto_correct_manage_user_dict_title">Անձնական բառարան</string>
-    <string name="auto_correct_manage_user_dict_description">Բառեր, որոնք Pastiera-ն պետք է ճանաչի և առաջարկի՝ առանց փոխարինման կանոններ ստեղծելու։</string>
+    <string name="auto_correct_manage_user_dict_description">Բառեր, որոնք PhysiBoard-ն պետք է ճանաչի և առաջարկի՝ առանց փոխարինման կանոններ ստեղծելու։</string>
     <string name="user_dict_title">Օգտագործողի բառարան</string>
     <string name="user_dict_add_hint">Ավելացնել բառ</string>
     <string name="user_dict_add_button">Պահպանել բառ</string>
@@ -188,10 +188,10 @@
     <string name="notification_nav_mode_channel_description">Նավիգացիայի ռեժիմի ծանուցումներ</string>
     <string name="notification_nav_mode_activated_title">Նավիգացիայի ռեժիմը միացված է</string>
     <string name="notification_nav_mode_activated_text">Նավիգացիայի ռեժիմը միացված է</string>
-    <string name="notification_update_channel_name">Pastiera թարմացումներ</string>
-    <string name="notification_update_channel_description">Ծանուցումներ Pastiera-ի նոր տարբերակների մասին</string>
-    <string name="notification_update_available_title">Pastiera - Նոր թարմացում հասանելի է</string>
-    <string name="notification_update_available_text">Pastiera-ի նոր տարբերակ հասանելի է (%1$s)</string>
+    <string name="notification_update_channel_name">PhysiBoard թարմացումներ</string>
+    <string name="notification_update_channel_description">Ծանուցումներ PhysiBoard-ի նոր տարբերակների մասին</string>
+    <string name="notification_update_available_title">PhysiBoard - Նոր թարմացում հասանելի է</string>
+    <string name="notification_update_available_text">PhysiBoard-ի նոր տարբերակ հասանելի է (%1$s)</string>
     <string name="speech_recognition_prompt">Խոսեք…</string>
     <string name="auto_correct_search_placeholder">Փնտրել ուղղումները...</string>
     <string name="auto_correct_search_description">Փնտրել</string>
@@ -437,7 +437,7 @@
     <string name="backspace_at_start_delete_title">Backspace տողի սկզբում</string>
     <string name="delete_alternatives_hint">Հուշում․ Ctrl + ստեղնը կարելի է կարգավորել Nav Mode-ի կարգավորումներում</string>
     <string name="static_variation_bar_mode_title">Static Variation Bar</string>
-    <string name="keyboard_title">Pastiera Keyboard</string>
+    <string name="keyboard_title">PhysiBoard Keyboard</string>
     <string name="ignore_back_short">Ignore BACK</string>
     <string name="long_press_mappings_line1">Q→0, W→1, E→2, R→3, T→(, Y→), U→-, I→_, O→\', P→:</string>
     <string name="long_press_mappings_line2">A→@, S→4, D→5, F→6, G→*, H→#, J→+, K→\", L→\'</string>
@@ -459,7 +459,7 @@
     <string name="keyboard_profile_option_auto">Auto</string>
     <string name="keyboard_profile_option_titan2">Unihertz Titan 2</string>
     <string name="about_github">GitHub</string>
-    <string name="about_build_info">Pastiera IME - Palsoftware 2026</string>
+    <string name="about_build_info">PhysiBoard IME - Palsoftware 2026</string>
     <string name="speech_recognition_error_no_match">Տեքստը չի ճանաչվել։ Կրկին փորձեք։</string>
     <string name="speech_recognition_error_timeout">Խոսքային մուտք չի հայտնաբերվել։</string>
     <string name="speech_recognition_error_permission">Միկրոֆոնի թույլտվությունը մերժված է։</string>
@@ -474,7 +474,7 @@
     <string name="variation_global_layout_override_title">Global Variation Mapping</string>
     <string name="variation_global_layout_override_description">Force variation ordering from one layout across all layouts. Default is current IME layout (%1$s).</string>
     <string name="variation_global_layout_override_none">None (use current layout)</string>
-    <string name="auto_correct_ricette_pastiera_name">Ricette Pastiera</string>
+    <string name="auto_correct_recipes_name">Ricette PhysiBoard</string>
     <string name="languages_title">Լեզուներ</string>
     <string name="languages_description">Ավելացրեք լեզուներ Android-ի մուտքագրման մեթոդի ընտրիչին։ Ցուցադրվում են միայն բառարան ունեցող և համակարգային չլինող լեզուները։</string>
     <string name="languages_no_available">Բոլոր հասանելի լեզուներն արդեն ավելացված են կամ համակարգային են։</string>
@@ -498,14 +498,14 @@
     <string name="tutorial_previous">Previous</string>
     <string name="tutorial_next">Next</string>
     <string name="tutorial_finish">Finish</string>
-    <string name="tutorial_page_welcome_title">Welcome to Pastiera</string>
-    <string name="tutorial_page_welcome_description">Pastiera is an advanced input method for PKB Android devices with support for Nav Mode, shortcuts, custom keyboard mappings, and more.</string>
-    <string name="tutorial_page_enable_title">Enable Pastiera</string>
-    <string name="tutorial_page_enable_description">To get started, you need to enable Pastiera as an input method in Android Settings. Tap the button below to open settings.</string>
-    <string name="tutorial_page_select_title">Select Pastiera</string>
-    <string name="tutorial_page_select_description">To use Pastiera, select it among the input methods. The next step lets you choose whether Pastiera should use a virtual keyboard or hardware-keyboard mode.</string>
+    <string name="tutorial_page_welcome_title">Welcome to PhysiBoard</string>
+    <string name="tutorial_page_welcome_description">PhysiBoard is an advanced input method for PKB Android devices with support for Nav Mode, shortcuts, custom keyboard mappings, and more.</string>
+    <string name="tutorial_page_enable_title">Enable PhysiBoard</string>
+    <string name="tutorial_page_enable_description">To get started, you need to enable PhysiBoard as an input method in Android Settings. Tap the button below to open settings.</string>
+    <string name="tutorial_page_select_title">Select PhysiBoard</string>
+    <string name="tutorial_page_select_description">To use PhysiBoard, select it among the input methods. The next step lets you choose whether PhysiBoard should use a virtual keyboard or hardware-keyboard mode.</string>
     <string name="tutorial_page_led_title">LED Indicator</string>
-    <string name="tutorial_page_led_description">To get the most out of Pastiera, set the Fn key to act as Ctrl from Android system settings. The IME bar shows four LEDs: they turn blue when the modifier is active one-shot and orange when it is locked. The SYM layout LED is blue on the emoji page and orange on the symbols page.</string>
+    <string name="tutorial_page_led_description">To get the most out of PhysiBoard, set the Fn key to act as Ctrl from Android system settings. The IME bar shows four LEDs: they turn blue when the modifier is active one-shot and orange when it is locked. The SYM layout LED is blue on the emoji page and orange on the symbols page.</string>
     <string name="tutorial_page_nav_mode_title">Nav Mode</string>
     <string name="tutorial_page_nav_mode_description">Nav Mode lets you navigate the device UI with letter shortcuts such as IJKL or ESDF.\nTo activate:\n• Press Ctrl twice quickly\n• Letter keys become navigation controls\n• Press Ctrl again to exit\nEvery shortcut can be remapped in Advanced Settings.</string>
     <string name="tutorial_nav_mode_bullet_selection">Ընտրության գործողությունները կարող են ընդլայնել նշված տեքստը ձախ, աջ կամ բառ առ բառ։</string>
@@ -515,7 +515,7 @@
     <string name="tutorial_quick_launcher_bullet_sym_space">Պահեք SYM-ը և սեղմեք Space՝ QuickLauncher-ը ցանկացած տեղից բացելու համար։</string>
     <string name="tutorial_quick_launcher_bullet_text_fields">Սա աշխատում է նաև, երբ կուրսորը տեքստային դաշտում է, որպեսզի հավելված փոխեք մուտքագրելիս։</string>
     <string name="tutorial_quick_launcher_bullet_search">Մուտքագրեք մի քանի տառ, կրճատում կամ փոքր տառասխալ՝ պետք եղած հավելվածը գտնելու համար։</string>
-    <string name="tutorial_quick_launcher_bullet_layout">Որոնումը կարող է հաշվի առնել Pastiera-ի ակտիվ դասավորությունը, օրինակ՝ QWERTZ։</string>
+    <string name="tutorial_quick_launcher_bullet_layout">Որոնումը կարող է հաշվի առնել PhysiBoard-ի ակտիվ դասավորությունը, օրինակ՝ QWERTZ։</string>
     <string name="tutorial_quick_launcher_button">Բացել QuickLauncher-ի կարգավորումները</string>
     <string name="tutorial_quick_launcher_mapping_conflict_title">SYM + Space-ը արդեն այլ բանի է նշանակված</string>
     <string name="tutorial_quick_launcher_mapping_conflict_description">Space-ը հիմա բացում է «%1$s»։ Փոխարինեք այդ քարտեզագրումը QuickLauncher-ով և միացրեք այն տեքստային դաշտերում՝ նոր գործառույթը փորձելու համար։</string>
@@ -527,14 +527,14 @@
     <string name="tutorial_messenger_presets_bullet_apps">Ըստ հավելվածի override-ները մնում են հասանելի, եթե որևէ հավելված այլ կերպ է աշխատում։</string>
     <string name="tutorial_messenger_presets_button">Բացել messenger preset-ները</string>
     <string name="tutorial_page_customization_title">Customization</string>
-    <string name="tutorial_page_customization_description">Pastiera offers many customization options:\n• Customizable keyboard layouts\n• Launcher shortcuts &amp; Power Shortcuts\n• IME bar can act as a swipe bar to move the cursor\n• Custom mappings for Nav Mode\nExplore the settings to find the perfect configuration for you!</string>
+    <string name="tutorial_page_customization_description">PhysiBoard offers many customization options:\n• Customizable keyboard layouts\n• Launcher shortcuts &amp; Power Shortcuts\n• IME bar can act as a swipe bar to move the cursor\n• Custom mappings for Nav Mode\nExplore the settings to find the perfect configuration for you!</string>
     <string name="tutorial_page_ready_title">Ready to Start</string>
-    <string name="tutorial_page_ready_description">You are now ready to use Pastiera! Remember that you can always return to settings to further customize the keyboard to your needs.</string>
-    <string name="tutorial_enable_button">Enable Pastiera</string>
-    <string name="tutorial_enabled_message">Pastiera is enabled!</string>
-    <string name="tutorial_select_button">Select Pastiera</string>
-    <string name="tutorial_enable_first_message">Enable Pastiera first on the previous page</string>
-    <string name="tutorial_selected_message">Pastiera is selected!</string>
+    <string name="tutorial_page_ready_description">You are now ready to use PhysiBoard! Remember that you can always return to settings to further customize the keyboard to your needs.</string>
+    <string name="tutorial_enable_button">Enable PhysiBoard</string>
+    <string name="tutorial_enabled_message">PhysiBoard is enabled!</string>
+    <string name="tutorial_select_button">Select PhysiBoard</string>
+    <string name="tutorial_enable_first_message">Enable PhysiBoard first on the previous page</string>
+    <string name="tutorial_selected_message">PhysiBoard is selected!</string>
     <string name="tutorial_show">Show Tutorial</string>
     <string name="tutorial_review_description">Review the introductory tutorial</string>
     <string name="dip_unit">DIP</string>
@@ -574,7 +574,7 @@
     <string name="trackpad_tutorial_how_it_works_title">How It Works</string>
     <string name="trackpad_tutorial_how_it_works_description">The trackpad is divided into three sections:\n\n• Left third → Accept left suggestion\n• Center third → Accept center suggestion\n• Right third → Accept right suggestion\n\nSimply swipe up in the corresponding area to insert that suggestion.</string>
     <string name="trackpad_tutorial_shizuku_required_title">Shizuku Required</string>
-    <string name="trackpad_tutorial_shizuku_required_description">This feature requires Shizuku to access trackpad events.\n\n1. Install Shizuku from GitHub releases\n2. Enable developer options in Android settings\n3. Plug your device into a PC with ADB installed\n4. Run the command that Shizuku shows in its app\n5. Grant permission to Pastiera in Shizuku\n\nThe feature will work automatically once Shizuku is running.</string>
+    <string name="trackpad_tutorial_shizuku_required_description">This feature requires Shizuku to access trackpad events.\n\n1. Install Shizuku from GitHub releases\n2. Enable developer options in Android settings\n3. Plug your device into a PC with ADB installed\n4. Run the command that Shizuku shows in its app\n5. Grant permission to PhysiBoard in Shizuku\n\nThe feature will work automatically once Shizuku is running.</string>
     <string name="trackpad_tutorial_tips_title">Tips</string>
     <string name="trackpad_tutorial_tips_description">• Make sure your swipe is primarily vertical\n• The gesture works best with quick, deliberate swipes\n• If other fingers are on the keyboard, gestures may not be detected (hardware palm rejection)\n• The feature can be enabled/disabled in Advanced Settings</string>
     <string name="trackpad_tutorial_complete">Got It</string>
@@ -584,7 +584,7 @@
     <string name="status_bar_button_hamburger">Մենյու</string>
     <string name="status_bar_button_hamburger_description">Արագ գործողություններ</string>
     <string name="tutorial_page_software_keyboard_title">Ստեղնաշարի ռեժիմ</string>
-    <string name="tutorial_page_software_keyboard_description">Ընտրեք, թե Pastiera-ն այստեղ որ ստեղնաշարի մակերեսը օգտագործի։</string>
+    <string name="tutorial_page_software_keyboard_description">Ընտրեք, թե PhysiBoard-ն այստեղ որ ստեղնաշարի մակերեսը օգտագործի։</string>
     <string name="software_keyboard_mode_title">Ստեղնաշարի ռեժիմ</string>
     <string name="software_keyboard_mode_auto_current">Ավտո (այժմ՝ %1$s)</string>
     <string name="software_keyboard_mode_always_virtual">Միշտ վիրտուալ ստեղնաշար</string>
@@ -617,8 +617,6 @@
     <string name="typing_sound_import_success">Մուտքագրման ձայնային փաթեթը ներմուծվեց</string>
     <string name="typing_sound_import_failed">Չհաջողվեց ներմուծել այս ձայնային փաթեթը։ Օգտագործեք ZIP՝ աուդիո ֆայլերով normal/, space/, backspace/, enter/ և modifier/ պանակներում։</string>
     <string name="typing_sound_docs_title">Ձայնային փաթեթի ձևաչափ</string>
-    <string name="typing_sound_docs_description">Բացել ներմուծման ուղեցույցը pastiera.eu-ում</string>
-    <string name="typing_sound_docs_url">https://pastiera.eu/guides/typing-soundpacks/</string>
     <string name="tap_haptic_system_title">Հպման թրթռում</string>
     <string name="tap_haptic_system_description">Օգտագործել Android ստեղնաշարի հապտիկ արձագանքը առաջարկների և տարբերակների համար համատեղելի սարքերում։</string>
     <string name="tap_haptic_duration_title">Հատուկ թրթռում՝ %1$d մվ</string>
@@ -630,12 +628,12 @@
     <string name="keyboard_profile_option_titan2elite_qwerty">Titan 2 Elite (QWERTY)</string>
     <string name="keyboard_currency_symbol_title">Արժույթի նշան</string>
     <string name="keyboard_currency_symbol_description">Նշան, որը մուտքագրվում է արժույթի հատուկ ապարատային ստեղներով։</string>
-    <string name="starter_launcher_shortcuts_title">Pastiera-QuickLauncher</string>
+    <string name="starter_launcher_shortcuts_title">PhysiBoard-QuickLauncher</string>
     <string name="starter_launcher_shortcuts_description">Արագ գործարկում, SYM դյուրանցումներ և հավելվածների ստեղների նշանակումներ</string>
-    <string name="starter_launcher_shortcuts_intro">Այս կարգավորումները կիսում են հավելված-ստեղն նշանակումների մեկ ցուցակ։ Ընտրեք, թե Pastiera-ն որտեղ պետք է լսի այդ նշանակված ստեղները։</string>
+    <string name="starter_launcher_shortcuts_intro">Այս կարգավորումները կիսում են հավելված-ստեղն նշանակումների մեկ ցուցակ։ Ընտրեք, թե PhysiBoard-ն որտեղ պետք է լսի այդ նշանակված ստեղները։</string>
     <string name="launcher_shortcuts_configure_description_with_quick_launcher">Հպեք ստեղնին՝ հավելված նշանակելու կամ փոխարինելու համար։ QuickLauncher-ը այժմ նշանակված է %1$s-ին։</string>
-    <string name="quick_launcher_default_blocked_hint">Նոր․ SYM-ը կարող է բացել QuickLauncher-ը։ Pastiera-ն սովորաբար այն կնշանակեր Space-ին, բայց Space-ն արդեն դյուրանցում ունի։ Բացեք նշանակումների էջը և ցանկացած ստեղնի վրա ընտրեք «Բացել QuickLauncher»-ը՝ փորձելու համար։</string>
-    <string name="quick_launcher_title">Pastiera-QuickLauncher</string>
+    <string name="quick_launcher_default_blocked_hint">Նոր․ SYM-ը կարող է բացել QuickLauncher-ը։ PhysiBoard-ն սովորաբար այն կնշանակեր Space-ին, բայց Space-ն արդեն դյուրանցում ունի։ Բացեք նշանակումների էջը և ցանկացած ստեղնի վրա ընտրեք «Բացել QuickLauncher»-ը՝ փորձելու համար։</string>
+    <string name="quick_launcher_title">PhysiBoard-QuickLauncher</string>
     <string name="quick_launcher_subtitle">Մուտքագրեք որոնելու համար։ Enter-ը բացում է առաջին արդյունքը։</string>
     <string name="quick_launcher_close">Փակել</string>
     <string name="quick_launcher_search_placeholder">Սկսեք մուտքագրել...</string>
@@ -645,7 +643,7 @@
     <string name="quick_launcher_limit_results_title">Ցույց տալ միայն լավագույն արդյունքները</string>
     <string name="quick_launcher_limit_results_description">Չցուցադրել հավելվածների ամբողջ այբբենական ցուցակը։ QuickLauncher-ը մնում է դատարկ, մինչև սկսեք մուտքագրել, ապա ցույց է տալիս միայն երեք լավագույն համընկնումները։</string>
     <string name="quick_launcher_respect_keyboard_layout_title">Օգտագործել ակտիվ ստեղնաշարի դասավորությունը</string>
-    <string name="quick_launcher_respect_keyboard_layout_description">Միացված լինելու դեպքում որոնման մուտքագրումը հետևում է ընթացիկ Pastiera դասավորությանը՝ Android-ի հում QWERTY ելքի փոխարեն։</string>
+    <string name="quick_launcher_respect_keyboard_layout_description">Միացված լինելու դեպքում որոնման մուտքագրումը հետևում է ընթացիկ PhysiBoard դասավորությանը՝ Android-ի հում QWERTY ելքի փոխարեն։</string>
     <string name="quick_launcher_typo_tolerant_ranking_title">Տառասխալներին հանդուրժող որոնում</string>
     <string name="quick_launcher_typo_tolerant_ranking_description">Համընկեցնում է նաև հավելվածների անունները փոքր տառասխալներով։ Նախածանցի և հապավման համընկնումները դեռ ավելի բարձր են դասվում։</string>
     <string name="quick_launcher_ranking_info_button">Ինչպես է աշխատում դասակարգումը</string>
@@ -686,22 +684,22 @@ QWERTZ ֆիզիկական QWERTY-ի վրա
 Nav Mode-ը օգտագործում է ստեղնի ֆիզիկական դիրքը, որպեսզի նավիգացիան կայուն մնա։ Ստեղների վրա դասավորության հուշումները ցույց են տալիս, երբ ակտիվ տեքստային դասավորությունը այդ ֆիզիկական ստեղնը կընկալեր որպես այլ տառ, օրինակ՝ Y/Z QWERTZ-ում։
 
 Դասավորությանը զգայուն հավելվածների Ctrl դյուրանցումներ
-Երբ պահված Ctrl-ը փոխանցվում է հավելվածներին, այս ընտրովի կարգավորումը կարող է նախ Ctrl+տառը թարգմանել ակտիվ Pastiera դասավորության միջոցով։ Այն ազդում է հավելվածների դյուրանցումների վրա, ոչ թե Nav Mode-ի ֆիզիկական ցանցի։
+Երբ պահված Ctrl-ը փոխանցվում է հավելվածներին, այս ընտրովի կարգավորումը կարող է նախ Ctrl+տառը թարգմանել ակտիվ PhysiBoard դասավորության միջոցով։ Այն ազդում է հավելվածների դյուրանցումների վրա, ոչ թե Nav Mode-ի ֆիզիկական ցանցի։
 
 Վերասահմանումներ
 Յուրաքանչյուր ստեղն կարելի է կազմաձևել որպես Keycode, Action, Native Ctrl կամ None։ Օգտագործեք վերասահմանումներ՝ հավելվածին հատուկ կոնֆլիկտները լուծելու համար՝ առանց ամբողջ ռեժիմը փոխելու։</string>
     <string name="nav_mode_ctrl_hold_title">Նավիգացիա պահված Ctrl-ով</string>
     <string name="nav_mode_ctrl_hold_description">Միացված լինելու դեպքում տեքստային դաշտերը օգտագործում են Nav Mode նշանակումները, մինչ Ctrl-ը պահված է։ Անջատված լինելու դեպքում Ctrl դյուրանցումները փոխանցվում են հավելվածին։ Native Ctrl դրված ստեղները միշտ փոխանցվում են որպես իրական Ctrl դյուրանցումներ։</string>
     <string name="layout_aware_ctrl_shortcuts_title">Դասավորությանը զգայուն հավելվածների Ctrl դյուրանցումներ</string>
-    <string name="layout_aware_ctrl_shortcuts_description">Երբ պահված Ctrl-ը փոխանցվում է հավելվածներին, նախ Ctrl+տառը թարգմանել ակտիվ Pastiera դասավորության միջոցով։</string>
+    <string name="layout_aware_ctrl_shortcuts_description">Երբ պահված Ctrl-ը փոխանցվում է հավելվածներին, նախ Ctrl+տառը թարգմանել ակտիվ PhysiBoard դասավորության միջոցով։</string>
     <string name="layout_aware_ctrl_shortcuts_disabled_description">Անջատված է, քանի դեռ պահված Ctrl-ով նավիգացիան ակտիվ է, որովհետև պահված Ctrl-ը մշակվում է Nav Mode-ի, ոչ թե հավելվածի կողմից։</string>
     <string name="layout_aware_ctrl_shortcuts_info_title">Ctrl դյուրանցումներ և Nav Mode</string>
-    <string name="layout_aware_ctrl_shortcuts_info_text">Պահված Ctrl-ի համար կա երկու ուղի։ Եթե պահված Ctrl-ով նավիգացիան միացված է, Pastiera-ն Ctrl+ստեղնը մշակում է ստորև ցուցադրված Nav Mode նշանակումներով։ Եթե այն անջատված է, Pastiera-ն Ctrl+ստեղնը փոխանցում է հավելվածին։ Այս ընտրանքը ազդում է միայն այդ հավելվածային ուղու վրա․ միացված լինելու դեպքում Ctrl+տառը նախ թարգմանվում է ակտիվ Pastiera դասավորության միջոցով, որպեսզի դյուրանցումները հետևեն ձեր մուտքագրած տառերին։ Անջատված լինելու դեպքում հավելվածները ստանում են ստեղների սկզբնական ֆիզիկական դիրքերը։</string>
+    <string name="layout_aware_ctrl_shortcuts_info_text">Պահված Ctrl-ի համար կա երկու ուղի։ Եթե պահված Ctrl-ով նավիգացիան միացված է, PhysiBoard-ն Ctrl+ստեղնը մշակում է ստորև ցուցադրված Nav Mode նշանակումներով։ Եթե այն անջատված է, PhysiBoard-ն Ctrl+ստեղնը փոխանցում է հավելվածին։ Այս ընտրանքը ազդում է միայն այդ հավելվածային ուղու վրա․ միացված լինելու դեպքում Ctrl+տառը նախ թարգմանվում է ակտիվ PhysiBoard դասավորության միջոցով, որպեսզի դյուրանցումները հետևեն ձեր մուտքագրած տառերին։ Անջատված լինելու դեպքում հավելվածները ստանում են ստեղների սկզբնական ֆիզիկական դիրքերը։</string>
     <string name="nav_mode_native_ctrl">Native Ctrl</string>
     <string name="app_enter_behaviour_title">Enter ստեղնի վարքագիծ</string>
     <string name="app_enter_behaviour_description">Կազմաձևել հավելվածին հատուկ Enter-ը և նոր տողի մշակումը</string>
     <string name="app_enter_behaviour_enable_title">Հավելվածին հատուկ Enter վարքագիծ</string>
-    <string name="app_enter_behaviour_enable_description">Օգտագործեք Pastiera վերասահմանումները ընտրված հաղորդագրությունների հավելվածների համար։ Փորձարկված հավելվածները ցույց են տալիս Pastiera-ի իրականում օգտագործվող ռազմավարությունը։</string>
+    <string name="app_enter_behaviour_enable_description">Օգտագործեք PhysiBoard վերասահմանումները ընտրված հաղորդագրությունների հավելվածների համար։ Փորձարկված հավելվածները ցույց են տալիս PhysiBoard-ի իրականում օգտագործվող ռազմավարությունը։</string>
     <string name="app_enter_behaviour_preset_title">Հաղորդագրությունների նախադրույթ</string>
     <string name="app_enter_behaviour_preset_description">Կիրառել համահունչ լռելյայն կարգավորում տեղադրված հայտնի հաղորդագրությունների հավելվածներին։</string>
     <string name="app_enter_behaviour_preset_app_default">Հավելվածի լռելյայնը</string>
@@ -721,12 +719,12 @@ Nav Mode-ը օգտագործում է ստեղնի ֆիզիկական դիրքը
     <string name="app_enter_behaviour_option_send_shift_newline">Enter-ը ուղարկում է, Shift+Enter-ը նոր տող</string>
     <string name="app_enter_behaviour_option_newline_ctrl_send">Enter-ը նոր տող, Ctrl+Enter-ը ուղարկում է</string>
     <string name="app_enter_behaviour_option_enter_newline">Enter-ը նոր տող</string>
-    <string name="app_enter_behaviour_status_app_default">Pastiera-ն չի միջամտում։</string>
+    <string name="app_enter_behaviour_status_app_default">PhysiBoard-ն չի միջամտում։</string>
     <string name="app_enter_behaviour_status_whatsapp_active">Ակտիվ է՝ %1$s։</string>
     <string name="app_enter_behaviour_status_partial_active">Մասամբ ակտիվ է՝ %1$s։</string>
     <string name="app_enter_behaviour_status_experimental_active">Փորձարարական ակտիվ է՝ %1$s։</string>
     <string name="app_enter_behaviour_status_not_active">Դեռ ակտիվ չէ՝ %1$s-ը պլանավորված է։</string>
-    <string name="app_enter_behaviour_status_native_result">Հավելվածի լռելյայնը․ Pastiera-ն չի միջամտում։</string>
+    <string name="app_enter_behaviour_status_native_result">Հավելվածի լռելյայնը․ PhysiBoard-ն չի միջամտում։</string>
     <string name="app_enter_behaviour_status_strategy_result">Ակտիվ է՝ %1$s։</string>
     <string name="app_enter_behaviour_status_experimental_result">Փորձարարական ակտիվ է՝ %1$s։</string>
     <string name="app_enter_behaviour_strategy_none_label">Վերասահմանում չկա</string>
@@ -734,12 +732,12 @@ Nav Mode-ը օգտագործում է ստեղնի ֆիզիկական դիրքը
     <string name="app_enter_behaviour_strategy_plain_enter_label">Սովորական Enter</string>
     <string name="app_enter_behaviour_strategy_unconfigured_label">Կազմաձևված չէ</string>
     <string name="app_enter_behaviour_strategy_app_default_detail">Հավելվածն է որոշում՝ Enter-ը ուղարկում է, թե նոր տող է ավելացնում։</string>
-    <string name="app_enter_behaviour_strategy_whatsapp_newline_ctrl_send">Pastiera-ն նոր տողերը տեղադրում է ուղղակիորեն և ուղարկում է հավելվածի ուղարկման գործողությամբ։</string>
-    <string name="app_enter_behaviour_strategy_whatsapp_send_shift_newline">Pastiera-ն ուղարկում է հավելվածի ուղարկման գործողությամբ։ Shift+Enter-ը ուղղակիորեն տեղադրվում է որպես նոր տող։</string>
-    <string name="app_enter_behaviour_strategy_whatsapp_newline_only">Փորձարկված է․ Pastiera-ն Enter-ը ուղղակիորեն տեղադրում է որպես նոր տող և չի գործարկում ուղարկումը։</string>
-    <string name="app_enter_behaviour_strategy_discord_app_default_detail">Փորձարկված է․ Discord-ը արդեն ճիշտ է աշխատում՝ Enter-ը ուղարկում է, Shift+Enter-ը նոր տող է։ Pastiera-ն այստեղ չի միջամտում։</string>
+    <string name="app_enter_behaviour_strategy_whatsapp_newline_ctrl_send">PhysiBoard-ն նոր տողերը տեղադրում է ուղղակիորեն և ուղարկում է հավելվածի ուղարկման գործողությամբ։</string>
+    <string name="app_enter_behaviour_strategy_whatsapp_send_shift_newline">PhysiBoard-ն ուղարկում է հավելվածի ուղարկման գործողությամբ։ Shift+Enter-ը ուղղակիորեն տեղադրվում է որպես նոր տող։</string>
+    <string name="app_enter_behaviour_strategy_whatsapp_newline_only">Փորձարկված է․ PhysiBoard-ն Enter-ը ուղղակիորեն տեղադրում է որպես նոր տող և չի գործարկում ուղարկումը։</string>
+    <string name="app_enter_behaviour_strategy_discord_app_default_detail">Փորձարկված է․ Discord-ը արդեն ճիշտ է աշխատում՝ Enter-ը ուղարկում է, Shift+Enter-ը նոր տող է։ PhysiBoard-ն այստեղ չի միջամտում։</string>
     <string name="app_enter_behaviour_strategy_discord_partial_detail">Փորձարկված է․ նոր տողերը տեղադրվում են ուղղակիորեն։ Ctrl+Enter-ը ուղարկում է սովորական Enter առանց meta Ctrl-ի, քանի որ Discord-ի հավելվածի գործողությունը միայն թաքցնում է ստեղնաշարը։</string>
-    <string name="app_enter_behaviour_strategy_experimental_detail">Չհաստատված է․ Pastiera-ն փորձում է հավելվածի ուղարկման գործողությունը և նոր տողի ուղղակի տեղադրումը։</string>
+    <string name="app_enter_behaviour_strategy_experimental_detail">Չհաստատված է․ PhysiBoard-ն փորձում է հավելվածի ուղարկման գործողությունը և նոր տողի ուղղակի տեղադրումը։</string>
     <string name="app_enter_behaviour_strategy_not_tested_detail">Այս հավելվածի տեխնիկական ռազմավարությունը դեռ պետք է փորձարկվի։</string>
     <string name="app_enter_behaviour_desired_label">Ցանկալի վարքագիծ</string>
     <string name="app_enter_behaviour_strategy_label">Ուղարկման ռազմավարություն</string>
@@ -781,15 +779,15 @@ Nav Mode-ը օգտագործում է ստեղնի ֆիզիկական դիրքը
     <string name="tutorial_whats_new_title">Նորը այս տարբերակում՝ %1$s</string>
     <string name="tutorial_whats_new_description">Շարունակելուց առաջ արժե իմանալ մի քանի փոփոխության մասին։</string>
     <string name="tutorial_whats_new_bug_fixes_title">Սխալների ուղղումներ</string>
-    <string name="tutorial_whats_new_docs_button">Բացել Pastiera փաստաթղթերը</string>
+    <string name="tutorial_whats_new_docs_button">Բացել PhysiBoard փաստաթղթերը</string>
     <string name="tutorial_whats_new_continue_hint">Շարունակեք ուղեցույցը՝ այս տարբերակի ամենաօգտակար կարգավորումները վերանայելու համար։</string>
     <string name="tutorial_devs_choice_button">Մշակողի ընտրություն</string>
     <string name="tutorial_devs_choice_applied">Մշակողի ընտրության կարգավորումները կիրառվեցին։</string>
     <string name="tutorial_software_keyboard_alpha_warning">Alpha գործառույթ․ վիրտուալ ստեղնաշարը դեռ ակտիվ մշակման մեջ է և առայժմ խորհուրդ չի տրվում ամենօրյա օգտագործման համար։</string>
     <string name="tutorial_android16_ime_caption_title">Թաքցնել IME վերնագրի գոտին</string>
-    <string name="tutorial_android16_ime_caption_description">Titan 2 սարքերը կարող են Pastiera-ի տակ ցույց տալ լրացուցիչ IME գոտի։ Այս OEM կարգավորումը թաքցնում է այն և Pastiera-ն պահում կոմպակտ։</string>
+    <string name="tutorial_android16_ime_caption_description">Titan 2 սարքերը կարող են PhysiBoard-ի տակ ցույց տալ լրացուցիչ IME գոտի։ Այս OEM կարգավորումը թաքցնում է այն և PhysiBoard-ն պահում կոմպակտ։</string>
     <string name="tutorial_android16_ime_caption_before">Մինչև՝ լրացուցիչ գոտի</string>
-    <string name="tutorial_android16_ime_caption_after">Հետո՝ կոմպակտ Pastiera</string>
+    <string name="tutorial_android16_ime_caption_after">Հետո՝ կոմպակտ PhysiBoard</string>
     <string name="tutorial_android16_ime_caption_check_android16">Android 16 կամ նոր</string>
     <string name="tutorial_android16_ime_caption_check_titan2">Unihertz Titan 2 կամ Titan 2 Elite</string>
     <string name="tutorial_android16_ime_caption_check_setting">OEM ժեստի կարգավորումը հասանելի է</string>

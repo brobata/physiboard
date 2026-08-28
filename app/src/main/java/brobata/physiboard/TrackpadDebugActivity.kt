@@ -26,7 +26,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
-import brobata.physiboard.ui.theme.PastieraTheme
+import brobata.physiboard.ui.theme.PhysiBoardTheme
 import kotlinx.coroutines.launch
 
 class TrackpadDebugActivity : LocalizedComponentActivity() {
@@ -36,7 +36,7 @@ class TrackpadDebugActivity : LocalizedComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            PastieraTheme {
+            PhysiBoardTheme {
                 TrackpadDebugScreen(
                     events = events,
                     onBackPressed = { finish() }

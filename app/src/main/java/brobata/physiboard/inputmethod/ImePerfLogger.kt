@@ -5,7 +5,7 @@ import android.util.Log
 import brobata.physiboard.BuildConfig
 
 object ImePerfLogger {
-    private const val TAG = "PastieraPerf"
+    private const val TAG = "PhysiBoardPerf"
 
     fun mark(): Long = SystemClock.elapsedRealtimeNanos()
 

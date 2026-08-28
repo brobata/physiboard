@@ -4,39 +4,39 @@ import android.content.Context
 import androidx.core.content.ContextCompat
 import brobata.physiboard.R
 
-class PastieraCommandSource : CommandSource {
-    override val id = CommandSourceId.Pastiera
+class PhysiBoardCommandSource : CommandSource {
+    override val id = CommandSourceId.PhysiBoard
 
     override fun getCommands(context: Context): List<CommandTarget> {
         return listOf(
             CommandTarget(
                 id = COMMAND_QUICK_LAUNCHER,
                 source = id,
-                kind = CommandKind.PastieraAction,
-                label = "Pastiera QuickLauncher",
-                subtitle = "Open Pastiera search",
+                kind = CommandKind.PhysiBoardAction,
+                label = "PhysiBoard QuickLauncher",
+                subtitle = "Open PhysiBoard search",
                 icon = CommandIcon.Search,
                 launch = CommandLaunchSpec.InternalAction(ACTION_OPEN_QUICK_LAUNCHER),
                 capabilities = setOf(CommandCapability.LaunchesActivity),
                 defaultSurfaces = setOf(CommandSurface.AssignedKey, CommandSurface.NavMode),
-                searchTokens = listOf("Pastiera", "QuickLauncher", "Search")
+                searchTokens = listOf("PhysiBoard", "QuickLauncher", "Search")
             ),
             CommandTarget(
                 id = COMMAND_MAIN_ACTIVITY,
                 source = id,
-                kind = CommandKind.PastieraAction,
-                label = "Pastiera",
+                kind = CommandKind.PhysiBoardAction,
+                label = "PhysiBoard",
                 subtitle = "Open app settings",
                 icon = CommandIcon.Settings,
                 launch = CommandLaunchSpec.InternalAction(ACTION_OPEN_MAIN_ACTIVITY),
                 capabilities = setOf(CommandCapability.LaunchesActivity),
                 defaultSurfaces = setOf(CommandSurface.AssignedKey, CommandSurface.NavMode),
-                searchTokens = listOf("Pastiera", "Settings")
+                searchTokens = listOf("PhysiBoard", "Settings")
             ),
             CommandTarget(
                 id = COMMAND_VOICE_ASSISTANT,
                 source = id,
-                kind = CommandKind.PastieraAction,
+                kind = CommandKind.PhysiBoardAction,
                 label = "Voice assistant",
                 subtitle = "Open it already listening",
                 icon = CommandIcon.Search,
@@ -48,7 +48,7 @@ class PastieraCommandSource : CommandSource {
             CommandTarget(
                 id = COMMAND_TOGGLE_SOFTWARE_KEYBOARD_MODE,
                 source = id,
-                kind = CommandKind.PastieraAction,
+                kind = CommandKind.PhysiBoardAction,
                 label = "Toggle Keyboard Mode",
                 subtitle = "Switch Virtual / Hardware",
                 icon = CommandIcon.DrawableIcon(ContextCompat.getDrawable(context, R.drawable.expansion_panels_24)),

@@ -14,18 +14,18 @@ object QuickLauncherOpener {
     fun open(context: Context): Boolean {
         return when (SettingsManager.getQuickLauncherBehavior(context)) {
             SettingsManager.QUICK_LAUNCHER_BEHAVIOR_NIAGARA ->
-                openNiagaraSearch(context) || openPastieraQuickLauncher(context)
-            else -> openPastieraQuickLauncher(context)
+                openNiagaraSearch(context) || openPhysiBoardQuickLauncher(context)
+            else -> openPhysiBoardQuickLauncher(context)
         }
     }
 
-    private fun openPastieraQuickLauncher(context: Context): Boolean {
+    private fun openPhysiBoardQuickLauncher(context: Context): Boolean {
         return try {
             val intent = QuickLauncherActivity.createToggleIntent(context)
             context.startActivity(intent)
             true
         } catch (error: Exception) {
-            Log.e(TAG, "Error opening Pastiera QuickLauncher", error)
+            Log.e(TAG, "Error opening PhysiBoard QuickLauncher", error)
             false
         }
     }
@@ -41,7 +41,7 @@ object QuickLauncherOpener {
             context.startActivity(intent)
             true
         } catch (error: Exception) {
-            Log.w(TAG, "Error opening Niagara search; falling back to Pastiera QuickLauncher", error)
+            Log.w(TAG, "Error opening Niagara search; falling back to PhysiBoard QuickLauncher", error)
             false
         }
     }

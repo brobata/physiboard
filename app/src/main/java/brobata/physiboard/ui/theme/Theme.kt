@@ -46,7 +46,7 @@ private val LightColorScheme = lightColorScheme(
 )
 
 @Composable
-fun PastieraTheme(
+fun PhysiBoardTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Material-You dynamic color is intentionally disabled so the Terminal brand stays consistent.
     dynamicColor: Boolean = false,

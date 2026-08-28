@@ -53,7 +53,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import brobata.physiboard.ui.theme.PastieraTheme
+import brobata.physiboard.ui.theme.PhysiBoardTheme
 import brobata.physiboard.BuildConfig
 import brobata.physiboard.update.checkForUpdate
 import brobata.physiboard.update.fetchReleaseNotesForVersion
@@ -84,7 +84,7 @@ class TutorialActivity : LocalizedComponentActivity() {
         val previewUpdateTutorial = intent.getBooleanExtra(EXTRA_PREVIEW_UPDATE_TUTORIAL, false)
         val previousVersionOverride = intent.getStringExtra(EXTRA_PREVIOUS_VERSION)
         setContent {
-            PastieraTheme {
+            PhysiBoardTheme {
                 OnboardingScreen(
                     updateTutorial = updateTutorial,
                     onComplete = {
@@ -142,12 +142,12 @@ sealed class TutorialPageType {
 
     object FeatureStatuses : TutorialPageType()
     
-    data class EnablePastiera(
+    data class EnablePhysiBoard(
         val title: String,
         val description: String
     ) : TutorialPageType()
     
-    data class SelectPastiera(
+    data class SelectPhysiBoard(
         val title: String,
         val description: String
     ) : TutorialPageType()
@@ -202,13 +202,13 @@ fun TutorialScreen(
     }
 
     // Check IME status
-    var isPastieraEnabled by remember { mutableStateOf(false) }
-    var isPastieraSelected by remember { mutableStateOf(false) }
+    var isPhysiBoardEnabled by remember { mutableStateOf(false) }
+    var isPhysiBoardSelected by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         checkImeStatus(context) { enabled, selected ->
-            isPastieraEnabled = enabled
-            isPastieraSelected = selected
+            isPhysiBoardEnabled = enabled
+            isPhysiBoardSelected = selected
         }
     }
 
@@ -216,8 +216,8 @@ fun TutorialScreen(
         while (true) {
             kotlinx.coroutines.delay(2000)
             checkImeStatus(context) { enabled, selected ->
-                isPastieraEnabled = enabled
-                isPastieraSelected = selected
+                isPhysiBoardEnabled = enabled
+                isPhysiBoardSelected = selected
             }
         }
     }
@@ -239,17 +239,17 @@ fun TutorialScreen(
                 imageRes = R.drawable.tutorial_welcome
             )
         )
-        if (!isPastieraEnabled) {
+        if (!isPhysiBoardEnabled) {
             add(
-                TutorialPageType.EnablePastiera(
+                TutorialPageType.EnablePhysiBoard(
                     title = stringResource(R.string.tutorial_page_enable_title),
                     description = stringResource(R.string.tutorial_page_enable_description)
                 )
             )
         }
-        if (!isPastieraSelected) {
+        if (!isPhysiBoardSelected) {
             add(
-                TutorialPageType.SelectPastiera(
+                TutorialPageType.SelectPhysiBoard(
                     title = stringResource(R.string.tutorial_page_select_title),
                     description = stringResource(R.string.tutorial_page_select_description)
                 )
@@ -399,18 +399,18 @@ fun TutorialScreen(
                         TutorialPageType.FeatureStatuses -> {
                             TutorialFeatureStatusesPageContent(modifier = Modifier.fillMaxSize())
                         }
-                        is TutorialPageType.EnablePastiera -> {
-                            TutorialEnablePastieraPageContent(
+                        is TutorialPageType.EnablePhysiBoard -> {
+                            TutorialEnablePhysiBoardPageContent(
                                 page = pageType,
-                                isPastieraEnabled = isPastieraEnabled,
+                                isPhysiBoardEnabled = isPhysiBoardEnabled,
                                 modifier = Modifier.fillMaxSize()
                             )
                         }
-                        is TutorialPageType.SelectPastiera -> {
-                            TutorialSelectPastieraPageContent(
+                        is TutorialPageType.SelectPhysiBoard -> {
+                            TutorialSelectPhysiBoardPageContent(
                                 page = pageType,
-                                isPastieraEnabled = isPastieraEnabled,
-                                isPastieraSelected = isPastieraSelected,
+                                isPhysiBoardEnabled = isPhysiBoardEnabled,
+                                isPhysiBoardSelected = isPhysiBoardSelected,
                                 modifier = Modifier.fillMaxSize()
                             )
                         }
@@ -2327,9 +2327,9 @@ private fun tutorialTypingSoundKeyCode(oldValue: String, newValue: String): Int?
 }
 
 @Composable
-fun TutorialEnablePastieraPageContent(
-    page: TutorialPageType.EnablePastiera,
-    isPastieraEnabled: Boolean,
+fun TutorialEnablePhysiBoardPageContent(
+    page: TutorialPageType.EnablePhysiBoard,
+    isPhysiBoardEnabled: Boolean,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -2341,7 +2341,7 @@ fun TutorialEnablePastieraPageContent(
         tint = MaterialTheme.colorScheme.primary,
         modifier = modifier,
         statusContent = {
-            if (isPastieraEnabled) {
+            if (isPhysiBoardEnabled) {
                 TutorialStatusRow(
                     text = stringResource(R.string.tutorial_enabled_message),
                     icon = Icons.Filled.CheckCircle,
@@ -2371,10 +2371,10 @@ fun TutorialEnablePastieraPageContent(
 }
 
 @Composable
-fun TutorialSelectPastieraPageContent(
-    page: TutorialPageType.SelectPastiera,
-    isPastieraEnabled: Boolean,
-    isPastieraSelected: Boolean,
+fun TutorialSelectPhysiBoardPageContent(
+    page: TutorialPageType.SelectPhysiBoard,
+    isPhysiBoardEnabled: Boolean,
+    isPhysiBoardSelected: Boolean,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -2387,12 +2387,12 @@ fun TutorialSelectPastieraPageContent(
         modifier = modifier,
         statusContent = {
             when {
-                !isPastieraEnabled -> TutorialStatusRow(
+                !isPhysiBoardEnabled -> TutorialStatusRow(
                     text = stringResource(R.string.tutorial_enable_first_message),
                     icon = Icons.Filled.Warning,
                     tint = MaterialTheme.colorScheme.error
                 )
-                isPastieraSelected -> TutorialStatusRow(
+                isPhysiBoardSelected -> TutorialStatusRow(
                     text = stringResource(R.string.tutorial_selected_message),
                     icon = Icons.Filled.CheckCircle,
                     tint = MaterialTheme.colorScheme.primary
@@ -2406,7 +2406,7 @@ fun TutorialSelectPastieraPageContent(
                 imm.showInputMethodPicker()
             },
             modifier = Modifier.fillMaxWidth(),
-            enabled = isPastieraEnabled,
+            enabled = isPhysiBoardEnabled,
             contentPadding = PaddingValues(vertical = 12.dp)
         ) {
             Icon(
@@ -2486,7 +2486,7 @@ private fun TutorialStatusRow(
 }
 
 /**
- * Checks if Pastiera IME is enabled and selected.
+ * Checks if PhysiBoard IME is enabled and selected.
  */
 private fun checkImeStatus(
     context: Context,
@@ -2494,12 +2494,12 @@ private fun checkImeStatus(
 ) {
     try {
         val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-        val pastieraPackageName = ImeIdentity.packageName
-        val pastieraImeId = ImeIdentity.imeId
+        val physiBoardPackageName = ImeIdentity.packageName
+        val physiBoardImeId = ImeIdentity.imeId
         
         val enabledInputMethods = imm.enabledInputMethodList
         val isEnabled = enabledInputMethods.any { inputMethodInfo ->
-            inputMethodInfo.packageName == pastieraPackageName ||
+            inputMethodInfo.packageName == physiBoardPackageName ||
             ImeIdentity.matchesImeId(inputMethodInfo.id)
         }
         
@@ -2516,10 +2516,10 @@ private fun checkImeStatus(
                     val currentSubtype = imm.currentInputMethodSubtype
                     if (currentSubtype != null) {
                         val allInputMethods = imm.inputMethodList
-                        val pastieraInputMethod = allInputMethods.find { 
-                            it.packageName == pastieraPackageName || ImeIdentity.matchesImeId(it.id)
+                        val physiBoardInputMethod = allInputMethods.find { 
+                            it.packageName == physiBoardPackageName || ImeIdentity.matchesImeId(it.id)
                         }
-                        if (pastieraInputMethod != null && enabledInputMethods.size == 1) {
+                        if (physiBoardInputMethod != null && enabledInputMethods.size == 1) {
                             isSelected = true
                         } else {
                             isSelected = false

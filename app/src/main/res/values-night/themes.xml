@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.Pastiera" parent="android:Theme.Material.NoActionBar">
+    <style name="Theme.PhysiBoard" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@drawable/splash_screen_dark</item>
         <item name="android:statusBarColor">@color/splash_background_dark</item>
         <item name="android:navigationBarColor">@color/splash_background_dark</item>
     </style>
 
-    <style name="Theme.Pastiera.InstalledDictionariesAnimation" parent="Theme.Pastiera">
+    <style name="Theme.PhysiBoard.InstalledDictionariesAnimation" parent="Theme.PhysiBoard">
         <item name="android:activityOpenEnterAnimation">@anim/slide_in_from_right</item>
         <item name="android:activityOpenExitAnimation">@null</item>
         <item name="android:activityCloseEnterAnimation">@null</item>
@@ -15,7 +15,7 @@
     </style>
 
     <!-- Overlay dialog theme for launcher shortcut assignment -->
-    <style name="Theme.Pastiera.OverlayDialog" parent="android:Theme.Material.Dialog">
+    <style name="Theme.PhysiBoard.OverlayDialog" parent="android:Theme.Material.Dialog">
         <item name="android:windowIsTranslucent">true</item>
         <item name="android:windowCloseOnTouchOutside">false</item>
         <item name="android:backgroundDimEnabled">true</item>
@@ -28,7 +28,7 @@
         <item name="android:activityCloseExitAnimation">@null</item>
     </style>
 
-    <style name="Theme.Pastiera.QuickLauncherOverlay" parent="android:Theme.Material.NoActionBar">
+    <style name="Theme.PhysiBoard.QuickLauncherOverlay" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowIsTranslucent">true</item>
         <item name="android:windowCloseOnTouchOutside">false</item>
         <item name="android:backgroundDimEnabled">false</item>

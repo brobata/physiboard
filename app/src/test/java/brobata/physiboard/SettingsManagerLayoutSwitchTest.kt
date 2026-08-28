@@ -17,7 +17,7 @@ import brobata.physiboard.commands.CommandExecutor
 import brobata.physiboard.commands.CommandRegistry
 import brobata.physiboard.commands.CommandSourceId
 import brobata.physiboard.commands.CommandSurface
-import brobata.physiboard.commands.PastieraCommandSource
+import brobata.physiboard.commands.PhysiBoardCommandSource
 import org.robolectric.Robolectric
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.shadows.ShadowToast
@@ -312,11 +312,11 @@ class SettingsManagerLayoutSwitchTest {
 
         assertTrue(
             registry.getCommands(CommandSurface.NavMode)
-                .any { it.id == PastieraCommandSource.COMMAND_TOGGLE_SOFTWARE_KEYBOARD_MODE }
+                .any { it.id == PhysiBoardCommandSource.COMMAND_TOGGLE_SOFTWARE_KEYBOARD_MODE }
         )
         assertTrue(
             registry.getCommands(CommandSurface.QuickLauncher)
-                .any { it.id == PastieraCommandSource.COMMAND_TOGGLE_SOFTWARE_KEYBOARD_MODE }
+                .any { it.id == PhysiBoardCommandSource.COMMAND_TOGGLE_SOFTWARE_KEYBOARD_MODE }
         )
     }
 
@@ -326,7 +326,7 @@ class SettingsManagerLayoutSwitchTest {
         SettingsManager.setSoftwareKeyboardMode(context, SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE)
 
         val command = CommandRegistry(context)
-            .resolve(PastieraCommandSource.COMMAND_TOGGLE_SOFTWARE_KEYBOARD_MODE)
+            .resolve(PhysiBoardCommandSource.COMMAND_TOGGLE_SOFTWARE_KEYBOARD_MODE)
         val result = CommandExecutor(context, showToast = false).execute(requireNotNull(command))
 
         assertTrue(result.isSuccess)
@@ -347,7 +347,7 @@ class SettingsManagerLayoutSwitchTest {
         SettingsManager.setSoftwareKeyboardMode(context, SettingsManager.SoftwareKeyboardMode.FORCE_HARDWARE)
 
         val command = CommandRegistry(context)
-            .resolve(PastieraCommandSource.COMMAND_TOGGLE_SOFTWARE_KEYBOARD_MODE)
+            .resolve(PhysiBoardCommandSource.COMMAND_TOGGLE_SOFTWARE_KEYBOARD_MODE)
         val result = CommandExecutor(context, showToast = true).execute(requireNotNull(command))
 
         assertTrue(result.isSuccess)
@@ -384,7 +384,7 @@ class SettingsManagerLayoutSwitchTest {
             context,
             listOf(
                 SettingsManager.CommandSourceVisibility(CommandSourceId.Apps.storageValue, quickLauncherEnabled = true),
-                SettingsManager.CommandSourceVisibility(CommandSourceId.Pastiera.storageValue, quickLauncherEnabled = true),
+                SettingsManager.CommandSourceVisibility(CommandSourceId.PhysiBoard.storageValue, quickLauncherEnabled = true),
                 SettingsManager.CommandSourceVisibility(CommandSourceId.AppActions.storageValue, quickLauncherEnabled = false),
                 SettingsManager.CommandSourceVisibility(CommandSourceId.DeviceControl.storageValue, quickLauncherEnabled = true),
                 SettingsManager.CommandSourceVisibility(CommandSourceId.NavActions.storageValue, quickLauncherEnabled = false)
@@ -506,11 +506,11 @@ class SettingsManagerLayoutSwitchTest {
     }
 
     @Test
-    fun quickLauncherBehavior_defaultsPastiera_andPersistsNiagara() {
+    fun quickLauncherBehavior_defaultsPhysiBoard_andPersistsNiagara() {
         val context = RuntimeEnvironment.getApplication()
 
         assertEquals(
-            SettingsManager.QUICK_LAUNCHER_BEHAVIOR_PASTIERA,
+            SettingsManager.QUICK_LAUNCHER_BEHAVIOR_PHYSIBOARD,
             SettingsManager.getQuickLauncherBehavior(context)
         )
 
@@ -523,13 +523,13 @@ class SettingsManagerLayoutSwitchTest {
     }
 
     @Test
-    fun quickLauncherBehavior_unknownValueFallsBackToPastiera() {
+    fun quickLauncherBehavior_unknownValueFallsBackToPhysiBoard() {
         val context = RuntimeEnvironment.getApplication()
 
         SettingsManager.setQuickLauncherBehavior(context, "unknown")
 
         assertEquals(
-            SettingsManager.QUICK_LAUNCHER_BEHAVIOR_PASTIERA,
+            SettingsManager.QUICK_LAUNCHER_BEHAVIOR_PHYSIBOARD,
             SettingsManager.getQuickLauncherBehavior(context)
         )
     }
@@ -549,7 +549,7 @@ class SettingsManagerLayoutSwitchTest {
     }
 
     @Test
-    fun quickLauncherShortcut_isStoredAsPastieraCommandAndDetectedAsDefaultKey() {
+    fun quickLauncherShortcut_isStoredAsPhysiBoardCommandAndDetectedAsDefaultKey() {
         val context = RuntimeEnvironment.getApplication()
 
         SettingsManager.setQuickLauncherShortcut(context, android.view.KeyEvent.KEYCODE_SPACE)
@@ -557,7 +557,7 @@ class SettingsManagerLayoutSwitchTest {
         val shortcut = SettingsManager.getLauncherShortcut(context, android.view.KeyEvent.KEYCODE_SPACE)
 
         assertEquals(SettingsManager.LauncherShortcut.TYPE_COMMAND, shortcut?.type)
-        assertEquals(PastieraCommandSource.COMMAND_QUICK_LAUNCHER, shortcut?.commandId)
+        assertEquals(PhysiBoardCommandSource.COMMAND_QUICK_LAUNCHER, shortcut?.commandId)
         assertEquals(android.view.KeyEvent.KEYCODE_SPACE, SettingsManager.getQuickLauncherShortcutKey(context))
         assertTrue(SettingsManager.isQuickLauncherShortcut(context, android.view.KeyEvent.KEYCODE_SPACE))
         assertFalse(SettingsManager.isQuickLauncherShortcut(context, android.view.KeyEvent.KEYCODE_ENTER))
@@ -602,7 +602,7 @@ class SettingsManagerLayoutSwitchTest {
         assertTrue(SettingsManager.isCommandSourceEnabled(context, CommandSourceId.Apps.storageValue, CommandSurface.AssignedKey))
         assertTrue(SettingsManager.isCommandSourceEnabled(context, CommandSourceId.Apps.storageValue, CommandSurface.QuickLauncher))
         assertTrue(SettingsManager.isCommandSourceEnabled(context, CommandSourceId.Apps.storageValue, CommandSurface.NavMode))
-        assertTrue(SettingsManager.isCommandSourceEnabled(context, CommandSourceId.Pastiera.storageValue, CommandSurface.QuickLauncher))
+        assertTrue(SettingsManager.isCommandSourceEnabled(context, CommandSourceId.PhysiBoard.storageValue, CommandSurface.QuickLauncher))
         assertTrue(SettingsManager.isCommandSourceEnabled(context, CommandSourceId.DeviceControl.storageValue, CommandSurface.AssignedKey))
         assertFalse(SettingsManager.isCommandSourceEnabled(context, CommandSourceId.DeviceControl.storageValue, CommandSurface.QuickLauncher))
         assertTrue(SettingsManager.isCommandSourceEnabled(context, CommandSourceId.DeviceControl.storageValue, CommandSurface.NavMode))
@@ -628,7 +628,7 @@ class SettingsManagerLayoutSwitchTest {
         assertEquals(
             brobata.physiboard.data.mappings.KeyMappingLoader.CtrlMapping(
                 "command",
-                PastieraCommandSource.COMMAND_TOGGLE_SOFTWARE_KEYBOARD_MODE
+                PhysiBoardCommandSource.COMMAND_TOGGLE_SOFTWARE_KEYBOARD_MODE
             ),
             mappings[android.view.KeyEvent.KEYCODE_B]
         )
@@ -647,7 +647,7 @@ class SettingsManagerLayoutSwitchTest {
             mapOf(
                 android.view.KeyEvent.KEYCODE_B to brobata.physiboard.data.mappings.KeyMappingLoader.CtrlMapping(
                     "command",
-                    PastieraCommandSource.COMMAND_TOGGLE_SOFTWARE_KEYBOARD_MODE
+                    PhysiBoardCommandSource.COMMAND_TOGGLE_SOFTWARE_KEYBOARD_MODE
                 ),
                 android.view.KeyEvent.KEYCODE_K to brobata.physiboard.data.mappings.KeyMappingLoader.CtrlMapping(
                     "command",
@@ -660,7 +660,7 @@ class SettingsManagerLayoutSwitchTest {
         assertEquals(
             brobata.physiboard.data.mappings.KeyMappingLoader.CtrlMapping(
                 "command",
-                PastieraCommandSource.COMMAND_TOGGLE_SOFTWARE_KEYBOARD_MODE
+                PhysiBoardCommandSource.COMMAND_TOGGLE_SOFTWARE_KEYBOARD_MODE
             ),
             mappings[android.view.KeyEvent.KEYCODE_B]
         )

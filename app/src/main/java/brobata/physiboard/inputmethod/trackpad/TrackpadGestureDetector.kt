@@ -206,7 +206,7 @@ class TrackpadGestureDetector(
         const val DEFAULT_SWIPE_UP_THRESHOLD = 300
         const val DEFAULT_MIN_VELOCITY_THRESHOLD = 2.0  // pixels per millisecond (e.g., 1.0 px/ms = 1000 px/s)
         const val DEFAULT_EVENT_DEVICE = TrackpadEventDeviceResolver.LEGACY_EVENT_DEVICE
-        const val DEFAULT_LOG_TAG = "PastieraIME"
+        const val DEFAULT_LOG_TAG = "PhysiBoardIME"
         private const val DEBUG_TAG = "TrackpadDebug"
     }
 }

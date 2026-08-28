@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Pastiera</string>
-    <string name="input_method_name">Pastiera</string>
+    <string name="app_name">PhysiBoard</string>
+    <string name="input_method_name">PhysiBoard</string>
     <string name="input_method_name_en">English</string>
     <string name="input_method_name_it">Italiano</string>
     <string name="input_method_name_fr">Français</string>
@@ -46,18 +46,18 @@
     <string name="swipe_to_move_cursor">Vuốt để di chuyển con trỏ</string>
     <string name="info_title">Thông tin</string>
     <string name="info_description">Cài đặt được lưu tự động và áp dụng ngay cho bộ gõ.</string>
-    <string name="keyboard_title">Bàn phím Pastiera</string>
+    <string name="keyboard_title">Bàn phím PhysiBoard</string>
     <string name="keyboard_subtitle">Bàn phím vật lý có hỗ trợ nhấn giữ</string>
     <string name="settings_content_description">Cài đặt</string>
     <string name="installation_title">Cài đặt ban đầu</string>
     <string name="installation_step1">1. Nhấn nút bên dưới để mở cài đặt</string>
-    <string name="installation_step2">2. Bật \'Pastiera Physical Keyboard\'</string>
+    <string name="installation_step2">2. Bật \'PhysiBoard Physical Keyboard\'</string>
     <string name="installation_step3">3. Quay lại đây và thử bàn phím</string>
     <string name="open_keyboard_settings">Mở cài đặt bàn phím</string>
-    <string name="enable_pastiera">Bật Pastiera</string>
-    <string name="pastiera_not_enabled">Pastiera chưa được bật</string>
+    <string name="enable_physiboard">Bật PhysiBoard</string>
+    <string name="physiboard_not_enabled">PhysiBoard chưa được bật</string>
     <string name="choose_input_method">Chọn phương thức nhập</string>
-    <string name="pastiera_not_selected">Pastiera chưa được chọn</string>
+    <string name="physiboard_not_selected">PhysiBoard chưa được chọn</string>
     <string name="test_keyboard_title">Kiểm tra bàn phím</string>
     <string name="test_keyboard_description">Kết nối bàn phím vật lý và thử bên dưới:</string>
     <string name="test_keyboard_normal">• Nhấn thường: chèn ký tự</string>
@@ -86,7 +86,7 @@
     <string name="auto_correct_settings_title">Thay thế văn bản</string>
     <string name="auto_correct_settings_description">Chọn bộ quy tắc đang bật. Các quy tắc chính xác này chạy trước sửa tự động dựa trên từ điển.</string>
     <string name="auto_correct_system_language">Ngôn ngữ hệ thống</string>
-    <string name="auto_correct_ricette_pastiera_description">Tùy chỉnh áp dụng cho tất cả bộ thay thế</string>
+    <string name="auto_correct_recipes_description">Tùy chỉnh áp dụng cho tất cả bộ thay thế</string>
     <string name="auto_correct_other_languages">Bộ thay thế khác</string>
     <string name="auto_correct_custom_languages">Bộ thay thế tùy chỉnh</string>
     <string name="auto_correct_at_least_one_language_required">Cần ít nhất một bộ thay thế để hoạt động</string>
@@ -114,7 +114,7 @@
     <string name="auto_correct_max_distance_off">Tắt</string>
     <string name="auto_correct_max_distance_description">Số khác biệt ký tự tối đa cho phép khi sửa tự động. 0 = tắt, 1-3 = độ dung sai tăng dần.</string>
     <string name="auto_correct_manage_user_dict_title">Từ điển cá nhân</string>
-    <string name="auto_correct_manage_user_dict_description">Các từ Pastiera nên biết và gợi ý, không tạo quy tắc thay thế.</string>
+    <string name="auto_correct_manage_user_dict_description">Các từ PhysiBoard nên biết và gợi ý, không tạo quy tắc thay thế.</string>
     <string name="auto_correct_keyboard_proximity_title">Xếp hạng độ gần bàn phím</string>
     <string name="auto_correct_keyboard_proximity_description">Lọc lỗi gõ khó xảy ra dựa trên khoảng cách phím (QWERTY/AZERTY/QWERTZ)</string>
     <string name="auto_correct_edit_type_ranking_title">Xếp hạng theo loại chỉnh sửa</string>
@@ -181,7 +181,7 @@
     <string name="keyboard_layout_viewer_open">Xem ánh xạ</string>
     <string name="keyboard_layout_settings_button">Cài đặt bố cục bàn phím</string>
     <string name="about_github">GitHub</string>
-    <string name="about_build_info">Pastiera IME - Palsoftware 2026</string>
+    <string name="about_build_info">PhysiBoard IME - Palsoftware 2026</string>
     <string name="settings_device_keyboard_info">Thiết bị: %1$s; Bàn phím: %2$s</string>
     <string name="about_title">Giới thiệu</string>
     <string name="about_credits_error">Không thể tải thông tin ghi nhận.</string>
@@ -209,14 +209,14 @@
     <string name="power_shortcuts_title">Phím tắt nhanh</string>
     <string name="power_shortcuts_description">Nhấn SYM rồi nhấn một phím để mở phím tắt khi không ở trường văn bản</string>
     <string name="power_shortcuts_press_key">Nhấn phím tắt để mở</string>
-    <string name="notification_nav_mode_channel_name">Pastiera Nav Mode</string>
-    <string name="notification_nav_mode_channel_description">Thông báo cho chế độ điều hướng Pastiera</string>
+    <string name="notification_nav_mode_channel_name">PhysiBoard Nav Mode</string>
+    <string name="notification_nav_mode_channel_description">Thông báo cho chế độ điều hướng PhysiBoard</string>
     <string name="notification_nav_mode_activated_title">Đã bật Nav Mode</string>
     <string name="notification_nav_mode_activated_text">Nav Mode đã được bật</string>
-    <string name="notification_update_channel_name">Cập nhật Pastiera</string>
-    <string name="notification_update_channel_description">Thông báo về các phiên bản Pastiera mới</string>
-    <string name="notification_update_available_title">Pastiera - Có bản cập nhật mới</string>
-    <string name="notification_update_available_text">Đã có phiên bản Pastiera mới (%1$s)</string>
+    <string name="notification_update_channel_name">Cập nhật PhysiBoard</string>
+    <string name="notification_update_channel_description">Thông báo về các phiên bản PhysiBoard mới</string>
+    <string name="notification_update_available_title">PhysiBoard - Có bản cập nhật mới</string>
+    <string name="notification_update_available_text">Đã có phiên bản PhysiBoard mới (%1$s)</string>
     <string name="speech_recognition_prompt">Hãy nói...</string>
     <string name="speech_recognition_error_no_match">Không nhận dạng được văn bản. Thử lại.</string>
     <string name="speech_recognition_error_timeout">Không phát hiện giọng nói.</string>
@@ -296,7 +296,7 @@
     <string name="update_dialog_open_github">Mở GitHub</string>
     <string name="update_dialog_later">Để sau</string>
     <string name="update_dialog_download_apk">Tải APK</string>
-    <string name="auto_correct_ricette_pastiera_name">Ricette Pastiera</string>
+    <string name="auto_correct_recipes_name">Ricette PhysiBoard</string>
     <string name="settings_category_keyboard_timing">Bàn phím &amp; Thời gian</string>
     <string name="settings_category_text_input">Tính năng thông minh</string>
     <string name="settings_category_auto_correction">Sửa tự động</string>
@@ -381,14 +381,14 @@
     <string name="tutorial_previous">Trước</string>
     <string name="tutorial_next">Tiếp</string>
     <string name="tutorial_finish">Hoàn tất</string>
-    <string name="tutorial_page_welcome_title">Chào mừng đến với Pastiera</string>
-    <string name="tutorial_page_welcome_description">Pastiera là một phương thức nhập nâng cao cho thiết bị Android PKB, hỗ trợ Nav Mode, phím tắt, ánh xạ bàn phím tùy chỉnh và nhiều hơn nữa.</string>
-    <string name="tutorial_page_enable_title">Bật Pastiera</string>
-    <string name="tutorial_page_enable_description">Để bắt đầu, bạn cần bật Pastiera làm phương thức nhập trong Cài đặt Android. Nhấn nút bên dưới để mở cài đặt.</string>
-    <string name="tutorial_page_select_title">Chọn Pastiera</string>
-    <string name="tutorial_page_select_description">Để dùng Pastiera, hãy chọn nó trong danh sách phương thức nhập. Bước tiếp theo cho phép chọn bàn phím ảo hoặc chế độ bàn phím phần cứng.</string>
+    <string name="tutorial_page_welcome_title">Chào mừng đến với PhysiBoard</string>
+    <string name="tutorial_page_welcome_description">PhysiBoard là một phương thức nhập nâng cao cho thiết bị Android PKB, hỗ trợ Nav Mode, phím tắt, ánh xạ bàn phím tùy chỉnh và nhiều hơn nữa.</string>
+    <string name="tutorial_page_enable_title">Bật PhysiBoard</string>
+    <string name="tutorial_page_enable_description">Để bắt đầu, bạn cần bật PhysiBoard làm phương thức nhập trong Cài đặt Android. Nhấn nút bên dưới để mở cài đặt.</string>
+    <string name="tutorial_page_select_title">Chọn PhysiBoard</string>
+    <string name="tutorial_page_select_description">Để dùng PhysiBoard, hãy chọn nó trong danh sách phương thức nhập. Bước tiếp theo cho phép chọn bàn phím ảo hoặc chế độ bàn phím phần cứng.</string>
     <string name="tutorial_page_led_title">Đèn LED</string>
-    <string name="tutorial_page_led_description">Để tận dụng Pastiera tốt hơn, hãy đặt phím Fn hoạt động như Ctrl trong cài đặt hệ thống Android. Thanh IME hiển thị bốn đèn LED: màu xanh khi modifier đang bật một lần, màu cam khi bị khóa. LED của bố cục SYM màu xanh ở trang emoji và màu cam ở trang ký hiệu.</string>
+    <string name="tutorial_page_led_description">Để tận dụng PhysiBoard tốt hơn, hãy đặt phím Fn hoạt động như Ctrl trong cài đặt hệ thống Android. Thanh IME hiển thị bốn đèn LED: màu xanh khi modifier đang bật một lần, màu cam khi bị khóa. LED của bố cục SYM màu xanh ở trang emoji và màu cam ở trang ký hiệu.</string>
     <string name="tutorial_page_nav_mode_title">Nav Mode</string>
     <string name="tutorial_page_nav_mode_description">Nav Mode cho phép bạn điều hướng giao diện thiết bị bằng các phím chữ như IJKL hoặc ESDF.\nĐể kích hoạt:\n• Nhấn Ctrl nhanh hai lần\n• Các phím chữ trở thành phím điều hướng\n• Nhấn Ctrl lần nữa để thoát\nMọi phím tắt đều có thể đổi trong Cài đặt nâng cao.</string>
     <string name="tutorial_nav_mode_bullet_selection">Hành động chọn có thể mở rộng vùng chọn sang trái, phải hoặc theo từng từ.</string>
@@ -398,7 +398,7 @@
     <string name="tutorial_quick_launcher_bullet_sym_space">Giữ SYM và nhấn Phím cách để mở QuickLauncher ở bất cứ đâu.</string>
     <string name="tutorial_quick_launcher_bullet_text_fields">Cũng hoạt động khi con trỏ nằm trong ô văn bản, để chuyển ứng dụng ngay khi đang gõ.</string>
     <string name="tutorial_quick_launcher_bullet_search">Gõ vài chữ, viết tắt hoặc lỗi nhỏ để tìm ứng dụng bạn muốn.</string>
-    <string name="tutorial_quick_launcher_bullet_layout">Tìm kiếm có thể tôn trọng bố cục Pastiera đang hoạt động, như QWERTZ.</string>
+    <string name="tutorial_quick_launcher_bullet_layout">Tìm kiếm có thể tôn trọng bố cục PhysiBoard đang hoạt động, như QWERTZ.</string>
     <string name="tutorial_quick_launcher_button">Mở cài đặt QuickLauncher</string>
     <string name="tutorial_quick_launcher_mapping_conflict_title">SYM + Phím cách đang được gán cho việc khác</string>
     <string name="tutorial_quick_launcher_mapping_conflict_description">Phím cách hiện mở “%1$s”. Thay ánh xạ đó bằng QuickLauncher và bật trong ô văn bản để thử tính năng mới.</string>
@@ -410,14 +410,14 @@
     <string name="tutorial_messenger_presets_bullet_apps">Ghi đè theo từng app vẫn có sẵn khi một app hoạt động khác.</string>
     <string name="tutorial_messenger_presets_button">Mở preset nhắn tin</string>
     <string name="tutorial_page_customization_title">Tùy chỉnh</string>
-    <string name="tutorial_page_customization_description">Pastiera cung cấp nhiều tùy chọn tùy chỉnh:\n• Bố cục bàn phím tùy chỉnh\n• Launcher shortcuts &amp; Power Shortcuts\n• Thanh IME có thể dùng như thanh vuốt để di chuyển con trỏ\n• Ánh xạ tùy chỉnh cho Nav Mode\nHãy khám phá phần cài đặt để tìm cấu hình phù hợp nhất với bạn!</string>
+    <string name="tutorial_page_customization_description">PhysiBoard cung cấp nhiều tùy chọn tùy chỉnh:\n• Bố cục bàn phím tùy chỉnh\n• Launcher shortcuts &amp; Power Shortcuts\n• Thanh IME có thể dùng như thanh vuốt để di chuyển con trỏ\n• Ánh xạ tùy chỉnh cho Nav Mode\nHãy khám phá phần cài đặt để tìm cấu hình phù hợp nhất với bạn!</string>
     <string name="tutorial_page_ready_title">Sẵn sàng bắt đầu</string>
-    <string name="tutorial_page_ready_description">Bạn đã sẵn sàng dùng Pastiera! Hãy nhớ rằng bạn luôn có thể quay lại cài đặt để tùy chỉnh bàn phím theo nhu cầu.</string>
-    <string name="tutorial_enable_button">Bật Pastiera</string>
-    <string name="tutorial_enabled_message">Pastiera đã được bật!</string>
-    <string name="tutorial_select_button">Chọn Pastiera</string>
-    <string name="tutorial_enable_first_message">Hãy bật Pastiera trước ở trang trước</string>
-    <string name="tutorial_selected_message">Pastiera đã được chọn!</string>
+    <string name="tutorial_page_ready_description">Bạn đã sẵn sàng dùng PhysiBoard! Hãy nhớ rằng bạn luôn có thể quay lại cài đặt để tùy chỉnh bàn phím theo nhu cầu.</string>
+    <string name="tutorial_enable_button">Bật PhysiBoard</string>
+    <string name="tutorial_enabled_message">PhysiBoard đã được bật!</string>
+    <string name="tutorial_select_button">Chọn PhysiBoard</string>
+    <string name="tutorial_enable_first_message">Hãy bật PhysiBoard trước ở trang trước</string>
+    <string name="tutorial_selected_message">PhysiBoard đã được chọn!</string>
     <string name="tutorial_show">Hiển thị hướng dẫn</string>
     <string name="tutorial_review_description">Xem lại hướng dẫn giới thiệu</string>
     <string name="titan2_layout_title">Căn chỉnh bố cục Titan 2</string>
@@ -425,7 +425,7 @@
     <string name="backup_now">Sao lưu ngay</string>
     <string name="backup_now_description">Xuất tất cả cài đặt và bố cục tùy chỉnh thành tệp ZIP</string>
     <string name="restore_from_file">Khôi phục từ tệp</string>
-    <string name="restore_from_file_description">Nhập tệp sao lưu ZIP của Pastiera</string>
+    <string name="restore_from_file_description">Nhập tệp sao lưu ZIP của PhysiBoard</string>
     <string name="backup_completed">Sao lưu hoàn tất</string>
     <string name="restore_completed">Khôi phục hoàn tất</string>
     <string name="backup_failed">Sao lưu thất bại: %1$s</string>
@@ -527,7 +527,7 @@
     <string name="trackpad_tutorial_how_it_works_title">Cách hoạt động</string>
     <string name="trackpad_tutorial_how_it_works_description">Trackpad được chia thành ba phần:\n\n• 1/3 bên trái → Chấp nhận gợi ý bên trái\n• 1/3 ở giữa → Chấp nhận gợi ý ở giữa\n• 1/3 bên phải → Chấp nhận gợi ý bên phải\n\nChỉ cần vuốt lên trong vùng tương ứng để chèn gợi ý đó.</string>
     <string name="trackpad_tutorial_shizuku_required_title">Cần Shizuku</string>
-    <string name="trackpad_tutorial_shizuku_required_description">Tính năng này cần Shizuku để truy cập sự kiện trackpad.\n\n1. Cài Shizuku từ GitHub releases\n2. Bật tùy chọn nhà phát triển trong cài đặt Android\n3. Kết nối thiết bị với PC có cài ADB\n4. Chạy lệnh mà Shizuku hiển thị trong ứng dụng\n5. Cấp quyền cho Pastiera trong Shizuku\n\nTính năng sẽ hoạt động tự động khi Shizuku đang chạy.</string>
+    <string name="trackpad_tutorial_shizuku_required_description">Tính năng này cần Shizuku để truy cập sự kiện trackpad.\n\n1. Cài Shizuku từ GitHub releases\n2. Bật tùy chọn nhà phát triển trong cài đặt Android\n3. Kết nối thiết bị với PC có cài ADB\n4. Chạy lệnh mà Shizuku hiển thị trong ứng dụng\n5. Cấp quyền cho PhysiBoard trong Shizuku\n\nTính năng sẽ hoạt động tự động khi Shizuku đang chạy.</string>
     <string name="trackpad_tutorial_tips_title">Mẹo</string>
     <string name="trackpad_tutorial_tips_description">• Đảm bảo thao tác vuốt của bạn chủ yếu theo chiều dọc\n• Cử chỉ hoạt động tốt nhất với thao tác vuốt nhanh, dứt khoát\n• Nếu các ngón tay khác đang đặt trên bàn phím, cử chỉ có thể không được nhận (chống chạm nhầm phần cứng)\n• Có thể bật/tắt tính năng này trong Cài đặt nâng cao</string>
     <string name="trackpad_tutorial_complete">Đã hiểu</string>
@@ -584,7 +584,7 @@
     <string name="status_bar_button_clipboard_state_items">%1$d items</string>
     <string name="sym_key_content_description">%1$s, %2$s</string>
     <string name="tutorial_page_software_keyboard_title">Chế độ bàn phím</string>
-    <string name="tutorial_page_software_keyboard_description">Chọn bề mặt bàn phím Pastiera nên dùng ở đây.</string>
+    <string name="tutorial_page_software_keyboard_description">Chọn bề mặt bàn phím PhysiBoard nên dùng ở đây.</string>
     <string name="software_keyboard_mode_title">Chế độ bàn phím</string>
     <string name="software_keyboard_mode_auto_current">Tự động (hiện tại: %1$s)</string>
     <string name="software_keyboard_mode_always_virtual">Luôn dùng bàn phím ảo</string>
@@ -617,8 +617,6 @@
     <string name="typing_sound_import_success">Đã nhập gói âm thanh gõ phím</string>
     <string name="typing_sound_import_failed">Không thể nhập gói âm thanh này. Hãy dùng tệp ZIP có tệp âm thanh trong các thư mục normal/, space/, backspace/, enter/ và modifier/.</string>
     <string name="typing_sound_docs_title">Định dạng gói âm thanh</string>
-    <string name="typing_sound_docs_description">Mở hướng dẫn nhập trên pastiera.eu</string>
-    <string name="typing_sound_docs_url">https://pastiera.eu/guides/typing-soundpacks/</string>
     <string name="tap_haptic_system_title">Rung khi chạm</string>
     <string name="tap_haptic_system_description">Dùng phản hồi xúc giác bàn phím Android cho gợi ý và biến thể trên thiết bị tương thích.</string>
     <string name="tap_haptic_duration_title">Rung tùy chỉnh: %1$d ms</string>
@@ -630,12 +628,12 @@
     <string name="keyboard_profile_option_titan2elite_qwerty">Titan 2 Elite (QWERTY)</string>
     <string name="keyboard_currency_symbol_title">Ký hiệu tiền tệ</string>
     <string name="keyboard_currency_symbol_description">Ký hiệu được chèn bởi các phím tiền tệ phần cứng chuyên dụng.</string>
-    <string name="starter_launcher_shortcuts_title">Pastiera-QuickLauncher</string>
+    <string name="starter_launcher_shortcuts_title">PhysiBoard-QuickLauncher</string>
     <string name="starter_launcher_shortcuts_description">Mở nhanh, phím tắt SYM và gán phím ứng dụng</string>
-    <string name="starter_launcher_shortcuts_intro">Các cài đặt này dùng chung một danh sách gán ứng dụng-vào-phím. Chọn nơi Pastiera sẽ lắng nghe các phím đã gán đó.</string>
+    <string name="starter_launcher_shortcuts_intro">Các cài đặt này dùng chung một danh sách gán ứng dụng-vào-phím. Chọn nơi PhysiBoard sẽ lắng nghe các phím đã gán đó.</string>
     <string name="launcher_shortcuts_configure_description_with_quick_launcher">Chạm một phím để gán hoặc thay ứng dụng. QuickLauncher hiện được gán cho %1$s.</string>
-    <string name="quick_launcher_default_blocked_hint">Mới: SYM có thể mở QuickLauncher. Pastiera thường sẽ gán nó cho Phím cách, nhưng Phím cách đã có phím tắt. Mở trang gán phím và chọn “Mở QuickLauncher” trên bất kỳ phím nào để thử.</string>
-    <string name="quick_launcher_title">Pastiera-QuickLauncher</string>
+    <string name="quick_launcher_default_blocked_hint">Mới: SYM có thể mở QuickLauncher. PhysiBoard thường sẽ gán nó cho Phím cách, nhưng Phím cách đã có phím tắt. Mở trang gán phím và chọn “Mở QuickLauncher” trên bất kỳ phím nào để thử.</string>
+    <string name="quick_launcher_title">PhysiBoard-QuickLauncher</string>
     <string name="quick_launcher_subtitle">Gõ để tìm. Enter mở kết quả đầu tiên.</string>
     <string name="quick_launcher_close">Đóng</string>
     <string name="quick_launcher_search_placeholder">Bắt đầu gõ...</string>
@@ -645,7 +643,7 @@
     <string name="quick_launcher_limit_results_title">Chỉ hiển thị kết quả hàng đầu</string>
     <string name="quick_launcher_limit_results_description">Không hiển thị toàn bộ danh sách ứng dụng theo alphabet. QuickLauncher để trống cho đến khi bạn gõ, rồi chỉ hiển thị ba kết quả tốt nhất.</string>
     <string name="quick_launcher_respect_keyboard_layout_title">Dùng bố cục bàn phím đang hoạt động</string>
-    <string name="quick_launcher_respect_keyboard_layout_description">Khi bật, nội dung tìm kiếm theo bố cục Pastiera hiện tại thay vì đầu ra QWERTY thô của Android.</string>
+    <string name="quick_launcher_respect_keyboard_layout_description">Khi bật, nội dung tìm kiếm theo bố cục PhysiBoard hiện tại thay vì đầu ra QWERTY thô của Android.</string>
     <string name="quick_launcher_typo_tolerant_ranking_title">Tìm kiếm chịu lỗi gõ sai</string>
     <string name="quick_launcher_typo_tolerant_ranking_description">Cũng khớp tên ứng dụng có lỗi gõ nhỏ. Các khớp tiền tố và viết tắt vẫn được xếp hạng cao hơn.</string>
     <string name="quick_launcher_ranking_info_button">Cách xếp hạng hoạt động</string>
@@ -686,22 +684,22 @@ QWERTZ trên QWERTY vật lý
 Nav Mode dùng vị trí vật lý của phím để điều hướng luôn ổn định. Gợi ý bố cục trên phím cho biết khi bố cục văn bản đang hoạt động sẽ xem phím vật lý đó là chữ khác, ví dụ Y/Z trên QWERTZ.
 
 Phím tắt Ctrl ứng dụng theo bố cục
-Khi Ctrl đang giữ được chuyển cho ứng dụng, tùy chọn này có thể dịch Ctrl+chữ qua bố cục Pastiera đang hoạt động trước. Nó ảnh hưởng đến phím tắt ứng dụng, không ảnh hưởng lưới Nav Mode vật lý.
+Khi Ctrl đang giữ được chuyển cho ứng dụng, tùy chọn này có thể dịch Ctrl+chữ qua bố cục PhysiBoard đang hoạt động trước. Nó ảnh hưởng đến phím tắt ứng dụng, không ảnh hưởng lưới Nav Mode vật lý.
 
 Ghi đè
 Mỗi phím có thể cấu hình là Keycode, Action, Native Ctrl hoặc None. Dùng ghi đè để xử lý xung đột riêng của ứng dụng mà không đổi toàn bộ chế độ.</string>
     <string name="nav_mode_ctrl_hold_title">Điều hướng khi giữ Ctrl</string>
     <string name="nav_mode_ctrl_hold_description">Khi bật, ô văn bản dùng ánh xạ Nav Mode trong lúc giữ Ctrl. Khi tắt, phím tắt Ctrl được chuyển cho ứng dụng. Phím đặt thành Native Ctrl luôn được chuyển qua như phím tắt Ctrl thật.</string>
     <string name="layout_aware_ctrl_shortcuts_title">Phím tắt Ctrl ứng dụng theo bố cục</string>
-    <string name="layout_aware_ctrl_shortcuts_description">Khi Ctrl đang giữ được chuyển cho ứng dụng, dịch Ctrl+chữ qua bố cục Pastiera đang hoạt động trước.</string>
+    <string name="layout_aware_ctrl_shortcuts_description">Khi Ctrl đang giữ được chuyển cho ứng dụng, dịch Ctrl+chữ qua bố cục PhysiBoard đang hoạt động trước.</string>
     <string name="layout_aware_ctrl_shortcuts_disabled_description">Bị tắt khi điều hướng giữ Ctrl đang hoạt động, vì Ctrl đang giữ được Nav Mode xử lý thay vì ứng dụng.</string>
     <string name="layout_aware_ctrl_shortcuts_info_title">Phím tắt Ctrl và Nav Mode</string>
-    <string name="layout_aware_ctrl_shortcuts_info_text">Có hai đường đi cho Ctrl đang giữ. Nếu bật điều hướng giữ Ctrl, Pastiera xử lý Ctrl+phím bằng các ánh xạ Nav Mode hiển thị bên dưới. Nếu tắt, Pastiera chuyển Ctrl+phím cho ứng dụng. Tùy chọn này chỉ ảnh hưởng đường ứng dụng đó: khi bật, Ctrl+chữ được dịch qua bố cục Pastiera đang hoạt động trước, để phím tắt có thể theo các chữ bạn gõ. Khi tắt, ứng dụng nhận vị trí phím vật lý ban đầu.</string>
+    <string name="layout_aware_ctrl_shortcuts_info_text">Có hai đường đi cho Ctrl đang giữ. Nếu bật điều hướng giữ Ctrl, PhysiBoard xử lý Ctrl+phím bằng các ánh xạ Nav Mode hiển thị bên dưới. Nếu tắt, PhysiBoard chuyển Ctrl+phím cho ứng dụng. Tùy chọn này chỉ ảnh hưởng đường ứng dụng đó: khi bật, Ctrl+chữ được dịch qua bố cục PhysiBoard đang hoạt động trước, để phím tắt có thể theo các chữ bạn gõ. Khi tắt, ứng dụng nhận vị trí phím vật lý ban đầu.</string>
     <string name="nav_mode_native_ctrl">Native Ctrl</string>
     <string name="app_enter_behaviour_title">Hành vi phím Enter</string>
     <string name="app_enter_behaviour_description">Cấu hình Enter và xuống dòng riêng cho từng ứng dụng</string>
     <string name="app_enter_behaviour_enable_title">Hành vi Enter theo ứng dụng</string>
-    <string name="app_enter_behaviour_enable_description">Dùng ghi đè Pastiera cho các ứng dụng nhắn tin đã chọn. Ứng dụng đã kiểm thử hiển thị chiến lược Pastiera thực sự dùng.</string>
+    <string name="app_enter_behaviour_enable_description">Dùng ghi đè PhysiBoard cho các ứng dụng nhắn tin đã chọn. Ứng dụng đã kiểm thử hiển thị chiến lược PhysiBoard thực sự dùng.</string>
     <string name="app_enter_behaviour_preset_title">Cấu hình nhắn tin</string>
     <string name="app_enter_behaviour_preset_description">Áp dụng mặc định nhất quán cho các ứng dụng nhắn tin quen thuộc đã cài.</string>
     <string name="app_enter_behaviour_preset_app_default">Mặc định ứng dụng</string>
@@ -721,12 +719,12 @@ Mỗi phím có thể cấu hình là Keycode, Action, Native Ctrl hoặc None. 
     <string name="app_enter_behaviour_option_send_shift_newline">Enter gửi, Shift+Enter xuống dòng</string>
     <string name="app_enter_behaviour_option_newline_ctrl_send">Enter xuống dòng, Ctrl+Enter gửi</string>
     <string name="app_enter_behaviour_option_enter_newline">Enter xuống dòng</string>
-    <string name="app_enter_behaviour_status_app_default">Pastiera không can thiệp.</string>
+    <string name="app_enter_behaviour_status_app_default">PhysiBoard không can thiệp.</string>
     <string name="app_enter_behaviour_status_whatsapp_active">Đang hoạt động: %1$s.</string>
     <string name="app_enter_behaviour_status_partial_active">Hoạt động một phần: %1$s.</string>
     <string name="app_enter_behaviour_status_experimental_active">Hoạt động thử nghiệm: %1$s.</string>
     <string name="app_enter_behaviour_status_not_active">Chưa hoạt động: %1$s đã được lên kế hoạch.</string>
-    <string name="app_enter_behaviour_status_native_result">Mặc định ứng dụng: Pastiera không can thiệp.</string>
+    <string name="app_enter_behaviour_status_native_result">Mặc định ứng dụng: PhysiBoard không can thiệp.</string>
     <string name="app_enter_behaviour_status_strategy_result">Đang hoạt động: %1$s.</string>
     <string name="app_enter_behaviour_status_experimental_result">Hoạt động thử nghiệm: %1$s.</string>
     <string name="app_enter_behaviour_strategy_none_label">Không ghi đè</string>
@@ -734,12 +732,12 @@ Mỗi phím có thể cấu hình là Keycode, Action, Native Ctrl hoặc None. 
     <string name="app_enter_behaviour_strategy_plain_enter_label">Enter thường</string>
     <string name="app_enter_behaviour_strategy_unconfigured_label">Chưa cấu hình</string>
     <string name="app_enter_behaviour_strategy_app_default_detail">Ứng dụng quyết định Enter gửi hay chèn xuống dòng.</string>
-    <string name="app_enter_behaviour_strategy_whatsapp_newline_ctrl_send">Pastiera chèn xuống dòng trực tiếp và gửi qua hành động gửi của ứng dụng.</string>
-    <string name="app_enter_behaviour_strategy_whatsapp_send_shift_newline">Pastiera gửi qua hành động gửi của ứng dụng. Shift+Enter được chèn trực tiếp như xuống dòng.</string>
-    <string name="app_enter_behaviour_strategy_whatsapp_newline_only">Đã kiểm thử: Pastiera chèn Enter trực tiếp như xuống dòng và không kích hoạt gửi.</string>
-    <string name="app_enter_behaviour_strategy_discord_app_default_detail">Đã kiểm thử: Discord đã xử lý đúng Enter để gửi và Shift+Enter để xuống dòng. Pastiera không can thiệp ở đây.</string>
+    <string name="app_enter_behaviour_strategy_whatsapp_newline_ctrl_send">PhysiBoard chèn xuống dòng trực tiếp và gửi qua hành động gửi của ứng dụng.</string>
+    <string name="app_enter_behaviour_strategy_whatsapp_send_shift_newline">PhysiBoard gửi qua hành động gửi của ứng dụng. Shift+Enter được chèn trực tiếp như xuống dòng.</string>
+    <string name="app_enter_behaviour_strategy_whatsapp_newline_only">Đã kiểm thử: PhysiBoard chèn Enter trực tiếp như xuống dòng và không kích hoạt gửi.</string>
+    <string name="app_enter_behaviour_strategy_discord_app_default_detail">Đã kiểm thử: Discord đã xử lý đúng Enter để gửi và Shift+Enter để xuống dòng. PhysiBoard không can thiệp ở đây.</string>
     <string name="app_enter_behaviour_strategy_discord_partial_detail">Đã kiểm thử: xuống dòng được chèn trực tiếp. Ctrl+Enter gửi Enter thường không có meta Ctrl vì hành động ứng dụng Discord chỉ ẩn bàn phím.</string>
-    <string name="app_enter_behaviour_strategy_experimental_detail">Chưa xác nhận: Pastiera đang thử hành động gửi của ứng dụng và chèn xuống dòng trực tiếp.</string>
+    <string name="app_enter_behaviour_strategy_experimental_detail">Chưa xác nhận: PhysiBoard đang thử hành động gửi của ứng dụng và chèn xuống dòng trực tiếp.</string>
     <string name="app_enter_behaviour_strategy_not_tested_detail">Chiến lược kỹ thuật cho ứng dụng này vẫn cần được kiểm thử.</string>
     <string name="app_enter_behaviour_desired_label">Hành vi mong muốn</string>
     <string name="app_enter_behaviour_strategy_label">Chiến lược gửi</string>
@@ -781,15 +779,15 @@ Mỗi phím có thể cấu hình là Keycode, Action, Native Ctrl hoặc None. 
     <string name="tutorial_whats_new_title">Mới trong phiên bản này: %1$s</string>
     <string name="tutorial_whats_new_description">Có vài thay đổi đáng biết trước khi tiếp tục.</string>
     <string name="tutorial_whats_new_bug_fixes_title">Sửa lỗi</string>
-    <string name="tutorial_whats_new_docs_button">Mở tài liệu Pastiera</string>
+    <string name="tutorial_whats_new_docs_button">Mở tài liệu PhysiBoard</string>
     <string name="tutorial_whats_new_continue_hint">Tiếp tục hướng dẫn để xem lại các cài đặt hữu ích nhất cho bản này.</string>
     <string name="tutorial_devs_choice_button">Lựa chọn của nhà phát triển</string>
     <string name="tutorial_devs_choice_applied">Đã áp dụng cài đặt Lựa chọn của nhà phát triển.</string>
     <string name="tutorial_software_keyboard_alpha_warning">Tính năng alpha: bàn phím ảo vẫn đang được phát triển mạnh và chưa được khuyên dùng hằng ngày.</string>
     <string name="tutorial_android16_ime_caption_title">Ẩn thanh tiêu đề IME</string>
-    <string name="tutorial_android16_ime_caption_description">Thiết bị Titan 2 có thể hiển thị thêm thanh IME dưới Pastiera. Cài đặt OEM này ẩn thanh đó và giữ Pastiera gọn.</string>
+    <string name="tutorial_android16_ime_caption_description">Thiết bị Titan 2 có thể hiển thị thêm thanh IME dưới PhysiBoard. Cài đặt OEM này ẩn thanh đó và giữ PhysiBoard gọn.</string>
     <string name="tutorial_android16_ime_caption_before">Trước: thanh phụ</string>
-    <string name="tutorial_android16_ime_caption_after">Sau: Pastiera gọn</string>
+    <string name="tutorial_android16_ime_caption_after">Sau: PhysiBoard gọn</string>
     <string name="tutorial_android16_ime_caption_check_android16">Android 16 trở lên</string>
     <string name="tutorial_android16_ime_caption_check_titan2">Unihertz Titan 2 hoặc Titan 2 Elite</string>
     <string name="tutorial_android16_ime_caption_check_setting">Có cài đặt cử chỉ OEM</string>

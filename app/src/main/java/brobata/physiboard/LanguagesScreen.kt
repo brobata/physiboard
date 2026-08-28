@@ -273,7 +273,7 @@ private fun getLanguageDisplayName(context: Context, languageCode: String): Stri
 }
 
 /**
- * Get currently enabled subtypes for Pastiera IME.
+ * Get currently enabled subtypes for PhysiBoard IME.
  * Returns only the additional subtypes (not those declared in XML).
  */
 private fun getEnabledSubtypes(context: Context): Set<String> {

@@ -146,7 +146,7 @@ class SuggestionControllerNextWordTest {
 
     @Test
     fun emptyInitialContextShowsStarterSuggestions() {
-        fakeRepository.addTestEntry("Pastiera", 255, SuggestionSource.DEFAULT_USER)
+        fakeRepository.addTestEntry("PhysiBoard", 255, SuggestionSource.DEFAULT_USER)
         fakeRepository.addTestEntry("BlackBerry", 255, SuggestionSource.DEFAULT_USER)
         fakeRepository.addTestEntry("Parenzo", 255, SuggestionSource.DEFAULT_USER)
         fakeRepository.addTestEntry("ich", 220)

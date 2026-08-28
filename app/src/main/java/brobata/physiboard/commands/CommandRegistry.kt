@@ -43,7 +43,7 @@ class CommandRegistry(
     private fun sortSourceRank(source: CommandSourceId): Int {
         return when (source) {
             CommandSourceId.Apps -> 0
-            CommandSourceId.Pastiera -> 1
+            CommandSourceId.PhysiBoard -> 1
             CommandSourceId.AppActions -> 2
             CommandSourceId.DeviceControl -> 3
             CommandSourceId.NavActions -> 4
@@ -54,7 +54,7 @@ class CommandRegistry(
         fun defaultSources(): List<CommandSource> {
             return listOf(
                 AppCommandSource(),
-                PastieraCommandSource(),
+                PhysiBoardCommandSource(),
                 AppActionCommandSource(),
                 DeviceControlCommandSource(),
                 NavCommandSource()

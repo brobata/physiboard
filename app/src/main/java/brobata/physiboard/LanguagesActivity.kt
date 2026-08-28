@@ -6,7 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
-import brobata.physiboard.ui.theme.PastieraTheme
+import brobata.physiboard.ui.theme.PhysiBoardTheme
 
 class LanguagesActivity : LocalizedComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -16,7 +16,7 @@ class LanguagesActivity : LocalizedComponentActivity() {
         }
         enableEdgeToEdge()
         setContent {
-            PastieraTheme {
+            PhysiBoardTheme {
                 LanguagesScreen(
                     modifier = Modifier.fillMaxSize()
                 )

@@ -6,7 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
-import brobata.physiboard.ui.theme.PastieraTheme
+import brobata.physiboard.ui.theme.PhysiBoardTheme
 
 class SymCustomizationActivity : LocalizedComponentActivity() {
     companion object {
@@ -23,7 +23,7 @@ class SymCustomizationActivity : LocalizedComponentActivity() {
         }
         enableEdgeToEdge()
         setContent {
-            PastieraTheme {
+            PhysiBoardTheme {
                 SymCustomizationScreen(
                     modifier = Modifier.fillMaxSize(),
                     initialPage = intent.getIntExtra(EXTRA_INITIAL_PAGE, 0),

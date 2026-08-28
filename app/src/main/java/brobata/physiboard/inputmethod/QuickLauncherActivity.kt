@@ -93,7 +93,7 @@ import brobata.physiboard.data.layout.JsonLayoutLoader
 import brobata.physiboard.data.layout.LayoutMapping
 import brobata.physiboard.data.layout.LayoutMappingRepository
 import brobata.physiboard.inputmethod.subtype.AdditionalSubtypeUtils
-import brobata.physiboard.ui.theme.PastieraTheme
+import brobata.physiboard.ui.theme.PhysiBoardTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -160,7 +160,7 @@ class QuickLauncherActivity : LocalizedComponentActivity() {
         registerQuickLauncherPreferencesListener()
 
         setContent {
-            PastieraTheme {
+            PhysiBoardTheme {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -1211,7 +1211,7 @@ private fun commandIconDerivedColor(command: CommandTarget, alpha: Float = 0.28f
 
     val fallbackHue = when (command.source) {
         CommandSourceId.Apps -> 214f
-        CommandSourceId.Pastiera -> 145f
+        CommandSourceId.PhysiBoard -> 145f
         CommandSourceId.AppActions -> 282f
         CommandSourceId.DeviceControl -> 28f
         CommandSourceId.NavActions -> 190f

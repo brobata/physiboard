@@ -34,7 +34,7 @@ class ImeTouchScreenAwakeControllerTest {
 
         val wakeLock = ShadowPowerManager.getLatestWakeLock()
         assertTrue(wakeLock.isHeld)
-        assertEquals("Pastiera:ImeTouch", shadowOf(wakeLock).tag)
+        assertEquals("PhysiBoard:ImeTouch", shadowOf(wakeLock).tag)
         shadowOf(Looper.getMainLooper()).idleFor(999, TimeUnit.MILLISECONDS)
         assertTrue(wakeLock.isHeld)
         shadowOf(Looper.getMainLooper()).idleFor(2, TimeUnit.MILLISECONDS)

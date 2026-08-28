@@ -58,7 +58,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import brobata.physiboard.LocalizedComponentActivity
 import brobata.physiboard.R
-import brobata.physiboard.ui.theme.PastieraTheme
+import brobata.physiboard.ui.theme.PhysiBoardTheme
 import java.io.File
 import java.io.InputStream
 import java.util.Locale
@@ -81,7 +81,7 @@ class InstalledDictionariesActivity : LocalizedComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            PastieraTheme {
+            PhysiBoardTheme {
                 InstalledDictionariesScreen(
                     modifier = androidx.compose.ui.Modifier.fillMaxSize(),
                     onBack = { finish() }

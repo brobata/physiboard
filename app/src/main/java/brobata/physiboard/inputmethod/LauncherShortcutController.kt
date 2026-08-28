@@ -12,7 +12,7 @@ import brobata.physiboard.commands.CommandKind
 import brobata.physiboard.commands.CommandRegistry
 import brobata.physiboard.commands.CommandSourceId
 import brobata.physiboard.commands.CommandTarget
-import brobata.physiboard.commands.PastieraCommandSource
+import brobata.physiboard.commands.PhysiBoardCommandSource
 
 /**
  * Controller for handling launcher shortcuts functionality.
@@ -22,7 +22,7 @@ class LauncherShortcutController(
     private val context: Context
 ) {
     companion object {
-        private const val TAG = "PastieraInputMethod"
+        private const val TAG = "PhysiBoardInputMethod"
         private const val POWER_SHORTCUT_TIMEOUT_MS = 5000L // 5 secondi di timeout
     }
 
@@ -91,7 +91,7 @@ class LauncherShortcutController(
     }
 
     private fun executeShortcutCommand(shortcut: SettingsManager.LauncherShortcut): Boolean {
-        if (shortcut.commandId == PastieraCommandSource.COMMAND_QUICK_LAUNCHER) {
+        if (shortcut.commandId == PhysiBoardCommandSource.COMMAND_QUICK_LAUNCHER) {
             return QuickLauncherOpener.open(context)
         }
         val command = shortcut.commandId?.let { CommandRegistry(context).resolve(it) }
@@ -106,10 +106,10 @@ class LauncherShortcutController(
             id = shortcut.commandId ?: "legacy:${shortcut.type}:${shortcut.packageName ?: shortcut.action.orEmpty()}",
             source = shortcut.commandSource
                 ?.let { CommandSourceId.fromStorageValue(it) }
-                ?: CommandSourceId.Pastiera,
+                ?: CommandSourceId.PhysiBoard,
             kind = runCatching {
                 CommandKind.valueOf(shortcut.commandKind ?: "")
-            }.getOrDefault(CommandKind.PastieraAction),
+            }.getOrDefault(CommandKind.PhysiBoardAction),
             label = shortcut.commandTitle ?: shortcut.appName ?: shortcut.packageName ?: "Shortcut",
             subtitle = shortcut.commandSubtitle,
             launch = launch

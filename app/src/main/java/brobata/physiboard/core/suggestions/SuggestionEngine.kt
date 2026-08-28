@@ -39,7 +39,7 @@ class SuggestionEngine(
 
     /**
      * Build character-to-position map for a given keyboard layout.
-     * Physical key positions match the actual Pastiera compact keyboard layout:
+     * Physical key positions match the actual PhysiBoard compact keyboard layout:
      * - Row 0: Q W E R T Y U I O P
      * - Row 1: A S D F G H J K L
      * - Row 2: Z X C V [space] B N M

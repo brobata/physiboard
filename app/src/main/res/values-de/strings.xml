@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Pastiera</string>
-    <string name="input_method_name">Pastiera</string>
+    <string name="app_name">PhysiBoard</string>
+    <string name="input_method_name">PhysiBoard</string>
     <string name="input_method_name_en">English</string>
     <string name="input_method_name_it">Italiano</string>
     <string name="input_method_name_fr">Français</string>
@@ -41,13 +41,13 @@
     <string name="auto_space_punctuation_title">Satzzeichen-Abstände</string>
     <string name="auto_space_punctuation_selected">Ausgewählt:</string>
     <string name="auto_space_punctuation_none_selected">keine</string>
-    <string name="auto_space_punctuation_dialog_instruction">Lege pro Zeichen fest, ob Pastiera sein eigenes Auto-Leerzeichen davor entfernt und vor folgendem Text verzögert ein Leerzeichen einfügt.</string>
+    <string name="auto_space_punctuation_dialog_instruction">Lege pro Zeichen fest, ob PhysiBoard sein eigenes Auto-Leerzeichen davor entfernt und vor folgendem Text verzögert ein Leerzeichen einfügt.</string>
     <string name="auto_space_punctuation_character_column">Zeichen</string>
     <string name="auto_space_punctuation_before_column">Davor entfernen</string>
     <string name="auto_space_punctuation_after_column">Vor Folgetext</string>
     <string name="auto_space_punctuation_help_action">Satzzeichen-Abstände erklären</string>
     <string name="auto_space_punctuation_help_title">So funktionieren die Abstände</string>
-    <string name="auto_space_punctuation_help_text">„Davor entfernen“ entfernt nur ein automatisch von Pastiera gesetztes Leerzeichen, keine manuelle Eingabe.\n\n„Vor Folgetext“ merkt den Abstand vor. Er wird erst beim nächsten Text eingefügt; bei Enter oder Senden bleibt kein Leerzeichen am Ende.</string>
+    <string name="auto_space_punctuation_help_text">„Davor entfernen“ entfernt nur ein automatisch von PhysiBoard gesetztes Leerzeichen, keine manuelle Eingabe.\n\n„Vor Folgetext“ merkt den Abstand vor. Er wird erst beim nächsten Text eingefügt; bei Enter oder Senden bleibt kein Leerzeichen am Ende.</string>
     <string name="auto_space_punctuation_choose">Ausgewählt:</string>
     <string name="auto_space_punctuation_choose_off">Aus</string>
     <string name="auto_space_punctuation_reset">Zurücksetzen</string>
@@ -61,18 +61,18 @@
     <string name="auto_show_keyboard_description">Zeigt die Bildschirmtastatur automatisch in Textfeldern.</string>
     <string name="info_title">Informationen</string>
     <string name="info_description">Einstellungen werden automatisch gespeichert und sofort auf die Eingabemethode angewendet.</string>
-    <string name="keyboard_title">Pastiera Tastatur</string>
+    <string name="keyboard_title">PhysiBoard Tastatur</string>
     <string name="keyboard_subtitle">Physikalische Tastatur mit Unterstützung für langen Druck</string>
     <string name="settings_content_description">Einstellungen</string>
     <string name="installation_title">Installation</string>
     <string name="installation_step1">1. Klicken Sie auf die Schaltfläche unten, um die Einstellungen zu öffnen</string>
-    <string name="installation_step2">2. Aktivieren Sie \'Pastiera Physical Keyboard\'</string>
+    <string name="installation_step2">2. Aktivieren Sie \'PhysiBoard Physical Keyboard\'</string>
     <string name="installation_step3">3. Kommen Sie hierher zurück und testen Sie die Tastatur</string>
     <string name="open_keyboard_settings">Tastatureinstellungen öffnen</string>
-    <string name="enable_pastiera">Pastiera aktivieren</string>
-    <string name="pastiera_not_enabled">Pastiera ist nicht aktiviert</string>
+    <string name="enable_physiboard">PhysiBoard aktivieren</string>
+    <string name="physiboard_not_enabled">PhysiBoard ist nicht aktiviert</string>
     <string name="choose_input_method">Eingabemethode wählen</string>
-    <string name="pastiera_not_selected">Pastiera ist nicht ausgewählt</string>
+    <string name="physiboard_not_selected">PhysiBoard ist nicht ausgewählt</string>
     <string name="test_keyboard_title">Tastaturtest</string>
     <string name="test_keyboard_description">Schließen Sie eine physikalische Tastatur an und testen Sie unten:</string>
     <string name="test_keyboard_normal">• Normaler Druck: fügt das Zeichen ein</string>
@@ -103,7 +103,7 @@
     <string name="auto_correct_settings_title">Textersetzungen</string>
     <string name="auto_correct_settings_description">Wähle aus, welche Ersetzungsregeln aktiv sind. Diese exakten Regeln greifen vor der wörterbuchbasierten automatischen Korrektur.</string>
     <string name="auto_correct_system_language">Systemsprache</string>
-    <string name="auto_correct_ricette_pastiera_description">Anpassungen gültig für alle Ersetzungen</string>
+    <string name="auto_correct_recipes_description">Anpassungen gültig für alle Ersetzungen</string>
     <string name="auto_correct_other_languages">Andere Ersetzungen</string>
     <string name="auto_correct_custom_languages">Benutzerdefinierte Ersetzungen</string>
     <string name="auto_correct_at_least_one_language_required">Mindestens eine Ersetzung ist für die Funktionalität erforderlich</string>
@@ -131,7 +131,7 @@
     <string name="auto_correct_max_distance_off">Aus</string>
     <string name="auto_correct_max_distance_description">Maximale Anzahl von Zeichenunterschieden, die für die Autokorrektur erlaubt sind. 0 = deaktiviert, 1-3 = zunehmende Toleranz.</string>
     <string name="auto_correct_manage_user_dict_title">Persönliches Wörterbuch</string>
-    <string name="auto_correct_manage_user_dict_description">Wörter, die Pastiera kennen und vorschlagen soll, ohne daraus Ersetzungsregeln zu machen.</string>
+    <string name="auto_correct_manage_user_dict_description">Wörter, die PhysiBoard kennen und vorschlagen soll, ohne daraus Ersetzungsregeln zu machen.</string>
     <string name="user_dict_title">Benutzerwörterbuch</string>
     <string name="user_dict_add_hint">Wort hinzufügen</string>
     <string name="user_dict_add_button">Wort speichern</string>
@@ -230,28 +230,26 @@
     <string name="typing_sound_import_success">Tastenton-Soundpack importiert</string>
     <string name="typing_sound_import_failed">Dieses Soundpack konnte nicht importiert werden. Verwende eine ZIP-Datei mit Audiodateien in normal/, space/, backspace/, enter/ und modifier/.</string>
     <string name="typing_sound_docs_title">Soundpack-Format</string>
-    <string name="typing_sound_docs_description">Import-Anleitung auf pastiera.eu öffnen</string>
-    <string name="typing_sound_docs_url">https://pastiera.eu/de/guides/typing-soundpacks/</string>
     <string name="tap_haptic_system_title">Tipp-Vibration</string>
     <string name="tap_haptic_system_description">Android-Tastaturhaptik für Vorschläge und Variationen auf kompatiblen Geräten verwenden.</string>
     <string name="tap_haptic_duration_title">Eigene Vibration: %1$d ms</string>
     <string name="tap_haptic_duration_description">Wird verwendet, wenn Android-Tastaturhaptik deaktiviert ist.</string>
     <string name="about_github">GitHub</string>
-    <string name="about_build_info">Pastiera IME - Palsoftware 2026</string>
+    <string name="about_build_info">PhysiBoard IME - Palsoftware 2026</string>
     <string name="settings_device_keyboard_info">Gerät: %1$s; Tastatur: %2$s</string>
     <string name="about_title">Über</string>
     <string name="about_credits_error">Credits-Informationen konnten nicht geladen werden.</string>
-    <string name="starter_launcher_shortcuts_title">Pastiera-QuickLauncher</string>
+    <string name="starter_launcher_shortcuts_title">PhysiBoard-QuickLauncher</string>
     <string name="starter_launcher_shortcuts_description">Schnellstart, SYM-Tastenkürzel und Launcher-Tastenzuweisungen</string>
-    <string name="starter_launcher_shortcuts_intro">Diese Einstellungen nutzen dieselbe Liste von Launcher-Tastenzuweisungen. Hier legst du fest, wo Pastiera auf diese Tasten reagieren soll.</string>
+    <string name="starter_launcher_shortcuts_intro">Diese Einstellungen nutzen dieselbe Liste von Launcher-Tastenzuweisungen. Hier legst du fest, wo PhysiBoard auf diese Tasten reagieren soll.</string>
     <string name="launcher_shortcuts_title">Homescreen-Tastenkürzel</string>
     <string name="launcher_shortcuts_experimental">Experimentell</string>
     <string name="launcher_shortcuts_description">Zugewiesene Launcher-Tasten direkt im Android-Launcher oder auf dem Homescreen nutzen.</string>
     <string name="launcher_shortcuts_configure">Zugewiesene Launcher-Tasten</string>
     <string name="launcher_shortcuts_configure_description">Taste antippen, um einen Command zuzuweisen oder zu ersetzen. Die Zuweisungen gelten für beide Auslösearten.</string>
     <string name="launcher_shortcuts_configure_description_with_quick_launcher">Taste antippen, um einen Command zuzuweisen oder zu ersetzen. Der Schnellstarter liegt aktuell auf %1$s.</string>
-    <string name="quick_launcher_default_blocked_hint">Neu: SYM kann den Schnellstarter öffnen. Normalerweise würde Pastiera ihn auf Space legen, aber Space hat bereits eine Zuweisung. Öffne die Zuweisungsseite und wähle „Schnellstarter öffnen“ auf einer Taste, um es auszuprobieren.</string>
-    <string name="launcher_shortcuts_screen_title">Pastiera-QuickLauncher</string>
+    <string name="quick_launcher_default_blocked_hint">Neu: SYM kann den Schnellstarter öffnen. Normalerweise würde PhysiBoard ihn auf Space legen, aber Space hat bereits eine Zuweisung. Öffne die Zuweisungsseite und wähle „Schnellstarter öffnen“ auf einer Taste, um es auszuprobieren.</string>
+    <string name="launcher_shortcuts_screen_title">PhysiBoard-QuickLauncher</string>
     <string name="launcher_shortcuts_not_assigned">Nicht zugewiesen</string>
     <string name="launcher_shortcuts_remove">Entfernen</string>
     <string name="launcher_shortcuts_app_name_unavailable">App (Name nicht verfügbar)</string>
@@ -267,7 +265,7 @@
     <string name="launcher_shortcut_assignment_no_apps">Keine Commands gefunden</string>
     <string name="launcher_shortcut_assignment_no_results">Keine Ergebnisse für \"%1$s\"</string>
     <string name="launcher_shortcut_assignment_key_name">Taste %1$d</string>
-    <string name="quick_launcher_title">Pastiera-QuickLauncher</string>
+    <string name="quick_launcher_title">PhysiBoard-QuickLauncher</string>
     <string name="quick_launcher_subtitle">Tippen zum Suchen. Enter öffnet den obersten Treffer.</string>
     <string name="quick_launcher_close">Schließen</string>
     <string name="quick_launcher_search_placeholder">Tippen...</string>
@@ -292,8 +290,8 @@
     <string name="quick_launcher_no_apps">Keine Apps gefunden</string>
     <string name="quick_launcher_no_results">Keine Ergebnisse für \"%1$s\"</string>
     <string name="quick_launcher_enter_hint">Enter</string>
-    <string name="notification_nav_mode_channel_name">Pastiera Nav Mode</string>
-    <string name="notification_nav_mode_channel_description">Benachrichtigungen für Pastiera Nav-Modus</string>
+    <string name="notification_nav_mode_channel_name">PhysiBoard Nav Mode</string>
+    <string name="notification_nav_mode_channel_description">Benachrichtigungen für PhysiBoard Nav-Modus</string>
     <string name="notification_nav_mode_activated_title">Nav-Modus aktiviert</string>
     <string name="notification_nav_mode_activated_text">Nav-Modus aktiviert</string>
     <string name="speech_recognition_prompt">Jetzt sprechen…</string>
@@ -323,7 +321,7 @@ QWERTZ auf physischem QWERTY
 Der Nav-Modus nutzt die physische Tastenposition, damit Navigation stabil bleibt. Layout-Hinweise auf den Tasten zeigen, wenn das aktive Textlayout diese physische Taste als anderen Buchstaben behandeln würde, zum Beispiel Y/Z bei QWERTZ.
 
 App-Ctrl-Shortcuts mit aktivem Layout
-Wenn gehaltenes Ctrl an Apps weitergegeben wird, kann diese optionale Einstellung Ctrl+Buchstabe vorher über das aktive Pastiera-Layout übersetzen. Das betrifft App-Shortcuts, nicht das physische Nav-Modus-Raster.
+Wenn gehaltenes Ctrl an Apps weitergegeben wird, kann diese optionale Einstellung Ctrl+Buchstabe vorher über das aktive PhysiBoard-Layout übersetzen. Das betrifft App-Shortcuts, nicht das physische Nav-Modus-Raster.
 
 Overrides
 Jede Taste kann als Keycode, Aktion, Native Ctrl oder Keine konfiguriert werden. Nutze Overrides, um App-spezifische Konflikte zu lösen, ohne den ganzen Modus umzubauen.</string>
@@ -332,10 +330,10 @@ Jede Taste kann als Keycode, Aktion, Native Ctrl oder Keine konfiguriert werden.
     <string name="nav_mode_ctrl_hold_title">Nav-Modus bei gehaltenem Ctrl</string>
     <string name="nav_mode_ctrl_hold_description">Wenn aktiv, verwenden Textfelder beim Halten von Ctrl die Nav-Modus-Zuordnungen. Wenn aus, werden Ctrl-Shortcuts an die App weitergegeben. Tasten mit Native Ctrl werden immer als echte Ctrl-Shortcuts durchgereicht.</string>
     <string name="layout_aware_ctrl_shortcuts_title">App-Ctrl-Shortcuts mit aktivem Layout</string>
-    <string name="layout_aware_ctrl_shortcuts_description">Wenn gehaltenes Ctrl an Apps weitergegeben wird, Ctrl+Buchstabe vorher über das aktive Pastiera-Layout übersetzen.</string>
+    <string name="layout_aware_ctrl_shortcuts_description">Wenn gehaltenes Ctrl an Apps weitergegeben wird, Ctrl+Buchstabe vorher über das aktive PhysiBoard-Layout übersetzen.</string>
     <string name="layout_aware_ctrl_shortcuts_disabled_description">Deaktiviert, solange Navigation mit gehaltenem Ctrl aktiv ist, weil gehaltenes Ctrl dann vom Nav-Modus statt von der App behandelt wird.</string>
     <string name="layout_aware_ctrl_shortcuts_info_title">Ctrl-Shortcuts und Nav-Modus</string>
-    <string name="layout_aware_ctrl_shortcuts_info_text">Für gehaltenes Ctrl gibt es zwei Wege. Wenn Navigation mit gehaltenem Ctrl aktiv ist, behandelt Pastiera Ctrl+Taste mit den unten gezeigten Nav-Modus-Zuordnungen. Wenn Navigation mit gehaltenem Ctrl aus ist, gibt Pastiera Ctrl+Taste an die App weiter. Diese Option betrifft nur diesen App-Weg: Aktiviert wird Ctrl+Buchstabe vorher über das aktive Pastiera-Layout übersetzt, damit Shortcuts den getippten Buchstaben folgen können. Deaktiviert bekommen Apps die ursprünglichen physischen Tastenpositionen.</string>
+    <string name="layout_aware_ctrl_shortcuts_info_text">Für gehaltenes Ctrl gibt es zwei Wege. Wenn Navigation mit gehaltenem Ctrl aktiv ist, behandelt PhysiBoard Ctrl+Taste mit den unten gezeigten Nav-Modus-Zuordnungen. Wenn Navigation mit gehaltenem Ctrl aus ist, gibt PhysiBoard Ctrl+Taste an die App weiter. Diese Option betrifft nur diesen App-Weg: Aktiviert wird Ctrl+Buchstabe vorher über das aktive PhysiBoard-Layout übersetzt, damit Shortcuts den getippten Buchstaben folgen können. Deaktiviert bekommen Apps die ursprünglichen physischen Tastenpositionen.</string>
     <string name="nav_mode_key_mappings">Tastenzuordnungen</string>
     <string name="nav_mode_revert_to_default">Auf Standard zurücksetzen</string>
     <string name="nav_mode_note">Hinweis: Das Ändern der Nav-Modus-Tasten wirkt sich auch auf Ctrl+Taste-Kombinationen in Textfeldern aus.</string>
@@ -362,7 +360,7 @@ Jede Taste kann als Keycode, Aktion, Native Ctrl oder Keine konfiguriert werden.
     <string name="app_enter_behaviour_title">Enter-Verhalten</string>
     <string name="app_enter_behaviour_description">Enter und Zeilenumbrüche pro App konfigurieren</string>
     <string name="app_enter_behaviour_enable_title">App-spezifisches Enter-Verhalten</string>
-    <string name="app_enter_behaviour_enable_description">Pastiera-Overrides für ausgewählte Messenger verwenden. Bereits getestete Apps zeigen die tatsächlich verwendete Strategie.</string>
+    <string name="app_enter_behaviour_enable_description">PhysiBoard-Overrides für ausgewählte Messenger verwenden. Bereits getestete Apps zeigen die tatsächlich verwendete Strategie.</string>
     <string name="app_enter_behaviour_preset_title">Messenger-Preset</string>
     <string name="app_enter_behaviour_preset_description">Einen konsistenten Standard auf installierte bekannte Messenger anwenden.</string>
     <string name="app_enter_behaviour_preset_app_default">App-Standard</string>
@@ -382,12 +380,12 @@ Jede Taste kann als Keycode, Aktion, Native Ctrl oder Keine konfiguriert werden.
     <string name="app_enter_behaviour_option_send_shift_newline">Enter sendet, Shift+Enter neue Zeile</string>
     <string name="app_enter_behaviour_option_newline_ctrl_send">Enter neue Zeile, Ctrl+Enter sendet</string>
     <string name="app_enter_behaviour_option_enter_newline">Enter neue Zeile</string>
-    <string name="app_enter_behaviour_status_app_default">Pastiera greift nicht ein.</string>
+    <string name="app_enter_behaviour_status_app_default">PhysiBoard greift nicht ein.</string>
     <string name="app_enter_behaviour_status_whatsapp_active">Aktiv: %1$s.</string>
     <string name="app_enter_behaviour_status_partial_active">Teilweise aktiv: %1$s.</string>
     <string name="app_enter_behaviour_status_experimental_active">Experimentell aktiv: %1$s.</string>
     <string name="app_enter_behaviour_status_not_active">Noch nicht aktiv: %1$s ist vorgemerkt.</string>
-    <string name="app_enter_behaviour_status_native_result">App-Standard: Pastiera greift nicht ein.</string>
+    <string name="app_enter_behaviour_status_native_result">App-Standard: PhysiBoard greift nicht ein.</string>
     <string name="app_enter_behaviour_status_strategy_result">Aktiv: %1$s.</string>
     <string name="app_enter_behaviour_status_experimental_result">Experimentell aktiv: %1$s.</string>
     <string name="app_enter_behaviour_strategy_none_label">Kein Override</string>
@@ -395,12 +393,12 @@ Jede Taste kann als Keycode, Aktion, Native Ctrl oder Keine konfiguriert werden.
     <string name="app_enter_behaviour_strategy_plain_enter_label">Normales Enter</string>
     <string name="app_enter_behaviour_strategy_unconfigured_label">Nicht konfiguriert</string>
     <string name="app_enter_behaviour_strategy_app_default_detail">Die App entscheidet selbst, ob Enter sendet oder eine neue Zeile einfügt.</string>
-    <string name="app_enter_behaviour_strategy_whatsapp_newline_ctrl_send">Pastiera fügt neue Zeilen direkt ein und sendet über die Senden-Aktion der App.</string>
-    <string name="app_enter_behaviour_strategy_whatsapp_send_shift_newline">Pastiera nutzt zum Senden die Senden-Aktion der App. Shift+Enter wird direkt als neue Zeile eingefügt.</string>
-    <string name="app_enter_behaviour_strategy_whatsapp_newline_only">Getestet: Pastiera fügt Enter direkt als neue Zeile ein und löst keine Senden-Aktion aus.</string>
-    <string name="app_enter_behaviour_strategy_discord_app_default_detail">Getestet: Discord verhält sich für Enter sendet und Shift+Enter neue Zeile bereits passend. Pastiera greift hier nicht ein.</string>
+    <string name="app_enter_behaviour_strategy_whatsapp_newline_ctrl_send">PhysiBoard fügt neue Zeilen direkt ein und sendet über die Senden-Aktion der App.</string>
+    <string name="app_enter_behaviour_strategy_whatsapp_send_shift_newline">PhysiBoard nutzt zum Senden die Senden-Aktion der App. Shift+Enter wird direkt als neue Zeile eingefügt.</string>
+    <string name="app_enter_behaviour_strategy_whatsapp_newline_only">Getestet: PhysiBoard fügt Enter direkt als neue Zeile ein und löst keine Senden-Aktion aus.</string>
+    <string name="app_enter_behaviour_strategy_discord_app_default_detail">Getestet: Discord verhält sich für Enter sendet und Shift+Enter neue Zeile bereits passend. PhysiBoard greift hier nicht ein.</string>
     <string name="app_enter_behaviour_strategy_discord_partial_detail">Getestet: Neue Zeilen werden direkt eingefügt. Ctrl+Enter sendet ein normales Enter ohne Ctrl-Meta, weil Discords App-Aktion nur die Tastatur ausblendet.</string>
-    <string name="app_enter_behaviour_strategy_experimental_detail">Nicht bestätigt: Pastiera nutzt testweise die Senden-Aktion der App und direkte Zeilenumbrüche.</string>
+    <string name="app_enter_behaviour_strategy_experimental_detail">Nicht bestätigt: PhysiBoard nutzt testweise die Senden-Aktion der App und direkte Zeilenumbrüche.</string>
     <string name="app_enter_behaviour_strategy_not_tested_detail">Die technische Strategie muss für diese App noch getestet werden.</string>
     <string name="app_enter_behaviour_desired_label">Gewünschtes Verhalten</string>
     <string name="app_enter_behaviour_strategy_label">Sende-Strategie</string>
@@ -481,16 +479,16 @@ Jede Taste kann als Keycode, Aktion, Native Ctrl oder Keine konfiguriert werden.
     <string name="alt_key_editor_matching_title">Name und Geräteerkennung</string>
     <string name="alt_key_editor_matching_description">Profilmetadaten und optionale Erkennung über den Gerätenamen festlegen.</string>
     <string name="alt_key_editor_mappings_title">Geräte-SYM- und Tastenbelegungen</string>
-    <string name="alt_key_editor_mappings_description">Zeichen, Modifier, Shortcuts und Pastiera-Aktionen zuweisen.</string>
+    <string name="alt_key_editor_mappings_description">Zeichen, Modifier, Shortcuts und PhysiBoard-Aktionen zuweisen.</string>
     <string name="alt_key_editor_transfer_title">Import und Export</string>
-    <string name="alt_key_editor_transfer_description">Eigene Profile teilen und über Pastiera-Backups wiederherstellen.</string>
+    <string name="alt_key_editor_transfer_description">Eigene Profile teilen und über PhysiBoard-Backups wiederherstellen.</string>
     <string name="settings_planned_label">GEPLANT</string>
     <string name="feature_status_construction_content_description">In Entwicklung</string>
     <string name="feature_status_construction_hint">Diese Funktion ist in Arbeit oder geplant. Sie kann unvollständig oder noch nicht verfügbar sein und sich weiterhin ändern.</string>
     <string name="feature_status_experimental_content_description">Experimentelle Funktion</string>
     <string name="feature_status_experimental_hint">Die Funktion kann bereits funktionieren, ist aber neu und wird möglicherweise bald noch angepasst oder nachgebessert. Bugreports sind ausdrücklich erwünscht.</string>
     <string name="tutorial_feature_status_title">Statussymbole für Funktionen</string>
-    <string name="tutorial_feature_status_description">Pastiera kennzeichnet laufende Arbeiten direkt in der App. Du musst dafür nicht sämtliche GitHub-Issues durchsuchen.</string>
+    <string name="tutorial_feature_status_description">PhysiBoard kennzeichnet laufende Arbeiten direkt in der App. Du musst dafür nicht sämtliche GitHub-Issues durchsuchen.</string>
     <string name="tutorial_feature_status_construction_title">In Entwicklung</string>
     <string name="tutorial_feature_status_construction_description">Diese Funktion ist in Arbeit oder geplant. Sie kann unvollständig oder noch nicht verfügbar sein und sich weiterhin ändern.</string>
     <string name="tutorial_feature_status_experimental_title">Experimentell</string>
@@ -501,7 +499,7 @@ Jede Taste kann als Keycode, Aktion, Native Ctrl oder Keine konfiguriert werden.
     <string name="app_picker_search_placeholder">Apps suchen…</string>
     <string name="settings_support_ko_fi">Auf Ko-fi unterstützen</string>
     <string name="settings_nav_mode_configure">Tastenzuordnungen für Navigationsmodus konfigurieren</string>
-    <string name="auto_correct_ricette_pastiera_name">Ricette Pastiera</string>
+    <string name="auto_correct_recipes_name">Ricette PhysiBoard</string>
     <string name="settings_category_keyboard_timing">Tastenverhalten &amp; Timing</string>
     <string name="settings_category_text_input">Texteingabe</string>
     <string name="settings_category_auto_correction">Autokorrektur</string>
@@ -515,7 +513,7 @@ Jede Taste kann als Keycode, Aktion, Native Ctrl oder Keine konfiguriert werden.
     <string name="settings_group_customization">Oberfläche</string>
     <string name="settings_group_system">Erweitert</string>
     <string name="settings_group_utility">Werkzeuge</string>
-    <string name="settings_group_pastiera">Über Pastiera</string>
+    <string name="settings_group_about">Über PhysiBoard</string>
     <string name="settings_about_version_summary">v%1$s</string>
     <string name="settings_accessibility_live_read_title">Live-Vorlesen bei Statusleisten-Änderungen</string>
     <string name="settings_accessibility_live_read_description">Wenn aktiviert, kann TalkBack Sprache/Layout und Statusleisten-Änderungen automatisch ansagen.</string>
@@ -595,16 +593,16 @@ Jede Taste kann als Keycode, Aktion, Native Ctrl oder Keine konfiguriert werden.
     <string name="tutorial_previous">Zurück</string>
     <string name="tutorial_next">Weiter</string>
     <string name="tutorial_finish">Fertig</string>
-    <string name="tutorial_page_welcome_title">Willkommen bei Pastiera</string>
-    <string name="tutorial_page_welcome_description">Pastiera ist eine fortschrittliche Eingabemethode für Android-Geräte mit physischer Tastatur (PKB) und unterstützt Nav-Modus, Shortcuts, benutzerdefinierte Tastenbelegungen und mehr.</string>
+    <string name="tutorial_page_welcome_title">Willkommen bei PhysiBoard</string>
+    <string name="tutorial_page_welcome_description">PhysiBoard ist eine fortschrittliche Eingabemethode für Android-Geräte mit physischer Tastatur (PKB) und unterstützt Nav-Modus, Shortcuts, benutzerdefinierte Tastenbelegungen und mehr.</string>
     <string name="tutorial_devs_choice_button">Dev\'s Choice</string>
     <string name="tutorial_devs_choice_applied">Dev\'s Choice übernommen.</string>
-    <string name="tutorial_page_enable_title">Pastiera aktivieren</string>
-    <string name="tutorial_page_enable_description">Um zu beginnen, müssen Sie Pastiera als Eingabemethode in den Android-Einstellungen aktivieren. Tippen Sie auf die Schaltfläche unten, um die Einstellungen zu öffnen.</string>
-    <string name="tutorial_page_select_title">Pastiera auswählen</string>
-    <string name="tutorial_page_select_description">Um Pastiera zu verwenden, wähle sie unter den Eingabemethoden aus. Im nächsten Schritt legst du fest, ob Pastiera eine virtuelle Tastatur oder den Hardware-Tastaturmodus verwenden soll.</string>
+    <string name="tutorial_page_enable_title">PhysiBoard aktivieren</string>
+    <string name="tutorial_page_enable_description">Um zu beginnen, müssen Sie PhysiBoard als Eingabemethode in den Android-Einstellungen aktivieren. Tippen Sie auf die Schaltfläche unten, um die Einstellungen zu öffnen.</string>
+    <string name="tutorial_page_select_title">PhysiBoard auswählen</string>
+    <string name="tutorial_page_select_description">Um PhysiBoard zu verwenden, wähle sie unter den Eingabemethoden aus. Im nächsten Schritt legst du fest, ob PhysiBoard eine virtuelle Tastatur oder den Hardware-Tastaturmodus verwenden soll.</string>
     <string name="tutorial_page_led_title">Modifier-Anzeigen</string>
-    <string name="tutorial_page_led_description">Um Pastiera optimal zu nutzen, stelle in den Systemeinstellungen die Fn-Taste auf Ctrl um. Pastiera kann Modifier-Zustände im Bottom Strip, in der Menüleiste oder in der Pastiera-Statusbar anzeigen: One-Shot-Zustände nutzen die aktive Farbe, gelockte Zustände die Locked-Farbe.</string>
+    <string name="tutorial_page_led_description">Um PhysiBoard optimal zu nutzen, stelle in den Systemeinstellungen die Fn-Taste auf Ctrl um. PhysiBoard kann Modifier-Zustände im Bottom Strip, in der Menüleiste oder in der PhysiBoard-Statusbar anzeigen: One-Shot-Zustände nutzen die aktive Farbe, gelockte Zustände die Locked-Farbe.</string>
     <string name="tutorial_page_nav_mode_title">Nav-Modus</string>
     <string name="tutorial_page_nav_mode_description">Der Nav-Modus lässt dich mit Kürzeln wie IJKL oder ESDF durch die Geräteoberfläche navigieren.\nSo aktivierst du ihn:\n• Drücke Ctrl zweimal schnell\n• Buchstabentasten werden zu Navigationstasten\n• Drücke Ctrl erneut, um zu beenden\nJede Zuordnung kann in den erweiterten Einstellungen angepasst werden.</string>
     <string name="tutorial_nav_mode_bullet_selection">Auswahlaktionen erweitern markierten Text nach links, rechts oder wortweise.</string>
@@ -614,7 +612,7 @@ Jede Taste kann als Keycode, Aktion, Native Ctrl oder Keine konfiguriert werden.
     <string name="tutorial_quick_launcher_bullet_sym_space">Halte SYM und drücke Space, um den QuickLauncher überall zu öffnen.</string>
     <string name="tutorial_quick_launcher_bullet_text_fields">Das funktioniert auch mit Cursor im Textfeld, damit du direkt aus dem Schreiben heraus Apps wechseln kannst.</string>
     <string name="tutorial_quick_launcher_bullet_search">Tippe ein paar Buchstaben, Abkürzungen oder kleine Tippfehler, um die gewünschte App zu finden.</string>
-    <string name="tutorial_quick_launcher_bullet_layout">Die Suche kann dein aktives Pastiera-Layout berücksichtigen, zum Beispiel QWERTZ.</string>
+    <string name="tutorial_quick_launcher_bullet_layout">Die Suche kann dein aktives PhysiBoard-Layout berücksichtigen, zum Beispiel QWERTZ.</string>
     <string name="tutorial_quick_launcher_button">QuickLauncher-Einstellungen öffnen</string>
     <string name="tutorial_quick_launcher_mapping_conflict_title">SYM + Space ist anders belegt</string>
     <string name="tutorial_quick_launcher_mapping_conflict_description">Space öffnet aktuell „%1$s“. Ersetze diese Belegung mit QuickLauncher und aktiviere ihn in Textfeldern, um die neue Funktion zu testen.</string>
@@ -626,7 +624,7 @@ Jede Taste kann als Keycode, Aktion, Native Ctrl oder Keine konfiguriert werden.
     <string name="tutorial_messenger_presets_bullet_apps">App-spezifische Overrides bleiben verfügbar, wenn eine App anders reagiert.</string>
     <string name="tutorial_messenger_presets_button">Messenger-Presets öffnen</string>
     <string name="tutorial_page_customization_title">Anpassung</string>
-    <string name="tutorial_page_customization_description">Pastiera bietet viele Anpassungsmöglichkeiten:\n• Anpassbare Tastaturlayouts\n• Launcher-Verknüpfungen &amp; Power Shortcuts\n• Die IME-Leiste kann als Swipe-Bar zum Bewegen des Cursors dienen\n• Benutzerdefinierte Zuordnungen für den Nav-Modus\nDurchsuchen Sie die Einstellungen, um die perfekte Konfiguration für Sie zu finden!</string>
+    <string name="tutorial_page_customization_description">PhysiBoard bietet viele Anpassungsmöglichkeiten:\n• Anpassbare Tastaturlayouts\n• Launcher-Verknüpfungen &amp; Power Shortcuts\n• Die IME-Leiste kann als Swipe-Bar zum Bewegen des Cursors dienen\n• Benutzerdefinierte Zuordnungen für den Nav-Modus\nDurchsuchen Sie die Einstellungen, um die perfekte Konfiguration für Sie zu finden!</string>
     <string name="tutorial_typing_sound_demo_title">Tastentöne</string>
     <string name="tutorial_typing_sound_demo_description">Wähle einen Klangstil und tippe unten, um ihn direkt zu hören.</string>
     <string name="tutorial_typing_sound_demo_input_label">Hier ausprobieren</string>
@@ -634,17 +632,17 @@ Jede Taste kann als Keycode, Aktion, Native Ctrl oder Keine konfiguriert werden.
     <string name="tutorial_status_bar_button">Statusleiste</string>
     <string name="tutorial_sym_emoji_button">SYM / Emoji</string>
     <string name="tutorial_device_sym_layer_title">Alt-Layer heißt jetzt Geräte-SYM-Layer</string>
-    <string name="tutorial_device_sym_layer_description">Pastiera nennt die gerätespezifische Zweitbelegung jetzt Geräte-SYM-Layer. Alt bleibt die Modifier-Taste, die ihn auslösen kann; Emoji und Symbole sind weitere SYM-Layer.</string>
+    <string name="tutorial_device_sym_layer_description">PhysiBoard nennt die gerätespezifische Zweitbelegung jetzt Geräte-SYM-Layer. Alt bleibt die Modifier-Taste, die ihn auslösen kann; Emoji und Symbole sind weitere SYM-Layer.</string>
     <string name="tutorial_software_keyboard_hardware_bullet">Kompakte Oberfläche für Geräte mit physischen Tasten.</string>
     <string name="tutorial_software_keyboard_virtual_bullet">Vollständige Bildschirmtastatur für Touch-Nutzung. Noch Alpha.</string>
     <string name="tutorial_software_keyboard_auto_bullet">Empfohlen: Hardwaremodus auf bekannten PKB-Geräten, sonst virtuelle Tastatur.</string>
     <string name="tutorial_page_ready_title">Bereit zum Starten</string>
-    <string name="tutorial_page_ready_description">Sie sind jetzt bereit, Pastiera zu verwenden! Denken Sie daran, dass Sie jederzeit zu den Einstellungen zurückkehren können, um die Tastatur weiter an Ihre Bedürfnisse anzupassen.</string>
-    <string name="tutorial_enable_button">Pastiera aktivieren</string>
-    <string name="tutorial_enabled_message">Pastiera ist aktiviert!</string>
-    <string name="tutorial_select_button">Pastiera auswählen</string>
-    <string name="tutorial_enable_first_message">Aktivieren Sie zuerst Pastiera auf der vorherigen Seite</string>
-    <string name="tutorial_selected_message">Pastiera ist ausgewählt!</string>
+    <string name="tutorial_page_ready_description">Sie sind jetzt bereit, PhysiBoard zu verwenden! Denken Sie daran, dass Sie jederzeit zu den Einstellungen zurückkehren können, um die Tastatur weiter an Ihre Bedürfnisse anzupassen.</string>
+    <string name="tutorial_enable_button">PhysiBoard aktivieren</string>
+    <string name="tutorial_enabled_message">PhysiBoard ist aktiviert!</string>
+    <string name="tutorial_select_button">PhysiBoard auswählen</string>
+    <string name="tutorial_enable_first_message">Aktivieren Sie zuerst PhysiBoard auf der vorherigen Seite</string>
+    <string name="tutorial_selected_message">PhysiBoard ist ausgewählt!</string>
     <string name="tutorial_show">Tutorial anzeigen</string>
     <string name="tutorial_review_description">Einführungstutorial überprüfen</string>
     <string name="tutorial_show_release_notes">Release-Notes-Tutorial anzeigen</string>
@@ -652,7 +650,7 @@ Jede Taste kann als Keycode, Aktion, Native Ctrl oder Keine konfiguriert werden.
     <string name="backup_now">Jetzt sichern</string>
     <string name="backup_now_description">Alle Einstellungen und benutzerdefinierten Layouts in eine ZIP-Datei exportieren</string>
     <string name="restore_from_file">Von Datei wiederherstellen</string>
-    <string name="restore_from_file_description">Eine Pastiera-Sicherungsdatei ZIP importieren</string>
+    <string name="restore_from_file_description">Eine PhysiBoard-Sicherungsdatei ZIP importieren</string>
     <string name="backup_completed">Sicherung abgeschlossen</string>
     <string name="restore_completed">Wiederherstellung abgeschlossen</string>
     <string name="backup_failed">Sicherung fehlgeschlagen: %1$s</string>
@@ -786,7 +784,7 @@ Jede Taste kann als Keycode, Aktion, Native Ctrl oder Keine konfiguriert werden.
     <string name="trackpad_tutorial_how_it_works_title">Wie Es Funktioniert</string>
     <string name="trackpad_tutorial_how_it_works_description">Das Trackpad ist in drei Bereiche unterteilt:\n\n• Linkes Drittel → Linken Vorschlag akzeptieren\n• Mittleres Drittel → Mittleren Vorschlag akzeptieren\n• Rechtes Drittel → Rechten Vorschlag akzeptieren\n\nWischen Sie einfach nach oben im entsprechenden Bereich, um diesen Vorschlag einzufügen.</string>
     <string name="trackpad_tutorial_shizuku_required_title">Shizuku Erforderlich</string>
-    <string name="trackpad_tutorial_shizuku_required_description">Diese Funktion erfordert Shizuku, um auf Trackpad-Ereignisse zuzugreifen.\n\n1. Installieren Sie Shizuku von GitHub-Releases\n2. Aktivieren Sie Entwickleroptionen in den Android-Einstellungen\n3. Schließen Sie Ihr Gerät an einen PC mit installiertem ADB an\n4. Führen Sie den Befehl aus, den Shizuku in seiner App anzeigt\n5. Erteilen Sie Pastiera die Berechtigung in Shizuku\n\nDie Funktion funktioniert automatisch, sobald Shizuku läuft.</string>
+    <string name="trackpad_tutorial_shizuku_required_description">Diese Funktion erfordert Shizuku, um auf Trackpad-Ereignisse zuzugreifen.\n\n1. Installieren Sie Shizuku von GitHub-Releases\n2. Aktivieren Sie Entwickleroptionen in den Android-Einstellungen\n3. Schließen Sie Ihr Gerät an einen PC mit installiertem ADB an\n4. Führen Sie den Befehl aus, den Shizuku in seiner App anzeigt\n5. Erteilen Sie PhysiBoard die Berechtigung in Shizuku\n\nDie Funktion funktioniert automatisch, sobald Shizuku läuft.</string>
     <string name="trackpad_tutorial_tips_title">Tipps</string>
     <string name="trackpad_tutorial_tips_description">• Stellen Sie sicher, dass Ihre Wischbewegung hauptsächlich vertikal ist\n• Die Geste funktioniert am besten mit schnellen, gezielten Wischbewegungen\n• Wenn andere Finger auf der Tastatur sind, werden Gesten möglicherweise nicht erkannt (Hardware-Handflächen-Ablehnung)\n• Die Funktion kann in den Erweiterten Einstellungen aktiviert/deaktiviert werden</string>
     <string name="trackpad_tutorial_complete">Verstanden</string>
@@ -825,11 +823,11 @@ Jede Taste kann als Keycode, Aktion, Native Ctrl oder Keine konfiguriert werden.
     <string name="modifier_indicators_title">Modifier-Anzeigen</string>
     <string name="modifier_indicators_description">Wähle, wo Shift-, Ctrl-, Alt- und SYM-Zustand für die Hardwaretastatur erscheinen.</string>
     <string name="modifier_indicators_bottom_strip">Bottom-Strip-LEDs</string>
-    <string name="modifier_indicators_bottom_strip_description">Farbige Modifier-LEDs im Streifen unter Pastiera.</string>
+    <string name="modifier_indicators_bottom_strip_description">Farbige Modifier-LEDs im Streifen unter PhysiBoard.</string>
     <string name="modifier_indicators_menu_bar">Menüleiste</string>
     <string name="modifier_indicators_menu_bar_description">Ein kompaktes Icon in Androids oberer Statusbar.</string>
     <string name="modifier_indicators_status_bar">Statusbar</string>
-    <string name="modifier_indicators_status_bar_description">Kompakte Symbole links am Rand der Pastiera-Statusbar.</string>
+    <string name="modifier_indicators_status_bar_description">Kompakte Symbole links am Rand der PhysiBoard-Statusbar.</string>
     <string name="modifier_indicators_off_state">Alle Modifier-Anzeigen sind aus.</string>
     <string name="status_bar_button_close_menu_description">Schnellaktionen schließen</string>
     <string name="status_bar_state_on">Ein</string>
@@ -902,12 +900,12 @@ Jede Taste kann als Keycode, Aktion, Native Ctrl oder Keine konfiguriert werden.
     <string name="alt_key_shortcuts_modifier_link_description">Alt-Shortcuts und Zugriff in Textfeldern konfigurieren.</string>
     <string name="sym_shortcuts_compatibility_info">Informationen zur SYM-Tasten-Kompatibilität</string>
     <string name="sym_shortcuts_compatibility_title">Kompatibilität der SYM-Taste</string>
-    <string name="sym_shortcuts_compatibility_description">SYM-Tasten-Shortcuts benötigen eine Tastatur, die SYM gegenüber Android als Modifier bereitstellt. Sie funktionieren derzeit nicht mit Tastaturen, deren Firmware SYM-Kombinationen bereits in fertige Zeichen oder Navigationseingaben umwandelt, bevor Pastiera sie empfängt. Dazu gehört das aktuelle SYM-Verhalten des Clicks Power Keyboard.</string>
+    <string name="sym_shortcuts_compatibility_description">SYM-Tasten-Shortcuts benötigen eine Tastatur, die SYM gegenüber Android als Modifier bereitstellt. Sie funktionieren derzeit nicht mit Tastaturen, deren Firmware SYM-Kombinationen bereits in fertige Zeichen oder Navigationseingaben umwandelt, bevor PhysiBoard sie empfängt. Dazu gehört das aktuelle SYM-Verhalten des Clicks Power Keyboard.</string>
     <string name="power_shortcuts_press_key">Zum Starten die Shortcut-Taste drücken</string>
-    <string name="notification_update_channel_name">Pastiera-Updates</string>
-    <string name="notification_update_channel_description">Benachrichtigungen über neue Pastiera-Versionen</string>
-    <string name="notification_update_available_title">Pastiera - Neues Update verfügbar</string>
-    <string name="notification_update_available_text">Eine neue Version von Pastiera ist verfügbar (%1$s)</string>
+    <string name="notification_update_channel_name">PhysiBoard-Updates</string>
+    <string name="notification_update_channel_description">Benachrichtigungen über neue PhysiBoard-Versionen</string>
+    <string name="notification_update_available_title">PhysiBoard - Neues Update verfügbar</string>
+    <string name="notification_update_available_text">Eine neue Version von PhysiBoard ist verfügbar (%1$s)</string>
     <string name="speech_recognition_error_no_match">Kein Text erkannt. Bitte erneut versuchen.</string>
     <string name="speech_recognition_error_timeout">Keine Spracheingabe erkannt.</string>
     <string name="speech_recognition_error_permission">Mikrofonberechtigung verweigert.</string>
@@ -951,12 +949,12 @@ Jede Taste kann als Keycode, Aktion, Native Ctrl oder Keine konfiguriert werden.
     <string name="status_bar_button_software_keyboard_mode">Tastaturmodus</string>
     <string name="status_bar_button_software_keyboard_mode_description">Bildschirmtastatur vorübergehend auf- oder zuklappen (Ctrl+B)</string>
     <string name="tutorial_page_software_keyboard_title">Tastaturmodus</string>
-    <string name="tutorial_page_software_keyboard_description">Wähle, welche Tastaturfläche Pastiera hier nutzen soll.</string>
+    <string name="tutorial_page_software_keyboard_description">Wähle, welche Tastaturfläche PhysiBoard hier nutzen soll.</string>
     <string name="tutorial_software_keyboard_alpha_warning">Alpha-Funktion: Die virtuelle Tastatur ist noch stark im Umbau und aktuell nicht für den täglichen Gebrauch empfohlen.</string>
     <string name="tutorial_android16_ime_caption_title">IME-Beschriftungsleiste ausblenden</string>
-    <string name="tutorial_android16_ime_caption_description">Titan 2-Geräte können unter Pastiera eine zusätzliche IME-Beschriftungsleiste anzeigen. Diese OEM-Einstellung blendet sie aus und hält Pastiera kompakt.</string>
+    <string name="tutorial_android16_ime_caption_description">Titan 2-Geräte können unter PhysiBoard eine zusätzliche IME-Beschriftungsleiste anzeigen. Diese OEM-Einstellung blendet sie aus und hält PhysiBoard kompakt.</string>
     <string name="tutorial_android16_ime_caption_before">Vorher: zusätzliche Leiste</string>
-    <string name="tutorial_android16_ime_caption_after">Nachher: kompakte Pastiera</string>
+    <string name="tutorial_android16_ime_caption_after">Nachher: kompakte PhysiBoard</string>
     <string name="tutorial_android16_ime_caption_check_android16">Android 16 oder neuer</string>
     <string name="tutorial_android16_ime_caption_check_titan2">Unihertz Titan 2 oder Titan 2 Elite</string>
     <string name="tutorial_android16_ime_caption_check_setting">OEM-Gesteneinstellung verfügbar</string>
@@ -1023,7 +1021,7 @@ Jede Taste kann als Keycode, Aktion, Native Ctrl oder Keine konfiguriert werden.
     <string name="toast_on_layout_switch_title">Toast beim Layoutwechsel</string>
     <string name="toast_on_layout_switch_description">Beim Wechseln von Sprachen/Layouts einen Toast anzeigen.</string>
     <string name="quick_launcher_respect_keyboard_layout_title">Aktives Tastaturlayout verwenden</string>
-    <string name="quick_launcher_respect_keyboard_layout_description">Wenn aktiviert, folgt die Sucheingabe dem aktuellen Pastiera-Layout statt der rohen Android-QWERTY-Tastenausgabe.</string>
+    <string name="quick_launcher_respect_keyboard_layout_description">Wenn aktiviert, folgt die Sucheingabe dem aktuellen PhysiBoard-Layout statt der rohen Android-QWERTY-Tastenausgabe.</string>
     <string name="quick_launcher_typo_tolerant_ranking_title">Fehlertolerante Suche</string>
     <string name="quick_launcher_typo_tolerant_ranking_description">Auch App-Namen mit kleinen Tippfehlern finden. Vorhandene Präfix- und Abkürzungstreffer bleiben höher bewertet.</string>
     <string name="quick_launcher_ranking_info_button">Ranking erklären</string>
@@ -1054,6 +1052,6 @@ Jede Taste kann als Keycode, Aktion, Native Ctrl oder Keine konfiguriert werden.
     <string name="tutorial_whats_new_title">Neu in dieser Version: %1$s</string>
     <string name="tutorial_whats_new_description">Ein paar Änderungen solltest du kennen, bevor du weitermachst.</string>
     <string name="tutorial_whats_new_bug_fixes_title">Fehlerbehebungen</string>
-    <string name="tutorial_whats_new_docs_button">Pastiera-Dokumentation öffnen</string>
+    <string name="tutorial_whats_new_docs_button">PhysiBoard-Dokumentation öffnen</string>
     <string name="tutorial_whats_new_continue_hint">Fahre mit dem Tutorial fort, um die wichtigsten Einstellungen dieser Version durchzugehen.</string>
 </resources>

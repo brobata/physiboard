@@ -196,7 +196,7 @@ class SuggestionController(
             return
         }
         if (debugLogging) {
-            Log.d("PastieraIME", "trackerWordChanged='$word' len=${word.length}")
+            Log.d("PhysiBoardIME", "trackerWordChanged='$word' len=${word.length}")
         }
 
         val generation = suggestionGeneration + 1
@@ -269,7 +269,7 @@ class SuggestionController(
         if (!isEnabled()) return
         if (debugLogging) {
             val caller = Throwable().stackTrace.getOrNull(1)?.let { "${it.className}#${it.methodName}:${it.lineNumber}" }
-            Log.d("PastieraIME", "SuggestionController.onCharacterCommitted('$text') caller=$caller")
+            Log.d("PhysiBoardIME", "SuggestionController.onCharacterCommitted('$text') caller=$caller")
         }
         ensureDictionaryLoaded()
 
@@ -304,7 +304,7 @@ class SuggestionController(
     ): AutoReplaceController.ReplaceResult {
         if (debugLogging) {
             Log.d(
-                "PastieraIME",
+                "PhysiBoardIME",
                 "SuggestionController.onBoundaryKey keyCode=$keyCode char=${event?.unicodeChar}"
             )
         }
@@ -316,7 +316,7 @@ class SuggestionController(
             val word = extractWordAtCursor(inputConnection, includeAfterCursor = false)
             if (!word.isNullOrBlank()) {
                 tracker.setWord(word, notify = false)
-                Log.d("PastieraIME", "SYNC: Synced tracker to actual word='$word' before boundary")
+                Log.d("PhysiBoardIME", "SYNC: Synced tracker to actual word='$word' before boundary")
             }
         }
 
@@ -514,7 +514,7 @@ class SuggestionController(
             } catch (_: CancellationException) {
                 // Cancelled due to rapid switches; safe to ignore.
             } catch (e: Exception) {
-                Log.e("PastieraIME", "Failed to refresh user dictionary", e)
+                Log.e("PhysiBoardIME", "Failed to refresh user dictionary", e)
             }
         }
     }
@@ -771,7 +771,7 @@ class SuggestionController(
                 } catch (_: CancellationException) {
                     // Cancelled due to rapid switches; safe to ignore.
                 } catch (e: Exception) {
-                    Log.e("PastieraIME", "Failed to load extra dictionary", e)
+                    Log.e("PhysiBoardIME", "Failed to load extra dictionary", e)
                 }
             }
         }
@@ -904,7 +904,7 @@ class SuggestionController(
             } catch (_: CancellationException) {
                 // Cancelled due to rapid switches; safe to ignore.
             } catch (e: Exception) {
-                Log.e("PastieraIME", "Failed to load dictionary", e)
+                Log.e("PhysiBoardIME", "Failed to load dictionary", e)
             }
         }
     }

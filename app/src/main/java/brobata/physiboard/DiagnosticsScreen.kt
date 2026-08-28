@@ -145,7 +145,7 @@ fun DiagnosticsScreen(
     val copyReportToClipboard: (String) -> Unit = { report ->
         val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboardManager.setPrimaryClip(
-            ClipData.newPlainText("pastiera-keyboard-debug", report)
+            ClipData.newPlainText("physiboard-keyboard-debug", report)
         )
         Toast.makeText(
             context,
@@ -162,7 +162,7 @@ fun DiagnosticsScreen(
         } else {
             Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
-                putExtra(Intent.EXTRA_SUBJECT, "Pastiera Keyboard Debug Export")
+                putExtra(Intent.EXTRA_SUBJECT, "PhysiBoard Keyboard Debug Export")
                 putExtra(Intent.EXTRA_TEXT, report)
             }
         }
@@ -631,7 +631,7 @@ private fun createDebugReportFileShareIntent(context: Context, report: String): 
         mkdirs()
     }
     val timestamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
-    val reportFile = File(reportDir, "pastiera-keyboard-debug-$timestamp.txt")
+    val reportFile = File(reportDir, "physiboard-keyboard-debug-$timestamp.txt")
     reportFile.writeText(report, Charsets.UTF_8)
     val uri = FileProvider.getUriForFile(
         context,
@@ -640,9 +640,9 @@ private fun createDebugReportFileShareIntent(context: Context, report: String): 
     )
     return Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
-        putExtra(Intent.EXTRA_SUBJECT, "Pastiera Keyboard Debug Export")
+        putExtra(Intent.EXTRA_SUBJECT, "PhysiBoard Keyboard Debug Export")
         putExtra(Intent.EXTRA_STREAM, uri)
-        clipData = ClipData.newUri(context.contentResolver, "Pastiera Keyboard Debug Export", uri)
+        clipData = ClipData.newUri(context.contentResolver, "PhysiBoard Keyboard Debug Export", uri)
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
 }

@@ -12,7 +12,7 @@ class TrackpadAddWordGesturePolicyTest {
                 third = 0,
                 addWordGestureEnabled = true,
                 fullWidthWhenAddOnlyEnabled = false,
-                addWordCandidate = "Pastiera",
+                addWordCandidate = "PhysiBoard",
                 visibleSuggestions = emptyList()
             )
         )
@@ -25,7 +25,7 @@ class TrackpadAddWordGesturePolicyTest {
                 third = 2,
                 addWordGestureEnabled = true,
                 fullWidthWhenAddOnlyEnabled = true,
-                addWordCandidate = "Pastiera",
+                addWordCandidate = "PhysiBoard",
                 visibleSuggestions = emptyList()
             )
         )
@@ -38,7 +38,7 @@ class TrackpadAddWordGesturePolicyTest {
                 third = 1,
                 addWordGestureEnabled = true,
                 fullWidthWhenAddOnlyEnabled = true,
-                addWordCandidate = "Pastiera",
+                addWordCandidate = "PhysiBoard",
                 visibleSuggestions = listOf("past", "paste")
             )
         )
@@ -51,7 +51,7 @@ class TrackpadAddWordGesturePolicyTest {
                 third = 0,
                 addWordGestureEnabled = false,
                 fullWidthWhenAddOnlyEnabled = true,
-                addWordCandidate = "Pastiera",
+                addWordCandidate = "PhysiBoard",
                 visibleSuggestions = emptyList()
             )
         )

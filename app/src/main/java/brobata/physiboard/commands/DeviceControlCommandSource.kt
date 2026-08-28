@@ -42,7 +42,7 @@ class DeviceControlCommandSource : CommandSource {
                 add(
                     settingsCommand(
                         id = "settings.android.pastiera_notifications",
-                        label = "Pastiera notifications",
+                        label = "PhysiBoard notifications",
                         action = Settings.ACTION_APP_NOTIFICATION_SETTINGS,
                         data = null,
                         extras = mapOf(Settings.EXTRA_APP_PACKAGE to context.packageName)

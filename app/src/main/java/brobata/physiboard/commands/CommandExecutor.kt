@@ -83,7 +83,7 @@ class CommandExecutor(
 
     private fun executeInternalAction(actionId: String): CommandExecutionResult {
         return when (actionId) {
-            PastieraCommandSource.ACTION_OPEN_QUICK_LAUNCHER -> {
+            PhysiBoardCommandSource.ACTION_OPEN_QUICK_LAUNCHER -> {
                 try {
                     val intent = QuickLauncherActivity.createOpenIntent(context)
                     context.startActivity(intent)
@@ -93,14 +93,14 @@ class CommandExecutor(
                     fail("Could not open QuickLauncher")
                 }
             }
-            PastieraCommandSource.ACTION_START_VOICE_ASSISTANT -> {
+            PhysiBoardCommandSource.ACTION_START_VOICE_ASSISTANT -> {
                 if (AssistantLauncher.launch(context)) {
                     CommandExecutionResult.Success
                 } else {
                     fail(context.getString(R.string.assistant_unavailable))
                 }
             }
-            PastieraCommandSource.ACTION_OPEN_MAIN_ACTIVITY -> {
+            PhysiBoardCommandSource.ACTION_OPEN_MAIN_ACTIVITY -> {
                 try {
                     val intent = Intent(context, MainActivity::class.java).apply {
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -108,11 +108,11 @@ class CommandExecutor(
                     context.startActivity(intent)
                     CommandExecutionResult.Success
                 } catch (error: Exception) {
-                    Log.e(TAG, "Failed to open Pastiera", error)
-                    fail("Could not open Pastiera")
+                    Log.e(TAG, "Failed to open PhysiBoard", error)
+                    fail("Could not open PhysiBoard")
                 }
             }
-            PastieraCommandSource.ACTION_TOGGLE_SOFTWARE_KEYBOARD_MODE -> toggleSoftwareKeyboardMode()
+            PhysiBoardCommandSource.ACTION_TOGGLE_SOFTWARE_KEYBOARD_MODE -> toggleSoftwareKeyboardMode()
             DeviceControlCommandSource.ACTION_HOME_SCREEN -> goHome()
             DeviceControlCommandSource.ACTION_MEDIA_PLAY_PAUSE -> dispatchMediaKey(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
             DeviceControlCommandSource.ACTION_MEDIA_PREVIOUS -> dispatchMediaKey(KeyEvent.KEYCODE_MEDIA_PREVIOUS)

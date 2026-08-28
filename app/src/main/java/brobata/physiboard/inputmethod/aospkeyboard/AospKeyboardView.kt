@@ -1,5 +1,5 @@
 /*
- * Pastiera modifications for full virtual keyboard mode.
+ * PhysiBoard modifications for full virtual keyboard mode.
  *
  * This file derives keyboard geometry behavior from Android Open Source Project LatinIME
  * (`platform/packages/inputmethods/LatinIME`) at commit
@@ -37,9 +37,9 @@ import java.util.Locale
 import kotlin.math.abs
 
 /**
- * AOSP LatinIME alphabet key plane embedded in Pastiera.
+ * AOSP LatinIME alphabet key plane embedded in PhysiBoard.
  *
- * This intentionally keeps Pastiera's IME lifecycle/suggestions/status bars, but mirrors the
+ * This intentionally keeps PhysiBoard's IME lifecycle/suggestions/status bars, but mirrors the
  * AOSP qwerty/qwertz/azerty key geometry from rows_*.xml and row_qwerty4.xml.
  */
 class AospKeyboardView @JvmOverloads constructor(

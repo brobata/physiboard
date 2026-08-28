@@ -34,7 +34,7 @@ import brobata.physiboard.data.layout.LayoutManifest
 import brobata.physiboard.data.layout.LayoutMappingRepository
 import brobata.physiboard.data.layout.LayoutRepositoryManager
 import brobata.physiboard.data.layout.LayoutDownloadResult
-import brobata.physiboard.ui.theme.PastieraTheme
+import brobata.physiboard.ui.theme.PhysiBoardTheme
 import kotlinx.coroutines.launch
 
 private const val TAG = "OnlineLayouts"
@@ -43,7 +43,7 @@ class OnlineLayoutsActivity : LocalizedComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            PastieraTheme {
+            PhysiBoardTheme {
                 OnlineLayoutsScreen(
                     onBack = { finish() },
                     modifier = Modifier.fillMaxSize()

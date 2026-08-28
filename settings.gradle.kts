@@ -19,6 +19,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Pastiera"
+rootProject.name = "PhysiBoard"
 include(":app")
  

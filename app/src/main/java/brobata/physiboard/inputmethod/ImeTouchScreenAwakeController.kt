@@ -41,6 +41,6 @@ internal class ImeTouchScreenAwakeController(
 
     private companion object {
         const val DEFAULT_PULSE_DURATION_MILLIS = 200L
-        const val WAKE_LOCK_TAG = "Pastiera:ImeTouch"
+        const val WAKE_LOCK_TAG = "PhysiBoard:ImeTouch"
     }
 }

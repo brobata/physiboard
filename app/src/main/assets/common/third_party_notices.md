@@ -2,7 +2,7 @@
 
 ## Android Open Source Project LatinIME
 
-Pastiera's full virtual keyboard mode uses AOSP LatinIME as a reference for keyboard geometry and includes AOSP-derived keyboard visual assets.
+PhysiBoard's full virtual keyboard mode uses AOSP LatinIME as a reference for keyboard geometry and includes AOSP-derived keyboard visual assets.
 
 - Project: Android Open Source Project, LatinIME (`platform/packages/inputmethods/LatinIME`)
 - Source repository: https://android.googlesource.com/platform/packages/inputmethods/LatinIME
@@ -11,7 +11,7 @@ Pastiera's full virtual keyboard mode uses AOSP LatinIME as a reference for keyb
 
 The Apache License, Version 2.0 text is included in `assets/common/licenses/Apache-2.0.txt` and in the repository under `third_party/licenses/Apache-2.0.txt`.
 
-Pastiera does not import AOSP dictionaries.
+PhysiBoard does not import AOSP dictionaries.
 
 ## JetBrains Mono
 
@@ -39,7 +39,7 @@ The Apache License, Version 2.0 text is included in `assets/common/licenses/Apac
 
 ## Google Material Symbols / Material Icons
 
-Pastiera uses icon artwork from Google Material Symbols / Material Icons for parts of the app UI and keyboard chrome.
+PhysiBoard uses icon artwork from Google Material Symbols / Material Icons for parts of the app UI and keyboard chrome.
 
 - Project: Material Symbols / Material Icons
 - Project page: https://fonts.google.com/icons
@@ -50,7 +50,7 @@ The Apache License, Version 2.0 text is included in `assets/common/licenses/Apac
 
 ## OpenGameArt Typing Sounds
 
-Pastiera includes short typing sound samples derived from CC0 sound effects.
+PhysiBoard includes short typing sound samples derived from CC0 sound effects.
 
 - Project: Keyboard Soundpack #1 [Typing and Single Keystrokes]
 - Author: unicaegames
@@ -81,7 +81,7 @@ Typing sound derivatives are included under `res/raw/typing_*.ogg`.
 - Source path used by generator: `cldr-json/cldr-annotations-full/annotations`
 - License: Unicode Data Files and Software License / Unicode License
 
-Pastiera's local emoji search assets under `assets/common/emoji_search/*.tsv`
+PhysiBoard's local emoji search assets under `assets/common/emoji_search/*.tsv`
 are generated from Unicode CLDR annotation data by `scripts/generate_emoji_search_assets.py`.
 The generated TSV files are filtered to the emoji set bundled with Pastiera and normalized
 for compact local lookup.
@@ -95,7 +95,7 @@ for compact local lookup.
   the Leipzig frequency dictionary word lists are documented as CC-BY 3.0, while current
   downloadable corpus data may carry corpus-specific terms.
 
-Pastiera's bundled base dictionaries under `assets/common/dictionaries/*_base.json`
+PhysiBoard's bundled base dictionaries under `assets/common/dictionaries/*_base.json`
 and the generated serialized dictionaries under `assets/common/dictionaries_serialized/*_base.dict`
 are frequency-list derivatives built mainly from Leipzig Corpora Collection / Wortschatz Leipzig
 word-frequency data, with project-maintained filtering, truncation, normalization, and additional
