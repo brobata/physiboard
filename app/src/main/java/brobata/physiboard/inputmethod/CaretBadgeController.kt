@@ -41,7 +41,14 @@ class CaretBadgeController(private val service: InputMethodService) {
      */
     private var overlayRejected = false
 
-    private var currentLabel: String? = null
+    private var currentLabel: Badge? = null
+
+    /**
+     * What to draw. [held] is true only while every active modifier is a plain physical hold, which
+     * is drawn muted - a hold ends when the user lets go, so it does not need to shout. Anything
+     * armed or locked stays on after the key is released and is drawn solid.
+     */
+    private data class Badge(val text: String, val held: Boolean)
 
     /**
      * The last caret position the editor reported, so pressing a modifier can put the badge on
@@ -58,18 +65,18 @@ class CaretBadgeController(private val service: InputMethodService) {
      * @return true if the need for cursor updates changed, so the caller can re-issue the request.
      */
     fun onSnapshot(snapshot: StatusBarController.StatusSnapshot, enabled: Boolean) {
-        val label = if (enabled) labelFor(snapshot) else null
-        if (label == currentLabel) return
-        currentLabel = label
-        if (label == null) hide() else lastCaret?.let { show(label, it) }
+        val badge = if (enabled) badgeFor(snapshot) else null
+        if (badge == currentLabel) return
+        currentLabel = badge
+        if (badge == null) hide() else lastCaret?.let { show(badge, it) }
     }
 
     /** Positions the badge from the caret the editor just reported. */
     fun onCursorAnchorInfo(info: CursorAnchorInfo?) {
         val caret = caretRect(info)
         lastCaret = caret
-        val label = currentLabel ?: return
-        if (caret == null) hide() else show(label, caret)
+        val badge = currentLabel ?: return
+        if (caret == null) hide() else show(badge, caret)
     }
 
     /** Called when the editor goes away - the cached caret belongs to it, not to the next one. */
@@ -117,10 +124,13 @@ class CaretBadgeController(private val service: InputMethodService) {
         return Caret(x = points[0], top = points[1], bottom = points[3])
     }
 
-    private fun show(label: String, caret: Caret) {
+    private fun show(badge: Badge, caret: Caret) {
         if (overlayRejected || !canDrawOverlays()) return
         val view = badgeView ?: createBadge().also { badgeView = it }
-        view.text = label
+        view.text = badge.text
+        (view.background as? GradientDrawable)?.setColor(
+            if (badge.held) BADGE_HELD else BADGE_LATCHED
+        )
 
         val metrics = context.resources.displayMetrics
         view.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
@@ -167,20 +177,20 @@ class CaretBadgeController(private val service: InputMethodService) {
         this.y = y
     }
 
-    // Small, but not so small it cannot be read at a glance. It also has to carry its own contrast:
-    // it floats over an app whose background could be any colour, so a near-black pill disappears
-    // on a dark theme and a pale one disappears on a light theme. A saturated accent reads on both.
+    // It has to carry its own contrast: it floats over an app whose background could be any colour,
+    // so a near-black pill disappears on a dark theme and a pale one disappears on a light theme.
+    // White bold text on a saturated fill reads on both.
     private fun createBadge(): TextView = TextView(context).apply {
         setTextColor(Color.WHITE)
-        setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
         typeface = android.graphics.Typeface.DEFAULT_BOLD
         includeFontPadding = false
-        letterSpacing = 0.04f
-        setPadding(dp(5), dp(2), dp(5), dp(2))
+        letterSpacing = 0.06f
+        setPadding(dp(6), dp(3), dp(6), dp(3))
         background = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = dp(4).toFloat()
-            setColor(BADGE_BACKGROUND)
+            setColor(BADGE_LATCHED)
         }
     }
 
@@ -193,33 +203,44 @@ class CaretBadgeController(private val service: InputMethodService) {
     private companion object {
         const val TAG = "CaretBadge"
 
-        /** Saturated so white text on it reads over a light app and a dark one alike. */
-        const val BADGE_BACKGROUND = 0xF03B82F6.toInt()
+        /** Armed or locked: it outlives the keypress, so it is drawn at full strength. */
+        const val BADGE_LATCHED = 0xF03B82F6.toInt()
+
+        /** A plain hold, which ends the moment the key is released. Present, but muted. */
+        const val BADGE_HELD = 0xC064748B.toInt()
 
         /**
          * Every way a modifier can be on, including a plain physical hold. This is a read-out of
          * what the keyboard is actually doing, so it reports a held Shift exactly like a latched
          * one - if it is on, it is shown.
          */
-        fun labelFor(snapshot: StatusBarController.StatusSnapshot): String? {
+        fun badgeFor(snapshot: StatusBarController.StatusSnapshot): Badge? {
             val parts = mutableListOf<String>()
+            // Tracked separately from the text: the style says whether this outlives the keypress,
+            // which is the part that actually changes what the next letter will do.
+            var anyLatched = false
             when {
-                // Locked states carry the lock arrow; a one-shot or a hold is the plain glyph.
-                snapshot.capsLockEnabled -> parts += "\u21EA"
-                snapshot.shiftOneShot || snapshot.shiftPhysicallyPressed -> parts += "\u21E7"
+                snapshot.capsLockEnabled -> { parts += "CAPS"; anyLatched = true }
+                snapshot.shiftOneShot -> { parts += "SHIFT"; anyLatched = true }
+                snapshot.shiftPhysicallyPressed -> parts += "SHIFT"
             }
             when {
-                snapshot.altLatchActive -> parts += "ALT\u21EA"
-                snapshot.altOneShot || snapshot.altPhysicallyPressed -> parts += "ALT"
+                snapshot.altLatchActive -> { parts += "ALT"; anyLatched = true }
+                snapshot.altOneShot -> { parts += "ALT"; anyLatched = true }
+                snapshot.altPhysicallyPressed -> parts += "ALT"
             }
             // The one exclusion: nav mode holds Ctrl latched for as long as it is on, so reporting
             // that would pin a Ctrl badge beside the cursor permanently rather than report a press.
             when {
-                snapshot.ctrlLatchActive && !snapshot.ctrlLatchFromNavMode -> parts += "CTRL\u21EA"
-                snapshot.ctrlOneShot || snapshot.ctrlPhysicallyPressed -> parts += "CTRL"
+                snapshot.ctrlLatchActive && !snapshot.ctrlLatchFromNavMode -> {
+                    parts += "CTRL"; anyLatched = true
+                }
+                snapshot.ctrlOneShot -> { parts += "CTRL"; anyLatched = true }
+                snapshot.ctrlPhysicallyPressed -> parts += "CTRL"
             }
-            if (snapshot.symPage != 0) parts += "SYM"
-            return parts.takeIf { it.isNotEmpty() }?.joinToString(" ")
+            if (snapshot.symPage != 0) { parts += "SYM"; anyLatched = true }
+            if (parts.isEmpty()) return null
+            return Badge(text = parts.joinToString(" "), held = !anyLatched)
         }
     }
 }
