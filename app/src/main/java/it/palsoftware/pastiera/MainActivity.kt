@@ -121,7 +121,7 @@ class MainActivity : LocalizedComponentActivity() {
             )
             val hasModifiers = event.isAltPressed || event.isShiftPressed || event.isCtrlPressed
 
-            // Ignora i keycode di output senza modificatori (sono generati dal servizio)
+            // Ignore unmodified output keycodes - the service generates those
             if (!isOutputKeyCode || hasModifiers) {
                 KeyboardEventTracker.notifyKeyEvent(keyCode, event, "KEY_DOWN", origin = "activity")
             }

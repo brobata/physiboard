@@ -3,11 +3,11 @@ package it.palsoftware.pastiera
 import it.palsoftware.pastiera.BuildConfig
 
 /**
- * Fornisce informazioni sulla build dell'app.
+ * Exposes information about the app build.
  */
 object BuildInfo {
     /**
-     * Ottiene la stringa formattata con versione e canale di release.
+     * Returns the formatted version and release-channel string.
      */
     fun getBuildInfoString(): String {
         val version = BuildConfig.VERSION_NAME

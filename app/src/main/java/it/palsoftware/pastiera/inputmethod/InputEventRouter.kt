@@ -168,7 +168,7 @@ class InputEventRouter(
             return true
         }
 
-        // Gestisci Power Shortcuts (SYM premuto + tasto alfabetico)
+        // Handle Power Shortcuts (SYM held + a letter key)
         if (!ctrlLatchActive && powerShortcutsEnabled) {
             if (callbacks.isShortcutKey(keyCode)) {
                 if (callbacks.handlePowerShortcut(keyCode)) {
@@ -177,7 +177,7 @@ class InputEventRouter(
             }
         }
 
-        // Launcher Shortcuts (logica esistente - mantieni per compatibilità)
+        // Launcher shortcuts (existing logic - kept for compatibility)
         if (!ctrlLatchActive && SettingsManager.getLauncherShortcutsEnabled(context)) {
             val packageName = editorInfo?.packageName ?: currentPackageName
             if (callbacks.isLauncherPackage(packageName) && callbacks.isShortcutKey(keyCode)) {

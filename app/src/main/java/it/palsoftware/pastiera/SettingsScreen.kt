@@ -69,7 +69,7 @@ import it.palsoftware.pastiera.update.showUpdateDialog
 import it.palsoftware.pastiera.update.shouldUseGithubUpdateChecks
 
 /**
- * Sealed class per rappresentare lo stato della navigazione nelle settings.
+ * Sealed class describing the settings navigation state.
  */
 enum class SettingsDestination {
     Main,

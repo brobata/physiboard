@@ -115,7 +115,7 @@ fun KeyboardLayoutSettingsScreen(
     var previewLayout by remember { mutableStateOf<String?>(null) }
     var layoutToDelete by remember { mutableStateOf<String?>(null) }
 
-    // Launcher per importare layout JSON via SAF
+    // Launcher for importing a JSON layout via SAF
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -134,7 +134,7 @@ fun KeyboardLayoutSettingsScreen(
                         
                         val saved = LayoutFileStore.saveLayoutFromJson(context, layoutName, jsonString)
                         if (saved) {
-                            refreshTrigger++            // ricarica lista layout
+                            refreshTrigger++            // reload the layout list
                             selectedLayout = layoutName // seleziona l'importato
                             coroutineScope.launch {
                                 snackbarHostState.showSnackbar(

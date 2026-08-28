@@ -11,7 +11,7 @@ import android.util.Log
 import it.palsoftware.pastiera.commands.CommandLaunchSpec
 
 /**
- * Data class per rappresentare un'app installata.
+ * Data class describing an installed app.
  */
 data class InstalledApp(
     val packageName: String,
@@ -21,7 +21,7 @@ data class InstalledApp(
 )
 
 /**
- * Helper per ottenere la lista di tutte le app installate che possono essere avviate.
+ * Helper that lists every installed app that can be launched.
  */
 object AppListHelper {
     private const val TAG = "AppListHelper"
@@ -101,7 +101,7 @@ object AppListHelper {
     }
     
     /**
-     * Ottiene tutte le app installate che possono essere avviate.
+     * Returns every installed app that can be launched.
      */
     fun getInstalledApps(context: Context, forceRefresh: Boolean = false): List<InstalledApp> {
         if (!forceRefresh) {
@@ -112,14 +112,14 @@ object AppListHelper {
         val apps = mutableListOf<InstalledApp>()
         
         try {
-            // Ottieni tutte le app che hanno un launcher activity
+            // Every app that has a launcher activity
             val intent = Intent(Intent.ACTION_MAIN, null).apply {
                 addCategory(Intent.CATEGORY_LAUNCHER)
             }
             
             val resolveInfos = pm.queryIntentActivities(intent, 0)
             
-            // Raggruppa per package per evitare duplicati
+            // Group by package to avoid duplicates
             val packageNames = mutableSetOf<String>()
             
             for (resolveInfo in resolveInfos) {
@@ -144,17 +144,17 @@ object AppListHelper {
                         isSystemApp = isSystemApp
                     ))
                 } catch (e: Exception) {
-                    Log.w(TAG, "Errore nel caricamento info per $packageName", e)
+                    Log.w(TAG, "Failed to load info for $packageName", e)
                 }
             }
             
-            // Ordina alfabeticamente per nome
+            // Sort alphabetically by name
             apps.sortBy { it.appName.lowercase() }
             cachedInstalledApps = apps.toList()
             
             Log.d(TAG, "Caricate ${apps.size} app installate")
         } catch (e: Exception) {
-            Log.e(TAG, "Errore nel recupero delle app installate", e)
+            Log.e(TAG, "Failed to read the installed apps", e)
         }
         
         return apps

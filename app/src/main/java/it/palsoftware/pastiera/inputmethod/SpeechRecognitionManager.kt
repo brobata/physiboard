@@ -180,7 +180,7 @@ class SpeechRecognitionManager(
         
         // Capitalize after sentence-ending punctuation (., !, ?)
         if (SettingsManager.getAutoCapitalizeAfterPeriod(context)) {
-            // Pattern: trova . ! o ? seguito da spazio e una lettera minuscola
+            // Pattern: find . ! or ? followed by a space and a lowercase letter
             formatted = formatted.replace(Regex("([.!?]\\s+)([a-z])")) { matchResult ->
                 matchResult.groupValues[1] + matchResult.groupValues[2].uppercase()
             }

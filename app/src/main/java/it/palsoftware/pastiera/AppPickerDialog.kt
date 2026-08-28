@@ -28,7 +28,7 @@ import android.graphics.PorterDuff
 import android.graphics.drawable.ColorDrawable
 
 /**
- * Dialog per selezionare un'app installata.
+ * Dialog for picking an installed app.
  */
 @Composable
 fun AppPickerDialog(
@@ -37,14 +37,14 @@ fun AppPickerDialog(
 ) {
     val context = LocalContext.current
     
-    // Carica le app installate
+    // Load the installed apps
     val installedApps by remember {
         mutableStateOf(AppListHelper.getInstalledApps(context))
     }
     
     var searchQuery by remember { mutableStateOf("") }
     
-    // Filtra le app in base alla query di ricerca
+    // Filter apps against the search query
     val filteredApps = remember(installedApps, searchQuery) {
         if (searchQuery.isBlank()) {
             installedApps
@@ -102,7 +102,7 @@ fun AppPickerDialog(
                     singleLine = true
                 )
                 
-                // Lista delle app
+                // The app list
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -125,7 +125,7 @@ fun AppPickerDialog(
 }
 
 /**
- * Item della lista per un'app.
+ * One app row in the list.
  */
 @Composable
 private fun AppListItem(
@@ -145,7 +145,7 @@ private fun AppListItem(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Icona app usando AndroidView per visualizzare direttamente il Drawable
+            // App icon via AndroidView so the Drawable renders directly
             Box(
                 modifier = Modifier.size(48.dp),
                 contentAlignment = Alignment.Center

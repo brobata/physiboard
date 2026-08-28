@@ -68,7 +68,7 @@ class SymSpellTest {
         
         // 'halol' (Transposition: l and o)
         val results = symSpell.lookup("halol")
-        assertTrue("Sollte 'hallo' finden via Transposition", results.any { it.term == "hallo" && it.distance == 1 })
+        assertTrue("Finds 'hallo' via transposition", results.any { it.term == "hallo" && it.distance == 1 })
     }
 
     @Test
@@ -78,17 +78,17 @@ class SymSpellTest {
         val longWord = "donaudampfschiff"
         symSpell.addWord(longWord, 100)
         
-        // Tippfehler im Suffix (außerhalb des Präfixes)
+        // Typo in the suffix (outside the prefix)
         // 'donaudampfschixf' -> 'donaudampfschiff'
         val typoSuffix = "donaudampfschixf"
         val resultsSuffix = symSpell.lookup(typoSuffix)
-        assertTrue("Sollte Tippfehler im Suffix korrigieren", resultsSuffix.any { it.term == longWord })
+        assertTrue("Corrects a typo in the suffix", resultsSuffix.any { it.term == longWord })
 
-        // Tippfehler im Präfix
+        // Typo in the prefix
         // 'donaxdampfschiff' -> 'donaudampfschiff'
         val typoPrefix = "donaxdampfschiff"
         val resultsPrefix = symSpell.lookup(typoPrefix)
-        assertTrue("Sollte Tippfehler im Präfix korrigieren", resultsPrefix.any { it.term == longWord })
+        assertTrue("Corrects a typo in the prefix", resultsPrefix.any { it.term == longWord })
     }
 
     @Test
@@ -107,16 +107,16 @@ class SymSpellTest {
         
         symSpell.loadSerialized(terms, deletesMap)
         
-        // Prüfe ob 'apfel' gefunden wird (exakt)
+        // Check that 'apfel' is found (exact)
         val exact = symSpell.lookup("apfel")
         assertEquals(1, exact.size)
         assertEquals("apfel", exact[0].term)
         
-        // Prüfe ob 'apfe' korrigiert wird (Distanz 1)
+        // Check that 'apfe' is corrected (distance 1)
         val typo = symSpell.lookup("apfl")
         assertTrue(typo.any { it.term == "apfel" })
         
-        // Prüfe ob 'birne' existiert
+        // Check that 'birne' exists
         assertTrue(symSpell.lookup("birne").any { it.term == "birne" })
     }
 
@@ -133,10 +133,10 @@ class SymSpellTest {
         val symSpell = SymSpell(maxEditDistance = 2)
         symSpell.addWord("hallo", 100)
         
-        // Distanz 2: 'hxllo' -> 'hallo' (Substitution 1), 'hxxlo' -> 'hallo' (Substitution 2)
+        // Distance 2: 'hxllo' -> 'hallo' (1 substitution), 'hxxlo' -> 'hallo' (2 substitutions)
         assertTrue(symSpell.lookup("hxxlo").any { it.term == "hallo" && it.distance == 2 })
         
-        // Distanz 3: 'hxxxo' -> 'hallo' (Sollte nicht gefunden werden bei max=2)
+        // Distance 3: 'hxxxo' -> 'hallo' (should not be found when max=2)
         assertTrue(symSpell.lookup("hxxxo").none { it.term == "hallo" })
     }
 

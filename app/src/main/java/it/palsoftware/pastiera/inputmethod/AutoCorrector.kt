@@ -330,7 +330,7 @@ object AutoCorrector {
         // Try specific locale first
         corrections[targetLocale]?.let { localeCorrections ->
             localeCorrections[wordLower]?.let { correction ->
-                // Applica la capitalizzazione originale alla correzione
+                // Apply the original casing to the correction
                 return applyCapitalization(word, correction)
             }
         }

@@ -1252,7 +1252,7 @@ object SettingsManager {
                 keyAlternatesPopupEnabled = json.optBoolean("key_alternates_popup_enabled", defaults.keyAlternatesPopupEnabled)
             )
         } catch (error: Exception) {
-            Log.e(TAG, "Fehler beim Laden des Keyboard-Themes", error)
+            Log.e(TAG, "Failed to load the keyboard theme", error)
             defaults
         }
     }
@@ -1293,7 +1293,7 @@ object SettingsManager {
         return try {
             keyboardThemeFromJson(JSONObject(stored), defaults)
         } catch (error: Exception) {
-            Log.e(TAG, "Fehler beim Laden des System-Keyboard-Themes", error)
+            Log.e(TAG, "Failed to load the system keyboard theme", error)
             defaults
         }
     }
@@ -1360,7 +1360,7 @@ object SettingsManager {
                 }
             }
         } catch (error: Exception) {
-            Log.e(TAG, "Fehler beim Laden der Keyboard-Theme-Overrides", error)
+            Log.e(TAG, "Failed to load the keyboard theme overrides", error)
             emptyList()
         }
     }
@@ -1491,7 +1491,7 @@ object SettingsManager {
         return try {
             keyboardThemeFromJson(JSONObject(value), defaultKeyboardTheme())
         } catch (error: Exception) {
-            Log.e(TAG, "Fehler beim Importieren des Keyboard-Themes", error)
+            Log.e(TAG, "Failed to import the keyboard theme", error)
             null
         }
     }
@@ -1512,7 +1512,7 @@ object SettingsManager {
                 }
             }
         } catch (error: Exception) {
-            Log.e(TAG, "Fehler beim Laden gespeicherter Keyboard-Themes", error)
+            Log.e(TAG, "Failed to load the saved keyboard themes", error)
             emptyList()
         }
     }
@@ -1568,7 +1568,7 @@ object SettingsManager {
                 }
             }
         } catch (error: Exception) {
-            Log.e(TAG, "Fehler beim Laden gespeicherter Keyboard-Theme-Entwürfe", error)
+            Log.e(TAG, "Failed to load the saved keyboard theme drafts", error)
             emptyList()
         }
     }
@@ -4072,8 +4072,8 @@ object SettingsManager {
     }
     
     /**
-     * Data class per rappresentare una scorciatoia del launcher.
-     * Estendibile per supportare diversi tipi di azioni in futuro (app, shortcut, ecc.)
+     * Data class describing a launcher shortcut.
+     * Extensible to other action types later (app, shortcut, and so on).
      */
     data class LauncherShortcut(
         val type: String = TYPE_APP, // Tipo di azione: "app", "shortcut", ecc.
@@ -4149,7 +4149,7 @@ object SettingsManager {
     private const val KEY_NAV_MODE_MAPPINGS_UPDATED = "nav_mode_mappings_updated"
     
     /**
-     * Imposta una scorciatoia del launcher per un tasto (tipo app).
+     * Assigns a launcher shortcut to a key (app type).
      */
     fun setLauncherShortcut(context: Context, keyCode: Int, packageName: String, appName: String) {
         setLauncherCommand(
@@ -4208,7 +4208,7 @@ object SettingsManager {
     }
     
     /**
-     * Imposta un'azione del launcher per un tasto (generico, estendibile).
+     * Assigns a launcher action to a key (generic, extensible).
      */
     fun setLauncherAction(context: Context, keyCode: Int, action: LauncherShortcut) {
         val prefs = getPreferences(context)
@@ -4246,12 +4246,12 @@ object SettingsManager {
             })
             prefs.edit().putString(KEY_LAUNCHER_SHORTCUTS, shortcuts.toString()).apply()
         } catch (e: Exception) {
-            Log.e(TAG, "Errore nel salvataggio dell'azione per tasto $keyCode", e)
+            Log.e(TAG, "Failed to save the action for key $keyCode", e)
         }
     }
     
     /**
-     * Rimuove una scorciatoia del launcher per un tasto.
+     * Removes a key's launcher shortcut.
      */
     fun removeLauncherShortcut(context: Context, keyCode: Int) {
         val prefs = getPreferences(context)
@@ -4262,13 +4262,13 @@ object SettingsManager {
             shortcuts.remove(keyCode.toString())
             prefs.edit().putString(KEY_LAUNCHER_SHORTCUTS, shortcuts.toString()).apply()
         } catch (e: Exception) {
-            Log.e(TAG, "Errore nella rimozione della scorciatoia per tasto $keyCode", e)
+            Log.e(TAG, "Failed to remove the shortcut for key $keyCode", e)
         }
     }
     
     /**
-     * Scambia le scorciatoie del launcher tra due tasti (operazione atomica).
-     * Se uno dei tasti non ha uno shortcut, lo shortcut viene spostato.
+     * Swaps the launcher shortcuts on two keys, atomically.
+     * If one key has no shortcut, the other's is moved across.
      */
     fun swapLauncherShortcuts(context: Context, fromKeyCode: Int, toKeyCode: Int) {
         val prefs = getPreferences(context)
@@ -4296,12 +4296,12 @@ object SettingsManager {
             // Save atomically
             prefs.edit().putString(KEY_LAUNCHER_SHORTCUTS, shortcuts.toString()).apply()
         } catch (e: Exception) {
-            Log.e(TAG, "Errore nello scambio delle scorciatoie tra tasti $fromKeyCode e $toKeyCode", e)
+            Log.e(TAG, "Failed to swap the shortcuts between keys $fromKeyCode and $toKeyCode", e)
         }
     }
     
     /**
-     * Ottiene tutte le scorciatoie del launcher salvate.
+     * Returns every saved launcher shortcut.
      */
     fun getLauncherShortcuts(context: Context): Map<Int, LauncherShortcut> {
         ensureQuickLauncherDefaultShortcut(context)
@@ -4340,14 +4340,14 @@ object SettingsManager {
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Errore nel caricamento delle scorciatoie", e)
+            Log.e(TAG, "Failed to load the shortcuts", e)
         }
         
         return shortcuts
     }
     
     /**
-     * Ottiene una scorciatoia del launcher per un tasto specifico.
+     * Returns the launcher shortcut for one key.
      */
     fun getLauncherShortcut(context: Context, keyCode: Int): LauncherShortcut? {
         return getLauncherShortcuts(context)[keyCode]
@@ -4447,7 +4447,7 @@ object SettingsManager {
                 }
             }
         } catch (error: Exception) {
-            Log.e(TAG, "Errore nel caricamento command source visibility", error)
+            Log.e(TAG, "Failed to load command source visibility", error)
             defaults
         }
     }
@@ -4503,7 +4503,7 @@ object SettingsManager {
             }
             result
         } catch (error: Exception) {
-            Log.e(TAG, "Errore nel caricamento quick launcher command customizations", error)
+            Log.e(TAG, "Failed to load quick launcher command customizations", error)
             emptyMap()
         }
     }
@@ -4603,14 +4603,14 @@ object SettingsManager {
     }
     
     /**
-     * Restituisce se le scorciatoie del launcher sono abilitate.
+     * Returns whether launcher shortcuts are enabled.
      */
     fun getLauncherShortcutsEnabled(context: Context): Boolean {
         return getPreferences(context).getBoolean(KEY_LAUNCHER_SHORTCUTS_ENABLED, DEFAULT_LAUNCHER_SHORTCUTS_ENABLED)
     }
     
     /**
-     * Imposta se le scorciatoie del launcher sono abilitate.
+     * Sets whether launcher shortcuts are enabled.
      */
     fun setLauncherShortcutsEnabled(context: Context, enabled: Boolean) {
         getPreferences(context).edit()
@@ -4779,7 +4779,7 @@ object SettingsManager {
     private const val DEFAULT_POWER_SHORTCUTS_ENABLED = true
     
     /**
-     * Restituisce se i Power Shortcuts sono abilitati.
+     * Returns whether Power Shortcuts are enabled.
      */
     /** Sym+C/V/X/A copy, paste, cut and select all in text fields; on by default. */
     fun getSymEditShortcutsEnabled(context: Context): Boolean =
@@ -4794,7 +4794,7 @@ object SettingsManager {
     }
     
     /**
-     * Imposta se i Power Shortcuts sono abilitati.
+     * Sets whether Power Shortcuts are enabled.
      */
     fun setPowerShortcutsEnabled(context: Context, enabled: Boolean) {
         getPreferences(context).edit()

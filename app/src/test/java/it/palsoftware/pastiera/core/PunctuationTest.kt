@@ -33,18 +33,18 @@ class PunctuationTest {
 
     @Test
     fun testIsWordBoundary_ApostropheLogic() {
-        // Apostroph in der Mitte eines Wortes (z.B. l'amico)
+        // Apostrophe in the middle of a word (e.g. l'amico)
         // ch='\'', prev='l' -> prevIsWord=true -> returns false (kein Boundary)
-        assertFalse("Apostroph nach einem Buchstaben sollte kein Boundary sein", 
+        assertFalse("An apostrophe after a letter should not be a boundary", 
             Punctuation.isWordBoundary('\'', prev = 'l'))
 
-        // Apostroph am Anfang eines Wortes (z.B. 'hallo)
+        // Apostrophe at the start of a word (e.g. 'hallo)
         // ch='\'', prev=' ' -> prevIsWord=false -> returns true (Boundary)
-        assertTrue("Apostroph nach Leerzeichen sollte ein Boundary sein", 
+        assertTrue("An apostrophe after a space should be a boundary", 
             Punctuation.isWordBoundary('\'', prev = ' '))
         
-        // Verschiedene Apostroph-Typen
-        assertFalse("Typographischer Apostroph sollte wie Standard behandelt werden",
+        // Different apostrophe types
+        assertFalse("A typographic apostrophe should be treated like the standard one",
             Punctuation.isWordBoundary('’', prev = 'd'))
     }
 

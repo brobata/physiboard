@@ -171,13 +171,13 @@ class NavModeController(
     }
     
     /**
-     * Riattiva nav mode (usato quando power shortcut termina e nav mode era attivo prima).
-     * Riutilizza applyNavModeResult per mantenere la logica consistente.
+     * Re-enables nav mode (used when a power shortcut ends and nav mode was active before).
+     * Reuses applyNavModeResult to keep the logic consistent.
      */
     fun enterNavMode() {
         val navModeEnabled = SettingsManager.getNavModeEnabled(context)
         if (navModeEnabled && !isNavModeActive()) {
-            // Riutilizza la logica esistente per attivare nav mode
+            // Reuse the existing logic for turning nav mode on
             applyNavModeResult(
                 NavModeHandler.NavModeResult(
                     ctrlLatchActive = true
@@ -206,7 +206,7 @@ class NavModeController(
     }
 
     /**
-     * Mostra l'icona del nav mode nella status bar tramite la vecchia API IME (deprecata).
+     * Shows the nav mode icon in the status bar through the old IME API (deprecated).
      * Usa reflection per supportare sia showStatusIcon() che setStatusIcon().
      */
     private fun showNavModeStatusIcon() {
@@ -257,7 +257,7 @@ class NavModeController(
                     setMethod.invoke(context, 0)
                     Log.d(TAG, "Nav mode status icon hidden using setStatusIcon(0)")
                 } catch (e: NoSuchMethodException) {
-                    // Nessuna API disponibile: non fare nulla
+                    // No API available: do nothing
                 }
             }
         } catch (e: Exception) {

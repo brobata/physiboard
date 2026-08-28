@@ -27,35 +27,35 @@ class AutoReplaceControllerLogicTest {
         // Italienische Elisionen
         // "l'amico" -> prefix="l'", root="amico"
         val split1 = AutoReplaceController.splitApostropheWord("l'amico")
-        assertNotNull("l'amico sollte gesplittet werden", split1)
+        assertNotNull("l'amico should be split", split1)
         assertEquals("l'", split1!!.prefix)
         assertEquals("amico", split1.root)
 
         // Zu kurz (root < 3)
         val split2 = AutoReplaceController.splitApostropheWord("l'a")
-        assertNull("Root zu kurz, sollte null sein", split2)
+        assertNull("Root too short, should be null", split2)
 
-        // Kein Apostroph
+        // No apostrophe
         val split3 = AutoReplaceController.splitApostropheWord("hallo")
         assertNull(split3)
         
-        // Typographischer Apostroph
+        // Typographic apostrophe
         val split4 = AutoReplaceController.splitApostropheWord("l’amico")
-        assertNotNull("l’amico sollte gesplittet werden", split4)
+        assertNotNull("l’amico should be split", split4)
         assertEquals("l'", split4!!.prefix)
 
         val split5 = AutoReplaceController.splitApostropheWord("dell'amico")
-        assertNotNull("dell'amico sollte gesplittet werden", split5)
+        assertNotNull("dell'amico should be split", split5)
         assertEquals("dell'", split5!!.prefix)
         assertEquals("amico", split5.root)
 
         val split6 = AutoReplaceController.splitApostropheWord("nell'amico")
-        assertNotNull("nell'amico sollte gesplittet werden", split6)
+        assertNotNull("nell'amico should be split", split6)
         assertEquals("nell'", split6!!.prefix)
         assertEquals("amico", split6.root)
 
         val split7 = AutoReplaceController.splitApostropheWord("rock'nroll")
-        assertNull("Beliebige längere Präfixe sollten nicht als Elision behandelt werden", split7)
+        assertNull("Arbitrary longer prefixes should not be treated as elision", split7)
     }
 
     @Test

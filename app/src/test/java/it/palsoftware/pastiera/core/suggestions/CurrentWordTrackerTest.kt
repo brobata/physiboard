@@ -31,7 +31,7 @@ class CurrentWordTrackerTest {
         tracker.onCharacterCommitted("Hello")
         assertEquals("Hello", wordChanged)
         
-        // Satzzeichen sollte den Tracker resetten
+        // Punctuation should reset the tracker
         tracker.onCharacterCommitted("!")
         assertTrue(resetCalled)
         assertEquals("", wordChanged)
@@ -89,7 +89,7 @@ class CurrentWordTrackerTest {
             onWordReset = { wordChanged = "" }
         )
 
-        // Apostroph nach einem Buchstaben gehört zum Wort
+        // An apostrophe after a letter belongs to the word
         tracker.onCharacterCommitted("l")
         tracker.onCharacterCommitted("'")
         assertEquals("l'", wordChanged)
@@ -113,7 +113,7 @@ class CurrentWordTrackerTest {
         assertEquals("12345", tracker.currentWord)
     }
 
-    // Hilfsfunktion da assertTrue in JUnit benötigt wird
+    // Helper, since JUnit needs assertTrue
     private fun assertTrue(condition: Boolean) {
         org.junit.Assert.assertTrue(condition)
     }

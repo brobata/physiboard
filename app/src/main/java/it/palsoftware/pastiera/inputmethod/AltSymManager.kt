@@ -92,7 +92,7 @@ class AltSymManager(
     fun getSymMappings2Uppercase(): Map<Int, String> = symKeyMap2Uppercase
     
     /**
-     * Ricarica le mappature SYM, controllando prima le personalizzazioni.
+     * Reloads the SYM mappings, checking customizations first.
      */
     fun reloadSymMappings() {
         if (context != null) {
@@ -238,7 +238,7 @@ class AltSymManager(
 
         // For unmapped keys, apply case conversion if needed (fallback only)
         if (normalChar.isNotEmpty() && !LayoutMappingRepository.isMapped(keyCode)) {
-            // Gestisci shiftOneShot: se è attivo e il carattere è una lettera, rendilo maiuscolo
+            // shiftOneShot: when active and the character is a letter, uppercase it
             if (shiftOneShot && normalChar.isNotEmpty() && normalChar[0].isLetter()) {
                 normalChar = normalChar.uppercase()
             } else if (capsLockEnabled && event?.isShiftPressed != true) {

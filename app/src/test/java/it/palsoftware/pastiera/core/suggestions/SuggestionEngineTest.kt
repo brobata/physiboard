@@ -17,11 +17,11 @@ class SuggestionEngineTest {
         fakeRepo.isReady = false
         
         val results = engine.suggest("hallo")
-        assertTrue("Sollte leere Liste zurückgeben, wenn Repo nicht bereit ist", results.isEmpty())
+        assertTrue("Returns an empty list when the repo isn't ready", results.isEmpty())
         
         fakeRepo.isReady = true
         val resultsReady = engine.suggest("hall") // Prefix search
-        assertTrue("Sollte Ergebnisse liefern, wenn Repo bereit ist", resultsReady.isNotEmpty())
+        assertTrue("Returns results once the repo is ready", resultsReady.isNotEmpty())
     }
 
     @Test
@@ -30,15 +30,15 @@ class SuggestionEngineTest {
         fakeRepo.addTestEntry("hallo", 200)
         engine.setKeyboardLayout("qwerty")
 
-        // 'hsllo' (S ist neben A -> Distanz 1.0)
+        // 'hsllo' (S is next to A -> distance 1.0)
         val resultsNear = engine.suggest("hsllo")
         val scoreNear = resultsNear.find { it.candidate == "hallo" }?.score ?: 0.0
 
-        // 'hmllo' (M ist weit weg von A -> Distanz ~8.0)
+        // 'hmllo' (M is far from A -> distance ~8.0)
         val resultsFar = engine.suggest("hmllo")
         val scoreFar = resultsFar.find { it.candidate == "hallo" }?.score ?: 0.0
 
-        assertTrue("Nahgelegene Taste ($scoreNear) sollte höheren Score haben als ferne Taste ($scoreFar)", scoreNear > scoreFar)
+        assertTrue("A nearby key ($scoreNear) should score higher than a distant one ($scoreFar)", scoreNear > scoreFar)
     }
 
     @Test
@@ -47,14 +47,14 @@ class SuggestionEngineTest {
         fakeRepo.addTestEntry("hallo", 200)
         engine.setKeyboardLayout("qwerty")
 
-        // 'hmllo' -> 'hallo' ist eine Substitution von 'm' für 'a'. 
-        // Distanz ist > 2.5, sollte also gefiltert werden, wenn proximity aktiv ist.
+        // 'hmllo' -> 'hallo' substitutes 'm' for 'a'.
+        // Distance is > 2.5, so proximity filtering should drop it.
         val results = engine.suggest("hmllo", useKeyboardProximity = true)
-        assertTrue("Sollte weit entfernte Substitution 'm' -> 'a' filtern", results.none { it.candidate == "hallo" })
+        assertTrue("Filters the distant 'm' -> 'a' substitution", results.none { it.candidate == "hallo" })
         
-        // Ohne Proximity-Filterung sollte es gefunden werden
+        // Without proximity filtering it should be found
         val resultsNoFilter = engine.suggest("hmllo", useKeyboardProximity = false)
-        assertTrue("Sollte ohne Proximity-Filterung gefunden werden", resultsNoFilter.any { it.candidate == "hallo" })
+        assertTrue("Found when proximity filtering is off", resultsNoFilter.any { it.candidate == "hallo" })
     }
 
     @Test
@@ -62,9 +62,9 @@ class SuggestionEngineTest {
         fakeRepo.isReady = true
         fakeRepo.addTestEntry("perché", 200)
         
-        // User tippt "perche" (ohne Akzent)
+        // User types "perche" (no accent)
         val results = engine.suggest("perche", includeAccentMatching = true)
-        assertEquals("Sollte 'perché' als Top-Vorschlag finden", "perché", results.firstOrNull()?.candidate)
+        assertEquals("Finds 'perché' as the top suggestion", "perché", results.firstOrNull()?.candidate)
     }
 
     @Test
@@ -86,7 +86,7 @@ class SuggestionEngineTest {
 
         val results = engine.suggest("problem")
 
-        assertTrue("Sollte gleichlange Case-Variante 'Problem' vorschlagen", results.any { it.candidate == "Problem" })
+        assertTrue("Suggests the same-length case variant 'Problem'", results.any { it.candidate == "Problem" })
     }
 
     @Test
@@ -99,8 +99,8 @@ class SuggestionEngineTest {
         
         val results = engine.suggest("hall")
         
-        assertEquals("User-Wort sollte an erster Stelle stehen", "hallx", results.firstOrNull()?.candidate)
-        assertEquals("User-Wort sollte als USER gekennzeichnet sein", SuggestionSource.USER, results.first().source)
+        assertEquals("The user's word should come first", "hallx", results.firstOrNull()?.candidate)
+        assertEquals("The user's word should be marked as USER", SuggestionSource.USER, results.first().source)
     }
 
     @Test
@@ -111,9 +111,9 @@ class SuggestionEngineTest {
         // QWERTY: A is (1,0), Q is (0,0) -> Distance 1.0 (Nearby)
         engine.setKeyboardLayout("qwerty")
         val resultsQwerty = engine.suggest("qpple")
-        assertTrue("QWERTY: qpple sollte apple finden (Q neben A)", resultsQwerty.any { it.candidate == "apple" })
+        assertTrue("QWERTY: qpple should find apple (Q next to A)", resultsQwerty.any { it.candidate == "apple" })
 
-        // AZERTY: A is (0,0), Q is (1,0) -> Hier sind A und Q auch nebeneinander, aber vertauscht.
+        // AZERTY: A is (0,0), Q is (1,0) -> A and Q are adjacent here too, but swapped.
         // Let's take 'q' and 'w'.
         // QWERTY: Q(0,0), W(0,1) -> Distance 1.0
         // AZERTY: A(0,0), Z(0,1) -> Q is at (1,0), W is at (0,1) -> Distance sqrt(1^2 + 1^2) = 1.41
@@ -124,7 +124,7 @@ class SuggestionEngineTest {
         engine.setKeyboardLayout("qwerty")
         val scoreQwerty = engine.suggest("ween").find { it.candidate == "queen" }?.score ?: 0.0
         
-        // AZERTY: 'w' (0,1) ist weit weg von 'a' (0,0), aber 'q' ist bei AZERTY 'a'.
+        // AZERTY: 'w' (0,1) is far from 'a' (0,0), but on AZERTY 'q' sits where 'a' does.
         // In AZERTY mapping: "KEYCODE_Q" -> 'a', "KEYCODE_W" -> 'z', "KEYCODE_A" -> 'q'
         // Physical Key Q (0,0) -> 'a'
         // Physical Key W (0,1) -> 'z'
@@ -133,9 +133,9 @@ class SuggestionEngineTest {
         // 'q' (1,0) and 'a' (0,0) are neighbors.
         
         engine.setKeyboardLayout("azerty")
-        // 'a' statt 'q' -> 'aueen' (in AZERTY ist 'a' an Position (0,0), 'q' an Position (1,0))
+        // 'a' instead of 'q' -> 'aueen' (on AZERTY 'a' is at (0,0), 'q' at (1,0))
         val resultsAzerty = engine.suggest("aueen")
-        assertTrue("AZERTY: aueen sollte queen finden", resultsAzerty.any { it.candidate == "queen" })
+        assertTrue("AZERTY: aueen should find queen", resultsAzerty.any { it.candidate == "queen" })
     }
 
     @Test

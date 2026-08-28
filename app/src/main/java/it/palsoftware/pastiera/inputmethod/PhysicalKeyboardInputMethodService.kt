@@ -289,7 +289,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     private var clearAltOnSpaceEnabled: Boolean = false
     private var physicalKeyboardProfileOverride: String = "auto"
     private var isLanguageSwitchInProgress: Boolean = false
-    // Stato per ricordare se il nav mode era attivo prima di entrare in un campo di testo
+    // Remembers whether nav mode was active before entering a text field
     private var navModeWasActiveBeforeEditableField: Boolean = false
 
     // Trackpad gesture detection
@@ -2063,7 +2063,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         lastObservedAutoSoftwareKeyboardMode = SoftwareKeyboardAutoDetector.resolve(this)
         inputManager?.registerInputDeviceListener(inputDeviceListener, uiHandler)
         launcherShortcutController = LauncherShortcutController(this)
-        // Configura callbacks per gestire nav mode durante power shortcuts
+        // Wire up the callbacks that handle nav mode during power shortcuts
         launcherShortcutController.setNavModeCallbacks(
             exitNavMode = { navModeController.exitNavMode() },
             enterNavMode = { navModeController.enterNavMode() }
@@ -2771,7 +2771,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
 
     /**
      * Determines whether the input view (soft keyboard) should be shown.
-     * Respects the system flag (e.g. "Mostra tastiera virtuale" off for tastiere fisiche):
+     * Respects the system flag (e.g. "Show virtual keyboard" off for physical keyboards):
      * when the system asks for candidate-only mode we hide the main status UI and
      * expose the slim candidates view (LED strip + SYM layout on demand).
      */
@@ -2920,7 +2920,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         keyboardVisibilityController.ensureInputViewCreated()
     }
     /**
-     * Aggiorna la status bar delegando al controller dedicato.
+     * Updates the status bar by delegating to its controller.
      */
     private fun updateStatusBarText() {
         val totalStart = ImePerfLogger.mark()
@@ -2990,11 +2990,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         )
         updateSystemStatusModifierIcon(snapshot, effectiveSoftwareKeyboardMode)
         val modifierIndicators = SettingsManager.getModifierIndicators(this)
-        // Passa anche la mappa emoji quando SYM è attivo (solo pagina 1)
+        // Also pass the emoji map while SYM is active (page 1 only)
         val emojiMapText = symLayoutController.emojiMapText()
-        // Passa le mappature SYM per la griglia emoji/caratteri
+        // Pass the SYM mappings for the emoji/character grid
         val symMappings = symLayoutController.currentSymMappings()?.toMap()
-        // Passa l'inputConnection per rendere i pulsanti clickabili
+        // Pass the inputConnection so the buttons are clickable
         val inputConnection = currentInputConnection
         val unchangedRenderedState =
             snapshot == lastRenderedStatusSnapshot &&
@@ -3236,7 +3236,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     }
     
     /**
-     * Disattiva le variazioni.
+     * Turns variations off.
      */
     private fun deactivateVariations() {
         if (::variationStateController.isInitialized) {
@@ -3297,7 +3297,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
                 val hasValidInputConnection = inputConnection != null
 
                 if (isReallyEditable && hasValidInputConnection) {
-                    // Ricorda che nav mode era attivo prima di entrare nel campo di testo
+                    // Remember that nav mode was active before entering the text field
                     navModeWasActiveBeforeEditableField = true
                     navModeController.exitNavMode()
                     resetModifierStates(preserveNavMode = false)
@@ -3420,7 +3420,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         multiTapController.cancelAll()
         disableEmojiSearchInputCapture()
         resetModifierStates(preserveNavMode = true)
-        // Se nav mode era attivo prima di entrare nel campo di testo, riattivalo ora
+        // Nav mode was active before the text field: turn it back on now
         if (navModeWasActiveBeforeEditableField) {
             navModeController.enterNavMode()
             navModeWasActiveBeforeEditableField = false
@@ -4242,7 +4242,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         
         // Intercept long presses BEFORE Android handles them
         if (altSymManager.hasAltMapping(keyCode)) {
-            // Consumiamo l'evento per evitare il popup di Android
+            // Consume the event to suppress Android's popup
             return true
         }
 
@@ -5251,14 +5251,14 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     }
 
     /**
-     * Aggiunge una nuova mappatura Alt+tasto -> carattere.
+     * Adds a new Alt+key -> character mapping.
      */
     fun addAltKeyMapping(keyCode: Int, character: String) {
         altSymManager.addAltKeyMapping(keyCode, character)
     }
 
     /**
-     * Rimuove una mappatura Alt+tasto esistente.
+     * Removes an existing Alt+key mapping.
      */
     fun removeAltKeyMapping(keyCode: Int) {
         altSymManager.removeAltKeyMapping(keyCode)

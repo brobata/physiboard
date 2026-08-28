@@ -2,34 +2,34 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Permesso per le notifiche (richiesto da Android 13+) -->
+    <!-- Notification permission (required from Android 13 on) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     
-    <!-- Permesso per la vibrazione (richiesto per haptic feedback) -->
+    <!-- Vibration permission (required for haptic feedback) -->
     <uses-permission android:name="android.permission.VIBRATE" />
 
-    <!-- Riavvia il timeout dello schermo dopo un tocco sulla tastiera -->
+    <!-- Restarts the screen timeout after a touch on the keyboard -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
     
-    <!-- Permesso per il riconoscimento vocale -->
+    <!-- Speech recognition permission -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     
-    <!-- Permesso per l'accesso a Internet (richiesto per il controllo aggiornamenti) -->
+    <!-- Internet permission (required for the update check) -->
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <!-- Lettura delle informazioni del Clicks Power Keyboard tramite BLE GATT -->
+    <!-- Reads Clicks Power Keyboard information over BLE GATT -->
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 
-    <!-- Permesso per mostrare finestre overlay (per debug trackpad) -->
+    <!-- Permission to show overlay windows (screen trackpad) -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
-    <!-- Scrittura di Settings.System per il mapping Fn->Ctrl (Titan 2 Elite) -->
+    <!-- Writes Settings.System for the Fn->Ctrl mapping (Titan 2 Elite) -->
     <uses-permission android:name="android.permission.WRITE_SETTINGS" tools:ignore="ProtectedPermissions" />
 
-    <!-- Query per vedere tutte le app installate che possono essere avviate -->
+    <!-- Query for every installed app that can be launched -->
     <queries>
         <intent>
             <action android:name="android.intent.action.MAIN" />
@@ -52,7 +52,7 @@
             <action android:name="android.speech.action.VOICE_SEARCH_HANDS_FREE" />
         </intent>
         
-        <!-- Query per vedere i launcher -->
+        <!-- Query for launchers -->
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.HOME" />
@@ -109,7 +109,7 @@
             </intent-filter>
         </activity>
         
-        <!-- Activity per la personalizzazione SYM -->
+        <!-- SYM customization activity -->
         <!-- The orange side key can only be aimed at an activity, so this is the address the
              vendor layer launches; it starts the assistant listening and finishes. -->
         <activity
@@ -129,7 +129,7 @@
             android:label="@string/sym_customize_title"
             android:theme="@style/Theme.Pastiera" />
         
-        <!-- Activity per le impostazioni -->
+        <!-- Settings activity -->
         <activity
             android:name=".SettingsActivity"
             android:configChanges="keyboard|keyboardHidden|navigation"
@@ -137,7 +137,7 @@
             android:label="@string/settings_title"
             android:theme="@style/Theme.Pastiera" />
         
-        <!-- Activity per gestire le lingue degli input method subtypes -->
+        <!-- Activity that manages input method subtype languages -->
         <activity
             android:name=".LanguagesActivity"
             android:exported="false"
@@ -165,7 +165,7 @@
             android:excludeFromRecents="true"
             android:launchMode="singleInstance" />
 
-        <!-- Servizio di immissione per tastiera fisica -->
+        <!-- Input method service for the physical keyboard -->
         <service
             android:name=".inputmethod.PhysicalKeyboardInputMethodService"
             android:label="${imeLabel}"
@@ -220,7 +220,7 @@
                 android:resource="@xml/clicks_launcher_button_accessibility_service" />
         </service>
 
-        <!-- Attività helper per il riconoscimento vocale -->
+        <!-- Helper activity for speech recognition -->
         <activity
             android:name=".inputmethod.SpeechRecognitionActivity"
             android:theme="@android:style/Theme.Translucent.NoTitleBar"
@@ -229,7 +229,7 @@
             android:launchMode="singleTask"
             android:taskAffinity="com.google.android.inputmethod.latin" />
         
-        <!-- Attività helper per richiedere il permesso del microfono -->
+        <!-- Helper activity that requests the microphone permission -->
         <activity
             android:name=".inputmethod.PermissionRequestActivity"
             android:theme="@android:style/Theme.Translucent.NoTitleBar"
@@ -238,7 +238,7 @@
             android:launchMode="singleTask"
             android:taskAffinity="" />
         
-        <!-- Attività per assegnare scorciatoie del launcher -->
+        <!-- Activity for assigning launcher shortcuts -->
         <activity
             android:name=".inputmethod.LauncherShortcutAssignmentActivity"
             android:theme="@style/Theme.Pastiera.OverlayDialog"
