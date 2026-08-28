@@ -22,9 +22,21 @@ val keystoreProperties = Properties().apply {
     }
 }
 
+/**
+ * Reads a signing value from keystore.properties, then the environment.
+ *
+ * The environment variables were named PASTIERA_* before the fork was renamed. Both spellings are
+ * accepted so an existing release setup keeps working; PHYSIBOARD_* is the name to use from here.
+ */
 fun signingProp(key: String, env: String): String? =
     keystoreProperties.getProperty(key)?.takeIf { it.isNotBlank() }
         ?: System.getenv(env)?.takeIf { it.isNotBlank() }
+        ?: System.getenv(env.replace("PHYSIBOARD_", "PASTIERA_"))?.takeIf { it.isNotBlank() }
+
+/** Gradle property lookup with the same PASTIERA_* fallback. */
+fun renamedGradleProperty(name: String): String? =
+    providers.gradleProperty(name).orNull
+        ?: providers.gradleProperty(name.replace("PHYSIBOARD_", "PASTIERA_")).orNull
 
 fun resolveSigningStoreFile(storePath: String): File =
     if (File(storePath).isAbsolute) {
@@ -37,7 +49,9 @@ fun hasSigningConfig(storePath: String?, storePass: String?, alias: String?, key
     storePath != null && storePass != null && alias != null && keyPass != null
 
 fun gradleBooleanProperty(name: String): Boolean =
-    providers.gradleProperty(name).orNull?.equals("true", ignoreCase = true) == true
+    (providers.gradleProperty(name).orNull
+        ?: providers.gradleProperty(name.replace("PHYSIBOARD_", "PASTIERA_")).orNull)
+        ?.equals("true", ignoreCase = true) == true
 
 fun shouldValidateNightlySigning(taskNames: List<String>): Boolean {
     if (taskNames.isEmpty()) {
@@ -77,11 +91,11 @@ android {
 
     val defaultVersionCode = 10204
     val defaultVersionName = "1.2.4"
-    val ciVersionCode = providers.gradleProperty("PASTIERA_VERSION_CODE").orNull?.toIntOrNull()
-    val ciVersionName = providers.gradleProperty("PASTIERA_VERSION_NAME").orNull
-    val nightlyVersionCode = providers.gradleProperty("PASTIERA_NIGHTLY_VERSION_CODE").orNull?.toIntOrNull()
-    val nightlyVersionNameSuffix = providers.gradleProperty("PASTIERA_NIGHTLY_VERSION_SUFFIX").orNull ?: "-nightly"
-    val isFdroidBuild = gradleBooleanProperty("PASTIERA_FDROID_BUILD")
+    val ciVersionCode = renamedGradleProperty("PHYSIBOARD_VERSION_CODE")?.toIntOrNull()
+    val ciVersionName = renamedGradleProperty("PHYSIBOARD_VERSION_NAME")
+    val nightlyVersionCode = renamedGradleProperty("PHYSIBOARD_NIGHTLY_VERSION_CODE")?.toIntOrNull()
+    val nightlyVersionNameSuffix = renamedGradleProperty("PHYSIBOARD_NIGHTLY_VERSION_SUFFIX") ?: "-nightly"
+    val isFdroidBuild = gradleBooleanProperty("PHYSIBOARD_FDROID_BUILD")
 
     defaultConfig {
         applicationId = "brobata.physiboard"
@@ -101,10 +115,10 @@ android {
 
     signingConfigs {
         create("release") {
-            val storePath = signingProp("storeFile", "PASTIERA_KEYSTORE_PATH")
-            val storePass = signingProp("storePassword", "PASTIERA_KEYSTORE_PASSWORD")
-            val alias = signingProp("keyAlias", "PASTIERA_KEY_ALIAS")
-            val keyPass = signingProp("keyPassword", "PASTIERA_KEY_PASSWORD")
+            val storePath = signingProp("storeFile", "PHYSIBOARD_KEYSTORE_PATH")
+            val storePass = signingProp("storePassword", "PHYSIBOARD_KEYSTORE_PASSWORD")
+            val alias = signingProp("keyAlias", "PHYSIBOARD_KEY_ALIAS")
+            val keyPass = signingProp("keyPassword", "PHYSIBOARD_KEY_PASSWORD")
 
             // Only configure signing if all credentials are provided
             if (hasSigningConfig(storePath, storePass, alias, keyPass)) {
@@ -128,10 +142,10 @@ android {
                 )
             )
             // Only use signing config if it's properly configured
-            val storePath = signingProp("storeFile", "PASTIERA_KEYSTORE_PATH")
-            val storePass = signingProp("storePassword", "PASTIERA_KEYSTORE_PASSWORD")
-            val alias = signingProp("keyAlias", "PASTIERA_KEY_ALIAS")
-            val keyPass = signingProp("keyPassword", "PASTIERA_KEY_PASSWORD")
+            val storePath = signingProp("storeFile", "PHYSIBOARD_KEYSTORE_PATH")
+            val storePass = signingProp("storePassword", "PHYSIBOARD_KEYSTORE_PASSWORD")
+            val alias = signingProp("keyAlias", "PHYSIBOARD_KEY_ALIAS")
+            val keyPass = signingProp("keyPassword", "PHYSIBOARD_KEY_PASSWORD")
             
             if (!isFdroidBuild && hasSigningConfig(storePath, storePass, alias, keyPass)) {
                 signingConfig = signingConfigs.getByName("release")
@@ -167,17 +181,17 @@ android {
                     logger.lifecycle("Skipping stable signing validation for non-packaging task(s): ${gradle.startParameter.taskNames}")
                     return@doFirst
                 }
-                val storePath = signingProp("storeFile", "PASTIERA_KEYSTORE_PATH")
-                val storePass = signingProp("storePassword", "PASTIERA_KEYSTORE_PASSWORD")
-                val alias = signingProp("keyAlias", "PASTIERA_KEY_ALIAS")
-                val keyPass = signingProp("keyPassword", "PASTIERA_KEY_PASSWORD")
+                val storePath = signingProp("storeFile", "PHYSIBOARD_KEYSTORE_PATH")
+                val storePass = signingProp("storePassword", "PHYSIBOARD_KEYSTORE_PASSWORD")
+                val alias = signingProp("keyAlias", "PHYSIBOARD_KEY_ALIAS")
+                val keyPass = signingProp("keyPassword", "PHYSIBOARD_KEY_PASSWORD")
 
                 if (!hasSigningConfig(storePath, storePass, alias, keyPass)) {
                     throw GradleException(
                         "Missing signing config for release build. Define storeFile, storePassword, keyAlias e keyPassword in " +
-                            "keystore.properties (non tracciato) o nelle variabili d'ambiente PASTIERA_KEYSTORE_PATH, " +
-                            "PASTIERA_KEYSTORE_PASSWORD, PASTIERA_KEY_ALIAS, PASTIERA_KEY_PASSWORD. " +
-                            "Use -PPASTIERA_FDROID_BUILD=true only for the unsigned stable F-Droid release path."
+                            "keystore.properties (non tracciato) o nelle variabili d'ambiente PHYSIBOARD_KEYSTORE_PATH, " +
+                            "PHYSIBOARD_KEYSTORE_PASSWORD, PHYSIBOARD_KEY_ALIAS, PHYSIBOARD_KEY_PASSWORD. " +
+                            "Use -PPHYSIBOARD_FDROID_BUILD=true only for the unsigned stable F-Droid release path."
                     )
                 }
             }
@@ -188,16 +202,16 @@ android {
                     logger.lifecycle("Skipping nightly signing validation for non-packaging task(s): ${gradle.startParameter.taskNames}")
                     return@doFirst
                 }
-                val storePath = signingProp("nightlyStoreFile", "PASTIERA_NIGHTLY_KEYSTORE_PATH")
-                val storePass = signingProp("nightlyStorePassword", "PASTIERA_NIGHTLY_KEYSTORE_PASSWORD")
-                val alias = signingProp("nightlyKeyAlias", "PASTIERA_NIGHTLY_KEY_ALIAS")
-                val keyPass = signingProp("nightlyKeyPassword", "PASTIERA_NIGHTLY_KEY_PASSWORD")
+                val storePath = signingProp("nightlyStoreFile", "PHYSIBOARD_NIGHTLY_KEYSTORE_PATH")
+                val storePass = signingProp("nightlyStorePassword", "PHYSIBOARD_NIGHTLY_KEYSTORE_PASSWORD")
+                val alias = signingProp("nightlyKeyAlias", "PHYSIBOARD_NIGHTLY_KEY_ALIAS")
+                val keyPass = signingProp("nightlyKeyPassword", "PHYSIBOARD_NIGHTLY_KEY_PASSWORD")
 
                 if (!hasSigningConfig(storePath, storePass, alias, keyPass)) {
                     throw GradleException(
                         "Missing signing config for nightly build. Define nightlyStoreFile, nightlyStorePassword, nightlyKeyAlias e nightlyKeyPassword in " +
-                            "keystore.properties (non tracciato) o nelle variabili d'ambiente PASTIERA_NIGHTLY_KEYSTORE_PATH, " +
-                            "PASTIERA_NIGHTLY_KEYSTORE_PASSWORD, PASTIERA_NIGHTLY_KEY_ALIAS, PASTIERA_NIGHTLY_KEY_PASSWORD."
+                            "keystore.properties (non tracciato) o nelle variabili d'ambiente PHYSIBOARD_NIGHTLY_KEYSTORE_PATH, " +
+                            "PHYSIBOARD_NIGHTLY_KEYSTORE_PASSWORD, PHYSIBOARD_NIGHTLY_KEY_ALIAS, PHYSIBOARD_NIGHTLY_KEY_PASSWORD."
                     )
                 }
             }

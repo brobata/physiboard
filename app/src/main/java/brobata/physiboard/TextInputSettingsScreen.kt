@@ -38,7 +38,6 @@ fun TextInputSettingsScreen(
     onNavModeSettingsClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
-    var showTextExpansion by remember { mutableStateOf(false) }
     
     var autoCapitalizeFirstLetter by remember {
         mutableStateOf(SettingsManager.getAutoCapitalizeFirstLetter(context))
@@ -129,12 +128,7 @@ fun TextInputSettingsScreen(
     
     // Handle system back button
     BackHandler {
-        if (showTextExpansion) showTextExpansion = false else onBack()
-    }
-
-    if (showTextExpansion) {
-        TextExpansionSettingsScreen(onBack = { showTextExpansion = false })
-        return
+        onBack()
     }
 
     if (autoSpacePunctuationDialogVisible) {
@@ -302,13 +296,6 @@ fun TextInputSettingsScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
-            SettingsSectionHeader(text = stringResource(R.string.text_expansion_title))
-            SettingsNavigationRow(
-                title = stringResource(R.string.text_expansion_title),
-                description = stringResource(R.string.text_expansion_description),
-                onClick = { showTextExpansion = true }
-            )
-
             SettingsSectionHeader(text = stringResource(R.string.text_input_section_capitalization))
             SettingsSwitchRow(
                 title = stringResource(R.string.auto_capitalize_title),

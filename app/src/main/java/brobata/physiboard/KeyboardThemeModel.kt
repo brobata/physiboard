@@ -245,5 +245,16 @@ internal fun keyboardThemePresets(): List<KeyboardThemePreset> = listOf(
     KeyboardThemePreset("Volcanic Dusk", 0xFF1B141A.toInt(), 0xFF5D3B4F.toInt(), 0xFF2A2028.toInt(), 0xFF723650.toInt(), 0xFFFFEDF5.toInt(), 0xFF66515F.toInt(), 0xFFFF5D9E.toInt(), 0xFFFFB000.toInt(), 0xFFFF5D9E.toInt()),
     // PhysiBoard Terminal — amber-phosphor CLI look. Available in the picker; not the default.
     KeyboardThemePreset("Terminal (Amber)", 0xFF0F172A.toInt(), 0xFF334155.toInt(), 0xFF1E293B.toInt(), 0xFF334155.toInt(), 0xFFF1F5F9.toInt(), 0xFF475569.toInt(), 0xFFF59E0B.toInt(), 0xFFB45309.toInt(), 0xFFF59E0B.toInt()),
-    KeyboardThemePreset("Terminal (Green)", 0xFF000000.toInt(), 0xFF334155.toInt(), 0xFF1E293B.toInt(), 0xFF334155.toInt(), 0xFF33FF88.toInt(), 0xFF475569.toInt(), 0xFF33FF88.toInt(), 0xFF16A34A.toInt(), 0xFF33FF88.toInt())
+    KeyboardThemePreset("Terminal (Green)", 0xFF000000.toInt(), 0xFF334155.toInt(), 0xFF1E293B.toInt(), 0xFF334155.toInt(), 0xFF33FF88.toInt(), 0xFF475569.toInt(), 0xFF33FF88.toInt(), 0xFF16A34A.toInt(), 0xFF33FF88.toInt()),
+
+    // ---- Louder presets ----------------------------------------------------------------
+    // The set above is mostly restrained. These are for people who want the keyboard to be a
+    // thing they look at rather than a thing they look past.
+    KeyboardThemePreset("Synthwave", 0xFF1A1033.toInt(), 0xFF6D28D9.toInt(), 0xFF241748.toInt(), 0xFF3B1E6B.toInt(), 0xFFF5D0FE.toInt(), 0xFF4C1D95.toInt(), 0xFFFF2E97.toInt(), 0xFF22D3EE.toInt(), 0xFFFF2E97.toInt()),
+    KeyboardThemePreset("Vapourwave", 0xFF2B1B4D.toInt(), 0xFF7C4DBE.toInt(), 0xFF3C2569.toInt(), 0xFF553383.toInt(), 0xFFEAD9FF.toInt(), 0xFF5B3A8C.toInt(), 0xFF00F0FF.toInt(), 0xFFFF71CE.toInt(), 0xFFFF71CE.toInt()),
+    KeyboardThemePreset("Hazard", 0xFF141414.toInt(), 0xFF4A4A00.toInt(), 0xFF1F1F1F.toInt(), 0xFF2E2E00.toInt(), 0xFFFFE81A.toInt(), 0xFF3D3D0A.toInt(), 0xFFFFE81A.toInt(), 0xFFFF6B00.toInt(), 0xFFFFE81A.toInt()),
+    KeyboardThemePreset("Blueprint", 0xFF0B3D91.toInt(), 0xFF3D6FC4.toInt(), 0xFF11499E.toInt(), 0xFF1A56AE.toInt(), 0xFFDCE9FF.toInt(), 0xFF2E5FB0.toInt(), 0xFFFFFFFF.toInt(), 0xFF7FD4FF.toInt(), 0xFF7FD4FF.toInt()),
+    KeyboardThemePreset("Forest Floor", 0xFF14200F.toInt(), 0xFF3E5B33.toInt(), 0xFF1D2E17.toInt(), 0xFF2C4423.toInt(), 0xFFE8F3DF.toInt(), 0xFF3A5230.toInt(), 0xFF9CCC65.toInt(), 0xFFD4A017.toInt(), 0xFF9CCC65.toInt()),
+    KeyboardThemePreset("Rose Gold", 0xFF2A1A1E.toInt(), 0xFF7A4A55.toInt(), 0xFF3A252B.toInt(), 0xFF4E3038.toInt(), 0xFFFFE4E8.toInt(), 0xFF5C3B44.toInt(), 0xFFE8A0A8.toInt(), 0xFFD98C6A.toInt(), 0xFFE8A0A8.toInt()),
+    KeyboardThemePreset("Ink and Paper", 0xFFFFFFFF.toInt(), 0xFF000000.toInt(), 0xFFFFFFFF.toInt(), 0xFFF0F0F0.toInt(), 0xFF000000.toInt(), 0xFFBBBBBB.toInt(), 0xFF000000.toInt(), 0xFF6E6E6E.toInt(), 0xFF000000.toInt())
 )

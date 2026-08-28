@@ -81,19 +81,19 @@
         android:label="${appLabel}"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Pastiera">
+        android:theme="@style/Theme.PhysiBoard">
         <activity
             android:name=".TutorialActivity"
             android:exported="false"
             android:label="${appLabel}"
-            android:theme="@style/Theme.Pastiera" />
+            android:theme="@style/Theme.PhysiBoard" />
         
         <activity
             android:name=".MainActivity"
             android:configChanges="keyboard|keyboardHidden|navigation"
             android:exported="true"
             android:label="${appLabel}"
-            android:theme="@style/Theme.Pastiera">
+            android:theme="@style/Theme.PhysiBoard">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -128,13 +128,13 @@
             android:launchMode="singleInstance"
             android:noHistory="true"
             android:taskAffinity=""
-            android:theme="@style/Theme.Pastiera.Trampoline" />
+            android:theme="@style/Theme.PhysiBoard.Trampoline" />
 
         <activity
             android:name=".SymCustomizationActivity"
             android:exported="false"
             android:label="@string/sym_customize_title"
-            android:theme="@style/Theme.Pastiera" />
+            android:theme="@style/Theme.PhysiBoard" />
         
         <!-- Settings activity -->
         <activity
@@ -142,26 +142,26 @@
             android:configChanges="keyboard|keyboardHidden|navigation"
             android:exported="true"
             android:label="@string/settings_title"
-            android:theme="@style/Theme.Pastiera" />
+            android:theme="@style/Theme.PhysiBoard" />
         
         <!-- Activity that manages input method subtype languages -->
         <activity
             android:name=".LanguagesActivity"
             android:exported="false"
             android:label="@string/languages_title"
-            android:theme="@style/Theme.Pastiera" />
+            android:theme="@style/Theme.PhysiBoard" />
         
         <activity
             android:name=".dictionaries.InstalledDictionariesActivity"
             android:exported="false"
             android:label="@string/installed_dictionaries_title"
-            android:theme="@style/Theme.Pastiera.InstalledDictionariesAnimation" />
+            android:theme="@style/Theme.PhysiBoard.InstalledDictionariesAnimation" />
 
         <activity
             android:name=".layout.OnlineLayoutsActivity"
             android:exported="false"
             android:label="@string/online_layouts_title"
-            android:theme="@style/Theme.Pastiera" />
+            android:theme="@style/Theme.PhysiBoard" />
 
         <!-- Activity for trackpad debug -->
         <activity
@@ -171,6 +171,20 @@
             android:theme="@android:style/Theme.Translucent.NoTitleBar"
             android:excludeFromRecents="true"
             android:launchMode="singleInstance" />
+
+        <!--
+            2.0 changed the namespace, which changed the IME's component name, which means an
+            upgrade from 1.x leaves the selected keyboard pointing at something that no longer
+            exists. This receiver notices and says so. MY_PACKAGE_REPLACED is exempt from the
+            implicit-broadcast restrictions, so a manifest receiver still gets it.
+        -->
+        <receiver
+            android:name=".PackageReplacedReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
 
         <!-- Input method service for the physical keyboard -->
         <service
@@ -207,12 +221,12 @@
             android:showWhenLocked="true"
             android:turnScreenOn="true"
             android:taskAffinity="brobata.physiboard.ring"
-            android:theme="@style/Theme.Pastiera.Ring" />
+            android:theme="@style/Theme.PhysiBoard.Ring" />
         <activity
             android:name=".ring.RingAdjustActivity"
             android:exported="false"
             android:excludeFromRecents="true"
-            android:theme="@style/Theme.Pastiera.Ring" />
+            android:theme="@style/Theme.PhysiBoard.Ring" />
 
 
         <!-- Helper activity for speech recognition -->
@@ -236,7 +250,7 @@
         <!-- Activity for assigning launcher shortcuts -->
         <activity
             android:name=".inputmethod.LauncherShortcutAssignmentActivity"
-            android:theme="@style/Theme.Pastiera.OverlayDialog"
+            android:theme="@style/Theme.PhysiBoard.OverlayDialog"
             android:exported="false"
             android:excludeFromRecents="true"
             android:launchMode="singleTop"
@@ -246,7 +260,7 @@
 
         <activity
             android:name=".inputmethod.AddSubstitutionActivity"
-            android:theme="@style/Theme.Pastiera.OverlayDialog"
+            android:theme="@style/Theme.PhysiBoard.OverlayDialog"
             android:exported="false"
             android:excludeFromRecents="true"
             android:launchMode="singleTop"
@@ -256,7 +270,7 @@
 
         <activity
             android:name=".inputmethod.QuickLauncherActivity"
-            android:theme="@style/Theme.Pastiera.QuickLauncherOverlay"
+            android:theme="@style/Theme.PhysiBoard.QuickLauncherOverlay"
             android:exported="false"
             android:excludeFromRecents="true"
             android:launchMode="singleTop"

@@ -1,4 +1,8 @@
 <resources>
+    <string name="notification_reselect_title">Pick PhysiBoard again</string>
+    <string name="notification_reselect_text">This update renamed part of PhysiBoard, and Android treats a renamed keyboard as a new one — so it switched you to a different keyboard. Tap here to set PhysiBoard back. Your settings are all still here.</string>
+    <string name="notification_reselect_channel_name">Setup needed</string>
+    <string name="notification_reselect_channel_description">Shown after an update if PhysiBoard is no longer your selected keyboard.</string>
     <string name="app_name">PhysiBoard</string>
     <string name="app_tagline">The Keyboard for your Keyboard</string>
     <string name="input_method_name">PhysiBoard</string>
@@ -165,7 +169,7 @@
     <string name="keyboard_hub_voice_description">Hold Fn to dictate, and the assistant triggers</string>
     <string name="keyboard_hub_theme_description">Colors and the on-screen bar</string>
     <string name="extras_title">Extras</string>
-    <string name="extras_row_description">The long tail: shortcuts, status bar, accessibility, about</string>
+    <string name="extras_row_description">Quick launcher, input languages, and text expansion</string>
     <string name="extras_intro">Everything that did not earn a place on the first two screens. Nothing here is needed to use the phone or the keyboard.</string>
     <string name="extras_languages_description">Input languages and layouts</string>
     <string name="tweaks_title">System tweaks</string>
@@ -246,6 +250,13 @@
     <string name="bloat_not_paired">Needs the same wireless-debugging pairing as the keyboard backlight.</string>
     <string name="bloat_set_up_pairing">Set up pairing</string>
     <string name="bloat_preset_title">Android Auto stabilizer</string>
+    <string name="bloat_preset_in_testing">In testing</string>
+    <string name="bloat_preset_factory_title">Factory and lab tools</string>
+    <string name="bloat_preset_factory_description">Production-line tooling: burn-in and hardware tests, sensor calibration, an IMEI writer, a RAM tester, a GPS checker and a couple of packages that were never meant to ship. None of it has an icon, none of it does anything for a phone that has left the factory. The safest set here.</string>
+    <string name="bloat_preset_vendor_title">Vendor apps and games</string>
+    <string name="bloat_preset_vendor_description">Unihertz\'s own convenience apps — a toolbox, game mode, bedtime, a pedometer, rotation control, a cycling speedometer, a call recorder and an NFC helper. These are real features, so this one is taste rather than safety. App Lock, Private Space and Student Mode are deliberately left out in case you rely on them, and the IR Remote is never touched because it drives the infrared blaster.</string>
+    <string name="bloat_preset_privacy_title">Sends data onward</string>
+    <string name="bloat_preset_privacy_description">Packages that report or record: battery telemetry for the vendor, carrier APN details, a chipset logger that writes continuously, and automatic call recording. Some of these also appear in the sets above — a package can be factory tooling and a privacy question at the same time.</string>
     <string name="bloat_preset_description">Unihertz ships several tools whose job is stopping background apps from running: a phone manager, an app freezer, a blocker, a junk cleaner and a chipset logger that writes constantly. Android Auto is a long-running session, which is exactly what those interrupt.\n\nWorth being straight with you: this is the most likely cause of Android Auto dropping, not a proven one. What is certain is what these apps do. Disabling is reversible, which is what makes it worth trying.</string>
     <string name="bloat_preset_action">Disable all %1$d</string>
     <string name="bloat_unknown_title">%1$d vendor apps not in this list</string>
@@ -348,10 +359,10 @@
     <string name="open_keyboard_settings">Open Keyboard Settings</string>
     
     <!-- Main Activity - Enable/Select IME -->
-    <string name="enable_pastiera">Enable PhysiBoard</string>
-    <string name="pastiera_not_enabled">PhysiBoard is not enabled</string>
+    <string name="enable_physiboard">Enable PhysiBoard</string>
+    <string name="physiboard_not_enabled">PhysiBoard is not enabled</string>
     <string name="choose_input_method">Choose input method</string>
-    <string name="pastiera_not_selected">PhysiBoard is not selected</string>
+    <string name="physiboard_not_selected">PhysiBoard is not selected</string>
 
     <!-- Home action surface -->
     <string name="home_action_enable_title">Enable PhysiBoard</string>
@@ -371,6 +382,8 @@
     <string name="home_tile_voice">Voice</string>
     <string name="home_tile_raw_mode">Exact Typing</string>
     <string name="home_tile_fn_layer">Fn Layer</string>
+    <string name="home_tile_status_ok">all good</string>
+    <string name="home_tile_status_needs_setup">needs setup</string>
     <string name="home_tile_all_settings">Settings</string>
     <string name="home_tile_language">Language</string>
     <string name="home_tile_backlight_needs_setup">needs pairing</string>
@@ -421,7 +434,7 @@
     <string name="auto_correct_settings_title">Text Replacements</string>
     <string name="auto_correct_settings_description">Choose which replacement rule sets are active. These exact rules run before dictionary-based automatic correction.</string>
     <string name="auto_correct_system_language">System language</string>
-    <string name="auto_correct_ricette_pastiera_description">Customizations valid for all substitutions</string>
+    <string name="auto_correct_recipes_description">Customizations valid for all substitutions</string>
     <string name="auto_correct_other_languages">Other Substitutions</string>
     <string name="auto_correct_custom_languages">Custom Substitutions</string>
     <string name="auto_correct_at_least_one_language_required">At least one substitution required for operation</string>
@@ -668,6 +681,7 @@
     <string name="about_build_info">PhysiBoard IME - Palsoftware 2026</string>
     <string name="settings_device_keyboard_info">Device: %1$s; Keyboard: %2$s</string>
     <string name="about_title">About</string>
+    <string name="about_row_description">Version, licence, and credits</string>
     <string name="about_credits_error">Unable to load credits information.</string>
     
     <!-- Launcher Shortcuts Section -->
@@ -676,7 +690,7 @@
     <string name="starter_launcher_shortcuts_intro">These settings share one launcher-key assignment list. Choose where PhysiBoard should listen for those assigned keys.</string>
     <string name="launcher_shortcuts_title">Homescreen shortcuts</string>
     <string name="launcher_shortcuts_experimental">Experimental</string>
-    <string name="launcher_shortcuts_description">Use assigned launcher keys directly on the Android launcher or home screen.</string>
+    <string name="launcher_shortcuts_description">Listen for your assigned keys on the Android home screen. The keys themselves are set below, in Assigned launcher keys.</string>
     <string name="launcher_shortcuts_configure">Assigned launcher keys</string>
     <string name="launcher_shortcuts_configure_description">Tap a key to assign or replace a command. Assigned keys are shared by both trigger modes.</string>
     <string name="launcher_shortcuts_configure_description_with_quick_launcher">Tap a key to assign or replace a command. Quick launcher is currently assigned to %1$s.</string>
@@ -716,7 +730,7 @@
     <string name="quick_launcher_typo_tolerant_ranking_description">Also match app names with small typing mistakes. Existing prefix and abbreviation matches still rank higher.</string>
     <string name="quick_launcher_provider_title">QuickLauncher behaviour</string>
     <string name="quick_launcher_provider_description">Choose whether the shortcut opens PhysiBoard search or Niagara Launcher search. Niagara falls back to PhysiBoard if unavailable.</string>
-    <string name="quick_launcher_provider_pastiera">PhysiBoard QuickLauncher</string>
+    <string name="quick_launcher_provider_physiboard">PhysiBoard QuickLauncher</string>
     <string name="quick_launcher_provider_niagara">Niagara Launcher Search</string>
     <string name="quick_launcher_ranking_info_button">How ranking works</string>
     <string name="quick_launcher_ranking_info_title">QuickLauncher ranking</string>
@@ -728,16 +742,31 @@
     <string name="quick_launcher_cosmetic_title">Appearance</string>
     <string name="quick_launcher_cosmetic_description">Width, pill mode, shown command sources, favorites, aliases, and entry colors.</string>
     <string name="keyboard_theme_title">Keyboard Theme</string>
+    <string name="status_bar_theme_title">Status Bar Theme</string>
+    <string name="status_bar_theme_description">Colours, LEDs, and which buttons sit on the bar</string>
     <string name="keyboard_theme_description">Preset colors, keyboard preview, keys, dividers, and LEDs.</string>
     <string name="keyboard_theme_preset_title">Choose a preset</string>
     <string name="keyboard_theme_preview_title">Keyboard UI Preview</string>
     <string name="keyboard_theme_customize_title">Customize colors</string>
+    <string name="keyboard_theme_create_custom">Create a custom theme</string>
+    <string name="keyboard_theme_colors_heading">Colours</string>
+    <string name="keyboard_theme_color_pick">Pick a colour, or dial one in on the wheel.</string>
+    <string name="keyboard_theme_color_background">Background</string>
+    <string name="keyboard_theme_color_normal_key">Normal keys</string>
+    <string name="keyboard_theme_color_special_key">Special keys</string>
+    <string name="keyboard_theme_color_text">Text and icons</string>
+    <string name="keyboard_theme_color_accent">Accent</string>
+    <string name="keyboard_theme_color_divider">Divider</string>
+    <string name="keyboard_theme_color_suggestion">Suggestions</string>
+    <string name="keyboard_theme_color_status_button">Status bar buttons</string>
+    <string name="keyboard_theme_color_cursor_swipe">Cursor swipe</string>
+    <string name="keyboard_theme_color_key_popup">Key popup</string>
+    <string name="keyboard_theme_color_key_popup_selected">Key popup, selected</string>
+    <string name="keyboard_theme_color_led_inactive">LED, off</string>
+    <string name="keyboard_theme_color_led_active">LED, active</string>
+    <string name="keyboard_theme_color_led_locked">LED, locked</string>
     <string name="keyboard_theme_tab_colors">Colors</string>
     <string name="keyboard_theme_tab_keys">Keys</string>
-    <string name="keyboard_theme_assignment_hardware_title">Theme assignment for hardware keyboard</string>
-    <string name="keyboard_theme_assignment_software_title">Theme assignment for software keyboard</string>
-    <string name="keyboard_theme_assignment_fixed">Fixed</string>
-    <string name="keyboard_theme_assignment_follow_system">Follow system</string>
     <string name="keyboard_theme_light_mode_theme">Light mode theme</string>
     <string name="keyboard_theme_dark_mode_theme">Dark mode theme</string>
     <string name="keyboard_theme_layout_overrides_title">Layout overrides</string>
@@ -751,7 +780,7 @@
     <string name="keyboard_theme_layout_override_theme">Theme</string>
     <string name="keyboard_theme_selected">Active</string>
     <string name="keyboard_theme_new_theme">New theme</string>
-    <string name="keyboard_theme_new_theme_description">Create a blank draft. Required values remain empty until you set them.</string>
+    <string name="keyboard_theme_new_theme_description">Starts as a copy of the theme you are on now, so you can change only the colours you care about and save whenever you like.</string>
     <string name="keyboard_theme_name">Theme name</string>
     <string name="keyboard_theme_name_exists">A saved theme or draft already uses this name.</string>
     <string name="keyboard_theme_create_draft">Create draft</string>
@@ -832,7 +861,7 @@
     
     <!-- Power Shortcuts Section -->
     <string name="power_shortcuts_title">SYM key shortcuts</string>
-    <string name="power_shortcuts_description">Use SYM with assigned keys to launch apps and actions.</string>
+    <string name="power_shortcuts_description">Hold SYM with one of your assigned keys to launch an app or action. The keys are set below, in Assigned launcher keys.</string>
     <string name="alt_key_shortcuts_modifier_link_description">Configure Alt shortcuts and text-field access.</string>
     <string name="sym_shortcuts_compatibility_info">About SYM key compatibility</string>
     <string name="sym_shortcuts_compatibility_title">SYM key compatibility</string>
@@ -1063,7 +1092,7 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="update_dialog_download_apk">Download APK</string>
     
     <!-- Auto Correct Settings -->
-    <string name="auto_correct_ricette_pastiera_name">PhysiBoard Recipes</string>
+    <string name="auto_correct_recipes_name">PhysiBoard Recipes</string>
     
     <!-- Settings Categories -->
     <string name="settings_category_keyboard_timing">Key Behaviour &amp; Timing</string>
@@ -1095,7 +1124,7 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="settings_group_customization">Interface</string>
     <string name="settings_group_system">System</string>
     <string name="settings_group_utility">Utility</string>
-    <string name="settings_group_pastiera">About</string>
+    <string name="settings_group_about">About</string>
     <string name="settings_group_keys">Keys &amp; modifiers</string>
     <string name="settings_group_typing_corrections">Typing &amp; corrections</string>
     <string name="settings_group_appearance">Appearance</string>
@@ -1587,6 +1616,7 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="extended_status_bar_title">Extended Status Bar</string>
     <string name="extended_status_bar_features_section">Extended features</string>
     <string name="status_bar_buttons_section">Buttons</string>
+    <string name="status_bar_modifiers_section">Modifiers</string>
     <string name="status_bar_preview_suggestions">Suggestions</string>
     <string name="device_specific_interface_section">Device-specific interface</string>
     <string name="titan2_elite_rounded_corners_title">Titan 2 Elite rounded corners</string>
@@ -1637,7 +1667,7 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="sym_key_content_description">%1$s, %2$s</string>
     <string name="status_bar_buttons_reset">Reset</string>
     <string name="text_expansion_title">Text expansion</string>
-    <string name="text_expansion_description">Configure snippets and typed emoji or symbol shortcodes.</string>
+    <string name="text_expansion_description">Type a short trigger and have it expand into whatever you saved.</string>
     <string name="snippets_title">Snippets</string>
     <string name="snippets_enable_title">Enable snippets</string>
     <string name="snippets_enable_description">Expand global text snippets after a shared prefix.</string>
@@ -1666,13 +1696,6 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="expansion_tab_description">Use Tab to accept the highlighted or unique exact match.</string>
     <string name="expansion_enter_title">Accept with Enter</string>
     <string name="expansion_enter_description">Use Enter to accept the highlighted or unique exact match.</string>
-    <string name="emoji_symbols_title">Emoji &amp; symbols</string>
-    <string name="emoji_shortcodes_enable_title">Enable emoji shortcodes</string>
-    <string name="emoji_shortcodes_enable_description">Type :name to search Unicode emoji.</string>
-    <string name="symbol_shortcodes_enable_title">Enable symbol shortcodes</string>
-    <string name="symbol_shortcodes_enable_description">Type :name to search typographic and mathematical symbols.</string>
-    <string name="emoji_symbols_close_title">Expand :name:</string>
-    <string name="emoji_symbols_close_description">A closing colon expands a unique exact match. Collisions stay selectable.</string>
     <string name="untested_device_notice_title">Untested on this phone</string>
     <string name="untested_device_notice_message">PhysiBoard is built and tested on the Titan 2 Elite. Your phone is a Titan 2, which shares the same keyboard, so most things should work — but none of it has been verified on your hardware and it is not supported. Bugs you hit here may not be fixable.</string>
     <string name="untested_device_notice_dismiss">Got it</string>

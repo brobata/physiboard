@@ -12,7 +12,7 @@ import brobata.physiboard.commands.CommandJson
 import brobata.physiboard.commands.CommandLaunchSpec
 import brobata.physiboard.commands.CommandSourceId
 import brobata.physiboard.commands.CommandSurface
-import brobata.physiboard.commands.PastieraCommandSource
+import brobata.physiboard.commands.PhysiBoardCommandSource
 import brobata.physiboard.core.Punctuation
 import brobata.physiboard.inputmethod.DeviceSpecific
 import brobata.physiboard.inputmethod.subtype.AdditionalSubtypeUtils
@@ -31,7 +31,7 @@ import java.util.zip.ZipInputStream
 
 /**
  * Manages the app settings.
- * Centralizes access to SharedPreferences for Pastiera settings.
+ * Centralizes access to SharedPreferences for PhysiBoard settings.
  */
 object SettingsManager {
     private const val TAG = "SettingsManager"
@@ -117,7 +117,10 @@ object SettingsManager {
     private const val KEY_NOTIFICATION_RING_APP_COLORS = "notification_ring_app_colors"
     private const val KEY_NOTIFICATION_RING_DEFAULT_COLOR = "notification_ring_default_color"
     const val NOTIFICATION_RING_DEFAULT_MINUTES = 10
-    val NOTIFICATION_RING_MINUTE_OPTIONS = listOf(2, 10, 30)
+    // Was a three-chip choice of 2/10/30. A slider spans the same ground without forcing anyone
+    // onto one of three opinions about how long they want the screen up.
+    const val NOTIFICATION_RING_MIN_MINUTES = 1
+    const val NOTIFICATION_RING_MAX_MINUTES = 60
     private const val KEY_LAYOUT_AWARE_CTRL_SHORTCUTS = "layout_aware_ctrl_shortcuts"
     private const val KEY_SYM_MAPPINGS_CUSTOM = "sym_mappings_custom"
     private const val KEY_SYM_MAPPINGS_PAGE2_CUSTOM = "sym_mappings_page2_custom"
@@ -135,14 +138,6 @@ object SettingsManager {
     private const val KEY_SNIPPETS_ACCEPT_PREFIX_WITH_SPACE = "snippets_accept_prefix_with_space"
     private const val KEY_SNIPPETS_ACCEPT_WITH_TAB = "snippets_accept_with_tab"
     private const val KEY_SNIPPETS_ACCEPT_WITH_ENTER = "snippets_accept_with_enter"
-    private const val KEY_EMOJI_SHORTCODES_ENABLED = "emoji_shortcodes_enabled"
-    private const val KEY_SYMBOL_SHORTCODES_ENABLED = "symbol_shortcodes_enabled"
-    private const val KEY_EMOJI_SYMBOLS_PRESENTATION = "emoji_symbols_presentation"
-    private const val KEY_EMOJI_SYMBOLS_EXACT_ON_SPACE = "emoji_symbols_exact_on_space"
-    private const val KEY_EMOJI_SYMBOLS_ACCEPT_PREFIX_WITH_SPACE = "emoji_symbols_accept_prefix_with_space"
-    private const val KEY_EMOJI_SYMBOLS_ACCEPT_WITH_TAB = "emoji_symbols_accept_with_tab"
-    private const val KEY_EMOJI_SYMBOLS_ACCEPT_WITH_ENTER = "emoji_symbols_accept_with_enter"
-    private const val KEY_EMOJI_SYMBOLS_EXACT_ON_CLOSE = "emoji_symbols_exact_on_close"
     private const val KEY_ACCENT_MATCHING_ENABLED = "accent_matching_enabled"
     private const val KEY_AUTO_REPLACE_ON_SPACE_ENTER = "auto_replace_on_space_enter"
     private const val KEY_MAX_AUTO_REPLACE_DISTANCE = "max_auto_replace_distance"
@@ -611,7 +606,7 @@ object SettingsManager {
     )
 
     /**
-     * Returns the SharedPreferences instance for Pastiera.
+     * Returns the SharedPreferences instance for PhysiBoard.
      */
     fun getPreferences(context: Context): SharedPreferences {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -1199,29 +1194,16 @@ object SettingsManager {
         }
     }
 
-    fun getKeyboardThemeAssignmentMode(context: Context, target: KeyboardThemeTarget): String {
-        val stored = getPreferences(context).getString(
-            keyboardThemeAssignmentModeKeyForTarget(target),
-            // Default to a fixed theme; users can opt into following the system dark/light setting.
-            KEYBOARD_THEME_ASSIGNMENT_MODE_FIXED
-        )
-        return if (stored == KEYBOARD_THEME_ASSIGNMENT_MODE_FOLLOW_SYSTEM) {
-            KEYBOARD_THEME_ASSIGNMENT_MODE_FOLLOW_SYSTEM
-        } else {
-            KEYBOARD_THEME_ASSIGNMENT_MODE_FIXED
-        }
-    }
-
-    fun setKeyboardThemeAssignmentMode(context: Context, target: KeyboardThemeTarget, mode: String) {
-        val normalized = if (mode == KEYBOARD_THEME_ASSIGNMENT_MODE_FOLLOW_SYSTEM) {
-            KEYBOARD_THEME_ASSIGNMENT_MODE_FOLLOW_SYSTEM
-        } else {
-            KEYBOARD_THEME_ASSIGNMENT_MODE_FIXED
-        }
-        getPreferences(context).edit()
-            .putString(keyboardThemeAssignmentModeKeyForTarget(target), normalized)
-            .apply()
-    }
+    /**
+     * Always [KEYBOARD_THEME_ASSIGNMENT_MODE_FIXED] since 2.0.
+     *
+     * The follow-the-system light/dark pairing was dropped: you pick a theme and that is the theme
+     * you get. The stored preference is deliberately ignored rather than read, so an install that
+     * had opted into follow-system before upgrading — or one that restores an older backup — lands
+     * on its chosen theme instead of being stuck on a mode with no UI left to change it.
+     */
+    fun getKeyboardThemeAssignmentMode(context: Context, target: KeyboardThemeTarget): String =
+        KEYBOARD_THEME_ASSIGNMENT_MODE_FIXED
 
     fun getKeyboardThemeSystemSlot(
         context: Context,
@@ -2745,7 +2727,7 @@ object SettingsManager {
 
     /**
      * Returns whether Ctrl+letter app shortcuts should be resolved through
-     * the active Pastiera layout before being passed to the target app.
+     * the active PhysiBoard layout before being passed to the target app.
      */
     fun getLayoutAwareCtrlShortcutsEnabled(context: Context): Boolean {
         return getPreferences(context).getBoolean(
@@ -2755,7 +2737,7 @@ object SettingsManager {
     }
 
     /**
-     * Sets whether Ctrl+letter app shortcuts should use the active Pastiera layout.
+     * Sets whether Ctrl+letter app shortcuts should use the active PhysiBoard layout.
      */
     fun setLayoutAwareCtrlShortcutsEnabled(context: Context, enabled: Boolean) {
         getPreferences(context).edit()
@@ -3632,56 +3614,6 @@ object SettingsManager {
             .apply()
     }
 
-    fun getEmojiShortcodesEnabled(context: Context): Boolean =
-        getPreferences(context).getBoolean(KEY_EMOJI_SHORTCODES_ENABLED, false)
-
-    fun setEmojiShortcodesEnabled(context: Context, enabled: Boolean) {
-        getPreferences(context).edit().putBoolean(KEY_EMOJI_SHORTCODES_ENABLED, enabled).apply()
-    }
-
-    fun getSymbolShortcodesEnabled(context: Context): Boolean =
-        getPreferences(context).getBoolean(KEY_SYMBOL_SHORTCODES_ENABLED, false)
-
-    fun setSymbolShortcodesEnabled(context: Context, enabled: Boolean) {
-        getPreferences(context).edit().putBoolean(KEY_SYMBOL_SHORTCODES_ENABLED, enabled).apply()
-    }
-
-    fun getEmojiSymbolsPresentation(context: Context): ExpansionPresentation = ExpansionPresentation.fromStorage(
-        getPreferences(context).getString(KEY_EMOJI_SYMBOLS_PRESENTATION, null)
-    )
-
-    fun setEmojiSymbolsPresentation(context: Context, presentation: ExpansionPresentation) {
-        getPreferences(context).edit()
-            .putString(KEY_EMOJI_SYMBOLS_PRESENTATION, presentation.storageValue)
-            .apply()
-    }
-
-    fun getEmojiSymbolsActivationPolicy(context: Context): ExpansionActivationPolicy {
-        val prefs = getPreferences(context)
-        return ExpansionActivationPolicy(
-            exactOnSpace = prefs.getBoolean(KEY_EMOJI_SYMBOLS_EXACT_ON_SPACE, false),
-            acceptPrefixWithSpace = prefs.getBoolean(KEY_EMOJI_SYMBOLS_ACCEPT_PREFIX_WITH_SPACE, false),
-            acceptWithTab = prefs.getBoolean(KEY_EMOJI_SYMBOLS_ACCEPT_WITH_TAB, true),
-            acceptWithEnter = prefs.getBoolean(KEY_EMOJI_SYMBOLS_ACCEPT_WITH_ENTER, false)
-        )
-    }
-
-    fun setEmojiSymbolsActivationPolicy(context: Context, policy: ExpansionActivationPolicy) {
-        getPreferences(context).edit()
-            .putBoolean(KEY_EMOJI_SYMBOLS_EXACT_ON_SPACE, policy.exactOnSpace)
-            .putBoolean(KEY_EMOJI_SYMBOLS_ACCEPT_PREFIX_WITH_SPACE, policy.acceptPrefixWithSpace)
-            .putBoolean(KEY_EMOJI_SYMBOLS_ACCEPT_WITH_TAB, policy.acceptWithTab)
-            .putBoolean(KEY_EMOJI_SYMBOLS_ACCEPT_WITH_ENTER, policy.acceptWithEnter)
-            .apply()
-    }
-
-    fun getEmojiSymbolsExactOnClose(context: Context): Boolean =
-        getPreferences(context).getBoolean(KEY_EMOJI_SYMBOLS_EXACT_ON_CLOSE, true)
-
-    fun setEmojiSymbolsExactOnClose(context: Context, enabled: Boolean) {
-        getPreferences(context).edit().putBoolean(KEY_EMOJI_SYMBOLS_EXACT_ON_CLOSE, enabled).apply()
-    }
-    
     /**
      * Returns the display name of a custom language from JSON.
      */
@@ -3883,7 +3815,9 @@ object SettingsManager {
     const val QUICK_LAUNCHER_DYNAMIC_FAVORITE_COLOR = Int.MIN_VALUE
     private const val DEFAULT_QUICK_LAUNCHER_FAVORITE_COLOR = QUICK_LAUNCHER_DYNAMIC_FAVORITE_COLOR
     private const val DEFAULT_QUICK_LAUNCHER_STATIC_TOP_HIGHLIGHT_COLOR = 0x7A4285F4
-    const val QUICK_LAUNCHER_BEHAVIOR_PASTIERA = "pastiera"
+    // Stored in prefs since 1.x. The name changed with the fork; the value must not, or every
+    // existing choice would read back as unknown.
+    const val QUICK_LAUNCHER_BEHAVIOR_PHYSIBOARD = "pastiera"
     const val QUICK_LAUNCHER_BEHAVIOR_NIAGARA = "niagara"
     const val QUICK_LAUNCHER_ANIMATION_DURATION_MIN_MS = 0
     const val QUICK_LAUNCHER_ANIMATION_DURATION_MAX_MS = 320
@@ -3918,12 +3852,12 @@ object SettingsManager {
         setLauncherCommand(
             context = context,
             keyCode = keyCode,
-            commandId = PastieraCommandSource.COMMAND_QUICK_LAUNCHER,
-            source = CommandSourceId.Pastiera.storageValue,
-            kind = "PastieraAction",
-            title = "Pastiera QuickLauncher",
-            subtitle = "Open Pastiera search",
-            launch = CommandLaunchSpec.InternalAction(PastieraCommandSource.ACTION_OPEN_QUICK_LAUNCHER)
+            commandId = PhysiBoardCommandSource.COMMAND_QUICK_LAUNCHER,
+            source = CommandSourceId.PhysiBoard.storageValue,
+            kind = "PhysiBoardAction",
+            title = "PhysiBoard QuickLauncher",
+            subtitle = "Open PhysiBoard search",
+            launch = CommandLaunchSpec.InternalAction(PhysiBoardCommandSource.ACTION_OPEN_QUICK_LAUNCHER)
         )
         getPreferences(context).edit()
             .putBoolean(KEY_QUICK_LAUNCHER_DEFAULT_ASSIGNED, true)
@@ -3974,7 +3908,7 @@ object SettingsManager {
                     val shortcutObj = shortcuts.optJSONObject(key)
                     if (
                         shortcutObj?.optString("type") == LauncherShortcut.TYPE_QUICK_LAUNCHER ||
-                        shortcutObj?.optString("commandId") == PastieraCommandSource.COMMAND_QUICK_LAUNCHER
+                        shortcutObj?.optString("commandId") == PhysiBoardCommandSource.COMMAND_QUICK_LAUNCHER
                     ) {
                         keysToRemove.add(key)
                     }
@@ -4150,8 +4084,8 @@ object SettingsManager {
 
     private fun LauncherShortcut.isQuickLauncherCommand(): Boolean {
         return type == LauncherShortcut.TYPE_QUICK_LAUNCHER ||
-            commandId == PastieraCommandSource.COMMAND_QUICK_LAUNCHER ||
-            commandLaunch == CommandLaunchSpec.InternalAction(PastieraCommandSource.ACTION_OPEN_QUICK_LAUNCHER)
+            commandId == PhysiBoardCommandSource.COMMAND_QUICK_LAUNCHER ||
+            commandLaunch == CommandLaunchSpec.InternalAction(PhysiBoardCommandSource.ACTION_OPEN_QUICK_LAUNCHER)
     }
 
     private fun legacyLaunchSpec(type: String, shortcutObj: JSONObject): CommandLaunchSpec? {
@@ -4160,7 +4094,7 @@ object SettingsManager {
                 .takeIf { it.isNotBlank() }
                 ?.let { CommandLaunchSpec.AppPackage(it) }
             LauncherShortcut.TYPE_QUICK_LAUNCHER -> {
-                CommandLaunchSpec.InternalAction(PastieraCommandSource.ACTION_OPEN_QUICK_LAUNCHER)
+                CommandLaunchSpec.InternalAction(PhysiBoardCommandSource.ACTION_OPEN_QUICK_LAUNCHER)
             }
             else -> null
         }
@@ -4225,7 +4159,7 @@ object SettingsManager {
     private fun defaultCommandSourceVisibility(): List<CommandSourceVisibility> {
         return listOf(
             CommandSourceVisibility(CommandSourceId.Apps.storageValue, quickLauncherEnabled = true),
-            CommandSourceVisibility(CommandSourceId.Pastiera.storageValue, quickLauncherEnabled = true),
+            CommandSourceVisibility(CommandSourceId.PhysiBoard.storageValue, quickLauncherEnabled = true),
             CommandSourceVisibility(CommandSourceId.AppActions.storageValue, quickLauncherEnabled = false),
             CommandSourceVisibility(CommandSourceId.DeviceControl.storageValue, quickLauncherEnabled = false),
             CommandSourceVisibility(CommandSourceId.NavActions.storageValue, quickLauncherEnabled = false)
@@ -4472,8 +4406,8 @@ object SettingsManager {
     fun getQuickLauncherBehavior(context: Context): String {
         val value = getPreferences(context).getString(
             KEY_QUICK_LAUNCHER_BEHAVIOR,
-            QUICK_LAUNCHER_BEHAVIOR_PASTIERA
-        ) ?: QUICK_LAUNCHER_BEHAVIOR_PASTIERA
+            QUICK_LAUNCHER_BEHAVIOR_PHYSIBOARD
+        ) ?: QUICK_LAUNCHER_BEHAVIOR_PHYSIBOARD
         return normalizeQuickLauncherBehavior(value)
     }
 
@@ -4486,7 +4420,7 @@ object SettingsManager {
     private fun normalizeQuickLauncherBehavior(behavior: String): String {
         return when (behavior.trim().lowercase()) {
             QUICK_LAUNCHER_BEHAVIOR_NIAGARA -> QUICK_LAUNCHER_BEHAVIOR_NIAGARA
-            else -> QUICK_LAUNCHER_BEHAVIOR_PASTIERA
+            else -> QUICK_LAUNCHER_BEHAVIOR_PHYSIBOARD
         }
     }
     

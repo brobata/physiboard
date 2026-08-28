@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,6 +43,7 @@ import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.TouchApp
@@ -76,11 +78,13 @@ enum class SettingsDestination {
     Status,
     KeyboardTiming,
     TextInput,
+    TextExpansion,
     AutoCorrection,
     Customization,
     NavMode,
     ScreenTrackpad,
-    Advanced,
+    Extras,
+    Diagnostics,
     About,
     CustomInputStyles,
     AppLanguage,
@@ -148,7 +152,11 @@ fun SettingsScreen(
             } else if (initialDestination == SettingsActivity.DESTINATION_KEYBOARD_HUB) {
                 add(SettingsDestination.KeyboardHub)
             } else if (initialDestination == SettingsActivity.DESTINATION_EXTRAS) {
-                add(SettingsDestination.Main)
+                add(SettingsDestination.Extras)
+            } else if (initialDestination == SettingsActivity.DESTINATION_STATUS) {
+                // Deep-linked from the home screen's Status tile, so back belongs at the home
+                // screen. Pushing Main underneath would strand people in Settings instead.
+                add(SettingsDestination.Status)
             } else if (initialDestination == SettingsActivity.DESTINATION_REMOVE_BLOAT) {
                 add(SettingsDestination.Toolbox)
                 add(SettingsDestination.BloatRemover)
@@ -224,6 +232,7 @@ fun SettingsScreen(
     // Handle system back button
     BackHandler { navigateBack() }
     
+    val stateHolder = rememberSaveableStateHolder()
     AnimatedContent(
         targetState = currentDestination,
         transitionSpec = {
@@ -250,6 +259,10 @@ fun SettingsScreen(
         label = "settings_navigation",
         contentKey = { it }
     ) { destination ->
+        // Each destination keeps its own saveable state while it is off screen, so coming back
+        // returns to where you were rather than the top of the list. rememberScrollState and
+        // rememberLazyListState are saveable-backed, so scroll position rides along for free.
+        stateHolder.SaveableStateProvider(destination.name) {
     // One mapping from a search hit to a destination, shared by Settings and the hubs, so a
     // search started anywhere lands in the same place.
     val searchTargetNavigation: (SettingsSearchTarget) -> Unit = { target ->
@@ -273,7 +286,7 @@ fun SettingsScreen(
                 openCustomization(SettingsActivity.CUSTOMIZATION_DESTINATION_APP_ENTER_BEHAVIOR)
             SettingsSearchTarget.TOOLBOX -> navigateTo(SettingsDestination.Toolbox)
             SettingsSearchTarget.REMOVE_BLOAT -> navigateTo(SettingsDestination.BloatRemover)
-            SettingsSearchTarget.ADVANCED -> navigateTo(SettingsDestination.Advanced)
+            SettingsSearchTarget.ADVANCED -> navigateTo(SettingsDestination.Main)
             SettingsSearchTarget.ABOUT -> navigateTo(SettingsDestination.About)
             SettingsSearchTarget.CUSTOM_INPUT_STYLES -> navigateTo(SettingsDestination.CustomInputStyles)
             SettingsSearchTarget.APP_LANGUAGE -> navigateTo(SettingsDestination.AppLanguage)
@@ -317,7 +330,8 @@ fun SettingsScreen(
                     onEnterBehaviorClick = {
                         openCustomization(SettingsActivity.CUSTOMIZATION_DESTINATION_APP_ENTER_BEHAVIOR)
                     },
-                    onAdvancedClick = { navigateTo(SettingsDestination.Advanced) },
+                    onExtrasClick = { navigateTo(SettingsDestination.Extras) },
+                    onDiagnosticsClick = { navigateTo(SettingsDestination.Diagnostics) },
                     onAboutClick = { navigateTo(SettingsDestination.About) },
                     onBackClick = { navigateBack() },
                     onCustomInputStylesClick = { navigateTo(SettingsDestination.CustomInputStyles) },
@@ -460,15 +474,9 @@ fun SettingsScreen(
                             onClick = { navigateTo(SettingsDestination.Voice) }
                         ),
                         HubRow(
-                            icon = Icons.Filled.Gesture,
-                            title = stringResource(R.string.screen_trackpad_title),
-                            description = stringResource(R.string.screen_trackpad_description),
-                            onClick = { navigateTo(SettingsDestination.ScreenTrackpad) }
-                        ),
-                        HubRow(
                             icon = Icons.Filled.Palette,
-                            title = stringResource(R.string.keyboard_theme_title),
-                            description = stringResource(R.string.keyboard_hub_theme_description),
+                            title = stringResource(R.string.status_bar_theme_title),
+                            description = stringResource(R.string.status_bar_theme_description),
                             onClick = {
                                 openCustomization(SettingsActivity.CUSTOMIZATION_DESTINATION_KEYBOARD_THEME)
                             }
@@ -549,12 +557,20 @@ fun SettingsScreen(
                     initialKeyCode = requestedNavModeKeyCode
                 )
             }
-            SettingsDestination.Advanced -> {
-                AdvancedSettingsScreen(
+            SettingsDestination.Extras -> {
+                ExtrasScreen(
                     modifier = modifier,
                     onBack = { navigateBack() },
-                    onOpenInputLanguages = { navigateTo(SettingsDestination.CustomInputStyles) }
+                    onQuickLauncher = { openCustomization(SettingsActivity.CUSTOMIZATION_DESTINATION_LAUNCHER_SHORTCUTS) },
+                    onInputLanguages = { navigateTo(SettingsDestination.CustomInputStyles) },
+                    onTextExpansion = { navigateTo(SettingsDestination.TextExpansion) }
                 )
+            }
+            SettingsDestination.Diagnostics -> {
+                DiagnosticsScreen(modifier = modifier, onBack = { navigateBack() })
+            }
+            SettingsDestination.TextExpansion -> {
+                TextExpansionSettingsScreen(onBack = { navigateBack() })
             }
             SettingsDestination.About -> {
                 AboutScreen(
@@ -576,6 +592,7 @@ fun SettingsScreen(
                 DeviceSymLayerEditorStubScreen(modifier = modifier, onBack = { navigateBack() })
             }
         }
+    }
     }
 }
 
@@ -607,7 +624,8 @@ private fun SettingsMainScreen(
     onQuickLauncherClick: () -> Unit,
     onNavModeClick: () -> Unit,
     onEnterBehaviorClick: () -> Unit,
-    onAdvancedClick: () -> Unit,
+    onExtrasClick: () -> Unit,
+    onDiagnosticsClick: () -> Unit,
     onAboutClick: () -> Unit,
     onBackClick: () -> Unit,
     onCustomInputStylesClick: () -> Unit,
@@ -630,13 +648,15 @@ private fun SettingsMainScreen(
             SettingsSearchTarget.NAV_MODE -> onNavModeClick()
             SettingsSearchTarget.SCREEN_TRACKPAD -> onScreenTrackpadClick()
             SettingsSearchTarget.ENTER_BEHAVIOR -> onEnterBehaviorClick()
-            SettingsSearchTarget.ADVANCED -> onAdvancedClick()
+            SettingsSearchTarget.ADVANCED -> onDiagnosticsClick()
             SettingsSearchTarget.ABOUT -> onAboutClick()
             SettingsSearchTarget.CUSTOM_INPUT_STYLES -> onCustomInputStylesClick()
             SettingsSearchTarget.APP_LANGUAGE -> onAppLanguageClick()
         }
     }
+    val snackbarHostState = remember { SnackbarHostState() }
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             Surface(
                 modifier = Modifier
@@ -722,44 +742,23 @@ private fun SettingsMainScreen(
                 onClick = onStatusClick
             )
 
-            SettingsCategoryRow(
-                icon = Icons.Filled.Build,
-                title = stringResource(R.string.toolbox_title),
-                description = stringResource(R.string.toolbox_row_description),
-                onClick = onToolboxClick
-            )
-            SettingsCategoryRow(
-                icon = Icons.Filled.Keyboard,
-                title = stringResource(R.string.keyboard_hub_title),
-                description = stringResource(R.string.keyboard_hub_row_description),
-                onClick = onKeyboardHubClick
-            )
-            SettingsCategoryRow(
-                icon = Icons.AutoMirrored.Filled.ManageSearch,
-                title = stringResource(R.string.quick_launcher_title),
-                description = stringResource(R.string.starter_launcher_shortcuts_description),
-                onClick = onQuickLauncherClick
-            )
-            SettingsCategoryRow(
-                icon = Icons.Filled.SmartButton,
-                title = stringResource(R.string.status_bar_buttons_title),
-                description = stringResource(R.string.status_bar_buttons_description),
-                onClick = onStatusBarButtonsClick
-            )
-            SettingsCategoryRow(
-                icon = Icons.Filled.Language,
-                title = stringResource(R.string.custom_input_styles_title),
-                description = stringResource(R.string.extras_languages_description),
-                onClick = onInputLanguagesClick
-            )
-            SettingsCategoryRow(
-                icon = Icons.Filled.Engineering,
-                title = stringResource(R.string.settings_category_advanced),
-                description = stringResource(R.string.toolbox_advanced_description),
-                onClick = onAdvancedClick
+            // T2E Tools and Keyboard used to be listed here too. Both are buttons on the home
+            // screen, so the rows were a second way to reach a place you had just come from.
+            // Backup, restore, diagnostics and reset-to-stock were behind "Advanced" until 2.0.
+            MaintenanceSettingsRows(
+                snackbarHostState = snackbarHostState,
+                onOpenDiagnostics = onDiagnosticsClick
             )
 
-            SettingsGroupDivider(stringResource(R.string.settings_group_pastiera))
+
+            SettingsGroupDivider(stringResource(R.string.settings_group_about))
+
+            SettingsCategoryRow(
+                icon = Icons.Filled.Info,
+                title = stringResource(R.string.about_title),
+                description = stringResource(R.string.about_row_description),
+                onClick = onAboutClick
+            )
 
             if (shouldUseGithubUpdateChecks(context)) {
                 SettingsCategoryRow(

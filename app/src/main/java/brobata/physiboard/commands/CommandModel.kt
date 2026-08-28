@@ -17,7 +17,9 @@ data class CommandTarget(
 
 enum class CommandSourceId(val storageValue: String, val displayLabel: String) {
     Apps("apps", "Apps"),
-    Pastiera("pastiera", "Pastiera"),
+    // The storage value stays "pastiera": it is written into saved shortcut assignments, and
+    // renaming it would orphan every binding someone already made.
+    PhysiBoard("pastiera", "PhysiBoard"),
     AppActions("app_actions", "App actions"),
     DeviceControl("device_control", "Device control"),
     NavActions("nav_actions", "Navigation");
@@ -31,7 +33,7 @@ enum class CommandSourceId(val storageValue: String, val displayLabel: String) {
 
 enum class CommandKind {
     App,
-    PastieraAction,
+    PhysiBoardAction,
     AppAction,
     DeviceControl,
     NavAction,

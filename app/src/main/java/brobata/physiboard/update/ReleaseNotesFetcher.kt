@@ -9,8 +9,18 @@ import okhttp3.Request
 import okhttp3.Response
 import org.json.JSONObject
 import java.io.IOException
+import brobata.physiboard.BuildConfig
 
-private const val RELEASE_NOTES_BASE_URL = "https://pastiera.eu/releases"
+/**
+ * PhysiBoard's own releases, read from the GitHub API.
+ *
+ * This used to fetch `pastiera.eu/releases/<version>/<lang>.json` — upstream's site. For a fork
+ * that was wrong twice over: the versions there never match ours, and the notes describe a
+ * different app. GitHub has no per-language notes, so the language argument now only chooses the
+ * offline fallback text.
+ */
+private val RELEASE_NOTES_API_URL = "https://api.github.com/repos/${BuildConfig.GITHUB_REPO}/releases/tags"
+private val RELEASES_PAGE_URL = "https://github.com/${BuildConfig.GITHUB_REPO}/releases"
 
 private val releaseNotesClient = OkHttpClient()
 private val releaseNotesHandler = Handler(Looper.getMainLooper())
@@ -21,53 +31,23 @@ data class ReleaseNotesSummary(
     val highlights: List<String>,
     val improvements: List<String> = emptyList(),
     val bugFixes: List<String> = emptyList(),
-    val docsUrl: String = "https://pastiera.eu/"
+    val docsUrl: String = RELEASES_PAGE_URL
 ) {
     companion object {
         fun fallback(version: String, languageTag: String = "en"): ReleaseNotesSummary {
+            // Shown when the notes cannot be fetched. It deliberately makes no claims about what
+            // changed: the previous version hardcoded upstream Pastiera's feature list, which was
+            // wrong for this app and went stale the moment it was written.
             val language = normalizeReleaseNotesLanguage(languageTag)
             return ReleaseNotesSummary(
                 version = version,
-                title = when (language) {
-                    "de" -> "Pastiera $version"
-                    "it" -> "Pastiera $version"
-                    else -> "Pastiera $version"
-                },
+                title = "PhysiBoard $version",
                 highlights = when (language) {
-                    "de" -> listOf(
-                        "QuickLauncher öffnet Apps direkt per Tastatur und funktioniert auch aus Textfeldern mit SYM + Leertaste.",
-                        "Statusleiste und Variationen sind flexibler steuerbar und können besser an deinen Workflow angepasst werden.",
-                        "App-spezifische Messenger-Presets unterstützen optional SYM + Enter zum Senden.",
-                        "Nav Mode wurde um Wortnavigation, Mediensteuerung und neue Ctrl-Optionen erweitert."
-                    )
-                    "it" -> listOf(
-                        "QuickLauncher apre app direttamente dalla tastiera e funziona anche dai campi di testo con SYM + Spazio.",
-                        "Barra di stato e variazioni sono più flessibili e adattabili al tuo flusso.",
-                        "I preset messenger per app supportano una scorciatoia opzionale SYM + Invio per inviare.",
-                        "Nav Mode aggiunge navigazione per parole, controlli multimediali e nuove opzioni Ctrl."
-                    )
-                    else -> listOf(
-                        "QuickLauncher opens apps directly from the keyboard and also works from text fields with SYM + Space.",
-                        "Status bar and variation controls are more flexible and easier to adapt to your workflow.",
-                        "App-specific messenger presets support an optional SYM + Enter send shortcut.",
-                        "Nav Mode adds word navigation, media controls, and new Ctrl options."
-                    )
+                    "de" -> listOf("Die vollständigen Notizen zu dieser Version stehen auf der GitHub-Releases-Seite.")
+                    "it" -> listOf("Le note complete di questa versione sono sulla pagina delle release su GitHub.")
+                    else -> listOf("The full notes for this release are on the GitHub releases page.")
                 },
-                improvements = when (language) {
-                    "de" -> listOf("Viele kleinere Verbesserungen betreffen Symbole, Vorschläge, Backups, Shortcuts und Release-Stabilität.")
-                    "it" -> listOf("Molti miglioramenti minori riguardano simboli, suggerimenti, backup, scorciatoie e stabilità del rilascio.")
-                    else -> listOf("Many smaller improvements cover symbols, suggestions, backups, shortcuts, and release stability.")
-                },
-                bugFixes = when (language) {
-                    "de" -> listOf("Keyboard-Layouts und Subtype-Auswahl respektieren die aktive Sprache zuverlässiger.", "Mehrere Hardware-Mappings und Eingabekantenfälle wurden korrigiert.")
-                    "it" -> listOf("Layout tastiera e selezione subtype rispettano meglio la lingua attiva.", "Sono stati corretti diversi mapping hardware e casi limite di input.")
-                    else -> listOf("Keyboard layouts and subtype selection more reliably respect the active language.", "Several hardware mapping and input edge cases were fixed.")
-                },
-                docsUrl = when (language) {
-                    "de" -> "https://pastiera.eu/de/"
-                    "it" -> "https://pastiera.eu/it/"
-                    else -> "https://pastiera.eu/"
-                }
+                docsUrl = RELEASES_PAGE_URL
             )
         }
     }
@@ -99,39 +79,31 @@ private fun fetchReleaseNotesFromDocs(
     allowEnglishFallback: Boolean,
     callback: (ReleaseNotesSummary?) -> Unit
 ) {
+    // Releases are tagged vX.Y.Z. GitHub serves one set of notes per tag, so `language` and
+    // `allowEnglishFallback` no longer affect the request — they are kept for the caller's shape.
     val request = Request.Builder()
-        .url("$RELEASE_NOTES_BASE_URL/$normalizedVersion/$language.json")
-        .header("Accept", "application/json")
+        .url("$RELEASE_NOTES_API_URL/v$normalizedVersion")
+        .header("Accept", "application/vnd.github+json")
         .build()
 
     releaseNotesClient.newCall(request).enqueue(object : Callback {
         override fun onFailure(call: Call, e: IOException) {
-            if (allowEnglishFallback) {
-                fetchReleaseNotesFromDocs(normalizedVersion, "en", false, callback)
-            } else {
-                postReleaseNotes(callback, null)
-            }
+            postReleaseNotes(callback, null)
         }
 
         override fun onResponse(call: Call, response: Response) {
             response.use { res ->
+                // A tag with no release yet is a 404, which is normal rather than an error.
                 if (!res.isSuccessful) {
-                    if (allowEnglishFallback) {
-                        fetchReleaseNotesFromDocs(normalizedVersion, "en", false, callback)
-                    } else {
-                        postReleaseNotes(callback, null)
-                    }
+                    postReleaseNotes(callback, null)
                     return
                 }
-
                 val body = res.body?.string().orEmpty()
                 if (body.isBlank()) {
                     postReleaseNotes(callback, null)
                     return
                 }
-
-                val notes = parseReleaseNotesJson(body, normalizedVersion)
-                postReleaseNotes(callback, notes)
+                postReleaseNotes(callback, parseReleaseNotesJson(body, normalizedVersion))
             }
         }
     })
@@ -140,34 +112,31 @@ private fun fetchReleaseNotesFromDocs(
 private fun parseReleaseNotesJson(body: String, expectedVersion: String): ReleaseNotesSummary? {
     return runCatching {
         val json = JSONObject(body)
-        val version = json.optString("version", expectedVersion).takeIf(String::isNotBlank) ?: expectedVersion
-        if (normalizeReleaseVersion(version) != expectedVersion) return@runCatching null
+        val tag = json.optString("tag_name")
+        if (tag.isNotBlank() && normalizeReleaseVersion(tag) != expectedVersion) return@runCatching null
 
-        val highlights = parseStringArray(json, "highlights", 8)
+        // GitHub release bodies are markdown. Bullet lines carry the substance; headings, blank
+        // lines and prose are dropped rather than shown as pseudo-highlights.
+        val highlights = json.optString("body")
+            .lineSequence()
+            .map(String::trim)
+            .filter { it.startsWith("- ") || it.startsWith("* ") }
+            // Notes are written as "- **Lead in.** then prose", so the bold markers sit mid-line and
+            // stripping only matched ends would leave asterisks on screen.
+            .map { it.removeRange(0, 2).replace("**", "").trim() }
+            .filter(String::isNotBlank)
+            .take(8)
+            .toList()
         if (highlights.isEmpty()) return@runCatching null
 
         ReleaseNotesSummary(
-            version = version,
-            title = json.optString("title").takeIf(String::isNotBlank) ?: "Pastiera $version",
+            version = expectedVersion,
+            title = json.optString("name").takeIf(String::isNotBlank) ?: "PhysiBoard $expectedVersion",
             highlights = highlights,
-            improvements = parseStringArray(json, "improvements", 8),
-            bugFixes = parseStringArray(json, "bugFixes", 12),
-            docsUrl = json.optString("docsUrl")
-                .takeIf { it.startsWith("https://pastiera.eu/") }
-                ?: "https://pastiera.eu/"
+            docsUrl = json.optString("html_url").takeIf { it.startsWith("https://github.com/") }
+                ?: RELEASES_PAGE_URL
         )
     }.getOrNull()
-}
-
-private fun parseStringArray(json: JSONObject, key: String, limit: Int): List<String> {
-    val array = json.optJSONArray(key) ?: return emptyList()
-    return buildList {
-        for (index in 0 until array.length()) {
-            val value = array.optString(index).trim()
-            if (value.isNotBlank()) add(value)
-            if (size >= limit) break
-        }
-    }
 }
 
 private fun normalizeReleaseNotesLanguage(languageTag: String): String {

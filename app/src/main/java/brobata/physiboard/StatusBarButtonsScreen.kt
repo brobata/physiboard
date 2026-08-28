@@ -34,12 +34,23 @@ import android.provider.Settings
 import kotlinx.coroutines.delay
 import brobata.physiboard.R
 
+/**
+ * The status bar half of the Status Bar Theme page.
+ *
+ * Was its own top-level screen until 2.0, when it was merged into the keyboard theme page: the
+ * buttons, the caret colours and the theme are one subject. It therefore renders no header and no
+ * scroll container of its own — the host page supplies both.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StatusBarButtonsScreen(
+fun StatusBarButtonsSection(
     modifier: Modifier = Modifier,
-    onBack: () -> Unit,
-    onOpenModifiers: () -> Unit
+    /**
+     * Rendered at the end of the modifiers group. The Show LEDs switch belongs with the other
+     * modifier indicators, but its state lives on the theme half of the page, so the host passes
+     * it down rather than this section reaching for it.
+     */
+    modifierExtras: @Composable () -> Unit = {},
 ) {
     val context = LocalContext.current
     var statusBarVisibility by remember { mutableStateOf(SettingsManager.getStatusBarVisibility(context)) }
@@ -70,7 +81,6 @@ fun StatusBarButtonsScreen(
         mutableStateOf(SettingsManager.getCaretBadgeLockedColor(context))
     }
     var pickingCaretColor by remember { mutableStateOf<String?>(null) }
-    BackHandler { onBack() }
 
     fun selectExtendedButton(buttonId: String, targetSide: String, targetIndex: Int) {
         if (buttonId != SettingsManager.STATUS_BAR_BUTTON_NONE) {
@@ -95,53 +105,52 @@ fun StatusBarButtonsScreen(
     }
 
 
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
-    ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.statusBars),
-            tonalElevation = 1.dp
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = stringResource(R.string.settings_back_content_description)
-                    )
-                }
-                Text(
-                    text = stringResource(R.string.status_bar_buttons_title),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier
-                        .padding(start = 8.dp)
-                        .weight(1f)
-                )
-                IconButton(
-                    onClick = {
-                        val defaults = SettingsManager.resetStatusBarSlotsToDefault(context)
-                        leftSlots = listOf(defaults.left)
-                        rightSlots = listOf(defaults.right1, defaults.right2)
-                    }
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Refresh,
-                        contentDescription = stringResource(R.string.status_bar_buttons_reset),
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                }
-            }
+    Column(modifier = modifier.fillMaxWidth()) {
+        // Reset lived in the old screen's app bar. The merged page has one app bar for the whole
+        // subject, so the action moves in beside the slots it actually resets.
+        Surface(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = stringResource(R.string.status_bar_buttons_description),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+            )
         }
 
+        SettingsSectionDivider(stringResource(R.string.status_bar_buttons_section))
+        SlotGroup(
+            title = stringResource(R.string.status_bar_slots_left),
+            slots = leftSlots,
+            slotPrefix = "L",
+            onSlotSelected = { index, buttonId -> selectExtendedButton(buttonId, "left", index) },
+            onAddSlot = {
+                leftSlots = leftSlots + SettingsManager.STATUS_BAR_BUTTON_NONE
+                SettingsManager.setStatusBarSlotsLeft(context, leftSlots)
+            },
+            onRemoveSlot = { index ->
+                leftSlots = leftSlots.toMutableList().also { it.removeAt(index) }
+                SettingsManager.setStatusBarSlotsLeft(context, leftSlots)
+            }
+            ,allowMultiple = false
+        )
+        SlotGroup(
+            title = stringResource(R.string.status_bar_slots_right),
+            slots = rightSlots,
+            slotPrefix = "R",
+            onSlotSelected = { index, buttonId -> selectExtendedButton(buttonId, "right", index) },
+            onAddSlot = {
+                rightSlots = rightSlots + SettingsManager.STATUS_BAR_BUTTON_NONE
+                SettingsManager.setStatusBarSlotsRight(context, rightSlots)
+            },
+            onRemoveSlot = { index ->
+                rightSlots = rightSlots.toMutableList().also { it.removeAt(index) }
+                SettingsManager.setStatusBarSlotsRight(context, rightSlots)
+            }
+            ,allowMultiple = false
+        )
+
+
+        SettingsSectionDivider(stringResource(R.string.show_status_bar_title))
         StatusBarVisibilitySection(
             visibility = statusBarVisibility,
             apps = statusBarApps,
@@ -168,6 +177,7 @@ fun StatusBarButtonsScreen(
             )
         }
 
+        SettingsSectionDivider(stringResource(R.string.status_bar_modifiers_section))
         CaretBadgeRow(
             checked = caretBadgeEnabled,
             overlayGranted = overlayGranted,
@@ -221,100 +231,29 @@ fun StatusBarButtonsScreen(
                 onDismiss = { pickingCaretColor = null }
             )
         }
+        modifierExtras()
 
-        Surface(modifier = Modifier.fillMaxWidth()) {
+        // Reset sits last: it undoes the slots above, and nothing should be easier to hit
+        // than the settings it throws away.
+        TextButton(
+            onClick = {
+                val defaults = SettingsManager.resetStatusBarSlotsToDefault(context)
+                leftSlots = listOf(defaults.left)
+                rightSlots = listOf(defaults.right1, defaults.right2)
+            },
+            modifier = Modifier.padding(horizontal = 12.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Refresh,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error
+            )
             Text(
-                text = stringResource(R.string.status_bar_buttons_description),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                text = stringResource(R.string.status_bar_buttons_reset),
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(start = 8.dp)
             )
         }
-
-        SettingsAdvancedSection {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onOpenModifiers)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.modifier_keys_24),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.modifier_indicators_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Text(
-                        text = stringResource(R.string.modifier_indicators_description),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-        }
-
-        // Status bar "style" picker hidden to simplify to a single presentation.
-
-        StatusBarLayoutPreview(
-            leftSlots = leftSlots,
-            rightSlots = rightSlots,
-            centerText = stringResource(R.string.status_bar_preview_suggestions)
-        )
-
-        // Titan2-Elite rounded-corner insets option hidden (still reachable via prefs/backup).
-
-        // Swipe-cursor info row hidden to declutter.
-
-
-        SettingsSectionDivider(stringResource(R.string.status_bar_buttons_section))
-        SlotGroup(
-            title = stringResource(R.string.status_bar_slots_left),
-            slots = leftSlots,
-            slotPrefix = "L",
-            onSlotSelected = { index, buttonId -> selectExtendedButton(buttonId, "left", index) },
-            onAddSlot = {
-                leftSlots = leftSlots + SettingsManager.STATUS_BAR_BUTTON_NONE
-                SettingsManager.setStatusBarSlotsLeft(context, leftSlots)
-            },
-            onRemoveSlot = { index ->
-                leftSlots = leftSlots.toMutableList().also { it.removeAt(index) }
-                SettingsManager.setStatusBarSlotsLeft(context, leftSlots)
-            }
-            ,allowMultiple = false
-        )
-        SlotGroup(
-            title = stringResource(R.string.status_bar_slots_right),
-            slots = rightSlots,
-            slotPrefix = "R",
-            onSlotSelected = { index, buttonId -> selectExtendedButton(buttonId, "right", index) },
-            onAddSlot = {
-                rightSlots = rightSlots + SettingsManager.STATUS_BAR_BUTTON_NONE
-                SettingsManager.setStatusBarSlotsRight(context, rightSlots)
-            },
-            onRemoveSlot = { index ->
-                rightSlots = rightSlots.toMutableList().also { it.removeAt(index) }
-                SettingsManager.setStatusBarSlotsRight(context, rightSlots)
-            }
-            ,allowMultiple = false
-        )
 
         Spacer(modifier = Modifier.height(16.dp))
     }
@@ -424,49 +363,6 @@ private fun statusBarAppLabel(context: android.content.Context, packageName: Str
     }.getOrDefault(packageName)
 
 @Composable
-private fun StatusBarLayoutPreview(
-    leftSlots: List<String>,
-    rightSlots: List<String>,
-    centerText: String?
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        shape = MaterialTheme.shapes.medium
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                leftSlots.forEach { SlotPreview(buttonId = it, label = "") }
-            }
-            if (centerText != null) {
-                Surface(
-                    modifier = Modifier.weight(1f).height(32.dp).padding(horizontal = 8.dp),
-                    color = MaterialTheme.colorScheme.surface,
-                    shape = MaterialTheme.shapes.small
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = centerText,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            } else {
-                Spacer(modifier = Modifier.weight(1f))
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                rightSlots.forEach { SlotPreview(buttonId = it, label = "") }
-            }
-        }
-    }
-}
-
-@Composable
 private fun SlotGroup(
     title: String,
     slots: List<String>,
@@ -540,58 +436,6 @@ private fun SlotGroup(
     }
 }
 
-
-@Composable
-private fun getModifierIndicatorLabel(indicator: String): String {
-    return when (indicator) {
-        SettingsManager.MODIFIER_INDICATOR_BOTTOM_STRIP -> stringResource(R.string.modifier_indicators_bottom_strip)
-        SettingsManager.MODIFIER_INDICATOR_MENU_BAR -> stringResource(R.string.modifier_indicators_menu_bar)
-        SettingsManager.MODIFIER_INDICATOR_STATUS_BAR -> stringResource(R.string.modifier_indicators_status_bar)
-        else -> indicator
-    }
-}
-
-@Composable
-private fun getModifierIndicatorDescription(indicator: String): String {
-    return when (indicator) {
-        SettingsManager.MODIFIER_INDICATOR_BOTTOM_STRIP -> stringResource(R.string.modifier_indicators_bottom_strip_description)
-        SettingsManager.MODIFIER_INDICATOR_MENU_BAR -> stringResource(R.string.modifier_indicators_menu_bar_description)
-        SettingsManager.MODIFIER_INDICATOR_STATUS_BAR -> stringResource(R.string.modifier_indicators_status_bar_description)
-        else -> ""
-    }
-}
-
-@Composable
-private fun SlotPreview(
-    buttonId: String,
-    label: String
-) {
-    Surface(
-        modifier = Modifier.size(32.dp),
-        color = if (buttonId == SettingsManager.STATUS_BAR_BUTTON_NONE) 
-            MaterialTheme.colorScheme.surface 
-        else 
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-        shape = MaterialTheme.shapes.small
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            if (buttonId == SettingsManager.STATUS_BAR_BUTTON_NONE) {
-                Text(
-                    text = "—",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            } else {
-                Icon(
-                    painter = painterResource(id = getButtonIconRes(buttonId)),
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            }
-        }
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

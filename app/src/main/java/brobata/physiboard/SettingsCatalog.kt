@@ -54,8 +54,9 @@ object SettingsCatalog {
         SettingsSearchEntry(R.string.custom_input_styles_title, R.string.custom_input_styles_title, SettingsSearchTarget.CUSTOM_INPUT_STYLES, "language layout azerty qwertz input style"),
         SettingsSearchEntry(R.string.app_language_title, R.string.app_language_title, SettingsSearchTarget.APP_LANGUAGE, "language locale translate"),
         SettingsSearchEntry(R.string.nav_mode_title, R.string.nav_mode_title, SettingsSearchTarget.NAV_MODE, "navigation arrows cursor dpad scroll"),
-        SettingsSearchEntry(R.string.keyboard_theme_title, R.string.keyboard_theme_title, SettingsSearchTarget.KEYBOARD_THEME, "theme dark light color appearance"),
-        SettingsSearchEntry(R.string.status_bar_buttons_title, R.string.status_bar_buttons_title, SettingsSearchTarget.STATUS_BAR_BUTTONS, "microphone mic emoji hamburger bottom bar status slots"),
+        // Status bar and keyboard theme merged into one page in 2.0. Both names still find it.
+        SettingsSearchEntry(R.string.status_bar_theme_title, R.string.status_bar_theme_title, SettingsSearchTarget.KEYBOARD_THEME, "theme dark light color appearance keyboard"),
+        SettingsSearchEntry(R.string.status_bar_buttons_title, R.string.status_bar_theme_title, SettingsSearchTarget.STATUS_BAR_BUTTONS, "microphone mic emoji hamburger bottom bar status slots"),
         SettingsSearchEntry(R.string.starter_launcher_shortcuts_title, R.string.starter_launcher_shortcuts_title, SettingsSearchTarget.QUICK_LAUNCHER, "quick launcher apps shortcut launch"),
         SettingsSearchEntry(R.string.app_enter_behaviour_title, R.string.app_enter_behaviour_title, SettingsSearchTarget.ENTER_BEHAVIOR, "enter send newline whatsapp per app"),
 

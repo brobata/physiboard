@@ -46,7 +46,35 @@ object BloatCatalog {
      * Auto on any given phone. Everything here is reversible, which is what makes it a
      * reasonable thing to try rather than a claim.
      */
-    enum class Preset { BACKGROUND_KILLERS }
+    enum class Preset {
+        /** See the doc above: the Android Auto stabiliser. A hypothesis, and labelled as one. */
+        BACKGROUND_KILLERS,
+
+        /**
+         * Production-line and lab tooling. None of it has a launcher icon, none of it does
+         * anything for a phone that has left the factory. The safest bundle on offer.
+         */
+        FACTORY_TOOLS,
+
+        /**
+         * Vendor convenience apps duplicating something Android already does. Real features, so
+         * this is a taste call rather than a safety one.
+         *
+         * Deliberately excludes App Lock, Private Space and Student Mode — someone may be
+         * relying on those to keep other people out of something — and never includes IR Remote,
+         * which drives the infrared blaster.
+         */
+        VENDOR_EXTRAS,
+
+        /**
+         * Packages that report data onward or record it: vendor telemetry, carrier detail
+         * collection, continuous chipset logging, and automatic call recording.
+         *
+         * Overlaps the other two bundles on purpose — a package can be both factory tooling and
+         * a privacy concern, and grouping it once by only one of those hides the other reason.
+         */
+        PRIVACY
+    }
 
     data class Entry(
         val packageName: String,
@@ -103,27 +131,27 @@ object BloatCatalog {
     private val ENTRIES: List<Entry> = listOf(
         // ---- Factory and lab tooling -------------------------------------------------
         Entry("com.bhpme.AgingTest", "Aging Test",
-            "Factory burn-in test. Runs the hardware flat to check it survives assembly.", Tier.SAFE),
+            "Factory burn-in test. Runs the hardware flat to check it survives assembly.", Tier.SAFE, setOf(Preset.FACTORY_TOOLS)),
         Entry("com.agui.factorytest", "Factory Test",
-            "The production-line hardware test menu.", Tier.SAFE),
+            "The production-line hardware test menu.", Tier.SAFE, setOf(Preset.FACTORY_TOOLS)),
         Entry("com.agui.calibration", "Calibration",
-            "Factory sensor calibration, done once before the phone was boxed.", Tier.SAFE),
+            "Factory sensor calibration, done once before the phone was boxed.", Tier.SAFE, setOf(Preset.FACTORY_TOOLS)),
         Entry("com.agui.app.memtester", "Memory Tester",
-            "Factory RAM test.", Tier.SAFE),
+            "Factory RAM test.", Tier.SAFE, setOf(Preset.FACTORY_TOOLS)),
         Entry("com.agui.app.imei", "IMEI Tool",
-            "Factory IMEI writing and checking tool.", Tier.SAFE),
+            "Factory IMEI writing and checking tool.", Tier.SAFE, setOf(Preset.FACTORY_TOOLS)),
         Entry("com.agui.batterystatsdumper", "Battery Stats Dumper",
-            "Dumps battery telemetry for vendor debugging.", Tier.SAFE),
+            "Dumps battery telemetry for vendor debugging.", Tier.SAFE, setOf(Preset.PRIVACY, Preset.FACTORY_TOOLS)),
         Entry("com.agui.app.apninfocollector", "APN Info Collector",
-            "Collects carrier APN details for the vendor.", Tier.SAFE),
+            "Collects carrier APN details for the vendor.", Tier.SAFE, setOf(Preset.PRIVACY, Preset.FACTORY_TOOLS)),
         Entry("com.debug.loggerui", "MediaTek Logger",
-            "Chipset debug log capture. Writes continuously when enabled.", Tier.SAFE, setOf(Preset.BACKGROUND_KILLERS)),
+            "Chipset debug log capture. Writes continuously when enabled.", Tier.SAFE, setOf(Preset.PRIVACY, Preset.FACTORY_TOOLS, Preset.BACKGROUND_KILLERS)),
         Entry("com.devices116", "Devices116",
-            "Unlabelled factory package with no launcher entry.", Tier.SAFE),
+            "Unlabelled factory package with no launcher entry.", Tier.SAFE, setOf(Preset.FACTORY_TOOLS)),
         Entry("com.swatch.gps", "GPS Test",
-            "Factory GPS verification tool.", Tier.SAFE),
+            "Factory GPS verification tool.", Tier.SAFE, setOf(Preset.FACTORY_TOOLS)),
         Entry("com.example.feedback", "Feedback",
-            "A shipped app still using the com.example placeholder package name.", Tier.SAFE),
+            "A shipped app still using the com.example placeholder package name.", Tier.SAFE, setOf(Preset.FACTORY_TOOLS)),
 
         // ---- Vendor features ---------------------------------------------------------
         Entry("com.agui.systemmanager", "Phone Manager",
@@ -139,16 +167,16 @@ object BloatCatalog {
         Entry("com.agui.privatespace", "Private Space",
             "Vendor hidden-app space, separate from Android's own Private Space.", Tier.OPTIONAL),
         Entry("com.agui.studentmodel", "Student Mode", "Parental restriction mode.", Tier.OPTIONAL),
-        Entry("com.agui.game", "Game Mode", "Game performance mode and overlay.", Tier.OPTIONAL),
-        Entry("com.agui.toolbox", "Toolbox", "Vendor utility collection.", Tier.OPTIONAL),
-        Entry("com.agui.bedtimesetting", "Bedtime", "Vendor bedtime scheduling.", Tier.OPTIONAL),
-        Entry("com.agui.callrecord", "Call Recorder", "Automatic call recording.", Tier.OPTIONAL),
-        Entry("com.agui.providers.pedometer", "Pedometer", "Vendor step counter.", Tier.OPTIONAL),
-        Entry("com.agui.rotationcontrol", "Rotation Control", "Vendor rotation lock helper.", Tier.OPTIONAL),
+        Entry("com.agui.game", "Game Mode", "Game performance mode and overlay.", Tier.OPTIONAL, setOf(Preset.VENDOR_EXTRAS)),
+        Entry("com.agui.toolbox", "Toolbox", "Vendor utility collection.", Tier.OPTIONAL, setOf(Preset.VENDOR_EXTRAS)),
+        Entry("com.agui.bedtimesetting", "Bedtime", "Vendor bedtime scheduling.", Tier.OPTIONAL, setOf(Preset.VENDOR_EXTRAS)),
+        Entry("com.agui.callrecord", "Call Recorder", "Automatic call recording.", Tier.OPTIONAL, setOf(Preset.PRIVACY, Preset.VENDOR_EXTRAS)),
+        Entry("com.agui.providers.pedometer", "Pedometer", "Vendor step counter.", Tier.OPTIONAL, setOf(Preset.VENDOR_EXTRAS)),
+        Entry("com.agui.rotationcontrol", "Rotation Control", "Vendor rotation lock helper.", Tier.OPTIONAL, setOf(Preset.VENDOR_EXTRAS)),
         Entry("com.agold.autopoweronoff", "Auto Power On/Off", "Scheduled power on and off.", Tier.OPTIONAL, setOf(Preset.BACKGROUND_KILLERS)),
-        Entry("com.agui.nfc", "NFC Tools", "Vendor NFC helper. Does not affect NFC itself.", Tier.OPTIONAL),
+        Entry("com.agui.nfc", "NFC Tools", "Vendor NFC helper. Does not affect NFC itself.", Tier.OPTIONAL, setOf(Preset.VENDOR_EXTRAS)),
         Entry("com.agold.cyclocomputer", "Cyclocomputer",
-            "Vendor cycling speedometer.", Tier.OPTIONAL),
+            "Vendor cycling speedometer.", Tier.OPTIONAL, setOf(Preset.VENDOR_EXTRAS)),
 
         // ---- Drives real hardware ----------------------------------------------------
         Entry("com.tiqiaa.icontrol", "IR Remote",

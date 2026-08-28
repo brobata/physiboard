@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.annotation.StringRes
 import brobata.physiboard.toolbox.BloatCatalog
 import brobata.physiboard.toolbox.PackageRemover
 import brobata.physiboard.toolbox.PackageState
@@ -157,21 +158,42 @@ fun BloatRemoverScreen(
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
 
-            // The preset targets what vendor tools DO — stop background apps running — rather
-            // than a tier. Android Auto is a long-running foreground session, which is exactly
-            // what they interrupt.
-            val safeActive = BloatCatalog.entriesIn(BloatCatalog.Preset.BACKGROUND_KILLERS)
-                .filter { states[it.packageName] == PackageState.ACTIVE }
-            if (safeActive.isNotEmpty()) {
+            // One card per preset, each listing only what is still active, so a bundle whose
+            // packages are already gone stops taking up room. Presets overlap deliberately —
+            // a package can be both factory tooling and a privacy concern.
+            BloatCatalog.Preset.entries.forEach { preset ->
+                val active = BloatCatalog.entriesIn(preset)
+                    .filter { states[it.packageName] == PackageState.ACTIVE }
+                if (active.isEmpty()) return@forEach
                 Surface(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = stringResource(presetTitle(preset)),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                            // The Android Auto bundle is a hypothesis, not a proven fix. The
+                            // description says so, but a paragraph is easy to skim past.
+                            if (preset == BloatCatalog.Preset.BACKGROUND_KILLERS) {
+                                Surface(
+                                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    shape = MaterialTheme.shapes.small
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.bloat_preset_in_testing),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                        }
                         Text(
-                            text = stringResource(R.string.bloat_preset_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Text(
-                            text = stringResource(R.string.bloat_preset_description),
+                            text = stringResource(presetDescription(preset)),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -181,7 +203,7 @@ fun BloatRemoverScreen(
                                 busy = "*"
                                 scope.launch {
                                     withContext(Dispatchers.IO) {
-                                        safeActive.forEach { entry ->
+                                        active.forEach { entry ->
                                             PackageRemover.disable(
                                                 context,
                                                 entry.packageName,
@@ -195,7 +217,7 @@ fun BloatRemoverScreen(
                             },
                             modifier = Modifier.padding(top = 8.dp)
                         ) {
-                            Text(stringResource(R.string.bloat_preset_action, safeActive.size))
+                            Text(stringResource(R.string.bloat_preset_action, active.size))
                         }
                     }
                 }
@@ -389,4 +411,20 @@ private fun BloatRow(
             }
         }
     }
+}
+
+@StringRes
+private fun presetTitle(preset: BloatCatalog.Preset): Int = when (preset) {
+    BloatCatalog.Preset.BACKGROUND_KILLERS -> R.string.bloat_preset_title
+    BloatCatalog.Preset.FACTORY_TOOLS -> R.string.bloat_preset_factory_title
+    BloatCatalog.Preset.VENDOR_EXTRAS -> R.string.bloat_preset_vendor_title
+    BloatCatalog.Preset.PRIVACY -> R.string.bloat_preset_privacy_title
+}
+
+@StringRes
+private fun presetDescription(preset: BloatCatalog.Preset): Int = when (preset) {
+    BloatCatalog.Preset.BACKGROUND_KILLERS -> R.string.bloat_preset_description
+    BloatCatalog.Preset.FACTORY_TOOLS -> R.string.bloat_preset_factory_description
+    BloatCatalog.Preset.VENDOR_EXTRAS -> R.string.bloat_preset_vendor_description
+    BloatCatalog.Preset.PRIVACY -> R.string.bloat_preset_privacy_description
 }

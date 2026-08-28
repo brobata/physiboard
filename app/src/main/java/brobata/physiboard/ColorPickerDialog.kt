@@ -28,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -72,6 +73,20 @@ fun ColorPickerDialog(
     onDismiss: () -> Unit
 ) {
     var live by remember(current) { mutableStateOf(current ?: swatches.firstOrNull() ?: 0) }
+
+    // The Titan is a short, wide screen — 1080x1200 at density 300, so 574x640dp. A dialog sized
+    // for a tall phone runs out of room here: AlertDialog reserves its own title, buttons and
+    // insets first and clips whatever is left, which cut the bottom off the brightness slider.
+    // Both bounds below are therefore taken from the window rather than fixed, so the dialog
+    // shrinks on a short screen instead of overflowing it.
+    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
+    // What AlertDialog spends on title, buttons, insets and margins before the content is laid out.
+    val dialogChrome = 220.dp
+    val contentMaxHeight = (screenHeight - dialogChrome).coerceAtLeast(200.dp)
+    // The wheel is square, so its width is also its height and it dominates the column. 220dp on a
+    // tall screen, proportionally less on a short one.
+    val wheelMaxWidth = (screenHeight * 0.30f).coerceAtMost(220.dp)
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
@@ -81,7 +96,7 @@ fun ColorPickerDialog(
             // buttons off the bottom of the screen.
             Column(
                 modifier = Modifier
-                    .heightIn(max = 460.dp)
+                    .heightIn(max = contentMaxHeight)
                     .verticalScroll(rememberScrollState())
             ) {
                 if (subtitle != null) {
@@ -114,7 +129,7 @@ fun ColorPickerDialog(
                     onColorChange = { live = it },
                     modifier = Modifier
                         .align(Alignment.CenterHorizontally)
-                        .widthIn(max = 220.dp)
+                        .widthIn(max = wheelMaxWidth)
                         .fillMaxWidth()
                 )
 

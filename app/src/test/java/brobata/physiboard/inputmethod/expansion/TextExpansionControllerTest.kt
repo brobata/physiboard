@@ -30,8 +30,15 @@ class TextExpansionControllerTest {
     )
 
     @Test
-    fun disabledProvidersDoNotLoadAssetsOrQueryTheEditor() {
-        val source = EmojiShortcodeSource(RuntimeEnvironment.getApplication().assets)
+    fun disabledProvidersDoNotQueryTheEditor() {
+        // Was written against EmojiShortcodeSource, which also let the test assert that a disabled
+        // provider never loaded its asset file. Emoji and symbol shortcodes were removed in 2.0, so
+        // the surviving snippet source carries the same contract: disabled means untouched.
+        var sourceQueries = 0
+        val source = SnippetExpansionSource {
+            sourceQueries++
+            mapOf("sig" to "regards")
+        }
         var editorQueries = 0
         val controller = controller(
             state = editableState,
@@ -42,7 +49,7 @@ class TextExpansionControllerTest {
         controller.refresh()
 
         assertEquals(0, editorQueries)
-        assertEquals(false, source.isLoadedForTests())
+        assertEquals(0, sourceQueries)
     }
 
     @Test

@@ -40,38 +40,41 @@ class SettingsManagerKeyboardThemeAssignmentTest {
     }
 
     @Test
-    fun followSystem_usesLightAndDarkSlotsForTarget() {
+    fun aStoredFollowSystemModeIsIgnoredSince2_0() {
+        // Follow-the-system theming was removed in 2.0 and the mode is pinned to fixed. An install
+        // that had opted in before upgrading, or one restoring an older backup, still carries the
+        // stored value — it must not resurrect the behaviour.
         val context = RuntimeEnvironment.getApplication()
+        val fixed = theme(0xFF202020.toInt())
         val light = theme(0xFFEFEFEF.toInt())
         val dark = theme(0xFF111111.toInt())
 
-        SettingsManager.setKeyboardThemeAssignmentMode(
-            context,
-            SettingsManager.KeyboardThemeTarget.SOFTWARE,
-            SettingsManager.KEYBOARD_THEME_ASSIGNMENT_MODE_FOLLOW_SYSTEM
-        )
+        SettingsManager.getPreferences(context).edit()
+            .putString("keyboard_theme_assignment_mode_software", "follow_system")
+            .commit()
+        SettingsManager.setKeyboardTheme(context, SettingsManager.KeyboardThemeTarget.SOFTWARE, fixed)
         SettingsManager.setKeyboardThemeSystemSlot(context, SettingsManager.KeyboardThemeTarget.SOFTWARE, dark = false, light)
         SettingsManager.setKeyboardThemeSystemSlot(context, SettingsManager.KeyboardThemeTarget.SOFTWARE, dark = true, dark)
 
-        RuntimeEnvironment.setQualifiers("+notnight")
-        assertEquals(light.background, SettingsManager.getEffectiveKeyboardTheme(context, SettingsManager.KeyboardThemeTarget.SOFTWARE).background)
+        assertEquals(
+            SettingsManager.KEYBOARD_THEME_ASSIGNMENT_MODE_FIXED,
+            SettingsManager.getKeyboardThemeAssignmentMode(context, SettingsManager.KeyboardThemeTarget.SOFTWARE)
+        )
 
         RuntimeEnvironment.setQualifiers("+night")
-        assertEquals(dark.background, SettingsManager.getEffectiveKeyboardTheme(context, SettingsManager.KeyboardThemeTarget.SOFTWARE).background)
+        assertEquals(
+            fixed.background,
+            SettingsManager.getEffectiveKeyboardTheme(context, SettingsManager.KeyboardThemeTarget.SOFTWARE).background
+        )
     }
 
     @Test
-    fun overrideBeatsFollowSystem() {
+    fun overrideBeatsTheChosenTheme() {
         val context = RuntimeEnvironment.getApplication()
         val dark = theme(0xFF111111.toInt())
         val override = theme(0xFFABCDEF.toInt())
 
-        SettingsManager.setKeyboardThemeAssignmentMode(
-            context,
-            SettingsManager.KeyboardThemeTarget.HARDWARE,
-            SettingsManager.KEYBOARD_THEME_ASSIGNMENT_MODE_FOLLOW_SYSTEM
-        )
-        SettingsManager.setKeyboardThemeSystemSlot(context, SettingsManager.KeyboardThemeTarget.HARDWARE, dark = true, dark)
+        SettingsManager.setKeyboardTheme(context, SettingsManager.KeyboardThemeTarget.HARDWARE, dark)
         SettingsManager.upsertKeyboardThemeLayoutOverride(
             context,
             SettingsManager.KeyboardThemeTarget.HARDWARE,

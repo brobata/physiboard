@@ -53,37 +53,22 @@ private val hardwareKeyboardProfiles = listOf(
     "titan2elite_qwerty" to R.string.keyboard_profile_option_titan2elite_qwerty
 )
 
+// The Device SYM Layer Editor row was removed in 2.0 as a duplicate entry point; the editor itself
+// is still reached from the SYM customization screen and the status bar overflow. With nothing left
+// to branch to, this screen no longer needs a destination of its own.
 @Composable
 fun HardwareKeyboardSettingsScreen(
     modifier: Modifier = Modifier,
     onBack: () -> Unit
 ) {
-    var destination by rememberSaveable { mutableStateOf(HardwareKeyboardDestination.Main) }
-
-    when (destination) {
-        HardwareKeyboardDestination.Main -> HardwareKeyboardListScreen(
-            modifier = modifier,
-            onBack = onBack,
-            onDeviceSymLayerEditor = { destination = HardwareKeyboardDestination.DeviceSymLayerEditor }
-        )
-        HardwareKeyboardDestination.DeviceSymLayerEditor -> DeviceSymLayerEditorStubScreen(
-            modifier = modifier,
-            onBack = { destination = HardwareKeyboardDestination.Main }
-        )
-    }
-}
-
-private enum class HardwareKeyboardDestination {
-    Main,
-    DeviceSymLayerEditor
+    HardwareKeyboardListScreen(modifier = modifier, onBack = onBack)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HardwareKeyboardListScreen(
     modifier: Modifier = Modifier,
-    onBack: () -> Unit,
-    onDeviceSymLayerEditor: () -> Unit
+    onBack: () -> Unit
 ) {
     val context = LocalContext.current
     var selectedProfile by remember {
@@ -236,15 +221,6 @@ private fun HardwareKeyboardListScreen(
                 }
             )
 
-            SettingsAdvancedSection {
-                HardwareKeyboardNavigationRow(
-                    title = stringResource(R.string.alt_key_editor_title),
-                    description = stringResource(R.string.alt_key_editor_summary),
-                    icon = Icons.Filled.Edit,
-                    status = FeatureStatus.Construction,
-                    onClick = onDeviceSymLayerEditor
-                )
-            }
         }
     }
 }

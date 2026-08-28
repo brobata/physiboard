@@ -64,8 +64,6 @@ import brobata.physiboard.inputmethod.trackpad.TrackpadGestureDetector
 import brobata.physiboard.inputmethod.expansion.ExpansionRuntimeConfig
 import brobata.physiboard.inputmethod.expansion.ExpansionTriggerKind
 import brobata.physiboard.inputmethod.expansion.SnippetExpansionSource
-import brobata.physiboard.inputmethod.expansion.EmojiShortcodeSource
-import brobata.physiboard.inputmethod.expansion.SymbolShortcodeSource
 import brobata.physiboard.inputmethod.expansion.TextExpansionController
 import java.util.Locale
 import android.view.inputmethod.InputMethodManager
@@ -81,7 +79,7 @@ import rikka.shizuku.Shizuku
 class PhysicalKeyboardInputMethodService : InputMethodService() {
 
     companion object {
-        private const val TAG = "PastieraInputMethod"
+        private const val TAG = "PhysiBoardInputMethod"
         private const val TRACKPAD_DEBUG_TAG = "TrackpadDebug"
         private const val NATIVE_TRACKPAD_MIN_SWIPE_VELOCITY_PX_PER_MS = 2f
         private const val KEYBOARD_SURFACE_TRANSITION_DELAY_MS = 32L
@@ -142,9 +140,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private var additionalSubtypesReceiver: BroadcastReceiver? = null
     private lateinit var candidatesBarController: CandidatesBarController
     private lateinit var textExpansionController: TextExpansionController
-    private lateinit var emojiShortcodeSource: EmojiShortcodeSource
-    private lateinit var symbolShortcodeSource: SymbolShortcodeSource
-    private val expansionAssetScope = CoroutineScope(Dispatchers.IO)
 
     // Keycode for the SYM key
     private val KEYCODE_SYM = 63
@@ -1328,7 +1323,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     }
     
     private fun enforceSmartFeatureDisabledState() {
-        // The candidates surface also contains Pastiera's hardware-keyboard status bar.
+        // The candidates surface also contains PhysiBoard's hardware-keyboard status bar.
         // Individual smart features hide their own content; the surface itself stays visible.
         deactivateVariations()
     }
@@ -1645,8 +1640,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         val snippetExpansionSource = SnippetExpansionSource {
             SettingsManager.getSnippets(this)
         }
-        emojiShortcodeSource = EmojiShortcodeSource(assets)
-        symbolShortcodeSource = SymbolShortcodeSource(assets)
         textExpansionController = TextExpansionController(
             context = this,
             handler = Handler(Looper.getMainLooper()),
@@ -1663,22 +1656,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                         prefix = SettingsManager.getSnippetsPrefix(this).first(),
                         presentation = SettingsManager.getSnippetsPresentation(this),
                         activationPolicy = SettingsManager.getSnippetsActivationPolicy(this)
-                    ),
-                    ExpansionRuntimeConfig(
-                        source = emojiShortcodeSource,
-                        triggerKind = ExpansionTriggerKind.COLON_SHORTCODE,
-                        enabled = SettingsManager.getEmojiShortcodesEnabled(this),
-                        presentation = SettingsManager.getEmojiSymbolsPresentation(this),
-                        activationPolicy = SettingsManager.getEmojiSymbolsActivationPolicy(this),
-                        exactOnClose = SettingsManager.getEmojiSymbolsExactOnClose(this)
-                    ),
-                    ExpansionRuntimeConfig(
-                        source = symbolShortcodeSource,
-                        triggerKind = ExpansionTriggerKind.COLON_SHORTCODE,
-                        enabled = SettingsManager.getSymbolShortcodesEnabled(this),
-                        presentation = SettingsManager.getEmojiSymbolsPresentation(this),
-                        activationPolicy = SettingsManager.getEmojiSymbolsActivationPolicy(this),
-                        exactOnClose = SettingsManager.getEmojiSymbolsExactOnClose(this)
                     )
                 )
             },
@@ -1694,7 +1671,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 updateStatusBarText()
             }
         )
-        prepareEnabledExpansionAssets()
         candidatesBarController.onAddUserWord = { word ->
             if (shiftLayerLatched || altLayerLatched) {
                 shiftLayerLatched = false
@@ -2065,8 +2041,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 Handler(Looper.getMainLooper()).post { updateStatusBarText() }
             } else if (key == "clear_alt_on_space") {
                 clearAltOnSpaceEnabled = SettingsManager.getClearAltOnSpace(this)
-            } else if (key == "emoji_shortcodes_enabled" || key == "symbol_shortcodes_enabled") {
-                prepareEnabledExpansionAssets()
             } else if (key == "shift_tap_latches" || key == "alt_tap_latches" || key == "ctrl_tap_latches") {
                 updateModifierTapLatchSettings()
                 Handler(Looper.getMainLooper()).post {
@@ -2616,7 +2590,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         if (::screenTrackpadController.isInitialized) screenTrackpadController.deactivate()
         keyboardBacklightManager.stop()
         accidentalKeyPressFilter.reset()
-        expansionAssetScope.cancel()
         super.onDestroy()
         pendingInputDeviceModeRefresh?.let { uiHandler.removeCallbacks(it) }
         pendingInputDeviceModeRefresh = null
@@ -2684,17 +2657,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         // Stop trackpad gesture detection
         trackpadGestureDetector.stop()
         trackpadScope.cancel()
-    }
-
-    private fun prepareEnabledExpansionAssets() {
-        expansionAssetScope.launch {
-            if (::emojiShortcodeSource.isInitialized && SettingsManager.getEmojiShortcodesEnabled(this@PhysicalKeyboardInputMethodService)) {
-                emojiShortcodeSource.prepare()
-            }
-            if (::symbolShortcodeSource.isInitialized && SettingsManager.getSymbolShortcodesEnabled(this@PhysicalKeyboardInputMethodService)) {
-                symbolShortcodeSource.prepare()
-            }
-        }
     }
 
     override fun onCreateInputView(): View? = keyboardVisibilityController.onCreateInputView()

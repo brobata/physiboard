@@ -49,6 +49,7 @@ import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Update
 import androidx.compose.material3.Icon
@@ -76,7 +77,7 @@ import brobata.physiboard.inputmethod.KeyboardEventTracker
 import brobata.physiboard.inputmethod.NotificationHelper
 import brobata.physiboard.inputmethod.subtype.AdditionalSubtypeUtils.localeString
 import brobata.physiboard.ui.CustomTopBar
-import brobata.physiboard.ui.theme.PastieraTheme
+import brobata.physiboard.ui.theme.PhysiBoardTheme
 import brobata.physiboard.update.UpdateCheckWorker
 import brobata.physiboard.update.checkForUpdate
 import brobata.physiboard.update.shouldUseGithubUpdateChecks
@@ -185,7 +186,7 @@ class MainActivity : LocalizedComponentActivity() {
 
         enableEdgeToEdge()
         setContent {
-            PastieraTheme {
+            PhysiBoardTheme {
                 MigrationNotice()
                 UntestedDeviceNotice()
                 Box(modifier = Modifier.fillMaxSize()) {
@@ -246,8 +247,8 @@ fun KeyboardSetupScreen(
 ) {
     val context = LocalContext.current
 
-    var isPastieraEnabled by remember { mutableStateOf(false) }
-    var isPastieraSelected by remember { mutableStateOf(false) }
+    var isPhysiBoardEnabled by remember { mutableStateOf(false) }
+    var isPhysiBoardSelected by remember { mutableStateOf(false) }
     var enabledLanguageCount by remember { mutableStateOf(0) }
     var updateInfo by remember { mutableStateOf<HomeUpdateInfo?>(null) }
 
@@ -259,8 +260,8 @@ fun KeyboardSetupScreen(
 
     fun refreshStatus() {
         checkImeStatus(context) { enabled, selected ->
-            isPastieraEnabled = enabled
-            isPastieraSelected = selected
+            isPhysiBoardEnabled = enabled
+            isPhysiBoardSelected = selected
         }
         enabledLanguageCount = getEnabledInputLanguageCount(context)
         devicePaired = brobata.physiboard.inputmethod.EmbeddedAdbShell.isPaired(context)
@@ -280,6 +281,8 @@ fun KeyboardSetupScreen(
     // The tile flags the one pairing every privileged tool depends on, not one feature's state.
     // Flagging the backlight instead meant a user who had never switched the backlight on was
     // never told that the toolbox needed setting up at all.
+    // The Status tile's summary: the two checks the Status screen leads with.
+    val setupComplete = isPhysiBoardEnabled && isPhysiBoardSelected
     val backlightNeedsAttention = !devicePaired
 
     // Request notification permission (Android 13+)
@@ -357,7 +360,7 @@ fun KeyboardSetupScreen(
 
             // Setup action cards — shown only when action is required.
             when {
-                !isPastieraEnabled -> HomeActionCard(
+                !isPhysiBoardEnabled -> HomeActionCard(
                     icon = Icons.Filled.Keyboard,
                     title = stringResource(R.string.home_action_enable_title),
                     subtitle = stringResource(R.string.home_action_enable_subtitle),
@@ -365,7 +368,7 @@ fun KeyboardSetupScreen(
                         context.startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
                     }
                 )
-                !isPastieraSelected -> HomeActionCard(
+                !isPhysiBoardSelected -> HomeActionCard(
                     icon = Icons.Filled.Keyboard,
                     title = stringResource(R.string.home_action_select_title),
                     subtitle = stringResource(R.string.home_action_select_subtitle),
@@ -388,7 +391,7 @@ fun KeyboardSetupScreen(
             }
 
             // All-clear: a single quiet mono line.
-            if (isPastieraEnabled && isPastieraSelected && update == null) {
+            if (isPhysiBoardEnabled && isPhysiBoardSelected && update == null) {
                 Text(
                     text = stringResource(R.string.home_all_set),
                     style = MaterialTheme.typography.bodyMedium,
@@ -402,9 +405,11 @@ fun KeyboardSetupScreen(
             val backlightSublabel = if (backlightNeedsAttention) {
                 stringResource(R.string.home_tile_backlight_needs_setup)
             } else null
-            // Three doors, each opening on something the others do not contain. The backlight
-            // warning rides the Device tile rather than getting its own, so "needs setup" stays
-            // visible without putting the same destination on two screens.
+            // Doors, each opening on something the others do not contain. The backlight warning
+            // rides the Device tile rather than getting its own, so "needs setup" stays visible
+            // without putting the same destination on two screens. Status and Status Bar Theme
+            // were added in 2.0: the first answers "why is nothing working", the second is the
+            // thing people reach for most often.
             val tiles = buildList {
                 add(
                     HomeTile(
@@ -420,6 +425,28 @@ fun KeyboardSetupScreen(
                         icon = Icons.Filled.Keyboard,
                         label = stringResource(R.string.keyboard_hub_title),
                         onClick = { launchSettings(SettingsActivity.DESTINATION_KEYBOARD_HUB) }
+                    )
+                )
+                add(
+                    HomeTile(
+                        icon = Icons.Filled.Palette,
+                        label = stringResource(R.string.status_bar_theme_title),
+                        onClick = { launchSettings(SettingsActivity.DESTINATION_KEYBOARD_THEME) }
+                    )
+                )
+                add(
+                    HomeTile(
+                        icon = Icons.Filled.CheckCircle,
+                        label = stringResource(R.string.settings_category_status),
+                        // The tile says whether anything is wrong, so the answer is visible without
+                        // opening it. Same two checks the Status screen leads with.
+                        attention = !setupComplete,
+                        sublabel = if (setupComplete) {
+                            stringResource(R.string.home_tile_status_ok)
+                        } else {
+                            stringResource(R.string.home_tile_status_needs_setup)
+                        },
+                        onClick = { launchSettings(SettingsActivity.DESTINATION_STATUS) }
                     )
                 )
                 add(
@@ -616,7 +643,7 @@ private fun getEnabledInputLanguageCount(context: Context): Int {
 }
 
 /**
- * Checks if Pastiera IME is enabled and selected.
+ * Checks if PhysiBoard IME is enabled and selected.
  * Uses InputMethodManager for Android 14+ compatibility.
  */
 private fun checkImeStatus(
@@ -625,16 +652,16 @@ private fun checkImeStatus(
 ) {
     try {
         val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-        val pastieraPackageName = ImeIdentity.packageName
+        val physiBoardPackageName = ImeIdentity.packageName
 
-        // Check if Pastiera is enabled using InputMethodManager
+        // Check if PhysiBoard is enabled using InputMethodManager
         val enabledInputMethods = imm.enabledInputMethodList
         val isEnabled = enabledInputMethods.any { inputMethodInfo ->
-            inputMethodInfo.packageName == pastieraPackageName ||
+            inputMethodInfo.packageName == physiBoardPackageName ||
             ImeIdentity.matchesImeId(inputMethodInfo.id)
         }
 
-        // Check if Pastiera is selected
+        // Check if PhysiBoard is selected
         var isSelected = false
         if (isEnabled) {
             try {
@@ -649,10 +676,10 @@ private fun checkImeStatus(
                     val currentSubtype = imm.currentInputMethodSubtype
                     if (currentSubtype != null) {
                         val allInputMethods = imm.inputMethodList
-                        val pastieraInputMethod = allInputMethods.find {
-                            it.packageName == pastieraPackageName || ImeIdentity.matchesImeId(it.id)
+                        val physiBoardInputMethod = allInputMethods.find {
+                            it.packageName == physiBoardPackageName || ImeIdentity.matchesImeId(it.id)
                         }
-                        isSelected = pastieraInputMethod != null && enabledInputMethods.size == 1
+                        isSelected = physiBoardInputMethod != null && enabledInputMethods.size == 1
                     } else {
                         isSelected = false
                     }

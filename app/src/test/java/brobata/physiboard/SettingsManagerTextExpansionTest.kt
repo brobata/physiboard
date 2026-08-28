@@ -51,31 +51,15 @@ class SettingsManagerTextExpansionTest {
     }
 
     @Test
-    fun emojiAndSymbolDefaults_matchTheActivationContract() {
-        assertFalse(SettingsManager.getEmojiShortcodesEnabled(context))
-        assertFalse(SettingsManager.getSymbolShortcodesEnabled(context))
-        assertEquals(ExpansionPresentation.FLOATING_POPUP, SettingsManager.getEmojiSymbolsPresentation(context))
-        val policy = SettingsManager.getEmojiSymbolsActivationPolicy(context)
-        assertFalse(policy.exactOnSpace)
-        assertFalse(policy.acceptPrefixWithSpace)
-        assertTrue(policy.acceptWithTab)
-        assertFalse(policy.acceptWithEnter)
-        assertTrue(SettingsManager.getEmojiSymbolsExactOnClose(context))
-    }
-
-    @Test
-    fun prefixSpaceOptionsRoundTripIndependently() {
+    fun prefixSpaceOptionRoundTrips() {
+        // Once paired with an emoji/symbol policy to prove the two round-tripped independently.
+        // Emoji and symbol shortcodes were removed in 2.0, leaving snippets as the only policy.
         val snippetPolicy = SettingsManager.getSnippetsActivationPolicy(context).copy(
-            acceptPrefixWithSpace = true
-        )
-        val emojiPolicy = SettingsManager.getEmojiSymbolsActivationPolicy(context).copy(
             acceptPrefixWithSpace = true
         )
 
         SettingsManager.setSnippetsActivationPolicy(context, snippetPolicy)
-        SettingsManager.setEmojiSymbolsActivationPolicy(context, emojiPolicy)
 
         assertEquals(snippetPolicy, SettingsManager.getSnippetsActivationPolicy(context))
-        assertEquals(emojiPolicy, SettingsManager.getEmojiSymbolsActivationPolicy(context))
     }
 }

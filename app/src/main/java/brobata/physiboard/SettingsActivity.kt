@@ -6,7 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
-import brobata.physiboard.ui.theme.PastieraTheme
+import brobata.physiboard.ui.theme.PhysiBoardTheme
 
 class SettingsActivity : LocalizedComponentActivity() {
     companion object {
@@ -27,6 +27,7 @@ class SettingsActivity : LocalizedComponentActivity() {
         const val DESTINATION_REMOVE_BLOAT = "remove_bloat_destination"
         const val DESTINATION_KEYBOARD_HUB = "keyboard_hub_destination"
         const val DESTINATION_EXTRAS = "extras_destination"
+        const val DESTINATION_STATUS = "status_destination"
         const val EXTRA_CUSTOMIZATION_DESTINATION = "brobata.physiboard.CUSTOMIZATION_DESTINATION"
         const val CUSTOMIZATION_DESTINATION_VARIATIONS = "variations"
         const val CUSTOMIZATION_DESTINATION_LAUNCHER_SHORTCUTS = "launcher_shortcuts"
@@ -45,7 +46,7 @@ class SettingsActivity : LocalizedComponentActivity() {
         }
         enableEdgeToEdge()
         setContent {
-            PastieraTheme {
+            PhysiBoardTheme {
                 SettingsScreen(
                     modifier = Modifier.fillMaxSize(),
                     initialDestination = intent.getStringExtra(EXTRA_DESTINATION),

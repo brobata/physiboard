@@ -75,7 +75,7 @@ private fun LanguageItem(
     onToggle: (Boolean) -> Unit,
     onEdit: () -> Unit = {}
 ) {
-    val isRicettePastiera = languageCode == "x-pastiera"
+    val isRecipesSet = languageCode == "x-pastiera"
     val showToggle = true
     
     Surface(
@@ -115,9 +115,9 @@ private fun LanguageItem(
                         maxLines = 1
                     )
                 }
-                if (isRicettePastiera) {
+                if (isRecipesSet) {
                     Text(
-                        text = stringResource(R.string.auto_correct_ricette_pastiera_description),
+                        text = stringResource(R.string.auto_correct_recipes_description),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1
@@ -143,9 +143,9 @@ private fun LanguageItem(
 }
 
 private fun getLanguageDisplayName(context: Context, languageCode: String): String {
-    // Special case for Ricette Pastiera
+    // Special case for the PhysiBoard Recipes substitution set
     if (languageCode == "x-pastiera") {
-        return context.getString(R.string.auto_correct_ricette_pastiera_name)
+        return context.getString(R.string.auto_correct_recipes_name)
     }
     
     // First try to get saved name from JSON
@@ -154,7 +154,7 @@ private fun getLanguageDisplayName(context: Context, languageCode: String): Stri
         return savedName
     }
     
-    // For standard languages, use simple locale display name (without "Pastiera")
+    // For standard languages, use simple locale display name
     val standardLanguages = mapOf(
         "en" to "English",
         "it" to "Italiano",

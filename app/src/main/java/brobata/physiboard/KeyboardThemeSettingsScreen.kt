@@ -7,9 +7,9 @@ import android.view.inputmethod.InputMethodManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -43,6 +43,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -140,59 +141,16 @@ fun KeyboardThemeScreen(
     var softwarePreviewViewportScale by remember {
         mutableStateOf(SettingsManager.getKeyboardThemePreviewViewportScale(context))
     }
-    var hardwareAssignmentMode by remember {
-        mutableStateOf(SettingsManager.getKeyboardThemeAssignmentMode(context, SettingsManager.KeyboardThemeTarget.HARDWARE))
-    }
-    var softwareAssignmentMode by remember {
-        mutableStateOf(SettingsManager.getKeyboardThemeAssignmentMode(context, SettingsManager.KeyboardThemeTarget.SOFTWARE))
-    }
-    var hardwareLightTheme by remember {
-        mutableStateOf(
-            SettingsManager.getKeyboardThemeSystemSlot(
-                context,
-                SettingsManager.KeyboardThemeTarget.HARDWARE,
-                dark = false
-            ).toKeyboardThemePreset("Slate Light")
-        )
-    }
-    var hardwareDarkTheme by remember {
-        mutableStateOf(
-            SettingsManager.getKeyboardThemeSystemSlot(
-                context,
-                SettingsManager.KeyboardThemeTarget.HARDWARE,
-                dark = true
-            ).toKeyboardThemePreset("Slate Dark")
-        )
-    }
-    var softwareLightTheme by remember {
-        mutableStateOf(
-            SettingsManager.getKeyboardThemeSystemSlot(
-                context,
-                SettingsManager.KeyboardThemeTarget.SOFTWARE,
-                dark = false
-            ).toKeyboardThemePreset("Slate Light")
-        )
-    }
-    var softwareDarkTheme by remember {
-        mutableStateOf(
-            SettingsManager.getKeyboardThemeSystemSlot(
-                context,
-                SettingsManager.KeyboardThemeTarget.SOFTWARE,
-                dark = true
-            ).toKeyboardThemePreset("Slate Dark")
-        )
-    }
     var exportTheme by remember { mutableStateOf<KeyboardThemePreset?>(null) }
     var showImportDialog by remember { mutableStateOf(false) }
     var showSaveAsDialog by remember { mutableStateOf(false) }
     var showNewDraftDialog by remember { mutableStateOf(false) }
+    var colorEditField by remember { mutableStateOf<KeyboardThemeColorField?>(null) }
     var draftEditorName by remember { mutableStateOf<String?>(null) }
     val draftEditingGuard = remember { mutableStateOf(false) }
     var draftListFocusName by remember { mutableStateOf<String?>(null) }
     var deleteThemeRequest by remember { mutableStateOf<String?>(null) }
     var deleteDraftRequest by remember { mutableStateOf<String?>(null) }
-    var themePickerRequest by remember { mutableStateOf<KeyboardThemePickerRequest?>(null) }
-    var assignmentScreenTarget by remember { mutableStateOf<SettingsManager.KeyboardThemeTarget?>(null) }
     var overrideEditorRequest by remember { mutableStateOf<KeyboardThemeOverrideEditorRequest?>(null) }
     var hardwareOverrides by remember {
         mutableStateOf(SettingsManager.getKeyboardThemeLayoutOverrides(context, SettingsManager.KeyboardThemeTarget.HARDWARE))
@@ -212,15 +170,7 @@ fun KeyboardThemeScreen(
     val activeSelectionKey = if (activePreviewPage == 0) hardwareSelectionKey else softwareSelectionKey
     val activeThemeOptions = if (activePreviewPage == 0) hardwareThemeOptions else softwareThemeOptions
     val presetListState = rememberLazyListState()
-    val systemIsDark = isSystemInDarkTheme()
-    val activeAssignmentMode = if (activePreviewPage == 0) hardwareAssignmentMode else softwareAssignmentMode
-    val activeLightTheme = if (activePreviewPage == 0) hardwareLightTheme else softwareLightTheme
-    val activeDarkTheme = if (activePreviewPage == 0) hardwareDarkTheme else softwareDarkTheme
-    val activePreviewTheme = if (activeAssignmentMode == SettingsManager.KEYBOARD_THEME_ASSIGNMENT_MODE_FOLLOW_SYSTEM) {
-        if (systemIsDark) activeDarkTheme else activeLightTheme
-    } else {
-        activeTheme
-    }
+    val activePreviewTheme = activeTheme
 
     LaunchedEffect(
         activePreviewPage,
@@ -369,13 +319,7 @@ fun KeyboardThemeScreen(
         draftEditorName = null
     }
 
-    BackHandler {
-        if (assignmentScreenTarget != null) {
-            assignmentScreenTarget = null
-        } else {
-            onBack()
-        }
-    }
+    BackHandler { onBack() }
 
     Scaffold(
         topBar = {
@@ -391,28 +335,14 @@ fun KeyboardThemeScreen(
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(
-                        onClick = {
-                            if (assignmentScreenTarget != null) {
-                                assignmentScreenTarget = null
-                            } else {
-                                onBack()
-                            }
-                        }
-                    ) {
+                    IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.settings_back_content_description)
                         )
                     }
                     Text(
-                        text = assignmentScreenTarget?.let { target ->
-                            if (target == SettingsManager.KeyboardThemeTarget.SOFTWARE) {
-                                stringResource(R.string.keyboard_theme_assignment_software_title)
-                            } else {
-                                stringResource(R.string.keyboard_theme_assignment_hardware_title)
-                            }
-                        } ?: stringResource(R.string.keyboard_theme_title),
+                        text = stringResource(R.string.status_bar_theme_title),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.padding(start = 8.dp)
@@ -429,65 +359,6 @@ fun KeyboardThemeScreen(
                 .padding(vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            assignmentScreenTarget?.let { target ->
-                KeyboardThemeAssignmentSection(
-                    target = target,
-                    mode = if (target == SettingsManager.KeyboardThemeTarget.HARDWARE) {
-                        hardwareAssignmentMode
-                    } else {
-                        softwareAssignmentMode
-                    },
-                    lightThemeName = themeDisplayName(
-                        if (target == SettingsManager.KeyboardThemeTarget.HARDWARE) hardwareThemeOptions else softwareThemeOptions,
-                        if (target == SettingsManager.KeyboardThemeTarget.HARDWARE) hardwareLightTheme else softwareLightTheme
-                    ),
-                    darkThemeName = themeDisplayName(
-                        if (target == SettingsManager.KeyboardThemeTarget.HARDWARE) hardwareThemeOptions else softwareThemeOptions,
-                        if (target == SettingsManager.KeyboardThemeTarget.HARDWARE) hardwareDarkTheme else softwareDarkTheme
-                    ),
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    onModeChanged = { mode ->
-                        if (target == SettingsManager.KeyboardThemeTarget.HARDWARE) {
-                            hardwareAssignmentMode = mode
-                            SettingsManager.setKeyboardThemeAssignmentMode(context, target, mode)
-                        } else {
-                            softwareAssignmentMode = mode
-                            SettingsManager.setKeyboardThemeAssignmentMode(context, target, mode)
-                        }
-                    },
-                    onPickLightTheme = {
-                        themePickerRequest = KeyboardThemePickerRequest(target, dark = false)
-                    },
-                    onPickDarkTheme = {
-                        themePickerRequest = KeyboardThemePickerRequest(target, dark = true)
-                    },
-                    overrides = if (target == SettingsManager.KeyboardThemeTarget.HARDWARE) {
-                        hardwareOverrides
-                    } else {
-                        softwareOverrides
-                    },
-                    themeOptions = if (target == SettingsManager.KeyboardThemeTarget.HARDWARE) {
-                        hardwareThemeOptions
-                    } else {
-                        softwareThemeOptions
-                    },
-                    onAddOverride = {
-                        overrideEditorRequest = KeyboardThemeOverrideEditorRequest(target, null)
-                    },
-                    onEditOverride = { override ->
-                        overrideEditorRequest = KeyboardThemeOverrideEditorRequest(target, override)
-                    },
-                    onRemoveOverride = { override ->
-                        SettingsManager.removeKeyboardThemeLayoutOverride(context, target, override.locale, override.layout)
-                        if (target == SettingsManager.KeyboardThemeTarget.HARDWARE) {
-                            hardwareOverrides = SettingsManager.getKeyboardThemeLayoutOverrides(context, target)
-                        } else {
-                            softwareOverrides = SettingsManager.getKeyboardThemeLayoutOverrides(context, target)
-                        }
-                    }
-                )
-                return@Column
-            }
             Text(
                 text = stringResource(R.string.keyboard_theme_preset_title),
                 style = MaterialTheme.typography.titleMedium,
@@ -537,17 +408,6 @@ fun KeyboardThemeScreen(
             // removed from the UI to keep the editor to preset selection + live preview.
             // The underlying theme model and dialogs remain intact.
 
-            if (editedDraft == null) {
-                KeyboardThemeAssignmentSummaryRow(
-                    target = activeTarget,
-                    mode = activeAssignmentMode,
-                    lightThemeName = themeDisplayName(activeThemeOptions, activeLightTheme),
-                    darkThemeName = themeDisplayName(activeThemeOptions, activeDarkTheme),
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    onClick = { assignmentScreenTarget = activeTarget }
-                )
-            }
-
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -594,22 +454,10 @@ fun KeyboardThemeScreen(
                     ) { page ->
                         when (page) {
                             0 -> HardwareKeyboardThemePreview(
-                                theme = draftPreset ?: if (
-                                    hardwareAssignmentMode == SettingsManager.KEYBOARD_THEME_ASSIGNMENT_MODE_FOLLOW_SYSTEM
-                                ) {
-                                    if (systemIsDark) hardwareDarkTheme else hardwareLightTheme
-                                } else {
-                                    hardwareTheme
-                                }
+                                theme = draftPreset ?: hardwareTheme
                             )
                             else -> VirtualKeyboardThemePreview(
-                                theme = draftPreset ?: if (
-                                    softwareAssignmentMode == SettingsManager.KEYBOARD_THEME_ASSIGNMENT_MODE_FOLLOW_SYSTEM
-                                ) {
-                                    if (systemIsDark) softwareDarkTheme else softwareLightTheme
-                                } else {
-                                    softwareTheme
-                                },
+                                theme = draftPreset ?: softwareTheme,
                                 viewportScale = softwarePreviewViewportScale
                             )
                         }
@@ -641,19 +489,38 @@ fun KeyboardThemeScreen(
                     )
                 }
             }
-            // Customize reduced to the LED-indicator toggle only; the full Colors/Keys editor
-            // was removed to keep the theme screen to presets + preview + follow-system.
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
             ) {
-                KeyboardThemeSwitchRow(
-                    label = stringResource(R.string.keyboard_theme_show_leds),
-                    checked = activeTheme.showLeds,
-                    presetChecked = activePreset.showLeds,
-                    onCheckedChanged = { updateActiveTheme(activeTheme.copy(showLeds = it)) }
-                )
+                if (editedDraft == null) {
+                    // The authoring flow existed but had no way in — nothing set
+                    // showNewDraftDialog. This is that way in.
+                    OutlinedButton(
+                        onClick = { showNewDraftDialog = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp)
+                    ) {
+                        Text(stringResource(R.string.keyboard_theme_create_custom))
+                    }
+                } else {
+                    Text(
+                        text = stringResource(R.string.keyboard_theme_colors_heading),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)
+                    )
+                    val editing = draftPreset ?: activeTheme
+                    KEYBOARD_THEME_COLOR_FIELDS.forEach { field ->
+                        KeyboardThemeColorRow(
+                            label = stringResource(field.labelRes),
+                            color = field.get(editing),
+                            onClick = { colorEditField = field }
+                        )
+                    }
+                }
             }
             if (editedDraft != null) {
                 Button(
@@ -666,6 +533,20 @@ fun KeyboardThemeScreen(
                     Text(stringResource(R.string.keyboard_theme_save_use))
                 }
             }
+
+            // The Status Bar page was folded in here in 2.0 — the bar's buttons, its caret colours
+            // and the keyboard theme are one subject, and were previously two places to visit.
+            SettingsSectionDivider(stringResource(R.string.status_bar_buttons_title))
+            StatusBarButtonsSection(
+                modifierExtras = {
+                    KeyboardThemeSwitchRow(
+                        label = stringResource(R.string.keyboard_theme_show_leds),
+                        checked = activeTheme.showLeds,
+                        presetChecked = activePreset.showLeds,
+                        onCheckedChanged = { updateActiveTheme(activeTheme.copy(showLeds = it)) }
+                    )
+                }
+            )
         }
     }
 
@@ -702,6 +583,20 @@ fun KeyboardThemeScreen(
             }
         )
     }
+    colorEditField?.let { field ->
+        val editing = draftPreset ?: activeTheme
+        ColorPickerDialog(
+            title = stringResource(field.labelRes),
+            current = field.get(editing),
+            swatches = KEYBOARD_THEME_COLOR_SWATCHES,
+            subtitle = stringResource(R.string.keyboard_theme_color_pick),
+            onPick = { picked ->
+                updateDraft(field.draftKey, field.set(editing, picked))
+                colorEditField = null
+            },
+            onDismiss = { colorEditField = null }
+        )
+    }
     if (showNewDraftDialog) {
         KeyboardThemeNewDraftDialog(
             existingNames = (savedThemes.map { it.preset.name } + themeDrafts.map { it.name }).toSet(),
@@ -709,12 +604,13 @@ fun KeyboardThemeScreen(
             onCreate = { name ->
                 draftEditingGuard.value = true
                 draftEditorName = name
+                // Start from the theme currently on screen rather than from blank defaults, and
+                // count every required field as populated. A new draft is therefore immediately
+                // complete and saveable; changing colours is a choice, not a 29-field chore.
                 val draft = SettingsManager.KeyboardThemeDraft(
                     name = name,
-                    theme = SettingsManager.defaultKeyboardTheme()
-                        .toKeyboardThemePreset(name)
-                        .withSoftwareKeyboardDefaults()
-                        .toSettingsTheme()
+                    theme = activeTheme.copy(name = name).toSettingsTheme(),
+                    populatedFields = KEYBOARD_THEME_DRAFT_REQUIRED_FIELDS
                 )
                 SettingsManager.saveKeyboardThemeDraft(context, draft)
                 themeDrafts = SettingsManager.getKeyboardThemeDrafts(context)
@@ -768,40 +664,6 @@ fun KeyboardThemeScreen(
                 TextButton(onClick = { deleteDraftRequest = null }) {
                     Text(stringResource(R.string.cancel))
                 }
-            }
-        )
-    }
-    themePickerRequest?.let { request ->
-        val options = if (request.target == SettingsManager.KeyboardThemeTarget.HARDWARE) {
-            hardwareThemeOptions
-        } else {
-            softwareThemeOptions
-        }
-        KeyboardThemePickerDialog(
-            title = if (request.dark) {
-                stringResource(R.string.keyboard_theme_dark_mode_theme)
-            } else {
-                stringResource(R.string.keyboard_theme_light_mode_theme)
-            },
-            options = options,
-            onDismiss = { themePickerRequest = null },
-            onThemeSelected = { option ->
-                themePickerRequest = null
-                val theme = option.preset
-                if (request.target == SettingsManager.KeyboardThemeTarget.HARDWARE) {
-                    if (request.dark) {
-                        hardwareDarkTheme = theme
-                    } else {
-                        hardwareLightTheme = theme
-                    }
-                } else {
-                    if (request.dark) {
-                        softwareDarkTheme = theme
-                    } else {
-                        softwareLightTheme = theme
-                    }
-                }
-                SettingsManager.setKeyboardThemeSystemSlot(context, request.target, request.dark, theme.toSettingsTheme())
             }
         )
     }
@@ -1035,165 +897,13 @@ private val KEYBOARD_THEME_DRAFT_REQUIRED_FIELDS = KEYBOARD_THEME_DRAFT_PREVIEW_
     DRAFT_CHARACTER_PICKER
 )
 
-private data class KeyboardThemePickerRequest(
-    val target: SettingsManager.KeyboardThemeTarget,
-    val dark: Boolean
-)
 
 private data class KeyboardThemeOverrideEditorRequest(
     val target: SettingsManager.KeyboardThemeTarget,
     val override: SettingsManager.KeyboardThemeLayoutOverride?
 )
 
-@Composable
-private fun KeyboardThemeAssignmentSection(
-    target: SettingsManager.KeyboardThemeTarget,
-    mode: String,
-    lightThemeName: String,
-    darkThemeName: String,
-    modifier: Modifier = Modifier,
-    onModeChanged: (String) -> Unit,
-    onPickLightTheme: () -> Unit,
-    onPickDarkTheme: () -> Unit,
-    overrides: List<SettingsManager.KeyboardThemeLayoutOverride>,
-    themeOptions: List<KeyboardThemeOption>,
-    onAddOverride: () -> Unit,
-    onEditOverride: (SettingsManager.KeyboardThemeLayoutOverride) -> Unit,
-    onRemoveOverride: (SettingsManager.KeyboardThemeLayoutOverride) -> Unit
-) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        tonalElevation = 1.dp,
-        shape = MaterialTheme.shapes.medium
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Text(
-                text = if (target == SettingsManager.KeyboardThemeTarget.SOFTWARE) {
-                    stringResource(R.string.keyboard_theme_assignment_software_title)
-                } else {
-                    stringResource(R.string.keyboard_theme_assignment_hardware_title)
-                },
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                KeyboardThemeModeButton(
-                    label = stringResource(R.string.keyboard_theme_assignment_fixed),
-                    selected = mode == SettingsManager.KEYBOARD_THEME_ASSIGNMENT_MODE_FIXED,
-                    modifier = Modifier.weight(1f),
-                    onClick = { onModeChanged(SettingsManager.KEYBOARD_THEME_ASSIGNMENT_MODE_FIXED) }
-                )
-                KeyboardThemeModeButton(
-                    label = stringResource(R.string.keyboard_theme_assignment_follow_system),
-                    selected = mode == SettingsManager.KEYBOARD_THEME_ASSIGNMENT_MODE_FOLLOW_SYSTEM,
-                    modifier = Modifier.weight(1f),
-                    onClick = { onModeChanged(SettingsManager.KEYBOARD_THEME_ASSIGNMENT_MODE_FOLLOW_SYSTEM) }
-                )
-            }
-            if (mode == SettingsManager.KEYBOARD_THEME_ASSIGNMENT_MODE_FOLLOW_SYSTEM) {
-                KeyboardThemePickerRow(
-                    label = stringResource(R.string.keyboard_theme_light_mode_theme),
-                    value = lightThemeName,
-                    onClick = onPickLightTheme
-                )
-                KeyboardThemePickerRow(
-                    label = stringResource(R.string.keyboard_theme_dark_mode_theme),
-                    value = darkThemeName,
-                    onClick = onPickDarkTheme
-                )
-            }
-        }
-    }
 
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(top = 8.dp),
-        tonalElevation = 1.dp,
-        shape = MaterialTheme.shapes.medium
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Text(
-                text = stringResource(R.string.keyboard_theme_layout_overrides_title),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                text = stringResource(R.string.keyboard_theme_layout_overrides_description),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            overrides.forEach { override ->
-                KeyboardThemeOverrideRow(
-                    override = override,
-                    themeName = themeDisplayName(themeOptions, override.theme.toKeyboardThemePreset("Custom")),
-                    onClick = { onEditOverride(override) },
-                    onRemove = { onRemoveOverride(override) }
-                )
-            }
-            TextButton(onClick = onAddOverride) {
-                Text(stringResource(R.string.keyboard_theme_layout_overrides_add))
-            }
-        }
-    }
-}
-
-@Composable
-private fun KeyboardThemeAssignmentSummaryRow(
-    target: SettingsManager.KeyboardThemeTarget,
-    mode: String,
-    lightThemeName: String,
-    darkThemeName: String,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit
-) {
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        tonalElevation = 1.dp,
-        shape = MaterialTheme.shapes.medium
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = if (target == SettingsManager.KeyboardThemeTarget.SOFTWARE) {
-                        stringResource(R.string.keyboard_theme_assignment_software_title)
-                    } else {
-                        stringResource(R.string.keyboard_theme_assignment_hardware_title)
-                    },
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1
-                )
-                Text(
-                    text = if (mode == SettingsManager.KEYBOARD_THEME_ASSIGNMENT_MODE_FOLLOW_SYSTEM) {
-                        "${stringResource(R.string.keyboard_theme_assignment_follow_system)}: $lightThemeName / $darkThemeName"
-                    } else {
-                        stringResource(R.string.keyboard_theme_assignment_fixed)
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1
-                )
-            }
-            Text("›", style = MaterialTheme.typography.titleLarge)
-        }
-    }
-}
 
 @Composable
 private fun KeyboardThemeOverrideRow(
@@ -2833,4 +2543,78 @@ internal fun parseKeyboardThemeHexColor(value: String): Int? {
     val hex = value.trim().removePrefix("#")
     if (hex.length != 6 || hex.any { it.digitToIntOrNull(16) == null }) return null
     return (0xFF000000L or hex.toLong(16)).toInt()
+}
+
+
+/**
+ * One editable colour on a theme: how to read it, how to write it, and which draft field it
+ * marks populated. A table rather than fourteen near-identical rows in the screen body.
+ */
+private data class KeyboardThemeColorField(
+    val draftKey: String,
+    @StringRes val labelRes: Int,
+    val get: (KeyboardThemePreset) -> Int,
+    val set: (KeyboardThemePreset, Int) -> KeyboardThemePreset
+)
+
+private val KEYBOARD_THEME_COLOR_FIELDS = listOf(
+    KeyboardThemeColorField(DRAFT_BACKGROUND, R.string.keyboard_theme_color_background,
+        { it.background }, { t, c -> t.copy(background = c) }),
+    KeyboardThemeColorField(DRAFT_NORMAL_KEY, R.string.keyboard_theme_color_normal_key,
+        { it.normalKey }, { t, c -> t.copy(normalKey = c) }),
+    KeyboardThemeColorField(DRAFT_SPECIAL_KEY, R.string.keyboard_theme_color_special_key,
+        { it.specialKey }, { t, c -> t.copy(specialKey = c) }),
+    KeyboardThemeColorField(DRAFT_TEXT_ICONS, R.string.keyboard_theme_color_text,
+        { it.textAndIcons }, { t, c -> t.copy(textAndIcons = c) }),
+    KeyboardThemeColorField(DRAFT_ACCENT, R.string.keyboard_theme_color_accent,
+        { it.accent }, { t, c -> t.copy(accent = c) }),
+    KeyboardThemeColorField(DRAFT_DIVIDER, R.string.keyboard_theme_color_divider,
+        { it.divider }, { t, c -> t.copy(divider = c) }),
+    KeyboardThemeColorField(DRAFT_SUGGESTION, R.string.keyboard_theme_color_suggestion,
+        { it.suggestion }, { t, c -> t.copy(suggestion = c) }),
+    KeyboardThemeColorField(DRAFT_STATUS_BUTTON, R.string.keyboard_theme_color_status_button,
+        { it.statusBarButton }, { t, c -> t.copy(statusBarButton = c) }),
+    KeyboardThemeColorField(DRAFT_CURSOR_SWIPE, R.string.keyboard_theme_color_cursor_swipe,
+        { it.cursorSwipe }, { t, c -> t.copy(cursorSwipe = c) }),
+    KeyboardThemeColorField(DRAFT_KEY_POPUP, R.string.keyboard_theme_color_key_popup,
+        { it.keyPopup }, { t, c -> t.copy(keyPopup = c) }),
+    KeyboardThemeColorField(DRAFT_KEY_POPUP_SELECTED, R.string.keyboard_theme_color_key_popup_selected,
+        { it.keyPopupSelected }, { t, c -> t.copy(keyPopupSelected = c) }),
+    KeyboardThemeColorField(DRAFT_LED_INACTIVE, R.string.keyboard_theme_color_led_inactive,
+        { it.ledInactive }, { t, c -> t.copy(ledInactive = c) }),
+    KeyboardThemeColorField(DRAFT_LED_ACTIVE, R.string.keyboard_theme_color_led_active,
+        { it.ledActive }, { t, c -> t.copy(ledActive = c) }),
+    KeyboardThemeColorField(DRAFT_LED_LOCKED, R.string.keyboard_theme_color_led_locked,
+        { it.ledLocked }, { t, c -> t.copy(ledLocked = c) })
+)
+
+/** Quick picks over the wheel. Spread across the hue circle plus the greys a keyboard needs. */
+private val KEYBOARD_THEME_COLOR_SWATCHES = listOf(
+    0xFF000000.toInt(), 0xFF1C1B1F.toInt(), 0xFF3A3A3C.toInt(), 0xFF8E8E93.toInt(), 0xFFFFFFFF.toInt(),
+    0xFFE53935.toInt(), 0xFFFB8C00.toInt(), 0xFFFDD835.toInt(), 0xFF43A047.toInt(), 0xFF00ACC1.toInt(),
+    0xFF1E88E5.toInt(), 0xFF8E24AA.toInt(), 0xFFEC407A.toInt(), 0xFF6D4C41.toInt()
+)
+
+@Composable
+private fun KeyboardThemeColorRow(label: String, color: Int, onClick: () -> Unit) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f)
+            )
+            ColorSwatch(argb = color, selected = false, size = 28.dp)
+        }
+    }
 }

@@ -82,7 +82,6 @@ fun CustomizationSettingsScreen(
     onBack: () -> Unit,
     initialDestination: String? = null,
     initialKeyboardThemeTarget: String? = null,
-    onOpenModifiers: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val prefs = remember { SettingsManager.getPreferences(context) }
@@ -157,8 +156,7 @@ fun CustomizationSettingsScreen(
                     CustomizationDestination.LauncherShortcuts
                 SettingsActivity.CUSTOMIZATION_DESTINATION_APP_ENTER_BEHAVIOR ->
                     CustomizationDestination.AppEnterBehavior
-                SettingsActivity.CUSTOMIZATION_DESTINATION_STATUS_BAR_BUTTONS ->
-                    CustomizationDestination.StatusBarButtons
+                SettingsActivity.CUSTOMIZATION_DESTINATION_STATUS_BAR_BUTTONS,
                 SettingsActivity.CUSTOMIZATION_DESTINATION_KEYBOARD_THEME ->
                     CustomizationDestination.KeyboardTheme
                 SettingsActivity.CUSTOMIZATION_DESTINATION_SOUNDS ->
@@ -457,14 +455,6 @@ fun CustomizationSettingsScreen(
                 )
             }
             
-            CustomizationDestination.StatusBarButtons -> {
-                StatusBarButtonsScreen(
-                    modifier = modifier,
-                    onBack = { navigateBack() },
-                    onOpenModifiers = onOpenModifiers
-                )
-            }
-
             CustomizationDestination.KeyboardTheme -> {
                 KeyboardThemeScreen(
                     modifier = modifier,
@@ -651,7 +641,7 @@ private fun StarterLauncherBehaviorScreen(
     var showRankingInfo by remember { mutableStateOf(false) }
     var behaviorMenuExpanded by remember { mutableStateOf(false) }
     val behaviorOptions = listOf(
-        SettingsManager.QUICK_LAUNCHER_BEHAVIOR_PASTIERA,
+        SettingsManager.QUICK_LAUNCHER_BEHAVIOR_PHYSIBOARD,
         SettingsManager.QUICK_LAUNCHER_BEHAVIOR_NIAGARA
     )
 
@@ -660,7 +650,6 @@ private fun StarterLauncherBehaviorScreen(
         title = stringResource(R.string.quick_launcher_behaviour_title),
         onBack = onBack
     ) {
-        SettingsAdvancedSection {
         Surface(
             modifier = Modifier.fillMaxWidth(),
             tonalElevation = 1.dp,
@@ -754,7 +743,6 @@ private fun StarterLauncherBehaviorScreen(
             Spacer(modifier = Modifier.width(6.dp))
             Text(stringResource(R.string.quick_launcher_ranking_info_button))
         }
-        }
         Surface(
             modifier = Modifier.fillMaxWidth(),
             tonalElevation = 1.dp,
@@ -810,7 +798,7 @@ private fun quickLauncherBehaviorLabel(behavior: String): String {
     return when (behavior) {
         SettingsManager.QUICK_LAUNCHER_BEHAVIOR_NIAGARA ->
             stringResource(R.string.quick_launcher_provider_niagara)
-        else -> stringResource(R.string.quick_launcher_provider_pastiera)
+        else -> stringResource(R.string.quick_launcher_provider_physiboard)
     }
 }
 
@@ -823,7 +811,7 @@ private fun QuickLauncherDisplayedEntriesSection(
     var showCustomizeDialog by remember { mutableStateOf(false) }
     val sourceLabels = mapOf(
         CommandSourceId.Apps.storageValue to "Apps",
-        CommandSourceId.Pastiera.storageValue to "Pastiera actions",
+        CommandSourceId.PhysiBoard.storageValue to "PhysiBoard actions",
         CommandSourceId.AppActions.storageValue to "App actions",
         CommandSourceId.DeviceControl.storageValue to "Device control",
         CommandSourceId.NavActions.storageValue to "Navigation actions"
@@ -868,7 +856,7 @@ private fun QuickLauncherDisplayedEntriesSection(
                         fontWeight = FontWeight.Medium
                     )
                     Text(
-                        text = "Choose which sources appear in Pastiera search.",
+                        text = "Choose which sources appear in PhysiBoard search.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1636,7 +1624,7 @@ private fun commandPickerDynamicColor(command: CommandTarget, alpha: Float = 0.5
 
     val fallbackHue = when (command.source) {
         CommandSourceId.Apps -> 214f
-        CommandSourceId.Pastiera -> 145f
+        CommandSourceId.PhysiBoard -> 145f
         CommandSourceId.AppActions -> 282f
         CommandSourceId.DeviceControl -> 28f
         CommandSourceId.NavActions -> 190f
@@ -2029,7 +2017,6 @@ private enum class CustomizationDestination {
     LauncherShortcutBehavior,
     LauncherShortcutCosmetic,
     LauncherShortcutAssignments,
-    StatusBarButtons,
     KeyboardTheme,
     Sounds
 }

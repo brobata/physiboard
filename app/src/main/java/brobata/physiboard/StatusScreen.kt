@@ -172,7 +172,13 @@ private fun StatusRow(
     }
 }
 
-private fun resolvePhysiBoardImeStatus(context: Context): Pair<Boolean, Boolean> {
+/**
+ * Whether PhysiBoard is enabled as an input method, and whether it is the selected one.
+ *
+ * Internal rather than private so the home screen can summarise the same two checks on its Status
+ * tile — the point of that tile is answering "is anything wrong" without opening it.
+ */
+internal fun resolvePhysiBoardImeStatus(context: Context): Pair<Boolean, Boolean> {
     return try {
         val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         val enabled = imm.enabledInputMethodList.any { info ->

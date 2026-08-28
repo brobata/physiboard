@@ -1,6 +1,7 @@
 package brobata.physiboard.backup
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -41,20 +42,23 @@ class RestoreManagerAndBackupContractTest {
     }
 
     @Test
-    fun emojiAndSymbolExpansionPreferences_areRecognizedForFreshInstallRestore() {
-        val expected = mapOf(
-            "emoji_shortcodes_enabled" to PreferenceValueType.BOOLEAN,
-            "symbol_shortcodes_enabled" to PreferenceValueType.BOOLEAN,
-            "emoji_symbols_presentation" to PreferenceValueType.STRING,
-            "emoji_symbols_exact_on_space" to PreferenceValueType.BOOLEAN,
-            "emoji_symbols_accept_prefix_with_space" to PreferenceValueType.BOOLEAN,
-            "emoji_symbols_accept_with_tab" to PreferenceValueType.BOOLEAN,
-            "emoji_symbols_accept_with_enter" to PreferenceValueType.BOOLEAN,
-            "emoji_symbols_exact_on_close" to PreferenceValueType.BOOLEAN
+    fun emojiAndSymbolExpansionPreferences_areNoLongerRecognized() {
+        // Emoji and symbol shortcodes were removed in 2.0, so their preferences left the schema.
+        // A backup written by 1.x still carries them: restore has to treat them as unrecognized
+        // and skip them rather than fail, which is what dropping them from the schema achieves.
+        val retired = listOf(
+            "emoji_shortcodes_enabled",
+            "symbol_shortcodes_enabled",
+            "emoji_symbols_presentation",
+            "emoji_symbols_exact_on_space",
+            "emoji_symbols_accept_prefix_with_space",
+            "emoji_symbols_accept_with_tab",
+            "emoji_symbols_accept_with_enter",
+            "emoji_symbols_exact_on_close"
         )
-        expected.forEach { (key, type) ->
-            assertTrue(PreferenceSchemas.isRecognized(brobata.physiboard.SettingsMigration.PREFS, key, emptySet()))
-            assertEquals(type, PreferenceSchemas.expectedType(brobata.physiboard.SettingsMigration.PREFS, key))
+        retired.forEach { key ->
+            assertFalse(PreferenceSchemas.isRecognized(brobata.physiboard.SettingsMigration.PREFS, key, emptySet()))
+            assertNull(PreferenceSchemas.expectedType(brobata.physiboard.SettingsMigration.PREFS, key))
         }
     }
 

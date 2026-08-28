@@ -252,21 +252,25 @@ fun NotificationRingScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    SettingsManager.NOTIFICATION_RING_MINUTE_OPTIONS.forEach { option ->
-                        FilterChip(
-                            selected = minutes == option,
-                            onClick = {
-                                minutes = option
-                                SettingsManager.setNotificationRingMinutes(context, option)
-                            },
-                            label = { Text(stringResource(R.string.ring_duration_minutes, option)) }
-                        )
-                    }
-                }
+                Text(
+                    text = stringResource(R.string.ring_duration_minutes, minutes),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+                Slider(
+                    value = minutes.toFloat(),
+                    onValueChange = { minutes = it.toInt() },
+                    onValueChangeFinished = {
+                        SettingsManager.setNotificationRingMinutes(context, minutes)
+                    },
+                    valueRange = SettingsManager.NOTIFICATION_RING_MIN_MINUTES.toFloat()..
+                        SettingsManager.NOTIFICATION_RING_MAX_MINUTES.toFloat(),
+                    // Continuous rather than stepped. A stop per minute draws 59 tick marks, which
+                    // on a 574dp-wide screen is a dotted smear; rounding the value on the way in
+                    // lands on whole minutes just the same.
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
 
             Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
