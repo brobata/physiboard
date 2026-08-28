@@ -181,8 +181,6 @@
     <string name="auto_correct_edit_type_ranking_title">Classifica per tipo di modifica</string>
     <string name="auto_correct_edit_type_ranking_description">Ordina i suggerimenti per tipo di modifica (inserimento > sostituzione > eliminazione)</string>
     <string name="clear">Cancella</string>
-    <string name="experimental_suggestions_title">Suggerimenti sperimentali</string>
-    <string name="experimental_suggestions_subtitle">Abilita il nuovo motore di dizionario/suggerimenti (beta)</string>
     
     <!-- SYM Customization Screen -->
     <string name="sym_customize_title">Personalizza Tastiera SYM</string>

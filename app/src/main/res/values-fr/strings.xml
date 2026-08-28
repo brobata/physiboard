@@ -106,8 +106,6 @@
     <string name="auto_correct_edit_type_ranking_title">Classement par Type d\'Édition</string>
     <string name="auto_correct_edit_type_ranking_description">Classement : insert &gt; subst &gt; suppr</string>
     <string name="clear">Effacer</string>
-    <string name="experimental_suggestions_title">Suggestions expérimentales</string>
-    <string name="experimental_suggestions_subtitle">Activer le nouveau moteur de dictionnaire/suggestions (bêta)</string>
     <string name="sym_customize_title">Personnaliser le Clavier SYM</string>
     <string name="sym_auto_close_title">Fermer Automatiquement le Layout SYM</string>
     <string name="sym_auto_close_description">Ferme automatiquement le layout SYM après avoir inséré un caractère, appuyé sur Alt ou appuyé sur Entrée. Ne se ferme pas avec Control ou Shift.</string>

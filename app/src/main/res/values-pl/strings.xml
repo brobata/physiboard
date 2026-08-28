@@ -108,8 +108,6 @@
     <string name="auto_correct_edit_type_ranking_title">Ranking Typu Edycji</string>
     <string name="auto_correct_edit_type_ranking_description">Sortuj sugestie według typu edycji (wstaw &gt; zamień &gt; usuń)</string>
     <string name="clear">Wyczyść</string>
-    <string name="experimental_suggestions_title">Sugestie eksperymentalne</string>
-    <string name="experimental_suggestions_subtitle">Włącz nowy silnik słownika/sugestii (beta)</string>
     <string name="sym_customize_title">Dostosuj Klawiaturę SYM</string>
     <string name="sym_auto_close_title">Automatycznie Zamknij Layout SYM</string>
     <string name="sym_auto_close_description">Automatycznie zamyka layout SYM po wstawieniu znaku, naciśnięciu Alt lub naciśnięciu Enter. Nie zamyka się z Control lub Shift.</string>

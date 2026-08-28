@@ -48,9 +48,6 @@ fun TextInputSettingsScreen(
         mutableStateOf(SettingsManager.getAutoCapitalizeAfterPeriod(context))
     }
 
-    var autoCapitalizeRespectManualShiftOff by remember {
-        mutableStateOf(SettingsManager.getAutoCapitalizeRespectManualShiftOff(context))
-    }
 
     var autoCapitalizeRestrictedFields by remember {
         mutableStateOf(SettingsManager.getAutoCapitalizeRestrictedFields(context))
@@ -491,15 +488,6 @@ fun TextInputSettingsScreen(
             SettingsAdvancedSection {
                 AnimatedVisibility(visible = autoCapitalizeFirstLetter) {
                     Column {
-                        SettingsSwitchRow(
-                            title = stringResource(R.string.auto_capitalize_respect_manual_shift_off_title),
-                            description = stringResource(R.string.auto_capitalize_respect_manual_shift_off_description),
-                            checked = autoCapitalizeRespectManualShiftOff,
-                            onCheckedChange = { enabled ->
-                                autoCapitalizeRespectManualShiftOff = enabled
-                                SettingsManager.setAutoCapitalizeRespectManualShiftOff(context, enabled)
-                            }
-                        )
                         SettingsSwitchRow(
                             title = stringResource(R.string.auto_capitalize_restricted_fields_title),
                             description = stringResource(R.string.auto_capitalize_restricted_fields_description),

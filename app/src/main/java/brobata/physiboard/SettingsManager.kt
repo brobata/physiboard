@@ -47,8 +47,6 @@ object SettingsManager {
     private const val KEY_TAP_HAPTIC_USE_SYSTEM = "tap_haptic_use_system"
     private const val KEY_TAP_HAPTIC_DURATION_MS = "tap_haptic_duration_ms"
     private const val KEY_AUTO_CAPITALIZE_FIRST_LETTER = "auto_capitalize_first_letter"
-    private const val KEY_AUTO_CAPITALIZE_RESPECT_MANUAL_SHIFT_OFF =
-        "auto_capitalize_respect_manual_shift_off"
     private const val KEY_AUTO_CAPITALIZE_RESTRICTED_FIELDS =
         "auto_capitalize_restricted_fields"
     private const val KEY_DOUBLE_SPACE_TO_PERIOD = "double_space_to_period"
@@ -366,7 +364,6 @@ object SettingsManager {
     private const val MIN_SWIPE_INCREMENTAL_THRESHOLD = 3f
     private const val MAX_SWIPE_INCREMENTAL_THRESHOLD = 25f
     private const val DEFAULT_AUTO_CAPITALIZE_FIRST_LETTER = true
-    private const val DEFAULT_AUTO_CAPITALIZE_RESPECT_MANUAL_SHIFT_OFF = true
     private const val DEFAULT_AUTO_CAPITALIZE_RESTRICTED_FIELDS = false
     private const val DEFAULT_DOUBLE_SPACE_TO_PERIOD = true
     private const val DEFAULT_SPACED_HYPHEN_TO_EN_DASH = false
@@ -433,9 +430,7 @@ object SettingsManager {
     private const val DEFAULT_OVERLAPPING_KEYS_ENABLED = false
     private const val DEFAULT_EMOJI_PICKER_EXPANDED_HEIGHT = true
     private val DEFAULT_SYM_PAGES_CONFIG = SymPagesConfig()
-    private const val DEFAULT_EXPERIMENTAL_SUGGESTIONS_ENABLED = true
     private const val DEFAULT_SUGGESTION_DEBUG_LOGGING = true
-    private const val KEY_EXPERIMENTAL_SUGGESTIONS_ENABLED = "experimental_suggestions_enabled"
     private const val KEY_SUGGESTION_DEBUG_LOGGING = "suggestion_debug_logging"
     private const val KEY_IME_OVERLAY_DEBUG_LOGGING = "ime_overlay_debug_logging"
     private const val KEY_USE_KEYBOARD_PROXIMITY = "use_keyboard_proximity"
@@ -2055,18 +2050,7 @@ object SettingsManager {
             .apply()
     }
 
-    fun getAutoCapitalizeRespectManualShiftOff(context: Context): Boolean {
-        return getPreferences(context).getBoolean(
-            KEY_AUTO_CAPITALIZE_RESPECT_MANUAL_SHIFT_OFF,
-            DEFAULT_AUTO_CAPITALIZE_RESPECT_MANUAL_SHIFT_OFF
-        )
-    }
 
-    fun setAutoCapitalizeRespectManualShiftOff(context: Context, enabled: Boolean) {
-        getPreferences(context).edit()
-            .putBoolean(KEY_AUTO_CAPITALIZE_RESPECT_MANUAL_SHIFT_OFF, enabled)
-            .apply()
-    }
 
     fun getAutoCapitalizeRestrictedFields(context: Context): Boolean {
         return getPreferences(context).getBoolean(
@@ -3339,15 +3323,7 @@ object SettingsManager {
      * Master toggle for the experimental dictionary/suggestion engine.
      * When disabled, the IME will skip initialization and hide suggestion UI.
      */
-    fun isExperimentalSuggestionsEnabled(context: Context): Boolean {
-        return getPreferences(context).getBoolean(KEY_EXPERIMENTAL_SUGGESTIONS_ENABLED, DEFAULT_EXPERIMENTAL_SUGGESTIONS_ENABLED)
-    }
 
-    fun setExperimentalSuggestionsEnabled(context: Context, enabled: Boolean) {
-        getPreferences(context).edit()
-            .putBoolean(KEY_EXPERIMENTAL_SUGGESTIONS_ENABLED, enabled)
-            .apply()
-    }
 
     /**
      * Optional debug logging for the suggestion engine.

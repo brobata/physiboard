@@ -120,8 +120,6 @@
     <string name="auto_correct_edit_type_ranking_title">Xếp hạng theo loại chỉnh sửa</string>
     <string name="auto_correct_edit_type_ranking_description">Xếp hạng gợi ý theo loại chỉnh sửa (chèn &gt; thay thế &gt; xóa)</string>
     <string name="clear">Xóa</string>
-    <string name="experimental_suggestions_title">Gợi ý thử nghiệm</string>
-    <string name="experimental_suggestions_subtitle">Bật bộ máy từ điển/gợi ý mới (beta)</string>
     <string name="user_dict_title">Từ điển người dùng</string>
     <string name="user_dict_add_hint">Thêm từ</string>
     <string name="user_dict_add_button">Lưu từ</string>

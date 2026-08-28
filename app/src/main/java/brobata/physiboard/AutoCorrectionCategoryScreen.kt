@@ -51,9 +51,6 @@ fun AutoCorrectionCategoryScreen(
     var autoCorrectEnabled by remember {
         mutableStateOf(SettingsManager.getAutoCorrectEnabled(context))
     }
-    var experimentalSuggestionsEnabled by remember {
-        mutableStateOf(SettingsManager.isExperimentalSuggestionsEnabled(context))
-    }
     var suggestionsEnabled by remember {
         mutableStateOf(SettingsManager.getSuggestionsEnabled(context))
     }
@@ -288,7 +285,7 @@ fun AutoCorrectionCategoryScreen(
                                         autoReplaceOnSpaceEnter = enabled
                                         SettingsManager.setAutoReplaceOnSpaceEnter(context, enabled)
                                     },
-                                    enabled = experimentalSuggestionsEnabled
+                                    enabled = suggestionsEnabled
                                 )
                             }
                         }
@@ -387,52 +384,6 @@ fun AutoCorrectionCategoryScreen(
                                 }
 	                            }
 
-                        // Advanced suggestions master toggle
-                        Surface(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(min = 80.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Code,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = stringResource(R.string.experimental_suggestions_title),
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Medium,
-                                            maxLines = 1
-                                        )
-                                        Text(
-                                            text = stringResource(R.string.experimental_suggestions_subtitle),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
-                                    FeatureStatusIcon(FeatureStatus.Experimental)
-                                    Switch(
-                                        checked = experimentalSuggestionsEnabled,
-                                        onCheckedChange = { enabled ->
-                                            experimentalSuggestionsEnabled = enabled
-                                            SettingsManager.setExperimentalSuggestionsEnabled(context, enabled)
-                                            if (enabled && !suggestionsEnabled) {
-                                                suggestionsEnabled = true
-                                                SettingsManager.setSuggestionsEnabled(context, true)
-                                            }
-                                        }
-                                    )
-                                }
-                            }
 
                         Surface(
                             modifier = Modifier
@@ -466,7 +417,7 @@ fun AutoCorrectionCategoryScreen(
                                             suggestionsEnabled = enabled
                                             SettingsManager.setSuggestionsEnabled(context, enabled)
                                         },
-                                        enabled = experimentalSuggestionsEnabled
+                                        enabled = suggestionsEnabled
                                     )
                                 }
                             }
@@ -503,7 +454,7 @@ fun AutoCorrectionCategoryScreen(
                                         accentMatchingEnabled = enabled
                                         SettingsManager.setAccentMatchingEnabled(context, enabled)
                                     },
-                                    enabled = experimentalSuggestionsEnabled
+                                    enabled = suggestionsEnabled
                                 )
                             }
                         }
@@ -545,7 +496,7 @@ fun AutoCorrectionCategoryScreen(
                                         useKeyboardProximity = enabled
                                         SettingsManager.setUseKeyboardProximity(context, enabled)
                                     },
-                                    enabled = experimentalSuggestionsEnabled
+                                    enabled = suggestionsEnabled
                                 )
                             }
                         }
@@ -588,7 +539,7 @@ fun AutoCorrectionCategoryScreen(
                                         useEditTypeRanking = enabled
                                         SettingsManager.setUseEditTypeRanking(context, enabled)
                                     },
-                                    enabled = experimentalSuggestionsEnabled
+                                    enabled = suggestionsEnabled
                                 )
                             }
                         }

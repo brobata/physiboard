@@ -143,8 +143,6 @@
     <string name="auto_correct_edit_type_ranking_title">Bearbeitungstyp-Bewertung</string>
     <string name="auto_correct_edit_type_ranking_description">Vorschläge nach Bearbeitungstyp sortieren (Einfügen &gt; Ersetzen &gt; Löschen)</string>
     <string name="clear">Löschen</string>
-    <string name="experimental_suggestions_title">Experimentelle Vorschläge</string>
-    <string name="experimental_suggestions_subtitle">Neuen Wörterbuch/Vorschlags-Engine aktivieren (Beta)</string>
     <string name="sym_customize_title">SYM-Tastatur anpassen</string>
     <string name="sym_auto_close_title">SYM-Layout automatisch schließen</string>
     <string name="sym_auto_close_description">Schließt das SYM-Layout automatisch nach dem Einfügen eines Zeichens, Drücken von Alt oder Drücken von Enter. Schließt nicht mit Control oder Shift.</string>

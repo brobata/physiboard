@@ -43,7 +43,6 @@ class PhysicalKeyboardInputMethodServiceDeviceBehaviorTest {
         SettingsManager.setSymPagesConfig(context, SymPagesConfig())
         SettingsManager.resetSymMappings(context)
         SettingsManager.resetSymMappingsPage2(context)
-        SettingsManager.setAutoCapitalizeRespectManualShiftOff(context, true)
         SettingsManager.setAutoCapitalizeRestrictedFields(context, false)
 
         service = Robolectric.buildService(PhysicalKeyboardInputMethodService::class.java)
@@ -239,23 +238,6 @@ class PhysicalKeyboardInputMethodServiceDeviceBehaviorTest {
         assertFalse(modifierController().shiftOneShot)
     }
 
-    @Test
-    fun autoCap_manualShiftOff_doesNotSurviveRestart_whenRespectIsDisabled() {
-        val context = RuntimeEnvironment.getApplication()
-        SettingsManager.setAutoCapitalizeFirstLetter(context, true)
-        SettingsManager.setAutoCapitalizeAfterPeriod(context, true)
-        SettingsManager.setAutoCapitalizeRespectManualShiftOff(context, false)
-
-        service.onStartInput(editorInfo, false)
-        assertTrue(modifierController().shiftOneShot)
-
-        tapShift(3_100L)
-        assertFalse(modifierController().shiftOneShot)
-
-        service.onStartInput(editorInfo, true)
-
-        assertTrue(modifierController().shiftOneShot)
-    }
 
     @Test
     fun autoCap_restrictedFieldsSetting_startsUriFieldWithShift() {

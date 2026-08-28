@@ -99,8 +99,6 @@
     <string name="auto_correct_edit_type_ranking_title">Դասակարգում խմբագրման տեսակով</string>
     <string name="auto_correct_edit_type_ranking_description">Դասակարգել առաջարկները խմբագրման տեսակով (տեղադրում &gt; փոխարինում &gt; ջնջում)</string>
     <string name="clear">Մաքրել</string>
-    <string name="experimental_suggestions_title">Փորձարարական առաջարկներ</string>
-    <string name="experimental_suggestions_subtitle">Միացնել նոր բառարան/առաջարկների շարժիչը (բետա)</string>
     <string name="sym_customize_title">Փոփոխել SYM ստեղնաշարը</string>
     <string name="sym_auto_close_title">SYM դասավորության ավտո-փակման</string>
     <string name="sym_auto_close_description">Ավտոմատ փակում է SYM դասավորությունը՝ սիմվոլ մուտքագրելուց, Alt կամ Enter սեղմելուց հետո։ Չի փակում Ctrl կամ Shift սեղմելիս։</string>

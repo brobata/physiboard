@@ -109,8 +109,6 @@
     <string name="auto_correct_edit_type_ranking_title">Ранжирование по Типу Редактирования</string>
     <string name="auto_correct_edit_type_ranking_description">Сортировать предложения по типу редактирования (вставка &gt; замена &gt; удаление)</string>
     <string name="clear">Очистить</string>
-    <string name="experimental_suggestions_title">Экспериментальные подсказки ввода</string>
-    <string name="experimental_suggestions_subtitle">Включить новый движок словаря/подсказок ввода (бета)</string>
     <string name="user_dict_title">Словарь пользователя</string>
     <string name="user_dict_add_hint">Добавить слово</string>
     <string name="user_dict_add_button">Сохранить слово</string>

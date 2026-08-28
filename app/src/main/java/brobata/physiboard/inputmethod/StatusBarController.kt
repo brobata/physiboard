@@ -2718,13 +2718,11 @@ class StatusBarController(
         if (showLedStrip) {
             ledStatusView.update(snapshot)
         }
-        val experimentalEnabled = SettingsManager.isExperimentalSuggestionsEnabled(context)
         val suggestionsEnabledSetting = SettingsManager.getSuggestionsEnabled(context)
         // Keep the suggestion/status row stable in both full-status-bar and Pastierina mode.
         val expansionActive = expansionSuggestions.isNotEmpty()
         val showFullBar = expansionActive || (
             suggestionsEnabledSetting &&
-                (experimentalEnabled || isFullSoftwareKeyboardMode) &&
                 (isFullSoftwareKeyboardMode || !snapshot.shouldDisableSuggestions) &&
                 (snapshot.symPage == 0 || isSoftwareKeyboardOverlayPage) &&
                 !snapshot.clipboardOverlay

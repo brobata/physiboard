@@ -1232,10 +1232,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     }
 
     private fun suppressAutoCapRenderingAtCursorIfNeeded() {
-        if (!SettingsManager.getAutoCapitalizeRespectManualShiftOff(this)) {
-            clearAutoCapSuppression()
-            return
-        }
         if (
             AutoCapitalizeHelper.shouldAutoCapitalizeAtCursor(
                 context = this,
@@ -1618,7 +1614,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             context = this,
             assets = assets,
             settingsProvider = { getSuggestionSettings() },
-            isEnabled = { SettingsManager.isExperimentalSuggestionsEnabled(this) },
+            isEnabled = { SettingsManager.getSuggestionsEnabled(this) },
             debugLogging = suggestionDebugLogging,
             onSuggestionsUpdated = { suggestions -> handleSuggestionsUpdated(suggestions) },
             currentLocale = initialLocale,
@@ -2866,7 +2862,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         val modifierSnapshot = modifierStateController.snapshot()
         val state = inputContextState
         val addWordCandidate = suggestionController.pendingAddWord()
-        val suggestionsEnabled = SettingsManager.isExperimentalSuggestionsEnabled(this) && SettingsManager.getSuggestionsEnabled(this)
+        val suggestionsEnabled = SettingsManager.getSuggestionsEnabled(this)
         val suggestionsStart = ImePerfLogger.mark()
         val baseSuggestions = if (suggestionsEnabled) visibleSuggestionStrings() else emptyList()
         suggestionsMs = ImePerfLogger.elapsedMs(suggestionsStart)
@@ -3166,10 +3162,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     override fun onStartInput(info: EditorInfo?, restarting: Boolean) {
         super.onStartInput(info, restarting)
         if (::textExpansionController.isInitialized) textExpansionController.clear()
-        if (
-            !restarting ||
-            !SettingsManager.getAutoCapitalizeRespectManualShiftOff(this)
-        ) {
+        if (!restarting) {
             // A manual Shift-off suppresses auto-cap only for the current field session.
             // Text context alone cannot identify a field: every empty editor looks like "|".
             clearAutoCapSuppression()

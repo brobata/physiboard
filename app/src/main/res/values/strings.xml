@@ -37,8 +37,6 @@
     <!-- Auto Capitalize Section -->
     <string name="auto_capitalize_title">Capitalize at text start</string>
     <string name="auto_capitalize_description">Capitalize the first letter when starting in an empty text field.</string>
-    <string name="auto_capitalize_respect_manual_shift_off_title">Respect manual Shift off</string>
-    <string name="auto_capitalize_respect_manual_shift_off_description">Keep automatic Shift off while you remain in the same text field.</string>
     <string name="auto_capitalize_restricted_fields_title">Shift in all text fields</string>
     <string name="auto_capitalize_restricted_fields_description">Also start address bars, email, and search fields with Shift. Password fields remain unchanged.</string>
 
@@ -463,8 +461,6 @@
     <string name="auto_correct_edit_type_ranking_title">Edit Type Ranking</string>
     <string name="auto_correct_edit_type_ranking_description">Rank suggestions by edit type (insert > substitute > delete)</string>
     <string name="clear">Clear</string>
-    <string name="experimental_suggestions_title">Experimental suggestions</string>
-    <string name="experimental_suggestions_subtitle">Enable the new dictionary/suggestion engine (beta)</string>
 
     <!-- User dictionary management -->
     <string name="user_dict_title">User dictionary</string>
