@@ -98,15 +98,6 @@ fun CustomizationSettingsScreen(
     var quickLauncherLimitResults by remember {
         mutableStateOf(SettingsManager.getQuickLauncherLimitResults(context))
     }
-    var quickLauncherTextFieldShortcuts by remember {
-        mutableStateOf(SettingsManager.getQuickLauncherTextFieldShortcuts(context))
-    }
-    var quickLauncherAltSpaceInTextFields by remember {
-        mutableStateOf(SettingsManager.getQuickLauncherAltSpaceInTextFields(context))
-    }
-    var quickLauncherAltShortcutsOutsideTextFields by remember {
-        mutableStateOf(SettingsManager.getQuickLauncherAltShortcutsOutsideTextFields(context))
-    }
     var quickLauncherRespectKeyboardLayout by remember {
         mutableStateOf(SettingsManager.getQuickLauncherRespectKeyboardLayout(context))
     }
@@ -195,16 +186,6 @@ fun CustomizationSettingsScreen(
                 }
                 "quick_launcher_limit_results" -> {
                     quickLauncherLimitResults = SettingsManager.getQuickLauncherLimitResults(context)
-                }
-                "quick_launcher_text_field_shortcuts" -> {
-                    quickLauncherTextFieldShortcuts = SettingsManager.getQuickLauncherTextFieldShortcuts(context)
-                }
-                "quick_launcher_alt_space_in_text_fields" -> {
-                    quickLauncherAltSpaceInTextFields = SettingsManager.getQuickLauncherAltSpaceInTextFields(context)
-                }
-                "quick_launcher_alt_shortcuts_outside_text_fields" -> {
-                    quickLauncherAltShortcutsOutsideTextFields =
-                        SettingsManager.getQuickLauncherAltShortcutsOutsideTextFields(context)
                 }
                 "quick_launcher_respect_keyboard_layout" -> {
                     quickLauncherRespectKeyboardLayout = SettingsManager.getQuickLauncherRespectKeyboardLayout(context)
@@ -372,21 +353,6 @@ fun CustomizationSettingsScreen(
                         powerShortcutsEnabled = enabled
                         SettingsManager.setPowerShortcutsEnabled(context, enabled)
                     },
-                    symShortcutsInTextFields = quickLauncherTextFieldShortcuts,
-                    onSymShortcutsInTextFieldsChanged = { enabled ->
-                        quickLauncherTextFieldShortcuts = enabled
-                        SettingsManager.setQuickLauncherTextFieldShortcuts(context, enabled)
-                    },
-                    altKeyShortcutsEnabled = quickLauncherAltShortcutsOutsideTextFields,
-                    onAltKeyShortcutsEnabledChanged = { enabled ->
-                        quickLauncherAltShortcutsOutsideTextFields = enabled
-                        SettingsManager.setQuickLauncherAltShortcutsOutsideTextFields(context, enabled)
-                    },
-                    altShortcutsInTextFields = quickLauncherAltSpaceInTextFields,
-                    onAltShortcutsInTextFieldsChanged = { enabled ->
-                        quickLauncherAltSpaceInTextFields = enabled
-                        SettingsManager.setQuickLauncherAltSpaceInTextFields(context, enabled)
-                    },
                     quickLauncherDefaultBlocked = quickLauncherDefaultBlocked,
                     quickLauncherShortcutKey = quickLauncherShortcutKey,
                     onOpenBehavior = { navigateTo(CustomizationDestination.LauncherShortcutBehavior) },
@@ -529,12 +495,6 @@ private fun StarterLauncherShortcutsSettingsScreen(
     onLauncherShortcutsEnabledChanged: (Boolean) -> Unit,
     powerShortcutsEnabled: Boolean,
     onPowerShortcutsEnabledChanged: (Boolean) -> Unit,
-    symShortcutsInTextFields: Boolean,
-    onSymShortcutsInTextFieldsChanged: (Boolean) -> Unit,
-    altKeyShortcutsEnabled: Boolean,
-    onAltKeyShortcutsEnabledChanged: (Boolean) -> Unit,
-    altShortcutsInTextFields: Boolean,
-    onAltShortcutsInTextFieldsChanged: (Boolean) -> Unit,
     quickLauncherDefaultBlocked: Boolean,
     quickLauncherShortcutKey: Int?,
     onOpenBehavior: () -> Unit,
@@ -630,20 +590,6 @@ private fun StarterLauncherShortcutsSettingsScreen(
                 onCheckedChange = onPowerShortcutsEnabledChanged
             )
 
-            LauncherShortcutTriggerRow(
-                icon = {
-                    Icon(
-                        painter = painterResource(R.drawable.keyboard_option_key_24),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                },
-                title = stringResource(R.string.alt_key_shortcuts_title),
-                description = stringResource(R.string.alt_key_shortcuts_description),
-                checked = altKeyShortcutsEnabled,
-                onCheckedChange = onAltKeyShortcutsEnabledChanged
-            )
 
             StarterLauncherNavigationRow(
                 icon = {
@@ -680,26 +626,6 @@ private fun StarterLauncherShortcutsSettingsScreen(
                 onClick = onManageAssignments
             )
 
-            SettingsAdvancedSection {
-                if (powerShortcutsEnabled) {
-                    LauncherShortcutTriggerRow(
-                        icon = {},
-                        title = stringResource(R.string.key_shortcuts_allow_in_text_fields_title),
-                        description = stringResource(R.string.sym_shortcuts_in_text_fields_description),
-                        checked = symShortcutsInTextFields,
-                        onCheckedChange = onSymShortcutsInTextFieldsChanged
-                    )
-                }
-                if (altKeyShortcutsEnabled) {
-                    LauncherShortcutTriggerRow(
-                        icon = {},
-                        title = stringResource(R.string.key_shortcuts_allow_in_text_fields_title),
-                        description = stringResource(R.string.alt_shortcuts_in_text_fields_description),
-                        checked = altShortcutsInTextFields,
-                        onCheckedChange = onAltShortcutsInTextFieldsChanged
-                    )
-                }
-            }
         }
     }
 }
@@ -862,18 +788,6 @@ private fun StarterLauncherBehaviorScreen(
                     steps = 15
                 )
             }
-        }
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-            shape = MaterialTheme.shapes.medium
-        ) {
-            Text(
-                text = stringResource(R.string.quick_launcher_text_field_shortcuts_hint),
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(12.dp)
-            )
         }
     }
 

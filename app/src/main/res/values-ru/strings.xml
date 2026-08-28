@@ -646,9 +646,6 @@
     <string name="quick_launcher_auto_start_single_description">Когда поиск QuickLauncher оставляет только одно приложение, запускайте его без нажатия Enter.</string>
     <string name="quick_launcher_limit_results_title">Показывать только лучшие результаты</string>
     <string name="quick_launcher_limit_results_description">Не показывать полный алфавитный список приложений. QuickLauncher остается пустым, пока вы не начнете ввод, затем показывает только три лучших совпадения.</string>
-    <string name="quick_launcher_text_field_shortcuts_title">Разрешить SYM+Пробел в текстовых полях</string>
-    <string name="quick_launcher_text_field_shortcuts_description">Если включено, QuickLauncher может открываться и тогда, когда курсор находится в текстовом поле приложения.</string>
-    <string name="quick_launcher_text_field_shortcuts_hint">В текстовых полях удерживайте SYM и нажмите Пробел. Фиксация SYM не может запустить это, потому что нажатие SYM переключает страницы SYM.</string>
     <string name="quick_launcher_respect_keyboard_layout_title">Использовать активную раскладку клавиатуры</string>
     <string name="quick_launcher_respect_keyboard_layout_description">Если включено, поисковый ввод следует текущей раскладке Pastiera вместо сырого QWERTY-вывода Android.</string>
     <string name="quick_launcher_typo_tolerant_ranking_title">Поиск с учетом опечаток</string>

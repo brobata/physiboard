@@ -147,7 +147,6 @@ class InputEventRouter(
         if (
             !ctrlLatchActive &&
             event?.isSymPressed == true &&
-            SettingsManager.getQuickLauncherTextFieldShortcuts(context) &&
             SettingsManager.isQuickLauncherShortcut(context, keyCode)
         ) {
             if (powerShortcutsEnabled && callbacks.handlePowerShortcut(keyCode)) {
@@ -156,16 +155,6 @@ class InputEventRouter(
             if (callbacks.handleLauncherShortcut(keyCode)) {
                 return true
             }
-        }
-
-        if (
-            !ctrlLatchActive &&
-            event?.isAltPressed == true &&
-            SettingsManager.getQuickLauncherAltShortcutsOutsideTextFields(context) &&
-            callbacks.isShortcutKey(keyCode) &&
-            callbacks.handleLauncherShortcut(keyCode)
-        ) {
-            return true
         }
 
         // Handle Power Shortcuts (SYM held + a letter key)

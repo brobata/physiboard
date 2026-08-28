@@ -1416,7 +1416,6 @@ fun TutorialQuickLauncherPageContent(
                 currentMappingLabel = launcherShortcutLabel(spaceShortcut),
                 onReplaceClick = {
                     SettingsManager.setLauncherShortcutsEnabled(context, true)
-                    SettingsManager.setQuickLauncherTextFieldShortcuts(context, true)
                     SettingsManager.setQuickLauncherShortcut(context, KeyEvent.KEYCODE_SPACE)
                     spaceShortcut = SettingsManager.getLauncherShortcut(context, KeyEvent.KEYCODE_SPACE)
                 }

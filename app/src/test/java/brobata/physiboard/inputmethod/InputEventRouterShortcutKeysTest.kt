@@ -89,7 +89,6 @@ class InputEventRouterShortcutKeysTest {
 
     @Test
     fun noEditableField_routesConfiguredSymQuickLauncherShortcutOutsideLauncherApps() {
-        SettingsManager.setQuickLauncherTextFieldShortcuts(context, true)
         SettingsManager.setQuickLauncherShortcut(context, KeyEvent.KEYCODE_K)
         val callbacks = RecordingCallbacks(
             shortcutKeys = specialShortcutKeys + KeyEvent.KEYCODE_K,
@@ -116,7 +115,6 @@ class InputEventRouterShortcutKeysTest {
 
     @Test
     fun noEditableField_symQuickLauncherShortcutResetsPowerShortcutModeBeforeToast() {
-        SettingsManager.setQuickLauncherTextFieldShortcuts(context, true)
         SettingsManager.setQuickLauncherShortcut(context, KeyEvent.KEYCODE_K)
         val callbacks = RecordingCallbacks(
             shortcutKeys = specialShortcutKeys + KeyEvent.KEYCODE_K,

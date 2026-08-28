@@ -3821,9 +3821,6 @@ object SettingsManager {
     private const val KEY_QUICK_LAUNCHER_DEFAULT_ASSIGNED = "quick_launcher_default_assigned"
     private const val KEY_QUICK_LAUNCHER_AUTO_START_SINGLE = "quick_launcher_auto_start_single"
     private const val KEY_QUICK_LAUNCHER_LIMIT_RESULTS = "quick_launcher_limit_results"
-    private const val KEY_QUICK_LAUNCHER_TEXT_FIELD_SHORTCUTS = "quick_launcher_text_field_shortcuts"
-    private const val KEY_QUICK_LAUNCHER_ALT_SPACE_IN_TEXT_FIELDS = "quick_launcher_alt_space_in_text_fields"
-    private const val KEY_QUICK_LAUNCHER_ALT_SHORTCUTS_OUTSIDE_TEXT_FIELDS = "quick_launcher_alt_shortcuts_outside_text_fields"
     private const val KEY_QUICK_LAUNCHER_RESPECT_KEYBOARD_LAYOUT = "quick_launcher_respect_keyboard_layout"
     private const val KEY_QUICK_LAUNCHER_TYPO_TOLERANT_RANKING = "quick_launcher_typo_tolerant_ranking"
     private const val KEY_QUICK_LAUNCHER_WIDTH_PERCENT = "quick_launcher_width_percent"
@@ -3841,9 +3838,6 @@ object SettingsManager {
     private const val DEFAULT_LAUNCHER_SHORTCUTS_ENABLED = false
     private const val DEFAULT_QUICK_LAUNCHER_AUTO_START_SINGLE = false
     private const val DEFAULT_QUICK_LAUNCHER_LIMIT_RESULTS = false
-    private const val DEFAULT_QUICK_LAUNCHER_TEXT_FIELD_SHORTCUTS = true
-    private const val DEFAULT_QUICK_LAUNCHER_ALT_SPACE_IN_TEXT_FIELDS = false
-    private const val DEFAULT_QUICK_LAUNCHER_ALT_SHORTCUTS_OUTSIDE_TEXT_FIELDS = false
     private const val DEFAULT_QUICK_LAUNCHER_RESPECT_KEYBOARD_LAYOUT = true
     private const val DEFAULT_QUICK_LAUNCHER_TYPO_TOLERANT_RANKING = true
     private const val DEFAULT_QUICK_LAUNCHER_WIDTH_PERCENT = 100
@@ -4363,44 +4357,11 @@ object SettingsManager {
             .apply()
     }
 
-    fun getQuickLauncherTextFieldShortcuts(context: Context): Boolean {
-        return getPreferences(context).getBoolean(
-            KEY_QUICK_LAUNCHER_TEXT_FIELD_SHORTCUTS,
-            DEFAULT_QUICK_LAUNCHER_TEXT_FIELD_SHORTCUTS
-        )
-    }
 
-    fun setQuickLauncherTextFieldShortcuts(context: Context, enabled: Boolean) {
-        getPreferences(context).edit()
-            .putBoolean(KEY_QUICK_LAUNCHER_TEXT_FIELD_SHORTCUTS, enabled)
-            .apply()
-    }
 
-    fun getQuickLauncherAltSpaceInTextFields(context: Context): Boolean {
-        return getPreferences(context).getBoolean(
-            KEY_QUICK_LAUNCHER_ALT_SPACE_IN_TEXT_FIELDS,
-            DEFAULT_QUICK_LAUNCHER_ALT_SPACE_IN_TEXT_FIELDS
-        )
-    }
 
-    fun setQuickLauncherAltSpaceInTextFields(context: Context, enabled: Boolean) {
-        getPreferences(context).edit()
-            .putBoolean(KEY_QUICK_LAUNCHER_ALT_SPACE_IN_TEXT_FIELDS, enabled)
-            .apply()
-    }
 
-    fun getQuickLauncherAltShortcutsOutsideTextFields(context: Context): Boolean {
-        return getPreferences(context).getBoolean(
-            KEY_QUICK_LAUNCHER_ALT_SHORTCUTS_OUTSIDE_TEXT_FIELDS,
-            DEFAULT_QUICK_LAUNCHER_ALT_SHORTCUTS_OUTSIDE_TEXT_FIELDS
-        )
-    }
 
-    fun setQuickLauncherAltShortcutsOutsideTextFields(context: Context, enabled: Boolean) {
-        getPreferences(context).edit()
-            .putBoolean(KEY_QUICK_LAUNCHER_ALT_SHORTCUTS_OUTSIDE_TEXT_FIELDS, enabled)
-            .apply()
-    }
 
     fun getQuickLauncherRespectKeyboardLayout(context: Context): Boolean {
         return getPreferences(context).getBoolean(

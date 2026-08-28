@@ -646,9 +646,6 @@
     <string name="quick_launcher_auto_start_single_description">Cuando la búsqueda de QuickLauncher deje una sola app, ábrela sin pulsar Intro.</string>
     <string name="quick_launcher_limit_results_title">Mostrar solo los mejores resultados</string>
     <string name="quick_launcher_limit_results_description">No mostrar la lista alfabética completa de apps. QuickLauncher permanece vacío hasta que escribas y luego muestra solo las tres mejores coincidencias.</string>
-    <string name="quick_launcher_text_field_shortcuts_title">Permitir SYM+Espacio en campos de texto</string>
-    <string name="quick_launcher_text_field_shortcuts_description">Si está activado, QuickLauncher también puede abrirse cuando el cursor está dentro de un campo de texto de una app.</string>
-    <string name="quick_launcher_text_field_shortcuts_hint">En campos de texto, mantén SYM y pulsa Espacio. El bloqueo de SYM no puede activarlo porque tocar SYM recorre las páginas SYM.</string>
     <string name="quick_launcher_respect_keyboard_layout_title">Usar layout de teclado activo</string>
     <string name="quick_launcher_respect_keyboard_layout_description">Si está activado, la entrada de búsqueda sigue el layout actual de Pastiera en lugar de la salida QWERTY sin procesar de Android.</string>
     <string name="quick_launcher_typo_tolerant_ranking_title">Búsqueda tolerante a errores</string>

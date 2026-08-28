@@ -226,7 +226,7 @@ fun ModifierSettingsScreen(
                 )
                 ModifierNavigationRow(
                     iconRes = R.drawable.keyboard_option_key_24,
-                    title = stringResource(R.string.alt_key_shortcuts_title),
+                    title = stringResource(R.string.starter_launcher_shortcuts_title),
                     description = stringResource(R.string.alt_key_shortcuts_modifier_link_description),
                     onClick = onOpenSymShortcuts
                 )

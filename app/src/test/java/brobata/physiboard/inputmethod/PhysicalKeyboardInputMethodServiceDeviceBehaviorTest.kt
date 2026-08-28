@@ -580,7 +580,6 @@ class PhysicalKeyboardInputMethodServiceDeviceBehaviorTest {
     @Test
     fun symPlusQuickLauncherShortcut_opensQuickLauncherFromEditableField() {
         val context = RuntimeEnvironment.getApplication()
-        SettingsManager.setQuickLauncherTextFieldShortcuts(context, true)
         SettingsManager.setQuickLauncherShortcut(context, KeyEvent.KEYCODE_SPACE)
         val t0 = 4_200L
 
@@ -604,7 +603,6 @@ class PhysicalKeyboardInputMethodServiceDeviceBehaviorTest {
     @Test
     fun heldSymPlusQuickLauncherShortcut_reopensFromEditableFieldAfterLauncherCloses() {
         val context = RuntimeEnvironment.getApplication()
-        SettingsManager.setQuickLauncherTextFieldShortcuts(context, true)
         SettingsManager.setQuickLauncherShortcut(context, KeyEvent.KEYCODE_SPACE)
         val t0 = 4_600L
 

@@ -323,9 +323,6 @@
     <string name="quick_launcher_auto_start_single_description">Quando la ricerca del QuickLauncher lascia una sola app, avviala senza premere Invio.</string>
     <string name="quick_launcher_limit_results_title">Mostra solo i risultati migliori</string>
     <string name="quick_launcher_limit_results_description">Non mostrare l\'elenco alfabetico completo delle app. Il QuickLauncher resta vuoto finché non digiti e poi mostra solo le prime tre corrispondenze.</string>
-    <string name="quick_launcher_text_field_shortcuts_title">Consenti SYM+Spazio nei campi di testo</string>
-    <string name="quick_launcher_text_field_shortcuts_description">Se attivo, il QuickLauncher può aprirsi anche quando il cursore è dentro un campo di testo di un\'app.</string>
-    <string name="quick_launcher_text_field_shortcuts_hint">Nei campi di testo, tieni premuto SYM e premi Spazio. Il blocco SYM non può attivarlo perché toccare SYM scorre le pagine SYM.</string>
     <string name="quick_launcher_respect_keyboard_layout_title">Usa layout tastiera attivo</string>
     <string name="quick_launcher_respect_keyboard_layout_description">Se attivo, l\'input di ricerca segue il layout Pastiera corrente invece dell\'output QWERTY grezzo di Android.</string>
     <string name="quick_launcher_typo_tolerant_ranking_title">Ricerca tollerante agli errori</string>

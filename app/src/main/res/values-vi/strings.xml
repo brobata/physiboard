@@ -646,9 +646,6 @@
     <string name="quick_launcher_auto_start_single_description">Khi tìm kiếm QuickLauncher chỉ còn một ứng dụng, hãy mở ứng dụng đó mà không cần nhấn Enter.</string>
     <string name="quick_launcher_limit_results_title">Chỉ hiển thị kết quả hàng đầu</string>
     <string name="quick_launcher_limit_results_description">Không hiển thị toàn bộ danh sách ứng dụng theo alphabet. QuickLauncher để trống cho đến khi bạn gõ, rồi chỉ hiển thị ba kết quả tốt nhất.</string>
-    <string name="quick_launcher_text_field_shortcuts_title">Cho phép SYM+Phím cách trong ô văn bản</string>
-    <string name="quick_launcher_text_field_shortcuts_description">Khi bật, QuickLauncher cũng có thể mở khi con trỏ nằm trong ô văn bản của ứng dụng.</string>
-    <string name="quick_launcher_text_field_shortcuts_hint">Trong ô văn bản, giữ SYM và nhấn Phím cách. Chốt SYM không thể kích hoạt vì chạm SYM sẽ chuyển qua các trang SYM.</string>
     <string name="quick_launcher_respect_keyboard_layout_title">Dùng bố cục bàn phím đang hoạt động</string>
     <string name="quick_launcher_respect_keyboard_layout_description">Khi bật, nội dung tìm kiếm theo bố cục Pastiera hiện tại thay vì đầu ra QWERTY thô của Android.</string>
     <string name="quick_launcher_typo_tolerant_ranking_title">Tìm kiếm chịu lỗi gõ sai</string>

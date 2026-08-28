@@ -106,6 +106,10 @@ object SettingsMigration {
 
     private val DROPPED_KEYS: Set<String> = setOf(
         "status_bar_variations_visible",
+        // the QuickLauncher trigger toggles - the key binding answers this now
+        "quick_launcher_text_field_shortcuts",
+        "quick_launcher_alt_space_in_text_fields",
+        "quick_launcher_alt_shortcuts_outside_text_fields",
         "global_variation_layout_override"
     )
 

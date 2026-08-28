@@ -715,13 +715,6 @@
     <string name="quick_launcher_auto_start_single_description">When the quick launcher search leaves only one app, launch it without pressing Enter.</string>
     <string name="quick_launcher_limit_results_title">Show only top search results</string>
     <string name="quick_launcher_limit_results_description">Do not render the full alphabetical app list. The quick launcher stays empty until you type and then shows only the top three matches.</string>
-    <string name="quick_launcher_text_field_shortcuts_title">Allow SYM+Space in text fields</string>
-    <string name="quick_launcher_text_field_shortcuts_description">When enabled, the QuickLauncher can also open while the cursor is inside an app text field.</string>
-    <string name="quick_launcher_text_field_shortcuts_hint">In text fields, hold SYM and press Space. SYM latch cannot trigger this because tapping SYM cycles the SYM pages.</string>
-    <string name="quick_launcher_alt_space_text_fields_title">Allow Alt+Space in text fields</string>
-    <string name="quick_launcher_alt_space_text_fields_description">Open QuickLauncher with Alt+Space instead of inserting a space. Disabled by default.</string>
-    <string name="quick_launcher_alt_shortcuts_outside_fields_title">Allow Alt shortcuts outside text fields</string>
-    <string name="quick_launcher_alt_shortcuts_outside_fields_description">Use Alt with an assigned key to launch the same app or action as its SYM key shortcut.</string>
     <string name="quick_launcher_respect_keyboard_layout_title">Use active keyboard layout</string>
     <string name="quick_launcher_respect_keyboard_layout_description">When enabled, search input follows the current PhysiBoard layout instead of Android’s raw QWERTY key output.</string>
     <string name="quick_launcher_typo_tolerant_ranking_title">Typo-tolerant search</string>
@@ -845,12 +838,7 @@
     <!-- Power Shortcuts Section -->
     <string name="power_shortcuts_title">SYM key shortcuts</string>
     <string name="power_shortcuts_description">Use SYM with assigned keys to launch apps and actions.</string>
-    <string name="alt_key_shortcuts_title">Alt Key Shortcuts</string>
-    <string name="alt_key_shortcuts_description">Use Alt with assigned keys to launch apps and actions.</string>
     <string name="alt_key_shortcuts_modifier_link_description">Configure Alt shortcuts and text-field access.</string>
-    <string name="key_shortcuts_allow_in_text_fields_title">Allow in text fields</string>
-    <string name="sym_shortcuts_in_text_fields_description">Also use assigned SYM shortcuts while typing.</string>
-    <string name="alt_shortcuts_in_text_fields_description">Also use assigned Alt shortcuts while typing.</string>
     <string name="sym_shortcuts_compatibility_info">About SYM key compatibility</string>
     <string name="sym_shortcuts_compatibility_title">SYM key compatibility</string>
     <string name="sym_shortcuts_compatibility_description">SYM key shortcuts require a keyboard that exposes SYM as a modifier to Android. They cannot currently work with keyboards whose firmware converts SYM combinations into final characters or navigation events before PhysiBoard receives them. This includes the Clicks Power Keyboard’s current SYM behaviour.</string>
@@ -1599,7 +1587,7 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="show_status_bar_apps_add">Add an app</string>
     <string name="show_status_bar_apps_remove">Remove</string>
     <string name="status_bar_buttons_title">Status Bar</string>
-    <string name="status_bar_buttons_description">Where the on-screen bar appears, how tall it is, and which buttons sit on its edges.</string>
+    <string name="status_bar_buttons_description">Where the on-screen bar appears, and which buttons sit on its edges.</string>
     <string name="status_bar_style_section">Status bar style</string>
     <string name="extended_status_bar_title">Extended Status Bar</string>
     <string name="extended_status_bar_features_section">Extended features</string>

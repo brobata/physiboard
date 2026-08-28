@@ -646,9 +646,6 @@
     <string name="quick_launcher_auto_start_single_description">Երբ QuickLauncher-ի որոնումը թողնում է միայն մեկ հավելված, գործարկել այն առանց Enter սեղմելու։</string>
     <string name="quick_launcher_limit_results_title">Ցույց տալ միայն լավագույն արդյունքները</string>
     <string name="quick_launcher_limit_results_description">Չցուցադրել հավելվածների ամբողջ այբբենական ցուցակը։ QuickLauncher-ը մնում է դատարկ, մինչև սկսեք մուտքագրել, ապա ցույց է տալիս միայն երեք լավագույն համընկնումները։</string>
-    <string name="quick_launcher_text_field_shortcuts_title">Թույլատրել SYM+Space տեքստային դաշտերում</string>
-    <string name="quick_launcher_text_field_shortcuts_description">Միացված լինելու դեպքում QuickLauncher-ը կարող է բացվել նաև, երբ կուրսորը հավելվածի տեքստային դաշտում է։</string>
-    <string name="quick_launcher_text_field_shortcuts_hint">Տեքստային դաշտերում պահեք SYM-ը և սեղմեք Space։ SYM-ի ամրացումը չի կարող սա գործարկել, քանի որ SYM-ին հպվելը փոխում է SYM էջերը։</string>
     <string name="quick_launcher_respect_keyboard_layout_title">Օգտագործել ակտիվ ստեղնաշարի դասավորությունը</string>
     <string name="quick_launcher_respect_keyboard_layout_description">Միացված լինելու դեպքում որոնման մուտքագրումը հետևում է ընթացիկ Pastiera դասավորությանը՝ Android-ի հում QWERTY ելքի փոխարեն։</string>
     <string name="quick_launcher_typo_tolerant_ranking_title">Տառասխալներին հանդուրժող որոնում</string>

@@ -278,13 +278,6 @@
     <string name="quick_launcher_auto_start_single_description">Wenn die Schnellstarter-Suche nur noch eine App findet, wird sie ohne Enter direkt geöffnet.</string>
     <string name="quick_launcher_limit_results_title">Nur beste Suchtreffer anzeigen</string>
     <string name="quick_launcher_limit_results_description">Die vollständige alphabetische App-Liste wird nicht gerendert. Der Schnellstarter bleibt leer, bis du tippst, und zeigt dann nur die drei besten Treffer.</string>
-    <string name="quick_launcher_text_field_shortcuts_title">SYM+Space in Textfeldern erlauben</string>
-    <string name="quick_launcher_text_field_shortcuts_description">Wenn aktiv, kann der QuickLauncher auch geöffnet werden, während der Cursor in einem App-Textfeld steht.</string>
-    <string name="quick_launcher_text_field_shortcuts_hint">In Textfeldern muss SYM gehalten und dann Space gedrückt werden. Der SYM-Latch kann das nicht auslösen, weil Antippen von SYM die SYM-Seiten durchschaltet.</string>
-    <string name="quick_launcher_alt_space_text_fields_title">Alt+Space in Textfeldern erlauben</string>
-    <string name="quick_launcher_alt_space_text_fields_description">QuickLauncher mit Alt+Space öffnen, statt ein Leerzeichen einzufügen. Standardmäßig aus.</string>
-    <string name="quick_launcher_alt_shortcuts_outside_fields_title">Alt-Shortcuts außerhalb von Textfeldern</string>
-    <string name="quick_launcher_alt_shortcuts_outside_fields_description">Alt mit einer zugewiesenen Taste verwenden, um dieselbe App oder Aktion wie mit ihrem SYM-Tasten-Shortcut zu starten.</string>
     <string name="quick_launcher_behaviour_title">Verhalten</string>
     <string name="quick_launcher_behaviour_description">Startziel, Such-/Rankingregeln und SYM+Space aus Textfeldern.</string>
     <string name="quick_launcher_animation_duration_title">Animationsdauer</string>
@@ -908,12 +901,7 @@ Jede Taste kann als Keycode, Aktion, Native Ctrl oder Keine konfiguriert werden.
     <string name="keyboard_layout_mode_manual_description">AUS: Ein manuell ausgewähltes Layout für alle Sprachen verwenden.</string>
     <string name="power_shortcuts_title">SYM-Tastenkürzel</string>
     <string name="power_shortcuts_description">SYM mit zugewiesenen Tasten verwenden, um Apps und Aktionen zu starten.</string>
-    <string name="alt_key_shortcuts_title">Alt-Tasten-Shortcuts</string>
-    <string name="alt_key_shortcuts_description">Alt mit zugewiesenen Tasten verwenden, um Apps und Aktionen zu starten.</string>
     <string name="alt_key_shortcuts_modifier_link_description">Alt-Shortcuts und Zugriff in Textfeldern konfigurieren.</string>
-    <string name="key_shortcuts_allow_in_text_fields_title">In Textfeldern erlauben</string>
-    <string name="sym_shortcuts_in_text_fields_description">Zugewiesene SYM-Shortcuts auch beim Tippen verwenden.</string>
-    <string name="alt_shortcuts_in_text_fields_description">Zugewiesene Alt-Shortcuts auch beim Tippen verwenden.</string>
     <string name="sym_shortcuts_compatibility_info">Informationen zur SYM-Tasten-Kompatibilität</string>
     <string name="sym_shortcuts_compatibility_title">Kompatibilität der SYM-Taste</string>
     <string name="sym_shortcuts_compatibility_description">SYM-Tasten-Shortcuts benötigen eine Tastatur, die SYM gegenüber Android als Modifier bereitstellt. Sie funktionieren derzeit nicht mit Tastaturen, deren Firmware SYM-Kombinationen bereits in fertige Zeichen oder Navigationseingaben umwandelt, bevor Pastiera sie empfängt. Dazu gehört das aktuelle SYM-Verhalten des Clicks Power Keyboard.</string>

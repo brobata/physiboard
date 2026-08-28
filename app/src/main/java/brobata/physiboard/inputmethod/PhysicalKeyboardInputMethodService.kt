@@ -4296,26 +4296,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             hasEditableField &&
             (symTogglePendingOnKeyUp || event?.isSymPressed == true) &&
             SettingsManager.getPowerShortcutsEnabled(this) &&
-            SettingsManager.getQuickLauncherTextFieldShortcuts(this) &&
             SettingsManager.getLauncherShortcut(this, keyCode) != null &&
             event?.repeatCount == 0
         ) {
             symChordUsedSinceKeyDown = true
-            if (launcherShortcutController.handleLauncherShortcut(keyCode)) {
-                return true
-            }
-        }
-
-        if (
-            hasEditableField &&
-            event?.repeatCount == 0 &&
-            SettingsManager.getQuickLauncherAltShortcutsOutsideTextFields(this) &&
-            SettingsManager.getQuickLauncherAltSpaceInTextFields(this) &&
-            SettingsManager.getLauncherShortcut(this, keyCode) != null &&
-            (event.isAltPressed || altPressed || altPhysicallyPressed || altLatchActive || altOneShot)
-        ) {
-            modifierStateController.clearAltState()
-            updateStatusBarText()
             if (launcherShortcutController.handleLauncherShortcut(keyCode)) {
                 return true
             }

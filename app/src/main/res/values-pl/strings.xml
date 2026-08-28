@@ -646,9 +646,6 @@
     <string name="quick_launcher_auto_start_single_description">Gdy wyszukiwanie QuickLauncher zostawi tylko jedną aplikację, uruchom ją bez naciskania Enter.</string>
     <string name="quick_launcher_limit_results_title">Pokazuj tylko najlepsze wyniki</string>
     <string name="quick_launcher_limit_results_description">Nie renderuj pełnej alfabetycznej listy aplikacji. QuickLauncher pozostaje pusty, dopóki nie zaczniesz pisać, a potem pokazuje tylko trzy najlepsze dopasowania.</string>
-    <string name="quick_launcher_text_field_shortcuts_title">Zezwalaj na SYM+Spacja w polach tekstowych</string>
-    <string name="quick_launcher_text_field_shortcuts_description">Gdy włączone, QuickLauncher może otwierać się także wtedy, gdy kursor znajduje się w polu tekstowym aplikacji.</string>
-    <string name="quick_launcher_text_field_shortcuts_hint">W polach tekstowych przytrzymaj SYM i naciśnij Spację. Zatrzask SYM nie może tego uruchomić, bo dotknięcie SYM przełącza strony SYM.</string>
     <string name="quick_launcher_respect_keyboard_layout_title">Używaj aktywnego układu klawiatury</string>
     <string name="quick_launcher_respect_keyboard_layout_description">Gdy włączone, wpisywanie w wyszukiwarce używa bieżącego układu Pastiera zamiast surowego wyjścia QWERTY Androida.</string>
     <string name="quick_launcher_typo_tolerant_ranking_title">Wyszukiwanie odporne na literówki</string>
