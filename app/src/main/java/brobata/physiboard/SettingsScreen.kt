@@ -85,7 +85,6 @@ enum class SettingsDestination {
     CustomInputStyles,
     AppLanguage,
     DeviceSymLayerEditor,
-    Modifiers,
     AppRawMode,
     SmartBacklight,
     Voice,
@@ -142,8 +141,6 @@ fun SettingsScreen(
                 add(SettingsDestination.Customization)
             } else if (initialDestination == SettingsActivity.DESTINATION_DEVICE_SYM_LAYER_EDITOR) {
                 add(SettingsDestination.DeviceSymLayerEditor)
-            } else if (initialDestination == SettingsActivity.DESTINATION_MODIFIERS) {
-                add(SettingsDestination.Modifiers)
             } else if (initialDestination == SettingsActivity.DESTINATION_SMART_BACKLIGHT) {
                 add(SettingsDestination.Main)
                 add(SettingsDestination.SmartBacklight)
@@ -265,7 +262,6 @@ fun SettingsScreen(
                     onToolboxClick = { navigateTo(SettingsDestination.Toolbox) },
                     onKeyboardHubClick = { navigateTo(SettingsDestination.KeyboardHub) },
                     onExtrasClick = { navigateTo(SettingsDestination.Extras) },
-                    onModifiersClick = { navigateTo(SettingsDestination.Modifiers) },
                     onTextInputClick = { navigateTo(SettingsDestination.TextInput) },
                     onVoiceClick = { navigateTo(SettingsDestination.Voice) },
                     onScreenTrackpadClick = { navigateTo(SettingsDestination.ScreenTrackpad) },
@@ -449,12 +445,6 @@ fun SettingsScreen(
                             }
                         ),
                         HubRow(
-                            icon = ImageVector.vectorResource(R.drawable.modifier_keys_24),
-                            title = stringResource(R.string.modifiers_title),
-                            description = stringResource(R.string.modifiers_description),
-                            onClick = { navigateTo(SettingsDestination.Modifiers) }
-                        ),
-                        HubRow(
                             icon = Icons.Filled.Block,
                             title = stringResource(R.string.app_raw_mode_title),
                             description = stringResource(R.string.app_raw_mode_row_description),
@@ -559,7 +549,6 @@ fun SettingsScreen(
                         onBack = { navigateBack() },
                         initialDestination = requestedCustomizationDestination,
                         initialKeyboardThemeTarget = initialKeyboardThemeTarget,
-                        onOpenModifiers = { navigateTo(SettingsDestination.Modifiers) }
                     )
                 }
             }
@@ -596,22 +585,6 @@ fun SettingsScreen(
             SettingsDestination.DeviceSymLayerEditor -> {
                 DeviceSymLayerEditorStubScreen(modifier = modifier, onBack = { navigateBack() })
             }
-            SettingsDestination.Modifiers -> {
-                ModifierSettingsScreen(
-                    modifier = modifier,
-                    onBack = { navigateBack() },
-                    onOpenSymLayers = {
-                        context.startActivity(Intent(context, SymCustomizationActivity::class.java))
-                    },
-                    onOpenSymShortcuts = {
-                        openCustomization(SettingsActivity.CUSTOMIZATION_DESTINATION_LAUNCHER_SHORTCUTS)
-                    },
-                    onOpenNavMode = {
-                        requestedNavModeKeyCode = null
-                        navigateTo(SettingsDestination.NavMode)
-                    }
-                )
-            }
         }
     }
 }
@@ -631,7 +604,6 @@ private fun SettingsMainScreen(
     onToolboxClick: () -> Unit,
     onKeyboardHubClick: () -> Unit,
     onExtrasClick: () -> Unit,
-    onModifiersClick: () -> Unit,
     onTextInputClick: () -> Unit,
     onVoiceClick: () -> Unit,
     onScreenTrackpadClick: () -> Unit,
@@ -655,7 +627,6 @@ private fun SettingsMainScreen(
     val searchTargetHandler: (SettingsSearchTarget) -> Unit = { target ->
         searchQuery = ""
         when (target) {
-            SettingsSearchTarget.MODIFIERS -> onModifiersClick()
             SettingsSearchTarget.TEXT_INPUT -> onTextInputClick()
             SettingsSearchTarget.VOICE -> onVoiceClick()
             SettingsSearchTarget.AUTO_CORRECTION -> onAutoCorrectionClick()

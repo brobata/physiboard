@@ -2690,11 +2690,9 @@ class StatusBarController(
         }
         
         modifiersContainerView.visibility = View.GONE
-        val showHardwareBottomIndicators = SettingsManager.getModifierIndicatorShowsBottomStrip(context)
-        val showHardwareStatusBarIndicators = SettingsManager.getModifierIndicatorShowsStatusBar(context)
-        fullSuggestionsBar?.setModifierMenuIndicatorsEnabled(
-            !isFullSoftwareKeyboardMode && showHardwareStatusBarIndicators
-        )
+        // Modifier state always shows in the status bar on the hardware keyboard: it is the one
+        // strip already on screen, and choosing where to put it was never a real question.
+        fullSuggestionsBar?.setModifierMenuIndicatorsEnabled(!isFullSoftwareKeyboardMode)
         fullSuggestionsBar?.updateModifierIndicators(snapshot)
         // In-context nudge: smart backlight enabled but never configured (the persistent
         // always-on value has not been written yet). Once configured it survives reboots, so
@@ -2709,11 +2707,10 @@ class StatusBarController(
             theme = activeColors
         )
 
-        val showLedStrip = if (isFullSoftwareKeyboardMode) {
-            softwareThemeSettings.showLeds
-        } else {
-            showHardwareBottomIndicators
-        }
+        // The LED strip is additive: on top of the status bar indicators, for anyone who wants
+        // it. One control now drives it in both modes - it used to be read from the theme only in
+        // software mode, so Show LEDs did nothing at all on the hardware keyboard.
+        val showLedStrip = activeTheme.showLeds
         ledStatusView.getView()?.visibility = if (showLedStrip) View.VISIBLE else View.GONE
         if (showLedStrip) {
             ledStatusView.update(snapshot)

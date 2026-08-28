@@ -281,7 +281,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private var lastRenderedSymMappings: Map<Int, String>? = null
     private var lastRenderedStatusInputConnection: android.view.inputmethod.InputConnection? = null
     private var lastRenderedSoftwareKeyboardMode: SettingsManager.SoftwareKeyboardMode? = null
-    private var lastRenderedModifierIndicators: Set<String>? = null
     private var requestedInputViewShown: Boolean = true
     private var suppressedAutoCapContextKey: String? = null
     private var clearAltOnSpaceEnabled: Boolean = false
@@ -439,7 +438,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
 
         val iconResId = if (
-            SettingsManager.getModifierIndicatorShowsMenuBar(this) &&
             effectiveSoftwareKeyboardMode != SettingsManager.SoftwareKeyboardMode.FORCE_VIRTUAL
         ) {
             systemStatusModifierIconResId(snapshot)
@@ -616,7 +614,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         lastRenderedSymMappings = null
         lastRenderedStatusInputConnection = null
         lastRenderedSoftwareKeyboardMode = null
-        lastRenderedModifierIndicators = null
     }
 
     private fun checkAutoCapitalizeOnSelectionChange(
@@ -2905,7 +2902,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             shouldDisableSmartFeatures = shouldDisableSmartFeatures
         )
         updateSystemStatusModifierIcon(snapshot, effectiveSoftwareKeyboardMode)
-        val modifierIndicators = SettingsManager.getModifierIndicators(this)
         // Also pass the emoji map while SYM is active (page 1 only)
         val emojiMapText = symLayoutController.emojiMapText()
         // Pass the SYM mappings for the emoji/character grid
@@ -2917,8 +2913,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 emojiMapText == lastRenderedEmojiMapText &&
                 symMappings == lastRenderedSymMappings &&
                 inputConnection === lastRenderedStatusInputConnection &&
-                effectiveSoftwareKeyboardMode == lastRenderedSoftwareKeyboardMode &&
-                modifierIndicators == lastRenderedModifierIndicators
+                effectiveSoftwareKeyboardMode == lastRenderedSoftwareKeyboardMode
         if (!unchangedRenderedState) {
             val updateBarsStart = ImePerfLogger.mark()
             candidatesBarController.updateStatusBars(snapshot, emojiMapText, inputConnection, symMappings)
@@ -2928,7 +2923,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             lastRenderedSymMappings = symMappings
             lastRenderedStatusInputConnection = inputConnection
             lastRenderedSoftwareKeyboardMode = effectiveSoftwareKeyboardMode
-            lastRenderedModifierIndicators = modifierIndicators
         }
         ImePerfLogger.logDuration(
             label = "updateStatusBarText",

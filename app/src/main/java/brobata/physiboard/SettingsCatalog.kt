@@ -7,7 +7,6 @@ import androidx.annotation.StringRes
  * main-screen navigation action, so search never invents new routes.
  */
 enum class SettingsSearchTarget {
-    MODIFIERS,
     TEXT_INPUT,
     AUTO_CORRECTION,
     APP_RAW_MODE,
@@ -46,7 +45,6 @@ object SettingsCatalog {
     val entries: List<SettingsSearchEntry> = listOf(
         // Screens
         SettingsSearchEntry(R.string.screen_trackpad_title, R.string.screen_trackpad_title, SettingsSearchTarget.SCREEN_TRACKPAD, "trackpad cursor swipe screen spacebar hold arrow select"),
-        SettingsSearchEntry(R.string.modifiers_title, R.string.modifiers_title, SettingsSearchTarget.MODIFIERS, "shift alt ctrl sym sticky latch lock"),
         SettingsSearchEntry(R.string.settings_category_text_input, R.string.settings_category_text_input, SettingsSearchTarget.TEXT_INPUT, "typing punctuation spaces"),
         SettingsSearchEntry(R.string.settings_category_auto_correction, R.string.settings_category_auto_correction, SettingsSearchTarget.AUTO_CORRECTION, "autocorrect spell dictionary suggestions typo"),
         SettingsSearchEntry(R.string.settings_category_customization, R.string.settings_category_customization, SettingsSearchTarget.CUSTOMIZATION, "customize variations shortcuts"),

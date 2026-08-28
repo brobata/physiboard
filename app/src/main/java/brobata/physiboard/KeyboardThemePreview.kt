@@ -46,7 +46,7 @@ private const val SOFTWARE_PREVIEW_MODIFIER_DOUBLE_TAP_MS = 450L
 @Composable
 internal fun HardwareKeyboardThemePreview(theme: KeyboardThemePreset) {
     val context = LocalContext.current
-    val showBottomIndicators = SettingsManager.getModifierIndicatorShowsBottomStrip(context)
+    val showBottomIndicators = theme.showLeds
     val previewHeightDp = hardwareKeyboardPreviewHeightDp(theme, showBottomIndicators)
     val viewportHeightDp = hardwareKeyboardPreviewViewportHeightDp(showBottomIndicators)
 
@@ -118,13 +118,13 @@ private fun createHardwareKeyboardThemePreviewView(
     }
     root.addView(suggestionsBar.ensureView())
     suggestionsBar.showPreview(listOf("Werk", "Team", "Park"))
-    suggestionsBar.setModifierMenuIndicatorsEnabled(SettingsManager.getModifierIndicatorShowsStatusBar(context))
+    suggestionsBar.setModifierMenuIndicatorsEnabled(true)
     suggestionsBar.updateModifierIndicators(hardwarePreviewLedSnapshot())
 
     val leds = LedStatusView(context).apply {
         themeOverride = theme.toKeyboardThemeColors()
     }
-    if (SettingsManager.getModifierIndicatorShowsBottomStrip(context)) {
+    if (theme.showLeds) {
         root.addView(leds.ensureView())
         leds.update(hardwarePreviewLedSnapshot())
     }
@@ -140,13 +140,13 @@ private fun updateHardwareKeyboardThemePreviewView(view: android.view.View, them
     (view.getTag(R.id.keyboard_theme_preview_suggestions_bar) as? FullSuggestionsBar)?.apply {
         themeOverride = colors
         showPreview(listOf("Werk", "Team", "Park"))
-        setModifierMenuIndicatorsEnabled(SettingsManager.getModifierIndicatorShowsStatusBar(view.context))
+        setModifierMenuIndicatorsEnabled(true)
         updateModifierIndicators(hardwarePreviewLedSnapshot())
     }
     (view.getTag(R.id.keyboard_theme_preview_led_view) as? LedStatusView)?.apply {
         themeOverride = colors
         val ledView = ensureView()
-        if (SettingsManager.getModifierIndicatorShowsBottomStrip(view.context)) {
+        if (theme.showLeds) {
             if (ledView.parent !== view && view is LinearLayout) {
                 view.addView(ledView)
             }

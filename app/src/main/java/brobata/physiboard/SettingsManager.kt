@@ -6125,75 +6125,13 @@ object SettingsManager {
 
 
 
-    fun getModifierIndicators(context: Context): Set<String> {
-        return normalizeModifierIndicators(
-            getPreferences(context).getString(
-                KEY_MODIFIER_INDICATOR_MODE,
-                encodeModifierIndicators(DEFAULT_MODIFIER_INDICATORS)
-            )
-        )
-    }
 
-    fun setModifierIndicators(context: Context, indicators: Set<String>) {
-        getPreferences(context).edit()
-            .putString(KEY_MODIFIER_INDICATOR_MODE, encodeModifierIndicators(normalizeModifierIndicators(indicators)))
-            .apply()
-    }
 
-    fun getModifierIndicatorShowsBottomStrip(context: Context): Boolean {
-        return MODIFIER_INDICATOR_BOTTOM_STRIP in getModifierIndicators(context)
-    }
 
-    fun getModifierIndicatorShowsMenuBar(context: Context): Boolean {
-        return MODIFIER_INDICATOR_MENU_BAR in getModifierIndicators(context)
-    }
 
-    fun getModifierIndicatorShowsStatusBar(context: Context): Boolean {
-        return MODIFIER_INDICATOR_STATUS_BAR in getModifierIndicators(context)
-    }
 
-    private fun normalizeModifierIndicators(stored: String?): Set<String> {
-        return when (stored) {
-            MODIFIER_INDICATOR_MODE_OFF -> emptySet()
-            MODIFIER_INDICATOR_MODE_BOTTOM -> setOf(MODIFIER_INDICATOR_BOTTOM_STRIP)
-            MODIFIER_INDICATOR_MODE_BOTTOM_AND_MENU -> setOf(
-                MODIFIER_INDICATOR_BOTTOM_STRIP,
-                MODIFIER_INDICATOR_STATUS_BAR
-            )
-            MODIFIER_INDICATOR_MODE_MENU -> setOf(MODIFIER_INDICATOR_STATUS_BAR)
-            else -> normalizeModifierIndicators(
-                stored
-                    ?.split(",")
-                    ?.map { it.trim() }
-                    ?.filter { it.isNotEmpty() }
-                    ?.toSet()
-                    ?: DEFAULT_MODIFIER_INDICATORS
-            )
-        }
-    }
 
-    private fun normalizeModifierIndicators(indicators: Set<String>): Set<String> {
-        val allowed = setOf(
-            MODIFIER_INDICATOR_BOTTOM_STRIP,
-            MODIFIER_INDICATOR_MENU_BAR,
-            MODIFIER_INDICATOR_STATUS_BAR
-        )
-        val normalized = indicators.filter { it in allowed }.toSet()
-        return if (normalized.isEmpty() && indicators.isNotEmpty()) {
-            DEFAULT_MODIFIER_INDICATORS
-        } else {
-            normalized
-        }
-    }
 
-    private fun encodeModifierIndicators(indicators: Set<String>): String {
-        val order = listOf(
-            MODIFIER_INDICATOR_BOTTOM_STRIP,
-            MODIFIER_INDICATOR_MENU_BAR,
-            MODIFIER_INDICATOR_STATUS_BAR
-        )
-        return order.filter { it in indicators }.joinToString(",")
-    }
     
     /**
      * Returns all available button options for dropdown selection.
