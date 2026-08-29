@@ -438,10 +438,7 @@ fun NavModeSettingsScreen(
                                 },
                                 modifier = Modifier.weight(1f, fill = false)
                             )
-                            IconButton(
-                                onClick = { showLayoutAwareCtrlInfo = true },
-                                modifier = Modifier.size(40.dp)
-                            ) {
+                            IconButton(onClick = { showLayoutAwareCtrlInfo = true }) {
                                 Icon(
                                     imageVector = Icons.Filled.Info,
                                     contentDescription = stringResource(R.string.layout_aware_ctrl_shortcuts_info_title),
@@ -613,7 +610,9 @@ fun NavModeSettingsScreen(
                 // Always set the mapping (even if "none")
                 newMappings[keyCode] = mapping ?: KeyMappingLoader.CtrlMapping("none", "")
                 keyMappings = newMappings
-                SettingsManager.saveNavModeKeyMappings(context, newMappings)
+                if (!SettingsManager.saveNavModeKeyMappings(context, newMappings)) {
+                    android.widget.Toast.makeText(context, R.string.settings_save_failed, android.widget.Toast.LENGTH_SHORT).show()
+                }
                 selectedKeyCode = null
             }
         )
@@ -882,7 +881,7 @@ private fun KeyMappingDialog(
                                 selectedType = "command"
                                 selectedValue = null
                             },
-                            label = { Text("Command") }
+                            label = { Text(stringResource(R.string.nav_mode_command)) }
                         )
                         FilterChip(
                             selected = selectedType == "none",

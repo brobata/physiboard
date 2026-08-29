@@ -50,7 +50,7 @@ fun AutoCorrectEditScreen(
     // Load corrections (custom first, then default)
     // Use LinkedHashMap to maintain insertion order (newest first)
     var corrections by remember {
-        mutableStateOf(loadCorrectionsForLanguage(context, languageCode).toLinkedHashMap())
+        mutableStateOf<Map<String, String>>(loadCorrectionsForLanguage(context, languageCode).toLinkedHashMap())
     }
     
     // State for the add/edit dialog
@@ -120,115 +120,108 @@ fun AutoCorrectEditScreen(
             }
         }
         ) { paddingValues ->
-            AnimatedContent(
-                targetState = Unit,
-                transitionSpec = {
-                    fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
-                },
-                label = "auto_correct_edit_animation"
+            Column(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .padding(paddingValues)
+                    .verticalScroll(rememberScrollState())
             ) {
-                Column(
-                    modifier = modifier
-                        .fillMaxWidth()
-                        .padding(paddingValues)
-                        .verticalScroll(rememberScrollState())
-                ) {
-            // Header with description
+        // Header with description
+        Surface(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = stringResource(R.string.auto_correct_edit_description),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(16.dp)
+            )
+        }
+        
+        // Search field
+        Surface(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                placeholder = { Text(stringResource(R.string.auto_correct_search_placeholder)) },
+                singleLine = true,
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = stringResource(R.string.auto_correct_search_description)
+                    )
+                },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = stringResource(R.string.auto_correct_clear_search)
+                            )
+                        }
+                    }
+                }
+            )
+        }
+        
+        // List of corrections
+        if (filteredCorrections.isEmpty()) {
+            // Message shown when there are no corrections or no search results
             Surface(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = stringResource(R.string.auto_correct_edit_description),
-                    style = MaterialTheme.typography.bodyMedium,
+                    text = if (searchQuery.isNotEmpty()) {
+                        stringResource(R.string.auto_correct_no_corrections_found)
+                    } else {
+                        stringResource(R.string.auto_correct_no_corrections)
+                    },
+                    style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(16.dp)
-                )
-            }
-            
-            // Search field
-            Surface(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    placeholder = { Text(stringResource(R.string.auto_correct_search_placeholder)) },
-                    singleLine = true,
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = stringResource(R.string.auto_correct_search_description)
-                        )
+                        .padding(32.dp),
+                    textAlign = TextAlign.Center
+                )
+            }
+        } else {
+            // Show corrections in insertion order (newest first)
+            filteredCorrections.forEach { (original, corrected) ->
+                CorrectionItem(
+                    original = original,
+                    corrected = corrected,
+                    onEdit = {
+                        editingKey = original
+                        showAddDialog = true
                     },
-                    trailingIcon = {
-                        if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { searchQuery = "" }) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = stringResource(R.string.auto_correct_clear_search)
-                                )
-                            }
+                    onDelete = {
+                        val newCorrections = corrections.toMutableMap()
+                        newCorrections.remove(original)
+                        corrections = newCorrections.toLinkedHashMap()
+                        saveCorrections(context, languageCode, corrections, null)
+                        // Reload all corrections (including new languages)
+                        // Use a context that allows access to assets
+                        try {
+                            val assets = context.assets
+                            AutoCorrector.loadCorrections(assets, context)
+                        } catch (e: Exception) {
+                            // Fallback: reload just this language
+                            AutoCorrector.loadCustomCorrections(
+                                languageCode,
+                                correctionsToJson(corrections)
+                            )
                         }
                     }
                 )
             }
-            
-            // List of corrections
-            if (filteredCorrections.isEmpty()) {
-                // Message shown when there are no corrections or no search results
-                Surface(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = if (searchQuery.isNotEmpty()) {
-                            stringResource(R.string.auto_correct_no_corrections_found)
-                        } else {
-                            stringResource(R.string.auto_correct_no_corrections)
-                        },
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(32.dp),
-                        textAlign = TextAlign.Center
-                    )
-                }
-            } else {
-                // Show corrections in insertion order (newest first)
-                filteredCorrections.forEach { (original, corrected) ->
-                    CorrectionItem(
-                        original = original,
-                        corrected = corrected,
-                        onEdit = {
-                            editingKey = original
-                            showAddDialog = true
-                        },
-                        onDelete = {
-                            val newCorrections = corrections.toMutableMap()
-                            newCorrections.remove(original)
-                            corrections = newCorrections.toLinkedHashMap()
-                            saveCorrections(context, languageCode, corrections, null)
-                            // Reload all corrections (including new languages)
-                            // Use a context that allows access to assets
-                            try {
-                                val assets = context.assets
-                                AutoCorrector.loadCorrections(assets, context)
-                            } catch (e: Exception) {
-                                // Fallback: reload just this language
-                                AutoCorrector.loadCustomCorrections(
-                                    languageCode,
-                                    correctionsToJson(corrections)
-                                )
-                            }
-                        }
-                    )
-                }
-                }
             }
         }
+
     }
     
     // Dialog for adding or editing a correction

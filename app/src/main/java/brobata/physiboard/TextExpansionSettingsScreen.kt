@@ -216,7 +216,7 @@ fun TextExpansionSettingsScreen(onBack: () -> Unit) {
 @Composable
 private fun SnippetsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
-    var snippets by remember { mutableStateOf(SettingsManager.getSnippets(context)) }
+    var snippets by remember { mutableStateOf<Map<String, String>>(SettingsManager.getSnippets(context)) }
     var editingShortcut by remember { mutableStateOf<String?>(null) }
     var showEditor by remember { mutableStateOf(false) }
 

@@ -149,10 +149,10 @@ private fun KeyboardTimingMainContent(
                     Slider(
                         value = longPressThreshold.toFloat(),
                         onValueChange = { newValue ->
-                    val clampedValue = newValue.toLong().coerceIn(
-                        SettingsManager.getMinLongPressThreshold(),
-                        SettingsManager.getMaxLongPressThreshold()
-                    )
+                            val clampedValue = newValue.toLong().coerceIn(
+                                SettingsManager.getMinLongPressThreshold(),
+                                SettingsManager.getMaxLongPressThreshold()
+                            )
                             onLongPressThresholdChange(clampedValue)
                             SettingsManager.setLongPressThreshold(context, clampedValue)
                         },

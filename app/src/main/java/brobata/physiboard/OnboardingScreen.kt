@@ -55,8 +55,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import brobata.physiboard.ui.WhatsNewNotes
 import kotlinx.coroutines.delay
 
 /**
@@ -123,7 +125,7 @@ fun OnboardingScreen(
 
         Spacer(Modifier.height(6.dp))
         Text(
-            text = "Two quick steps to start typing.",
+            text = stringResource(R.string.onboarding_intro),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -298,7 +300,7 @@ private fun YoureSetSection(
             )
             Spacer(Modifier.width(10.dp))
             Text(
-                text = "You're set.",
+                text = stringResource(R.string.onboarding_ready),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground
@@ -313,7 +315,7 @@ private fun YoureSetSection(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text("Show me the essentials", style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(R.string.onboarding_show_essentials), style = MaterialTheme.typography.labelLarge)
             }
             Spacer(Modifier.height(10.dp))
             OutlinedButton(
@@ -324,7 +326,7 @@ private fun YoureSetSection(
                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             ) {
-                Text("Skip", style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(R.string.tutorial_skip), style = MaterialTheme.typography.labelLarge)
             }
         } else {
             EssentialsCard()
@@ -334,7 +336,7 @@ private fun YoureSetSection(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text("Done", style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(R.string.onboarding_done), style = MaterialTheme.typography.labelLarge)
             }
         }
     }
@@ -353,15 +355,15 @@ private fun EssentialsCard() {
         ) {
             EssentialRow(
                 icon = Icons.Filled.RecordVoiceOver,
-                text = "Hold Fn to talk (dictation)"
+                text = stringResource(R.string.onboarding_essential_dictation)
             )
             EssentialRow(
                 icon = Icons.Filled.WbSunny,
-                text = "Backlight can light the dark (one-time setup)"
+                text = stringResource(R.string.onboarding_essential_backlight)
             )
             EssentialRow(
                 icon = Icons.Filled.Settings,
-                text = "Everything else lives in the Settings tile"
+                text = stringResource(R.string.onboarding_essential_settings)
             )
         }
     }
@@ -407,7 +409,7 @@ private fun WhatsNewNote(onDone: () -> Unit) {
             )
             Spacer(Modifier.width(8.dp))
             Text(
-                text = "Updated to v${BuildConfig.VERSION_NAME}",
+                text = stringResource(R.string.onboarding_updated_to, BuildConfig.VERSION_NAME),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground
@@ -418,19 +420,21 @@ private fun WhatsNewNote(onDone: () -> Unit) {
         val notes = remember { loadWhatsNew(context) }
         if (notes.isEmpty()) {
             Text(
-                text = "Your keyboard is up to date. Fixes and improvements are live.",
+                text = stringResource(R.string.onboarding_up_to_date),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         } else {
             notes.forEach { (title, body) ->
                 Spacer(Modifier.height(12.dp))
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
+                if (title.isNotBlank()) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                }
                 if (body.isNotBlank()) {
                     Spacer(Modifier.height(2.dp))
                     Text(
@@ -447,80 +451,24 @@ private fun WhatsNewNote(onDone: () -> Unit) {
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp)
         ) {
-            Text("Done", style = MaterialTheme.typography.labelLarge)
+            Text(stringResource(R.string.onboarding_done), style = MaterialTheme.typography.labelLarge)
         }
     }
 }
 
-/** Self-contained IME status probe (enabled + selected) for onboarding. */
+/** IME status probe (enabled + selected) for onboarding. */
 private fun checkOnboardingImeStatus(
     context: Context,
     callback: (enabled: Boolean, selected: Boolean) -> Unit
 ) {
-    try {
-        val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-        val physiBoardPackageName = ImeIdentity.packageName
-
-        val enabledInputMethods = imm.enabledInputMethodList
-        val isEnabled = enabledInputMethods.any { info ->
-            info.packageName == physiBoardPackageName || ImeIdentity.matchesImeId(info.id)
-        }
-
-        var isSelected = false
-        if (isEnabled) {
-            try {
-                val defaultInputMethod = Settings.Secure.getString(
-                    context.contentResolver,
-                    Settings.Secure.DEFAULT_INPUT_METHOD
-                ) ?: ""
-                isSelected = ImeIdentity.matchesImeId(defaultInputMethod)
-            } catch (_: SecurityException) {
-                // Android 14+ may block reading the secure setting; fall back.
-                try {
-                    val currentSubtype = imm.currentInputMethodSubtype
-                    val physiBoardInputMethod = imm.inputMethodList.find {
-                        it.packageName == physiBoardPackageName || ImeIdentity.matchesImeId(it.id)
-                    }
-                    isSelected = currentSubtype != null &&
-                        physiBoardInputMethod != null &&
-                        enabledInputMethods.size == 1
-                } catch (_: Exception) {
-                    isSelected = false
-                }
-            } catch (_: Exception) {
-                isSelected = false
-            }
-        }
-
-        callback(isEnabled, isSelected)
-    } catch (e: Exception) {
-        android.util.Log.e("OnboardingScreen", "Error checking IME status", e)
-        callback(false, false)
-    }
+    val status = ImeStatus.check(context)
+    callback(status.enabled, status.selected)
 }
 
-/**
- * The release's own notes, bundled at `assets/common/whats_new.md` as the bullets from the
- * change log: `- **Title** — body`, wrapped over any number of lines. Returns title/body pairs;
- * empty when the flavour ships no notes, in which case the card falls back to a single line.
- */
-private fun loadWhatsNew(context: Context): List<Pair<String, String>> {
+/** The release's own notes, generated into `assets/common/whats_new.md` from the change record. */
+private fun loadWhatsNew(context: Context): List<WhatsNewNotes.Note> {
     val text = runCatching {
         context.assets.open("common/whats_new.md").bufferedReader().use { it.readText() }
     }.getOrNull() ?: return emptyList()
-    val bullets = mutableListOf<String>()
-    text.lines().forEach { raw ->
-        val line = raw.trim()
-        when {
-            line.startsWith("- ") -> bullets.add(line.removePrefix("- "))
-            line.isEmpty() -> Unit
-            bullets.isNotEmpty() -> bullets[bullets.lastIndex] = bullets.last() + " " + line
-        }
-    }
-    return bullets.map { bullet ->
-        val clean = bullet.replace("**", "").replace("`", "")
-        val split = clean.indexOf(" — ")
-        if (split > 0) clean.substring(0, split) to clean.substring(split + 3)
-        else clean to ""
-    }
+    return WhatsNewNotes.parse(text)
 }

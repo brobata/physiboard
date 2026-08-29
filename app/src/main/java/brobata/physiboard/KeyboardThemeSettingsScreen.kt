@@ -621,8 +621,8 @@ fun KeyboardThemeScreen(
     deleteThemeRequest?.let { name ->
         AlertDialog(
             onDismissRequest = { deleteThemeRequest = null },
-            title = { Text("Delete theme?") },
-            text = { Text("Delete ‘$name’? The currently applied colors will be kept.") },
+            title = { Text(stringResource(R.string.keyboard_theme_delete_title)) },
+            text = { Text(stringResource(R.string.keyboard_theme_delete_confirmation, name)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -630,12 +630,12 @@ fun KeyboardThemeScreen(
                         deleteSavedTheme(name)
                     }
                 ) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { deleteThemeRequest = null }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -1392,7 +1392,7 @@ private fun KeyboardThemeExportDialog(
     }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Export theme") },
+        title = { Text(stringResource(R.string.keyboard_theme_export_title)) },
         text = {
             OutlinedTextField(
                 value = exportString,
@@ -1410,12 +1410,12 @@ private fun KeyboardThemeExportDialog(
                     onDismiss()
                 }
             ) {
-                Text("Copy")
+                Text(stringResource(R.string.copy))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Close")
+                Text(stringResource(R.string.close))
             }
         }
     )
@@ -1426,11 +1426,12 @@ private fun KeyboardThemeImportDialog(
     onDismiss: () -> Unit,
     onImport: (KeyboardThemePreset) -> Unit
 ) {
+    val context = LocalContext.current
     var value by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Import theme") },
+        title = { Text(stringResource(R.string.keyboard_theme_import_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
@@ -1442,7 +1443,7 @@ private fun KeyboardThemeImportDialog(
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 4,
                     maxLines = 8,
-                    label = { Text("Theme string") }
+                    label = { Text(stringResource(R.string.keyboard_theme_import_string_label)) }
                 )
                 error?.let {
                     Text(
@@ -1458,18 +1459,18 @@ private fun KeyboardThemeImportDialog(
                 onClick = {
                     val imported = SettingsManager.keyboardThemeFromJsonString(value)
                     if (imported == null) {
-                        error = "Invalid theme string"
+                        error = context.getString(R.string.keyboard_theme_import_invalid)
                     } else {
                         onImport(imported.toKeyboardThemePreset("Imported"))
                     }
                 }
             ) {
-                Text("Import")
+                Text(stringResource(R.string.keyboard_theme_action_import))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
         }
     )
@@ -1491,7 +1492,7 @@ private fun KeyboardThemeSaveAsDialog(
                 onValueChange = { name = it },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                label = { Text("Theme name") }
+                label = { Text(stringResource(R.string.keyboard_theme_name)) }
             )
         },
         confirmButton = {
@@ -1504,7 +1505,7 @@ private fun KeyboardThemeSaveAsDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
         }
     )
@@ -2084,14 +2085,12 @@ private fun KeyboardThemeColorRow(
                     modifier = Modifier.weight(1f),
                     maxLines = 1
                 )
-                IconButton(
-                    onClick = { onColorChanged(presetColor) },
-                    modifier = Modifier.size(32.dp)
-                ) {
+                IconButton(onClick = { onColorChanged(presetColor) }) {
                     Icon(
                         imageVector = Icons.Filled.RestartAlt,
                         contentDescription = stringResource(R.string.keyboard_theme_reset),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
@@ -2129,14 +2128,12 @@ private fun KeyboardThemeSliderRow(
                     modifier = Modifier.weight(1f),
                     maxLines = 1
                 )
-                IconButton(
-                    onClick = { onValueChanged(presetValue) },
-                    modifier = Modifier.size(32.dp)
-                ) {
+                IconButton(onClick = { onValueChanged(presetValue) }) {
                     Icon(
                         imageVector = Icons.Filled.RestartAlt,
                         contentDescription = stringResource(R.string.keyboard_theme_reset),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
@@ -2174,14 +2171,12 @@ private fun KeyboardThemeSwitchRow(
                 modifier = Modifier.weight(1f),
                 maxLines = 1
             )
-            IconButton(
-                onClick = { onCheckedChanged(presetChecked) },
-                modifier = Modifier.size(32.dp)
-            ) {
+            IconButton(onClick = { onCheckedChanged(presetChecked) }) {
                 Icon(
                     imageVector = Icons.Filled.RestartAlt,
                     contentDescription = stringResource(R.string.keyboard_theme_reset),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
                 )
             }
             Switch(
@@ -2288,7 +2283,7 @@ private fun KeyboardThemeColorPickerDialog(
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
-                        text = "Presets",
+                        text = stringResource(R.string.keyboard_theme_presets),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -2340,7 +2335,7 @@ private fun KeyboardThemeColorPickerDialog(
                         },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        label = { Text("Hex color") },
+                        label = { Text(stringResource(R.string.keyboard_theme_hex_color)) },
                         isError = hexValue.isNotEmpty() && parseKeyboardThemeHexColor(hexValue) == null
                     )
                     Row(
@@ -2351,7 +2346,7 @@ private fun KeyboardThemeColorPickerDialog(
                             enabled = parseKeyboardThemeHexColor(hexValue) != null,
                             onClick = { onColorSelected(color) }
                         ) {
-                            Text("Apply")
+                            Text(stringResource(R.string.keyboard_theme_apply))
                         }
                     }
                 }

@@ -332,24 +332,58 @@ fun AutoCorrectSettingsScreen(
             }
         }
         ) { paddingValues ->
-            AnimatedContent(
-                targetState = Unit,
-                transitionSpec = {
-                    fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
-                },
-                label = "auto_correct_settings_animation"
+            Column(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .padding(paddingValues)
+                    .verticalScroll(rememberScrollState())
             ) {
-                Column(
-                    modifier = modifier
+                // Description section
+                Surface(
+                    modifier = Modifier
                         .fillMaxWidth()
-                        .padding(paddingValues)
-                        .verticalScroll(rememberScrollState())
+                        .heightIn(min = 56.dp)
                 ) {
-                    // Description section
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        Text(
+                            text = stringResource(R.string.auto_correct_settings_description),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                
+                // System language (always at top)
+                if (allLanguages.contains(systemLocale)) {
+                    val systemEnabled = isLanguageEnabled(systemLocale)
+                    LanguageItem(
+                        languageCode = systemLocale,
+                        languageName = getLanguageDisplayName(context, systemLocale),
+                        isSystemLanguage = true,
+                        isEnabled = systemEnabled,
+                        onToggle = { enabled ->
+                            toggleLanguage(systemLocale, systemEnabled)
+                        },
+                        onEdit = {
+                            onEditLanguage(systemLocale)
+                        }
+                    )
+                }
+                
+                // Other available languages (excluding x-pastiera)
+                val otherLanguages = allLanguages.filter { it != systemLocale && it != "x-pastiera" }.sorted()
+                
+                if (otherLanguages.isNotEmpty()) {
+                    // Header for other languages
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(min = 56.dp)
+                            .height(48.dp)
                     ) {
                         Box(
                             modifier = Modifier
@@ -358,114 +392,73 @@ fun AutoCorrectSettingsScreen(
                             contentAlignment = Alignment.CenterStart
                         ) {
                             Text(
-                                text = stringResource(R.string.auto_correct_settings_description),
-                                style = MaterialTheme.typography.bodyMedium,
+                                text = stringResource(R.string.auto_correct_other_languages),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Medium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
                     
-                    // System language (always at top)
-                    if (allLanguages.contains(systemLocale)) {
-                        val systemEnabled = isLanguageEnabled(systemLocale)
+                    otherLanguages.forEach { locale ->
+                        val localeEnabled = isLanguageEnabled(locale)
                         LanguageItem(
-                            languageCode = systemLocale,
-                            languageName = getLanguageDisplayName(context, systemLocale),
-                            isSystemLanguage = true,
-                            isEnabled = systemEnabled,
+                            languageCode = locale,
+                            languageName = getLanguageDisplayName(context, locale),
+                            isSystemLanguage = false,
+                            isEnabled = localeEnabled,
                             onToggle = { enabled ->
-                                toggleLanguage(systemLocale, systemEnabled)
+                                toggleLanguage(locale, localeEnabled)
                             },
                             onEdit = {
-                                onEditLanguage(systemLocale)
+                                onEditLanguage(locale)
                             }
                         )
                     }
-                    
-                    // Other available languages (excluding x-pastiera)
-                    val otherLanguages = allLanguages.filter { it != systemLocale && it != "x-pastiera" }.sorted()
-                    
-                    if (otherLanguages.isNotEmpty()) {
-                        // Header for other languages
-                        Surface(
+                }
+                
+                // Section for custom languages (if present)
+                // Filter only languages that are not standard and not already shown above (excluding x-pastiera)
+                val customLanguages = AutoCorrector.getCustomLanguages()
+                    .filter { it != systemLocale && it !in otherLanguages && it != "x-pastiera" }
+                if (customLanguages.isNotEmpty()) {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                    ) {
+                        Box(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .height(48.dp)
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp),
+                            contentAlignment = Alignment.CenterStart
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 16.dp),
-                                contentAlignment = Alignment.CenterStart
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.auto_correct_other_languages),
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                        
-                        otherLanguages.forEach { locale ->
-                            val localeEnabled = isLanguageEnabled(locale)
-                            LanguageItem(
-                                languageCode = locale,
-                                languageName = getLanguageDisplayName(context, locale),
-                                isSystemLanguage = false,
-                                isEnabled = localeEnabled,
-                                onToggle = { enabled ->
-                                    toggleLanguage(locale, localeEnabled)
-                                },
-                                onEdit = {
-                                    onEditLanguage(locale)
-                                }
+                            Text(
+                                text = stringResource(R.string.auto_correct_custom_languages),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
                     
-                    // Section for custom languages (if present)
-                    // Filter only languages that are not standard and not already shown above (excluding x-pastiera)
-                    val customLanguages = AutoCorrector.getCustomLanguages()
-                        .filter { it != systemLocale && it !in otherLanguages && it != "x-pastiera" }
-                    if (customLanguages.isNotEmpty()) {
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(48.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 16.dp),
-                                contentAlignment = Alignment.CenterStart
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.auto_correct_custom_languages),
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                    customLanguages.forEach { locale ->
+                        val localeEnabled = isLanguageEnabled(locale)
+                        LanguageItem(
+                            languageCode = locale,
+                            languageName = getLanguageDisplayName(context, locale),
+                            isSystemLanguage = false,
+                            isEnabled = localeEnabled,
+                            onToggle = { enabled ->
+                                toggleLanguage(locale, localeEnabled)
+                            },
+                            onEdit = {
+                                onEditLanguage(locale)
                             }
-                        }
-                        
-                        customLanguages.forEach { locale ->
-                            val localeEnabled = isLanguageEnabled(locale)
-                            LanguageItem(
-                                languageCode = locale,
-                                languageName = getLanguageDisplayName(context, locale),
-                                isSystemLanguage = false,
-                                isEnabled = localeEnabled,
-                                onToggle = { enabled ->
-                                    toggleLanguage(locale, localeEnabled)
-                                },
-                                onEdit = {
-                                    onEditLanguage(locale)
-                                }
-                            )
-                        }
+                        )
                     }
                 }
             }
+
         }
 }

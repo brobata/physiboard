@@ -25,7 +25,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.animation.*
-import androidx.compose.animation.core.tween
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -266,92 +265,181 @@ fun KeyboardLayoutSettingsScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
-        AnimatedContent(
-            targetState = Unit,
-            transitionSpec = {
-                fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
-            },
-            label = "keyboard_layout_animation"
+        Column(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(paddingValues)
+                .verticalScroll(rememberScrollState())
         ) {
-            Column(
-                modifier = modifier
+            
+            // Online Layout Editor link
+            Row(
+                modifier = Modifier
                     .fillMaxWidth()
-                    .padding(paddingValues)
-                    .verticalScroll(rememberScrollState())
+                    .clickable {
+                        try {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://pastierakeyedit.vercel.app/"))
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            // Handle error silently or show snackbar
+                        }
+                    }
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                
-                // Online Layout Editor link
+                Icon(
+                    imageVector = Icons.Filled.Link,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = stringResource(R.string.keyboard_layout_editor_title),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // No Conversion (QWERTY - default, passes keycodes as-is)
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(72.dp)
+                    .clickable {
+                        selectedLayout = "qwerty"
+                    }
+            ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable {
-                            try {
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://pastierakeyedit.vercel.app/"))
-                                context.startActivity(intent)
-                            } catch (e: Exception) {
-                                // Handle error silently or show snackbar
-                            }
-                        }
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                        .padding(horizontal = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.Link,
+                        imageVector = Icons.Filled.Keyboard,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(24.dp)
                     )
-                    Text(
-                        text = stringResource(R.string.keyboard_layout_editor_title),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.keyboard_layout_no_conversion),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1
+                        )
+                        Text(
+                            text = stringResource(R.string.keyboard_layout_no_conversion_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        IconButton(
+                            onClick = { previewLayout = "qwerty" }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Visibility,
+                                contentDescription = stringResource(R.string.keyboard_layout_viewer_open),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    RadioButton(
+                        selected = selectedLayout == "qwerty",
+                        onClick = {
+                            selectedLayout = "qwerty"
+                        }
                     )
+                    }
                 }
+            }
+            
+            // All layouts (assets + custom, unified list)
+            allLayouts.forEach { layout ->
+                val metadata = LayoutFileStore.getLayoutMetadataFromAssets(
+                    context.assets,
+                    layout
+                ) ?: LayoutFileStore.getLayoutMetadata(context, layout)
                 
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // No Conversion (QWERTY - default, passes keycodes as-is)
+                val hasMultiTap = hasLayoutMultiTap(context.assets, context, layout)
+                val isCustomLayout = LayoutFileStore.layoutExists(context, layout)
+                val canDelete = layout != "qwerty" && isCustomLayout
+                
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(72.dp)
-                        .clickable {
-                            selectedLayout = "qwerty"
-                        }
+                        .padding(vertical = 2.dp)
                 ) {
-                    Row(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Filled.Keyboard,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = stringResource(R.string.keyboard_layout_no_conversion),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Medium,
-                                maxLines = 1
-                            )
-                            Text(
-                                text = stringResource(R.string.keyboard_layout_no_conversion_description),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
+                        // Header row with layout info
                         Row(
+                            modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
+                            Icon(
+                                imageVector = Icons.Filled.Keyboard,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(
+                                        text = metadata?.name ?: layout.replaceFirstChar { it.uppercase() },
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1
+                                    )
+                                    if (hasMultiTap) {
+                                        Surface(
+                                            color = MaterialTheme.colorScheme.secondaryContainer,
+                                            shape = MaterialTheme.shapes.small,
+                                            modifier = Modifier.height(18.dp)
+                                        ) {
+                                            Text(
+                                                text = stringResource(R.string.keyboard_layout_multitap_badge),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                                Text(
+                                    text = metadata?.description ?: getLayoutDescription(context, layout),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            if (canDelete) {
+                                IconButton(
+                                    onClick = { layoutToDelete = layout }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Delete,
+                                        contentDescription = stringResource(R.string.layout_delete_content_description),
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
                             IconButton(
-                                onClick = { previewLayout = "qwerty" }
+                                onClick = { previewLayout = layout }
                             ) {
                                 Icon(
                                     imageVector = Icons.Filled.Visibility,
@@ -359,116 +447,20 @@ fun KeyboardLayoutSettingsScreen(
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                        RadioButton(
-                            selected = selectedLayout == "qwerty",
-                            onClick = {
-                                selectedLayout = "qwerty"
-                            }
-                        )
+                            RadioButton(
+                                selected = selectedLayout == layout,
+                                onClick = {
+                                    selectedLayout = layout
+                                }
+                            )
                         }
                     }
                 }
-                
-                // All layouts (assets + custom, unified list)
-                allLayouts.forEach { layout ->
-                    val metadata = LayoutFileStore.getLayoutMetadataFromAssets(
-                        context.assets,
-                        layout
-                    ) ?: LayoutFileStore.getLayoutMetadata(context, layout)
-                    
-                    val hasMultiTap = hasLayoutMultiTap(context.assets, context, layout)
-                    val isCustomLayout = LayoutFileStore.layoutExists(context, layout)
-                    val canDelete = layout != "qwerty" && isCustomLayout
-                    
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 2.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 10.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            // Header row with layout info
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.Keyboard,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        Text(
-                                            text = metadata?.name ?: layout.replaceFirstChar { it.uppercase() },
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Medium,
-                                            maxLines = 1
-                                        )
-                                        if (hasMultiTap) {
-                                            Surface(
-                                                color = MaterialTheme.colorScheme.secondaryContainer,
-                                                shape = MaterialTheme.shapes.small,
-                                                modifier = Modifier.height(18.dp)
-                                            ) {
-                                                Text(
-                                                    text = stringResource(R.string.keyboard_layout_multitap_badge),
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                                )
-                                            }
-                                        }
-                                    }
-                                    Text(
-                                        text = metadata?.description ?: getLayoutDescription(context, layout),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                                if (canDelete) {
-                                    IconButton(
-                                        onClick = { layoutToDelete = layout }
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Filled.Delete,
-                                            contentDescription = stringResource(R.string.layout_delete_content_description),
-                                            tint = MaterialTheme.colorScheme.error
-                                        )
-                                    }
-                                }
-                                IconButton(
-                                    onClick = { previewLayout = layout }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Visibility,
-                                        contentDescription = stringResource(R.string.keyboard_layout_viewer_open),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                RadioButton(
-                                    selected = selectedLayout == layout,
-                                    onClick = {
-                                        selectedLayout = layout
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(16.dp))
             }
+            
+            Spacer(modifier = Modifier.height(16.dp))
         }
+
     }
     
     // Delete confirmation dialog

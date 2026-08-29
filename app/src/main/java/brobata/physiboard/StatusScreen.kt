@@ -43,7 +43,7 @@ fun StatusScreen(
     val context = LocalContext.current
     val (imeEnabled, imeActive) = remember(context) { resolvePhysiBoardImeStatus(context) }
     val inputLanguage = remember(context) { resolveCurrentInputLanguage(context) }
-    val backlightOn = SettingsManager.getSmartBacklightEnabled(context)
+    val backlightOn = remember(context) { SettingsManager.getSmartBacklightEnabled(context) }
 
     BackHandler { onBack() }
 

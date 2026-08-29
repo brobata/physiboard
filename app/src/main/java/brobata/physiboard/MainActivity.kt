@@ -167,10 +167,7 @@ class MainActivity : LocalizedComponentActivity() {
             return
         }
 
-        if (
-            BuildConfig.RELEASE_CHANNEL != "nightly" &&
-            SettingsManager.shouldShowWhatsNew(this, BuildConfig.VERSION_NAME)
-        ) {
+        if (SettingsManager.shouldShowWhatsNew(this, BuildConfig.VERSION_NAME)) {
             val intent = Intent(this, TutorialActivity::class.java).apply {
                 putExtra(TutorialActivity.EXTRA_UPDATE_TUTORIAL, true)
             }
@@ -304,7 +301,6 @@ fun KeyboardSetupScreen(
             checkForUpdate(
                 context = context,
                 currentVersion = BuildConfig.VERSION_NAME,
-                releaseChannel = BuildConfig.RELEASE_CHANNEL,
                 ignoreDismissedReleases = true
             ) { hasUpdate, latestVersion, downloadUrl, releasePageUrl ->
                 if (hasUpdate && latestVersion != null) {
@@ -644,58 +640,13 @@ private fun getEnabledInputLanguageCount(context: Context): Int {
 
 /**
  * Checks if PhysiBoard IME is enabled and selected.
- * Uses InputMethodManager for Android 14+ compatibility.
  */
 private fun checkImeStatus(
     context: Context,
     callback: (enabled: Boolean, selected: Boolean) -> Unit
 ) {
-    try {
-        val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-        val physiBoardPackageName = ImeIdentity.packageName
-
-        // Check if PhysiBoard is enabled using InputMethodManager
-        val enabledInputMethods = imm.enabledInputMethodList
-        val isEnabled = enabledInputMethods.any { inputMethodInfo ->
-            inputMethodInfo.packageName == physiBoardPackageName ||
-            ImeIdentity.matchesImeId(inputMethodInfo.id)
-        }
-
-        // Check if PhysiBoard is selected
-        var isSelected = false
-        if (isEnabled) {
-            try {
-                val defaultInputMethod = android.provider.Settings.Secure.getString(
-                    context.contentResolver,
-                    android.provider.Settings.Secure.DEFAULT_INPUT_METHOD
-                ) ?: ""
-                isSelected = ImeIdentity.matchesImeId(defaultInputMethod)
-            } catch (e: SecurityException) {
-                // On Android 14+ (API 34+) with targetSdk 36, we can't read this setting.
-                try {
-                    val currentSubtype = imm.currentInputMethodSubtype
-                    if (currentSubtype != null) {
-                        val allInputMethods = imm.inputMethodList
-                        val physiBoardInputMethod = allInputMethods.find {
-                            it.packageName == physiBoardPackageName || ImeIdentity.matchesImeId(it.id)
-                        }
-                        isSelected = physiBoardInputMethod != null && enabledInputMethods.size == 1
-                    } else {
-                        isSelected = false
-                    }
-                } catch (e2: Exception) {
-                    isSelected = false
-                }
-            } catch (e: Exception) {
-                isSelected = false
-            }
-        }
-
-        callback(isEnabled, isSelected)
-    } catch (e: Exception) {
-        android.util.Log.e("MainActivity", "Error checking IME status", e)
-        callback(false, false)
-    }
+    val status = ImeStatus.check(context)
+    callback(status.enabled, status.selected)
 }
 
 /**

@@ -314,7 +314,6 @@ fun TutorialScreen(
             checkForUpdate(
                 context = context,
                 currentVersion = BuildConfig.VERSION_NAME,
-                releaseChannel = BuildConfig.RELEASE_CHANNEL,
                 ignoreDismissedReleases = true
             ) { hasUpdate, latestVersion, downloadUrl, releasePageUrl ->
                 if (hasUpdate && latestVersion != null) {
@@ -451,38 +450,6 @@ fun TutorialScreen(
                         Text(
                             text = stringResource(R.string.tutorial_skip),
                             style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
-
-                if (
-                    BuildConfig.RELEASE_CHANNEL == "nightly" &&
-                    !updateTutorial &&
-                    pagerState.currentPage == 0
-                ) {
-                    Button(
-                        onClick = {
-                            applyDevsChoiceSettings(context)
-                            Toast.makeText(
-                                context,
-                                R.string.tutorial_devs_choice_applied,
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer,
-                            contentColor = MaterialTheme.colorScheme.onErrorContainer
-                        ),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(end = 12.dp, top = 12.dp)
-                            .height(32.dp)
-                    ) {
-                        Text(
-                            text = stringResource(R.string.tutorial_devs_choice_button),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
@@ -2492,54 +2459,8 @@ private fun checkImeStatus(
     context: Context,
     callback: (enabled: Boolean, selected: Boolean) -> Unit
 ) {
-    try {
-        val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-        val physiBoardPackageName = ImeIdentity.packageName
-        val physiBoardImeId = ImeIdentity.imeId
-        
-        val enabledInputMethods = imm.enabledInputMethodList
-        val isEnabled = enabledInputMethods.any { inputMethodInfo ->
-            inputMethodInfo.packageName == physiBoardPackageName ||
-            ImeIdentity.matchesImeId(inputMethodInfo.id)
-        }
-        
-        var isSelected = false
-        if (isEnabled) {
-            try {
-                val defaultInputMethod = Settings.Secure.getString(
-                    context.contentResolver,
-                    Settings.Secure.DEFAULT_INPUT_METHOD
-                ) ?: ""
-                isSelected = ImeIdentity.matchesImeId(defaultInputMethod)
-            } catch (e: SecurityException) {
-                try {
-                    val currentSubtype = imm.currentInputMethodSubtype
-                    if (currentSubtype != null) {
-                        val allInputMethods = imm.inputMethodList
-                        val physiBoardInputMethod = allInputMethods.find { 
-                            it.packageName == physiBoardPackageName || ImeIdentity.matchesImeId(it.id)
-                        }
-                        if (physiBoardInputMethod != null && enabledInputMethods.size == 1) {
-                            isSelected = true
-                        } else {
-                            isSelected = false
-                        }
-                    } else {
-                        isSelected = false
-                    }
-                } catch (e2: Exception) {
-                    isSelected = false
-                }
-            } catch (e: Exception) {
-                isSelected = false
-            }
-        }
-        
-        callback(isEnabled, isSelected)
-    } catch (e: Exception) {
-        android.util.Log.e("TutorialActivity", "Error checking IME status", e)
-        callback(false, false)
-    }
+    val status = ImeStatus.check(context)
+    callback(status.enabled, status.selected)
 }
 
 private fun getTutorialLanguageOptionLabel(context: Context, languageTag: String): String {

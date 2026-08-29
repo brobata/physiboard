@@ -219,7 +219,6 @@ fun SettingsScreen(
             checkForUpdate(
                 context = context,
                 currentVersion = BuildConfig.VERSION_NAME,
-                releaseChannel = BuildConfig.RELEASE_CHANNEL,
                 ignoreDismissedReleases = true
             ) { hasUpdate, latestVersion, downloadUrl, releasePageUrl ->
                 if (hasUpdate && latestVersion != null) {
@@ -775,7 +774,6 @@ private fun SettingsMainScreen(
                         checkForUpdate(
                             context = context,
                             currentVersion = BuildConfig.VERSION_NAME,
-                            releaseChannel = BuildConfig.RELEASE_CHANNEL,
                             ignoreDismissedReleases = false
                         ) { hasUpdate, latestVersion, downloadUrl, releasePageUrl ->
                             onCheckingForUpdatesChange(false)

@@ -851,12 +851,12 @@ private fun QuickLauncherDisplayedEntriesSection(
                 )
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "QuickLauncher entries",
+                        text = stringResource(R.string.quick_launcher_entries_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Medium
                     )
                     Text(
-                        text = "Choose which sources appear in PhysiBoard search.",
+                        text = stringResource(R.string.quick_launcher_entries_description),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -891,7 +891,7 @@ private fun QuickLauncherDisplayedEntriesSection(
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
-                Text("Customize entries")
+                Text(stringResource(R.string.quick_launcher_customize_entries))
             }
         }
     }
@@ -988,12 +988,12 @@ private fun QuickLauncherCommandCustomizationDialog(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Customize entries",
+                            text = stringResource(R.string.quick_launcher_customize_entries),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            text = "Favorites, hidden entries, and search aliases",
+                            text = stringResource(R.string.quick_launcher_customize_entries_description),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -1008,7 +1008,7 @@ private fun QuickLauncherCommandCustomizationDialog(
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     shape = MaterialTheme.shapes.extraLarge,
-                    placeholder = { Text("Search entries") },
+                    placeholder = { Text(stringResource(R.string.quick_launcher_search_entries)) },
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Filled.Search,
@@ -1031,12 +1031,12 @@ private fun QuickLauncherCommandCustomizationDialog(
                     FilterChip(
                         selected = selectedSource == null,
                         onClick = { selectedSource = null },
-                        label = { Text("All") }
+                        label = { Text(stringResource(R.string.quick_launcher_filter_all)) }
                     )
                     FilterChip(
                         selected = favoritesOnly,
                         onClick = { favoritesOnly = !favoritesOnly },
-                        label = { Text("Favorites") },
+                        label = { Text(stringResource(R.string.quick_launcher_filter_favorites)) },
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Filled.Star,
@@ -1060,7 +1060,7 @@ private fun QuickLauncherCommandCustomizationDialog(
                             .weight(1f),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("No commands available for the selected sources.")
+                        Text(stringResource(R.string.quick_launcher_no_commands))
                     }
                 } else if (entries.isEmpty()) {
                     Box(
@@ -1069,7 +1069,7 @@ private fun QuickLauncherCommandCustomizationDialog(
                             .weight(1f),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("No entries match \"$query\".")
+                        Text(stringResource(R.string.quick_launcher_no_entries_match, query))
                     }
                 } else {
                     LazyVerticalGrid(
@@ -1243,7 +1243,9 @@ private fun CommandCustomizationRow(
                 IconButton(onClick = onToggleFavorite) {
                     Icon(
                         imageVector = if (customization.favorite) Icons.Filled.Star else Icons.Filled.StarBorder,
-                        contentDescription = null,
+                        contentDescription = stringResource(
+                            if (customization.favorite) R.string.quick_launcher_remove_favorite else R.string.quick_launcher_add_favorite
+                        ),
                         tint = if (customization.favorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -1251,27 +1253,29 @@ private fun CommandCustomizationRow(
                     IconButton(onClick = { onMoveFavorite(-1) }) {
                         Icon(
                             imageVector = Icons.Filled.KeyboardArrowUp,
-                            contentDescription = null
+                            contentDescription = stringResource(R.string.sym_move_up)
                         )
                     }
                     IconButton(onClick = { onMoveFavorite(1) }) {
                         Icon(
                             imageVector = Icons.Filled.KeyboardArrowDown,
-                            contentDescription = null
+                            contentDescription = stringResource(R.string.sym_move_down)
                         )
                     }
                 }
                 IconButton(onClick = onToggleHidden) {
                     Icon(
                         imageVector = if (customization.hidden) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                        contentDescription = null,
+                        contentDescription = stringResource(
+                            if (customization.hidden) R.string.quick_launcher_show_entry else R.string.quick_launcher_hide_entry
+                        ),
                         tint = if (customization.hidden) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 IconButton(onClick = onToggleEdit) {
                     Icon(
                         imageVector = Icons.Filled.Edit,
-                        contentDescription = null,
+                        contentDescription = stringResource(R.string.quick_launcher_edit_entry),
                         tint = if (editing || customization.customSearch.isNotBlank()) {
                             MaterialTheme.colorScheme.primary
                         } else {
@@ -1292,7 +1296,7 @@ private fun CommandCustomizationRow(
                     onValueChange = onCustomSearchChanged,
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    label = { Text("Search alias") }
+                    label = { Text(stringResource(R.string.quick_launcher_search_alias)) }
                 )
             }
         }
@@ -1407,7 +1411,7 @@ private fun QuickLauncherFavoriteAppearanceSection(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Text(
-                text = "Entry appearance",
+                text = stringResource(R.string.quick_launcher_entry_appearance),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Medium
             )
@@ -1420,7 +1424,7 @@ private fun QuickLauncherFavoriteAppearanceSection(
                     it == SettingsManager.QUICK_LAUNCHER_DYNAMIC_FAVORITE_COLOR
                 }
                 Text(
-                    text = "Highlight favorites in list",
+                    text = stringResource(R.string.quick_launcher_highlight_favorites),
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.bodyMedium
                 )
@@ -1444,7 +1448,7 @@ private fun QuickLauncherFavoriteAppearanceSection(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = "Tint entries from app icon colors",
+                    text = stringResource(R.string.quick_launcher_icon_colors),
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.bodyMedium
                 )
@@ -1459,7 +1463,7 @@ private fun QuickLauncherFavoriteAppearanceSection(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = "Use static top-match highlight color",
+                    text = stringResource(R.string.quick_launcher_static_top_highlight),
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.bodyMedium
                 )
@@ -1479,7 +1483,7 @@ private fun QuickLauncherFavoriteAppearanceSection(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = "Show search alias before entry name",
+                    text = stringResource(R.string.quick_launcher_show_alias_first),
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.bodyMedium
                 )
@@ -1537,7 +1541,7 @@ private fun ColorSwatchButton(
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             DynamicColorWheelSwatch()
-                            Text("Dynamic")
+                            Text(stringResource(R.string.quick_launcher_color_dynamic))
                         }
                     },
                     onClick = {

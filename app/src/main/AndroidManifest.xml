@@ -101,6 +101,9 @@
             </intent-filter>
         </activity>
 
+        <!-- Exported on purpose: the TOGGLE_SOFTWARE_KEYBOARD_MODE action is a public entry point
+             for automation apps as well as the launcher shortcut. It only flips the temporary
+             keyboard mode and ignores every extra. -->
         <activity
             android:name=".SoftwareKeyboardModeActionActivity"
             android:exported="true"
@@ -136,7 +139,9 @@
             android:label="@string/sym_customize_title"
             android:theme="@style/Theme.PhysiBoard" />
         
-        <!-- Settings activity -->
+        <!-- Settings activity. Stays exported because method.xml names it as the IME's
+             settingsActivity, which the system Settings app launches. Its only inputs are the
+             destination extras, matched against known constants. -->
         <activity
             android:name=".SettingsActivity"
             android:configChanges="keyboard|keyboardHidden|navigation"
@@ -167,7 +172,7 @@
         <activity
             android:name=".TrackpadDebugActivity"
             android:exported="false"
-            android:label="Trackpad Debug"
+            android:label="@string/trackpad_debug_title"
             android:theme="@android:style/Theme.Translucent.NoTitleBar"
             android:excludeFromRecents="true"
             android:launchMode="singleInstance" />

@@ -425,6 +425,7 @@
     <string name="reset_to_default">Reset to Default</string>
     <string name="select_emoji">Select Emoji</string>
     <string name="close">Close</string>
+    <string name="copy">Copy</string>
     
     <!-- Auto-Correction Section -->
     <string name="auto_correct_title">Text replacements</string>
@@ -741,6 +742,27 @@
     <string name="quick_launcher_animation_duration_value">%1$d ms</string>
     <string name="quick_launcher_cosmetic_title">Appearance</string>
     <string name="quick_launcher_cosmetic_description">Width, pill mode, shown command sources, favorites, aliases, and entry colors.</string>
+    <string name="quick_launcher_entries_title">QuickLauncher entries</string>
+    <string name="quick_launcher_entries_description">Choose which sources appear in PhysiBoard search.</string>
+    <string name="quick_launcher_customize_entries">Customize entries</string>
+    <string name="quick_launcher_customize_entries_description">Favorites, hidden entries, and search aliases</string>
+    <string name="quick_launcher_search_entries">Search entries</string>
+    <string name="quick_launcher_filter_all">All</string>
+    <string name="quick_launcher_filter_favorites">Favorites</string>
+    <string name="quick_launcher_no_commands">No commands available for the selected sources.</string>
+    <string name="quick_launcher_no_entries_match">No entries match \"%1$s\".</string>
+    <string name="quick_launcher_search_alias">Search alias</string>
+    <string name="quick_launcher_add_favorite">Add to favorites</string>
+    <string name="quick_launcher_remove_favorite">Remove from favorites</string>
+    <string name="quick_launcher_hide_entry">Hide entry</string>
+    <string name="quick_launcher_show_entry">Show entry</string>
+    <string name="quick_launcher_edit_entry">Edit entry</string>
+    <string name="quick_launcher_color_dynamic">Dynamic</string>
+    <string name="quick_launcher_entry_appearance">Entry appearance</string>
+    <string name="quick_launcher_highlight_favorites">Highlight favorites in list</string>
+    <string name="quick_launcher_icon_colors">Tint entries from app icon colors</string>
+    <string name="quick_launcher_static_top_highlight">Use static top-match highlight color</string>
+    <string name="quick_launcher_show_alias_first">Show search alias before entry name</string>
     <string name="keyboard_theme_title">Keyboard Theme</string>
     <string name="status_bar_theme_title">Status Bar Theme</string>
     <string name="status_bar_theme_description">Colours, LEDs, and which buttons sit on the bar</string>
@@ -810,6 +832,15 @@
     <string name="keyboard_theme_action_export">Export</string>
     <string name="keyboard_theme_action_delete">Delete</string>
     <string name="keyboard_theme_duplicate_title">Duplicate theme</string>
+    <string name="keyboard_theme_delete_title">Delete theme?</string>
+    <string name="keyboard_theme_delete_confirmation">Delete “%1$s”? The currently applied colors will be kept.</string>
+    <string name="keyboard_theme_export_title">Export theme</string>
+    <string name="keyboard_theme_import_title">Import theme</string>
+    <string name="keyboard_theme_import_string_label">Theme string</string>
+    <string name="keyboard_theme_import_invalid">Invalid theme string</string>
+    <string name="keyboard_theme_presets">Presets</string>
+    <string name="keyboard_theme_hex_color">Hex color</string>
+    <string name="keyboard_theme_apply">Apply</string>
     <string name="keyboard_theme_editing_draft">Editing draft</string>
     <string name="keyboard_theme_required_missing">%1$d required values missing</string>
     <string name="keyboard_theme_required">Required</string>
@@ -960,6 +991,7 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="nav_mode_type">Type</string>
     <string name="nav_mode_keycode">Keycode</string>
     <string name="nav_mode_action">Action</string>
+    <string name="nav_mode_command">Command</string>
     <string name="nav_mode_native_ctrl">Native Ctrl</string>
     <string name="nav_mode_none">None</string>
     <string name="nav_mode_use_default">Use Default: %1$s</string>
@@ -1268,6 +1300,17 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="tutorial_finish">Finish</string>
     <string name="tutorial_whats_new_title">New in this version: %1$s</string>
     <string name="tutorial_whats_new_description">A few changes are worth knowing before you continue.</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_intro">Two quick steps to start typing.</string>
+    <string name="onboarding_ready">You\'re set.</string>
+    <string name="onboarding_show_essentials">Show me the essentials</string>
+    <string name="onboarding_done">Done</string>
+    <string name="onboarding_essential_dictation">Hold Fn to talk (dictation)</string>
+    <string name="onboarding_essential_backlight">Backlight can light the dark (one-time setup)</string>
+    <string name="onboarding_essential_settings">Everything else lives in the Settings tile</string>
+    <string name="onboarding_updated_to">Updated to v%1$s</string>
+    <string name="onboarding_up_to_date">Your keyboard is up to date. Fixes and improvements are live.</string>
     <string name="tutorial_whats_new_bug_fixes_title">Bug fixes</string>
     <string name="tutorial_whats_new_docs_button">Open PhysiBoard docs</string>
     <string name="tutorial_whats_new_continue_hint">Continue through the tutorial to review the most useful settings for this release.</string>
@@ -1395,6 +1438,11 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="restore_from_file_description">Import a PhysiBoard backup ZIP</string>
     <string name="backup_completed">Backup completed</string>
     <string name="restore_completed">Restore completed</string>
+    <plurals name="restore_completed_with_skips">
+        <item quantity="one">Restored, but one item could not be applied</item>
+        <item quantity="other">Restored, but %1$d items could not be applied</item>
+    </plurals>
+    <string name="settings_save_failed">Could not save changes</string>
     <string name="backup_failed">Backup failed: %1$s</string>
     <string name="restore_failed">Restore failed: %1$s</string>
     
@@ -1600,6 +1648,7 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
 
     <!-- Trackpad Debug Accessibility Service -->
     <string name="trackpad_debug_service_description">Displays trackpad events in a small overlay for debugging purposes</string>
+    <string name="trackpad_debug_title">Trackpad Debug</string>
 
     <!-- Status Bar Buttons Configuration -->
     <string name="show_status_bar_title">Show status bar</string>

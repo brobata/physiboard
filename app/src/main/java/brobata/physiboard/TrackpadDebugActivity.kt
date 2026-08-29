@@ -164,7 +164,7 @@ fun TrackpadDebugScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "Trackpad Debug",
+                    text = stringResource(R.string.trackpad_debug_title),
                     style = MaterialTheme.typography.titleLarge,
                     color = androidx.compose.ui.graphics.Color.Green
                 )

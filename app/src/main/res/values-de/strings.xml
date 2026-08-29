@@ -653,6 +653,11 @@ Jede Taste kann als Keycode, Aktion, Native Ctrl oder Keine konfiguriert werden.
     <string name="restore_from_file_description">Eine PhysiBoard-Sicherungsdatei ZIP importieren</string>
     <string name="backup_completed">Sicherung abgeschlossen</string>
     <string name="restore_completed">Wiederherstellung abgeschlossen</string>
+    <plurals name="restore_completed_with_skips">
+        <item quantity="one">Wiederhergestellt, aber ein Eintrag konnte nicht übernommen werden</item>
+        <item quantity="other">Wiederhergestellt, aber %1$d Einträge konnten nicht übernommen werden</item>
+    </plurals>
+    <string name="settings_save_failed">Änderungen konnten nicht gespeichert werden</string>
     <string name="backup_failed">Sicherung fehlgeschlagen: %1$s</string>
     <string name="restore_failed">Wiederherstellung fehlgeschlagen: %1$s</string>
     <string name="swipe_incremental_threshold_description">Erforderliche Entfernung, um den Cursor um eine Position zu bewegen. Niedrigere Werte lassen den Cursor schneller bewegen.</string>
@@ -994,10 +999,6 @@ Jede Taste kann als Keycode, Aktion, Native Ctrl oder Keine konfiguriert werden.
     <string name="software_keyboard_theme_link_description">Öffnet den Theme-Editor direkt auf der Seite für die virtuelle Tastatur.</string>
     <string name="keyboard_theme_tab_colors">Farben</string>
     <string name="keyboard_theme_tab_keys">Tasten</string>
-    <string name="keyboard_theme_assignment_hardware_title">Theme-Zuweisung für Hardware-Tastatur</string>
-    <string name="keyboard_theme_assignment_software_title">Theme-Zuweisung für Software-Tastatur</string>
-    <string name="keyboard_theme_assignment_fixed">Fest</string>
-    <string name="keyboard_theme_assignment_follow_system">System folgen</string>
     <string name="keyboard_theme_light_mode_theme">Theme für Hellmodus</string>
     <string name="keyboard_theme_dark_mode_theme">Theme für Dunkelmodus</string>
     <string name="keyboard_theme_layout_overrides_title">Layout-Overrides</string>

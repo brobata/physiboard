@@ -24,7 +24,6 @@ class SettingsActivity : AppCompatActivity() {
             checkForUpdate(
                 context = this,
                 currentVersion = BuildConfig.VERSION_NAME,
-                releaseChannel = BuildConfig.RELEASE_CHANNEL,
                 ignoreDismissedReleases = false
             ) { hasUpdate, latestVersion, downloadUrl, releasePageUrl ->
                 if (hasUpdate && latestVersion != null) {
