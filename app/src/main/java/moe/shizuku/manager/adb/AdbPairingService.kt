@@ -161,10 +161,20 @@ class AdbPairingService : Service() {
         GlobalScope.launch(Dispatchers.IO) {
             val host = "127.0.0.1"
 
+            val keyStore = PreferenceAdbKeyStore(EmbeddedAdbInit.prefs(this@AdbPairingService))
             val key = try {
-                AdbKey(PreferenceAdbKeyStore(EmbeddedAdbInit.prefs(this@AdbPairingService)), EmbeddedAdbInit.KEY_NAME)
+                try {
+                    AdbKey(keyStore, EmbeddedAdbInit.KEY_NAME)
+                } catch (e: AdbKeyException) {
+                    // Pairing is the one place a stored key may be replaced: the phone is about
+                    // to be told the new public key anyway, so an unreadable old one is dropped.
+                    Log.e(tag, "Stored ADB key unreadable, generating a new one for this pairing", e)
+                    keyStore.clear()
+                    AdbKey(keyStore, EmbeddedAdbInit.KEY_NAME)
+                }
             } catch (e: Throwable) {
-                e.printStackTrace()
+                Log.e(tag, "Unable to load ADB key", e)
+                handleResult(false, e)
                 return@launch
             }
 

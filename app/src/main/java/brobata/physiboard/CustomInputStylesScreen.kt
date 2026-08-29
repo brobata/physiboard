@@ -282,8 +282,8 @@ fun CustomInputStylesScreen(
                 
                 // For system locales, only update the layout mapping, don't modify preferences
                 if (isSystem) {
-                    updateLocaleLayoutMapping(context, locale, layout)
-                    SettingsManager.setAdditionalSuggestionLocalesForInputStyle(
+                    val mappingSaved = updateLocaleLayoutMapping(context, locale, layout)
+                    val localesSaved = SettingsManager.setAdditionalSuggestionLocalesForInputStyle(
                         context,
                         locale,
                         layout,
@@ -296,7 +296,11 @@ fun CustomInputStylesScreen(
                     lastDialogLayout = null
                     lastDialogSuggestionLocales = null
                     coroutineScope.launch {
-                        snackbarHostState.showSnackbar(context.getString(R.string.custom_input_styles_layout_mapping_updated, getLocaleDisplayName(locale), layout))
+                        if (mappingSaved && localesSaved) {
+                            snackbarHostState.showSnackbar(context.getString(R.string.custom_input_styles_layout_mapping_updated, getLocaleDisplayName(locale), layout))
+                        } else {
+                            snackbarHostState.showSnackbar(context.getString(R.string.settings_save_failed))
+                        }
                     }
                     null
                 } else {
@@ -1552,7 +1556,7 @@ private fun hasDictionaryForLocale(context: Context, locale: String): Boolean {
  * Reads from assets first, then merges with custom file, and saves to custom file.
  * If the locale being updated is currently active in the IME, immediately applies the layout change.
  */
-private fun updateLocaleLayoutMapping(context: Context, locale: String, layout: String) {
+private fun updateLocaleLayoutMapping(context: Context, locale: String, layout: String): Boolean {
     try {
         // Read base mapping from assets
         val assets = context.assets
@@ -1573,7 +1577,8 @@ private fun updateLocaleLayoutMapping(context: Context, locale: String, layout: 
                     json.put(key, customJson.getString(key))
                 }
             } catch (e: Exception) {
-                android.util.Log.w("CustomInputStyles", "Error reading custom mapping, using base only", e)
+                android.util.Log.e("CustomInputStyles", "Custom locale-layout mapping is unreadable; not overwriting it", e)
+                return false
             }
         }
         
@@ -1599,7 +1604,9 @@ private fun updateLocaleLayoutMapping(context: Context, locale: String, layout: 
         } catch (e: Exception) {
             android.util.Log.w("CustomInputStyles", "Error checking current IME locale", e)
         }
+        return true
     } catch (e: Exception) {
         android.util.Log.e("CustomInputStyles", "Error updating locale-layout mapping", e)
+        return false
     }
 }

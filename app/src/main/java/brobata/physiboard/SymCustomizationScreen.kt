@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
+import android.widget.Toast
 import brobata.physiboard.R
 import brobata.physiboard.inputmethod.StatusBarController
 import kotlinx.coroutines.launch
@@ -83,7 +84,9 @@ fun SymCustomizationScreen(
     }
     fun persistSymPagesConfig(config: SymPagesConfig) {
         symPagesConfig = config
-        SettingsManager.setSymPagesConfig(context, config)
+        if (!SettingsManager.setSymPagesConfig(context, config)) {
+            Toast.makeText(context, R.string.settings_save_failed, Toast.LENGTH_SHORT).show()
+        }
     }
     val normalizedSymPageOrder = symPagesConfig.normalizedOrder()
     fun movePageOrderItem(fromIndex: Int, toIndex: Int) {
@@ -756,7 +759,9 @@ fun SymCustomizationScreen(
                     symMappingsPage1 = symMappingsPage1.toMutableMap().apply {
                         put(selectedKeyCode!!, emoji)
                     }
-                    SettingsManager.saveSymMappings(context, symMappingsPage1)
+                    if (!SettingsManager.saveSymMappings(context, symMappingsPage1)) {
+                        Toast.makeText(context, R.string.settings_save_failed, Toast.LENGTH_SHORT).show()
+                    }
                     showEmojiPicker = false
                     selectedKeyCode = null
                     if (initialPickerActive) {
@@ -794,7 +799,9 @@ fun SymCustomizationScreen(
                             remove(keyCode)
                         }
                     }
-                    SettingsManager.saveSymMappingsPage2(context, symMappingsPage2)
+                    if (!SettingsManager.saveSymMappingsPage2(context, symMappingsPage2)) {
+                        Toast.makeText(context, R.string.settings_save_failed, Toast.LENGTH_SHORT).show()
+                    }
                     showCharacterPicker = false
                     selectedKeyCode = null
                     if (initialPickerActive) {

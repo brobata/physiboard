@@ -1,9 +1,12 @@
 package brobata.physiboard
 
 import android.content.Context
+import android.util.Log
 import brobata.physiboard.inputmethod.AutoCorrector
 import java.util.LinkedHashMap
 import java.util.Locale
+
+private const val TAG = "AutoCorrectionSubstitutionStore"
 
 object AutoCorrectionSubstitutionStore {
     fun addCustomSubstitution(
@@ -25,10 +28,10 @@ object AutoCorrectionSubstitutionStore {
                 updated[key] = value
             }
         }
-        SettingsManager.saveCustomAutoCorrections(context, languageCode, updated)
+        val saved = SettingsManager.saveCustomAutoCorrections(context, languageCode, updated)
         enableSubstitutionLanguage(context, languageCode)
-        reloadAutoCorrector(context)
-        return true
+        val reloaded = reloadAutoCorrector(context)
+        return saved && reloaded
     }
 
     private fun enableSubstitutionLanguage(context: Context, languageCode: String) {
@@ -44,11 +47,13 @@ object AutoCorrectionSubstitutionStore {
         )
     }
 
-    private fun reloadAutoCorrector(context: Context) {
-        try {
+    private fun reloadAutoCorrector(context: Context): Boolean {
+        return try {
             AutoCorrector.loadCorrections(context.assets, context)
-        } catch (_: Exception) {
-            // The persisted substitution will still be picked up on the next full reload.
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Substitution saved but the corrector did not reload", e)
+            false
         }
     }
 }

@@ -19,6 +19,7 @@ import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo
 import org.bouncycastle.cert.X509v3CertificateBuilder
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
 import java.io.ByteArrayInputStream
+import java.io.IOException
 import java.math.BigInteger
 import java.net.Socket
 import java.nio.ByteBuffer
@@ -159,7 +160,14 @@ class AdbKey(private val adbKeyStore: AdbKeyStore, name: String) {
 
                 val keyFactory = KeyFactory.getInstance("RSA")
                 privateKey = keyFactory.generatePrivate(PKCS8EncodedKeySpec(plaintext)) as RSAPrivateKey
-            } catch (e: Exception) {
+            } catch (e: GeneralSecurityException) {
+                Log.e(TAG, "Stored ADB key could not be read", e)
+                // The phone still trusts the old key; regenerating here would leave the app
+                // thinking it is paired while every connection is refused.
+                throw AdbKeyException("Stored ADB key could not be read; pair again", e)
+            } catch (e: IOException) {
+                Log.e(TAG, "Stored ADB key could not be read", e)
+                throw AdbKeyException("Stored ADB key could not be read; pair again", e)
             }
         }
         if (privateKey == null) {
@@ -279,6 +287,11 @@ class PreferenceAdbKeyStore(private val preference: SharedPreferences) : AdbKeyS
     override fun get(): ByteArray? {
         if (!preference.contains(preferenceKey)) return null
         return Base64.decode(preference.getString(preferenceKey, null), Base64.NO_WRAP)
+    }
+
+    /** Forgets a stored key that can no longer be read, so the next pairing starts fresh. */
+    fun clear() {
+        preference.edit { remove(preferenceKey) }
     }
 }
 

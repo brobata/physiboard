@@ -59,6 +59,11 @@ data class PreferencesRestoreSummary(
     val skippedKeys: List<String>
 )
 
+data class PreferencesBackupContents(
+    val prefs: Map<String, Map<String, PreferenceValue>>,
+    val unreadableFiles: List<String>
+)
+
 data class FileRestoreSummary(
     val restoredFiles: List<String>,
     val skippedFiles: List<String>
@@ -103,11 +108,12 @@ object PreferencesBackupHelper {
         return json
     }
 
-    fun readPreferencesFromBackup(prefsDir: File): Map<String, Map<String, PreferenceValue>> {
+    fun readPreferencesFromBackup(prefsDir: File): PreferencesBackupContents {
         if (!prefsDir.exists() || !prefsDir.isDirectory) {
-            return emptyMap()
+            return PreferencesBackupContents(emptyMap(), emptyList())
         }
         val result = mutableMapOf<String, Map<String, PreferenceValue>>()
+        val unreadable = mutableListOf<String>()
         prefsDir.listFiles { file -> file.extension == "json" }?.forEach { file ->
             try {
                 val content = file.readText()
@@ -130,10 +136,11 @@ object PreferencesBackupHelper {
                     result[name] = entries
                 }
             } catch (e: Exception) {
-                Log.w(TAG, "Skipping malformed prefs backup file: ${file.name}", e)
+                Log.e(TAG, "Skipping malformed prefs backup file: ${file.name}", e)
+                unreadable.add(file.name)
             }
         }
-        return result
+        return PreferencesBackupContents(result, unreadable)
     }
 
     fun restorePreferences(
@@ -147,6 +154,7 @@ object PreferencesBackupHelper {
             val prefs = context.getSharedPreferences(prefName, Context.MODE_PRIVATE)
             val currentKeys = prefs.all.keys
             val editor = prefs.edit()
+            val appliedForFile = mutableListOf<String>()
 
             entries.forEach { (key, value) ->
                 val expectedType = PreferenceSchemas.expectedType(prefName, key)
@@ -178,11 +186,16 @@ object PreferencesBackupHelper {
                         }
                     }
                 }
-                applied.add("$prefName:$key")
+                appliedForFile.add("$prefName:$key")
             }
             // Use commit() instead of apply() to ensure values are written synchronously
             // This ensures listeners are called immediately and UI updates work correctly
-            editor.commit()
+            if (editor.commit()) {
+                applied.addAll(appliedForFile)
+            } else {
+                Log.e(TAG, "Could not write restored preferences for $prefName")
+                skipped.addAll(appliedForFile)
+            }
         }
 
         return PreferencesRestoreSummary(appliedKeys = applied, skippedKeys = skipped)

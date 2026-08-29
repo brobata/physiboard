@@ -108,6 +108,63 @@ class RestoreManagerIntegrationTest {
     }
 
     @Test
+    fun restore_withoutMetadata_failsInsteadOfApplyingAnything() = runBlocking {
+        val backupZip = createBackupZip(
+            includeMetadata = false,
+            prefsFiles = mapOf(
+                "physiboard_prefs.json" to prefsBackupJson(
+                    prefName = brobata.physiboard.SettingsMigration.PREFS,
+                    entries = mapOf(
+                        "user_dictionary_entries" to PreferenceValue(
+                            PreferenceValueType.STRING,
+                            """["alpha","beta"]"""
+                        )
+                    )
+                )
+            ),
+            fileEntries = emptyMap()
+        )
+
+        val result = RestoreManager.restore(context, Uri.fromFile(backupZip))
+        assertTrue(result is RestoreResult.Failure)
+
+        val prefs = context.getSharedPreferences(
+            brobata.physiboard.SettingsMigration.PREFS,
+            Context.MODE_PRIVATE
+        )
+        assertFalse(prefs.contains("user_dictionary_entries"))
+    }
+
+    @Test
+    fun restore_withMalformedPrefsFile_reportsItAsSkipped() = runBlocking {
+        val backupZip = createBackupZip(
+            includeMetadata = true,
+            prefsFiles = mapOf(
+                "physiboard_prefs.json" to prefsBackupJson(
+                    prefName = brobata.physiboard.SettingsMigration.PREFS,
+                    entries = mapOf(
+                        "user_dictionary_entries" to PreferenceValue(
+                            PreferenceValueType.STRING,
+                            """["alpha","beta"]"""
+                        )
+                    )
+                ),
+                "broken_prefs.json" to "{ not json"
+            ),
+            fileEntries = emptyMap()
+        )
+
+        val result = RestoreManager.restore(context, Uri.fromFile(backupZip))
+        val success = result as RestoreResult.Success
+        assertTrue(success.preferencesSummary.skippedKeys.contains("broken_prefs.json"))
+        assertTrue(
+            success.preferencesSummary.appliedKeys.contains(
+                "${brobata.physiboard.SettingsMigration.PREFS}:user_dictionary_entries"
+            )
+        )
+    }
+
+    @Test
     fun restore_withUserDictionaryPref_appliesPrefAndSendsRefreshBroadcast() = runBlocking {
         val backupZip = createBackupZip(
             includeMetadata = true,

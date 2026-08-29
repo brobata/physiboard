@@ -94,8 +94,14 @@ fun MaintenanceSettingsRows(
             scope.launch {
                 val result = RestoreManager.restore(context, uri)
                 val message = when (result) {
-                    is brobata.physiboard.backup.RestoreResult.Success ->
-                        context.getString(R.string.restore_completed)
+                    is brobata.physiboard.backup.RestoreResult.Success -> {
+                        val skipped = result.preferencesSummary.skippedKeys.size + result.fileSummary.skippedFiles.size
+                        if (skipped > 0) {
+                            context.resources.getQuantityString(R.plurals.restore_completed_with_skips, skipped, skipped)
+                        } else {
+                            context.getString(R.string.restore_completed)
+                        }
+                    }
                     is brobata.physiboard.backup.RestoreResult.Failure ->
                         context.getString(R.string.restore_failed, result.reason)
                 }

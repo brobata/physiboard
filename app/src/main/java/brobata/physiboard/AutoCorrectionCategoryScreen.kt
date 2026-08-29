@@ -643,9 +643,12 @@ private fun UserDictionaryScreen(
     fun updateWord(entry: UserDictItem, newWord: String) {
         val trimmed = newWord.trim()
         if (trimmed.isNotEmpty() && trimmed != entry.word) {
-            when (entry.source) {
+            val saved = when (entry.source) {
                 UserDictSource.DEFAULT -> defaultStore.update(entry.word, trimmed)
-                UserDictSource.USER -> userStore.updateWord(context, entry.word, trimmed)
+                UserDictSource.USER -> { userStore.updateWord(context, entry.word, trimmed); true }
+            }
+            if (!saved) {
+                android.widget.Toast.makeText(context, R.string.settings_save_failed, android.widget.Toast.LENGTH_SHORT).show()
             }
             refreshEntries()
             notifyDictionaryUpdated()
@@ -782,17 +785,20 @@ private fun UserDictionaryScreen(
                                 editingEntry = entry
                                 dialogWord = entry.word
                             }) {
-                                Icon(imageVector = Icons.Filled.Edit, contentDescription = null)
+                                Icon(imageVector = Icons.Filled.Edit, contentDescription = stringResource(R.string.auto_correct_edit))
                             }
                             IconButton(onClick = {
-                                when (entry.source) {
+                                val removed = when (entry.source) {
                                     UserDictSource.DEFAULT -> defaultStore.remove(entry.word)
-                                    UserDictSource.USER -> userStore.removeWord(context, entry.word)
+                                    UserDictSource.USER -> { userStore.removeWord(context, entry.word); true }
+                                }
+                                if (!removed) {
+                                    android.widget.Toast.makeText(context, R.string.settings_save_failed, android.widget.Toast.LENGTH_SHORT).show()
                                 }
                                 refreshEntries()
                                 notifyDictionaryUpdated()
                             }) {
-                                Icon(imageVector = Icons.Filled.Delete, contentDescription = null)
+                                Icon(imageVector = Icons.Filled.Delete, contentDescription = stringResource(R.string.delete))
                             }
                         }
                     }
@@ -915,8 +921,11 @@ private class DefaultUserDefaultsStore(private val context: Context) {
         return file
     }
 
+    private var loadFailed = false
+
     fun loadEntries(): List<DefaultUserWord> {
         val file = ensureLocalFile()
+        loadFailed = false
         return try {
             val jsonString = file.readText()
             val jsonArray = JSONArray(jsonString)
@@ -928,14 +937,19 @@ private class DefaultUserDefaultsStore(private val context: Context) {
                     add(DefaultUserWord(word, freq))
                 }
             }
-        } catch (_: Exception) {
+        } catch (_: java.io.FileNotFoundException) {
+            emptyList()
+        } catch (e: Exception) {
+            android.util.Log.e("DefaultUserDefaultsStore", "Default user dictionary is unreadable; not overwriting it", e)
+            loadFailed = true
             emptyList()
         }
     }
 
-    fun addOrBump(word: String, baseFrequency: Int = 10) {
+    fun addOrBump(word: String, baseFrequency: Int = 10): Boolean {
         val file = ensureLocalFile()
         val entries = loadEntries().toMutableList()
+        if (loadFailed) return false
         val existingIndex = entries.indexOfFirst { it.word.equals(word, ignoreCase = true) }
         if (existingIndex >= 0) {
             val existing = entries[existingIndex]
@@ -943,25 +957,27 @@ private class DefaultUserDefaultsStore(private val context: Context) {
         } else {
             entries.add(DefaultUserWord(word, baseFrequency))
         }
-        persist(entries, file)
+        return persist(entries, file)
     }
 
-    fun remove(word: String) {
+    fun remove(word: String): Boolean {
         val file = ensureLocalFile()
         val entries = loadEntries().filterNot { it.word.equals(word, ignoreCase = true) }
-        persist(entries, file)
+        if (loadFailed) return false
+        return persist(entries, file)
     }
 
-    fun update(oldWord: String, newWord: String) {
+    fun update(oldWord: String, newWord: String): Boolean {
         val file = ensureLocalFile()
         val entries = loadEntries().map {
             if (it.word.equals(oldWord, ignoreCase = true)) it.copy(word = newWord) else it
         }
-        persist(entries, file)
+        if (loadFailed) return false
+        return persist(entries, file)
     }
 
-    private fun persist(entries: List<DefaultUserWord>, file: java.io.File) {
-        try {
+    private fun persist(entries: List<DefaultUserWord>, file: java.io.File): Boolean {
+        return try {
             val array = JSONArray()
             entries.forEach { entry ->
                 val obj = JSONObject()
@@ -970,8 +986,10 @@ private class DefaultUserDefaultsStore(private val context: Context) {
                 array.put(obj)
             }
             file.writeText(array.toString())
-        } catch (_: Exception) {
-            // Ignore persistence errors; UI will just not reflect changes
+            true
+        } catch (e: Exception) {
+            android.util.Log.e("DefaultUserDefaultsStore", "Could not write the default user dictionary", e)
+            false
         }
     }
 }

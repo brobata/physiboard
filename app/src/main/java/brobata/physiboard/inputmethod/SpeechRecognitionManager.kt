@@ -460,6 +460,7 @@ class SpeechRecognitionManager(
                 Log.d(TAG, "Partial text updated (composing): '$formatted'")
             } catch (e: Exception) {
                 Log.e(TAG, "Error updating partial text", e)
+                failSession()
             }
         }
     }
@@ -536,6 +537,7 @@ class SpeechRecognitionManager(
                 lastPartialText = ""
             } catch (e: Exception) {
                 Log.e(TAG, "Error replacing with final text", e)
+                failSession()
             }
         }
     }
@@ -556,6 +558,7 @@ class SpeechRecognitionManager(
                 lastPartialText = ""
             } catch (e: Exception) {
                 Log.e(TAG, "Error clearing partial text", e)
+                failSession()
             }
         }
     }
@@ -804,6 +807,14 @@ class SpeechRecognitionManager(
 
     private fun cancelSilenceTimer() {
         mainHandler.removeCallbacks(silenceRunnable)
+    }
+
+    /** The field rejected dictated text: tell the user and stop showing the mic as live. */
+    private fun failSession() {
+        isComposingPartialText = false
+        lastPartialText = ""
+        onError?.invoke(context.getString(R.string.speech_recognition_error_generic))
+        endSession(cancelRecognizer = true)
     }
 
     /** Ends the continuous session once: UI state, stop cue, timers. */

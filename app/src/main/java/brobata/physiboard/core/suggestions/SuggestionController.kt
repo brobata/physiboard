@@ -905,6 +905,11 @@ class SuggestionController(
                 // Cancelled due to rapid switches; safe to ignore.
             } catch (e: Exception) {
                 Log.e("PhysiBoardIME", "Failed to load dictionary", e)
+            } catch (e: OutOfMemoryError) {
+                // The repository has already dropped its partial state; leave it unloaded rather
+                // than letting the error take the IME process down.
+                pendingPrimaryRefreshAfterLoad = false
+                Log.e("PhysiBoardIME", "Out of memory loading dictionary; suggestions stay off for this locale", e)
             }
         }
     }

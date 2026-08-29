@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.res.AssetManager
 import android.util.Log
 import brobata.physiboard.inputmethod.subtype.AdditionalSubtypeUtils.localeString
+import org.json.JSONException
 import org.json.JSONObject
 import java.text.Normalizer
 
@@ -97,23 +98,28 @@ object AutoCorrector {
             val standardLocales = listOf("it", "en", "es", "fr", "de", "pl", "x-pastiera")
 
             for (locale in standardLocales) {
+                // Load bundled defaults first, then overlay custom corrections.
                 try {
-                    // Load bundled defaults first, then overlay custom corrections.
                     val fileName = "common/autocorrect/auto_corrections_$locale.json"
                     val jsonString = assets.open(fileName).bufferedReader().use { it.readText() }
                     loadCorrectionsFromJson(locale, jsonString)
+                } catch (e: java.io.FileNotFoundException) {
+                    Log.d(TAG, "No correction file found for locale: $locale")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Bundled corrections for locale $locale are unreadable", e)
+                }
 
-                    if (context != null) {
+                if (context != null) {
+                    try {
                         val customCorrections = brobata.physiboard.SettingsManager.getCustomAutoCorrections(context, locale)
                         if (customCorrections.isNotEmpty()) {
                             val customJson = correctionsToJson(customCorrections)
                             loadCorrectionsFromJson(locale, customJson)
                             Log.d(TAG, "Loaded ${customCorrections.size} custom corrections for locale: $locale")
                         }
+                    } catch (e: JSONException) {
+                        Log.e(TAG, "Custom corrections for locale $locale are unreadable", e)
                     }
-                } catch (e: Exception) {
-                    // File not found or parsing error - ignore this language
-                    Log.d(TAG, "No correction file found for locale: $locale")
                 }
             }
 
@@ -506,49 +512,49 @@ object AutoCorrector {
                         Log.d(TAG, "Sequence '$sequence' has been rejected, don't correct")
                         continue // Try with fewer words
                     }
-		                    for (lang in languagesToSearch) {
-		                        val customCorrection = getCustomCorrection(sequence, lang, context)
-		                        if (customCorrection != null) {
-		                            if (
-		                                maxWords > 1 ||
-		                                shouldApplyExactReplacement(
-		                                    sequence,
-		                                    customCorrection,
-		                                    isKnownWord,
-		                                    explicitSubstitutionLanguagesEnabled
-		                                )
-		                            ) {
-		                                Log.d(TAG, "Found custom correction for sequence: '$sequence' → '$customCorrection' (language: $lang)")
-		                                return Pair(sequence, customCorrection)
-		                            }
-		                        }
-		                    }
+                    for (lang in languagesToSearch) {
+                        val customCorrection = getCustomCorrection(sequence, lang, context)
+                        if (customCorrection != null) {
+                            if (
+                                maxWords > 1 ||
+                                shouldApplyExactReplacement(
+                                    sequence,
+                                    customCorrection,
+                                    isKnownWord,
+                                    explicitSubstitutionLanguagesEnabled
+                                )
+                            ) {
+                                Log.d(TAG, "Found custom correction for sequence: '$sequence' → '$customCorrection' (language: $lang)")
+                                return Pair(sequence, customCorrection)
+                            }
+                        }
+                    }
 
-	                    // Check if there's a correction for this sequence in one of the enabled languages
-		                    for (lang in languagesToSearch) {
-		                        val correction = getCorrection(sequence, lang, context)
-		                        if (correction != null) {
-		                            if (
-		                                maxWords > 1 ||
-		                                shouldApplyExactReplacement(
-		                                    sequence,
-		                                    correction,
-		                                    isKnownWord,
-		                                    explicitSubstitutionLanguagesEnabled
-		                                )
-		                            ) {
-		                                Log.d(TAG, "Found correction for multi-word sequence: '$sequence' → '$correction' (language: $lang)")
-		                                return Pair(sequence, correction)
-		                            }
-		                        }
-		                    }
-	                    if (maxWords == 1 && isKnownWord?.invoke(sequence) == true) {
-	                        Log.d(TAG, "Word '$sequence' is known in an active dictionary, don't auto-substitute")
-	                        continue
-	                    }
-	                }
-	            }
-	        }
+                    // Check if there's a correction for this sequence in one of the enabled languages
+                    for (lang in languagesToSearch) {
+                        val correction = getCorrection(sequence, lang, context)
+                        if (correction != null) {
+                            if (
+                                maxWords > 1 ||
+                                shouldApplyExactReplacement(
+                                    sequence,
+                                    correction,
+                                    isKnownWord,
+                                    explicitSubstitutionLanguagesEnabled
+                                )
+                            ) {
+                                Log.d(TAG, "Found correction for multi-word sequence: '$sequence' → '$correction' (language: $lang)")
+                                return Pair(sequence, correction)
+                            }
+                        }
+                    }
+                    if (maxWords == 1 && isKnownWord?.invoke(sequence) == true) {
+                        Log.d(TAG, "Word '$sequence' is known in an active dictionary, don't auto-substitute")
+                        continue
+                    }
+                }
+            }
+        }
 
         // If we didn't find patterns with spaces, search for a single word
         var startIndex = endIndex
@@ -572,34 +578,34 @@ object AutoCorrector {
             return null
         }
 
-	        for (lang in languagesToSearch) {
-	            val customCorrection = getCustomCorrection(word, lang, context)
-	            if (customCorrection != null) {
-	                if (shouldApplyExactReplacement(word, customCorrection, isKnownWord, explicitSubstitutionLanguagesEnabled)) {
-	                    Log.d(TAG, "Found custom correction for word: '$word' → '$customCorrection' (language: $lang)")
-	                    return Pair(word, customCorrection)
-	                }
-	            }
-	        }
+        for (lang in languagesToSearch) {
+            val customCorrection = getCustomCorrection(word, lang, context)
+            if (customCorrection != null) {
+                if (shouldApplyExactReplacement(word, customCorrection, isKnownWord, explicitSubstitutionLanguagesEnabled)) {
+                    Log.d(TAG, "Found custom correction for word: '$word' → '$customCorrection' (language: $lang)")
+                    return Pair(word, customCorrection)
+                }
+            }
+        }
 
-	        // Check if there's a correction for the single word in one of the enabled languages
-	        for (lang in languagesToSearch) {
-	            val correction = getCorrection(word, lang, context)
-	            if (correction != null) {
-	                if (shouldApplyExactReplacement(word, correction, isKnownWord, explicitSubstitutionLanguagesEnabled)) {
-	                    Log.d(TAG, "Found correction for word: '$word' → '$correction' (language: $lang)")
-	                    return Pair(word, correction)
-	                }
-	            }
-	        }
+        // Check if there's a correction for the single word in one of the enabled languages
+        for (lang in languagesToSearch) {
+            val correction = getCorrection(word, lang, context)
+            if (correction != null) {
+                if (shouldApplyExactReplacement(word, correction, isKnownWord, explicitSubstitutionLanguagesEnabled)) {
+                    Log.d(TAG, "Found correction for word: '$word' → '$correction' (language: $lang)")
+                    return Pair(word, correction)
+                }
+            }
+        }
 
-	        if (isKnownWord?.invoke(word) == true) {
-	            Log.d(TAG, "Word '$word' is known in an active dictionary, don't auto-substitute")
-	            return null
-	        }
+        if (isKnownWord?.invoke(word) == true) {
+            Log.d(TAG, "Word '$word' is known in an active dictionary, don't auto-substitute")
+            return null
+        }
 
-	        return null
-	    }
+        return null
+    }
 
     /**
      * Records an applied correction.

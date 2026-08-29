@@ -45,12 +45,15 @@ object RestoreManager {
             } ?: return@withContext RestoreResult.Failure("Unable to open source backup")
 
             val metadata = BackupMetadata.fromFile(File(extractedDir, "backup_meta.json"))
+                ?: return@withContext RestoreResult.Failure("Not a PhysiBoard backup: backup_meta.json is missing or unreadable")
             val prefsDir = File(extractedDir, "prefs")
             val filesDir = File(extractedDir, "files")
 
-            val prefsData = PreferencesBackupHelper.readPreferencesFromBackup(prefsDir)
+            val prefsContents = PreferencesBackupHelper.readPreferencesFromBackup(prefsDir)
             val fileSummary = FileBackupHelper.restoreFiles(context, filesDir)
-            val prefsSummary = PreferencesBackupHelper.restorePreferences(context, prefsData)
+            val prefsSummary = PreferencesBackupHelper.restorePreferences(context, prefsContents.prefs).let { summary ->
+                summary.copy(skippedKeys = summary.skippedKeys + prefsContents.unreadableFiles)
+            }
             val postRestoreActions = collectTriggeredPostRestoreActions(prefsSummary, fileSummary)
             notifyPostRestoreEffects(context, postRestoreActions)
 
@@ -118,7 +121,7 @@ object RestoreManager {
 
 sealed class RestoreResult {
     data class Success(
-        val metadata: BackupMetadata?,
+        val metadata: BackupMetadata,
         val preferencesSummary: PreferencesRestoreSummary,
         val fileSummary: FileRestoreSummary,
         val postActionsTriggered: Set<RestoreManager.PostRestoreAction>

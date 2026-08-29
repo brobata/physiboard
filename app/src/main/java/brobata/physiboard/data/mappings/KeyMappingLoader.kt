@@ -121,10 +121,7 @@ object KeyMappingLoader {
             return altKeyMap
         } catch (e: Exception) {
             Log.e(TAG, "Error loading Alt mappings", e)
-            return mapOf(
-                KeyEvent.KEYCODE_T to "(",
-                KeyEvent.KEYCODE_Y to ")"
-            )
+            return emptyMap()
         }
     }
 
@@ -220,8 +217,7 @@ object KeyMappingLoader {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error loading SYM mappings", e)
-            symKeyMap[KeyEvent.KEYCODE_Q] = "😀"
-            symKeyMap[KeyEvent.KEYCODE_W] = "😂"
+            return emptyMap()
         }
         return symKeyMap
     }
@@ -398,18 +394,7 @@ object KeyMappingLoader {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error loading Ctrl mappings", e)
-            ctrlKeyMap[KeyEvent.KEYCODE_C] = CtrlMapping("action", "copy")
-            ctrlKeyMap[KeyEvent.KEYCODE_V] = CtrlMapping("action", "paste")
-            ctrlKeyMap[KeyEvent.KEYCODE_X] = CtrlMapping("action", "cut")
-            ctrlKeyMap[KeyEvent.KEYCODE_Z] = CtrlMapping("action", "undo")
-            ctrlKeyMap[KeyEvent.KEYCODE_E] = CtrlMapping("keycode", "DPAD_UP")
-            ctrlKeyMap[KeyEvent.KEYCODE_S] = CtrlMapping("keycode", "DPAD_DOWN")
-            ctrlKeyMap[KeyEvent.KEYCODE_D] = CtrlMapping("keycode", "DPAD_LEFT")
-            ctrlKeyMap[KeyEvent.KEYCODE_F] = CtrlMapping("keycode", "DPAD_RIGHT")
-            ctrlKeyMap[KeyEvent.KEYCODE_N] = CtrlMapping("action", "move_word_left")
-            ctrlKeyMap[KeyEvent.KEYCODE_M] = CtrlMapping("action", "move_word_right")
-            ctrlKeyMap[KeyEvent.KEYCODE_U] = CtrlMapping("action", "expand_selection_word_left")
-            ctrlKeyMap[KeyEvent.KEYCODE_I] = CtrlMapping("action", "expand_selection_word_right")
+            return emptyMap()
         }
         return ctrlKeyMap
     }
