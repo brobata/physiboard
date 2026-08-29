@@ -4,6 +4,39 @@ PhysiBoard is a GPLv3 fork of [Pastiera](https://github.com/palsoftware/pastiera
 Andrea Palumbo (PalSoftware) and contributors. This file documents the fork's changes,
 as required by GPLv3 §5(a). Package: `brobata.physiboard`.
 
+## Unreleased
+
+- **The what's-new card shows the right release.** It was a copy of the notes that had to be
+  updated by hand, and 2.0.0 shipped with the 1.2.4 note in it. The card is now generated from
+  this file at build time, and it understands the way these notes are written.
+- **Failures say so.** A long list of places where an error was logged at a level the shipped
+  build strips, or not at all, and the app carried on as if the thing had worked: saving key
+  mappings, SYM layers, variations, custom corrections and the personal dictionary now report
+  when the write fails; restoring a backup that is not a PhysiBoard backup, or one with an
+  unreadable settings file, says so instead of "Restore completed"; dictation that cannot
+  reach the text field ends the session with an error instead of leaving the mic listening; a
+  stored wireless-debugging key that can no longer be read asks you to pair again instead of
+  quietly replacing itself with one the phone does not trust.
+- **Nothing is overwritten that could not be read.** A settings file that fails to parse used
+  to be replaced by an empty one on the next save, taking every other entry with it. Those
+  paths now refuse the write. Importing a typing-sound pack keeps the old pack until the new one
+  is in place.
+- **Less work per keystroke.** The Alt character map and the launcher shortcut table were being
+  re-read from disk on every key press while Alt or Sym was active; both are cached now.
+  Clipboard history writes moved off the input thread. The brightness shortcuts no longer stall
+  typing while the shell command runs.
+- **A leaked background process.** Turning the trackpad settings on and off left a `getevent`
+  reader running each time. It is stopped properly now.
+- **The update check cannot crash the app** on an unexpected response from GitHub.
+- **Accessibility.** The quick-launcher and dictionary rows' icon buttons announce what they
+  do; several buttons were smaller than the 48dp minimum touch target.
+- **Every visible string is translatable.** Thirty English strings were typed straight into the
+  screens, including the onboarding buttons.
+- **Housekeeping.** Lint is gated in CI against a baseline; the release pipeline builds the
+  sideload variant so ProGuard breakage shows before release day; the app no longer carries
+  Play-only dependency metadata, and unused resources are shrunk. Vendor firmware binaries and
+  upstream build leftovers were removed from the repository.
+
 ## 2.0.0 (2026-08-28)
 
 **You will have to pick PhysiBoard as your keyboard again.** This release renames
