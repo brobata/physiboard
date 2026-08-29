@@ -8,14 +8,10 @@
 # Preserve line number information for debugging stack traces
 -keepattributes SourceFile,LineNumberTable
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Line numbers stay for stack traces; the original file name does not need to.
+-renamesourcefileattribute SourceFile
 
-# Log stripping lives in proguard-rules-strip-logs.pro so the test build type can keep logs.
-
-# Keep org.json classes (though they're in Android SDK, better safe than sorry)
--keep class org.json.** { *; }
+# Log stripping lives in proguard-rules-strip-logs.pro so the sideload build type can keep logs.
 
 # Keep BuildConfig for runtime checks if needed
 -keep class brobata.physiboard.BuildConfig { *; }

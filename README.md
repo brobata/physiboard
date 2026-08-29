@@ -153,13 +153,13 @@ Run the core + routing + service modifier regression tests:
   --tests brobata.physiboard.inputmethod.InputEventRouterModifierE2ETest
 ```
 
-Release signing is read from Gradle properties / environment variables (`PASTIERA_KEYSTORE_PATH`, `PASTIERA_KEYSTORE_PASSWORD`, `PASTIERA_KEY_ALIAS`, `PASTIERA_KEY_PASSWORD`) — no keys are committed. See [CONTRIBUTING.md](CONTRIBUTING.md).
+Release signing is read from `release/keystore.properties` or the environment (`PHYSIBOARD_KEYSTORE_PATH`, `PHYSIBOARD_KEYSTORE_PASSWORD`, `PHYSIBOARD_KEY_ALIAS`, `PHYSIBOARD_KEY_PASSWORD`) — no keys are committed. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 The source namespace is `brobata.physiboard`. It was `it.palsoftware.pastiera` until 2.0, when the fork stopped tracking upstream; the application id has always been `brobata.physiboard` and does not change, because it is what Android uses to identify the installed app. Attribution lives in [NOTICE.md](NOTICE.md) and [PHYSIBOARD_CHANGES.md](PHYSIBOARD_CHANGES.md), where the licence requires it.
 
 ## Continuous Integration
 
-Pushes to `main` and pull requests run `.github/workflows/ci.yml`.
+Pushes to `main` and pull requests run `.github/workflows/ci.yml`: unit tests, lint, and the debug and sideload builds — the sideload build exercises the release R8 pipeline without the signing key.
 
 ## Based on Pastiera
 

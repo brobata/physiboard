@@ -1,8 +1,8 @@
 plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
-    id("org.jetbrains.kotlin.plugin.compose")
-    id("org.jetbrains.kotlin.plugin.serialization") version "2.0.21"
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 import java.io.File
@@ -53,7 +53,7 @@ fun gradleBooleanProperty(name: String): Boolean =
         ?: providers.gradleProperty(name.replace("PHYSIBOARD_", "PASTIERA_")).orNull)
         ?.equals("true", ignoreCase = true) == true
 
-fun shouldValidateNightlySigning(taskNames: List<String>): Boolean {
+fun shouldValidateReleaseSigning(taskNames: List<String>): Boolean {
     if (taskNames.isEmpty()) {
         return true
     }
@@ -69,22 +69,6 @@ fun shouldValidateNightlySigning(taskNames: List<String>): Boolean {
     }
 }
 
-fun shouldValidateReleaseSigning(taskNames: List<String>): Boolean {
-    if (taskNames.isEmpty()) {
-        return true
-    }
-    val signingTaskHints = listOf(
-        "assembleStableRelease",
-        "bundleStableRelease",
-        "packageStableRelease",
-        "publishStableRelease",
-        "installStableRelease"
-    )
-    return taskNames.any { task ->
-        signingTaskHints.any { hint -> task.contains(hint, ignoreCase = true) }
-    }
-}
-
 android {
     namespace = "brobata.physiboard"
     compileSdk = 36
@@ -93,8 +77,6 @@ android {
     val defaultVersionName = "2.0.0"
     val ciVersionCode = renamedGradleProperty("PHYSIBOARD_VERSION_CODE")?.toIntOrNull()
     val ciVersionName = renamedGradleProperty("PHYSIBOARD_VERSION_NAME")
-    val nightlyVersionCode = renamedGradleProperty("PHYSIBOARD_NIGHTLY_VERSION_CODE")?.toIntOrNull()
-    val nightlyVersionNameSuffix = renamedGradleProperty("PHYSIBOARD_NIGHTLY_VERSION_SUFFIX") ?: "-nightly"
     val isFdroidBuild = gradleBooleanProperty("PHYSIBOARD_FDROID_BUILD")
 
     defaultConfig {
@@ -107,6 +89,9 @@ android {
         buildConfigField("boolean", "ENABLE_GITHUB_UPDATE_CHECKS", "true")
         minSdk = 29
         targetSdk = 36
+        // libadb.so ships for arm64 only; the Titan 2 Elite is arm64 and so is every device
+        // this keyboard targets. Without the filter an x86 install silently has no native lib.
+        ndk { abiFilters += "arm64-v8a" }
         versionCode = ciVersionCode ?: defaultVersionCode
         versionName = ciVersionName ?: defaultVersionName
 
@@ -134,6 +119,7 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = true
+            isShrinkResources = true
             setProguardFiles(
                 listOf(
                     getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -196,38 +182,26 @@ android {
                 }
             }
         }
-        if (name.equals("preNightlyReleaseBuild", ignoreCase = true)) {
-            doFirst {
-                if (!shouldValidateNightlySigning(gradle.startParameter.taskNames)) {
-                    logger.lifecycle("Skipping nightly signing validation for non-packaging task(s): ${gradle.startParameter.taskNames}")
-                    return@doFirst
-                }
-                val storePath = signingProp("nightlyStoreFile", "PHYSIBOARD_NIGHTLY_KEYSTORE_PATH")
-                val storePass = signingProp("nightlyStorePassword", "PHYSIBOARD_NIGHTLY_KEYSTORE_PASSWORD")
-                val alias = signingProp("nightlyKeyAlias", "PHYSIBOARD_NIGHTLY_KEY_ALIAS")
-                val keyPass = signingProp("nightlyKeyPassword", "PHYSIBOARD_NIGHTLY_KEY_PASSWORD")
-
-                if (!hasSigningConfig(storePath, storePass, alias, keyPass)) {
-                    throw GradleException(
-                        "Missing signing config for nightly build. Define nightlyStoreFile, nightlyStorePassword, nightlyKeyAlias e nightlyKeyPassword in " +
-                            "keystore.properties (non tracciato) o nelle variabili d'ambiente PHYSIBOARD_NIGHTLY_KEYSTORE_PATH, " +
-                            "PHYSIBOARD_NIGHTLY_KEYSTORE_PASSWORD, PHYSIBOARD_NIGHTLY_KEY_ALIAS, PHYSIBOARD_NIGHTLY_KEY_PASSWORD."
-                    )
-                }
-            }
-        }
     }
     
+    // Play-only dependency metadata; F-Droid style builds reject it and it is opaque to users.
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
+    }
     lint {
+        // Findings that predate the gate live in the baseline; anything new fails CI.
+        baseline = file("lint-baseline.xml")
+        lintConfig = file("lint.xml")
+        abortOnError = true
         checkReleaseBuilds = false
-        abortOnError = false
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions {
-        jvmTarget = "11"
+        jvmTarget = "17"
     }
     buildFeatures {
         compose = true
@@ -245,44 +219,70 @@ android {
     testOptions {
         unitTests.isIncludeAndroidResources = true
     }
+    sourceSets["main"].assets.srcDir(layout.buildDirectory.dir("generated/whatsnew"))
 }
+
+// The in-app "what's new" card shows the top section of the change record. Generating it here
+// means a release cannot ship with last version's notes because someone forgot to copy them.
+val generateWhatsNew by tasks.registering {
+    val changeRecord = rootProject.file("PHYSIBOARD_CHANGES.md")
+    val versionName = android.defaultConfig.versionName ?: ""
+    val outDir = layout.buildDirectory.dir("generated/whatsnew/common")
+    inputs.file(changeRecord)
+    inputs.property("versionName", versionName)
+    outputs.dir(outDir)
+    doLast {
+        val lines = changeRecord.readLines()
+        // The section for this version; the newest released section when none matches, so an
+        // "Unreleased" heading at the top never reaches users.
+        val heading = lines.indexOfFirst { it.startsWith("## $versionName ") }
+            .takeIf { it >= 0 }
+            ?: lines.indexOfFirst { Regex("""^## \d+\.\d+""").containsMatchIn(it) }
+        val next = if (heading < 0) -1 else lines.drop(heading + 1).indexOfFirst { it.startsWith("## ") }
+        val section = when {
+            heading < 0 -> emptyList()
+            next < 0 -> lines.drop(heading + 1)
+            else -> lines.subList(heading + 1, heading + 1 + next)
+        }
+        val dir = outDir.get().asFile.apply { mkdirs() }
+        dir.resolve("whats_new.md").writeText(section.joinToString("\n").trim() + "\n")
+    }
+}
+tasks.named("preBuild") { dependsOn(generateWhatsNew) }
 
 dependencies {
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.lifecycle.livedata.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
-    implementation("androidx.appcompat:appcompat:1.6.1")
-    implementation("androidx.compose.material:material-icons-extended")
-    implementation("com.squareup.okhttp3:okhttp:4.11.0")
-    implementation("androidx.work:work-runtime-ktx:2.9.1")
-    // RecyclerView per performance ottimali nella griglia emoji
-    implementation("androidx.recyclerview:recyclerview:1.3.2")
-    // Emoji2 per supporto emoji future-proof
-    implementation("androidx.emoji2:emoji2:1.4.0")
-    implementation("androidx.emoji2:emoji2-views:1.4.0")
-    implementation("androidx.emoji2:emoji2-views-helper:1.4.0")
-    // Kotlinx Serialization for dictionary optimization
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-cbor:1.6.3")
+    implementation(libs.androidx.material.icons.extended)
+    implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.recyclerview)
+    implementation(libs.androidx.emoji2)
+    implementation(libs.androidx.emoji2.views)
+    implementation(libs.androidx.emoji2.views.helper)
+    implementation(libs.okhttp)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.kotlinx.serialization.cbor)
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.coroutines.android)
     // Shizuku for ADB shell access
-    implementation("dev.rikka.shizuku:api:13.1.5")
-    implementation("dev.rikka.shizuku:provider:13.1.5")
-    // Embedded wireless-ADB pairing (vendored moe.shizuku.manager.adb, physi test entry point)
-    implementation("org.bouncycastle:bcpkix-jdk18on:1.80")
-    implementation("org.lsposed.hiddenapibypass:hiddenapibypass:6.1")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
-    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.9.2")
+    implementation(libs.shizuku.api)
+    implementation(libs.shizuku.provider)
+    // Embedded wireless-ADB pairing (vendored moe.shizuku.manager.adb)
+    implementation(libs.bouncycastle.bcpkix)
+    implementation(libs.hiddenapibypass)
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
-    testImplementation("org.mockito:mockito-core:5.11.0")
+    testImplementation(libs.mockito.core)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

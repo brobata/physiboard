@@ -5,6 +5,13 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   gradle-checks:
     runs-on: ubuntu-latest
@@ -18,10 +25,11 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-          cache: gradle
 
-      - name: Make Gradle executable
-        run: chmod +x ./gradlew
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          validate-wrappers: true
 
       # 2.0 renamed the package. A half-landed rename leaves the tree carrying two brands, which is
       # worse than either end state, so fail the build rather than let one drift back in.
@@ -42,5 +50,20 @@ jobs:
       - name: Unit tests
         run: ./gradlew :app:testDebugUnitTest
 
-      - name: Assemble debug
-        run: ./gradlew :app:assembleDebug
+      - name: Lint
+        run: ./gradlew :app:lintDebug
+
+      # The sideload build runs the same R8 pipeline as the shipped build without needing the
+      # signing key, so ProGuard breakage shows up here rather than on release day.
+      - name: Assemble debug and sideload
+        run: ./gradlew :app:assembleDebug :app:assembleSideload
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports
+          path: |
+            app/build/reports/lint-results-debug.html
+            app/build/reports/tests/testDebugUnitTest
+          if-no-files-found: ignore

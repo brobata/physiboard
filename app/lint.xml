@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!-- Untranslated strings fall back to English. The count is tracked in the report; it must
+         not block a release, because the translations are refreshed in their own pass. -->
+    <issue id="MissingTranslation" severity="warning" />
+    <!-- The vendored Shizuku pairing code implements its own trust manager on purpose: ADB
+         pairing is TLS against a self-signed device key, verified by the pairing code. -->
+    <issue id="CustomX509TrustManager" severity="ignore">
+        <ignore path="src/main/java/moe/shizuku/manager/adb/AdbKey.kt" />
+    </issue>
+    <issue id="TrustAllX509TrustManager" severity="ignore" />
+</lint>

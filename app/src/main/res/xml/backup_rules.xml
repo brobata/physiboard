@@ -1,26 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-   Backup rules for the PhysiBoard keyboard app.
-   Ensures user customizations (layouts, mappings, settings) are preserved during updates.
-   See https://developer.android.com/guide/topics/data/autobackup for details.
-   Note: This file is ignored for devices older than API 31
-   See https://developer.android.com/about/versions/12/backup-restore
+   Backup rules for Android 11 and below. Android 12+ reads data_extraction_rules.xml instead;
+   keep the two files in step.
+   See https://developer.android.com/guide/topics/data/autobackup
 -->
 <full-backup-content>
-    <!-- Include all SharedPreferences (contains SYM mappings, auto-corrections, settings).
-         Restored device values stay stale until a matching GATT serial is freshly validated. -->
     <include domain="sharedpref" path="."/>
     <exclude domain="sharedpref" path="recent_emojis_prefs.xml"/>
-    
-    <!-- Include custom keyboard layouts directory -->
     <include domain="file" path="keyboard_layouts/"/>
-    
-    <!-- Include nav mode mappings file -->
     <include domain="file" path="ctrl_key_mappings.json"/>
-    
-    <!-- Include variations file -->
     <include domain="file" path="variations.json"/>
-
-    <!-- Include default/user dictionary file stored in app-private files -->
     <include domain="file" path="user_defaults.json"/>
 </full-backup-content>
