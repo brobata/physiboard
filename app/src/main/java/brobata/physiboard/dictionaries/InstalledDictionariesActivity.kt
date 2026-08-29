@@ -16,13 +16,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Delete
@@ -58,6 +54,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import brobata.physiboard.LocalizedComponentActivity
 import brobata.physiboard.R
+import brobata.physiboard.ui.SettingsTopBar
 import brobata.physiboard.ui.theme.PhysiBoardTheme
 import java.io.File
 import java.io.InputStream
@@ -246,51 +243,28 @@ fun InstalledDictionariesScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .windowInsetsPadding(WindowInsets.statusBars),
-                tonalElevation = 1.dp
+            SettingsTopBar(
+                title = stringResource(R.string.installed_dictionaries_title),
+                onBack = onBack
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.settings_back_content_description)
-                        )
-                    }
-                    Text(
-                        text = stringResource(R.string.installed_dictionaries_title),
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier
-                            .padding(start = 8.dp)
-                            .weight(1f)
+                if (isLoadingManifest) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp
                     )
-                    if (isLoadingManifest) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        IconButton(onClick = { refreshManifest() }) {
-                            Icon(
-                                imageVector = Icons.Filled.Refresh,
-                                contentDescription = stringResource(R.string.installed_dictionaries_refresh)
-                            )
-                        }
-                    }
-                    IconButton(onClick = { importLauncher.launch(arrayOf("*/*")) }) {
+                } else {
+                    IconButton(onClick = { refreshManifest() }) {
                         Icon(
-                            imageVector = Icons.Filled.Add,
-                            contentDescription = stringResource(R.string.installed_dictionaries_import)
+                            imageVector = Icons.Filled.Refresh,
+                            contentDescription = stringResource(R.string.installed_dictionaries_refresh)
                         )
                     }
+                }
+                IconButton(onClick = { importLauncher.launch(arrayOf("*/*")) }) {
+                    Icon(
+                        imageVector = Icons.Filled.Add,
+                        contentDescription = stringResource(R.string.installed_dictionaries_import)
+                    )
                 }
             }
         },

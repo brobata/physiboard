@@ -19,15 +19,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardCommandKey
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.activity.compose.BackHandler
 import androidx.compose.ui.res.stringResource
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.viewinterop.AndroidView
 import android.widget.ImageView
 import android.view.ViewGroup
@@ -48,6 +44,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import brobata.physiboard.commands.CommandLaunchSpec
 import brobata.physiboard.commands.CommandSourceId
 import brobata.physiboard.commands.PhysiBoardCommandSource
+import brobata.physiboard.ui.SettingsTopBar
 
 /**
  * Screen for managing launcher shortcuts.
@@ -146,32 +143,10 @@ fun LauncherShortcutsScreen(
             .verticalScroll(rememberScrollState())
     ) {
         // Header
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.statusBars),
-            tonalElevation = 1.dp
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = stringResource(R.string.settings_back_content_description)
-                    )
-                }
-                Text(
-                    text = stringResource(R.string.launcher_shortcuts_screen_title),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(start = 8.dp)
-                )
-            }
-        }
+        SettingsTopBar(
+            title = stringResource(R.string.launcher_shortcuts_screen_title),
+            onBack = onBack
+        )
         
         Spacer(modifier = Modifier.height(16.dp))
 

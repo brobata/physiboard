@@ -13,7 +13,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -26,6 +25,7 @@ import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import brobata.physiboard.ui.SettingsTopBar
 import kotlinx.coroutines.launch
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.ui.Modifier
@@ -37,9 +37,6 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import brobata.physiboard.inputmethod.subtype.AdditionalSubtypeUtils.localeString
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.activity.compose.BackHandler
 import brobata.physiboard.data.layout.LayoutFileStore
 import brobata.physiboard.data.layout.LayoutMappingRepository
@@ -100,58 +97,35 @@ fun CustomInputStylesScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .windowInsetsPadding(WindowInsets.statusBars),
-                tonalElevation = 1.dp
+            SettingsTopBar(
+                title = stringResource(R.string.custom_input_styles_title),
+                onBack = onBack
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                IconButton(
+                    onClick = {
+                        context.startActivity(
+                            Intent(context, InstalledDictionariesActivity::class.java)
+                        )
+                    }
                 ) {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.settings_back_content_description)
-                        )
-                    }
-                    Text(
-                        text = stringResource(R.string.custom_input_styles_title),
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier
-                            .padding(start = 8.dp)
-                            .weight(1f)
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.MenuBook,
+                        contentDescription = stringResource(R.string.custom_input_styles_installed_dictionaries)
                     )
-                    IconButton(
-                        onClick = {
-                            context.startActivity(
-                                Intent(context, InstalledDictionariesActivity::class.java)
-                            )
-                        }
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.MenuBook,
-                            contentDescription = stringResource(R.string.custom_input_styles_installed_dictionaries)
-                        )
+                }
+                IconButton(
+                    onClick = {
+                        editStyle = null
+                        lastDialogLocale = null
+                        lastDialogLayout = null
+                        lastDialogSuggestionLocales = null
+                        showAddDialog = true
                     }
-                    IconButton(
-                        onClick = {
-                            editStyle = null
-                            lastDialogLocale = null
-                            lastDialogLayout = null
-                            lastDialogSuggestionLocales = null
-                            showAddDialog = true
-                        }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = stringResource(R.string.custom_input_styles_add)
-                        )
-                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = stringResource(R.string.custom_input_styles_add)
+                    )
                 }
             }
         },

@@ -6,13 +6,9 @@ import android.util.Log
 import androidx.activity.compose.setContent
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Check
@@ -34,6 +30,7 @@ import brobata.physiboard.data.layout.LayoutManifest
 import brobata.physiboard.data.layout.LayoutMappingRepository
 import brobata.physiboard.data.layout.LayoutRepositoryManager
 import brobata.physiboard.data.layout.LayoutDownloadResult
+import brobata.physiboard.ui.SettingsTopBar
 import brobata.physiboard.ui.theme.PhysiBoardTheme
 import kotlinx.coroutines.launch
 
@@ -155,44 +152,21 @@ fun OnlineLayoutsScreen(
     Scaffold(
         modifier = modifier,
         topBar = {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .windowInsetsPadding(WindowInsets.statusBars),
-                tonalElevation = 1.dp
+            SettingsTopBar(
+                title = stringResource(R.string.online_layouts_title),
+                onBack = onBack
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.settings_back_content_description)
-                        )
-                    }
-                    Text(
-                        text = stringResource(R.string.online_layouts_title),
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier
-                            .padding(start = 8.dp)
-                            .weight(1f)
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp
                     )
-                    if (isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            strokeWidth = 2.dp
+                } else {
+                    IconButton(onClick = { refreshManifest() }) {
+                        Icon(
+                            imageVector = Icons.Filled.Refresh,
+                            contentDescription = stringResource(R.string.online_layouts_refresh)
                         )
-                    } else {
-                        IconButton(onClick = { refreshManifest() }) {
-                            Icon(
-                                imageVector = Icons.Filled.Refresh,
-                                contentDescription = stringResource(R.string.online_layouts_refresh)
-                            )
-                        }
                     }
                 }
             }

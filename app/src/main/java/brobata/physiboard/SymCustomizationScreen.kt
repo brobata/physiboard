@@ -10,9 +10,6 @@ import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.*
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
@@ -28,7 +25,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Edit
@@ -39,6 +35,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import brobata.physiboard.R
 import brobata.physiboard.inputmethod.StatusBarController
+import brobata.physiboard.ui.SettingsTopBar
 import kotlinx.coroutines.launch
 
 /**
@@ -276,38 +273,16 @@ fun SymCustomizationScreen(
     
     Scaffold(
         topBar = {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .windowInsetsPadding(WindowInsets.statusBars),
-                tonalElevation = 1.dp
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = {
-                        if (editingLayerPage != null) editingLayerPage = null else onBack()
-                    }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.settings_back_content_description)
-                        )
-                    }
-                    Text(
-                        text = when (editingLayerPage) {
-                            1 -> stringResource(R.string.sym_edit_emoji_layer_title)
-                            2 -> stringResource(R.string.sym_edit_symbols_layer_title)
-                            else -> stringResource(R.string.sym_customize_title)
-                        },
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(start = 8.dp)
-                    )
+            SettingsTopBar(
+                title = when (editingLayerPage) {
+                    1 -> stringResource(R.string.sym_edit_emoji_layer_title)
+                    2 -> stringResource(R.string.sym_edit_symbols_layer_title)
+                    else -> stringResource(R.string.sym_customize_title)
+                },
+                onBack = {
+                    if (editingLayerPage != null) editingLayerPage = null else onBack()
                 }
-            }
+            )
         }
     ) { paddingValues ->
         Column(
