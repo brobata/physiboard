@@ -51,3 +51,6 @@ debug-logs/
 docs/**/*.apk
 docs/**/*.jar
 docs/**/*.dex
+
+# Agent worktrees
+/.claude/worktrees/
