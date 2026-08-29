@@ -44,6 +44,9 @@ class AltSymManager(
 
     private val altKeyMap = mutableMapOf<Int, String>()
     private val deviceSymKeyMap = mutableMapOf<Int, String>()
+    // Software-keyboard variant of the Alt layer; loaded on demand because the physical
+    // layer above differs when the binding is device:auto.
+    private var virtualAltKeyMap: Map<Int, String>? = null
     private val symKeyMap = mutableMapOf<Int, String>()
     private val symKeyMap2 = mutableMapOf<Int, String>()
     private val symKeyMapUppercase = mutableMapOf<Int, String>()
@@ -77,9 +80,21 @@ class AltSymManager(
         altKeyMap.putAll(KeyMappingLoader.loadAltKeyMappings(assets, context))
         deviceSymKeyMap.clear()
         context?.let { deviceSymKeyMap.putAll(KeyMappingLoader.loadDeviceSymKeyMappings(assets, it)) }
+        virtualAltKeyMap = null
     }
 
     fun getAltMappings(): Map<Int, String> = altKeyMap
+
+    fun getVirtualAltMappings(): Map<Int, String> {
+        virtualAltKeyMap?.let { return it }
+        val loaded = if (context != null) {
+            KeyMappingLoader.loadVirtualAltKeyMappings(assets, context)
+        } else {
+            KeyMappingLoader.loadVirtualAltKeyMappings(assets)
+        }
+        virtualAltKeyMap = loaded
+        return loaded
+    }
 
     fun getDeviceSymMappings(): Map<Int, String> = deviceSymKeyMap
 

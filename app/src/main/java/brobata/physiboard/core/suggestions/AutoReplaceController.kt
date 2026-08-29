@@ -448,24 +448,24 @@ class AutoReplaceController(
             && (top.candidate.length <= (word.length * maxLengthRatio).toInt() ||
                 hasSingleRepeatedCharInsertion(word, top.candidate)) // Max length ratio check on full text
 
-	        if (shouldReplace) {
-	            val replacement = applyCasing(top!!.candidate, word)
-	            if (replacement == word) {
-	                DebugCaptureStore.recordAutoCorrectionAttempt(
-	                    before = word,
-	                    trigger = trigger,
-	                    source = top.source.name,
-	                    after = top.candidate,
-	                    outcome = DebugCaptureStore.AutoCorrectionOutcome.SKIPPED,
-	                    reason = "same_replacement",
-	                    distance = top.distance,
-	                    kind = top.kind.name
-	                )
-	                val boundaryCommitted = commitBoundaryAndReset(tracker, inputConnection, boundaryChar, settings)
-	                return ReplaceResult(false, boundaryCommitted)
-	            }
-	            val source = top.source.name
-	            inputConnection.beginBatchEdit()
+        if (shouldReplace) {
+            val replacement = applyCasing(top!!.candidate, word)
+            if (replacement == word) {
+                DebugCaptureStore.recordAutoCorrectionAttempt(
+                    before = word,
+                    trigger = trigger,
+                    source = top.source.name,
+                    after = top.candidate,
+                    outcome = DebugCaptureStore.AutoCorrectionOutcome.SKIPPED,
+                    reason = "same_replacement",
+                    distance = top.distance,
+                    kind = top.kind.name
+                )
+                val boundaryCommitted = commitBoundaryAndReset(tracker, inputConnection, boundaryChar, settings)
+                return ReplaceResult(false, boundaryCommitted)
+            }
+            val source = top.source.name
+            inputConnection.beginBatchEdit()
             inputConnection.deleteSurroundingText(word.length, 0)
             val shouldAppendBoundary = boundaryChar != null &&
                 !(boundaryChar == ' ' && replacement.endsWith("'"))

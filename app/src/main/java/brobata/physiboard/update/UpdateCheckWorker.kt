@@ -43,7 +43,6 @@ class UpdateCheckWorker(
         checkForUpdate(
             context = context,
             currentVersion = BuildConfig.VERSION_NAME,
-            releaseChannel = BuildConfig.RELEASE_CHANNEL,
             // Respect releases dismissed by the user via the dialog.
             ignoreDismissedReleases = true
         ) { hasUpdate, latestVersion, downloadUrl, releasePageUrl ->

@@ -30,6 +30,11 @@ class TrackpadGestureDetector(
 ) {
 
     private var geteventJob: Job? = null
+    // readLine() blocks, so cancelling the job alone never ends the loop; destroying the
+    // process closes the stream and lets the reader thread finish.
+    @Volatile
+    private var geteventProcess: Process? = null
+    private val processLock = Any()
     private var touchDown = false
     private var startX = 0
     private var startY = 0
@@ -73,7 +78,7 @@ class TrackpadGestureDetector(
             return
         }
 
-        geteventJob?.cancel()
+        stopGetevent()
         Log.d(DEBUG_TAG, "start() launching getevent coroutine...")
         geteventJob = scope.launch(Dispatchers.IO) {
             try {
@@ -93,6 +98,15 @@ class TrackpadGestureDetector(
                     null,
                     null
                 ) as Process
+                // stop() may have run while newProcess was in flight; the process it could not
+                // see must not outlive the job.
+                val stopped = synchronized(processLock) {
+                    if (isActive) { geteventProcess = process; false } else true
+                }
+                if (stopped) {
+                    process.destroy()
+                    return@launch
+                }
 
                 Log.d(DEBUG_TAG, "getevent process started successfully, reading events...")
                 BufferedReader(InputStreamReader(process.inputStream)).use { reader ->
@@ -105,6 +119,11 @@ class TrackpadGestureDetector(
             } catch (e: Exception) {
                 Log.e(DEBUG_TAG, "getevent coroutine FAILED: ${e.message}", e)
                 Log.e(logTag, "Trackpad getevent failed", e)
+            } finally {
+                synchronized(processLock) {
+                    geteventProcess?.destroy()
+                    geteventProcess = null
+                }
             }
         }
         Log.d(DEBUG_TAG, "start() completed - getevent job launched")
@@ -113,9 +132,17 @@ class TrackpadGestureDetector(
 
     fun stop() {
         Log.d(DEBUG_TAG, "stop() called - had active job: ${geteventJob != null}")
+        stopGetevent()
+        Log.d(logTag, "Trackpad gesture detection stopped")
+    }
+
+    private fun stopGetevent() {
         geteventJob?.cancel()
         geteventJob = null
-        Log.d(logTag, "Trackpad gesture detection stopped")
+        synchronized(processLock) {
+            geteventProcess?.destroy()
+            geteventProcess = null
+        }
     }
 
     /**

@@ -16,6 +16,10 @@ class ClipboardHistoryManager(
 
     private lateinit var clipboardManager: ClipboardManager
     private var clipboardDao: ClipboardDao? = null
+
+    // A DAO that failed to open at startup is retried on the next use instead of staying null.
+    private val dao: ClipboardDao?
+        get() = clipboardDao ?: ClipboardDao.getInstance(context).also { clipboardDao = it }
     private var isEnabled: Boolean = true // TODO: Add setting
 
     fun onCreate() {
@@ -52,16 +56,16 @@ class ClipboardHistoryManager(
             if (TextUtils.isEmpty(content)) return
 
             val retentionMinutes = getClipboardRetentionTime()
-            clipboardDao?.addClip(timeStamp, false, content.toString(), retentionMinutes)
+            dao?.addClip(timeStamp, false, content.toString(), retentionMinutes)
         }
     }
 
     fun toggleClipPinned(id: Long) {
-        clipboardDao?.togglePinned(id)
+        dao?.togglePinned(id)
     }
 
     fun clearHistory() {
-        clipboardDao?.clearNonPinned()
+        dao?.clearNonPinned()
         try {
             // Clear system clipboard (API 28+)
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
@@ -72,7 +76,7 @@ class ClipboardHistoryManager(
         }
     }
 
-    fun canRemove(index: Int) = clipboardDao?.isPinned(index) == false
+    fun canRemove(index: Int) = dao?.isPinned(index) == false
 
     fun removeEntry(index: Int, force: Boolean = false) {
         val entry = getHistoryEntry(index) ?: return
@@ -86,30 +90,30 @@ class ClipboardHistoryManager(
             val updatedIndex = (0 until getHistorySize()).firstOrNull { idx ->
                 getHistoryEntry(idx)?.id == entry.id
             }
-            updatedIndex?.let { clipboardDao?.deleteClipAt(it) }
+            updatedIndex?.let { dao?.deleteClipAt(it) }
         } else {
-            clipboardDao?.deleteClipAt(index)
+            dao?.deleteClipAt(index)
         }
     }
 
     fun sortHistoryEntries() {
-        clipboardDao?.sort()
+        dao?.sort()
     }
 
     fun prepareClipboardHistory() {
         // Clear old clips before showing history
         val retentionMinutes = getClipboardRetentionTime()
-        clipboardDao?.clearOldClips(true, retentionMinutes)
+        dao?.clearOldClips(true, retentionMinutes)
     }
 
-    fun getHistorySize() = clipboardDao?.count() ?: 0
+    fun getHistorySize() = dao?.count() ?: 0
 
-    fun getHistoryEntry(position: Int) = clipboardDao?.getAt(position)
+    fun getHistoryEntry(position: Int) = dao?.getAt(position)
 
-    fun getHistoryEntryContent(id: Long) = clipboardDao?.get(id)
+    fun getHistoryEntryContent(id: Long) = dao?.get(id)
 
     fun setHistoryChangeListener(listener: ClipboardDao.Listener?) {
-        clipboardDao?.listener = listener
+        dao?.listener = listener
     }
 
     /**

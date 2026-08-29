@@ -7,8 +7,8 @@ import org.junit.Test
 class UpdateCheckerFlavorLogicTest {
 
     @Test
-    fun stableChannelUsesLatestNonPrerelease() {
-        val release = findLatestRelease(sampleReleases(), "stable")
+    fun latestReleaseSkipsPrereleases() {
+        val release = findLatestRelease(sampleReleases())
 
         requireNotNull(release)
         assertEquals("v0.85", release.tagName)
@@ -17,17 +17,7 @@ class UpdateCheckerFlavorLogicTest {
     }
 
     @Test
-    fun nightlyChannelUsesLatestNightlyPrerelease() {
-        val release = findLatestRelease(sampleReleases(), "nightly")
-
-        requireNotNull(release)
-        assertEquals("nightly/v0.85-nightly.20260306.214144", release.tagName)
-        assertEquals("https://example.com/nightly.apk", release.downloadUrl)
-        assertEquals("https://example.com/releases/nightly-v0.85-nightly.20260306.214144", release.releasePageUrl)
-    }
-
-    @Test
-    fun nightlyChannelIgnoresNonNightlyPrereleases() {
+    fun onlyPrereleasesYieldsNothing() {
         val releases = listOf(
             GitHubRelease(
                 tagName = "beta/v0.85-beta1",
@@ -38,27 +28,26 @@ class UpdateCheckerFlavorLogicTest {
             )
         )
 
-        assertNull(findLatestRelease(releases, "nightly"))
+        assertNull(findLatestRelease(releases))
     }
 
     @Test
     fun normalizeReleaseVersionStripsKnownPrefixes() {
         assertEquals("0.85", normalizeReleaseVersion("v0.85"))
         assertEquals("0.85", normalizeReleaseVersion("V0.85"))
-        assertEquals("0.85-nightly.20260306.214144", normalizeReleaseVersion("nightly/v0.85-nightly.20260306.214144"))
     }
 
     private fun sampleReleases(): List<GitHubRelease> =
         listOf(
             GitHubRelease(
-                tagName = "nightly/v0.85-nightly.20260306.214144",
+                tagName = "v0.86-rc1",
                 prerelease = true,
                 draft = false,
-                htmlUrl = "https://example.com/releases/nightly-v0.85-nightly.20260306.214144",
+                htmlUrl = "https://example.com/releases/v0.86-rc1",
                 assets = listOf(
                     ReleaseAsset(
-                        name = "pastiera-nightly.apk",
-                        browserDownloadUrl = "https://example.com/nightly.apk"
+                        name = "physiboard-rc.apk",
+                        browserDownloadUrl = "https://example.com/rc.apk"
                     )
                 )
             ),

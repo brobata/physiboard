@@ -2,13 +2,13 @@ package brobata.physiboard.clipboard
 
 /**
  * Represents a single clipboard history entry.
- * @param id Unique identifier for the entry
+ * @param id Row id; assigned once the background insert completes, [ClipboardDao.PENDING_ID] until then
  * @param timeStamp When the entry was created/last updated (System.currentTimeMillis())
  * @param isPinned Whether the entry is pinned (won't be auto-deleted)
  * @param text The clipboard text content
  */
 data class ClipboardHistoryEntry(
-    val id: Long,
+    @Volatile var id: Long,
     var timeStamp: Long,
     var isPinned: Boolean,
     val text: String

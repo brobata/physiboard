@@ -1894,6 +1894,8 @@ object SettingsManager {
             mkdirs()
         }
         val finalDir = File(targetDir, TYPING_SOUND_CUSTOM_PACK_DIR)
+        val previousDir = File(targetDir, "${TYPING_SOUND_CUSTOM_PACK_DIR}.old").apply { deleteRecursively() }
+        var previousMovedAside = false
 
         return try {
             context.contentResolver.openInputStream(uri)?.use { input ->
@@ -1905,11 +1907,18 @@ object SettingsManager {
                 return false
             }
 
-            finalDir.deleteRecursively()
+            if (finalDir.exists()) {
+                if (!finalDir.renameTo(previousDir)) {
+                    stagingDir.deleteRecursively()
+                    return false
+                }
+                previousMovedAside = true
+            }
             if (!stagingDir.renameTo(finalDir)) {
                 stagingDir.copyRecursively(finalDir, overwrite = true)
                 stagingDir.deleteRecursively()
             }
+            previousDir.deleteRecursively()
 
             getPreferences(context).edit()
                 .putString(KEY_TYPING_SOUND_CUSTOM_FILE_NAME, finalDir.name)
@@ -1921,6 +1930,12 @@ object SettingsManager {
         } catch (e: Exception) {
             Log.e(TAG, "Error importing typing sound", e)
             stagingDir.deleteRecursively()
+            if (previousMovedAside) {
+                finalDir.deleteRecursively()
+                if (!previousDir.renameTo(finalDir)) {
+                    Log.e(TAG, "Could not restore the previous typing sound pack")
+                }
+            }
             false
         }
     }
@@ -3124,7 +3139,7 @@ object SettingsManager {
     /**
      * Saves custom SYM mappings.
      */
-    fun saveSymMappings(context: Context, mappings: Map<Int, String>) {
+    fun saveSymMappings(context: Context, mappings: Map<Int, String>): Boolean {
         try {
             val keyCodeToName = mapOf(
                 KeyEvent.KEYCODE_Q to "KEYCODE_Q", KeyEvent.KEYCODE_W to "KEYCODE_W",
@@ -3156,8 +3171,10 @@ object SettingsManager {
             getPreferences(context).edit()
                 .putString(KEY_SYM_MAPPINGS_CUSTOM, jsonObject.toString())
                 .apply()
+            return true
         } catch (e: Exception) {
             Log.e(TAG, "Error saving custom SYM mappings", e)
+            return false
         }
     }
     
@@ -3225,7 +3242,7 @@ object SettingsManager {
     /**
      * Saves custom SYM mappings for page 2.
      */
-    fun saveSymMappingsPage2(context: Context, mappings: Map<Int, String>) {
+    fun saveSymMappingsPage2(context: Context, mappings: Map<Int, String>): Boolean {
         try {
             val keyCodeToName = mapOf(
                 KeyEvent.KEYCODE_Q to "KEYCODE_Q", KeyEvent.KEYCODE_W to "KEYCODE_W",
@@ -3257,8 +3274,10 @@ object SettingsManager {
             getPreferences(context).edit()
                 .putString(KEY_SYM_MAPPINGS_PAGE2_CUSTOM, jsonObject.toString())
                 .apply()
+            return true
         } catch (e: Exception) {
             Log.e(TAG, "Error saving custom SYM page 2 mappings", e)
+            return false
         }
     }
     
@@ -3644,7 +3663,7 @@ object SettingsManager {
         languageCode: String, 
         corrections: Map<String, String>,
         languageName: String? = null
-    ) {
+    ): Boolean {
         try {
             val jsonObject = JSONObject()
             
@@ -3671,8 +3690,10 @@ object SettingsManager {
             getPreferences(context).edit()
                 .putString(key, jsonObject.toString())
                 .apply()
+            return true
         } catch (e: Exception) {
             Log.e(TAG, "Error saving custom corrections for $languageCode", e)
+            return false
         }
     }
     
@@ -3992,9 +4013,17 @@ object SettingsManager {
         return getLauncherShortcutsRaw(context)
     }
 
+    // Parsed shortcuts keyed on the JSON they came from; every writer goes through the
+    // preference, so a changed string is the only invalidation needed.
+    @Volatile
+    private var launcherShortcutsCache: Pair<String, Map<Int, LauncherShortcut>>? = null
+
     private fun getLauncherShortcutsRaw(context: Context): Map<Int, LauncherShortcut> {
         val prefs = getPreferences(context)
         val shortcutsJson = prefs.getString(KEY_LAUNCHER_SHORTCUTS, "{}") ?: "{}"
+        launcherShortcutsCache?.let { (json, parsed) ->
+            if (json == shortcutsJson) return parsed
+        }
         val shortcuts = mutableMapOf<Int, LauncherShortcut>()
         
         try {
@@ -4027,6 +4056,7 @@ object SettingsManager {
             Log.e(TAG, "Failed to load the shortcuts", e)
         }
         
+        launcherShortcutsCache = shortcutsJson to shortcuts
         return shortcuts
     }
     
@@ -4573,7 +4603,7 @@ object SettingsManager {
     /**
      * Saves nav mode key mappings to the JSON file in filesDir.
      */
-    fun saveNavModeKeyMappings(context: Context, mappings: Map<Int, brobata.physiboard.data.mappings.KeyMappingLoader.CtrlMapping>) {
+    fun saveNavModeKeyMappings(context: Context, mappings: Map<Int, brobata.physiboard.data.mappings.KeyMappingLoader.CtrlMapping>): Boolean {
         try {
             val keyCodeToName = mapOf(
                 KeyEvent.KEYCODE_Q to "KEYCODE_Q", KeyEvent.KEYCODE_W to "KEYCODE_W",
@@ -4642,8 +4672,10 @@ object SettingsManager {
                 .apply()
             
             Log.d(TAG, "Nav mode key mappings saved")
+            return true
         } catch (e: Exception) {
             Log.e(TAG, "Error saving nav mode key mappings", e)
+            return false
         }
     }
     
@@ -5110,7 +5142,7 @@ object SettingsManager {
     /**
      * Persists the SYM pages configuration (enabled pages and order).
      */
-    fun setSymPagesConfig(context: Context, config: SymPagesConfig) {
+    fun setSymPagesConfig(context: Context, config: SymPagesConfig): Boolean {
         try {
             val jsonObject = JSONObject().apply {
                 put("deviceEnabled", config.deviceEnabled)
@@ -5128,8 +5160,10 @@ object SettingsManager {
             getPreferences(context).edit()
                 .putString(KEY_SYM_PAGES_CONFIG, jsonObject.toString())
                 .apply()
+            return true
         } catch (e: Exception) {
             Log.e(TAG, "Error saving SYM pages config", e)
+            return false
         }
     }
 
@@ -5628,7 +5662,7 @@ object SettingsManager {
         staticVariations: List<String>? = null,
         staticVariationsShift: List<String>? = null,
         staticVariationsAlt: List<String>? = null
-    ) {
+    ): Boolean {
         try {
             val variationsObject = JSONObject()
             for ((letter, chars) in variations) {
@@ -5675,8 +5709,10 @@ object SettingsManager {
             notifyVariationsUpdated(context)
             
             Log.d(TAG, "Variations saved to ${getVariationsFile(context).absolutePath}")
+            return true
         } catch (e: Exception) {
             Log.e(TAG, "Error saving variations", e)
+            return false
         }
     }
 
@@ -5837,12 +5873,13 @@ object SettingsManager {
         locale: String,
         layout: String,
         locales: List<String>
-    ) {
+    ): Boolean {
         val prefs = getPreferences(context)
         val root = try {
             org.json.JSONObject(prefs.getString(KEY_INPUT_STYLE_SUGGESTION_LOCALES, null) ?: "{}")
-        } catch (_: Exception) {
-            org.json.JSONObject()
+        } catch (e: org.json.JSONException) {
+            Log.e(TAG, "Stored suggestion locales are unreadable; not overwriting them", e)
+            return false
         }
         val key = inputStyleSuggestionKey(locale, layout)
         val normalized = locales
@@ -5859,6 +5896,7 @@ object SettingsManager {
         prefs.edit()
             .putString(KEY_INPUT_STYLE_SUGGESTION_LOCALES, root.toString())
             .apply()
+        return true
     }
 
     fun removeAdditionalSuggestionLocalesForInputStyle(
@@ -5869,7 +5907,8 @@ object SettingsManager {
         val prefs = getPreferences(context)
         val root = try {
             org.json.JSONObject(prefs.getString(KEY_INPUT_STYLE_SUGGESTION_LOCALES, null) ?: "{}")
-        } catch (_: Exception) {
+        } catch (e: org.json.JSONException) {
+            Log.e(TAG, "Stored suggestion locales are unreadable; not overwriting them", e)
             return
         }
         root.remove(inputStyleSuggestionKey(locale, layout))

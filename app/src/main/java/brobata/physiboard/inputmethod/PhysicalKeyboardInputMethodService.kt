@@ -1891,6 +1891,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             override fun onClipMoved(oldPosition: Int, newPosition: Int) {
                 postClipboardBadgeUpdate()
             }
+
+            override fun onHistoryLoaded() {
+                postClipboardBadgeUpdate()
+            }
         })
         altSymManager = AltSymManager(
             assets = assets,
@@ -2252,12 +2256,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         
         val filter = IntentFilter(SpeechRecognitionActivity.ACTION_SPEECH_RESULT)
         
-        // On Android 13+ (API 33+) we must specify whether the receiver is exported
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(speechResultReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
-        } else {
-            registerReceiver(speechResultReceiver, filter)
-        }
+        ContextCompat.registerReceiver(this, speechResultReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
         
         Log.d(TAG, "Broadcast receiver registered for: ${SpeechRecognitionActivity.ACTION_SPEECH_RESULT}")
         
@@ -2286,11 +2285,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             addAction(PermissionRequestActivity.ACTION_PERMISSION_DENIED)
         }
         
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(permissionResultReceiver, permissionFilter, ContextCompat.RECEIVER_NOT_EXPORTED)
-        } else {
-            registerReceiver(permissionResultReceiver, permissionFilter)
-        }
+        ContextCompat.registerReceiver(this, permissionResultReceiver, permissionFilter, ContextCompat.RECEIVER_NOT_EXPORTED)
         
         Log.d(TAG, "Broadcast receiver registered for permission request results")
         
@@ -2307,11 +2302,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
         
         val userDictFilter = IntentFilter(AppBroadcastActions.USER_DICTIONARY_UPDATED)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(userDictionaryReceiver, userDictFilter, ContextCompat.RECEIVER_NOT_EXPORTED)
-        } else {
-            registerReceiver(userDictionaryReceiver, userDictFilter)
-        }
+        ContextCompat.registerReceiver(this, userDictionaryReceiver, userDictFilter, ContextCompat.RECEIVER_NOT_EXPORTED)
         
         Log.d(TAG, "Broadcast receiver registered for user dictionary updates")
         
@@ -2326,11 +2317,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         }
         
         val subtypesFilter = IntentFilter("brobata.physiboard.ACTION_ADDITIONAL_SUBTYPES_UPDATED")
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(additionalSubtypesReceiver, subtypesFilter, ContextCompat.RECEIVER_NOT_EXPORTED)
-        } else {
-            registerReceiver(additionalSubtypesReceiver, subtypesFilter)
-        }
+        ContextCompat.registerReceiver(this, additionalSubtypesReceiver, subtypesFilter, ContextCompat.RECEIVER_NOT_EXPORTED)
         
         Log.d(TAG, "Broadcast receiver registered for additional subtypes updates")
 
@@ -3060,7 +3047,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         if (!shouldShowSoftwareAltPreview(modifierSnapshot)) {
             return emptyMap()
         }
-        val altMappings = KeyMappingLoader.loadVirtualAltKeyMappings(assets, this)
+        val altMappings = altSymManager.getVirtualAltMappings()
         return SOFTWARE_PREVIEW_KEY_CODES.mapNotNull { keyCode ->
             val label = altMappings[keyCode]?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
             keyCode to label
@@ -3795,7 +3782,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     
     /**
      * Gets the locale from an IME subtype.
-     * Falls back to the current subtype, then Italian if no subtype is available.
+     * Falls back to the current subtype, then the device locale if the subtype cannot be parsed.
      */
     private fun getLocaleFromSubtype(subtypeOverride: InputMethodSubtype? = null): Locale {
         val imm = getSystemService(InputMethodManager::class.java)
@@ -3804,8 +3791,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         return try {
             AdditionalSubtypeUtils.localeFromSubtypeString(localeString)
         } catch (e: Exception) {
-            Log.w(TAG, "Failed to parse locale from subtype: $localeString", e)
-            Locale.ITALIAN
+            Log.e(TAG, "Failed to parse locale from subtype: $localeString", e)
+            Locale.getDefault()
         }
     }
 
@@ -4721,7 +4708,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 capsLockEnabled = capsLockEnabled,
                 cursorUpdateDelayMs = CURSOR_UPDATE_DELAY,
                 altMappingsOverride = if (dispatchingSoftwareKeyboardKey) {
-                    KeyMappingLoader.loadVirtualAltKeyMappings(assets, this)
+                    altSymManager.getVirtualAltMappings()
                 } else {
                     null
                 },

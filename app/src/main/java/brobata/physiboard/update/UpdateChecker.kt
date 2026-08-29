@@ -6,6 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import brobata.physiboard.BuildConfig
 import brobata.physiboard.R
 import brobata.physiboard.SettingsManager
@@ -15,6 +16,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import org.json.JSONArray
+import org.json.JSONException
 import org.json.JSONObject
 import java.io.IOException
 
@@ -23,13 +25,14 @@ private const val GITHUB_RELEASES_URL =
 const val GITHUB_RELEASES_PAGE =
     "https://github.com/${BuildConfig.GITHUB_REPO}/releases"
 
+private const val TAG = "UpdateChecker"
+
 private val client = OkHttpClient()
 private val mainHandler = Handler(Looper.getMainLooper())
 
 fun checkForUpdate(
     context: Context,
     currentVersion: String,
-    releaseChannel: String,
     ignoreDismissedReleases: Boolean = true,
     callback: (hasUpdate: Boolean, latestVersion: String?, downloadUrl: String?, releasePageUrl: String?) -> Unit
 ) {
@@ -45,6 +48,7 @@ fun checkForUpdate(
 
     client.newCall(request).enqueue(object : Callback {
         override fun onFailure(call: Call, e: IOException) {
+            Log.e(TAG, "Update check request failed", e)
             postResult(callback, false, null, null, null)
         }
 
@@ -61,7 +65,14 @@ fun checkForUpdate(
                     return
                 }
 
-                val latestRelease = findLatestRelease(parseGitHubReleases(JSONArray(body)), releaseChannel)
+                val releases = try {
+                    parseGitHubReleases(JSONArray(body))
+                } catch (e: JSONException) {
+                    Log.e(TAG, "Update check returned a malformed release list", e)
+                    postResult(callback, false, null, null, null)
+                    return
+                }
+                val latestRelease = findLatestRelease(releases)
                 if (latestRelease == null) {
                     postResult(callback, false, null, null, null)
                     return

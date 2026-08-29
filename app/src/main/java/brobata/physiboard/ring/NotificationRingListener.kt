@@ -77,6 +77,11 @@ class NotificationRingListener : NotificationListenerService() {
         showing.runOnUiThread { showing.removeSource(sbn.key) }
     }
 
+    override fun onDestroy() {
+        worker.shutdownNow()
+        super.onDestroy()
+    }
+
     /**
      * True when the proximity sensor reports something against the glass. Waits at most
      * [PROXIMITY_WAIT_MS] for a reading; no sensor, or no reading in time, counts as clear —

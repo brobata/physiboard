@@ -1,11 +1,13 @@
 package brobata.physiboard.inputmethod
 
 import android.content.Context
+import android.os.Build
 import android.provider.Settings
 import android.util.Log
 import androidx.lifecycle.Observer
 import moe.shizuku.manager.adb.AdbClient
 import moe.shizuku.manager.adb.AdbKey
+import moe.shizuku.manager.adb.AdbKeyException
 import moe.shizuku.manager.adb.AdbMdns
 import moe.shizuku.manager.adb.EmbeddedAdbInit
 import moe.shizuku.manager.adb.PreferenceAdbKeyStore
@@ -59,6 +61,8 @@ object EmbeddedAdbShell {
      * advertised within [MDNS_POLL_SECONDS]. BLOCKING; call off the main thread.
      */
     fun discoverPort(context: Context): Int? {
+        // Wireless debugging (and its mDNS advertisement) only exists from Android 11.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return null
         EmbeddedAdbInit.ensure()
         val portQueue = ArrayBlockingQueue<Int>(1)
         val observer = Observer<Int> { p -> if (p > 0) portQueue.offer(p) }
@@ -102,8 +106,16 @@ object EmbeddedAdbShell {
             Log.w(TAG, "embedded adb shell: $lastError")
             return false
         }
+        val keyStore = PreferenceAdbKeyStore(EmbeddedAdbInit.prefs(context))
         return try {
-            val key = AdbKey(PreferenceAdbKeyStore(EmbeddedAdbInit.prefs(context)), EmbeddedAdbInit.KEY_NAME)
+            val key = try {
+                AdbKey(keyStore, EmbeddedAdbInit.KEY_NAME)
+            } catch (e: AdbKeyException) {
+                // The phone still trusts the old key and we can no longer sign with it, so the
+                // pairing is gone either way. Forgetting it makes the setup card ask to pair again.
+                keyStore.clear()
+                throw e
+            }
             AdbClient("127.0.0.1", port, key).use { client ->
                 client.connect()
                 val sb = StringBuilder()
@@ -113,7 +125,7 @@ object EmbeddedAdbShell {
             lastError = null
             true
         } catch (t: Throwable) {
-            Log.w(TAG, "embedded adb shell failed", t)
+            Log.e(TAG, "embedded adb shell failed", t)
             lastError = "${t.javaClass.simpleName}: ${t.message}"
             false
         }
