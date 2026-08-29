@@ -1664,4 +1664,7 @@ Chaque touche peut être configurée comme Keycode, Action, Native Ctrl ou Aucun
     <string name="caret_badge_color_locked">Couleur verrouillée</string>
     <string name="caret_badge_color_locked_description">Verrouillage majuscules, Alt et Ctrl, qui restent actifs jusqu\'à ce que vous les désactiviez</string>
     <string name="caret_badge_color_pick">Un modificateur maintenu enfoncé est affiché dans une version atténuée de ces couleurs.</string>
+    <string name="status_bar_height_title">Hauteur de la barre</string>
+    <string name="status_bar_height_description">Hauteur de la barre avec le clavier physique. 56 correspond à un champ de texte ; 48 est la plus petite cible confortable. 36 est inférieur à la cible tactile minimale d\'Android — difficile à atteindre volontairement, pour quand vous tapez sur les touches et vous contentez de lire la barre.</string>
+    <string name="status_bar_height_option">%1$d</string>
 </resources>

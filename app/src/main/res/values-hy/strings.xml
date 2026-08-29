@@ -1664,4 +1664,7 @@ Nav Mode-ը օգտագործում է ստեղնի ֆիզիկական դիրքը
     <string name="caret_badge_color_locked">Կողպված գույն</string>
     <string name="caret_badge_color_locked_description">Caps lock, Alt lock և Ctrl lock, որոնք մնում են միացված, մինչև դրանք անջատեք</string>
     <string name="caret_badge_color_pick">Պահվող ձևափոխիչը ցուցադրվում է սրանց խամրած տարբերակով։</string>
+    <string name="status_bar_height_title">Գոտու բարձրություն</string>
+    <string name="status_bar_height_description">Որքան բարձր է գոտին ֆիզիկական ստեղնաշարի դեպքում։ 56-ը համապատասխանում է տեքստային դաշտին. 48-ը ամենափոքր հարմար հպման տարածքն է։ 36-ը փոքր է Android-ի նվազագույն հպման տարածքից՝ միտումնավոր դժվար է դիպչել, այն դեպքի համար, երբ մուտքագրում եք ստեղներով և գոտին միայն կարդում եք։</string>
+    <string name="status_bar_height_option">%1$d</string>
 </resources>

@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Height
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.res.painterResource
@@ -177,6 +178,15 @@ fun StatusBarButtonsSection(
             )
         }
 
+        StatusBarHeightSection(
+            heightDp = statusBarHeightDp,
+            onHeightChange = { dp ->
+                statusBarHeightDp = dp
+                // Persist first: the IME's preference listener re-measures the strip live.
+                SettingsManager.setStatusBarHeightDp(context, dp)
+            }
+        )
+
         SettingsSectionDivider(stringResource(R.string.status_bar_modifiers_section))
         CaretBadgeRow(
             checked = caretBadgeEnabled,
@@ -258,6 +268,52 @@ fun StatusBarButtonsSection(
         Spacer(modifier = Modifier.height(16.dp))
     }
 }
+@Composable
+private fun StatusBarHeightSection(
+    heightDp: Int,
+    onHeightChange: (Int) -> Unit
+) {
+    Surface(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Height,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.status_bar_height_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = stringResource(R.string.status_bar_height_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                SettingsManager.STATUS_BAR_HEIGHT_OPTIONS_DP.forEach { dp ->
+                    FilterChip(
+                        selected = heightDp == dp,
+                        onClick = { onHeightChange(dp) },
+                        label = { Text(stringResource(R.string.status_bar_height_option, dp)) }
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun StatusBarVisibilitySection(
     visibility: SettingsManager.StatusBarVisibility,

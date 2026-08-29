@@ -1665,4 +1665,7 @@ Nav Mode использует физическое положение клави
     <string name="caret_badge_color_locked">Цвет фиксации</string>
     <string name="caret_badge_color_locked_description">Caps Lock, фиксация Alt и Ctrl, которые остаются включёнными, пока вы их не выключите</string>
     <string name="caret_badge_color_pick">Удерживаемый модификатор показывается приглушённой версией этих цветов.</string>
+    <string name="status_bar_height_title">Высота полосы</string>
+    <string name="status_bar_height_description">Какой высоты полоса при физической клавиатуре. 56 соответствует текстовому полю; 48 — наименьшая удобная для нажатия. 36 меньше минимальной области нажатия Android: намеренно трудно попасть — для случая, когда вы печатаете на клавишах и только читаете полосу.</string>
+    <string name="status_bar_height_option">%1$d</string>
 </resources>

@@ -1665,4 +1665,7 @@ Każdy klawisz można skonfigurować jako Keycode, Akcja, Native Ctrl lub Brak. 
     <string name="caret_badge_color_locked">Kolor blokady</string>
     <string name="caret_badge_color_locked_description">Caps lock, blokada Alt i blokada Ctrl, które pozostają włączone, dopóki ich nie wyłączysz</string>
     <string name="caret_badge_color_pick">Przytrzymany modyfikator jest pokazywany w wyblakłej wersji tych kolorów.</string>
+    <string name="status_bar_height_title">Wysokość paska</string>
+    <string name="status_bar_height_description">Jak wysoki jest pasek przy klawiaturze fizycznej. 56 odpowiada polu tekstowemu; 48 to najmniejszy wygodny cel. 36 jest mniejsze niż minimalny cel dotykowy Androida — celowo trudne do trafienia, gdy piszesz na klawiszach, a pasek tylko odczytujesz.</string>
+    <string name="status_bar_height_option">%1$d</string>
 </resources>

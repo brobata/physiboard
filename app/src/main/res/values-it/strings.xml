@@ -1783,4 +1783,7 @@ Ogni tasto può essere configurato come Keycode, Azione, Native Ctrl o Nessuno. 
     <string name="caret_badge_color_locked">Colore per il blocco</string>
     <string name="caret_badge_color_locked_description">Blocco maiuscole, blocco Alt e blocco Ctrl, che restano attivi finché non li disattivi</string>
     <string name="caret_badge_color_pick">Un modificatore tenuto premuto viene mostrato in una versione sbiadita di questi colori.</string>
+    <string name="status_bar_height_title">Altezza della barra</string>
+    <string name="status_bar_height_description">Quanto è alta la barra con la tastiera fisica. 56 corrisponde a un campo di testo; 48 è il tocco comodo più piccolo. 36 è inferiore al bersaglio tattile minimo di Android: difficile da centrare di proposito, per quando scrivi sui tasti e la barra la leggi soltanto.</string>
+    <string name="status_bar_height_option">%1$d</string>
 </resources>

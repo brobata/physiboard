@@ -1665,4 +1665,7 @@ Ctrl-ярлики застосунків із урахуванням розкл�
     <string name="caret_badge_color_locked">Колір фіксації</string>
     <string name="caret_badge_color_locked_description">Caps Lock, фіксація Alt і Ctrl, які залишаються увімкненими, поки ви їх не вимкнете</string>
     <string name="caret_badge_color_pick">Утримуваний модифікатор показується блідішою версією цих кольорів.</string>
+    <string name="status_bar_height_title">Висота смуги</string>
+    <string name="status_bar_height_description">Якої висоти смуга з фізичною клавіатурою. 56 відповідає текстовому полю; 48 — найменша зручна для дотику. 36 менше за мінімальну область дотику Android: навмисно важко влучити — для випадку, коли ви друкуєте на клавішах і лише читаєте смугу.</string>
+    <string name="status_bar_height_option">%1$d</string>
 </resources>

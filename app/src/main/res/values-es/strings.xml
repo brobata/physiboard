@@ -1663,4 +1663,7 @@ Cada tecla puede configurarse como Keycode, Acción, Native Ctrl o Ninguno. Usa 
     <string name="caret_badge_color_locked">Color de bloqueo</string>
     <string name="caret_badge_color_locked_description">Bloq Mayús, bloqueo de Alt y bloqueo de Ctrl, que permanecen activos hasta que los desactive</string>
     <string name="caret_badge_color_pick">Un modificador mantenido pulsado se muestra en una versión atenuada de estos.</string>
+    <string name="status_bar_height_title">Altura de la barra</string>
+    <string name="status_bar_height_description">Qué altura tiene la barra con el teclado físico. 56 coincide con un campo de texto; 48 es el objetivo cómodo más pequeño. 36 es menor que el objetivo táctil mínimo de Android: difícil de tocar a propósito, para cuando escribes con las teclas y solo lees la barra.</string>
+    <string name="status_bar_height_option">%1$d</string>
 </resources>

@@ -1663,4 +1663,7 @@ Jede Taste kann als Keycode, Aktion, Native Ctrl oder Keine konfiguriert werden.
     <string name="caret_badge_color_locked">Farbe für gelockt</string>
     <string name="caret_badge_color_locked_description">Caps Lock, Alt-Lock und Ctrl-Lock, die an bleiben, bis du sie ausschaltest</string>
     <string name="caret_badge_color_pick">Ein gehaltener Modifier wird in einer abgeschwächten Version dieser Farben angezeigt.</string>
+    <string name="status_bar_height_title">Leistenhöhe</string>
+    <string name="status_bar_height_description">Wie hoch die Leiste mit der physischen Tastatur ist. 56 entspricht einem Textfeld; 48 ist die kleinste bequeme Tippfläche. 36 ist kleiner als Androids minimale Tippfläche — absichtlich schwer zu treffen, für den Fall, dass du auf den Tasten tippst und die Leiste nur abliest.</string>
+    <string name="status_bar_height_option">%1$d</string>
 </resources>

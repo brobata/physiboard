@@ -9,6 +9,11 @@ as required by GPLv3 §5(a). Package: `brobata.physiboard`.
 - **The what's-new card shows the right release.** It was a copy of the notes that had to be
   updated by hand, and 2.0.0 shipped with the 1.2.4 note in it. The card is now generated from
   this file at build time, and it understands the way these notes are written.
+- **The status bar's height setting is back.** *Bar height* went missing in the 2.0 settings
+  rework — the code still read the value, so anyone who had set 48 or 64 was quietly stuck
+  with it and had no way to change it. It sits under *Show status bar* again, with all four
+  heights. 36 is below Android's minimum touch target and says so: it is there for people who
+  type on the keys and only read the bar, and want it out of the way.
 - **Failures say so.** A long list of places where an error was logged at a level the shipped
   build strips, or not at all, and the app carried on as if the thing had worked: saving key
   mappings, SYM layers, variations, custom corrections and the personal dictionary now report
