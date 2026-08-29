@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.size
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.KeyboardReturn
 import androidx.compose.material.icons.automirrored.filled.ManageSearch
@@ -59,13 +58,11 @@ import androidx.compose.animation.core.tween
 import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.windowInsetsPadding
 import brobata.physiboard.R
 import android.widget.Toast
 import brobata.physiboard.BuildConfig
 import brobata.physiboard.inputmethod.DeviceSpecific
+import brobata.physiboard.ui.SettingsTopBar
 import brobata.physiboard.update.checkForUpdate
 import brobata.physiboard.update.showUpdateDialog
 import brobata.physiboard.update.shouldUseGithubUpdateChecks
@@ -657,32 +654,10 @@ private fun SettingsMainScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .windowInsetsPadding(WindowInsets.statusBars),
-                tonalElevation = 1.dp
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.settings_back_content_description)
-                        )
-                    }
-                    Text(
-                        text = stringResource(R.string.settings_title),
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(start = 8.dp)
-                    )
-                }
-            }
+            SettingsTopBar(
+                title = stringResource(R.string.settings_title),
+                onBack = onBackClick
+            )
         }
     ) { paddingValues ->
         Column(

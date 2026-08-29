@@ -17,11 +17,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.animation.*
@@ -33,6 +29,7 @@ import brobata.physiboard.data.layout.LayoutMappingRepository
 import brobata.physiboard.layout.OnlineLayoutsActivity
 import brobata.physiboard.inputmethod.subtype.AdditionalSubtypeUtils
 import brobata.physiboard.R
+import brobata.physiboard.ui.SettingsTopBar
 import kotlinx.coroutines.launch
 import java.util.Locale
 import android.content.res.AssetManager
@@ -188,77 +185,54 @@ fun KeyboardLayoutSettingsScreen(
     
     Scaffold(
         topBar = {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .windowInsetsPadding(WindowInsets.statusBars),
-                tonalElevation = 1.dp
+            SettingsTopBar(
+                title = "${stringResource(R.string.keyboard_layout_title)} - ${getLocaleDisplayNameForTitle(locale)}",
+                onBack = { navigateBack() }
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = { navigateBack() }) {
+                // Import layout (JSON) button with local/cloud options
+                Box {
+                    IconButton(onClick = { showAddMenu = true }) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.settings_back_content_description)
+                            imageVector = Icons.Default.Add,
+                            contentDescription = stringResource(R.string.layout_import_content_description)
                         )
                     }
-                    Text(
-                        text = "${stringResource(R.string.keyboard_layout_title)} - ${getLocaleDisplayNameForTitle(locale)}",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier
-                            .padding(start = 8.dp)
-                            .weight(1f)
-                    )
-                    // Import layout (JSON) button with local/cloud options
-                    Box {
-                        IconButton(onClick = { showAddMenu = true }) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = stringResource(R.string.layout_import_content_description)
-                            )
-                        }
-                        DropdownMenu(
-                            expanded = showAddMenu,
-                            onDismissRequest = { showAddMenu = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.layout_import_from_file)) },
-                                onClick = {
-                                    showAddMenu = false
-                                    launchLocalImport()
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.layout_download_from_cloud)) },
-                                onClick = {
-                                    showAddMenu = false
-                                    val intent = Intent(context, OnlineLayoutsActivity::class.java)
-                                    context.startActivity(intent)
-                                }
-                            )
-                        }
-                    }
-                    if (!pickerMode) {
-                        IconButton(
+                    DropdownMenu(
+                        expanded = showAddMenu,
+                        onDismissRequest = { showAddMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.layout_import_from_file)) },
                             onClick = {
-                                SettingsManager.setKeyboardLayoutAutoByLocale(context, automaticLayoutMode)
-                                if (!automaticLayoutMode) {
-                                    SettingsManager.setKeyboardLayout(context, selectedLayout)
-                                }
-                                onLayoutSelected(locale, selectedLayout)
-                                onBack()
+                                showAddMenu = false
+                                launchLocalImport()
                             }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Save,
-                                contentDescription = stringResource(R.string.layout_save_content_description)
-                            )
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.layout_download_from_cloud)) },
+                            onClick = {
+                                showAddMenu = false
+                                val intent = Intent(context, OnlineLayoutsActivity::class.java)
+                                context.startActivity(intent)
+                            }
+                        )
+                    }
+                }
+                if (!pickerMode) {
+                    IconButton(
+                        onClick = {
+                            SettingsManager.setKeyboardLayoutAutoByLocale(context, automaticLayoutMode)
+                            if (!automaticLayoutMode) {
+                                SettingsManager.setKeyboardLayout(context, selectedLayout)
+                            }
+                            onLayoutSelected(locale, selectedLayout)
+                            onBack()
                         }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Save,
+                            contentDescription = stringResource(R.string.layout_save_content_description)
+                        )
                     }
                 }
             }

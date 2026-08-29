@@ -17,7 +17,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -44,9 +43,6 @@ import brobata.physiboard.ui.windowHeightDp
 import brobata.physiboard.ui.windowWidthDp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.window.DialogProperties
 import androidx.activity.compose.BackHandler
 import brobata.physiboard.R
@@ -56,6 +52,7 @@ import brobata.physiboard.commands.CommandTarget
 import brobata.physiboard.data.layout.JsonLayoutLoader
 import brobata.physiboard.data.mappings.KeyMappingLoader
 import brobata.physiboard.inputmethod.EmbeddedAdbShell
+import brobata.physiboard.ui.SettingsTopBar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -202,32 +199,10 @@ fun NavModeSettingsScreen(
             .verticalScroll(rememberScrollState())
     ) {
         // Header
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.statusBars),
-            tonalElevation = 1.dp
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = stringResource(R.string.settings_back_content_description)
-                    )
-                }
-                Text(
-                    text = stringResource(R.string.nav_mode_title),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(start = 8.dp)
-                )
-            }
-        }
+        SettingsTopBar(
+            title = stringResource(R.string.nav_mode_title),
+            onBack = onBack
+        )
 
         Surface(
             modifier = Modifier

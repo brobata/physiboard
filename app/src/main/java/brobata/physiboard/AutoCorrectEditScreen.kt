@@ -5,14 +5,10 @@ import android.content.Intent
 import android.content.res.AssetManager
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
@@ -31,6 +27,7 @@ import androidx.compose.animation.core.tween
 import brobata.physiboard.inputmethod.AutoCorrector
 import brobata.physiboard.core.suggestions.UserDictionaryStore
 import brobata.physiboard.R
+import brobata.physiboard.ui.SettingsTopBar
 import org.json.JSONObject
 import java.util.Locale
 import java.util.LinkedHashMap
@@ -81,41 +78,15 @@ fun AutoCorrectEditScreen(
     
     Scaffold(
         topBar = {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .windowInsetsPadding(WindowInsets.statusBars),
-                tonalElevation = 1.dp
+            SettingsTopBar(
+                title = getLanguageDisplayName(context, languageCode),
+                onBack = onBack
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        IconButton(onClick = onBack) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = stringResource(R.string.settings_back_content_description)
-                            )
-                        }
-                        Text(
-                            text = getLanguageDisplayName(context, languageCode),
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.padding(start = 8.dp)
-                        )
-                    }
-                    IconButton(onClick = { showAddDialog = true }) {
-                        Icon(
-                            imageVector = Icons.Filled.Add,
-                            contentDescription = stringResource(R.string.auto_correct_add_correction)
-                        )
-                    }
+                IconButton(onClick = { showAddDialog = true }) {
+                    Icon(
+                        imageVector = Icons.Filled.Add,
+                        contentDescription = stringResource(R.string.auto_correct_add_correction)
+                    )
                 }
             }
         }

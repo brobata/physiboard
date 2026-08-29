@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import brobata.physiboard.R
 import android.content.Intent
 import android.content.Context
+import brobata.physiboard.ui.SettingsTopBar
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -128,32 +129,10 @@ fun AutoCorrectionCategoryScreen(
             AutoCorrectionDestination.Main -> {
                 Scaffold(
                     topBar = {
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .windowInsetsPadding(WindowInsets.statusBars),
-                            tonalElevation = 1.dp
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                IconButton(onClick = { navigateBack() }) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                        contentDescription = stringResource(R.string.settings_back_content_description)
-                                    )
-                                }
-                                Text(
-                                    text = stringResource(R.string.settings_category_auto_correction),
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    fontWeight = FontWeight.SemiBold,
-                                    modifier = Modifier.padding(start = 8.dp)
-                                )
-                            }
-                        }
+                        SettingsTopBar(
+                            title = stringResource(R.string.settings_category_auto_correction),
+                            onBack = { navigateBack() }
+                        )
                     }
                 ) { paddingValues ->
                     Column(
