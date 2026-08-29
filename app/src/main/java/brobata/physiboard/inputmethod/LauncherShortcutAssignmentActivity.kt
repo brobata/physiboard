@@ -20,6 +20,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import brobata.physiboard.ui.windowHeightDp
+import brobata.physiboard.ui.windowWidthDp
 import androidx.compose.ui.viewinterop.AndroidView
 import brobata.physiboard.*
 import android.view.KeyEvent
@@ -37,7 +39,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -300,8 +301,7 @@ private fun LauncherShortcutAssignmentBottomSheet(
     }
     
     // Max height (75% of the screen)
-    val configuration = LocalConfiguration.current
-    val screenHeightDp = configuration.screenHeightDp.dp
+    val screenHeightDp = windowHeightDp()
     val maxSheetHeight = screenHeightDp * 0.75f
     
     ModalBottomSheet(

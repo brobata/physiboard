@@ -32,7 +32,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -41,6 +40,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import brobata.physiboard.ui.windowHeightDp
+import brobata.physiboard.ui.windowWidthDp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.WindowInsets
@@ -505,7 +506,7 @@ fun NavModeSettingsScreen(
                         text = stringResource(R.string.nav_mode_guide_text),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(max = LocalConfiguration.current.screenHeightDp.dp * 0.65f)
+                            .heightIn(max = windowHeightDp() * 0.65f)
                             .verticalScroll(rememberScrollState())
                     )
                 }
@@ -806,7 +807,7 @@ private fun KeyMappingDialog(
     var selectedValue by remember { mutableStateOf<String?>(currentMapping?.value) }
     val commandTargets = remember { CommandRegistry(context).getCommands(CommandSurface.NavMode) }
     val defaultLabel = defaultMapping?.let { getMappingLabel(it) }
-    val dialogMaxHeight = LocalConfiguration.current.screenHeightDp.dp * 0.9f
+    val dialogMaxHeight = windowHeightDp() * 0.9f
     val gridMaxHeight = dialogMaxHeight * 0.6f
     
     BasicAlertDialog(

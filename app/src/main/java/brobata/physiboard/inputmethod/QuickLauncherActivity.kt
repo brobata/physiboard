@@ -71,11 +71,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import brobata.physiboard.ui.windowHeightDp
+import brobata.physiboard.ui.windowWidthDp
 import androidx.compose.ui.viewinterop.AndroidView
 import brobata.physiboard.AppListHelper
 import brobata.physiboard.LocalizedComponentActivity
@@ -535,7 +536,7 @@ private fun QuickLauncherSheet(
     onDismiss: () -> Unit,
     onDismissAnimationFinished: () -> Unit
 ) {
-    val maxSheetHeight = LocalConfiguration.current.screenHeightDp.dp * 0.78f
+    val maxSheetHeight = windowHeightDp() * 0.78f
     val visible = remember { MutableTransitionState(false) }
     LaunchedEffect(Unit) {
         visible.targetState = true

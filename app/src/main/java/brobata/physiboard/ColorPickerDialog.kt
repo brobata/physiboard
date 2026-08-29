@@ -28,10 +28,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import brobata.physiboard.ui.windowHeightDp
+import brobata.physiboard.ui.windowWidthDp
 import brobata.physiboard.ring.ColorWheel
 
 /** A single colour, tappable when [onClick] is given. */
@@ -79,7 +80,7 @@ fun ColorPickerDialog(
     // insets first and clips whatever is left, which cut the bottom off the brightness slider.
     // Both bounds below are therefore taken from the window rather than fixed, so the dialog
     // shrinks on a short screen instead of overflowing it.
-    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
+    val screenHeight = windowHeightDp()
     // What AlertDialog spends on title, buttons, insets and margins before the content is laid out.
     val dialogChrome = 220.dp
     val contentMaxHeight = (screenHeight - dialogChrome).coerceAtLeast(200.dp)

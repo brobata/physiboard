@@ -15,9 +15,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import brobata.physiboard.ui.windowHeightDp
+import brobata.physiboard.ui.windowWidthDp
 import androidx.compose.ui.viewinterop.AndroidView
 import brobata.physiboard.data.mappings.KeyMappingLoader
 import brobata.physiboard.data.variation.VariationRepository
@@ -74,10 +75,9 @@ internal fun VirtualKeyboardThemePreview(
     viewportScale: Float
 ) {
     val context = LocalContext.current
-    val configuration = LocalConfiguration.current
     val viewportHeightDp = softwareKeyboardPreviewViewportHeightDp(
-        screenWidthDp = configuration.screenWidthDp,
-        screenHeightDp = configuration.screenHeightDp
+        screenWidthDp = windowWidthDp().value.toInt(),
+        screenHeightDp = windowHeightDp().value.toInt()
     ) * viewportScale.coerceIn(
         SettingsManager.KEYBOARD_THEME_PREVIEW_VIEWPORT_SCALE_MIN,
         SettingsManager.KEYBOARD_THEME_PREVIEW_VIEWPORT_SCALE_MAX

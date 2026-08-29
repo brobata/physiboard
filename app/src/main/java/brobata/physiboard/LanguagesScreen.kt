@@ -16,6 +16,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -42,8 +43,9 @@ fun LanguagesScreen(
     }
     
     // Get system locales
-    val systemLocales = remember {
-        context.resources.configuration.locales.let { locales ->
+    val configuration = LocalConfiguration.current
+    val systemLocales = remember(configuration) {
+        configuration.locales.let { locales ->
             (0 until locales.size()).map { locales[it].language.lowercase() }.toSet()
         }.also { locales ->
             android.util.Log.d("LanguagesScreen", "System locales: ${locales.joinToString(", ")}")
