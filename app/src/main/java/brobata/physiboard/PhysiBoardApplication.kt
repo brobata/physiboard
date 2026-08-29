@@ -18,6 +18,8 @@ class PhysiBoardApplication : Application() {
         // from Android's own settings never opens the app, and those users spent 1.x running
         // upstream's defaults because of exactly that.
         SettingsMigration.migrateIfNeeded(this)
+        // After the migration: the carried content has to exist before the reset preserves it.
+        SettingsBaseline.applyIfNeeded(this)
         SettingsManager.applyImpactDefaultsIfNeeded(this)
         SettingsManager.initializeAltShiftLayoutSwitchDefault(this)
         AppPackageChangeMonitor.register(this)

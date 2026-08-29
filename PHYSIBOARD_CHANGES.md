@@ -4,7 +4,21 @@ PhysiBoard is a GPLv3 fork of [Pastiera](https://github.com/palsoftware/pastiera
 Andrea Palumbo (PalSoftware) and contributors. This file documents the fork's changes,
 as required by GPLv3 §5(a). Package: `brobata.physiboard`.
 
-## Unreleased
+## 2.0.1 (2026-08-29)
+
+**Your settings have been reset, once, on purpose.** Sorry. Settings carried up through 1.x
+and then through the 2.0 rework had landed in states no screen could reach and no combination
+was ever tested in — some of you were stuck with a keyboard you could not fix from inside the
+app. Every one of these phones is the same hardware on the same firmware, so there is one
+configuration that is known to work, and this update replaces yours with it. Set it up how you
+like from here; it will stick, and this will not happen again.
+
+**Your words are safe.** The personal dictionary, your custom layouts, key mappings and
+variations are untouched. What was replaced is the settings themselves — theme, SYM pages, the
+notification ring's fit, shortcuts, the toggles. The old values are written to
+`settings_before_reset.json` inside the app's storage first, so nothing is actually gone.
+
+Also in this release:
 
 - **The what's-new card shows the right release.** It was a copy of the notes that had to be
   updated by hand, and 2.0.0 shipped with the 1.2.4 note in it. The card is now generated from

@@ -1,0 +1,210 @@
+{
+  "_comment": "Factory baseline for PhysiBoard, captured from a known-good Titan 2 Elite. Applied to new installs, and by the one-time settings reset, which clears the preference store first. Keys absent here are left unset so the app's own defaults apply. Files beside the preferences - the personal dictionary, custom layouts, key mappings and variations - are never touched.",
+  "capturedAt": "2026-08-29",
+  "capturedFrom": "Titan 2 Elite, PhysiBoard 2.0.0",
+  "entries": {
+    "alt_ctrl_speech_shortcut": {
+      "type": "boolean",
+      "value": false
+    },
+    "alt_shift_layout_switch": {
+      "type": "boolean",
+      "value": true
+    },
+    "app_enter_behavior_overrides": {
+      "type": "string",
+      "value": "[{\"packageName\":\"com.whatsapp\",\"behavior\":\"enter_send_shift_newline\",\"sendStrategy\":\"auto\",\"additionalSendShortcut\":\"none\"},{\"packageName\":\"com.discord\",\"behavior\":\"enter_send_shift_newline\",\"sendStrategy\":\"auto\",\"additionalSendShortcut\":\"none\"},{\"packageName\":\"com.google.android.apps.messaging\",\"behavior\":\"enter_send_shift_newline\",\"sendStrategy\":\"auto\",\"additionalSendShortcut\":\"none\"},{\"packageName\":\"com.instagram.android\",\"behavior\":\"enter_send_shift_newline\",\"sendStrategy\":\"auto\",\"additionalSendShortcut\":\"none\"}]"
+    },
+    "app_enter_behavior_preset": {
+      "type": "string",
+      "value": "enter_send_shift_newline"
+    },
+    "app_raw_mode_packages": {
+      "type": "string_set",
+      "value": [
+        "org.chromium.webapk.a5d49fddf77614419_v2"
+      ]
+    },
+    "auto_capitalize_first_letter": {
+      "type": "boolean",
+      "value": true
+    },
+    "auto_replace_on_space_enter": {
+      "type": "boolean",
+      "value": true
+    },
+    "auto_show_keyboard": {
+      "type": "boolean",
+      "value": true
+    },
+    "caret_badge_armed_color": {
+      "type": "int",
+      "value": -15656921
+    },
+    "dictation_end_silence_ms": {
+      "type": "int",
+      "value": 2000
+    },
+    "dictation_engine": {
+      "type": "string",
+      "value": "com.google.android.tts/com.google.android.apps.speech.tts.googletts.service.GoogleTTSRecognitionService"
+    },
+    "dictation_haptics": {
+      "type": "boolean",
+      "value": true
+    },
+    "dictation_mask_offensive": {
+      "type": "boolean",
+      "value": false
+    },
+    "emoji_picker_expanded_height": {
+      "type": "boolean",
+      "value": false
+    },
+    "fn_long_press_speech": {
+      "type": "boolean",
+      "value": true
+    },
+    "keyboard_layout": {
+      "type": "string",
+      "value": "qwerty"
+    },
+    "keyboard_theme_hardware": {
+      "type": "string",
+      "value": "{\"background\":-15658735,\"divider\":-13619152,\"normal_key\":-12961220,\"special_key\":-12961220,\"text_and_icons\":-460552,\"led_inactive\":-13619152,\"led_active\":-12542721,\"led_locked\":-24822,\"accent\":-12542721,\"cursor_swipe\":-12542721,\"key_popup\":-12961220,\"key_popup_selected\":-12542721,\"suggestion\":-15263977,\"status_bar_button\":-14935010,\"key_corner_radius_ratio\":0.18186983466148376,\"chrome_corner_radius_ratio\":0.3499999940395355,\"key_height_scale\":1.2588016986846924,\"number_row_height_scale\":0.9711260199546814,\"key_width_scale\":0.9414876699447632,\"row_gap_scale\":1.0499999523162842,\"distribute_horizontal_spacing\":true,\"ortholinear\":true,\"show_leds\":false,\"suggestions_height_scale\":0.8999999761581421,\"variations_height_scale\":0.8799999952316284,\"key_popup_style\":\"floating\",\"key_popup_attached\":true,\"key_popup_tail_enabled\":true,\"key_preview_after_long_press\":false,\"key_alternates_popup_enabled\":true}"
+    },
+    "launcher_shortcuts": {
+      "type": "string",
+      "value": "{\"62\":{\"type\":\"command\",\"appName\":\"Pastiera QuickLauncher\",\"commandId\":\"pastiera.quick_launcher\",\"source\":\"pastiera\",\"kind\":\"PastieraAction\",\"title\":\"Pastiera QuickLauncher\",\"subtitle\":\"Open Pastiera search\",\"launch\":{\"type\":\"internal_action\",\"actionId\":\"open_quick_launcher\"}}}"
+    },
+    "max_auto_replace_distance": {
+      "type": "int",
+      "value": 2
+    },
+    "modifier_indicator_mode": {
+      "type": "string",
+      "value": "menu_bar"
+    },
+    "notification_ring_app_colors": {
+      "type": "string",
+      "value": "{\"co.kidcasa.app\":-757066,\"com.google.android.apps.googlevoice\":-13318311}"
+    },
+    "notification_ring_cx": {
+      "type": "float",
+      "value": 78.4834
+    },
+    "notification_ring_cy": {
+      "type": "float",
+      "value": 80.4834
+    },
+    "notification_ring_enabled": {
+      "type": "boolean",
+      "value": true
+    },
+    "notification_ring_minutes": {
+      "type": "int",
+      "value": 2
+    },
+    "notification_ring_radius": {
+      "type": "float",
+      "value": 45.9375
+    },
+    "notification_ring_stroke": {
+      "type": "float",
+      "value": 9.625
+    },
+    "physical_keyboard_currency_symbol": {
+      "type": "string",
+      "value": "$"
+    },
+    "screen_trackpad_enabled": {
+      "type": "boolean",
+      "value": true
+    },
+    "screen_trackpad_step_px": {
+      "type": "int",
+      "value": 32
+    },
+    "show_status_bar": {
+      "type": "boolean",
+      "value": true
+    },
+    "side_key_assistant": {
+      "type": "boolean",
+      "value": true
+    },
+    "smart_backlight_enabled": {
+      "type": "boolean",
+      "value": true
+    },
+    "software_keyboard_mode": {
+      "type": "string",
+      "value": "auto"
+    },
+    "status_bar_apps": {
+      "type": "string_set",
+      "value": [
+        "com.whatsapp",
+        "com.Slack",
+        "com.google.android.talk",
+        "com.microsoft.teams",
+        "com.facebook.mlite",
+        "com.snapchat.android",
+        "com.twitter.android",
+        "com.facebook.katana",
+        "com.instagram.android",
+        "com.google.android.apps.messaging",
+        "com.whatsapp.w4b",
+        "com.android.mms",
+        "com.linkedin.android",
+        "com.google.android.gm",
+        "org.thoughtcrime.securesms",
+        "org.telegram.messenger",
+        "com.microsoft.office.outlook",
+        "com.facebook.orca",
+        "com.discord",
+        "com.reddit.frontpage"
+      ]
+    },
+    "status_bar_height_dp": {
+      "type": "int",
+      "value": 56
+    },
+    "status_bar_slot_left": {
+      "type": "string",
+      "value": "clipboard"
+    },
+    "status_bar_slot_right_1": {
+      "type": "string",
+      "value": "microphone"
+    },
+    "status_bar_slot_right_2": {
+      "type": "string",
+      "value": "none"
+    },
+    "status_bar_slots_left": {
+      "type": "string",
+      "value": "[\"clipboard\"]"
+    },
+    "status_bar_slots_right": {
+      "type": "string",
+      "value": "[\"microphone\",\"none\"]"
+    },
+    "status_bar_visibility": {
+      "type": "string",
+      "value": "APPS"
+    },
+    "sym_pages_config": {
+      "type": "string",
+      "value": "{\"emojiEnabled\":false,\"symbolsEnabled\":true,\"clipboardEnabled\":false,\"emojiPickerEnabled\":true,\"emojiFirst\":false,\"symPageOrder\":[\"emoji_picker\",\"symbols\",\"clipboard\",\"emoji\"]}"
+    },
+    "titan2_elite_rounded_corner_insets": {
+      "type": "boolean",
+      "value": true
+    },
+    "use_keyboard_proximity": {
+      "type": "boolean",
+      "value": true
+    }
+  }
+}
