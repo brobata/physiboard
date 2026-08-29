@@ -42,3 +42,12 @@ debug-logs/
 # Local secrets — never commit
 .env
 *.env
+
+# IDE and editor state
+/.idea/
+/.vscode/
+
+# Vendor firmware artefacts pulled off the phone for reference — never redistribute
+docs/**/*.apk
+docs/**/*.jar
+docs/**/*.dex

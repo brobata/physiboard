@@ -2,6 +2,17 @@
 
 Model: `Titan 2` (build `Titan 2 Elite_V02.00.02`), Android 16.
 
+## Vendor binaries
+The vendor framework (`agui-framework.jar`, `agui-services.jar`) and the keyboard, shortcut-settings
+and spacebar-key apps referenced below are Unihertz's proprietary code and are not kept in this
+repository. Pull them from a phone when needed:
+
+```
+adb pull /system/framework/agui-framework.jar
+adb pull /system/framework/agui-services.jar
+adb shell pm path com.agui.keyboard        # then adb pull the printed path
+```
+
 ## Display
 - Physical: **1080×1200** (override 1076×1200), density **300** → **~574dp × 640dp** window.
 - Wide-short, near-square. Wider than any normal phone (360–430dp), shorter than all of them.

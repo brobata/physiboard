@@ -15,7 +15,7 @@ fi
 
 APKSIGNER="${APKSIGNER:-}"
 if [ -z "$APKSIGNER" ]; then
-  APKSIGNER="$(find "${ANDROID_HOME:-$HOME/Android/Sdk}/build-tools" -mindepth 2 -maxdepth 2 -name apksigner 2>/dev/null | sort -V | tail -n 1)"
+  APKSIGNER="$(find "${ANDROID_HOME:-$HOME/android-sdk}/build-tools" -mindepth 2 -maxdepth 2 -name apksigner 2>/dev/null | sort -V | tail -n 1)"
 fi
 
 if [ -z "$APKSIGNER" ] || [ ! -x "$APKSIGNER" ]; then
@@ -23,8 +23,8 @@ if [ -z "$APKSIGNER" ] || [ ! -x "$APKSIGNER" ]; then
   exit 1
 fi
 
-EXPECTED_SUBJECT="CN=Pastiera, OU=Development, O=PalSoftware, L=Italy, ST=Italy, C=IT"
-EXPECTED_SHA256="d5c018b9c33e0cda7cef0b006ed739d4c6304c4ef4a0c4d9454a5302e7c4c3e7"
+EXPECTED_SUBJECT="CN=PhysiBoard, O=Brobata, C=US"
+EXPECTED_SHA256="89a050fcb37aa14a16d77c737c70caaebdc4c7f10156f9dc8933adb3499c3261"
 
 VERIFY_OUTPUT="$("$APKSIGNER" verify --print-certs "$APK_PATH")"
 ACTUAL_SUBJECT="$(printf '%s\n' "$VERIFY_OUTPUT" | awk -F': ' '/certificate DN/{print $2; exit}')"
