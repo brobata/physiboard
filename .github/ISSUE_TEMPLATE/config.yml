@@ -1,8 +1,5 @@
 blank_issues_enabled: true
 contact_links:
-  - name: Not on GitHub? Email instead
-    url: mailto:j.levy@brobata.com
-    about: Bugs and ideas are welcome by email if you would rather not open an account.
   - name: r/unihertz
     url: https://www.reddit.com/r/unihertz/
     about: Open-ended questions and chat about the Titan 2 Elite.
