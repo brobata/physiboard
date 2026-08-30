@@ -4,25 +4,25 @@ PhysiBoard is a GPLv3 fork of [Pastiera](https://github.com/palsoftware/pastiera
 Andrea Palumbo (PalSoftware) and contributors. This file documents the fork's changes,
 as required by GPLv3 §5(a). Package: `brobata.physiboard`.
 
+## 2.0.2 (2026-08-30)
+
+Your settings have been reset to fix some bugs. Won't happen again. Thanks for your support!
+
+<!-- /card -->
+
+- **The notification icon is PhysiBoard's.** Notifications were still drawing the upstream
+  Pastiera icon, and in colour, which Android renders as a smudge because a notification icon
+  has to be a single-colour silhouette. It is the keycap now.
+- **The what's-new card stops at the change record.** It was printing this entire file's
+  section, engineering notes and all. It now shows only what is above the `<!-- /card -->`
+  marker; everything below stays here, where the licence requires it.
+
 ## 2.0.1 (2026-08-29)
 
-**Your settings have been reset, once, on purpose.** Sorry. Settings carried up through 1.x
-and then through the 2.0 rework had landed in states no screen could reach and no combination
-was ever tested in — some of you were stuck with a keyboard you could not fix from inside the
-app. Every one of these phones is the same hardware on the same firmware, so there is one
-configuration that is known to work, and this update replaces yours with it. Set it up how you
-like from here; it will stick, and this will not happen again.
+Settings reset to a known-good baseline, plus the audit below.
 
-**Your words are safe.** The personal dictionary and your custom layouts are untouched. What was
-replaced is the settings themselves — theme, SYM pages, the notification ring's fit, shortcuts,
-the toggles and the Fn layer. The old values are written to `settings_before_reset.json` inside
-the app's storage first, so nothing is actually gone.
+<!-- /card -->
 
-The pre-2.0 settings file is deleted at the same time. It was the route the old values came back
-by, which is the whole reason for this release, so the *Restore my old settings* button from 2.0
-goes with it.
-
-Also in this release:
 
 - **The what's-new card shows the right release.** It was a copy of the notes that had to be
   updated by hand, and 2.0.0 shipped with the 1.2.4 note in it. The card is now generated from

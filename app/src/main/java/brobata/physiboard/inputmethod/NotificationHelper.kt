@@ -296,7 +296,7 @@ object NotificationHelper {
                     latestVersion
                 )
             )
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.physi_ic_keycap_mono)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)

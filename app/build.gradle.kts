@@ -73,8 +73,8 @@ android {
     namespace = "brobata.physiboard"
     compileSdk = 36
 
-    val defaultVersionCode = 20001
-    val defaultVersionName = "2.0.1"
+    val defaultVersionCode = 20002
+    val defaultVersionName = "2.0.2"
     val ciVersionCode = renamedGradleProperty("PHYSIBOARD_VERSION_CODE")?.toIntOrNull()
     val ciVersionName = renamedGradleProperty("PHYSIBOARD_VERSION_NAME")
     val isFdroidBuild = gradleBooleanProperty("PHYSIBOARD_FDROID_BUILD")
@@ -239,8 +239,11 @@ val generateWhatsNew by tasks.registering {
             next < 0 -> lines.drop(heading + 1)
             else -> lines.subList(heading + 1, heading + 1 + next)
         }
+        // The card is for users; the rest of the section is the GPLv3 change record and stays in
+        // the file. Everything after the marker is left out of the app.
+        val shown = section.takeWhile { !it.trimStart().startsWith("<!-- /card -->") }
         val dir = outDir.get().asFile.apply { mkdirs() }
-        dir.resolve("whats_new.md").writeText(section.joinToString("\n").trim() + "\n")
+        dir.resolve("whats_new.md").writeText(shown.joinToString("\n").trim() + "\n")
     }
 }
 tasks.named("preBuild") { dependsOn(generateWhatsNew) }

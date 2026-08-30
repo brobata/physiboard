@@ -70,7 +70,7 @@ class PackageReplacedReceiver : BroadcastReceiver() {
                 NotificationCompat.BigTextStyle()
                     .bigText(context.getString(R.string.notification_reselect_text))
             )
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.physi_ic_keycap_mono)
             .setContentIntent(
                 PendingIntent.getActivity(
                     context,
