@@ -13,10 +13,14 @@ app. Every one of these phones is the same hardware on the same firmware, so the
 configuration that is known to work, and this update replaces yours with it. Set it up how you
 like from here; it will stick, and this will not happen again.
 
-**Your words are safe.** The personal dictionary, your custom layouts, key mappings and
-variations are untouched. What was replaced is the settings themselves — theme, SYM pages, the
-notification ring's fit, shortcuts, the toggles. The old values are written to
-`settings_before_reset.json` inside the app's storage first, so nothing is actually gone.
+**Your words are safe.** The personal dictionary and your custom layouts are untouched. What was
+replaced is the settings themselves — theme, SYM pages, the notification ring's fit, shortcuts,
+the toggles and the Fn layer. The old values are written to `settings_before_reset.json` inside
+the app's storage first, so nothing is actually gone.
+
+The pre-2.0 settings file is deleted at the same time. It was the route the old values came back
+by, which is the whole reason for this release, so the *Restore my old settings* button from 2.0
+goes with it.
 
 Also in this release:
 

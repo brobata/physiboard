@@ -19,10 +19,15 @@ import java.io.File
  * notification ring's fit, shortcuts, the lot. It is deliberately not a merge. A half-reset store
  * is how the situation arose.
  *
- * Not touched, because none of it is a setting:
- *  - the files beside the preferences - the personal dictionary somebody taught, their custom
- *    layouts, key mappings and variations. Words you added survive this.
- *  - `pastiera_prefs`, the pre-2.0 file that "Restore my old settings" replays.
+ * Two things beside the preference store go with it:
+ *  - the local `ctrl_key_mappings.json`, so the Fn layer falls back to the shipped default rather
+ *    than whatever a phone had accumulated.
+ *  - `pastiera_prefs`, the pre-2.0 file. Deleted outright: while it exists the 1.x values can come
+ *    back, and this release exists because they should not. Deleting it also retires the migration
+ *    notice and its "Restore my old settings" button, both of which read it.
+ *
+ * Not touched, because none of it is a setting: the personal dictionary somebody taught, their
+ * custom layouts and variations. Words you added survive this.
  *
  * The store is written to [SNAPSHOT_FILE] first, so the reset stays recoverable.
  */
@@ -40,10 +45,17 @@ object SettingsBaseline {
     private const val BASELINE_VERSION = 1
 
     /**
-     * Bookkeeping that survives the reset - the only exception to "clear it all". Not settings:
-     * clearing `prefs_migrated_v2` re-runs the 1.x migration and drags the old values back in,
-     * which is the exact thing being purged, and the rest would replay onboarding at somebody who
-     * finished it long ago or re-show a release note they have read.
+     * The only exception to "clear it all", and none of it is a setting.
+     *
+     * Two kinds. Bookkeeping: clearing `prefs_migrated_v2` re-runs the 1.x migration and drags the
+     * old values straight back in, which is the exact thing being purged, and the rest would
+     * replay onboarding at somebody who finished it long ago or re-show a release note they have
+     * read.
+     *
+     * And the `*_original_*` / `*_prev_captured` records, which are what a system setting pointed
+     * at BEFORE PhysiBoard changed it. Those writes outlive an uninstall, and these records are
+     * the only way Reset to stock can put them back. Losing them strands the change on the phone
+     * for good, so they are kept even though everything around them is thrown away.
      */
     private val BOOKKEEPING_KEYS = setOf(
         "prefs_migrated_v2",
@@ -56,6 +68,15 @@ object SettingsBaseline {
         "nav_mode_mappings_updated",
         "smart_backlight_applied",
         KEY_BASELINE_VERSION,
+        // what it was before PhysiBoard touched it - see above
+        "side_key_original_package",
+        "side_key_original_activity",
+        "side_key_original_captured",
+        "fn_ctrl_captured",
+        "fn_ctrl_prev_captured",
+        "fn_ctrl_original_enable",
+        "fn_ctrl_original_function",
+        "qs_backlight_prev_captured",
     )
 
     /**
@@ -92,6 +113,11 @@ object SettingsBaseline {
         // commit, not apply: the IME can read a setting microseconds from now.
         editor.commit()
 
+        if (!fresh) {
+            discardLocalNavModeMappings(context)
+            discardLegacyStore(context)
+        }
+
         // Log.e survives the release build's log stripping; this happens once and is worth a line.
         Log.e(
             TAG,
@@ -99,6 +125,28 @@ object SettingsBaseline {
             else "reset ${existing.size} stored values to the $applied-value baseline; " +
                 "kept ${keep.size} bookkeeping keys, snapshot in $SNAPSHOT_FILE"
         )
+    }
+
+    /**
+     * Drops the phone's own copy of the Fn-layer mappings. The app rewrites it from
+     * `assets/common/ctrl/ctrl_key_mappings.json` on the next read, which is the layout this
+     * baseline was captured with.
+     */
+    private fun discardLocalNavModeMappings(context: Context) {
+        runCatching {
+            val file = File(context.filesDir, "ctrl_key_mappings.json")
+            if (file.exists() && !file.delete()) Log.e(TAG, "could not delete $file")
+        }.onFailure { Log.e(TAG, "could not discard local nav mode mappings", it) }
+    }
+
+    /**
+     * Removes the pre-2.0 preferences file. It is the source the 1.x migration reads, so leaving
+     * it is leaving a route back to the values this reset exists to clear.
+     */
+    private fun discardLegacyStore(context: Context) {
+        runCatching {
+            context.deleteSharedPreferences(SettingsMigration.LEGACY_PREFS)
+        }.onFailure { Log.e(TAG, "could not delete the pre-2.0 preferences", it) }
     }
 
     /** The shipped baseline, as typed values. Null when the asset is missing or malformed. */

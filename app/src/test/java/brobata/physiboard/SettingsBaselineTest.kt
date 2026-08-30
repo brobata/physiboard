@@ -120,6 +120,65 @@ class SettingsBaselineTest {
     }
 
     @Test
+    fun theRecordOfWhatSystemSettingsWereBeforeSurvivesTheReset() {
+        // These outlive an uninstall. If the reset threw them away, Reset to stock could never
+        // put the side key or the backlight tile back.
+        prefs().edit()
+            .putString("side_key_original_package", "com.example.assistant")
+            .putString("side_key_original_activity", "com.example.assistant.Main")
+            .putBoolean("side_key_original_captured", true)
+            .putBoolean("qs_backlight_prev_captured", true)
+            .putBoolean("fn_ctrl_captured", true)
+            .commit()
+
+        SettingsBaseline.applyIfNeeded(context)
+
+        assertEquals("com.example.assistant", prefs().getString("side_key_original_package", null))
+        assertEquals(
+            "com.example.assistant.Main",
+            prefs().getString("side_key_original_activity", null)
+        )
+        assertTrue(prefs().getBoolean("side_key_original_captured", false))
+        assertTrue(prefs().getBoolean("qs_backlight_prev_captured", false))
+        assertTrue(prefs().getBoolean("fn_ctrl_captured", false))
+    }
+
+    @Test
+    fun theLocalFnLayerCopyIsDroppedSoTheShippedDefaultApplies() {
+        prefs().edit().putInt("status_bar_height_dp", 36).commit()
+        val mappings = File(context.filesDir, "ctrl_key_mappings.json")
+        mappings.writeText("{\"mappings\":{\"KEYCODE_Q\":{\"type\":\"none\"}}}")
+
+        SettingsBaseline.applyIfNeeded(context)
+
+        assertFalse("a stale Fn layer must not survive", mappings.exists())
+    }
+
+    @Test
+    fun theFnLayerIsLeftAloneOnAFreshInstall() {
+        val mappings = File(context.filesDir, "ctrl_key_mappings.json")
+        mappings.writeText("{\"mappings\":{}}")
+
+        SettingsBaseline.applyIfNeeded(context)
+
+        assertTrue("nothing to clean up on a new install", mappings.exists())
+    }
+
+    @Test
+    fun thePre2xStoreIsDeletedSoItsValuesCannotComeBack() {
+        prefs().edit().putInt("status_bar_height_dp", 36).commit()
+        context.getSharedPreferences(SettingsMigration.LEGACY_PREFS, Context.MODE_PRIVATE)
+            .edit().putBoolean("some_1x_setting", true).commit()
+        assertTrue(SettingsMigration.hasLegacySettings(context))
+
+        SettingsBaseline.applyIfNeeded(context)
+
+        assertFalse(SettingsMigration.hasLegacySettings(context))
+        // and with it the migration notice and its "Restore my old settings" button
+        assertFalse(SettingsMigration.shouldShowMigrationNotice(context))
+    }
+
+    @Test
     fun theStoreIsSnapshotBeforeItIsCleared() {
         prefs().edit().putInt("status_bar_height_dp", 36).commit()
 
