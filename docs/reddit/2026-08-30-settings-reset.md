@@ -1,4 +1,4 @@
-# Reddit post — PhysiBoard 2.0.1: I reset everyone's settings on purpose
+# Reddit post: PhysiBoard 2.0.1, I reset everyone's settings on purpose
 
 Suggested subs: r/unihertz, r/PhysicalKeyboards.
 Images, in order: `2.0.1-whatsnew.png`, `2.0.1-bar-height.png`, `2.0.1-german.png`.
@@ -6,7 +6,7 @@ Screenshots also in `~/shared/physiboard-reddit-2.0.1/`.
 
 ---
 
-**Title:** PhysiBoard 2.0.1 — I wiped everyone's settings back to a known good config, and I'm sorry
+**Title:** PhysiBoard 2.0.1, I wiped everyone's settings back to a known good config and I'm sorry
 
 ---
 
