@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import androidx.core.content.ContextCompat
 import android.net.Uri
 import android.os.Looper
 import brobata.physiboard.AppBroadcastActions
@@ -276,7 +277,12 @@ class RestoreManagerIntegrationTest {
                 }
             }
         }
-        context.registerReceiver(receiver, IntentFilter(AppBroadcastActions.USER_DICTIONARY_UPDATED))
+        ContextCompat.registerReceiver(
+            context,
+            receiver,
+            IntentFilter(AppBroadcastActions.USER_DICTIONARY_UPDATED),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
         try {
             block()
             shadowOf(Looper.getMainLooper()).idle()

@@ -159,31 +159,26 @@ android {
         }
     }
     
-    // Validate signing config only when building release
-    tasks.whenTaskAdded {
-        if (!isFdroidBuild && name.equals("preReleaseBuild", ignoreCase = true)) {
-            doFirst {
-                if (!shouldValidateReleaseSigning(gradle.startParameter.taskNames)) {
-                    logger.lifecycle("Skipping stable signing validation for non-packaging task(s): ${gradle.startParameter.taskNames}")
-                    return@doFirst
-                }
-                val storePath = signingProp("storeFile", "PHYSIBOARD_KEYSTORE_PATH")
-                val storePass = signingProp("storePassword", "PHYSIBOARD_KEYSTORE_PASSWORD")
-                val alias = signingProp("keyAlias", "PHYSIBOARD_KEY_ALIAS")
-                val keyPass = signingProp("keyPassword", "PHYSIBOARD_KEY_PASSWORD")
+    // Signing is validated here, at configuration time, rather than in a doFirst. The old hook
+    // called script-level helpers from inside the task, which the configuration cache cannot
+    // serialise, and it only ever failed on the release path - long after the rest looked green.
+    if (!isFdroidBuild && shouldValidateReleaseSigning(gradle.startParameter.taskNames)) {
+        val storePath = signingProp("storeFile", "PHYSIBOARD_KEYSTORE_PATH")
+        val storePass = signingProp("storePassword", "PHYSIBOARD_KEYSTORE_PASSWORD")
+        val alias = signingProp("keyAlias", "PHYSIBOARD_KEY_ALIAS")
+        val keyPass = signingProp("keyPassword", "PHYSIBOARD_KEY_PASSWORD")
 
-                if (!hasSigningConfig(storePath, storePass, alias, keyPass)) {
-                    throw GradleException(
-                        "Missing signing config for release build. Define storeFile, storePassword, keyAlias e keyPassword in " +
-                            "keystore.properties (non tracciato) o nelle variabili d'ambiente PHYSIBOARD_KEYSTORE_PATH, " +
-                            "PHYSIBOARD_KEYSTORE_PASSWORD, PHYSIBOARD_KEY_ALIAS, PHYSIBOARD_KEY_PASSWORD. " +
-                            "Use -PPHYSIBOARD_FDROID_BUILD=true only for the unsigned stable F-Droid release path."
-                    )
-                }
-            }
+        if (!hasSigningConfig(storePath, storePass, alias, keyPass)) {
+            throw GradleException(
+                "Missing signing config for the release build. Set storeFile, storePassword, " +
+                    "keyAlias and keyPassword in release/keystore.properties, or the environment " +
+                    "variables PHYSIBOARD_KEYSTORE_PATH, PHYSIBOARD_KEYSTORE_PASSWORD, " +
+                    "PHYSIBOARD_KEY_ALIAS and PHYSIBOARD_KEY_PASSWORD. " +
+                    "-PPHYSIBOARD_FDROID_BUILD=true is only for the unsigned F-Droid path."
+            )
         }
     }
-    
+
     // Play-only dependency metadata; F-Droid style builds reject it and it is opaque to users.
     dependenciesInfo {
         includeInApk = false
