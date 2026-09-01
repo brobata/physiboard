@@ -1666,4 +1666,8 @@ Jede Taste kann als Keycode, Aktion, Native Ctrl oder Keine konfiguriert werden.
     <string name="status_bar_height_title">Leistenhöhe</string>
     <string name="status_bar_height_description">Wie hoch die Leiste mit der physischen Tastatur ist. 56 entspricht einem Textfeld; 48 ist die kleinste bequeme Tippfläche. 36 ist kleiner als Androids minimale Tippfläche — absichtlich schwer zu treffen, für den Fall, dass du auf den Tasten tippst und die Leiste nur abliest.</string>
     <string name="status_bar_height_option">%1$d</string>
+    <string name="debug_recorder_include_autocorrections">inkl. Autokorrekturen</string>
+    <string name="smart_backlight_blocked_wireless_debugging">Drahtlos-Debugging ist aus, daher lässt sich die Tastenbeleuchtung nicht einstellen. Android schaltet es nach einem Neustart ab — aktiviere es wieder in den Entwickleroptionen.</string>
+    <string name="smart_backlight_blocked_not_paired">Nicht gekoppelt. Richte unten das Drahtlos-Debugging ein, um die Tastenbeleuchtung zu übernehmen.</string>
+    <string name="smart_backlight_last_error">Letzter Versuch fehlgeschlagen: %1$s</string>
 </resources>

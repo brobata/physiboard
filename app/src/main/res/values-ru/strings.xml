@@ -1668,4 +1668,8 @@ Nav Mode использует физическое положение клави
     <string name="status_bar_height_title">Высота полосы</string>
     <string name="status_bar_height_description">Какой высоты полоса при физической клавиатуре. 56 соответствует текстовому полю; 48 — наименьшая удобная для нажатия. 36 меньше минимальной области нажатия Android: намеренно трудно попасть — для случая, когда вы печатаете на клавишах и только читаете полосу.</string>
     <string name="status_bar_height_option">%1$d</string>
+    <string name="debug_recorder_include_autocorrections">с автозаменами</string>
+    <string name="smart_backlight_blocked_wireless_debugging">Беспроводная отладка выключена, поэтому настройку подсветки применить нельзя. Android отключает её после перезагрузки — включите её снова в параметрах разработчика.</string>
+    <string name="smart_backlight_blocked_not_paired">Нет сопряжения. Настройте беспроводную отладку ниже, чтобы применить настройку подсветки.</string>
+    <string name="smart_backlight_last_error">Последняя попытка не удалась: %1$s</string>
 </resources>

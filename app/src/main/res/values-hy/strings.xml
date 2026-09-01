@@ -1667,4 +1667,8 @@ Nav Mode-ը օգտագործում է ստեղնի ֆիզիկական դիրքը
     <string name="status_bar_height_title">Գոտու բարձրություն</string>
     <string name="status_bar_height_description">Որքան բարձր է գոտին ֆիզիկական ստեղնաշարի դեպքում։ 56-ը համապատասխանում է տեքստային դաշտին. 48-ը ամենափոքր հարմար հպման տարածքն է։ 36-ը փոքր է Android-ի նվազագույն հպման տարածքից՝ միտումնավոր դժվար է դիպչել, այն դեպքի համար, երբ մուտքագրում եք ստեղներով և գոտին միայն կարդում եք։</string>
     <string name="status_bar_height_option">%1$d</string>
+    <string name="debug_recorder_include_autocorrections">ներառյալ ինքնուղղումները</string>
+    <string name="smart_backlight_blocked_wireless_debugging">Անլար վրիպազերծումն անջատված է, ուստի ստեղնաշարի լուսավորության կարգավորումը հնարավոր չէ կիրառել։ Android-ը այն անջատում է վերագործարկումից հետո — միացրեք այն կրկին մշակողի ընտրանքներում։</string>
+    <string name="smart_backlight_blocked_not_paired">Զուգակցված չէ։ Կարգավորեք անլար վրիպազերծումը ստորև՝ լուսավորության կարգավորումը կիրառելու համար։</string>
+    <string name="smart_backlight_last_error">Վերջին փորձը ձախողվեց՝ %1$s</string>
 </resources>

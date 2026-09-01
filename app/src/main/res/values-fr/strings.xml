@@ -1667,4 +1667,8 @@ Chaque touche peut être configurée comme Keycode, Action, Native Ctrl ou Aucun
     <string name="status_bar_height_title">Hauteur de la barre</string>
     <string name="status_bar_height_description">Hauteur de la barre avec le clavier physique. 56 correspond à un champ de texte ; 48 est la plus petite cible confortable. 36 est inférieur à la cible tactile minimale d\'Android — difficile à atteindre volontairement, pour quand vous tapez sur les touches et vous contentez de lire la barre.</string>
     <string name="status_bar_height_option">%1$d</string>
+    <string name="debug_recorder_include_autocorrections">avec corrections auto</string>
+    <string name="smart_backlight_blocked_wireless_debugging">Le débogage sans fil est désactivé, le réglage du rétroéclairage ne peut pas être appliqué. Android le désactive après un redémarrage — réactivez-le dans les options pour développeurs.</string>
+    <string name="smart_backlight_blocked_not_paired">Non appairé. Configurez le débogage sans fil ci-dessous pour appliquer le réglage du rétroéclairage.</string>
+    <string name="smart_backlight_last_error">Dernière tentative échouée : %1$s</string>
 </resources>

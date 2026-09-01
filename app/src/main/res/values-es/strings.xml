@@ -1666,4 +1666,8 @@ Cada tecla puede configurarse como Keycode, Acción, Native Ctrl o Ninguno. Usa 
     <string name="status_bar_height_title">Altura de la barra</string>
     <string name="status_bar_height_description">Qué altura tiene la barra con el teclado físico. 56 coincide con un campo de texto; 48 es el objetivo cómodo más pequeño. 36 es menor que el objetivo táctil mínimo de Android: difícil de tocar a propósito, para cuando escribes con las teclas y solo lees la barra.</string>
     <string name="status_bar_height_option">%1$d</string>
+    <string name="debug_recorder_include_autocorrections">incl. autocorrecciones</string>
+    <string name="smart_backlight_blocked_wireless_debugging">La depuración inalámbrica está desactivada, así que no se puede aplicar el ajuste de retroiluminación. Android la desactiva tras reiniciar: vuelve a activarla en Opciones de desarrollador.</string>
+    <string name="smart_backlight_blocked_not_paired">Sin emparejar. Configura la depuración inalámbrica abajo para aplicar el ajuste de retroiluminación.</string>
+    <string name="smart_backlight_last_error">El último intento falló: %1$s</string>
 </resources>

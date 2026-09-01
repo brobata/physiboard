@@ -1668,4 +1668,8 @@ Każdy klawisz można skonfigurować jako Keycode, Akcja, Native Ctrl lub Brak. 
     <string name="status_bar_height_title">Wysokość paska</string>
     <string name="status_bar_height_description">Jak wysoki jest pasek przy klawiaturze fizycznej. 56 odpowiada polu tekstowemu; 48 to najmniejszy wygodny cel. 36 jest mniejsze niż minimalny cel dotykowy Androida — celowo trudne do trafienia, gdy piszesz na klawiszach, a pasek tylko odczytujesz.</string>
     <string name="status_bar_height_option">%1$d</string>
+    <string name="debug_recorder_include_autocorrections">z autokorektami</string>
+    <string name="smart_backlight_blocked_wireless_debugging">Debugowanie bezprzewodowe jest wyłączone, więc nie można zastosować ustawienia podświetlenia. Android wyłącza je po ponownym uruchomieniu — włącz je ponownie w opcjach programisty.</string>
+    <string name="smart_backlight_blocked_not_paired">Brak sparowania. Skonfiguruj debugowanie bezprzewodowe poniżej, aby zastosować ustawienie podświetlenia.</string>
+    <string name="smart_backlight_last_error">Ostatnia próba nie powiodła się: %1$s</string>
 </resources>

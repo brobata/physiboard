@@ -1786,4 +1786,8 @@ Ogni tasto può essere configurato come Keycode, Azione, Native Ctrl o Nessuno. 
     <string name="status_bar_height_title">Altezza della barra</string>
     <string name="status_bar_height_description">Quanto è alta la barra con la tastiera fisica. 56 corrisponde a un campo di testo; 48 è il tocco comodo più piccolo. 36 è inferiore al bersaglio tattile minimo di Android: difficile da centrare di proposito, per quando scrivi sui tasti e la barra la leggi soltanto.</string>
     <string name="status_bar_height_option">%1$d</string>
+    <string name="debug_recorder_include_autocorrections">incl. correzioni auto</string>
+    <string name="smart_backlight_blocked_wireless_debugging">Il debug wireless è disattivato, quindi l\'impostazione della retroilluminazione non può essere applicata. Android lo disattiva dopo un riavvio: riattivalo nelle Opzioni sviluppatore.</string>
+    <string name="smart_backlight_blocked_not_paired">Non associato. Configura il debug wireless qui sotto per applicare l\'impostazione della retroilluminazione.</string>
+    <string name="smart_backlight_last_error">Ultimo tentativo non riuscito: %1$s</string>
 </resources>

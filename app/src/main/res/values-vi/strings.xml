@@ -1666,4 +1666,8 @@ Mỗi phím có thể cấu hình là Keycode, Action, Native Ctrl hoặc None. 
     <string name="status_bar_height_title">Chiều cao thanh</string>
     <string name="status_bar_height_description">Thanh cao bao nhiêu khi dùng bàn phím vật lý. 56 khớp với một ô văn bản; 48 là vùng chạm thoải mái nhỏ nhất. 36 nhỏ hơn vùng chạm tối thiểu của Android — cố ý khó chạm, dành cho khi bạn gõ trên phím và chỉ đọc thanh.</string>
     <string name="status_bar_height_option">%1$d</string>
+    <string name="debug_recorder_include_autocorrections">gồm tự động sửa</string>
+    <string name="smart_backlight_blocked_wireless_debugging">Gỡ lỗi không dây đang tắt nên không thể áp dụng cài đặt đèn nền. Android tắt nó sau khi khởi động lại — hãy bật lại trong Tùy chọn nhà phát triển.</string>
+    <string name="smart_backlight_blocked_not_paired">Chưa ghép nối. Hãy thiết lập gỡ lỗi không dây bên dưới để áp dụng cài đặt đèn nền.</string>
+    <string name="smart_backlight_last_error">Lần thử gần nhất thất bại: %1$s</string>
 </resources>

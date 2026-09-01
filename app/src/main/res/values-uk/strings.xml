@@ -1668,4 +1668,8 @@ Ctrl-ярлики застосунків із урахуванням розкл�
     <string name="status_bar_height_title">Висота смуги</string>
     <string name="status_bar_height_description">Якої висоти смуга з фізичною клавіатурою. 56 відповідає текстовому полю; 48 — найменша зручна для дотику. 36 менше за мінімальну область дотику Android: навмисно важко влучити — для випадку, коли ви друкуєте на клавішах і лише читаєте смугу.</string>
     <string name="status_bar_height_option">%1$d</string>
+    <string name="debug_recorder_include_autocorrections">з автозамінами</string>
+    <string name="smart_backlight_blocked_wireless_debugging">Бездротове налагодження вимкнено, тому налаштування підсвічування не застосувати. Android вимикає його після перезавантаження — увімкніть його знову в параметрах розробника.</string>
+    <string name="smart_backlight_blocked_not_paired">Не створено пару. Налаштуйте бездротове налагодження нижче, щоб застосувати підсвічування.</string>
+    <string name="smart_backlight_last_error">Остання спроба не вдалася: %1$s</string>
 </resources>
