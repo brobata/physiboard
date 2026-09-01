@@ -94,6 +94,7 @@ class SuggestionController(
             repository = dictionaryRepository,
             suggestionEngine = suggestionEngine,
             settingsProvider = settingsProvider,
+            languageProvider = { currentLocale.language },
             knownWordProvider = { word -> isKnownWordInActiveDictionaries(word) },
             exactReplacementProvider = { word, boundaryChar ->
                 val boundary = boundaryChar ?: ' '

@@ -13,6 +13,7 @@ class AutoReplaceController(
     private val repository: DictionaryRepository,
     private val suggestionEngine: SuggestionEngine,
     private val settingsProvider: () -> SuggestionSettings,
+    private val languageProvider: () -> String = { "" },
     private val knownWordProvider: ((String) -> Boolean)? = null,
     private val exactReplacementProvider: ((String, Char?) -> String?)? = null
 ) {
@@ -138,7 +139,8 @@ class AutoReplaceController(
             lookupWord: String,
             candidate: SuggestionResult?,
             settings: SuggestionSettings,
-            isOrthographicVariant: Boolean
+            isOrthographicVariant: Boolean,
+            languageCode: String = ""
         ): Boolean {
             if (candidate == null) return false
             val isCaseVariant = isCaseOnlyVariant(input, candidate.candidate)
@@ -157,6 +159,20 @@ class AutoReplaceController(
                 return isOrthographicVariant || isCaseVariant || !changesFirstLetter(input, candidate.candidate)
             }
             if (lengthDelta == 1 && hasSingleRepeatedCharInsertion(input, candidate.candidate)) return true
+
+            // A dropped or added letter is the most common typo there is. Refusing all of them
+            // is why "definetly" survived while same-length slips were corrected, and why the
+            // Maximum correction distance setting could not deliver what it promised. How far a
+            // length change may go is a per-language decision - see TypoShapeProfile.
+            val profile = TypoShapeProfile.forLanguage(languageCode)
+            if (
+                profile.maxLengthDelta > 0 &&
+                kotlin.math.abs(lengthDelta) <= profile.maxLengthDelta &&
+                !TypoShapeProfile.isPureAffixChange(input, candidate.candidate) &&
+                !changesFirstLetter(input, candidate.candidate)
+            ) {
+                return true
+            }
 
             // Pure suffix/prefix growth or shortening is usually morphology/completion, not a typo.
             return isOrthographicVariant && lookupWord.length == candidate.candidate.length
@@ -437,7 +453,8 @@ class AutoReplaceController(
             lookupWord = lookupWord,
             candidate = top,
             settings = settings,
-            isOrthographicVariant = isOrthographicVariant
+            isOrthographicVariant = isOrthographicVariant,
+            languageCode = languageProvider()
         )
 
         val shouldReplace = top != null
