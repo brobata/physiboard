@@ -21,7 +21,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import brobata.physiboard.ui.SettingsTopBar
+import brobata.physiboard.ui.rememberVerifiedBrokerStatus
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Settings for the screen trackpad: hold (or tap) a trigger key and swipe anywhere on the
@@ -51,17 +54,10 @@ fun ScreenTrackpadSettingsScreen(
         }
     }
     val overlayGranted = remember(statusTick) { Settings.canDrawOverlays(context) }
-    val brokerPaired = remember(statusTick) { EmbeddedAdbShell.isPaired(context) }
+    // Verified rather than "a key is stored" — see rememberVerifiedBrokerStatus.
+    val brokerStatus by rememberVerifiedBrokerStatus(statusTick)
+    val brokerUsable = brokerStatus == EmbeddedAdbShell.BrokerStatus.OK
 
-    // If the keyboard-backlight broker is paired, grant the overlay permission silently
-    // instead of sending the user to system settings.
-    var brokerGrantAttempted by remember { mutableStateOf(false) }
-    LaunchedEffect(enabled, overlayGranted, brokerPaired) {
-        if (enabled && !overlayGranted && brokerPaired && !brokerGrantAttempted) {
-            brokerGrantAttempted = true
-            ScreenTrackpadSetup.grantOverlayPermissionViaBroker(context)
-        }
-    }
 
     val triggerOptions = listOf(
         SettingsManager.SCREEN_TRACKPAD_TRIGGER_SPACE to stringResource(R.string.screen_trackpad_trigger_space),
@@ -82,6 +78,23 @@ fun ScreenTrackpadSettingsScreen(
             Uri.parse("package:${context.packageName}")
         ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         runCatching { context.startActivity(intent) }
+    }
+
+    // If the broker can actually reach the system, grant the overlay permission silently instead
+    // of sending the user to system settings. When the silent grant does not land, fall back to
+    // the settings screen rather than leaving the trackpad enabled and quietly non-functional:
+    // that fallback never ran while this was gated on "a key is stored", because a stale key
+    // looked exactly like a working broker.
+    var brokerGrantAttempted by remember { mutableStateOf(false) }
+    LaunchedEffect(enabled, overlayGranted, brokerUsable) {
+        if (!enabled || overlayGranted || brokerGrantAttempted) return@LaunchedEffect
+        if (brokerUsable) {
+            brokerGrantAttempted = true
+            withContext(Dispatchers.IO) {
+                ScreenTrackpadSetup.grantOverlayPermissionViaBroker(context)
+            }
+            if (!Settings.canDrawOverlays(context)) openOverlayPermission()
+        }
     }
 
     Scaffold(
@@ -106,7 +119,7 @@ fun ScreenTrackpadSettingsScreen(
                 onCheckedChange = {
                     enabled = it
                     SettingsManager.setScreenTrackpadEnabled(context, it)
-                    if (it && !Settings.canDrawOverlays(context) && !EmbeddedAdbShell.isPaired(context)) {
+                    if (it && !Settings.canDrawOverlays(context) && !brokerUsable) {
                         openOverlayPermission()
                     }
                 }

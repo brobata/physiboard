@@ -253,7 +253,10 @@ fun KeyboardSetupScreen(
     // when the light is enabled but has never been configured (the persistent value has
     // not been written yet). Once configured it survives reboots, so live Wireless-debugging
     // state is irrelevant to the badge.
-    var devicePaired by remember { mutableStateOf(true) }
+    // Verified, not "a key is stored". This drives the home screen's attention badge, so a
+    // false positive here is the app telling the user everything is fine while the toolbox
+    // cannot reach the system at all.
+    val brokerStatus by brobata.physiboard.ui.rememberVerifiedBrokerStatus()
 
     fun refreshStatus() {
         checkImeStatus(context) { enabled, selected ->
@@ -261,7 +264,6 @@ fun KeyboardSetupScreen(
             isPhysiBoardSelected = selected
         }
         enabledLanguageCount = getEnabledInputLanguageCount(context)
-        devicePaired = brobata.physiboard.inputmethod.EmbeddedAdbShell.isPaired(context)
     }
 
     // Initial IME + language + backlight status
@@ -280,7 +282,10 @@ fun KeyboardSetupScreen(
     // never told that the toolbox needed setting up at all.
     // The Status tile's summary: the two checks the Status screen leads with.
     val setupComplete = isPhysiBoardEnabled && isPhysiBoardSelected
-    val backlightNeedsAttention = !devicePaired
+    // Only a definite negative raises the badge: null means the check has not landed yet, and
+    // flashing "needs attention" at every launch would train the user to ignore it.
+    val backlightNeedsAttention = brokerStatus != null &&
+        brokerStatus != brobata.physiboard.inputmethod.EmbeddedAdbShell.BrokerStatus.OK
 
     // Request notification permission (Android 13+)
     val requestPermissionLauncher = rememberLauncherForActivityResult(

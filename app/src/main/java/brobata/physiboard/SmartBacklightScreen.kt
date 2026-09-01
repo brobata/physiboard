@@ -31,8 +31,13 @@ import androidx.core.content.ContextCompat
 import brobata.physiboard.inputmethod.EmbeddedAdbShell
 import brobata.physiboard.inputmethod.KeyboardBacklightManager
 import brobata.physiboard.inputmethod.PrivilegedDiagnostics
+import brobata.physiboard.ui.BrokerStatusMonitor
+import brobata.physiboard.ui.rememberVerifiedBrokerStatus
 import brobata.physiboard.inputmethod.PrivilegedSetup
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import moe.shizuku.manager.adb.AdbPairingService
 
 
@@ -92,6 +97,23 @@ fun SmartBacklightScreen(
             ?.reason
     }
 
+    var verifyTick by remember { mutableIntStateOf(0) }
+    val scope = rememberCoroutineScope()
+    // Shared with every other surface, so this screen and the toolbox card can never disagree.
+    val brokerStatus by rememberVerifiedBrokerStatus(verifyTick)
+    val verifying = brokerStatus == null
+    // Null until the device has been asked. "Configured" is a one-way latch that cannot notice
+    // the vendor value being reset by a system update or by the user, so the device is asked
+    // directly whenever the broker can reach it.
+    var alwaysOnDevice by remember { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(brokerStatus) {
+        alwaysOnDevice = if (brokerStatus == EmbeddedAdbShell.BrokerStatus.OK) {
+            withContext(Dispatchers.IO) { KeyboardBacklightManager.isAlwaysOnOnDevice(context) }
+        } else {
+            null
+        }
+    }
+
     // If the feature is enabled and pairing has completed, write the persistent setting now
     // (covers "enable first, pair second"). On success the manager flips `configured` true.
     LaunchedEffect(enabled, paired) {
@@ -134,7 +156,48 @@ fun SmartBacklightScreen(
                 // has since stopped working - which is exactly how a user ends up with a toggle
                 // that reads on, a backlight that times out, and nothing explaining why. If the
                 // broker cannot run right now, say so and say which switch to flip.
-                if (blocker != null) {
+                // A verified failure outranks the stored-state blocker: it is the only signal
+                // that can catch a pairing the phone never accepted.
+                val verifiedProblem = brokerStatus?.takeIf { it != EmbeddedAdbShell.BrokerStatus.OK }
+                if (verifiedProblem != null) {
+                    Text(
+                        text = "! " + stringResource(
+                            when (verifiedProblem) {
+                                EmbeddedAdbShell.BrokerStatus.WIRELESS_DEBUGGING_OFF ->
+                                    R.string.smart_backlight_blocked_wireless_debugging
+                                EmbeddedAdbShell.BrokerStatus.NOT_PAIRED ->
+                                    R.string.smart_backlight_blocked_not_paired
+                                EmbeddedAdbShell.BrokerStatus.NO_SERVICE ->
+                                    R.string.smart_backlight_blocked_no_service
+                                else -> R.string.smart_backlight_blocked_rejected
+                            }
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                    )
+                    Row(modifier = Modifier.padding(horizontal = 16.dp)) {
+                        Button(onClick = {
+                            EmbeddedAdbShell.forgetPairing(context)
+                            BrokerStatusMonitor.invalidate()
+                            SettingsManager.setSmartBacklightApplied(context, false)
+                            statusTick++
+                            verifyTick++
+                        }) {
+                            Text(stringResource(R.string.smart_backlight_repair))
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        TextButton(onClick = { verifyTick++ }, enabled = !verifying) {
+                            Text(
+                                stringResource(
+                                    if (verifying) R.string.smart_backlight_checking
+                                    else R.string.smart_backlight_check_again
+                                )
+                            )
+                        }
+                    }
+                } else if (blocker != null) {
                     Text(
                         text = "! " + when (blocker) {
                             PrivilegedDiagnostics.REASON_WIRELESS_DEBUGGING_OFF ->
@@ -155,6 +218,31 @@ fun SmartBacklightScreen(
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
                     )
+                }
+                // Broker reachable, but the phone is not actually holding the setting: it was
+                // written once and something took it back. Nothing in the stored state can see
+                // this, which is exactly how the toggle stays on while the backlight times out.
+                if (alwaysOnDevice == false) {
+                    Text(
+                        text = "! " + stringResource(R.string.smart_backlight_not_on_device),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                    )
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                withContext(Dispatchers.IO) {
+                                    KeyboardBacklightManager.applyAlwaysOn(context)
+                                }
+                                verifyTick++
+                            }
+                        },
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    ) {
+                        Text(stringResource(R.string.smart_backlight_reapply))
+                    }
                 }
                 lastBacklightFailure?.let { failure ->
                     Text(

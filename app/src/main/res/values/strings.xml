@@ -1263,6 +1263,18 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="smart_backlight_blocked_wireless_debugging">Wireless debugging is off, so the backlight setting cannot be applied. Android turns it off after a restart — turn it back on in Developer options.</string>
     <string name="smart_backlight_blocked_not_paired">Not paired. Set up wireless debugging below to apply the backlight setting.</string>
     <string name="smart_backlight_last_error">Last attempt failed: %1$s</string>
+    <string name="device_setup_forget_pairing">Forget pairing</string>
+    <string name="device_setup_checking_title">Checking…</string>
+    <string name="device_setup_checking_body">Testing whether the tools can reach the system.</string>
+    <string name="device_setup_unreachable_title">Cannot reach the system</string>
+    <string name="device_setup_rejected_body">Paired, but your phone is refusing the connection — the pairing code was probably mistyped, so the app is holding a key your phone never accepted. Re-pair to fix it.</string>
+    <string name="smart_backlight_blocked_no_service">Wireless debugging is on but the phone is not advertising it. Turn it off and on again in Developer options.</string>
+    <string name="smart_backlight_blocked_rejected">The phone refused the pairing. This happens when a pairing code was mistyped: the app kept a key your phone never accepted. Re-pair to fix it.</string>
+    <string name="smart_backlight_repair">Re-pair</string>
+    <string name="smart_backlight_not_on_device">Your phone is no longer holding the always-on setting — a system update or another app reset it. The backlight will time out until it is applied again.</string>
+    <string name="smart_backlight_reapply">Apply again</string>
+    <string name="smart_backlight_check_again">Check again</string>
+    <string name="smart_backlight_checking">Checking…</string>
     <string name="debug_report_viewer_title">Debug Report Viewer</string>
     
     <!-- Fn Layer Key Labels -->

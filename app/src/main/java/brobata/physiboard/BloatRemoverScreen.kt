@@ -18,6 +18,8 @@ import brobata.physiboard.toolbox.BloatCatalog
 import brobata.physiboard.toolbox.PackageRemover
 import brobata.physiboard.toolbox.PackageState
 import brobata.physiboard.toolbox.RemovalJournal
+import brobata.physiboard.inputmethod.EmbeddedAdbShell
+import brobata.physiboard.ui.rememberVerifiedBrokerStatus
 import brobata.physiboard.ui.SettingsTopBar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -41,7 +43,11 @@ fun BloatRemoverScreen(
     val scope = rememberCoroutineScope()
     val supported = remember { BloatCatalog.isSupportedDevice() }
 
-    var paired by remember { mutableStateOf(PackageRemover.isReady(context)) }
+    // Verified, not "a key is stored": these tools disable and uninstall packages through the
+    // broker, so claiming they are available when nothing can connect is the worst version of
+    // this bug — every action would fail after the user committed to it.
+    val brokerStatus by rememberVerifiedBrokerStatus()
+    val paired = brokerStatus == EmbeddedAdbShell.BrokerStatus.OK
     var states by remember { mutableStateOf<Map<String, PackageState>>(emptyMap()) }
     var loading by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf<String?>(null) }
@@ -54,8 +60,9 @@ fun BloatRemoverScreen(
         if (!supported) return
         loading = true
         scope.launch {
+            // `paired` is now the verified broker status and refreshes itself; re-deriving it
+            // from the stored key here would put the false positive straight back.
             val read = withContext(Dispatchers.IO) {
-                paired = PackageRemover.isReady(context)
                 PackageRemover.census(context)
             }
             if (read != null) {

@@ -22,6 +22,7 @@ import brobata.physiboard.inputmethod.EmbeddedAdbShell
 import brobata.physiboard.ring.NotificationRingActivity
 import brobata.physiboard.ring.NotificationRingSetup
 import brobata.physiboard.ring.RingAdjustActivity
+import brobata.physiboard.ui.rememberVerifiedBrokerStatus
 import brobata.physiboard.ring.ColorWheel
 import brobata.physiboard.ring.NotificationRingPolicy
 import android.content.Intent
@@ -62,7 +63,10 @@ fun NotificationRingScreen(
     var fullScreenAllowed by remember { mutableStateOf(NotificationRingSetup.canUseFullScreenIntent(context)) }
     var postAllowed by remember { mutableStateOf(NotificationRingSetup.canPostNotifications(context)) }
     var granting by remember { mutableStateOf(false) }
-    val paired = remember { EmbeddedAdbShell.isPaired(context) }
+    // Verified rather than "a key is stored": the listener and full-screen grants are handed
+    // out through the broker, so offering them when nothing can connect just fails silently.
+    val brokerStatus by rememberVerifiedBrokerStatus()
+    val paired = brokerStatus == EmbeddedAdbShell.BrokerStatus.OK
 
     fun refresh() {
         listenerGranted = NotificationRingSetup.isListenerGranted(context)

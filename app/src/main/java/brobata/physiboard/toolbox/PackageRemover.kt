@@ -43,7 +43,6 @@ object PackageRemover {
         data class Failed(val reason: String) : Result
     }
 
-    fun isReady(context: Context): Boolean = EmbeddedAdbShell.isPaired(context)
 
     /**
      * States for every catalog package, in one broker round trip.
@@ -62,6 +61,14 @@ object PackageRemover {
         val states: Map<String, PackageState>,
         val unrecognised: List<String>
     )
+
+    /**
+     * Cheap pre-flight before an action is attempted: is a key stored at all.
+     *
+     * Deliberately NOT a readiness claim for the UI — a stored key does not mean the phone
+     * accepts it. Screens use rememberVerifiedBrokerStatus, which actually connects.
+     */
+    internal fun isReady(context: Context): Boolean = EmbeddedAdbShell.isPaired(context)
 
     fun census(context: Context): Census? {
         val states = readStates(context) ?: return null

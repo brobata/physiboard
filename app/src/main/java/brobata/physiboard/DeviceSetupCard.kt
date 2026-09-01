@@ -23,6 +23,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -41,7 +42,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import brobata.physiboard.inputmethod.EmbeddedAdbShell
+import brobata.physiboard.ui.BrokerStatusMonitor
+import brobata.physiboard.ui.rememberVerifiedBrokerStatus
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import moe.shizuku.manager.adb.AdbPairingService
 
 /**
@@ -73,6 +78,9 @@ fun DeviceSetupCard(modifier: Modifier = Modifier) {
     val wirelessDebuggingOn = remember(statusTick) {
         EmbeddedAdbShell.isWirelessDebuggingEnabled(context)
     }
+    // Shared with every other surface. A private check here is what let this card say the tools
+    // could reach the system while the home tile said "needs pairing" at the same moment.
+    val brokerStatus by rememberVerifiedBrokerStatus(paired)
     val doNotDisturbOn = remember(statusTick) { doNotDisturbActive(context) }
 
     var notificationsAllowed by remember {
@@ -109,8 +117,13 @@ fun DeviceSetupCard(modifier: Modifier = Modifier) {
         }
     }
 
+    // Readiness is the VERIFIED status, never "a key is stored". A key is stored the moment a
+    // pairing is attempted, and it stays stored when Wireless debugging is later turned off — so
+    // keying this card off `paired` is what let it claim the tools could reach the system while
+    // nothing could connect at all.
+    val connected = brokerStatus == EmbeddedAdbShell.BrokerStatus.OK
     Surface(
-        color = if (paired) MaterialTheme.colorScheme.surface
+        color = if (connected) MaterialTheme.colorScheme.surface
         else MaterialTheme.colorScheme.surfaceVariant,
         shape = MaterialTheme.shapes.medium,
         modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
@@ -118,17 +131,21 @@ fun DeviceSetupCard(modifier: Modifier = Modifier) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    imageVector = if (paired) Icons.Filled.CheckCircle else Icons.Filled.Warning,
+                    imageVector = if (connected) Icons.Filled.CheckCircle else Icons.Filled.Warning,
                     contentDescription = null,
-                    tint = if (paired) MaterialTheme.colorScheme.primary
+                    tint = if (connected) MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.error,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = stringResource(
-                        if (paired) R.string.device_setup_ready_title
-                        else R.string.device_setup_needed_title
+                        when {
+                            connected -> R.string.device_setup_ready_title
+                            brokerStatus == null && paired -> R.string.device_setup_checking_title
+                            paired -> R.string.device_setup_unreachable_title
+                            else -> R.string.device_setup_needed_title
+                        }
                     ),
                     style = MaterialTheme.typography.titleMedium,
                     fontFamily = FontFamily.Monospace
@@ -138,10 +155,49 @@ fun DeviceSetupCard(modifier: Modifier = Modifier) {
             if (paired) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = stringResource(R.string.device_setup_ready_body),
+                    text = stringResource(
+                        when (brokerStatus) {
+                            EmbeddedAdbShell.BrokerStatus.OK -> R.string.device_setup_ready_body
+                            EmbeddedAdbShell.BrokerStatus.REJECTED -> R.string.device_setup_rejected_body
+                            EmbeddedAdbShell.BrokerStatus.WIRELESS_DEBUGGING_OFF ->
+                                R.string.smart_backlight_blocked_wireless_debugging
+                            EmbeddedAdbShell.BrokerStatus.NO_SERVICE ->
+                                R.string.smart_backlight_blocked_no_service
+                            EmbeddedAdbShell.BrokerStatus.NOT_PAIRED ->
+                                R.string.smart_backlight_blocked_not_paired
+                            null -> R.string.device_setup_checking_body
+                        }
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (connected || brokerStatus == null) MaterialTheme.colorScheme.onSurfaceVariant
+                            else MaterialTheme.colorScheme.error
                 )
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Wireless debugging being off does not invalidate the pairing, so that case
+                    // is sent to the toggle rather than being told to pair again.
+                    if (brokerStatus == EmbeddedAdbShell.BrokerStatus.WIRELESS_DEBUGGING_OFF ||
+                        brokerStatus == EmbeddedAdbShell.BrokerStatus.NO_SERVICE
+                    ) {
+                        Button(onClick = { openWirelessDebugging(context) }) {
+                            Text(stringResource(R.string.device_setup_open_wireless))
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                    TextButton(onClick = {
+                        EmbeddedAdbShell.forgetPairing(context)
+                        BrokerStatusMonitor.invalidate()
+                        statusTick++
+                    }) {
+                        Text(
+                            stringResource(
+                                if (brokerStatus == EmbeddedAdbShell.BrokerStatus.REJECTED)
+                                    R.string.smart_backlight_repair
+                                else R.string.device_setup_forget_pairing
+                            )
+                        )
+                    }
+                }
                 return@Column
             }
 
