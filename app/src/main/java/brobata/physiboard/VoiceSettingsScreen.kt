@@ -71,8 +71,19 @@ fun VoiceSettingsScreen(
             SettingsManager.getScreenTrackpadTriggerKey(context) ==
             SettingsManager.SCREEN_TRACKPAD_TRIGGER_SYM
     }
+    // The stored flag only records that a binding was once asked for. The vendor slot it writes
+    // lives in Settings.System, where a system update or another app can take it back without
+    // telling us — so the switch reflects what the slot ACTUALLY points at right now. Reading it
+    // needs no permission, unlike writing it.
     var sideKeyAssistant by remember {
         mutableStateOf(SettingsManager.getSideKeyAssistantEnabled(context))
+    }
+    LaunchedEffect(Unit) {
+        val bound = withContext(Dispatchers.IO) { VendorSideKeyManager.isAssistantBound(context) }
+        if (bound != sideKeyAssistant) {
+            sideKeyAssistant = bound
+            SettingsManager.setSideKeyAssistantEnabled(context, bound)
+        }
     }
     var sideKeyBusy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
