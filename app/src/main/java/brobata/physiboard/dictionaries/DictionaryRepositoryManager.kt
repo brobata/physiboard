@@ -1,6 +1,7 @@
 package brobata.physiboard.dictionaries
 
 import android.content.Context
+import brobata.physiboard.core.suggestions.DictionaryStore
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -20,7 +21,10 @@ import java.security.MessageDigest
 import brobata.physiboard.core.suggestions.DictionaryIndex
 
 private const val TAG = "DictionaryRepositoryManager"
-private const val MANIFEST_URL = "https://palsoftware.github.io/pastiera-dict/dicts-manifest.json"
+// Assets are hosted by this project rather than fetched from upstream: a byte-for-byte copy
+// of pastiera-dict release 12, every file verified against the upstream SHA-256 before upload.
+// Not a GitHub mirror or fork - an independent copy, so an upstream deletion costs us nothing.
+private const val MANIFEST_URL = "https://brobata.github.io/physiboard-dict/dicts-manifest.json"
 private val client = OkHttpClient()
 
 @Serializable
@@ -146,26 +150,29 @@ object DictionaryRepositoryManager {
                 validateDictionaryStream(input)
             }
             
-            // Move to final location
-            val destDir = File(context.filesDir, "dictionaries_serialized/custom").apply { mkdirs() }
-            val destFile = File(destDir, item.filename)
-            
-            if (destFile.exists()) {
-                destFile.delete()
+            // Install into the downloaded tier, never the imported one, and record where this
+            // build came from so a later manifest can be recognised as newer.
+            val languageCode = extractLanguageCode(item.filename)
+            val installed = DictionaryStore.install(
+                context = context,
+                source = tempFile,
+                languageCode = languageCode,
+                origin = DictionaryStore.ORIGIN_DOWNLOAD,
+                meta = DictionaryStore.Meta(
+                    origin = DictionaryStore.ORIGIN_DOWNLOAD,
+                    sha256 = item.sha256,
+                    bytes = item.bytes,
+                    manifestUpdatedAt = item.updatedAt
+                )
+            )
+            tempFile.delete()
+            if (!installed) {
+                Log.e(TAG, "Failed to install ${item.filename}")
+                return@withContext DownloadResult.CopyError
             }
-            
-            if (!tempFile.renameTo(destFile)) {
-                // Fallback: copy if rename fails
-                tempFile.inputStream().use { input ->
-                    destFile.outputStream().use { output ->
-                        input.copyTo(output)
-                    }
-                }
-                tempFile.delete()
-            }
-            
+
             Log.i(TAG, "Successfully downloaded and installed ${item.filename}")
-            DownloadResult.Success(destFile.name)
+            DownloadResult.Success(item.filename)
         } catch (e: SerializationException) {
             Log.e(TAG, "Invalid dictionary format for ${item.filename}", e)
             DownloadResult.InvalidFormat

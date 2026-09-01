@@ -701,16 +701,13 @@ object AdditionalSubtypeUtils {
                 // If serialized directory doesn't exist, continue
             }
 
-            // Check custom/imported serialized dictionaries in app storage
+            // Check installed dictionaries in app storage (imported and downloaded tiers)
             try {
-                val localDir = java.io.File(context.filesDir, "dictionaries_serialized/custom")
-                val localFiles = localDir.listFiles { file ->
-                    file.isFile && file.name.endsWith("_base.dict")
-                }
-                localFiles?.forEach { file ->
-                    val langCode = file.name.removeSuffix("_base.dict")
-                    localesWithDict.addAll(getLocaleVariantsForLanguage(langCode))
-                }
+                brobata.physiboard.core.suggestions.DictionaryStore
+                    .installedLanguages(context)
+                    .forEach { langCode ->
+                        localesWithDict.addAll(getLocaleVariantsForLanguage(langCode))
+                    }
             } catch (e: Exception) {
                 Log.w(TAG, "Error checking local dictionaries_serialized", e)
             }

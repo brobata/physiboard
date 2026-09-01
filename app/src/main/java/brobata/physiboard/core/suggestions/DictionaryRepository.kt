@@ -87,13 +87,9 @@ class AndroidDictionaryRepository(
                     // If serialized directory doesn't exist, continue
                 }
 
-                // Check custom/imported serialized dictionaries in app storage
+                // Check installed dictionaries in app storage (imported, then downloaded)
                 try {
-                    val localDir = File(context.filesDir, "dictionaries_serialized/custom")
-                    val localFiles = localDir.listFiles { file ->
-                        file.isFile && file.name == "${langCode}_base.dict"
-                    }
-                    if (!localFiles.isNullOrEmpty()) {
+                    if (DictionaryStore.resolve(context, langCode) != null) {
                         return true
                     }
                 } catch (e: Exception) {
@@ -137,18 +133,17 @@ class AndroidDictionaryRepository(
             try {
                 val startTime = System.currentTimeMillis()
 
-                // Move legacy local dictionaries into the custom folder to isolate imports.
-                migrateLegacyLocalDictionaries()
+                // Drain the pre-split shared folder into the downloaded tier.
+                DictionaryStore.migrateLegacy(context)
 
-                // Determine paths for custom and bundled dictionaries
-                val customDir = File(context.filesDir, "dictionaries_serialized/custom").apply { mkdirs() }
-                val customFile = File(customDir, "${baseLocale.language}_base.dict")
                 coroutineContext.ensureActive()
+                // Precedence: user import, then download, then the bundled asset.
+                val installed = DictionaryStore.resolve(context, baseLocale.language)
                 val serializedPath = "common/dictionaries_serialized/${baseLocale.language}_base.dict"
                 val loadedSerialized = when {
-                    customFile.exists() -> {
-                        Log.i(tag, "Loading CUSTOM dictionary from ${customFile.absolutePath}")
-                        loadSerializedFromFile(customFile)
+                    installed != null -> {
+                        Log.i(tag, "Loading INSTALLED dictionary from ${installed.absolutePath}")
+                        loadSerializedFromFile(installed)
                     }
                     else -> {
                         Log.i(tag, "Loading BUNDLED dictionary from assets: $serializedPath")
@@ -619,33 +614,6 @@ class AndroidDictionaryRepository(
         symSpellBuilt = true
     }
 
-    /**
-     * Move legacy dictionaries from the root local directory into the custom folder.
-     * This isolates user-imported dictionaries from bundled assets.
-     */
-    private fun migrateLegacyLocalDictionaries() {
-        val rootDir = File(context.filesDir, "dictionaries_serialized")
-        val customDir = File(rootDir, "custom").apply { mkdirs() }
-        if (!rootDir.exists() || rootDir == customDir) return
-
-        rootDir.listFiles()?.forEach { file ->
-            if (file.isDirectory && file.name == "custom") return@forEach
-            if (file.isFile && file.extension == "dict") {
-                val dest = File(customDir, file.name)
-                if (!dest.exists()) {
-                    val moved = file.renameTo(dest)
-                    Log.i(tag, "Migrating legacy dictionary ${file.name} to custom folder: success=$moved")
-                    if (!moved) {
-                        file.copyTo(dest, overwrite = false)
-                        file.delete()
-                    }
-                } else {
-                    Log.i(tag, "Removing duplicate legacy dictionary ${file.name}")
-                    file.delete()
-                }
-            }
-        }
-    }
 
     private fun addToSymSpell(entries: List<DictionaryEntry>) {
         val engine = symSpell ?: run {

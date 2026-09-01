@@ -1,6 +1,7 @@
 package brobata.physiboard.dictionaries
 
 import android.content.Context
+import brobata.physiboard.core.suggestions.DictionaryStore
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.compose.setContent
@@ -535,10 +536,8 @@ private fun loadSerializedDictionaries(context: Context): List<InstalledDictiona
             ?: emptyList()
         Log.d("InstalledDictionaries", "Found ${assetFiles.size} dictionaries in assets: ${assetFiles.joinToString(", ")}")
 
-        val importedDir = File(context.filesDir, "dictionaries_serialized/custom")
-        val importedFiles = importedDir.listFiles { file ->
-            file.isFile && file.name.endsWith(".dict")
-        }?.map { it.name } ?: emptyList()
+        val importedFiles = DictionaryStore.installedLanguages(context)
+            .map { DictionaryStore.fileNameFor(it) }
         Log.d("InstalledDictionaries", "Found ${importedFiles.size} imported dictionaries: ${importedFiles.joinToString(", ")}")
 
         val allFiles = (assetFiles.map { DictionarySource.Asset to it } +
@@ -590,8 +589,11 @@ private fun importDictionaryFromSaf(context: Context, uri: android.net.Uri): Imp
         return ImportResult.InvalidName
     }
 
-    val destDir = File(context.filesDir, "dictionaries_serialized/custom").apply { mkdirs() }
-    val destFile = File(destDir, name)
+    val languageCode = DictionaryStore.languageOf(name.lowercase()) ?: return ImportResult.InvalidName
+    // Stage in the cache, then hand to the store: an import lands in its own tier, so a later
+    // download of the same language can no longer overwrite the user's file.
+    val staged = File(context.cacheDir, "dictionary_import").apply { mkdirs() }
+        .resolve(DictionaryStore.fileNameFor(languageCode))
 
     return try {
         context.contentResolver.openInputStream(uri)?.use { input ->
@@ -601,12 +603,25 @@ private fun importDictionaryFromSaf(context: Context, uri: android.net.Uri): Imp
 
         // Copy once more because stream was consumed during validation
         context.contentResolver.openInputStream(uri)?.use { input ->
-            destFile.outputStream().use { output ->
+            staged.outputStream().use { output ->
                 input.copyTo(output)
             }
         } ?: return ImportResult.CopyError
 
-        ImportResult.Success(destFile.name)
+        val installed = DictionaryStore.install(
+            context = context,
+            source = staged,
+            languageCode = languageCode,
+            origin = DictionaryStore.ORIGIN_IMPORT,
+            meta = DictionaryStore.Meta(
+                origin = DictionaryStore.ORIGIN_IMPORT,
+                bytes = staged.length()
+            )
+        )
+        staged.delete()
+        if (!installed) return ImportResult.CopyError
+
+        ImportResult.Success(DictionaryStore.fileNameFor(languageCode))
     } catch (e: SerializationException) {
         Log.e("InstalledDictionaries", "Invalid dictionary format", e)
         ImportResult.InvalidFormat
@@ -636,20 +651,17 @@ private fun deleteDictionaryFile(context: Context, dictionary: UnifiedDictionary
             return UninstallResult.CannotDeleteAsset
         }
         
-        // Delete from custom directory
-        val customDir = File(context.filesDir, "dictionaries_serialized/custom")
-        val dictFile = File(customDir, dictionary.fileName)
-        
-        if (!dictFile.exists()) {
-            Log.w("InstalledDictionaries", "Dictionary file not found: ${dictFile.absolutePath}")
-            return UninstallResult.NotFound
-        }
-        
-        if (dictFile.delete()) {
+        // Remove from whichever writable tier holds it, taking the sidecar with it.
+        val languageCode = DictionaryStore.languageOf(dictionary.fileName)
+            ?: return UninstallResult.NotFound
+        val origin = DictionaryStore.originOf(context, languageCode)
+            ?: return UninstallResult.NotFound
+
+        if (DictionaryStore.remove(context, languageCode, origin)) {
             Log.d("InstalledDictionaries", "Successfully deleted dictionary: ${dictionary.fileName}")
             UninstallResult.Success(dictionary.fileName)
         } else {
-            Log.e("InstalledDictionaries", "Failed to delete dictionary file: ${dictFile.absolutePath}")
+            Log.e("InstalledDictionaries", "Failed to delete dictionary file: ${dictionary.fileName}")
             UninstallResult.DeleteError
         }
     } catch (e: Exception) {
