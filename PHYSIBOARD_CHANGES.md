@@ -4,6 +4,77 @@ PhysiBoard is a GPLv3 fork of [Pastiera](https://github.com/palsoftware/pastiera
 Andrea Palumbo (PalSoftware) and contributors. This file documents the fork's changes,
 as required by GPLv3 §5(a). Package: `brobata.physiboard`.
 
+## 2.0.3 (2026-09-01)
+
+The app now checks that its device features actually work, instead of assuming they still do.
+Enter-to-send does what you set it to, and autocorrect fixes dropped letters.
+
+<!-- /card -->
+
+- **The Enter send method was a setting that did nothing.** *App overrides* has offered a send
+  method — App action, Plain Enter, Ctrl+Enter, Auto — since 2.0. The keyboard never read it,
+  and always used the app's send action. Anyone whose messenger ignores that action pressed
+  Enter and nothing happened at all: no send, no newline, no error. The keyboard now honours the
+  choice, and *Auto* keeps the old behaviour. The reason it could not be detected is that
+  Android's `performEditorAction` reports whether the connection is alive, not whether the app
+  acted, so a swallowed key looked like a success.
+- **Per-app Enter settings were ignored outside a fixed list of apps.** The check for "is this
+  one of the messengers we ship a default for" ran before the check for "has the user chosen
+  something for this app", so an override on WhatsApp Business, a Signal fork or Slack was
+  saved, shown as configured, and never applied. A preset still only applies to tested apps; an
+  app you name yourself now always counts.
+- **Autocorrect fixes dropped and added letters.** It only ever accepted corrections that kept
+  the word the same length, or added a doubled letter. So `definetly` and `sensitivy` stayed
+  wrong while same-length slips were fixed, which is why it felt arbitrary — and why *Maximum
+  correction distance* promised more than it could deliver, since a bigger edit almost always
+  changes length. Word completion and grammatical endings are still left alone: `work` does not
+  become `works`. How far a correction may change a word's length is now decided per language,
+  because a dropped letter is a typo in English but ordinary word-building in Turkish or
+  Hungarian; English is enabled, every other language keeps the previous behaviour until its
+  results have been checked by someone who reads it.
+- **Features are checked, not assumed.** Everything that reaches the phone itself — the
+  keyboard backlight, the screen trackpad, the orange side key, the bloat remover, the
+  notification ring — used to decide it was working by remembering that it had been set up
+  once. Nothing noticed when a system update, a reboot or another app quietly took that away,
+  so the app kept reporting success while the feature did nothing. Each of these now checks the
+  real state when you open its screen, tells you which part is missing, and offers the button
+  that fixes it. Two screens can no longer disagree, either: there is one answer now, shared,
+  rather than each screen asking separately and getting a different reply.
+- **A mistyped pairing code no longer strands the app.** Setting up wireless debugging generates
+  the key it pairs with *before* it checks the code you typed, and "paired" was never more than
+  "a key is stored" — so a single wrong digit left the app permanently certain it was paired,
+  against a key the phone had never accepted. Everything behind the pairing — the backlight, the
+  overlay grant, the screen trackpad, the package tools — was then gated on that, silently, and
+  the only way out was clearing app data and losing every setting. A failed pairing now throws
+  away the key it made, and *Forget pairing* on the setup card gets you out if you are already
+  stuck. A key from a pairing that worked is never touched. Setup also no longer claims to be
+  ready when Wireless debugging is switched off — it says so, and points at the switch rather
+  than telling you to pair again, because the pairing is not what is wrong in that case.
+- **The Status screen takes you where the fix is.** It reported that the keyboard was not
+  enabled, or not the active one, and left you to find the setting yourself. Those rows are now
+  tappable and open Android's keyboard list or the keyboard picker. The screen also re-reads
+  when you come back to it, instead of showing the state you left rather than the one you chose.
+- **The keyboard backlight says why it stopped.** Every step that needs wireless debugging
+  failed silently: it checked whether you had ever paired, never whether wireless debugging was
+  still on — and Android turns that off after a restart. The result was a switch that read "on",
+  a backlight that timed out anyway, and nothing to explain it. It now checks both, says which
+  one is missing, and remembers the last failure so it survives the keyboard restarting.
+- **Dictionaries you import are no longer overwritten.** Imported and downloaded dictionaries
+  shared one folder, so downloading a language destroyed a dictionary you had imported for it,
+  with no warning. They are now kept apart, yours always wins, and each one records where it
+  came from — which also means the app can finally tell when a newer dictionary is available
+  instead of keeping the first one it ever downloaded forever.
+- **Dictionaries are served by this project.** All nineteen languages are hosted here rather
+  than fetched from upstream, so they cannot disappear from under the app. Every file was
+  verified against the upstream checksum before publishing; the corpus is unchanged.
+- **Diagnostics can see the features that break.** The debug export now reports pairing state,
+  whether wireless debugging is on, the overlay and notification permissions, whether the
+  keyboard is selected, and the last outcome of each privileged step — none of which was
+  visible before, in a build where the logs that would have shown it are stripped. It also
+  records the editor's `imeOptions`, the field that decides whether Enter can send at all.
+- **Autocorrections stay on your phone.** The debug export used to include the words you typed,
+  as before-and-after pairs. That section is now excluded unless you switch it on.
+
 ## 2.0.2 (2026-08-30)
 
 Your settings have been reset to fix some bugs. Won't happen again. Thanks for your support!
