@@ -235,7 +235,7 @@ private data class HomeTile(
  * Home = an action surface. It shows only what needs the user's attention
  * (enable / select / update), collapses to a single "✓ all set" line when
  * everything is fine, and offers a compact quick-launcher row. The physical
- * key-event logger now lives in Settings → Advanced → Diagnostics.
+ * key-event logger now lives in Settings → Diagnostics.
  */
 @Composable
 fun KeyboardSetupScreen(

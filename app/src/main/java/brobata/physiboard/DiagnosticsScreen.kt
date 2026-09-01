@@ -36,7 +36,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.FileProvider
+import android.provider.Settings
+import androidx.core.app.NotificationManagerCompat
 import brobata.physiboard.inputmethod.DebugCaptureStore
+import brobata.physiboard.inputmethod.EmbeddedAdbShell
+import brobata.physiboard.inputmethod.PrivilegedDiagnostics
 import brobata.physiboard.inputmethod.DeviceSpecific
 import brobata.physiboard.inputmethod.KeyboardEventTracker
 import java.io.File
@@ -81,6 +85,9 @@ fun DiagnosticsScreen(
     var lastRecordedAtMs by rememberSaveable { mutableStateOf<Long?>(null) }
     var includeSuggestionsInExport by rememberSaveable { mutableStateOf(false) }
     var includeRawTrackpadInExport by rememberSaveable { mutableStateOf(false) }
+    // Off by default: the autocorrection log carries fragments of what was actually typed
+    // (the before/after words). It stays visible on this screen; sharing it is opt-in.
+    var includeAutoCorrectionsInExport by rememberSaveable { mutableStateOf(false) }
     var showDebugReportViewer by rememberSaveable { mutableStateOf(false) }
     var latestDebugReport by rememberSaveable { mutableStateOf("") }
     val recordedEvents = remember { mutableStateListOf<RecordedKeyboardEvent>() }
@@ -139,7 +146,8 @@ fun DiagnosticsScreen(
             recordStartedAtMs = recordStartedAtMs,
             events = recordedEvents,
             includeSuggestions = includeSuggestionsInExport,
-            includeRawTrackpad = includeRawTrackpadInExport
+            includeRawTrackpad = includeRawTrackpadInExport,
+            includeAutoCorrections = includeAutoCorrectionsInExport
         )
     }
     val copyReportToClipboard: (String) -> Unit = { report ->
@@ -355,6 +363,21 @@ fun DiagnosticsScreen(
                             label = {
                                 Text(
                                     text = stringResource(R.string.debug_recorder_include_raw_trackpad),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        FilterChip(
+                            selected = includeAutoCorrectionsInExport,
+                            onClick = {
+                                includeAutoCorrectionsInExport = !includeAutoCorrectionsInExport
+                            },
+                            label = {
+                                Text(
+                                    text = stringResource(R.string.debug_recorder_include_autocorrections),
                                     style = MaterialTheme.typography.labelSmall,
                                     textAlign = TextAlign.Center,
                                     modifier = Modifier.fillMaxWidth()
@@ -751,13 +774,15 @@ private fun buildKeyboardDebugReport(
     recordStartedAtMs: Long?,
     events: List<RecordedKeyboardEvent>,
     includeSuggestions: Boolean,
-    includeRawTrackpad: Boolean
+    includeRawTrackpad: Boolean,
+    includeAutoCorrections: Boolean
 ): String {
     val nowMs = System.currentTimeMillis()
     val tz = TimeZone.getDefault()
     val prefs = SettingsManager.getPreferences(context)
     val imeContext = DebugCaptureStore.imeContextSnapshot()
-    val autoCorrections = DebugCaptureStore.autoCorrectionsSnapshot()
+    val autoCorrections =
+        if (includeAutoCorrections) DebugCaptureStore.autoCorrectionsSnapshot() else emptyList()
     val suggestionsSnapshots = if (includeSuggestions) DebugCaptureStore.suggestionsSnapshot() else emptyList()
     val rawTrackpadEvents = if (includeRawTrackpad) DebugCaptureStore.rawTrackpadEventsSnapshot() else emptyList()
     val filteredSuggestionsRows = if (includeSuggestions) buildFilteredSuggestionRows(suggestionsSnapshots) else emptyList()
@@ -840,6 +865,7 @@ private fun buildKeyboardDebugReport(
         appendLine("event_count=${events.size}")
         appendLine("include_suggestions=$includeSuggestions")
         appendLine("include_raw_trackpad=$includeRawTrackpad")
+        appendLine("include_autocorrections=$includeAutoCorrections")
         appendLine("suggestions_filter=${if (includeSuggestions) suggestionFilterMode else "disabled"}")
         appendLine("attempt_logging_supported=true")
         appendLine()
@@ -847,6 +873,15 @@ private fun buildKeyboardDebugReport(
         appendLine("captured_at=${imeContext?.timestampMs?.let { formatDebugTimestamp(it) } ?: "n/a"}")
         appendLine("target_package=${imeContext?.packageName ?: "n/a"}")
         appendLine("input_type=${imeContext?.inputType?.toString() ?: "n/a"}")
+        appendLine(
+            "ime_options=" + (imeContext?.imeOptions?.let { "0x" + Integer.toHexString(it) } ?: "n/a")
+        )
+        appendLine(
+            "ime_no_enter_action=" + (imeContext?.imeOptions?.let {
+                (it and android.view.inputmethod.EditorInfo.IME_FLAG_NO_ENTER_ACTION) != 0
+            }?.toString() ?: "n/a")
+        )
+        appendLine("resolved_editor_action=${imeContext?.resolvedEditorAction ?: "n/a"}")
         appendLine("subtype_locale=${imeContext?.subtypeLocale ?: "n/a"}")
         appendLine("resolved_layout=${imeContext?.resolvedLayout ?: "n/a"}")
         appendLine("profile_override_snapshot=${imeContext?.physicalProfileOverride ?: "n/a"}")
@@ -860,8 +895,50 @@ private fun buildKeyboardDebugReport(
         appendLine("resolved_auto_space_punctuation=${SettingsManager.getAutoSpacePunctuation(context)}")
         appendLine("resolved_space_after_punctuation=${SettingsManager.getSpaceAfterPunctuation(context)}")
         appendLine()
+        appendLine("[privileged]")
+        // Every ADB-broker feature used to fail invisibly in release builds: early returns with
+        // no record, swallowed exceptions, and Log.i/Log.d stripped by ProGuard. This section is
+        // what a "the backlight stopped working" report needs in order to be answerable.
+        appendLine("broker_paired=${EmbeddedAdbShell.isPaired(context)}")
+        appendLine("wireless_debugging_enabled=${EmbeddedAdbShell.isWirelessDebuggingEnabled(context)}")
+        appendLine("broker_blocker=${PrivilegedDiagnostics.brokerBlocker(context) ?: "none"}")
+        appendLine("backlight_enabled=${SettingsManager.getSmartBacklightEnabled(context)}")
+        appendLine("backlight_applied_flag=${SettingsManager.getSmartBacklightApplied(context)}")
+        // The flag above is a one-way latch; this is what the device last actually reported.
+        val observedBacklight = PrivilegedDiagnostics.observedBacklightValue(context)
+        appendLine("backlight_device_value=${observedBacklight?.first ?: "never read"}")
+        appendLine(
+            "backlight_device_value_at=" +
+                (observedBacklight?.second?.let { formatDebugTimestamp(it) } ?: "n/a")
+        )
+        appendLine("overlay_permission_granted=${Settings.canDrawOverlays(context)}")
+        appendLine(
+            "notification_listener_granted=" +
+                NotificationManagerCompat.getEnabledListenerPackages(context)
+                    .contains(context.packageName)
+        )
+        appendLine("notification_ring_enabled=${SettingsManager.isNotificationRingEnabled(context)}")
+        appendLine("screen_trackpad_enabled=${SettingsManager.isScreenTrackpadEnabled(context)}")
+        appendLine("trackpad_provider=${SettingsManager.getTrackpadProvider(context)}")
+        val imeStatus = ImeStatus.check(context)
+        appendLine("ime_enabled=${imeStatus.enabled}")
+        appendLine("ime_selected=${imeStatus.selected}")
+        val privilegedOutcomes = PrivilegedDiagnostics.snapshot(context)
+        if (privilegedOutcomes.isEmpty()) {
+            appendLine("last_outcomes=(no privileged step has run)")
+        } else {
+            privilegedOutcomes.forEach { outcome ->
+                appendLine(
+                    "last_${outcome.step.key}=${if (outcome.ok) "ok" else "failed"} " +
+                        "reason='${outcome.reason}' at=${formatDebugTimestamp(outcome.atMs)}"
+                )
+            }
+        }
+        appendLine()
         appendLine("[autocorrections]")
-        if (autoCorrections.isEmpty()) {
+        if (!includeAutoCorrections) {
+            appendLine("(excluded - contains typed words; enable \"Include autocorrections\" to share)")
+        } else if (autoCorrections.isEmpty()) {
             appendLine("(no autocorrections recorded)")
         } else {
             autoCorrections.forEach { entry ->

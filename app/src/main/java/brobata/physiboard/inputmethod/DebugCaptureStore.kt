@@ -36,6 +36,12 @@ object DebugCaptureStore {
         val timestampMs: Long,
         val packageName: String?,
         val inputType: Int?,
+        // imeOptions decides whether Enter can carry an editor action at all: an editor that
+        // sets IME_FLAG_NO_ENTER_ACTION, or declares no action, cannot be sent to that way.
+        // Its absence here is why a "Enter does nothing in this app" report could not be
+        // answered from a debug export.
+        val imeOptions: Int?,
+        val resolvedEditorAction: String?,
         val subtypeLocale: String?,
         val resolvedLayout: String?,
         val physicalProfileOverride: String?
@@ -175,6 +181,8 @@ object DebugCaptureStore {
     fun updateImeContext(
         packageName: String?,
         inputType: Int?,
+        imeOptions: Int?,
+        resolvedEditorAction: String?,
         subtypeLocale: String?,
         resolvedLayout: String?,
         physicalProfileOverride: String?
@@ -183,6 +191,8 @@ object DebugCaptureStore {
             timestampMs = System.currentTimeMillis(),
             packageName = packageName,
             inputType = inputType,
+            imeOptions = imeOptions,
+            resolvedEditorAction = resolvedEditorAction,
             subtypeLocale = subtypeLocale,
             resolvedLayout = resolvedLayout,
             physicalProfileOverride = physicalProfileOverride

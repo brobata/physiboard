@@ -3421,12 +3421,25 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         DebugCaptureStore.updateImeContext(
             packageName = info?.packageName ?: currentPackageName,
             inputType = info?.inputType,
+            imeOptions = info?.imeOptions,
+            resolvedEditorAction = resolveEditorAction(info)?.let { editorActionName(it) }
+                ?: "none",
             subtypeLocale = subtype?.localeString(),
             resolvedLayout = resolvedLayout,
             physicalProfileOverride = physicalKeyboardProfileOverride
         )
     }
     
+    private fun editorActionName(action: Int): String = when (action) {
+        EditorInfo.IME_ACTION_GO -> "go"
+        EditorInfo.IME_ACTION_SEARCH -> "search"
+        EditorInfo.IME_ACTION_SEND -> "send"
+        EditorInfo.IME_ACTION_NEXT -> "next"
+        EditorInfo.IME_ACTION_DONE -> "done"
+        EditorInfo.IME_ACTION_PREVIOUS -> "previous"
+        else -> "unknown($action)"
+    }
+
     override fun onWindowShown() {
         super.onWindowShown()
         updateStatusBarText()
