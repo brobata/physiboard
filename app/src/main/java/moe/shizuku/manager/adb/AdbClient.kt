@@ -23,12 +23,19 @@ import android.os.Build
 import java.io.Closeable
 import java.io.DataInputStream
 import java.io.DataOutputStream
+import java.net.InetSocketAddress
 import java.net.Socket
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import javax.net.ssl.SSLSocket
 
 private const val TAG = "AdbClient"
+
+/** Refused or dropped connects should fail fast; the broker is always on localhost. */
+private const val CONNECT_TIMEOUT_MS = 5_000
+
+/** A phone that never authorises the key goes quiet rather than replying. */
+private const val READ_TIMEOUT_MS = 10_000
 
 class AdbClient(private val host: String, private val port: Int, private val key: AdbKey) : Closeable {
 
@@ -46,7 +53,12 @@ class AdbClient(private val host: String, private val port: Int, private val key
     private val outputStream get() = if (useTls) tlsOutputStream else plainOutputStream
 
     fun connect() {
-        socket = Socket(host, port)
+        // Bound both phases. A phone that never accepts our key simply stops answering, and an
+        // unbounded read would then block this thread forever while holding the broker lock,
+        // deadlocking every later privileged call rather than failing.
+        socket = Socket()
+        socket.connect(InetSocketAddress(host, port), CONNECT_TIMEOUT_MS)
+        socket.soTimeout = READ_TIMEOUT_MS
         socket.tcpNoDelay = true
         plainInputStream = DataInputStream(socket.getInputStream())
         plainOutputStream = DataOutputStream(socket.getOutputStream())
