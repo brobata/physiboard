@@ -19,6 +19,8 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import brobata.physiboard.R
 import brobata.physiboard.inputmethod.PrivilegedSetup
+import brobata.physiboard.ui.BrokerStatusMonitor
+import brobata.physiboard.inputmethod.EmbeddedAdbShell
 import java.net.ConnectException
 
 @TargetApi(Build.VERSION_CODES.R)
@@ -162,6 +164,15 @@ class AdbPairingService : Service() {
             val host = "127.0.0.1"
 
             val keyStore = PreferenceAdbKeyStore(EmbeddedAdbInit.prefs(this@AdbPairingService))
+            // Constructing AdbKey GENERATES AND STORES a key when none is held, and isPaired()
+            // is nothing more than "a key is stored". So an attempt that never gets past the
+            // pairing code would otherwise leave the app permanently believing it is paired.
+            // Remember whether the key predates this attempt: only a key minted here may be
+            // discarded on failure, because an existing one may back a working pairing.
+            // Read through the same predicate the rest of the app gates on, and one that cannot
+            // throw: keyStore.get() base64-decodes and would blow up here on a corrupt value.
+            val keyExistedBeforeAttempt =
+                EmbeddedAdbShell.isPaired(this@AdbPairingService)
             val key = try {
                 try {
                     AdbKey(keyStore, EmbeddedAdbInit.KEY_NAME)
@@ -174,6 +185,7 @@ class AdbPairingService : Service() {
                 }
             } catch (e: Throwable) {
                 Log.e(tag, "Unable to load ADB key", e)
+                discardUnprovenKey(keyStore, keyExistedBeforeAttempt)
                 handleResult(false, e)
                 return@launch
             }
@@ -181,17 +193,36 @@ class AdbPairingService : Service() {
             AdbPairingClient(host, port, code, key).runCatching {
                 start()
             }.onFailure {
+                discardUnprovenKey(keyStore, keyExistedBeforeAttempt)
                 handleResult(false, it)
-            }.onSuccess {
-                handleResult(it, null)
+            }.onSuccess { paired ->
+                if (!paired) discardUnprovenKey(keyStore, keyExistedBeforeAttempt)
+                handleResult(paired, null)
             }
         }
 
         return workingNotification
     }
 
+    /**
+     * Forget a key this pairing attempt minted, once the attempt has failed.
+     *
+     * The phone only trusts a key it accepted during a completed pairing, so a key left behind by
+     * a failed attempt is worthless — but it still satisfies [EmbeddedAdbShell.isPaired], which
+     * gates the backlight, the overlay grant, the trackpad and every other privileged step. A key
+     * that predates the attempt is left alone: it may be backing a pairing that still works.
+     */
+    private fun discardUnprovenKey(keyStore: PreferenceAdbKeyStore, keyExistedBeforeAttempt: Boolean) {
+        if (keyExistedBeforeAttempt) return
+        Log.w(tag, "Pairing failed; discarding the key it generated so the app does not read as paired")
+        keyStore.clear()
+    }
+
     private fun handleResult(success: Boolean, exception: Throwable?) {
         stopForeground(STOP_FOREGROUND_REMOVE)
+        // Either way the broker's state just changed, so no screen may keep showing the verdict
+        // it cached before this pairing ran.
+        BrokerStatusMonitor.invalidate()
 
         val title: String
         val text: String?
