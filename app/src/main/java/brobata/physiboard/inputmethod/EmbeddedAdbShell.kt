@@ -50,6 +50,21 @@ object EmbeddedAdbShell {
     fun isPaired(context: Context): Boolean =
         EmbeddedAdbInit.prefs(context).contains(STORED_KEY_PREF)
 
+    /**
+     * Forget the stored key, so the app stops reading as paired and the setup card offers to pair
+     * again.
+     *
+     * [isPaired] only asks whether a key is held, and a key is minted the moment a pairing is
+     * ATTEMPTED. Until that was fixed, one mistyped pairing code left an install permanently
+     * claiming to be paired against a key the phone had never accepted, with every privileged
+     * feature silently gated behind it and no way out but clearing app data. This is the way out.
+     */
+    fun forgetPairing(context: Context) {
+        PreferenceAdbKeyStore(EmbeddedAdbInit.prefs(context)).clear()
+        lastError = null
+        lastResult = null
+    }
+
     /** Cheap best-effort check that Wireless debugging is on (the `adb_wifi_enabled` global). */
     fun isWirelessDebuggingEnabled(context: Context): Boolean =
         runCatching {
@@ -106,6 +121,11 @@ object EmbeddedAdbShell {
             Log.w(TAG, "embedded adb shell: $lastError")
             return false
         }
+        return connectAndRun(context, port, command)
+    }
+
+    /** Connect on [port] and run [command]. Sets [lastResult]/[lastError]. */
+    private fun connectAndRun(context: Context, port: Int, command: String): Boolean {
         val keyStore = PreferenceAdbKeyStore(EmbeddedAdbInit.prefs(context))
         return try {
             val key = try {
@@ -129,5 +149,33 @@ object EmbeddedAdbShell {
             lastError = "${t.javaClass.simpleName}: ${t.message}"
             false
         }
+    }
+
+    /**
+     * Why the broker can or cannot run, established by actually using it.
+     *
+     * [REJECTED] is the case no amount of stored state can reveal: a key is held and the phone is
+     * advertising, but the connection is refused because the phone never accepted this key.
+     */
+    enum class BrokerStatus { OK, NOT_PAIRED, WIRELESS_DEBUGGING_OFF, NO_SERVICE, REJECTED }
+
+    /**
+     * Actually connect and run a trivial command, and report what happened.
+     *
+     * [isPaired] answers "is a key stored", which is not the same question as "does the phone
+     * accept us" — a key is minted the moment a pairing is attempted, so a mistyped pairing code
+     * used to leave every privileged feature gated behind a key that had never worked, with the
+     * UI reporting success. Nothing short of connecting can tell the difference.
+     *
+     * BLOCKING (up to ~8s of mDNS discovery plus a connect); call off the main thread.
+     */
+    fun verify(context: Context): BrokerStatus = synchronized(brokerLock) {
+        EmbeddedAdbInit.ensure()
+        if (!isPaired(context)) return@synchronized BrokerStatus.NOT_PAIRED
+        if (!isWirelessDebuggingEnabled(context)) return@synchronized BrokerStatus.WIRELESS_DEBUGGING_OFF
+        val port = discoverPort(context)
+        if (port == null || port <= 0) return@synchronized BrokerStatus.NO_SERVICE
+        if (connectAndRun(context, port, "echo physiboard_verify")) BrokerStatus.OK
+        else BrokerStatus.REJECTED
     }
 }

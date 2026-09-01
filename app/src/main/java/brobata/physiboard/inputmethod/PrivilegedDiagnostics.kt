@@ -80,6 +80,31 @@ object PrivilegedDiagnostics {
         return prefs.getString(KEY_OBSERVED_BACKLIGHT, null) to at
     }
 
+    /**
+     * Remember the last [EmbeddedAdbShell.verify] result, so a screen can show the truth
+     * immediately and refresh it in the background rather than blocking on an 8s check.
+     */
+    fun recordBrokerStatus(context: Context, status: EmbeddedAdbShell.BrokerStatus) {
+        SettingsManager.getPreferences(context.applicationContext).edit {
+            putString(KEY_BROKER_STATUS, status.name)
+            putLong(KEY_BROKER_STATUS_AT, System.currentTimeMillis())
+        }
+    }
+
+    /** The last verified broker status and when it was taken, or null if never checked. */
+    fun lastBrokerStatus(context: Context): Pair<EmbeddedAdbShell.BrokerStatus, Long>? {
+        val prefs = SettingsManager.getPreferences(context.applicationContext)
+        val at = prefs.getLong(KEY_BROKER_STATUS_AT, 0L)
+        if (at == 0L) return null
+        val name = prefs.getString(KEY_BROKER_STATUS, null) ?: return null
+        val status = runCatching { EmbeddedAdbShell.BrokerStatus.valueOf(name) }.getOrNull()
+            ?: return null
+        return status to at
+    }
+
+    private const val KEY_BROKER_STATUS = "privileged_broker_status"
+    private const val KEY_BROKER_STATUS_AT = "privileged_broker_status_at"
+
     private const val KEY_OBSERVED_BACKLIGHT = "privileged_backlight_device_value"
     private const val KEY_OBSERVED_BACKLIGHT_AT = "privileged_backlight_device_value_at"
 
