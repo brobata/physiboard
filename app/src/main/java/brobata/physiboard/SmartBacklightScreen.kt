@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import brobata.physiboard.inputmethod.EmbeddedAdbShell
 import brobata.physiboard.inputmethod.KeyboardBacklightManager
+import brobata.physiboard.inputmethod.PrivilegedDiagnostics
 import brobata.physiboard.inputmethod.PrivilegedSetup
 import kotlinx.coroutines.delay
 import moe.shizuku.manager.adb.AdbPairingService
@@ -82,6 +83,14 @@ fun SmartBacklightScreen(
     // The always-on vendor value survives reboots and outlives Wireless debugging, so once it
     // has been written the feature is set up even if debugging is later turned off.
     val configured = remember(statusTick) { SettingsManager.getSmartBacklightApplied(context) }
+    // Why the broker cannot run right now, if it cannot. Android turns Wireless debugging off
+    // across reboots, so a paired device is routinely unable to apply anything.
+    val blocker = remember(statusTick) { PrivilegedDiagnostics.brokerBlocker(context) }
+    val lastBacklightFailure = remember(statusTick) {
+        PrivilegedDiagnostics.last(context, PrivilegedDiagnostics.Step.BACKLIGHT)
+            ?.takeIf { !it.ok }
+            ?.reason
+    }
 
     // If the feature is enabled and pairing has completed, write the persistent setting now
     // (covers "enable first, pair second"). On success the manager flips `configured` true.
@@ -121,13 +130,40 @@ fun SmartBacklightScreen(
             // ready line stays even after Wireless debugging is turned off. The full pairing
             // walkthrough only appears when the feature is enabled but not yet configured.
             if (enabled && configured) {
-                Text(
-                    text = "✓ " + stringResource(R.string.smart_backlight_setup_ready),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontFamily = FontFamily.Monospace,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
-                )
+                // "Configured" is a one-way latch, so on its own it cannot tell you the feature
+                // has since stopped working - which is exactly how a user ends up with a toggle
+                // that reads on, a backlight that times out, and nothing explaining why. If the
+                // broker cannot run right now, say so and say which switch to flip.
+                if (blocker != null) {
+                    Text(
+                        text = "! " + when (blocker) {
+                            PrivilegedDiagnostics.REASON_WIRELESS_DEBUGGING_OFF ->
+                                stringResource(R.string.smart_backlight_blocked_wireless_debugging)
+                            else ->
+                                stringResource(R.string.smart_backlight_blocked_not_paired)
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                    )
+                } else {
+                    Text(
+                        text = "✓ " + stringResource(R.string.smart_backlight_setup_ready),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                    )
+                }
+                lastBacklightFailure?.let { failure ->
+                    Text(
+                        text = stringResource(R.string.smart_backlight_last_error, failure),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp)
+                    )
+                }
             } else if (enabled) {
                 // One pairing serves every privileged feature, so the card lives in T2E Tools and
                 // is shown here too rather than reimplemented.

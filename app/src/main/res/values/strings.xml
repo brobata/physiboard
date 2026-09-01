@@ -1259,6 +1259,10 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="debug_recorder_started_at">Started at: </string>
     <string name="debug_recorder_include_suggestions">incl. suggestions</string>
     <string name="debug_recorder_include_raw_trackpad">incl. raw trackpad</string>
+    <string name="debug_recorder_include_autocorrections">incl. autocorrections</string>
+    <string name="smart_backlight_blocked_wireless_debugging">Wireless debugging is off, so the backlight setting cannot be applied. Android turns it off after a restart — turn it back on in Developer options.</string>
+    <string name="smart_backlight_blocked_not_paired">Not paired. Set up wireless debugging below to apply the backlight setting.</string>
+    <string name="smart_backlight_last_error">Last attempt failed: %1$s</string>
     <string name="debug_report_viewer_title">Debug Report Viewer</string>
     
     <!-- Fn Layer Key Labels -->

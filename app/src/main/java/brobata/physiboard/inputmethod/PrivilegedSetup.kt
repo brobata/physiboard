@@ -18,7 +18,14 @@ object PrivilegedSetup {
 
     fun applyAll(context: Context, reason: String) {
         val appContext = context.applicationContext
-        if (!EmbeddedAdbShell.isPaired(appContext)) return
+        // Log.i is stripped from release builds, so a bail-out here left no trace at all.
+        // Record it against every step the user can see instead.
+        PrivilegedDiagnostics.brokerBlocker(appContext)?.let { blocker ->
+            PrivilegedDiagnostics.Step.entries.forEach { step ->
+                PrivilegedDiagnostics.record(appContext, step, ok = false, reason = blocker)
+            }
+            return
+        }
         Log.i(TAG, "applyAll ($reason)")
         if (SettingsManager.getSmartBacklightEnabled(appContext)) {
             KeyboardBacklightManager.applyAlwaysOn(appContext)
