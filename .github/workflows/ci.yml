@@ -37,12 +37,17 @@ jobs:
       # Production code only. LICENSE, NOTICE.md and the change record must keep naming upstream -
       # the licence requires it - and the backup tests name the old preferences file on purpose,
       # because restoring a backup taken before 2.0 is a case that has to keep working.
+      #
+      # Comment lines are exempt. What must not drift back is a LIVE identifier; the migration
+      # code cannot be explained without naming what it migrates from, and every such comment
+      # would otherwise have to be bought off with another entry in the filename filter.
       - name: No upstream identifiers outside the attribution files
         run: |
           if grep -rn --binary-files=without-match \
                -e 'it\.palsoftware' -e 'pastiera_prefs' \
                app/src/main app/build.gradle.kts app/*.pro .github \
-               | grep -vE 'SettingsMigration.kt|workflows/ci.yml' ; then
+               | grep -vE 'SettingsMigration.kt|workflows/ci.yml' \
+               | grep -vE '^[^:]+:[0-9]+:[[:space:]]*(\*|//|/\*|#)' ; then
             echo "::error::Upstream identifiers found outside the attribution files."
             exit 1
           fi
