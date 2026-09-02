@@ -4,6 +4,29 @@ PhysiBoard is a GPLv3 fork of [Pastiera](https://github.com/palsoftware/pastiera
 Andrea Palumbo (PalSoftware) and contributors. This file documents the fork's changes,
 as required by GPLv3 §5(a). Package: `brobata.physiboard`.
 
+## 2.0.4 (2026-09-02)
+
+You can now set up Enter-to-send for any app on your phone, including Messenger.
+
+<!-- /card -->
+
+- **Any app can be given its own Enter behaviour.** The list only ever showed a handful of
+  messengers, and the button that added your own was a bare "+" in the top bar that nobody
+  found — so an app that was missing looked unsupported rather than simply not added yet. There
+  is a plain *Add app* button at the end of the list now. The chooser itself was unusable too:
+  the settings above it left roughly one row of space to scroll several hundred apps through.
+  Picking the app comes first now, with a search box and room to see the list, and the settings
+  follow once you have chosen. Facebook Messenger is listed alongside the other messengers,
+  which is why Enter did nothing there — the feature was never applied to it at all.
+- **The Diagnostics screen fits on the screen.** *Share* was cut off mid-word, the export
+  options were squeezed into a column so narrow that a label broke in the middle of a word, and
+  the *Last Keyboard Event* heading appeared underneath the values it labels.
+- **A bug report describes the app you were using.** The report recorded the last text field the
+  keyboard saw — but opening Diagnostics to send the report made that PhysiBoard's own field, so
+  every report came back describing PhysiBoard instead of the app being reported. It now keeps
+  the last field from another app as well, which is what makes an Enter-to-send problem
+  diagnosable at all.
+
 ## 2.0.3 (2026-09-01)
 
 The app now checks that its device features actually work, instead of assuming they still do.
