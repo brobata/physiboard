@@ -99,7 +99,6 @@ object BrokerStatusMonitor {
 @Composable
 fun rememberVerifiedBrokerStatus(refreshKey: Any = Unit): State<EmbeddedAdbShell.BrokerStatus?> {
     val context = LocalContext.current
-    remember { BrokerStatusMonitor.seed(context) }
     // Wireless debugging is the setting most likely to change while a screen is open, and the one
     // that silently breaks an otherwise good pairing, so it is polled and drives a re-check.
     var wirelessOn by remember { mutableStateOf(EmbeddedAdbShell.isWirelessDebuggingEnabled(context)) }
@@ -110,6 +109,8 @@ fun rememberVerifiedBrokerStatus(refreshKey: Any = Unit): State<EmbeddedAdbShell
         }
     }
     LaunchedEffect(refreshKey, wirelessOn) {
+        // Seeding is a side effect, so it belongs here rather than in a remember block.
+        BrokerStatusMonitor.seed(context)
         BrokerStatusMonitor.refresh(context, force = true)
     }
     return BrokerStatusMonitor.status.collectAsState()
