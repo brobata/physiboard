@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -186,6 +187,41 @@ fun AppEnterBehaviorScreen(
             )
         }
 
+        // The app chooser existed from the start, but only behind a bare "+" in the app bar,
+        // which nobody found — an app missing from the list read as "unsupported" rather than
+        // "not added yet". The same dialog gets a visible way in, at the end of the list where
+        // someone looking for their missing app is already looking.
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { showAddDialog = true }
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Add,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.app_enter_behaviour_add_app),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = stringResource(R.string.app_enter_behaviour_add_app_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
     }
@@ -467,126 +503,163 @@ private fun AddEnterBehaviorAppDialog(
     var strategyExpanded by remember { mutableStateOf(false) }
     var additionalShortcutExpanded by remember { mutableStateOf(false) }
 
+    // Two steps, because one dialog could not hold both. Three dropdowns above the list left it
+    // roughly one row tall to scroll several hundred apps through, so the part that matters -
+    // finding your app - got the least room. Picking comes first and gets the height, and the
+    // settings, whose defaults are usually right, come after.
+    var chosenApp by remember { mutableStateOf<EnterBehaviorApp?>(null) }
+    var query by rememberSaveable { mutableStateOf("") }
+    val visibleApps = remember(apps, query) {
+        if (query.isBlank()) {
+            apps
+        } else {
+            val needle = query.trim().lowercase()
+            apps.filter {
+                it.label.lowercase().contains(needle) || it.packageName.lowercase().contains(needle)
+            }
+        }
+    }
+
+    val picked = chosenApp
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.app_enter_behaviour_add_app)) },
+        title = {
+            Text(
+                if (picked == null) stringResource(R.string.app_enter_behaviour_add_app)
+                else picked.label
+            )
+        },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(
-                    text = stringResource(R.string.app_enter_behaviour_add_app_description),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                ExposedDropdownMenuBox(
-                    expanded = behaviorExpanded,
-                    onExpandedChange = { behaviorExpanded = it }
-                ) {
+            if (picked == null) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedTextField(
-                        value = getEnterBehaviorLabel(selectedBehavior),
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text(stringResource(R.string.app_enter_behaviour_desired_label)) },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(behaviorExpanded) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                        value = query,
+                        onValueChange = { query = it },
+                        singleLine = true,
+                        label = { Text(stringResource(R.string.app_enter_behaviour_add_app_search)) },
+                        modifier = Modifier.fillMaxWidth()
                     )
-                    ExposedDropdownMenu(
+                    if (visibleApps.isEmpty()) {
+                        Text(
+                            text = stringResource(R.string.app_enter_behaviour_add_app_no_results),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    LazyColumn(modifier = Modifier.heightIn(min = 240.dp, max = 420.dp)) {
+                        items(visibleApps, key = { it.packageName }) { app ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { chosenApp = app }
+                                    .padding(vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                AppIcon(app = app, modifier = Modifier.size(36.dp))
+                                Column(modifier = Modifier.padding(start = 12.dp)) {
+                                    Text(app.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Text(
+                                        text = app.packageName,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = stringResource(R.string.app_enter_behaviour_add_app_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    ExposedDropdownMenuBox(
                         expanded = behaviorExpanded,
-                        onDismissRequest = { behaviorExpanded = false }
+                        onExpandedChange = { behaviorExpanded = it }
                     ) {
-                        enterBehaviorOptions().forEach { option ->
-                            DropdownMenuItem(
-                                text = { Text(getEnterBehaviorLabel(option)) },
-                                onClick = {
-                                    selectedBehavior = option
-                                    behaviorExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-                ExposedDropdownMenuBox(
-                    expanded = strategyExpanded,
-                    onExpandedChange = { strategyExpanded = it }
-                ) {
-                    OutlinedTextField(
-                        value = getEnterSendStrategyLabel(selectedStrategy),
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text(stringResource(R.string.app_enter_behaviour_strategy_label)) },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(strategyExpanded) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                    )
-                    ExposedDropdownMenu(
-                        expanded = strategyExpanded,
-                        onDismissRequest = { strategyExpanded = false }
-                    ) {
-                        enterSendStrategyOptions().forEach { option ->
-                            DropdownMenuItem(
-                                text = { Text(getEnterSendStrategyLabel(option)) },
-                                onClick = {
-                                    selectedStrategy = option
-                                    strategyExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-                ExposedDropdownMenuBox(
-                    expanded = additionalShortcutExpanded,
-                    onExpandedChange = { additionalShortcutExpanded = it }
-                ) {
-                    OutlinedTextField(
-                        value = getEnterAdditionalSendShortcutLabel(selectedAdditionalShortcut),
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text(stringResource(R.string.app_enter_behaviour_additional_send_shortcut_label)) },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(additionalShortcutExpanded) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                    )
-                    ExposedDropdownMenu(
-                        expanded = additionalShortcutExpanded,
-                        onDismissRequest = { additionalShortcutExpanded = false }
-                    ) {
-                        enterAdditionalSendShortcutOptions().forEach { option ->
-                            DropdownMenuItem(
-                                text = { Text(getEnterAdditionalSendShortcutLabel(option)) },
-                                onClick = {
-                                    selectedAdditionalShortcut = option
-                                    additionalShortcutExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-                Text(
-                    text = stringResource(R.string.app_enter_behaviour_add_app_list_title),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                LazyColumn(modifier = Modifier.heightIn(max = 360.dp)) {
-                    items(apps, key = { it.packageName }) { app ->
-                        Row(
+                        OutlinedTextField(
+                            value = getEnterBehaviorLabel(selectedBehavior),
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text(stringResource(R.string.app_enter_behaviour_desired_label)) },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(behaviorExpanded) },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onAdd(app, selectedBehavior, selectedStrategy, selectedAdditionalShortcut) }
-                                .padding(vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                        )
+                        ExposedDropdownMenu(
+                            expanded = behaviorExpanded,
+                            onDismissRequest = { behaviorExpanded = false }
                         ) {
-                            AppIcon(app = app, modifier = Modifier.size(36.dp))
-                            Column(modifier = Modifier.padding(start = 12.dp)) {
-                                Text(app.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text(
-                                    text = app.packageName,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
+                            enterBehaviorOptions().forEach { option ->
+                                DropdownMenuItem(
+                                    text = { Text(getEnterBehaviorLabel(option)) },
+                                    onClick = {
+                                        selectedBehavior = option
+                                        behaviorExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    ExposedDropdownMenuBox(
+                        expanded = strategyExpanded,
+                        onExpandedChange = { strategyExpanded = it }
+                    ) {
+                        OutlinedTextField(
+                            value = getEnterSendStrategyLabel(selectedStrategy),
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text(stringResource(R.string.app_enter_behaviour_strategy_label)) },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(strategyExpanded) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                        )
+                        ExposedDropdownMenu(
+                            expanded = strategyExpanded,
+                            onDismissRequest = { strategyExpanded = false }
+                        ) {
+                            enterSendStrategyOptions().forEach { option ->
+                                DropdownMenuItem(
+                                    text = { Text(getEnterSendStrategyLabel(option)) },
+                                    onClick = {
+                                        selectedStrategy = option
+                                        strategyExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    ExposedDropdownMenuBox(
+                        expanded = additionalShortcutExpanded,
+                        onExpandedChange = { additionalShortcutExpanded = it }
+                    ) {
+                        OutlinedTextField(
+                            value = getEnterAdditionalSendShortcutLabel(selectedAdditionalShortcut),
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text(stringResource(R.string.app_enter_behaviour_additional_send_shortcut_label)) },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(additionalShortcutExpanded) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                        )
+                        ExposedDropdownMenu(
+                            expanded = additionalShortcutExpanded,
+                            onDismissRequest = { additionalShortcutExpanded = false }
+                        ) {
+                            enterAdditionalSendShortcutOptions().forEach { option ->
+                                DropdownMenuItem(
+                                    text = { Text(getEnterAdditionalSendShortcutLabel(option)) },
+                                    onClick = {
+                                        selectedAdditionalShortcut = option
+                                        additionalShortcutExpanded = false
+                                    }
                                 )
                             }
                         }
@@ -594,10 +667,21 @@ private fun AddEnterBehaviorAppDialog(
                 }
             }
         },
-        confirmButton = {},
+        confirmButton = {
+            if (picked != null) {
+                TextButton(onClick = {
+                    onAdd(picked, selectedBehavior, selectedStrategy, selectedAdditionalShortcut)
+                }) {
+                    Text(stringResource(R.string.app_enter_behaviour_add_app))
+                }
+            }
+        },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.cancel))
+            TextButton(onClick = { if (picked != null) chosenApp = null else onDismiss() }) {
+                Text(
+                    if (picked != null) stringResource(R.string.back)
+                    else stringResource(R.string.cancel)
+                )
             }
         }
     )

@@ -1264,6 +1264,9 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="smart_backlight_blocked_not_paired">Not paired. Set up wireless debugging below to apply the backlight setting.</string>
     <string name="smart_backlight_last_error">Last attempt failed: %1$s</string>
     <string name="device_setup_forget_pairing">Forget pairing</string>
+    <string name="app_enter_behaviour_add_app_hint">Any app on your phone — Messenger, Slack, a fork of one of these</string>
+    <string name="app_enter_behaviour_add_app_search">Search apps</string>
+    <string name="app_enter_behaviour_add_app_no_results">No apps match that search.</string>
     <string name="device_setup_checking_title">Checking…</string>
     <string name="device_setup_checking_body">Testing whether the tools can reach the system.</string>
     <string name="device_setup_unreachable_title">Cannot reach the system</string>
