@@ -244,21 +244,22 @@ fun DiagnosticsScreen(
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Row(
+                // Stacked rather than side by side. The buttons used to sit in a horizontally
+                // scrolling row beside a fixed 140dp column of chips, which on this screen left
+                // Share clipped mid-word and squeezed "incl. autocorrections" into a break in
+                // the middle of a word. Both rows wrap now and each gets the full width.
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.Top
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Column(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState()),
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             OutlinedButton(
                                 onClick = {
@@ -336,8 +337,9 @@ fun DiagnosticsScreen(
                             )
                         }
                     }
-                    Column(
-                        modifier = Modifier.width(140.dp),
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         FilterChip(
@@ -348,12 +350,9 @@ fun DiagnosticsScreen(
                             label = {
                                 Text(
                                     text = stringResource(R.string.debug_recorder_include_suggestions),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.fillMaxWidth()
+                                    style = MaterialTheme.typography.labelSmall
                                 )
-                            },
-                            modifier = Modifier.fillMaxWidth()
+                            }
                         )
                         FilterChip(
                             selected = includeRawTrackpadInExport,
@@ -363,12 +362,9 @@ fun DiagnosticsScreen(
                             label = {
                                 Text(
                                     text = stringResource(R.string.debug_recorder_include_raw_trackpad),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.fillMaxWidth()
+                                    style = MaterialTheme.typography.labelSmall
                                 )
-                            },
-                            modifier = Modifier.fillMaxWidth()
+                            }
                         )
                         FilterChip(
                             selected = includeAutoCorrectionsInExport,
@@ -378,12 +374,9 @@ fun DiagnosticsScreen(
                             label = {
                                 Text(
                                     text = stringResource(R.string.debug_recorder_include_autocorrections),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.fillMaxWidth()
+                                    style = MaterialTheme.typography.labelSmall
                                 )
-                            },
-                            modifier = Modifier.fillMaxWidth()
+                            }
                         )
                     }
                 }
@@ -402,6 +395,29 @@ fun DiagnosticsScreen(
                         .padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = stringResource(R.string.last_keyboard_event_title),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        FilterChip(
+                            selected = ignoreKeyboardCloseBackEvent,
+                            onClick = { ignoreKeyboardCloseBackEvent = !ignoreKeyboardCloseBackEvent },
+                            label = {
+                                Text(
+                                    text = stringResource(R.string.ignore_back_short),
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
+                        )
+                    }
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -467,29 +483,6 @@ fun DiagnosticsScreen(
                                 else MaterialTheme.colorScheme.onSurface
                             )
                         }
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = stringResource(R.string.last_keyboard_event_title),
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        FilterChip(
-                            selected = ignoreKeyboardCloseBackEvent,
-                            onClick = { ignoreKeyboardCloseBackEvent = !ignoreKeyboardCloseBackEvent },
-                            label = {
-                                Text(
-                                    text = stringResource(R.string.ignore_back_short),
-                                    style = MaterialTheme.typography.labelSmall
-                                )
-                            }
-                        )
                     }
 
                     if (event?.let { it.isShiftPressed || it.isCtrlPressed || it.isAltPressed } == true) {
@@ -884,6 +877,22 @@ private fun buildKeyboardDebugReport(
         appendLine("resolved_editor_action=${imeContext?.resolvedEditorAction ?: "n/a"}")
         appendLine("subtype_locale=${imeContext?.subtypeLocale ?: "n/a"}")
         appendLine("resolved_layout=${imeContext?.resolvedLayout ?: "n/a"}")
+        // The block above is whatever had focus last, which for a report exported from inside the
+        // app is the Diagnostics text field. These lines are the app actually being diagnosed.
+        val externalImeContext = DebugCaptureStore.externalImeContextSnapshot()
+        appendLine("external_captured_at=${externalImeContext?.timestampMs?.let { formatDebugTimestamp(it) } ?: "n/a"}")
+        appendLine("external_target_package=${externalImeContext?.packageName ?: "n/a"}")
+        appendLine("external_input_type=${externalImeContext?.inputType?.toString() ?: "n/a"}")
+        appendLine(
+            "external_ime_options=" +
+                (externalImeContext?.imeOptions?.let { "0x" + Integer.toHexString(it) } ?: "n/a")
+        )
+        appendLine(
+            "external_ime_no_enter_action=" + (externalImeContext?.imeOptions?.let {
+                (it and android.view.inputmethod.EditorInfo.IME_FLAG_NO_ENTER_ACTION) != 0
+            }?.toString() ?: "n/a")
+        )
+        appendLine("external_resolved_editor_action=${externalImeContext?.resolvedEditorAction ?: "n/a"}")
         appendLine("profile_override_snapshot=${imeContext?.physicalProfileOverride ?: "n/a"}")
         appendLine("resolved_physical_profile_snapshot=$resolvedPhysicalProfile")
         appendLine()

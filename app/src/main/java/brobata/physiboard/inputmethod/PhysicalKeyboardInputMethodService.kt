@@ -3418,8 +3418,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         val resolvedLayout = runCatching {
             AdditionalSubtypeUtils.resolveActiveLayout(assets, this, subtype)
         }.getOrNull()
+        val editorPackage = info?.packageName ?: currentPackageName
         DebugCaptureStore.updateImeContext(
-            packageName = info?.packageName ?: currentPackageName,
+            isOwnApp = editorPackage == applicationContext.packageName,
+            packageName = editorPackage,
             inputType = info?.inputType,
             imeOptions = info?.imeOptions,
             resolvedEditorAction = resolveEditorAction(info)?.let { editorActionName(it) }

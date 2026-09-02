@@ -1256,7 +1256,7 @@ Each key can be configured as Keycode, Action, Native Ctrl, or None. Use overrid
     <string name="debug_recorder_status">Recorder: %1$s · Events: %2$d</string>
     <string name="debug_recorder_status_recording">recording</string>
     <string name="debug_recorder_status_stopped">stopped</string>
-    <string name="debug_recorder_started_at">Started at: </string>
+    <string name="debug_recorder_started_at">"Started at: "</string>
     <string name="debug_recorder_include_suggestions">incl. suggestions</string>
     <string name="debug_recorder_include_raw_trackpad">incl. raw trackpad</string>
     <string name="debug_recorder_include_autocorrections">incl. autocorrections</string>

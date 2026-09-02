@@ -75,6 +75,16 @@ object DebugCaptureStore {
     private val rawTrackpadEvents = ArrayDeque<RawTrackpadEvent>()
     private var imeContextSnapshot: ImeContextSnapshot? = null
 
+    /**
+     * The last context from an app that is NOT PhysiBoard itself.
+     *
+     * The single snapshot above is overwritten by whatever field has focus, and the Diagnostics
+     * screen has a text field of its own — so opening Diagnostics to export a report replaced the
+     * context of the app being diagnosed with PhysiBoard's own. The report then answered a
+     * question nobody asked. This slot survives that.
+     */
+    private var externalImeContextSnapshot: ImeContextSnapshot? = null
+
     @Synchronized
     fun recordAutoCorrectionAttempt(
         before: String,
@@ -185,9 +195,10 @@ object DebugCaptureStore {
         resolvedEditorAction: String?,
         subtypeLocale: String?,
         resolvedLayout: String?,
-        physicalProfileOverride: String?
+        physicalProfileOverride: String?,
+        isOwnApp: Boolean = false
     ) {
-        imeContextSnapshot = ImeContextSnapshot(
+        val snapshot = ImeContextSnapshot(
             timestampMs = System.currentTimeMillis(),
             packageName = packageName,
             inputType = inputType,
@@ -197,6 +208,8 @@ object DebugCaptureStore {
             resolvedLayout = resolvedLayout,
             physicalProfileOverride = physicalProfileOverride
         )
+        imeContextSnapshot = snapshot
+        if (!isOwnApp) externalImeContextSnapshot = snapshot
     }
 
     @Synchronized
@@ -254,11 +267,16 @@ object DebugCaptureStore {
     @Synchronized
     fun imeContextSnapshot(): ImeContextSnapshot? = imeContextSnapshot
 
+    /** The last context from an app other than PhysiBoard, for reports collected in-app. */
+    @Synchronized
+    fun externalImeContextSnapshot(): ImeContextSnapshot? = externalImeContextSnapshot
+
     @Synchronized
     fun clearAll() {
         autoCorrections.clear()
         suggestions.clear()
         rawTrackpadEvents.clear()
         imeContextSnapshot = null
+        externalImeContextSnapshot = null
     }
 }

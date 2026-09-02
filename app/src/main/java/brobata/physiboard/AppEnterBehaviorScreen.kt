@@ -49,6 +49,8 @@ private val testedEnterBehaviorPackages = setOf(
     "com.instagram.android"
 )
 
+// Surfaced at the top of the picker. Not the same as tested: Messenger is here because Enter
+// does nothing in it and users need to find it, not because a preset has been verified for it.
 private val favoriteEnterBehaviorApps = listOf(
     WHATSAPP_PACKAGE_NAME,
     "org.telegram.messenger",
@@ -58,7 +60,8 @@ private val favoriteEnterBehaviorApps = listOf(
     "com.google.android.apps.messaging",
     "ch.threema.app",
     "ch.threema.app.libre",
-    "com.instagram.android"
+    "com.instagram.android",
+    "com.facebook.orca"
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
