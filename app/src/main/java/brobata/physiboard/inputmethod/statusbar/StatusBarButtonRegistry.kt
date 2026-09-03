@@ -149,18 +149,14 @@ class StatusBarButtonRegistry {
      * @param context Android context (for reading settings)
      * @return List of enabled button configurations, sorted for display
      */
-    fun getEnabledButtons(context: Context): List<StatusBarButtonConfig> {
-        return getEnabledButtons(
-            leftSlots = SettingsManager.getStatusBarSlotsLeft(context),
-            rightSlots = SettingsManager.getStatusBarSlotsRight(context)
-        )
-    }
-
     fun getEnabledStatusBarButtons(context: Context): List<StatusBarButtonConfig> {
         return getEnabledButtons(
-            // Still the pastierina_* keys on disk; the 2.0 preference migration renames them.
-            leftSlots = SettingsManager.getPastierinaStatusBarSlotsLeft(context),
-            rightSlots = SettingsManager.getPastierinaStatusBarSlotsRight(context)
+            // The status_bar_slots_* keys are the only home for these. Until 2.0 this read the
+            // retired pastierina_* names, which the 2.0 migration renames away and its dropped
+            // prefixes delete - so the bar silently fell back to its own defaults and every
+            // assignment made on the Status Bar Theme page did nothing.
+            leftSlots = SettingsManager.getStatusBarSlotsLeft(context),
+            rightSlots = SettingsManager.getStatusBarSlotsRight(context)
         )
     }
 

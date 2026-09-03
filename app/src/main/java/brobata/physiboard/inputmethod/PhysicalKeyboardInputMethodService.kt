@@ -2184,11 +2184,14 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
                 key == SettingsManager.KEY_SHOW_STATUS_BAR ||
                 key == SettingsManager.KEY_STATUS_BAR_VISIBILITY ||
                 key == SettingsManager.KEY_STATUS_BAR_APPS ||
-                key == SettingsManager.KEY_STATUS_BAR_HEIGHT_DP
+                key == SettingsManager.KEY_STATUS_BAR_HEIGHT_DP ||
+                key == SettingsManager.KEY_STATUS_BAR_SLOTS_LEFT ||
+                key == SettingsManager.KEY_STATUS_BAR_SLOTS_RIGHT
             ) {
-                // Master status-bar toggle. Purely visual: re-render the strip so it
-                // collapses/expands without restarting the IME. The snapshot itself is
-                // unchanged by this pref, so invalidate the render cache first to force
+                // The status bar's shape: whether it shows, how tall it is, and which
+                // buttons sit on its edges. Purely visual: re-render the strip so it
+                // collapses/expands/re-slots without restarting the IME. The snapshot itself
+                // is unchanged by these prefs, so invalidate the render cache first to force
                 // updateStatusBars() through the caching guard.
                 invalidateRenderedStatusSnapshot()
                 Handler(Looper.getMainLooper()).post {

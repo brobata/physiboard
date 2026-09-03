@@ -272,10 +272,8 @@ object SettingsManager {
     private const val KEY_STATUS_BAR_SLOT_LEFT = "status_bar_slot_left"
     private const val KEY_STATUS_BAR_SLOT_RIGHT_1 = "status_bar_slot_right_1"
     private const val KEY_STATUS_BAR_SLOT_RIGHT_2 = "status_bar_slot_right_2"
-    private const val KEY_STATUS_BAR_SLOTS_LEFT = "status_bar_slots_left"
-    private const val KEY_STATUS_BAR_SLOTS_RIGHT = "status_bar_slots_right"
-    private const val KEY_PASTIERINA_STATUS_BAR_SLOTS_LEFT = "pastierina_status_bar_slots_left"
-    private const val KEY_PASTIERINA_STATUS_BAR_SLOTS_RIGHT = "pastierina_status_bar_slots_right"
+    const val KEY_STATUS_BAR_SLOTS_LEFT = "status_bar_slots_left"
+    const val KEY_STATUS_BAR_SLOTS_RIGHT = "status_bar_slots_right"
     const val KEY_MODIFIER_INDICATOR_MODE = "modifier_indicator_mode"
     
     // Public constants for button IDs
@@ -326,8 +324,6 @@ object SettingsManager {
     private const val DEFAULT_SLOT_LEFT = STATUS_BAR_BUTTON_HAMBURGER
     private const val DEFAULT_SLOT_RIGHT_1 = STATUS_BAR_BUTTON_EMOJI
     private const val DEFAULT_SLOT_RIGHT_2 = STATUS_BAR_BUTTON_MICROPHONE
-    private const val DEFAULT_PASTIERINA_SLOT_LEFT = STATUS_BAR_BUTTON_LANGUAGE
-    private const val DEFAULT_PASTIERINA_SLOT_RIGHT = STATUS_BAR_BUTTON_HAMBURGER
     // The variation row is off unless asked for: on a physical keyboard the accent row costs a
     // second strip of screen and Alt/Sym already reach the same characters. Resetting the status
     // bar must land here too, not on the upstream default.
@@ -6033,45 +6029,6 @@ object SettingsManager {
             .apply()
     }
 
-    fun getDefaultPastierinaStatusBarSlotsLeft(): List<String> = listOf(DEFAULT_PASTIERINA_SLOT_LEFT)
-
-    fun getDefaultPastierinaStatusBarSlotsRight(): List<String> = listOf(DEFAULT_PASTIERINA_SLOT_RIGHT)
-
-    fun resetPastierinaStatusBarSlotsToDefault(context: Context) {
-        setPastierinaStatusBarSlotsLeft(context, getDefaultPastierinaStatusBarSlotsLeft())
-        setPastierinaStatusBarSlotsRight(context, getDefaultPastierinaStatusBarSlotsRight())
-    }
-
-    fun getPastierinaStatusBarSlotsLeft(context: Context): List<String> {
-        return getStatusBarSlotsList(
-            context = context,
-            key = KEY_PASTIERINA_STATUS_BAR_SLOTS_LEFT,
-            fallback = getDefaultPastierinaStatusBarSlotsLeft()
-        )
-    }
-
-    fun setPastierinaStatusBarSlotsLeft(context: Context, buttonIds: List<String>) {
-        val normalized = normalizeStatusBarSlots(buttonIds)
-        getPreferences(context).edit()
-            .putString(KEY_PASTIERINA_STATUS_BAR_SLOTS_LEFT, statusBarSlotsToJson(normalized))
-            .apply()
-    }
-
-    fun getPastierinaStatusBarSlotsRight(context: Context): List<String> {
-        return getStatusBarSlotsList(
-            context = context,
-            key = KEY_PASTIERINA_STATUS_BAR_SLOTS_RIGHT,
-            fallback = getDefaultPastierinaStatusBarSlotsRight()
-        )
-    }
-
-    fun setPastierinaStatusBarSlotsRight(context: Context, buttonIds: List<String>) {
-        val normalized = normalizeStatusBarSlots(buttonIds)
-        getPreferences(context).edit()
-            .putString(KEY_PASTIERINA_STATUS_BAR_SLOTS_RIGHT, statusBarSlotsToJson(normalized))
-            .apply()
-    }
-    
     /**
      * Sets the button for the left slot.
      */
