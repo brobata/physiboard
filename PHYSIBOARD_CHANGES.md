@@ -4,6 +4,23 @@ PhysiBoard is a GPLv3 fork of [Pastiera](https://github.com/palsoftware/pastiera
 Andrea Palumbo (PalSoftware) and contributors. This file documents the fork's changes,
 as required by GPLv3 §5(a). Package: `brobata.physiboard`.
 
+## 2.0.5 (2026-09-03)
+
+The buttons you assign to the status bar now actually appear on it.
+
+<!-- /card -->
+
+- **The status bar shows the buttons you picked.** Every choice made under *Status Bar Theme
+  → Buttons* was ignored. The page saved it correctly, but the bar was still looking the
+  setting up under the name it had before 2.0 renamed it — a name 2.0 then deletes. Finding
+  nothing there, the bar quietly fell back to its own defaults and showed the language button
+  and the menu button no matter what you chose. The button layout the app ships with was
+  discarded the same way. Because the bar now reads your actual setting, it may change
+  appearance after this update: what it shows is whatever the settings page has been telling
+  you it shows all along.
+- **Changing a button updates the bar straight away.** Assigning one used to take effect only
+  the next time the keyboard was rebuilt, so the bar looked unchanged when you went back to it.
+
 ## 2.0.4 (2026-09-02)
 
 You can now set up Enter-to-send for any app on your phone, including Messenger.

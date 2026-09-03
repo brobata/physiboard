@@ -73,8 +73,8 @@ android {
     namespace = "brobata.physiboard"
     compileSdk = 36
 
-    val defaultVersionCode = 20004
-    val defaultVersionName = "2.0.4"
+    val defaultVersionCode = 20005
+    val defaultVersionName = "2.0.5"
     val ciVersionCode = renamedGradleProperty("PHYSIBOARD_VERSION_CODE")?.toIntOrNull()
     val ciVersionName = renamedGradleProperty("PHYSIBOARD_VERSION_NAME")
     val isFdroidBuild = gradleBooleanProperty("PHYSIBOARD_FDROID_BUILD")
