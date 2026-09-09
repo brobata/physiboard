@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import brobata.physiboard.inputmethod.subtype.AdditionalSubtypeUtils
+import brobata.physiboard.ring.RingBacklight
 
 class PhysiBoardApplication : Application() {
     override fun onCreate() {
@@ -22,6 +23,9 @@ class PhysiBoardApplication : Application() {
         SettingsBaseline.applyIfNeeded(this)
         SettingsManager.applyImpactDefaultsIfNeeded(this)
         SettingsManager.initializeAltShiftLayoutSwitchDefault(this)
+        // A ring that darkened the keyboard and then died with the process left the switch
+        // off; this is the one place every process start passes through.
+        RingBacklight.restoreLater(this)
         AppPackageChangeMonitor.register(this)
         publishSoftwareKeyboardModeShortcut()
         Handler(Looper.getMainLooper()).post {

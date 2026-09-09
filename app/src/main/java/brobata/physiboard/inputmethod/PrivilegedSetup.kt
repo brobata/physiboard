@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import brobata.physiboard.SettingsManager
 import brobata.physiboard.ring.NotificationRingSetup
+import brobata.physiboard.ring.RingBacklight
 
 /**
  * Single entry point for everything the app wants to do through the embedded ADB broker.
@@ -33,6 +34,9 @@ object PrivilegedSetup {
         ScreenTrackpadSetup.grantOverlayPermissionViaBroker(appContext)
         if (SettingsManager.isNotificationRingEnabled(appContext)) {
             NotificationRingSetup.grantViaBroker(appContext)
+            // One `pm grant`, after which the ring can darken the keyboard on its own with no
+            // broker in the path - see [RingBacklight].
+            RingBacklight.grantViaBroker(appContext)
         }
     }
 }

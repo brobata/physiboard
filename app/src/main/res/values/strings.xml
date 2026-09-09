@@ -218,6 +218,9 @@
     <string name="ring_try_description">Shows the ring for a few seconds with PhysiBoard\'s own icon. Lock the phone first to see it the way it will really look.</string>
     <string name="ring_icons_title">Show app icons</string>
     <string name="ring_icons_description">Draw the waiting apps\' icons below the ring. Off, it is just the ring.</string>
+    <string name="ring_keyboard_dark_title">Keep the keyboard dark</string>
+    <string name="ring_keyboard_dark_description">The keyboard backlight normally comes on whenever the screen does, so a ring at night lights up the whole keyboard with it.</string>
+    <string name="ring_keyboard_dark_unavailable">Unavailable until the phone has been paired once, on the Keyboard backlight screen.</string>
     <string name="ring_adjust">Fit the ring to the lens</string>
     <string name="ring_adjust_description">The ring comes fitted to one Titan 2 Elite, and panels differ by a few pixels. If yours is off: on a white screen the lens shows as a dark spot — drag the ring onto it, resize it and set the thickness you want. Auto puts the fitted default back.</string>
     <string name="ring_adjust_hint">Drag to move · arrows nudge · + and − resize · [ and ] change thickness · Enter saves</string>

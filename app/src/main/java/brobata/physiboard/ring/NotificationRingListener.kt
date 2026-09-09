@@ -68,6 +68,9 @@ class NotificationRingListener : NotificationListenerService() {
                 Log.d(TAG, "skip ${sbn.packageName}: proximity covered")
                 return@execute
             }
+            // Before the launch, not from the ring: the vendor lights the keyboard when the
+            // screen comes on, and by the time the activity exists the screen already has.
+            RingBacklight.suppress(this)
             NotificationRingLauncher.show(this, source)
         }
     }

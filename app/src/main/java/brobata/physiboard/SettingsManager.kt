@@ -116,6 +116,12 @@ object SettingsManager {
     private const val KEY_NOTIFICATION_RING_STROKE = "notification_ring_stroke"
     private const val KEY_NOTIFICATION_RING_APP_COLORS = "notification_ring_app_colors"
     private const val KEY_NOTIFICATION_RING_DEFAULT_COLOR = "notification_ring_default_color"
+    private const val KEY_NOTIFICATION_RING_KEYBOARD_DARK = "notification_ring_keyboard_dark"
+
+    // What the vendor keyboard-backlight switch was before a ring turned it off. A capture
+    // record, not a setting: it is the only thing that knows to put the switch back.
+    private const val KEY_RING_BACKLIGHT_SUPPRESSED = "ring_backlight_prev_captured"
+    private const val KEY_RING_BACKLIGHT_PRIOR = "ring_backlight_prev"
     const val NOTIFICATION_RING_DEFAULT_MINUTES = 10
     // Was a three-chip choice of 2/10/30. A slider spans the same ground without forcing anyone
     // onto one of three opinions about how long they want the screen up.
@@ -2652,6 +2658,41 @@ object SettingsManager {
 
     fun setNotificationRingIconsEnabled(context: Context, enabled: Boolean) {
         getPreferences(context).edit().putBoolean(KEY_NOTIFICATION_RING_ICONS, enabled).apply()
+    }
+
+    /**
+     * Whether the keyboard stays dark while the ring is lit. On by default: the ring exists so a
+     * notification does not have to light the phone up, and the vendor lights the keyboard on
+     * every screen-on. Needs WRITE_SECURE_SETTINGS; without it this is inert rather than broken.
+     */
+    fun isRingKeyboardDarkEnabled(context: Context): Boolean =
+        getPreferences(context).getBoolean(KEY_NOTIFICATION_RING_KEYBOARD_DARK, true)
+
+    fun setRingKeyboardDarkEnabled(context: Context, enabled: Boolean) {
+        getPreferences(context).edit().putBoolean(KEY_NOTIFICATION_RING_KEYBOARD_DARK, enabled).apply()
+    }
+
+    /** True while a ring has the vendor keyboard-backlight switch turned off on its behalf. */
+    fun isRingBacklightSuppressed(context: Context): Boolean =
+        getPreferences(context).getBoolean(KEY_RING_BACKLIGHT_SUPPRESSED, false)
+
+    /** Records the value to put back. Written BEFORE the switch is touched, never after. */
+    fun setRingBacklightSuppressed(context: Context, prior: Int) {
+        getPreferences(context).edit()
+            .putInt(KEY_RING_BACKLIGHT_PRIOR, prior)
+            .putBoolean(KEY_RING_BACKLIGHT_SUPPRESSED, true)
+            .commit()
+    }
+
+    /** The value the switch held before the ring; only meaningful while suppressed. */
+    fun getRingBacklightPrior(context: Context): Int =
+        getPreferences(context).getInt(KEY_RING_BACKLIGHT_PRIOR, 1)
+
+    fun clearRingBacklightSuppressed(context: Context) {
+        getPreferences(context).edit()
+            .remove(KEY_RING_BACKLIGHT_SUPPRESSED)
+            .remove(KEY_RING_BACKLIGHT_PRIOR)
+            .apply()
     }
 
     /**

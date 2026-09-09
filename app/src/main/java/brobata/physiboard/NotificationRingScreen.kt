@@ -54,6 +54,8 @@ fun NotificationRingScreen(
     var minutes by remember { mutableIntStateOf(SettingsManager.getNotificationRingMinutes(context)) }
     var brightness by remember { mutableStateOf(SettingsManager.getNotificationRingBrightness(context)) }
     var icons by remember { mutableStateOf(SettingsManager.isNotificationRingIconsEnabled(context)) }
+    var keyboardDark by remember { mutableStateOf(SettingsManager.isRingKeyboardDarkEnabled(context)) }
+    val canDarkenKeyboard = remember { brobata.physiboard.ring.RingBacklight.canWrite(context) }
     var appColors by remember { mutableStateOf(SettingsManager.getNotificationRingAppColors(context)) }
     var defaultColor by remember { mutableStateOf(SettingsManager.getNotificationRingDefaultColor(context)) }
     var pickingDefaultColor by remember { mutableStateOf(false) }
@@ -315,6 +317,43 @@ fun NotificationRingScreen(
                         onCheckedChange = { on ->
                             icons = on
                             SettingsManager.setNotificationRingIconsEnabled(context, on)
+                        }
+                    )
+                }
+            }
+
+            Surface(modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.ring_keyboard_dark_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = stringResource(R.string.ring_keyboard_dark_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        // Without the permission the switch is simply inert, and a switch that
+                        // reads on while doing nothing is the shape of bug this app keeps finding.
+                        if (!canDarkenKeyboard) {
+                            Text(
+                                text = stringResource(R.string.ring_keyboard_dark_unavailable),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                    Switch(
+                        checked = keyboardDark,
+                        onCheckedChange = { on ->
+                            keyboardDark = on
+                            SettingsManager.setRingKeyboardDarkEnabled(context, on)
                         }
                     )
                 }

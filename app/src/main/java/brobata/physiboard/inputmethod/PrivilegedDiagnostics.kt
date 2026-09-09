@@ -23,7 +23,8 @@ object PrivilegedDiagnostics {
     enum class Step(val key: String) {
         BACKLIGHT("backlight"),
         OVERLAY_GRANT("overlay_grant"),
-        NOTIFICATION_RING("notification_ring")
+        NOTIFICATION_RING("notification_ring"),
+        RING_BACKLIGHT("ring_backlight")
     }
 
     const val REASON_OK = "ok"

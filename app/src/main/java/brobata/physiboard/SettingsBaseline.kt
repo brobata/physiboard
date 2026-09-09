@@ -77,6 +77,8 @@ object SettingsBaseline {
         "fn_ctrl_original_enable",
         "fn_ctrl_original_function",
         "qs_backlight_prev_captured",
+        "ring_backlight_prev_captured",
+        "ring_backlight_prev",
     )
 
     /**

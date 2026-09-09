@@ -36,12 +36,22 @@ class KeyboardBacklightTileService : TileService() {
         }
         // Snapshot the device's ORIGINAL value ONCE before we first overwrite it, so the
         // "Reset device settings to stock" button can restore the exact prior state.
-        val prior = Settings.Global.getInt(
-            contentResolver,
-            VENDOR_BACKLIGHT_SETTING,
-            SettingsManager.QS_BACKLIGHT_VALUE_UNSET
-        )
+        // A notification ring may have the switch turned off right now (RingBacklight). Capturing
+        // that as the user's own value would have Reset to stock hand them a dead keyboard, so
+        // the value the ring recorded is captured instead. Choosing here also settles it: the
+        // ring's claim is dropped rather than left to undo this a moment later.
+        val suppressedByRing = SettingsManager.isRingBacklightSuppressed(this)
+        val prior = if (suppressedByRing) {
+            SettingsManager.getRingBacklightPrior(this)
+        } else {
+            Settings.Global.getInt(
+                contentResolver,
+                VENDOR_BACKLIGHT_SETTING,
+                SettingsManager.QS_BACKLIGHT_VALUE_UNSET
+            )
+        }
         SettingsManager.captureQsBacklightOriginalIfNeeded(this, prior)
+        if (suppressedByRing) SettingsManager.clearRingBacklightSuppressed(this)
         val newValue = if (readBacklightEnabled()) 0 else 1
         try {
             Settings.Global.putInt(contentResolver, VENDOR_BACKLIGHT_SETTING, newValue)

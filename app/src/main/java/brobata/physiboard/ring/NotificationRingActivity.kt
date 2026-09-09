@@ -57,6 +57,8 @@ class NotificationRingActivity : Activity() {
         super.onCreate(savedInstanceState)
         current = this
         NotificationRingLauncher.dismissAnnouncement(this)
+        // The keyboard was darkened before this launch; from here its restore is ours.
+        RingBacklight.holdForRing()
 
         setShowWhenLocked(true)
         setTurnScreenOn(true)
@@ -186,6 +188,9 @@ class NotificationRingActivity : Activity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        // Every way a ring ends - expiry, a touch, a key, an unlock, the screen going off -
+        // arrives here, so this is the one place the keyboard has to come back.
+        RingBacklight.restore(this)
         handler.removeCallbacks(expire)
         breathing?.cancel()
         runCatching { unregisterReceiver(screenReceiver) }
