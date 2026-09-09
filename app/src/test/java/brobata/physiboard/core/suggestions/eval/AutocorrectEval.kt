@@ -1,6 +1,7 @@
 package brobata.physiboard.core.suggestions.eval
 
 import brobata.physiboard.core.suggestions.AutoReplaceController
+import brobata.physiboard.core.suggestions.DictionaryRepository
 import brobata.physiboard.core.suggestions.SuggestionEngine
 import brobata.physiboard.core.suggestions.SuggestionResult
 import brobata.physiboard.core.suggestions.SuggestionSettings
@@ -49,7 +50,7 @@ object AutocorrectEval {
 
     enum class Outcome { FIXED, MISSED, WRONG, CLOBBERED, UNTOUCHED }
 
-    data class Row(val case: Case, val committed: String?, val outcome: Outcome)
+    data class Row(val case: Case, val committed: String?, val outcome: Outcome, val inDictionary: Boolean)
 
     data class Report(val rows: List<Row>) {
         val total: Int get() = rows.size
@@ -60,6 +61,14 @@ object AutocorrectEval {
         val missed: Int get() = rows.count { it.outcome == Outcome.MISSED }
         val wrong: Int get() = rows.count { it.outcome == Outcome.WRONG }
         val clobbered: Int get() = rows.count { it.outcome == Outcome.CLOBBERED }
+
+        /**
+         * Controls the dictionary has never heard of. These separate two failures that look
+         * identical in the outcome column: a bad DECISION (a known word was overruled) and a
+         * COVERAGE hole (a real word is missing, so the engine had no way to know it was real).
+         * Only the first is fixable by anything in W2-W6; the second is W7.
+         */
+        val uncoveredControls: Int get() = rows.count { it.case.isControl && !it.inDictionary }
 
         /** The number that matters: how often the keyboard made things worse. */
         val falseCorrectionRate: Double get() = (wrong + clobbered).toDouble() / total.coerceAtLeast(1)
@@ -84,11 +93,18 @@ object AutocorrectEval {
             appendLine("  false-correction rate  %.3f".format(falseCorrectionRate))
             appendLine("  recall                 %.3f".format(recall))
             appendLine("  precision              %.3f".format(precision))
+            if (uncoveredControls > 0) {
+                appendLine("  controls missing from the dictionary  %d  (coverage, not decisions)"
+                    .format(uncoveredControls))
+            }
             val damage = rows.filter { it.outcome == Outcome.WRONG || it.outcome == Outcome.CLOBBERED }
             if (damage.isNotEmpty()) {
                 appendLine("  ----")
                 appendLine("  damage:")
-                damage.forEach { appendLine("    ${it.case.typed} -> ${it.committed}  (meant ${it.case.intended})") }
+                damage.forEach {
+                val note = if (it.case.isControl && !it.inDictionary) "  [not in dictionary]" else ""
+                appendLine("    ${it.case.typed} -> ${it.committed}  (meant ${it.case.intended})$note")
+            }
             }
         }
     }
@@ -104,7 +120,7 @@ object AutocorrectEval {
      */
     fun run(
         cases: List<Case>,
-        repository: EvalDictionaryRepository,
+        repository: DictionaryRepository,
         settings: SuggestionSettings,
         languageCode: String = "en",
         locale: Locale = Locale.ENGLISH
@@ -112,7 +128,7 @@ object AutocorrectEval {
         val engine = SuggestionEngine(repository, locale)
         val rows = cases.map { case ->
             val committed = commitFor(case.typed, engine, repository, settings, languageCode)
-            Row(case, committed, classify(case, committed))
+            Row(case, committed, classify(case, committed), repository.isKnownWord(case.typed))
         }
         return Report(rows)
     }
@@ -129,7 +145,7 @@ object AutocorrectEval {
     private fun commitFor(
         typed: String,
         engine: SuggestionEngine,
-        repository: EvalDictionaryRepository,
+        repository: DictionaryRepository,
         settings: SuggestionSettings,
         languageCode: String
     ): String? {

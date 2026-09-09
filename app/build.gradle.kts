@@ -213,6 +213,16 @@ android {
     }
     testOptions {
         unitTests.isIncludeAndroidResources = true
+        // The autocorrect evaluation against the real 13 MB en_base.dict is opt-in: it is slow
+        // enough that it has no business in the normal test loop, and it skips without this.
+        //   ./gradlew :app:testDebugUnitTest -Pphysiboard.eval.realDictionary=true
+        unitTests.all {
+            it.systemProperty(
+                "physiboard.eval.realDictionary",
+                providers.gradleProperty("physiboard.eval.realDictionary").getOrElse("false")
+            )
+            it.maxHeapSize = "3g"
+        }
     }
     sourceSets["main"].assets.srcDir(layout.buildDirectory.dir("generated/whatsnew"))
 }

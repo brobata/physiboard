@@ -194,6 +194,57 @@ The harness is sound; the corpus is not yet able to reproduce the reported probl
 Until (1) or (2) lands, treat the numbers above as a smoke test that the plumbing is real,
 not as a measurement of correction quality.
 
+**Update, same day: route (1) landed.** `AutocorrectEvalRealDictionaryTest` runs the same
+corpus against the shipped 48k-key `en_base.dict` through the real
+`AndroidDictionaryRepository`. It is opt-in so the normal loop stays fast:
+
+    ./gradlew :app:testDebugUnitTest -Pphysiboard.eval.realDictionary=true
+
+With a real dictionary the corpus finally bites. 74 cases:
+
+| | distance 2, proximity on (shipped) | distance 1, proximity on | distance 2, proximity off |
+|---|---|---|---|
+| fixed | 31 | 29 | 31 |
+| missed | 7 | 10 | 6 |
+| wrong | 2 | 1 | 3 |
+| clobbered | 1 | 1 | 1 |
+| false-correction rate | **0.041** | 0.027 | 0.054 |
+| recall | 0.775 | 0.725 | 0.775 |
+| precision | 0.912 | 0.935 | 0.886 |
+
+### What the failures actually are
+
+    definately -> defiantly   (meant definitely)
+    wierd      -> wired       (meant weird)
+    salve      -> slave       (meant salve)   [not in dictionary]
+
+The report now separates **coverage holes from bad decisions** by checking whether the
+typed word is in the dictionary at all. `salve` is not, so the engine had no way to know
+it was a real word - that is W7, not a scoring failure, and no threshold or cost model
+would have saved it. Two of the 34 controls are missing from the shipped dictionary.
+
+That leaves two genuine decision failures, and they are the same shape: **a real word beats
+the intended one at equal or lower edit distance**, and nothing in the scorer can prefer
+the right one. `defiantly` is a perfectly good word; so is `wired`. This is precisely the
+case that uniform-cost retrieval plus boolean gates cannot handle, and precisely what W2
+(geometry costs), W3 (threshold) and W5 (context prior) are for. A bigram prior would
+settle `wierd -> weird` immediately in almost any sentence.
+
+### Three findings that change the plan's emphasis
+
+1. **Proximity ranking earns its keep.** Turning it off raises the false-correction rate
+   from 0.041 to 0.054 and fixes nothing extra. It is on by default, correctly. W2 should
+   extend this idea into the cost model rather than replace it.
+2. **The distance dial trades exactly as predicted** - distance 1 is safer (0.027) and
+   misses more (recall 0.725 vs 0.775). It is a blunt instrument doing a job a confidence
+   threshold does better, which is the argument for W3.
+3. **W0 will not fix clobbering.** `salve -> slave` happens at distance 1 as well - it is a
+   transposition. Turning the dial down does not touch it. So the config change is worth
+   doing for comfort, but the real work is W3 and W7, not W0.
+
+Ratchets are set at the measured values in both eval tests. Tighten them when a change
+earns it; never loosen one to make a change pass.
+
 ### W2. Geometry into scoring
 `KeyboardCostModel` derived from the row strings. Rescore SymSpell's output. Delete the
 boolean `isNearbySubstitution` veto and the ±0.2/±0.4 nudges - the cost model subsumes
