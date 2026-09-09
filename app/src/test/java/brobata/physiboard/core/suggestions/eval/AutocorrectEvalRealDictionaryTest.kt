@@ -80,6 +80,16 @@ class AutocorrectEvalRealDictionaryTest {
         println("--- distance 2, proximity off ---")
         println(noProximity.format())
 
+        // The invariant, stated plainly: a word the dictionary knows is never overruled.
+        val clobberedKnownWords = aggressive.rows.filter {
+            it.case.isControl && it.inDictionary && it.outcome == AutocorrectEval.Outcome.CLOBBERED
+        }
+        assertTrue(
+            "known words were corrected: " +
+                clobberedKnownWords.joinToString { "${it.case.typed} -> ${it.committed}" },
+            clobberedKnownWords.isEmpty()
+        )
+
         // Ratchets, set to the first measured run (2026-09-08): 0.041 / 0.775 shipped.
         // Tighten when a change earns it; never loosen one to make a change pass.
         assertTrue(
@@ -96,5 +106,65 @@ class AutocorrectEvalRealDictionaryTest {
             "more wrong corrections than the two known ones: ${aggressive.wrong}",
             aggressive.wrong <= 2
         )
+    }
+
+    /**
+     * The rule, as a test: **if the user types a real word it is not corrected.**
+     *
+     * The commit predicate already encodes this - `isKnownWord` blocks a replacement - so the
+     * only way a real word gets overruled is if the dictionary has never heard of it. That makes
+     * this two measurements in one: the invariant itself, and the size of the coverage hole that
+     * is the only thing which can breach it.
+     */
+    @Test
+    fun ordinaryEnglishWordsAreNeverCorrected() {
+        val repository = loadedRepository()
+        val controls = AutocorrectEval.loadControls()
+        val shipped = SuggestionSettings(maxAutoReplaceDistance = 2, useKeyboardProximity = true)
+        val report = AutocorrectEval.run(controls, repository, shipped, locale = Locale.ENGLISH)
+
+        val missing = report.rows.filterNot { it.inDictionary }.map { it.case.typed }
+        println("=== ordinary English control sweep, real en_base.dict ===")
+        println("  words checked                    ${report.total}")
+        println("  missing from the dictionary      ${missing.size}")
+        if (missing.isNotEmpty()) println("    $missing")
+        println(report.format())
+
+        val overruled = report.rows.filter { it.outcome == AutocorrectEval.Outcome.CLOBBERED }
+        val overruledButKnown = overruled.filter { it.inDictionary }
+
+        // The hard invariant. A word the dictionary knows must survive untouched, always.
+        assertTrue(
+            "known words were corrected: " +
+                overruledButKnown.joinToString { "${it.case.typed} -> ${it.committed}" },
+            overruledButKnown.isEmpty()
+        )
+
+        // The soft one: words missing from the dictionary can be overruled, because the engine
+        // cannot tell them from a typo. This is the real exposure behind "it corrected a word I
+        // spelled right", and it is a data problem (W7), not a scoring one. Ratchet it downward
+        // as coverage improves; every word added to the dictionary should move this number.
+        assertTrue(
+            "more real words are being overruled than before: " +
+                overruled.joinToString { "${it.case.typed} -> ${it.committed}" },
+            overruled.size <= MAX_OVERRULED_REAL_WORDS
+        )
+    }
+
+    private fun loadedRepository(): AndroidDictionaryRepository {
+        val repository = AndroidDictionaryRepository(
+            context = context,
+            assets = context.assets,
+            userDictionaryStore = UserDictionaryStore(),
+            baseLocale = Locale.ENGLISH
+        )
+        runBlocking { withContext(Dispatchers.IO) { repository.loadIfNeeded() } }
+        assertTrue("the English dictionary did not load", repository.isReady)
+        return repository
+    }
+
+    companion object {
+        /** Set from the first measured sweep; lower it as dictionary coverage improves. */
+        private const val MAX_OVERRULED_REAL_WORDS = 4
     }
 }

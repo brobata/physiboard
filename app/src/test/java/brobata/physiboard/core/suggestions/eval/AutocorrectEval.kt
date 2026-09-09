@@ -193,6 +193,13 @@ object AutocorrectEval {
     fun loadCases(resource: String = "/autocorrect/en_cases.tsv"): List<Case> =
         readRows(resource).map { Case(it[0], it[1]) }
 
+    /**
+     * The ordinary-English control list. Column two is a note for a human, not data.
+     * These become [Case] rows whose intended word is themselves: none may ever be corrected.
+     */
+    fun loadControls(resource: String = "/autocorrect/en_controls.tsv"): List<Case> =
+        readRows(resource).map { Case(it[0], it[0]) }.distinctBy { it.typed }
+
     fun loadVocabulary(resource: String = "/autocorrect/en_vocab.tsv"): List<Pair<String, Int>> =
         readRows(resource).map { it[0] to it[1].toInt() }
 

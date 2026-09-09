@@ -245,6 +245,61 @@ settle `wierd -> weird` immediately in almost any sentence.
 Ratchets are set at the measured values in both eval tests. Tighten them when a change
 earns it; never loosen one to make a change pass.
 
+## The invariant, and why it is already true
+
+**A real word must never be corrected.** The commit predicate already says so - `isKnownWord`
+blocks a replacement, with narrow exceptions for case and accent repair - and the evaluation
+confirms it holds without exception. `AutocorrectEvalRealDictionaryTest` now asserts it
+directly: no word present in the dictionary was overruled, in any configuration.
+
+So the rule is not the problem. The only way a real word gets overruled is if the dictionary
+has never heard of it, and that turns out to be the whole exposure.
+
+### The coverage sweep
+
+116 ordinary English words - verbs, adjectives and nouns of the kind anyone writes - scored
+against the shipped `en_base.dict`:
+
+    words checked                116
+    missing from the dictionary   14      (12%)
+    overruled                      4
+
+    salve -> slave      lithe -> litre
+    dowdy -> dowry      flout -> flour
+
+Missing: `salve gaunt glean lithe canny dowdy flout imbue jostle loathe shirk spurn vex ember`.
+
+**Twelve percent of ordinary English vocabulary is absent from a 48k-key dictionary**, and one
+in four of those absences becomes a wrong correction as soon as the word sits near a commoner
+one. Nothing in W2-W6 can prevent this. No cost model, no confidence threshold and no context
+prior helps, because the engine has no representation of the word at all - to the scorer,
+`flout` is indistinguishable from a typo for `flour`.
+
+### This reorders the plan
+
+**W7 is not last. It is the first thing that will move the number the user actually feels.**
+The engine work remains right - `definately -> defiantly` and `wierd -> wired` are real scoring
+failures that only W2/W3/W5 can fix - but they are two cases against four coverage failures in
+this corpus, and the coverage failures are the ones that overrule a user who did nothing wrong.
+
+The cheapest first move is the truncation cutoff. `scripts/truncate_dict.py` keeps the top N by
+frequency (default 20000; English currently ships ~50k), and everything below the line
+disappears from the keyboard's world. Raising it is a build-time change with no engine risk,
+and the APK has the room: the 27.4 MB of dead `_base.json` already shipping in 2.0.6 more than
+pays for a larger `.dict`.
+
+Sequence, revised:
+
+    W0  turn the dial down                 comfort, does not fix clobbering
+    W1  evaluation harness                 DONE
+    W7a raise the truncation cutoff        the biggest single win, no engine risk
+    W7b regenerate en from Leipzig         real frequencies, removes the pow(0.75) guess
+    W2  geometry into scoring
+    W3  confidence threshold
+    W4  collapse to one pipeline
+    W5  context prior
+    W6  durable rejection memory
+
 ### W2. Geometry into scoring
 `KeyboardCostModel` derived from the row strings. Rescore SymSpell's output. Delete the
 boolean `isNearbySubstitution` veto and the ±0.2/±0.4 nudges - the cost model subsumes
