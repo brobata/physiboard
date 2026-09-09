@@ -1,0 +1,95 @@
+# typed	intended
+# When the two columns are equal the row is a CONTROL: the user typed a real word and the
+# keyboard must leave it alone. Correcting a control is the expensive error - it is what
+# "autocorrect messed me up" means - so controls are deliberately over-represented here
+# relative to how often they occur in prose.
+#
+# Provenance: rows marked (device) come from the debug export off the maintainer's Titan,
+# 2026-08-31, the same export TypoShapeProfileTest was built from. The rest are the standard
+# English misspelling set plus adjacent-key slips derived from the QWERTY row strings.
+
+# --- dropped / added letters (device) ---
+definetly	definitely
+sensitivy	sensitivity
+Oliva	Olive
+
+# --- classic English misspellings ---
+recieve	receive
+seperate	separate
+occured	occurred
+definately	definitely
+freind	friend
+goverment	government
+enviroment	environment
+neccessary	necessary
+accomodate	accommodate
+begining	beginning
+calender	calendar
+embarass	embarrass
+existance	existence
+independant	independent
+occassion	occasion
+priviledge	privilege
+reccomend	recommend
+tommorrow	tomorrow
+untill	until
+wierd	weird
+
+# --- transpositions ---
+hte	the
+teh	the
+adn	and
+taht	that
+wuold	would
+thier	their
+becuase	because
+
+# --- adjacent-key substitutions (the geometry cases) ---
+yhe	the
+rhe	the
+thw	the
+tje	the
+abd	and
+ane	and
+keyboatd	keyboard
+phlne	phone
+worm	word
+tine	time
+
+# --- controls: real words one edit from a commoner word ---
+form	form
+trail	trail
+trial	trial
+quiet	quiet
+quite	quite
+though	though
+thought	thought
+casual	casual
+causal	causal
+dessert	dessert
+desert	desert
+loose	loose
+lose	lose
+angel	angel
+angle	angle
+later	later
+latter	latter
+diary	diary
+dairy	dairy
+manager	manager
+manger	manger
+unite	unite
+untie	untie
+salve	salve
+slave	slave
+ill	ill
+bee	bee
+cat	cat
+dog	dog
+run	run
+also	also
+been	been
+
+# --- controls: morphology and completion must not be "corrected" ---
+work	work
+works	works
