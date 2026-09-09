@@ -221,6 +221,10 @@ android {
                 "physiboard.eval.realDictionary",
                 providers.gradleProperty("physiboard.eval.realDictionary").getOrElse("false")
             )
+            it.systemProperty(
+                "physiboard.eval.vocab",
+                providers.gradleProperty("physiboard.eval.vocab").getOrElse("")
+            )
             it.maxHeapSize = "3g"
         }
     }

@@ -384,3 +384,90 @@ never a blocking DB hit.
 - **Eval harness before engine work.** The one non-negotiable ordering constraint.
 - **Reuse `UserNGramStore` rather than build an n-gram LM.** The learned bigrams are
   already there and already personal to the user, which a shipped LM would not be.
+
+
+---
+
+# W7a: the word list  (2026-09-09)
+
+## Raising the truncation cutoff is not possible, and would not have helped
+
+`app/src/main/assets/common/dictionaries/en_base.json` is exactly 50,000 entries and contains
+**none** of the fourteen missing words. The truncation happened upstream, outside this
+repository, so `scripts/truncate_dict.py` has nothing left to keep. W7a as originally written
+cannot be done.
+
+It would not have been the fix anyway. The rarest shipped word, `arcaded`, sits at Zipf 1.68 -
+rarer than every word the sweep found missing. Depth was never the problem.
+
+## The shipped list is the wrong corpus
+
+Measured against `wordfreq`:
+
+    20.0%  of the shipped 50k are outside wordfreq's top 50k
+    21.7%  of wordfreq's top 50k are missing from the shipped list
+
+It carries `passerine`, `officership`, `subchannel`, `kbit`, `simulcasting`, `USAAF` and
+`municipality's` while missing `vex`, `ember`, `loathe`, `flout` and `salve`. That is an
+encyclopedic corpus, and it is the wrong shape for a phone: it spends its budget on terms
+nobody types and omits ordinary words, which the engine then treats as typos.
+
+Good news: it is fixable at the same 50,000 entries. No APK growth required.
+
+## Frequency alone makes it worse, and the harness caught it
+
+The first attempt ranked by wordfreq and kept the top N. Coverage went to zero missing at 80k -
+and recall collapsed from 0.775 to 0.250.
+
+The reason is that frequency data drawn from real text contains the misspellings people
+actually make. Every one of these is in wordfreq's top 80k, with the frequency it was assigned:
+
+    alot 116    teh 91     thier 90    untill 89   definately 87
+    seperate 85 occured 85 recieve 83  goverment 81  wierd 79
+
+Once a typo is a word the dictionary knows, `isKnownWord` protects it and it can never be
+corrected. **"Never correct a real word" plus a raw-frequency word list equals "never correct
+anything."** The shipped list gets this half right - it contains no misspellings at all.
+
+## Membership and ranking must come from different places
+
+A curated lexicon decides which words exist; wordfreq decides how common they are.
+`pyspellchecker`'s lexicon (160,572 words) contains all fourteen missing real words and none of
+the twelve misspellings. `scripts/build_en_wordlist.py` now intersects the two.
+
+    list                  recall    false-corr    missing    real words
+                                      rate        /116       overruled
+    ------------------------------------------------------------------
+    shipped 50k           0.775       0.041        14            4
+    lexicon 50k           0.700       0.014         2            1
+    lexicon 80k           0.650       0.014         0            0
+
+**The lexicon-filtered 80k list satisfies the rule absolutely: no real word is overruled, and
+no ordinary word is missing.** It cuts the false-correction rate by two thirds.
+
+The cost is recall, 0.775 to 0.650. That trade is the right way round, and it is the reason
+this had to come before the engine work: a coverage failure cannot be recovered by any
+scoring change, while the lost recall is exactly what W2 (geometry costs), W3 (confidence)
+and W5 (context) are for. Fix the data, then earn the recall back.
+
+The one remaining wrong correction, `definately -> defiantly`, is a pure scoring failure and
+survives every word list. It is the clearest single target for W2/W3.
+
+## Not done, and deliberately
+
+The candidate `.dict` has not been built or shipped. Changing the dictionary changes every
+install, needs the CBOR rebuild and a size check, and is the maintainer's call. What exists is
+the generator, the measurements, and a sweep that scores any candidate list before it is built:
+
+    pip install wordfreq pyspellchecker cbor2
+    python3 scripts/build_en_wordlist.py --size 80000 \
+        --out app/src/main/assets/common/dictionaries/en_base.json \
+        --tsv /tmp/vocab_80k.tsv
+    ./gradlew :app:testDebugUnitTest --tests '*VocabularySweepTest*' \
+        -Pphysiboard.eval.vocab=/tmp/vocab_80k.tsv
+
+An 80k list is roughly 1.6x the current `.dict`, about 21 MB against 13 MB. The 27.4 MB of
+dead `_base.json` already in the APK more than pays for it.
+
+Note the other eleven bundled languages have not been looked at. They were built by the same
+upstream process, so the same corpus problem is likely present in all of them.
