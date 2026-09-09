@@ -4,6 +4,22 @@ PhysiBoard is a GPLv3 fork of [Pastiera](https://github.com/palsoftware/pastiera
 Andrea Palumbo (PalSoftware) and contributors. This file documents the fork's changes,
 as required by GPLv3 §5(a). Package: `brobata.physiboard`.
 
+## 2.0.6 (2026-09-08)
+
+A notification at night no longer lights the keyboard along with the ring.
+
+<!-- /card -->
+
+- **The keyboard stays dark while the ring is lit.** The ring turns the screen on, and the
+  phone lights the keyboard whenever the screen comes on — so a message at 3am lit the whole
+  keyboard up to show a ring that exists precisely so nothing else has to. If you had the
+  keyboard backlight set to stay on, it then never went off again. The keyboard is now turned
+  off for the ring and put back exactly as it was when the ring ends — whether that is the
+  timer running out, a touch, a key, unlocking, or the screen going dark. There is a switch
+  for it under *Notification ring*, on to begin with. It needs the same one-time pairing the
+  keyboard backlight setup uses; without that the row says so, rather than offering a setting
+  that quietly does nothing.
+
 ## 2.0.5 (2026-09-03)
 
 The buttons you assign to the status bar now actually appear on it.
