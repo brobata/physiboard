@@ -149,13 +149,20 @@ object AutocorrectEval {
         settings: SuggestionSettings,
         languageCode: String
     ): String? {
-        val top: SuggestionResult = engine.suggest(
+        val suggestions = engine.suggest(
             typed,
-            limit = 1,
+            limit = 2,
             includeAccentMatching = settings.accentMatching,
             useKeyboardProximity = settings.useKeyboardProximity,
             useEditTypeRanking = settings.useEditTypeRanking
-        ).firstOrNull() ?: return null
+        )
+        val top: SuggestionResult = suggestions.firstOrNull() ?: return null
+        val confidence = AutoReplaceController.Confidence.of(
+            top = top.score,
+            runnerUp = suggestions.getOrNull(1)
+                ?.takeIf { it.kind == brobata.physiboard.core.suggestions.SuggestionKind.CURRENT_WORD }
+                ?.score
+        )
 
         val isOrthographicVariant = AutoReplaceController.isAccentOnlyVariant(typed, top.candidate)
         val isCaseVariant = typed != top.candidate && typed.equals(top.candidate, ignoreCase = true)
@@ -175,6 +182,7 @@ object AutocorrectEval {
             isRejected = false,
             isOrthographicVariant = isOrthographicVariant,
             isCaseVariant = isCaseVariant,
+            confidence = confidence,
             isSafeCandidate = AutoReplaceController.isSafeAutoReplaceCandidate(
                 input = typed,
                 lookupWord = typed,
@@ -184,7 +192,7 @@ object AutocorrectEval {
                 languageCode = languageCode
             )
         )
-        if (!AutoReplaceController.shouldAutoReplace(facts)) return null
+        if (!AutoReplaceController.shouldAutoReplace(facts, settings)) return null
         return top.candidate.takeIf { !it.equals(typed, ignoreCase = false) }
     }
 

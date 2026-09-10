@@ -471,3 +471,76 @@ dead `_base.json` already in the APK more than pays for it.
 
 Note the other eleven bundled languages have not been looked at. They were built by the same
 upstream process, so the same corpus problem is likely present in all of them.
+
+
+---
+
+# W3: the confidence threshold  (2026-09-09)
+
+## What it measures
+
+`AutoReplaceController.Confidence` is the **relative margin between the top candidate and the
+runner-up**, not the top score itself. Absolute scores are an unbounded additive pile whose
+scale drifts with word length, frequency and which bonuses happened to apply, so no fixed
+cutoff on them means the same thing twice. A margin is scale-free: it asks only whether the
+winner won clearly, which is the right question before overwriting what somebody typed.
+
+`handleBoundary` now asks the engine for two candidates instead of one - the runner-up is what
+makes the margin measurable - and `shouldAutoReplace` takes the threshold as a term. The
+rejection telemetry gained `too_close_to_call`, so a marginal call is distinguishable from a
+shape rejection in a debug export.
+
+## The sweep
+
+Against the shipped dictionary:
+
+    threshold   fixed  missed  wrong  overruled   recall  precision    fcr
+         0.00      31       7      2          4    0.775      0.912  0.041
+         0.02      29      10      1          3    0.725      0.967  0.014
+         0.05      29      10      1          2    0.725      0.967  0.014
+         0.10      29      10      1          1    0.725      0.967  0.014
+         0.20      16      23      1          1    0.400      0.941  0.014
+         0.35       6      33      1          0    0.150      0.857  0.014
+
+**0.10 is the knee, and it is now the default.** Real words overruled fall from 4 to 1, the
+false-correction rate from 0.041 to 0.014, for five points of recall. Past 0.20 recall falls
+off a cliff and buys nothing further.
+
+## Two findings that contradict the plan
+
+**1. The threshold does not recover the recall the dictionary work spent.** That was the
+premise for holding the data back, and it is wrong. Against the lexicon-filtered 80k list the
+threshold buys nothing at all - overruling is already zero at every setting - and only costs
+recall:
+
+    threshold  recall   overruled        (vocab_lex_80000)
+         0.00   0.650           0
+         0.10   0.600           0
+         0.20   0.300           0
+
+The two mechanisms overlap rather than compose. Both fix the same failure - a real word being
+overruled - by different means, so applying both pays twice for one thing.
+
+**2. It cannot fix a confidently wrong correction.** `definately -> defiantly` survives every
+threshold on every word list. The scorer does not narrowly prefer `defiantly`; it prefers it
+clearly, and a margin test cannot catch an error the scorer is sure about. Confidence filters
+close calls, not wrong convictions. That failure needs W2 (a cost model that knows `a` and `i`
+are not adjacent keys) or W5 (a bigram prior that has seen "definitely not" and never
+"defiantly not").
+
+## Where this leaves the decision
+
+Two routes now reach the same place, and they are alternatives, not a sequence:
+
+    shipped dictionary + threshold 0.10   recall 0.725   overruled 1   fcr 0.014   no APK change
+    lexicon 80k + threshold 0.00          recall 0.650   overruled 0   fcr 0.014   +8 MB
+
+The threshold route keeps more recall and needs no data change; the dictionary route is the
+only one that reaches **zero** real words overruled, which is the rule as stated. If the rule is
+absolute, the dictionary is not optional and the threshold should be lowered toward 0.02 once
+it ships, to stop paying twice.
+
+The threshold is in as a measured default. No user-facing control yet - the plan's idea of
+retiring *Maximum correction distance* in favour of a plain-language aggressiveness dial still
+stands, and should wait until the dictionary question is settled so the two dials are designed
+against the same behaviour.

@@ -41,6 +41,42 @@ class AutoReplaceController(
     )
 
     /**
+     * How clearly the winning candidate beat the field.
+     *
+     * The engine has always computed a score and then used it only to order the three visible
+     * suggestions; the commit decision was eight booleans, so "how sure are we" was not a
+     * question the keyboard could ask. It shows in the failures: `definately` retrieves both
+     * `definitely` and `defiantly`, the scorer separates them by almost nothing, and a boolean
+     * gate has no way to express "too close to call - offer it, do not impose it".
+     *
+     * The measure is the RELATIVE MARGIN between the top candidate and the runner-up, not the
+     * top score itself. Absolute scores are an unbounded additive pile whose scale drifts with
+     * word length, frequency and which bonuses happened to apply, so no fixed cutoff on them
+     * means the same thing twice. A margin is scale-free: it asks only whether the winner won
+     * clearly, which is exactly the question worth asking before overwriting what someone typed.
+     *
+     * A lone candidate has nothing to beat and scores [CERTAIN] - the shape gates remain
+     * responsible for whether it should be applied at all.
+     */
+    @JvmInline
+    value class Confidence(val value: Double) {
+        companion object {
+            /** Nothing competed with the winner. */
+            val CERTAIN = Confidence(1.0)
+
+            /**
+             * From the top two candidate scores. Guards the degenerate cases: a non-positive
+             * top score carries no information, so it cannot be called confident.
+             */
+            fun of(top: Double, runnerUp: Double?): Confidence {
+                if (runnerUp == null) return CERTAIN
+                if (top <= 0.0) return Confidence(0.0)
+                return Confidence(((top - runnerUp) / top).coerceIn(0.0, 1.0))
+            }
+        }
+    }
+
+    /**
      * The facts a commit decision rests on, gathered so the decision itself can be made
      * without an InputConnection, a dictionary or a keyboard.
      */
@@ -54,7 +90,8 @@ class AutoReplaceController(
         val isRejected: Boolean,
         val isOrthographicVariant: Boolean,
         val isCaseVariant: Boolean,
-        val isSafeCandidate: Boolean
+        val isSafeCandidate: Boolean,
+        val confidence: Confidence = Confidence.CERTAIN
     )
 
     companion object {
@@ -170,7 +207,7 @@ class AutoReplaceController(
          * veto, so a candidate is either structurally permitted or not, and how strong it was
          * never enters. That is the gap the score threshold is meant to fill.
          */
-        internal fun shouldAutoReplace(facts: ReplaceFacts): Boolean {
+        internal fun shouldAutoReplace(facts: ReplaceFacts, settings: SuggestionSettings): Boolean {
             val top = facts.top ?: return false
             val minWordLength = minWordLength(facts.isOrthographicVariant)
             // A known word is left alone: replacing a valid word with another valid one is the
@@ -180,6 +217,7 @@ class AutoReplaceController(
                 (facts.isOrthographicVariant && !facts.isExactKnownWord)
             return knownWordAllows &&
                 !facts.isRejected &&
+                facts.confidence.value >= settings.minAutoReplaceConfidence &&
                 facts.isSafeCandidate &&
                 facts.lookupWord.length >= minWordLength &&
                 (top.candidate.length <= (facts.word.length * MAX_LENGTH_RATIO).toInt() ||
@@ -467,14 +505,21 @@ class AutoReplaceController(
             }
         }
 
+        // Two, not one: the runner-up is what makes the winner's margin measurable.
         val suggestions = suggestionEngine.suggest(
             lookupWord,
-            limit = 1,
+            limit = 2,
             includeAccentMatching = settings.accentMatching,
             useKeyboardProximity = settings.useKeyboardProximity,
             useEditTypeRanking = settings.useEditTypeRanking
         )
         val topRaw = suggestions.firstOrNull()
+        val confidence = Confidence.of(
+            top = topRaw?.score ?: 0.0,
+            runnerUp = suggestions.getOrNull(1)
+                ?.takeIf { it.kind == SuggestionKind.CURRENT_WORD }
+                ?.score
+        )
         val top = topRaw?.let {
             if (apostropheSplit != null) {
                 val recomposed = recomposeApostropheCandidate(apostropheSplit, it.candidate) ?: return@let null
@@ -517,8 +562,10 @@ class AutoReplaceController(
                 isRejected = isRejected,
                 isOrthographicVariant = isOrthographicVariant,
                 isCaseVariant = isCaseVariant,
-                isSafeCandidate = isSafeCandidate
-            )
+                isSafeCandidate = isSafeCandidate,
+                confidence = confidence
+            ),
+            settings = settings
         )
 
         if (shouldReplace) {
@@ -579,6 +626,7 @@ class AutoReplaceController(
             !isOrthographicVariant && !isCaseVariant && top.distance <= 0 -> "not_edit_distance"
             word.all { it.isLowerCase() } && isAcronymLike(top.candidate) -> "acronym_candidate"
             !isSafeCandidate -> "unsafe_shape"
+            confidence.value < settings.minAutoReplaceConfidence -> "too_close_to_call"
             lookupWord.length < minWordLength(isOrthographicVariant) -> "word_too_short"
             top.candidate.length > (word.length * MAX_LENGTH_RATIO).toInt() &&
                 !hasSingleRepeatedCharInsertion(word, top.candidate) -> "candidate_too_long"

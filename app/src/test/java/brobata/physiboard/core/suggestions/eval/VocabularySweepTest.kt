@@ -82,4 +82,49 @@ class VocabularySweepTest {
                 .forEach { println("      wrong: ${it.case.typed} -> ${it.committed} (meant ${it.case.intended})") }
         }
     }
+
+    /**
+     * What a confidence threshold buys, per word list.
+     *
+     * The dictionary work traded recall away (0.775 -> 0.650) to stop real words being
+     * overruled. This is the other half of that bargain: the threshold should recover precision
+     * on the cases the word list cannot help with - `definately -> defiantly` survives every
+     * vocabulary, because both words are real and the scorer barely separates them.
+     *
+     * Same invocation as above, with -Pphysiboard.eval.vocab.
+     */
+    @Test
+    fun confidenceThresholdsAreSwept() {
+        val paths = System.getProperty("physiboard.eval.vocab").orEmpty()
+            .split(',').map(String::trim).filter { it.isNotEmpty() }
+        assumeTrue("set -Pphysiboard.eval.vocab=<tsv>[,...]", paths.isNotEmpty())
+
+        val cases = AutocorrectEval.loadCases()
+        val controls = AutocorrectEval.loadControls()
+        val base = SuggestionSettings(maxAutoReplaceDistance = 2, useKeyboardProximity = true)
+        val thresholds = listOf(0.0, 0.02, 0.05, 0.10, 0.20, 0.35, 0.50)
+
+        println("=== confidence sweep ===")
+        paths.map(::File).filter { it.isFile }.forEach { file ->
+            val vocabulary = file.readLines().mapNotNull { line ->
+                val parts = line.split('\t')
+                if (parts.size < 2) null else parts[0] to (parts[1].trim().toIntOrNull() ?: return@mapNotNull null)
+            }
+            val repository = EvalDictionaryRepository(vocabulary, Locale.ENGLISH)
+            println()
+            println("--- ${file.name} (${vocabulary.size} words) ---")
+            println("  threshold   fixed  missed  wrong  overruled   recall  precision    fcr")
+            thresholds.forEach { threshold ->
+                val settings = base.copy(minAutoReplaceConfidence = threshold)
+                val typos = AutocorrectEval.run(cases, repository, settings, locale = Locale.ENGLISH)
+                val real = AutocorrectEval.run(controls, repository, settings, locale = Locale.ENGLISH)
+                println(
+                    "  %9.2f   %5d  %6d  %5d  %9d   %6.3f  %9.3f  %5.3f".format(
+                        threshold, typos.fixed, typos.missed, typos.wrong, real.clobbered,
+                        typos.recall, typos.precision, typos.falseCorrectionRate
+                    )
+                )
+            }
+        }
+    }
 }
