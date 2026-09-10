@@ -19,7 +19,7 @@ data class SuggestionSettings(
      * See docs/plans/autocorrect-rework.md for the full sweep, and
      * [AutoReplaceController.Confidence] for what the number measures.
      */
-    val minAutoReplaceConfidence: Double = 0.10,
+    val minAutoReplaceConfidence: Double = 0.02,
     val maxSuggestions: Int = 3,
     val useKeyboardProximity: Boolean = false,
     val useEditTypeRanking: Boolean = false,

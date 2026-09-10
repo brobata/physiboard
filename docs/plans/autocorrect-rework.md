@@ -544,3 +544,54 @@ The threshold is in as a measured default. No user-facing control yet - the plan
 retiring *Maximum correction distance* in favour of a plain-language aggressiveness dial still
 stands, and should wait until the dictionary question is settled so the two dials are designed
 against the same behaviour.
+
+
+---
+
+# Landed: the rebuilt dictionary + threshold  (2026-09-09)
+
+The two routes were alternatives, and the rule decided it. "If the user types a real word it
+should not be corrected" is absolute, and only the dictionary route reaches zero, so the
+dictionary was rebuilt and the threshold lowered to 0.02 to stop paying twice for the same fix.
+
+## English dictionary
+
+    scripts/build_en_wordlist.py --size 80000    (wordfreq ranking x pyspellchecker lexicon)
+    scripts/build_symspell_dict.py
+
+    en_base.json   50,000 -> 80,000 entries
+    en_base.dict   13.2 MB -> 20.5 MB
+
+## Measured against the rebuilt dictionary
+
+                              before      after
+    real words overruled           4          0
+    ordinary words missing/116    14          0
+    false-correction rate      0.041      0.014
+    recall                     0.775      0.650
+
+`MAX_OVERRULED_REAL_WORDS` is now **0** and that is an invariant, not a ratchet to be nudged.
+
+## The APK got smaller
+
+The dictionary grew 7.3 MB and the APK still fell, because the dead `_base.json` payload is
+finally excluded. That exclusion was attempted in `packaging.resources`, which filters Java
+resources rather than Android assets and so did nothing; `androidResources.ignoreAssetsPatterns`
+is the switch that applies to assets.
+
+    2.0.6 release      50.2 MB
+    this build         48.5 MB      (-1.7 MB, with 13 base.json files gone and a 7.3 MB
+                                     larger dictionary absorbed)
+
+## What is still wrong
+
+`definately -> defiantly` survives everything - every word list, every threshold. The scorer
+prefers `defiantly` clearly, not narrowly, so no margin test can catch it. It is the single
+clearest target for **W2** (a cost model where `a`/`i` are not adjacent keys) and **W5** (a
+bigram prior that has seen "definitely not" and never "defiantly not").
+
+Recall at 0.650 is the debt this took on deliberately. W2 and W5 are how it gets paid back.
+
+The other eleven bundled languages are untouched and were built by the same upstream process,
+so the same corpus problem is very likely in all of them. Only English has been looked at, and
+`TypoShapeProfile` still keeps every other language on the conservative shape gate.

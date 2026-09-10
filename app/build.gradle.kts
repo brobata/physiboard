@@ -202,10 +202,19 @@ android {
         compose = true
         buildConfig = true
     }
+    // The `<lang>_base.json` word lists are the SOURCE the serialized `.dict` files are built
+    // from (scripts/build_en_wordlist.py -> scripts/build_symspell_dict.py). Nothing reads them
+    // at runtime - the repository loads `dictionaries_serialized/<lang>_base.dict`, and the only
+    // asset opened from `common/dictionaries/` is user_defaults.json - so they are pure payload.
+    //
+    // This used to be attempted in `packaging.resources`, which filters JAVA resources and not
+    // Android assets, so it silently did nothing: 2.0.6 shipped 13 of these files, 27.4 MB, in a
+    // 52.6 MB APK. `ignoreAssetsPatterns` is the switch that actually applies to assets.
+    androidResources {
+        ignoreAssetsPatterns += "*_base.json"
+    }
     packaging {
         resources {
-            // Exclude legacy JSON base dictionaries; keep serialized .dict and user_defaults.json
-            excludes += "assets/common/dictionaries/*_base.json"
             // BouncyCastle (bcpkix/bcutil/bcprov) + jspecify ship duplicate OSGI metadata
             excludes += "META-INF/versions/9/OSGI-INF/MANIFEST.MF"
             excludes += "META-INF/versions/**/OSGI-INF/**"
