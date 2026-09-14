@@ -129,7 +129,16 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     private val keyboardBacklightManager by lazy { KeyboardBacklightManager(this) }
     private var isSpeechRecognitionActive: Boolean = false
     private var pendingSpeechRecognition: Boolean = false
-    
+    /**
+     * Bumped on every onStartInput, so a deferred "the editor is gone" check can tell a real
+     * focus change from an app blinking its field off and on.
+     */
+    private var editorGeneration = 0
+    /** The app dictation was started in; another app taking the editor ends the session. */
+    private var dictationPackageName: String? = null
+    /** How long after onFinishInput to wait for a replacement editor before ending dictation. */
+    private val editorGoneGraceMs = 500L
+
     // Broadcast receiver for speech recognition (deprecated, kept for backwards compatibility)
     private var speechResultReceiver: BroadcastReceiver? = null
     // Broadcast receiver for permission request result
@@ -789,6 +798,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
             )
         }
         
+        dictationPackageName = currentPackageName
         speechRecognitionManager?.startRecognition()
     }
 
@@ -3224,6 +3234,12 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
         editorHasActiveSelection = false
         
         currentPackageName = info?.packageName
+        editorGeneration++
+        // Dictation follows the field it was started in. Another app taking over means the words
+        // would go nowhere, so the session ends rather than listening into a dead connection.
+        if (isSpeechRecognitionActive && dictationPackageName != null && info?.packageName != dictationPackageName) {
+            speechRecognitionManager?.onEditorGone()
+        }
         updateDebugImeContextSnapshot(info)
         
         // Reset clipboard overlay when starting new input
@@ -3374,6 +3390,16 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     override fun onFinishInput() {
         super.onFinishInput()
         caretBadgeController.onEditorGone()
+        if (isSpeechRecognitionActive) {
+            // Apps blink their field off and on while typing; a real departure is one that no
+            // new editor follows. Wait a moment before deciding the dictation has nowhere to go.
+            val generation = editorGeneration
+            uiHandler.postDelayed({
+                if (isSpeechRecognitionActive && editorGeneration == generation) {
+                    speechRecognitionManager?.onEditorGone()
+                }
+            }, editorGoneGraceMs)
+        }
         if (::textExpansionController.isInitialized) textExpansionController.clear()
         keyboardVisibilityController.cancelPendingSurfaceTransition()
         accidentalKeyPressFilter.reset()

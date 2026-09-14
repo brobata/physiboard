@@ -52,6 +52,59 @@ class SpeechRecognitionManager(
         private const val SEGMENTED_WATCHDOG_SLACK_MS = 5000L
         /** An error this soon into a segmented session is the engine refusing the request. */
         private const val SEGMENTED_REJECT_WINDOW_MS = 1200L
+        /**
+         * How long after the trigger the keyboard keeps listening for the first words. Google's
+         * engines close the microphone about two seconds after any sound, so a user who takes a
+         * breath before speaking would otherwise get "no text recognized" before saying a word.
+         */
+        internal const val START_GRACE_MS = 10_000L
+        /** Each re-listen is a couple of seconds, so this bounds a silent session, not speech. */
+        internal const val MAX_QUIET_RESTARTS = 5
+        /** A busy engine is usually another request winding down; give it a moment. */
+        private const val BUSY_RETRY_DELAY_MS = 300L
+
+        /**
+         * Whether an error this early in a segmented session means the engine refused the segmented
+         * request, as opposed to failing the recognition for a reason of its own. Only the errors
+         * that have nothing to do with the request shape are excluded: busy, network, audio,
+         * permission, language and silence problems would happen to a plain request too, so they
+         * must not switch segmented sessions off for the rest of the process.
+         */
+        internal fun isSegmentRefusalError(error: Int): Boolean = error !in setOf(
+            SpeechRecognizer.ERROR_NO_MATCH,
+            SpeechRecognizer.ERROR_SPEECH_TIMEOUT,
+            SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS,
+            SpeechRecognizer.ERROR_AUDIO,
+            SpeechRecognizer.ERROR_NETWORK,
+            SpeechRecognizer.ERROR_NETWORK_TIMEOUT,
+            SpeechRecognizer.ERROR_SERVER,
+            SpeechRecognizer.ERROR_RECOGNIZER_BUSY,
+            SpeechRecognizer.ERROR_TOO_MANY_REQUESTS,
+            SpeechRecognizer.ERROR_SERVER_DISCONNECTED,
+            SpeechRecognizer.ERROR_LANGUAGE_NOT_SUPPORTED,
+            SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE
+        )
+
+        /**
+         * Whether the session should quietly listen again instead of reporting [error]: the engine
+         * gave up before the user said anything, and the user has not stopped the session. Busy
+         * counts too, because a request that lands while the previous one is still closing fails
+         * for no reason of the user's.
+         */
+        internal fun shouldRelistenBeforeSpeech(
+            error: Int,
+            sessionActive: Boolean,
+            stopRequested: Boolean,
+            heardSpeech: Boolean,
+            elapsedMs: Long,
+            restarts: Int
+        ): Boolean {
+            if (!sessionActive || stopRequested || heardSpeech) return false
+            if (elapsedMs >= START_GRACE_MS || restarts >= MAX_QUIET_RESTARTS) return false
+            return error == SpeechRecognizer.ERROR_NO_MATCH ||
+                error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT ||
+                error == SpeechRecognizer.ERROR_RECOGNIZER_BUSY
+        }
 
         /**
          * Whether a dictation session should ask the engine to hold one segmented session open
@@ -257,17 +310,36 @@ class SpeechRecognitionManager(
                             sessionActive &&
                             !stopRequested &&
                             SystemClock.uptimeMillis() - sessionStartedAt < SEGMENTED_REJECT_WINDOW_MS &&
-                            error != SpeechRecognizer.ERROR_NO_MATCH &&
-                            error != SpeechRecognizer.ERROR_SPEECH_TIMEOUT &&
-                            error != SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS &&
-                            error != SpeechRecognizer.ERROR_AUDIO
+                            isSegmentRefusalError(error)
                         if (refusedSegments) {
                             Log.w(TAG, "Segmented session refused (error $error) — retrying without it")
                             segmentedUnsupported = true
                             segmentedSession = false
                             cancelSegmentedWatchdog()
                             if (isComposingPartialText) clearPartialText()
-                            restartWithoutSegmentedSession()
+                            relisten(segmented = false)
+                            return
+                        }
+
+                        // The engine closed the microphone before the user said anything: that is
+                        // the user still drawing breath, not a failed recognition. Listen again
+                        // for a bounded grace period rather than announcing "no text recognized".
+                        val continuing = sessionActive && !stopRequested && continuationStartedAt > 0L
+                        if (
+                            !continuing && shouldRelistenBeforeSpeech(
+                                error = error,
+                                sessionActive = sessionActive,
+                                stopRequested = stopRequested,
+                                heardSpeech = heardSpeech,
+                                elapsedMs = SystemClock.uptimeMillis() - sessionStartedAt,
+                                restarts = quietRestarts
+                            )
+                        ) {
+                            quietRestarts++
+                            Log.d(TAG, "Engine gave up before speech (error $error) — listening again (#$quietRestarts)")
+                            cancelSegmentedWatchdog()
+                            val delay = if (error == SpeechRecognizer.ERROR_RECOGNIZER_BUSY) BUSY_RETRY_DELAY_MS else 0L
+                            relisten(segmented = segmentedSession, delayMs = delay)
                             return
                         }
 
@@ -276,12 +348,11 @@ class SpeechRecognitionManager(
                         // of ending the session. Guard against a tight failure loop.
                         val isQuietError = error == SpeechRecognizer.ERROR_NO_MATCH ||
                             error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT
-                        val continuing = sessionActive && !stopRequested && continuationStartedAt > 0L
                         val ranLongEnough =
                             SystemClock.uptimeMillis() - continuationStartedAt > CONTINUATION_MIN_RUN_MS
                         if (continuing && isQuietError && ranLongEnough) {
                             Log.d(TAG, "Quiet continuation ended by recognizer — waiting for pause timer")
-                            if (isComposingPartialText) clearPartialText()
+                            settlePartial()
                             if (configuredPauseMs() > 0) {
                                 // Timer is still running from the last result; if it has
                                 // already fired, endSession handled it.
@@ -297,6 +368,30 @@ class SpeechRecognitionManager(
                         // meant to, so close it without complaining.
                         if (segmentedSession && isQuietError && segmentsSeen > 0) {
                             Log.d(TAG, "Segmented session ended on silence after $segmentsSeen segment(s)")
+                            endSession(cancelRecognizer = false)
+                            settlePartial()
+                            return
+                        }
+
+                        // The engine heard words (they are on screen as a partial) and then
+                        // decided the utterance was nothing. The words are the result: finish
+                        // them the way a final would have, and carry on with the session.
+                        if (sessionActive && isQuietError && lastPartialText.isNotBlank()) {
+                            Log.d(TAG, "Quiet error $error after a partial — finishing the utterance from it")
+                            finishUtterance(lastPartialText)
+                            if (!stopRequested && configuredPauseMs() > 0) {
+                                armSilenceTimer()
+                                continueSession()
+                            } else {
+                                endSession(cancelRecognizer = false)
+                            }
+                            return
+                        }
+
+                        // The user stopped the session before saying anything. Silence was the
+                        // point, so there is nothing to complain about.
+                        if (sessionActive && stopRequested && isQuietError) {
+                            Log.d(TAG, "Session stopped by the user with nothing said")
                             endSession(cancelRecognizer = false)
                             if (isComposingPartialText) clearPartialText()
                             return
@@ -349,6 +444,7 @@ class SpeechRecognitionManager(
                     }
 
                     override fun onResults(results: Bundle) {
+                        heardSpeech = true
                         commitRecognizedText(results)
 
                         if (segmentedSession) {
@@ -375,6 +471,7 @@ class SpeechRecognitionManager(
                      */
                     override fun onSegmentResults(segmentResults: Bundle) {
                         segmentsSeen++
+                        heardSpeech = true
                         Log.d(TAG, "Segment result #$segmentsSeen")
                         commitRecognizedText(segmentResults)
                         // The engine owes us an onEndOfSegmentedSession; if it never arrives the
@@ -394,6 +491,7 @@ class SpeechRecognitionManager(
                         
                         if (partialText.isNotEmpty()) {
                             Log.d(TAG, "Speech recognition partial results: '$partialText'")
+                            heardSpeech = true
                             cancelSilenceTimer()
                             cancelSegmentedWatchdog()
                             // Insert/update partial text in real-time
@@ -453,9 +551,14 @@ class SpeechRecognitionManager(
                     }
                 }
                 
-                // Use setComposingText to show partial text as "being composed"
-                // Offset 0 replaces any existing composing text
-                inputConnection.setComposingText(formatted, 0)
+                // Composing text replaces the previous composing text whatever the cursor
+                // argument says; the argument only places the cursor, and 1 puts it after
+                // the words. Anything else leaves the cursor at the START of the composing
+                // region, and if the session then ends without a final result (Google's
+                // engine delivers the last words as a partial and an empty final) the field
+                // is left with its cursor in front of the dictated text, so the next thing
+                // typed or dictated lands ahead of it. Seen in Teams on a Titan 2.
+                inputConnection.setComposingText(formatted, 1)
                 isComposingPartialText = true
                 Log.d(TAG, "Partial text updated (composing): '$formatted'")
             } catch (e: Exception) {
@@ -481,16 +584,39 @@ class SpeechRecognitionManager(
 
         val text = matches?.firstOrNull() ?: ""
         if (text.isNotEmpty()) {
-            val normalizedText = normalizePunctuationWords(text)
-            val formattedText = formatTextWithAutoCapitalization(normalizedText)
-            Log.d(TAG, "Using recognized text: '$formattedText' (original: '$text', normalized: '$normalizedText')")
-            replacePartialWithFinalText(formattedText)
+            finishUtterance(text)
+        } else if (lastPartialText.isNotBlank()) {
+            // Google's engine can send the complete utterance as its last partial and then an
+            // empty final. The partial is the result then, and it gets the same treatment a
+            // final would: punctuation, capitalisation, spacing, and the cursor after it.
+            Log.d(TAG, "Empty final result — finishing the utterance from the last partial")
+            finishUtterance(lastPartialText)
         } else {
             if (isComposingPartialText) {
                 clearPartialText()
             }
             Log.w(TAG, "No text recognized")
         }
+    }
+
+    /**
+     * The engine went quiet with a partial still on screen: those words are what it heard, so
+     * they are finished as the result rather than left as a bare composing region.
+     */
+    private fun settlePartial() {
+        if (lastPartialText.isNotBlank()) {
+            finishUtterance(lastPartialText)
+        } else if (isComposingPartialText) {
+            clearPartialText()
+        }
+    }
+
+    /** Commits [text] as the utterance's final words, replacing any composing partial. */
+    private fun finishUtterance(text: String) {
+        val normalizedText = normalizePunctuationWords(text)
+        val formattedText = formatTextWithAutoCapitalization(normalizedText)
+        Log.d(TAG, "Using recognized text: '$formattedText' (original: '$text', normalized: '$normalizedText')")
+        replacePartialWithFinalText(formattedText)
     }
 
     /**
@@ -608,6 +734,8 @@ class SpeechRecognitionManager(
             continuationStartedAt = 0L
             segmentedSession = segmentedSessionSupported()
             segmentsSeen = 0
+            heardSpeech = false
+            quietRestarts = 0
             sessionStartedAt = SystemClock.uptimeMillis()
             val intent = buildRecognizerIntent()
 
@@ -772,17 +900,38 @@ class SpeechRecognitionManager(
         mainHandler.removeCallbacks(segmentedWatchdogRunnable)
     }
 
-    /** Re-runs the current session as a plain request after the engine refused segments. */
-    private fun restartWithoutSegmentedSession() {
-        mainHandler.post {
-            if (!sessionActive) return@post
+    /**
+     * Starts the engine again inside the current session, before any speech has been heard: after
+     * a refused segmented request, or after the engine closed the microphone on a user who had
+     * not started talking yet. Not a continuation — the first-words grace still applies.
+     */
+    private fun relisten(segmented: Boolean, delayMs: Long = 0L) {
+        mainHandler.postDelayed({
+            if (!sessionActive || stopRequested) return@postDelayed
             continuationStartedAt = 0L
-            runCatching { speechRecognizer?.startListening(buildRecognizerIntent(segmented = false)) }
+            runCatching { speechRecognizer?.startListening(buildRecognizerIntent(segmented = segmented)) }
                 .onFailure {
-                    Log.w(TAG, "Unable to restart without a segmented session", it)
+                    Log.w(TAG, "Unable to listen again", it)
                     endSession(cancelRecognizer = false)
                 }
-        }
+        }, delayMs)
+    }
+
+    // ---- First words ----
+    // Whether the engine has delivered any text this session, partial or final. Until it has, an
+    // engine giving up is the user not having spoken yet, and the session listens again.
+    private var heardSpeech = false
+    private var quietRestarts = 0
+
+    /**
+     * The text field dictation was typing into is gone. Nothing the engine sends now can land
+     * anywhere, so the session ends here instead of listening to a dead connection until the
+     * silence timer notices.
+     */
+    fun onEditorGone() {
+        if (!sessionActive) return
+        Log.d(TAG, "Editor gone during dictation — ending session")
+        endSession(cancelRecognizer = true)
     }
 
     private var sessionActive = false
