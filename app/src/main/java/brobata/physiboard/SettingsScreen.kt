@@ -28,6 +28,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardReturn
 import androidx.compose.material.icons.automirrored.filled.ManageSearch
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Gesture
+import androidx.compose.material.icons.filled.VerticalAlignTop
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.SmartButton
@@ -87,6 +88,7 @@ enum class SettingsDestination {
     AppLanguage,
     DeviceSymLayerEditor,
     AppRawMode,
+    AppKeyboardNudge,
     SmartBacklight,
     Voice,
     Toolbox,
@@ -266,6 +268,7 @@ fun SettingsScreen(
             SettingsSearchTarget.TEXT_INPUT -> navigateTo(SettingsDestination.TextInput)
             SettingsSearchTarget.AUTO_CORRECTION -> navigateTo(SettingsDestination.AutoCorrection)
             SettingsSearchTarget.APP_RAW_MODE -> navigateTo(SettingsDestination.AppRawMode)
+            SettingsSearchTarget.APP_KEYBOARD_NUDGE -> navigateTo(SettingsDestination.AppKeyboardNudge)
             SettingsSearchTarget.CUSTOMIZATION -> openCustomization(null)
             SettingsSearchTarget.STATUS_BAR_BUTTONS ->
                 openCustomization(SettingsActivity.CUSTOMIZATION_DESTINATION_STATUS_BAR_BUTTONS)
@@ -308,6 +311,7 @@ fun SettingsScreen(
                     },
                     onAutoCorrectionClick = { navigateTo(SettingsDestination.AutoCorrection) },
                     onAppRawModeClick = { navigateTo(SettingsDestination.AppRawMode) },
+                    onAppKeyboardNudgeClick = { navigateTo(SettingsDestination.AppKeyboardNudge) },
                     onSmartBacklightClick = { navigateTo(SettingsDestination.SmartBacklight) },
                     onCustomizationClick = { openCustomization(null) },
                     onStatusBarButtonsClick = {
@@ -367,6 +371,12 @@ fun SettingsScreen(
             }
             SettingsDestination.AppRawMode -> {
                 AppRawModeScreen(
+                    modifier = modifier,
+                    onBack = { navigateBack() }
+                )
+            }
+            SettingsDestination.AppKeyboardNudge -> {
+                AppKeyboardNudgeScreen(
                     modifier = modifier,
                     onBack = { navigateBack() }
                 )
@@ -492,6 +502,12 @@ fun SettingsScreen(
                             onClick = { navigateTo(SettingsDestination.AppRawMode) }
                         ),
                         HubRow(
+                            icon = Icons.Filled.VerticalAlignTop,
+                            title = stringResource(R.string.app_keyboard_nudge_title),
+                            description = stringResource(R.string.app_keyboard_nudge_row_description),
+                            onClick = { navigateTo(SettingsDestination.AppKeyboardNudge) }
+                        ),
+                        HubRow(
                             icon = Icons.AutoMirrored.Filled.KeyboardReturn,
                             title = stringResource(R.string.app_enter_behaviour_title),
                             description = stringResource(R.string.app_enter_behaviour_description),
@@ -613,6 +629,7 @@ private fun SettingsMainScreen(
     onSoundHapticsClick: () -> Unit,
     onAutoCorrectionClick: () -> Unit,
     onAppRawModeClick: () -> Unit,
+    onAppKeyboardNudgeClick: () -> Unit,
     onSmartBacklightClick: () -> Unit,
     onCustomizationClick: () -> Unit,
     onStatusBarButtonsClick: () -> Unit,
@@ -635,6 +652,7 @@ private fun SettingsMainScreen(
             SettingsSearchTarget.VOICE -> onVoiceClick()
             SettingsSearchTarget.AUTO_CORRECTION -> onAutoCorrectionClick()
             SettingsSearchTarget.APP_RAW_MODE -> onAppRawModeClick()
+            SettingsSearchTarget.APP_KEYBOARD_NUDGE -> onAppKeyboardNudgeClick()
             SettingsSearchTarget.CUSTOMIZATION -> onCustomizationClick()
             SettingsSearchTarget.STATUS_BAR_BUTTONS -> onStatusBarButtonsClick()
             SettingsSearchTarget.KEYBOARD_THEME -> onKeyboardThemeClick()

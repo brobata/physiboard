@@ -102,6 +102,7 @@ object SettingsManager {
     private const val KEY_DICTATION_CONTINUOUS = "dictation_continuous_session"
     private const val KEY_DICTATION_AUTO_PUNCTUATION = "dictation_auto_punctuation"
     private const val KEY_APP_RAW_MODE_PACKAGES = "app_raw_mode_packages"
+    private const val KEY_APP_KEYBOARD_NUDGE_PACKAGES = "app_keyboard_nudge_packages"
     private const val KEY_SMART_BACKLIGHT_ENABLED = "smart_backlight_enabled"
     // "The persistent always-on vendor value has been successfully written at least once."
     // Survives reboots, so this — not live Wireless-debugging state — is the readiness signal.
@@ -2613,6 +2614,36 @@ object SettingsManager {
         if (enabled) current.add(packageName) else current.remove(packageName)
         getPreferences(context).edit()
             .putStringSet(KEY_APP_RAW_MODE_PACKAGES, current)
+            .apply()
+    }
+
+    /**
+     * Apps known to leave their text box under the suggestion strip until the keyboard visibly
+     * moves (see [brobata.physiboard.inputmethod.KeyboardInsetsNudge]). Seeded the first time
+     * the list is read, so the apps it was written for get the fix without being asked.
+     */
+    val KEYBOARD_NUDGE_DEFAULT_APPS: Set<String> = setOf(
+        "com.microsoft.teams"
+    )
+
+    /** Packages the strip dips out and back in for when they ask for the keyboard. */
+    fun getKeyboardNudgePackages(context: Context): Set<String> {
+        val prefs = getPreferences(context)
+        prefs.getStringSet(KEY_APP_KEYBOARD_NUDGE_PACKAGES, null)?.let { return it }
+        prefs.edit().putStringSet(KEY_APP_KEYBOARD_NUDGE_PACKAGES, KEYBOARD_NUDGE_DEFAULT_APPS).apply()
+        return KEYBOARD_NUDGE_DEFAULT_APPS
+    }
+
+    fun isKeyboardNudgeApp(context: Context, packageName: String?): Boolean {
+        if (packageName.isNullOrEmpty()) return false
+        return packageName in getKeyboardNudgePackages(context)
+    }
+
+    fun setKeyboardNudgeApp(context: Context, packageName: String, enabled: Boolean) {
+        val current = getKeyboardNudgePackages(context).toMutableSet()
+        if (enabled) current.add(packageName) else current.remove(packageName)
+        getPreferences(context).edit()
+            .putStringSet(KEY_APP_KEYBOARD_NUDGE_PACKAGES, current)
             .apply()
     }
 

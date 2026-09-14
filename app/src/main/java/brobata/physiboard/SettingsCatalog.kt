@@ -10,6 +10,7 @@ enum class SettingsSearchTarget {
     TEXT_INPUT,
     AUTO_CORRECTION,
     APP_RAW_MODE,
+    APP_KEYBOARD_NUDGE,
     CUSTOMIZATION,
     STATUS_BAR_BUTTONS,
     KEYBOARD_THEME,
@@ -86,5 +87,6 @@ object SettingsCatalog {
         SettingsSearchEntry(R.string.double_space_to_period_title, R.string.settings_category_text_input, SettingsSearchTarget.TEXT_INPUT, "period full stop double space"),
         SettingsSearchEntry(R.string.text_expansion_title, R.string.settings_category_text_input, SettingsSearchTarget.TEXT_INPUT, "snippet abbreviation expand shortcut"),
         SettingsSearchEntry(R.string.app_raw_mode_title, R.string.app_raw_mode_title, SettingsSearchTarget.APP_RAW_MODE, "terminal termux disable smart per app raw exceptions"),
+        SettingsSearchEntry(R.string.app_keyboard_nudge_title, R.string.app_keyboard_nudge_title, SettingsSearchTarget.APP_KEYBOARD_NUDGE, "teams hidden covered text box compose field under bar inset blink"),
     )
 }

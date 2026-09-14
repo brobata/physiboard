@@ -139,6 +139,28 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     /** How long after onFinishInput to wait for a replacement editor before ending dictation. */
     private val editorGoneGraceMs = 500L
 
+    /**
+     * Some apps position their text box from the keyboard height and only move it when the
+     * keyboard animates. On a phone with a hardware keyboard the strip is already up when such
+     * an app asks for the keyboard, so nothing animates and the box stays under the strip. For
+     * apps on the list, refusing that request also dips the strip out and back in.
+     */
+    private val keyboardInsetsNudge by lazy {
+        KeyboardInsetsNudge(
+            isEnabledFor = { packageName -> SettingsManager.isKeyboardNudgeApp(this, packageName) },
+            isStripShown = {
+                ::candidatesBarController.isInitialized &&
+                    candidatesBarController.isCandidatesViewActuallyRendered()
+            },
+            hideStrip = { setCandidatesViewShown(false) },
+            showStrip = {
+                setCandidatesViewShown(true)
+                uiHandler.post { synchronizeCandidatesContainerVisibility() }
+            },
+            postDelayed = { delayMs, action -> uiHandler.postDelayed(action, delayMs) }
+        )
+    }
+
     // Broadcast receiver for speech recognition (deprecated, kept for backwards compatibility)
     private var speechResultReceiver: BroadcastReceiver? = null
     // Broadcast receiver for permission request result
@@ -2699,6 +2721,25 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
      * when the system asks for candidate-only mode we hide the main status UI and
      * expose the slim candidates view (LED strip + SYM layout on demand).
      */
+    override fun setCandidatesViewShown(shown: Boolean) {
+        // While a nudge holds the strip down, the visibility controller's own re-show (which the
+        // framework's evaluate pass triggers on every show request) would fold the hide and the
+        // show into one frame and the app would see nothing. The nudge re-shows it itself.
+        if (shown && keyboardInsetsNudge.holdingHidden) return
+        super.setCandidatesViewShown(shown)
+    }
+
+    override fun onShowInputRequested(flags: Int, configChange: Boolean): Boolean {
+        val shown = super.onShowInputRequested(flags, configChange)
+        // A refusal is the normal answer with a hardware keyboard: the strip stays as it is. An
+        // app on the nudge list is one that will leave its text box under the strip unless the
+        // strip visibly moves, so give it that movement.
+        if (!shown && !configChange) {
+            keyboardInsetsNudge.onShowRequestRefused(currentPackageName)
+        }
+        return shown
+    }
+
     override fun onEvaluateInputViewShown(): Boolean {
         val systemShouldShowInputView = super.onEvaluateInputViewShown()
         val resolvedShowInputView =
@@ -3933,6 +3974,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService() {
     
     override fun onWindowHidden() {
         super.onWindowHidden()
+        // The strip dipping out for a nudge is not the keyboard going away: the field, the
+        // modifiers and the suggestion context all survive the blink.
+        if (keyboardInsetsNudge.inFlight) return
         if (::screenTrackpadController.isInitialized) screenTrackpadController.deactivate()
         SoftwareKeyboardAutoDetector.onInputWindowHidden()
         invalidateRenderedStatusSnapshot()

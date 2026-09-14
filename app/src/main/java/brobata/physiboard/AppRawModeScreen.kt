@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import brobata.physiboard.inputmethod.WebApkHost
 
-private data class RawModeApp(
+internal data class LaunchableApp(
     val packageName: String,
     val label: String,
     val icon: Drawable?,
@@ -31,7 +31,7 @@ private data class RawModeApp(
     val hostBrowser: String? = null
 )
 
-private fun loadLaunchableApps(context: Context): List<RawModeApp> {
+internal fun loadLaunchableApps(context: Context): List<LaunchableApp> {
     val packageManager = context.packageManager
     val launchIntent = Intent(Intent.ACTION_MAIN).apply {
         addCategory(Intent.CATEGORY_LAUNCHER)
@@ -39,7 +39,7 @@ private fun loadLaunchableApps(context: Context): List<RawModeApp> {
     return packageManager.queryIntentActivities(launchIntent, 0)
         .map { resolveInfo ->
             val packageName = resolveInfo.activityInfo.packageName
-            RawModeApp(
+            LaunchableApp(
                 packageName = packageName,
                 label = resolveInfo.loadLabel(packageManager)?.toString() ?: packageName,
                 icon = resolveInfo.loadIcon(packageManager),
@@ -54,17 +54,44 @@ private fun loadLaunchableApps(context: Context): List<RawModeApp> {
  * Per-app raw mode: apps where all smart typing features (suggestions,
  * auto-correction, auto-capitalization, double-space-to-period) are disabled.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppRawModeScreen(
     modifier: Modifier = Modifier,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
-    var rawModePackages by remember {
-        mutableStateOf(SettingsManager.getRawModePackages(context))
-    }
-    val apps by produceState<List<RawModeApp>?>(initialValue = null) {
+    AppToggleListScreen(
+        modifier = modifier,
+        title = stringResource(R.string.app_raw_mode_title),
+        description = stringResource(R.string.app_raw_mode_description),
+        readEnabledPackages = { SettingsManager.getRawModePackages(context) },
+        setEnabled = { packageName, enabled -> SettingsManager.setRawModeApp(context, packageName, enabled) },
+        webApkNote = { host -> stringResource(R.string.app_raw_mode_webapk_note, hostAppLabel(context, host)) },
+        onBack = onBack
+    )
+}
+
+/**
+ * One switch per installed app, with the enabled ones sorted to the top. Shared by every
+ * per-app list in settings so they all look and behave the same.
+ *
+ * @param webApkNote a line to show under an installed web app naming its host browser, or null
+ * when the setting does not carry over to the browser.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun AppToggleListScreen(
+    modifier: Modifier = Modifier,
+    title: String,
+    description: String,
+    readEnabledPackages: () -> Set<String>,
+    setEnabled: (packageName: String, enabled: Boolean) -> Unit,
+    webApkNote: (@Composable (hostBrowser: String) -> String)? = null,
+    onBack: () -> Unit
+) {
+    val context = LocalContext.current
+    var enabledPackages by remember { mutableStateOf(readEnabledPackages()) }
+    val apps by produceState<List<LaunchableApp>?>(initialValue = null) {
         value = loadLaunchableApps(context)
     }
 
@@ -74,7 +101,7 @@ fun AppRawModeScreen(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.app_raw_mode_title)) },
+                title = { Text(title) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -105,25 +132,26 @@ fun AppRawModeScreen(
         ) {
             item {
                 Text(
-                    text = stringResource(R.string.app_raw_mode_description),
+                    text = description,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
                 )
             }
             items(
-                loadedApps.sortedByDescending { it.packageName in rawModePackages },
+                loadedApps.sortedByDescending { it.packageName in enabledPackages },
                 key = { it.packageName }
             ) { app ->
-                val enabled = app.packageName in rawModePackages
+                val enabled = app.packageName in enabledPackages
+                val toggle: (Boolean) -> Unit = { checked ->
+                    setEnabled(app.packageName, checked)
+                    enabledPackages = readEnabledPackages()
+                }
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = 56.dp)
-                        .clickable {
-                            SettingsManager.setRawModeApp(context, app.packageName, !enabled)
-                            rawModePackages = SettingsManager.getRawModePackages(context)
-                        }
+                        .clickable { toggle(!enabled) }
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -150,21 +178,20 @@ fun AppRawModeScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1
                         )
-                        app.hostBrowser?.let { host ->
-                            Text(
-                                text = stringResource(R.string.app_raw_mode_webapk_note, hostAppLabel(context, host)),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary,
-                                maxLines = 2
-                            )
+                        if (webApkNote != null) {
+                            app.hostBrowser?.let { host ->
+                                Text(
+                                    text = webApkNote(host),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    maxLines = 2
+                                )
+                            }
                         }
                     }
                     Switch(
                         checked = enabled,
-                        onCheckedChange = { checked ->
-                            SettingsManager.setRawModeApp(context, app.packageName, checked)
-                            rawModePackages = SettingsManager.getRawModePackages(context)
-                        }
+                        onCheckedChange = toggle
                     )
                 }
             }
@@ -172,7 +199,7 @@ fun AppRawModeScreen(
     }
 }
 
-private fun hostAppLabel(context: Context, packageName: String): String =
+internal fun hostAppLabel(context: Context, packageName: String): String =
     runCatching {
         val pm = context.packageManager
         pm.getApplicationLabel(pm.getApplicationInfo(packageName, 0)).toString()

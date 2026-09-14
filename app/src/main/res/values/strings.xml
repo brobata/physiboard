@@ -138,6 +138,9 @@
     <string name="app_raw_mode_title">Exact typing</string>
     <string name="app_raw_mode_row_description">For terminals, SSH and code: what you type is what goes in, nothing corrected or capitalised</string>
     <string name="app_raw_mode_description">In the apps you pick here, PhysiBoard sends every keystroke as-is: no suggestions, no auto-correction, no capital at the start of a line, no full stop from a double space. Meant for terminals, SSH clients, code editors and anything else where a helpful correction turns a command into a typo — `ls -la` should never become `Ls -la.`</string>
+    <string name="app_keyboard_nudge_title">Text box under the bar</string>
+    <string name="app_keyboard_nudge_row_description">For apps like Teams that leave the text box hidden under the bar until the keyboard moves</string>
+    <string name="app_keyboard_nudge_description">Some apps place their text box themselves and only move it when the keyboard animates in or out. With a hardware keyboard the bar is already on screen when you tap the box, so nothing animates and the box stays hidden underneath — until something else changes focus and the app notices. In the apps you pick here, the bar dips out and back in for a moment whenever you tap a text box, which is the movement those apps wait for. Microsoft Teams needs this and is on to begin with. The dip is a visible blink, so leave other apps off unless you see the same thing there.</string>
     <string name="dictation_mask_offensive_title">Block offensive words</string>
     <string name="dictation_mask_offensive_description">Mask profanity in dictation results (e.g. f***). Turn off to transcribe words exactly as spoken.</string>
     <string name="dictation_haptics_title">Vibrate on dictation start/stop</string>
