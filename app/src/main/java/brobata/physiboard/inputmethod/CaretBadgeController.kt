@@ -3,6 +3,7 @@ package brobata.physiboard.inputmethod
 import android.content.Context
 import android.graphics.PixelFormat
 import android.inputmethodservice.InputMethodService
+import android.os.Build
 import android.provider.Settings
 import android.util.Log
 import android.view.Gravity
@@ -25,7 +26,20 @@ import android.view.inputmethod.CursorAnchorInfo
  */
 class CaretBadgeController(private val service: InputMethodService) {
 
-    private val context: Context = service
+    /**
+     * The badge is an overlay window, and a window must be created from a context typed for it:
+     * the keyboard's own context is typed as an input method, and the system logs a type
+     * mismatch on every layout pass when that is used for an overlay. Falls back to the
+     * service context where a window context cannot be made, which only costs the log line.
+     */
+    private val context: Context =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            runCatching {
+                service.createWindowContext(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY, null)
+            }.getOrDefault(service)
+        } else {
+            service
+        }
     private var windowManager: WindowManager? = null
     private var badgeView: CaretBadgeView? = null
     private var attached = false
