@@ -1,4 +1,4 @@
-package brobata.physiboard.physi
+package brobata.physiboard
 
 import android.content.pm.PackageManager
 import android.provider.Settings
@@ -6,8 +6,6 @@ import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import android.util.Log
 import android.widget.Toast
-import brobata.physiboard.R
-import brobata.physiboard.SettingsManager
 
 /**
  * Quick Settings tile that toggles the Unihertz keyboard backlight

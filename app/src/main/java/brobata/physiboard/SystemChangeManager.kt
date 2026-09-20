@@ -31,7 +31,7 @@ object SystemChangeManager {
     private const val FN_KEY_FUNCTION = "fn_programmable_key_function"
 
     // --- QS tile backlight (Settings.Global) -----------------------------------------------
-    // Same key as KeyboardBacklightTileService.VENDOR_BACKLIGHT_SETTING (physi flavor only).
+    // Same key as KeyboardBacklightTileService.VENDOR_BACKLIGHT_SETTING.
     private const val QS_BACKLIGHT_KEY = "agui_keyboard_background_light"
 
     /** Outcome of a single revert step. */
