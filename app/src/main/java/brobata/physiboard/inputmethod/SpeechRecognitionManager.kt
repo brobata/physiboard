@@ -58,6 +58,10 @@ class SpeechRecognitionManager(
          * breath before speaking would otherwise get "no text recognized" before saying a word.
          */
         internal const val START_GRACE_MS = 10_000L
+
+        /** Dictated words get a space ahead of them when they would otherwise touch a letter. */
+        internal fun followsLetter(textBeforeUtterance: CharSequence?): Boolean =
+            textBeforeUtterance?.lastOrNull()?.isLetter() == true
         /** Each re-listen is a couple of seconds, so this bounds a silent session, not speech. */
         internal const val MAX_QUIET_RESTARTS = 5
         /** A busy engine is usually another request winding down; give it a moment. */
@@ -150,6 +154,14 @@ class SpeechRecognitionManager(
     // Last partial hypothesis, used to detect when the recognizer starts a NEW utterance
     // after a pause within one session (so we commit the previous one instead of overwriting it).
     private var lastPartialText: String = ""
+    /**
+     * What the text ahead of the utterance looked like, decided once when its first partial is
+     * composed. While composing, the cursor sits after the composing text, so anything read
+     * "before the cursor" is the utterance's own words: a later partial would see a letter ahead
+     * of it and lose its capital, and the final would prepend a space to itself.
+     */
+    private var utteranceStartsSentence: Boolean = false
+    private var utteranceFollowsLetter: Boolean = false
 
     /**
      * A partial is a NEW utterance (not a continuation of the previous one) when neither string
@@ -205,10 +217,8 @@ class SpeechRecognitionManager(
      * Formats text according to standard auto-capitalization rules (first letter and after period).
      * Uses AutoCapitalizeHelper to check if capitalization should be applied.
      */
-    private fun formatTextWithAutoCapitalization(text: String): String {
+    private fun formatTextWithAutoCapitalization(text: String, inputConnection: InputConnection): String {
         if (text.isEmpty()) return text
-        
-        val inputConnection = inputConnectionProvider() ?: return text
         
         // Check if we should disable auto-capitalization
         if (shouldDisableAutoCapitalize()) {
@@ -217,12 +227,13 @@ class SpeechRecognitionManager(
         
         var formatted = text
         
-        // Capitalize first letter if needed
-        val shouldCapitalizeFirst = AutoCapitalizeHelper.shouldAutoCapitalizeAtCursor(
-            context = context,
-            inputConnection = inputConnection,
-            shouldDisableAutoCapitalize = shouldDisableAutoCapitalize()
-        ) && SettingsManager.getAutoCapitalizeFirstLetter(context)
+        // Capitalize first letter if needed. While a partial is composed the cursor is after
+        // it, so the decision taken ahead of the utterance is the one that counts.
+        val shouldCapitalizeFirst = if (isComposingPartialText) {
+            utteranceStartsSentence
+        } else {
+            startsSentenceAtCursor(inputConnection)
+        }
         
         if (shouldCapitalizeFirst && formatted.isNotEmpty()) {
             formatted = formatted.replaceFirstChar { 
@@ -240,6 +251,19 @@ class SpeechRecognitionManager(
         }
         
         return formatted
+    }
+
+    private fun startsSentenceAtCursor(inputConnection: InputConnection): Boolean =
+        !shouldDisableAutoCapitalize() && AutoCapitalizeHelper.shouldAutoCapitalizeAtCursor(
+            context = context,
+            inputConnection = inputConnection,
+            shouldDisableAutoCapitalize = shouldDisableAutoCapitalize()
+        ) && SettingsManager.getAutoCapitalizeFirstLetter(context)
+
+    /** Reads the text ahead of the cursor once, before any of the utterance is composed. */
+    private fun captureUtteranceContext(inputConnection: InputConnection) {
+        utteranceStartsSentence = startsSentenceAtCursor(inputConnection)
+        utteranceFollowsLetter = followsLetter(inputConnection.getTextBeforeCursor(10, 0))
     }
 
     /**
@@ -516,7 +540,8 @@ class SpeechRecognitionManager(
      * Uses setComposingText to show text as "being composed" which can be updated seamlessly.
      * Applies basic capitalization (first letter only) to partial text.
      */
-    private fun updatePartialSpeechText(text: String) {
+    @androidx.annotation.VisibleForTesting
+    internal fun updatePartialSpeechText(text: String) {
         Handler(Looper.getMainLooper()).post {
             val inputConnection = inputConnectionProvider() ?: return@post
 
@@ -533,21 +558,14 @@ class SpeechRecognitionManager(
                     }
                 }
                 lastPartialText = text
+                if (!isComposingPartialText) captureUtteranceContext(inputConnection)
 
                 // Apply basic capitalization to partial text (only first letter, not sentence endings)
                 var formatted = text
-                if (formatted.isNotEmpty() && !shouldDisableAutoCapitalize()) {
-                    val shouldCapitalizeFirst = AutoCapitalizeHelper.shouldAutoCapitalizeAtCursor(
-                        context = context,
-                        inputConnection = inputConnection,
-                        shouldDisableAutoCapitalize = shouldDisableAutoCapitalize()
-                    ) && SettingsManager.getAutoCapitalizeFirstLetter(context)
-                    
-                    if (shouldCapitalizeFirst) {
-                        formatted = formatted.replaceFirstChar { 
-                            if (it.isLowerCase()) it.titlecase(Locale.getDefault()) 
-                            else it.toString() 
-                        }
+                if (formatted.isNotEmpty() && utteranceStartsSentence) {
+                    formatted = formatted.replaceFirstChar { 
+                        if (it.isLowerCase()) it.titlecase(Locale.getDefault()) 
+                        else it.toString() 
                     }
                 }
                 
@@ -612,11 +630,11 @@ class SpeechRecognitionManager(
     }
 
     /** Commits [text] as the utterance's final words, replacing any composing partial. */
-    private fun finishUtterance(text: String) {
+    @androidx.annotation.VisibleForTesting
+    internal fun finishUtterance(text: String) {
         val normalizedText = normalizePunctuationWords(text)
-        val formattedText = formatTextWithAutoCapitalization(normalizedText)
-        Log.d(TAG, "Using recognized text: '$formattedText' (original: '$text', normalized: '$normalizedText')")
-        replacePartialWithFinalText(formattedText)
+        Log.d(TAG, "Using recognized text: '$normalizedText' (original: '$text')")
+        replacePartialWithFinalText(normalizedText)
     }
 
     /**
@@ -625,23 +643,24 @@ class SpeechRecognitionManager(
      * - Always adds a space at the end
      * - Adds a space at the beginning if the text before cursor ends with a letter
      */
-    private fun replacePartialWithFinalText(finalText: String) {
+    private fun replacePartialWithFinalText(normalizedText: String) {
         Handler(Looper.getMainLooper()).post {
             val inputConnection = inputConnectionProvider() ?: return@post
             
             try {
-                var textToCommit = finalText
+                var textToCommit = formatTextWithAutoCapitalization(normalizedText, inputConnection)
                 
-                // Check if we need to add a space at the beginning
-                // Read a reasonable amount of text before cursor to check context
-                val textBeforeCursor = inputConnection.getTextBeforeCursor(10, 0)
-                if (textBeforeCursor != null && textBeforeCursor.isNotEmpty()) {
-                    val lastChar = textBeforeCursor.last()
-                    // If the last character before cursor is a letter, add space before
-                    if (lastChar.isLetter()) {
-                        textToCommit = " $textToCommit"
-                        Log.d(TAG, "Added space before text (previous char was letter: '$lastChar')")
-                    }
+                // A space ahead of the words when they follow a letter. While a partial is
+                // composed the cursor is after it, so the text "before the cursor" would be the
+                // utterance itself; the decision taken ahead of the utterance is the one used.
+                val needsSpace = if (isComposingPartialText) {
+                    utteranceFollowsLetter
+                } else {
+                    followsLetter(inputConnection.getTextBeforeCursor(10, 0))
+                }
+                if (needsSpace) {
+                    textToCommit = " $textToCommit"
+                    Log.d(TAG, "Added space before text (previous char was a letter)")
                 }
                 
                 // Always add a space at the end
