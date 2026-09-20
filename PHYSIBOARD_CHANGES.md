@@ -4,6 +4,20 @@ PhysiBoard is a GPLv3 fork of [Pastiera](https://github.com/palsoftware/pastiera
 Andrea Palumbo (PalSoftware) and contributors. This file documents the fork's changes,
 as required by GPLv3 §5(a). Package: `brobata.physiboard`.
 
+## Unreleased
+
+Long press can capitalise again, and you can pick what it does.
+
+<!-- /card -->
+
+- **Long Press behaviour is back as a setting.** Under *Keyboard → Long Press behaviour* you
+  can set how long a hold takes (50–1000 ms, 300 ms to begin with) and what a held letter
+  does: Alt (Punctuation), Shift (Capitalization), Variations (Diacritics) or Sym (Symbols).
+  The default is unchanged. Both rows are found by settings search. The preference already
+  existed; the screen that set it went away with the old Modifiers page, so anyone coming
+  from a BlackBerry 10 keyboard, where a held letter is a capital, had no way to get that
+  back.
+
 ## 2.0.6 (2026-09-08)
 
 A notification at night no longer lights the keyboard along with the ring.

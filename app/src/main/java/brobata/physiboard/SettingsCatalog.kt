@@ -24,7 +24,8 @@ enum class SettingsSearchTarget {
     ABOUT,
     CUSTOM_INPUT_STYLES,
     APP_LANGUAGE,
-    VOICE
+    VOICE,
+    LONG_PRESS_BEHAVIOR
 }
 
 /**
@@ -60,6 +61,8 @@ object SettingsCatalog {
         SettingsSearchEntry(R.string.status_bar_buttons_title, R.string.status_bar_theme_title, SettingsSearchTarget.STATUS_BAR_BUTTONS, "microphone mic emoji hamburger bottom bar status slots"),
         SettingsSearchEntry(R.string.starter_launcher_shortcuts_title, R.string.starter_launcher_shortcuts_title, SettingsSearchTarget.QUICK_LAUNCHER, "quick launcher apps shortcut launch"),
         SettingsSearchEntry(R.string.app_enter_behaviour_title, R.string.app_enter_behaviour_title, SettingsSearchTarget.ENTER_BEHAVIOR, "enter send newline whatsapp per app"),
+        SettingsSearchEntry(R.string.long_press_title, R.string.long_press_behavior_title, SettingsSearchTarget.LONG_PRESS_BEHAVIOR, "long press hold delay duration timing ms"),
+        SettingsSearchEntry(R.string.long_press_modifier_title, R.string.long_press_behavior_title, SettingsSearchTarget.LONG_PRESS_BEHAVIOR, "long press modifier hold alt shift sym variations diacritics accents punctuation capitalization symbols"),
 
         // Device toolbox
         SettingsSearchEntry(R.string.toolbox_title, R.string.toolbox_title, SettingsSearchTarget.TOOLBOX, "device toolbox titan unihertz system tools"),

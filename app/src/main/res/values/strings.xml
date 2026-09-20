@@ -571,6 +571,12 @@
     <string name="long_press_modifier_sym">First Emoji or Symbols Layer</string>
     <string name="long_press_modifier_sym_symbols">Symbols Layer</string>
     <string name="long_press_modifier_sym_emoji">Emoji Layer</string>
+    <string name="long_press_modifier_option_alt">Alt (Punctuation)</string>
+    <string name="long_press_modifier_option_shift">Shift (Capitalization)</string>
+    <string name="long_press_modifier_option_variations">Variations (Diacritics)</string>
+    <string name="long_press_modifier_option_sym">Sym (Symbols)</string>
+    <string name="long_press_behavior_title">Long Press behaviour</string>
+    <string name="long_press_behavior_description">Hold delay and what a long press does</string>
     <string name="modifier_tap_behaviour_title">Advanced modifier tap behaviour</string>
     <string name="shift_tap_latches_title">Single-tap locks Shift</string>
     <string name="shift_tap_latches_description">Tap Shift once to lock caps instead of one-shot uppercase.</string>

@@ -97,7 +97,8 @@ enum class SettingsDestination {
     SystemTweaks,
     NotificationRing,
     KeyboardHub,
-    KeyMapping
+    KeyMapping,
+    LongPressBehavior
 }
 
 private val settingsNavigationStackSaver =
@@ -290,6 +291,7 @@ fun SettingsScreen(
             SettingsSearchTarget.CUSTOM_INPUT_STYLES -> navigateTo(SettingsDestination.CustomInputStyles)
             SettingsSearchTarget.APP_LANGUAGE -> navigateTo(SettingsDestination.AppLanguage)
             SettingsSearchTarget.VOICE -> navigateTo(SettingsDestination.Voice)
+            SettingsSearchTarget.LONG_PRESS_BEHAVIOR -> navigateTo(SettingsDestination.LongPressBehavior)
         }
     }
         when (destination) {
@@ -330,6 +332,7 @@ fun SettingsScreen(
                     onEnterBehaviorClick = {
                         openCustomization(SettingsActivity.CUSTOMIZATION_DESTINATION_APP_ENTER_BEHAVIOR)
                     },
+                    onLongPressBehaviorClick = { navigateTo(SettingsDestination.LongPressBehavior) },
                     onExtrasClick = { navigateTo(SettingsDestination.Extras) },
                     onDiagnosticsClick = { navigateTo(SettingsDestination.Diagnostics) },
                     onAboutClick = { navigateTo(SettingsDestination.About) },
@@ -514,8 +517,20 @@ fun SettingsScreen(
                             onClick = {
                                 openCustomization(SettingsActivity.CUSTOMIZATION_DESTINATION_APP_ENTER_BEHAVIOR)
                             }
+                        ),
+                        HubRow(
+                            icon = Icons.Filled.TouchApp,
+                            title = stringResource(R.string.long_press_behavior_title),
+                            description = stringResource(R.string.long_press_behavior_description),
+                            onClick = { navigateTo(SettingsDestination.LongPressBehavior) }
                         )
                     )
+                )
+            }
+            SettingsDestination.LongPressBehavior -> {
+                LongPressBehaviorScreen(
+                    modifier = modifier,
+                    onBack = { navigateBack() }
                 )
             }
             SettingsDestination.SystemTweaks -> {
@@ -637,6 +652,7 @@ private fun SettingsMainScreen(
     onQuickLauncherClick: () -> Unit,
     onNavModeClick: () -> Unit,
     onEnterBehaviorClick: () -> Unit,
+    onLongPressBehaviorClick: () -> Unit,
     onExtrasClick: () -> Unit,
     onDiagnosticsClick: () -> Unit,
     onAboutClick: () -> Unit,
@@ -666,6 +682,7 @@ private fun SettingsMainScreen(
             SettingsSearchTarget.ABOUT -> onAboutClick()
             SettingsSearchTarget.CUSTOM_INPUT_STYLES -> onCustomInputStylesClick()
             SettingsSearchTarget.APP_LANGUAGE -> onAppLanguageClick()
+            SettingsSearchTarget.LONG_PRESS_BEHAVIOR -> onLongPressBehaviorClick()
         }
     }
     val snackbarHostState = remember { SnackbarHostState() }

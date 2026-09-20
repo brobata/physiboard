@@ -21,7 +21,6 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -54,7 +53,10 @@ fun KeyboardTimingSettingsScreen(
         modifier = modifier,
         onBack = onBack,
         longPressThreshold = longPressThreshold,
-        onLongPressThresholdChange = { longPressThreshold = it }
+        onLongPressThresholdChange = { value ->
+            longPressThreshold = value
+            SettingsManager.setLongPressThreshold(context, value)
+        }
     )
 }
 
@@ -65,9 +67,6 @@ private fun KeyboardTimingMainContent(
     longPressThreshold: Long,
     onLongPressThresholdChange: (Long) -> Unit
 ) {
-    val context = LocalContext.current
-
-    
     // Handle system back button
     BackHandler { onBack() }
     
@@ -86,60 +85,10 @@ private fun KeyboardTimingMainContent(
                 .verticalScroll(rememberScrollState())
         ) {
             // Long Press Threshold
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(64.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Timer,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.long_press_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1
-                        )
-                        Text(
-                            text = stringResource(
-                                R.string.keyboard_timing_long_press_value,
-                                longPressThreshold
-                            ),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1
-                        )
-                    }
-                    Slider(
-                        value = longPressThreshold.toFloat(),
-                        onValueChange = { newValue ->
-                            val clampedValue = newValue.toLong().coerceIn(
-                                SettingsManager.getMinLongPressThreshold(),
-                                SettingsManager.getMaxLongPressThreshold()
-                            )
-                            onLongPressThresholdChange(clampedValue)
-                            SettingsManager.setLongPressThreshold(context, clampedValue)
-                        },
-                        valueRange = SettingsManager.getMinLongPressThreshold().toFloat()..SettingsManager.getMaxLongPressThreshold().toFloat(),
-                        steps = 18,
-                        modifier = Modifier
-                            .weight(1.5f)
-                            .height(24.dp)
-                    )
-                }
-            }
-        
+            LongPressThresholdRow(
+                threshold = longPressThreshold,
+                onThresholdChange = onLongPressThresholdChange
+            )
         }
     }
 }
