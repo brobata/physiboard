@@ -161,13 +161,34 @@ frequency list through one arguably makes the result a derivative of it. That is
 the GPLv3 distribution and awkward for the commercial licence, because a word list the
 maintainer cannot relicense cannot be included in a commercial build.
 
-Unresolved, and to be decided per language before the builder is written. The options, from
-least to most work: ship frequency-only lists for those ten and rely on the confidence
-threshold to limit the damage; find a permissively licensed lexicon per language; derive the
-"is this a real word" signal from the corpora themselves, for example by requiring a word to
-appear across several independent sources; or drop suggestions for the languages that cannot be
-built cleanly. The Leipzig corpora themselves are CC-BY, attribution only, so the corpus is not
-the problem; only the filter is.
+**Decision: build the filter ourselves, from the corpus.** That removes the licensing question
+entirely rather than answering it per language, gives one pipeline for all 19 instead of a
+patchwork, and leaves the output fully the maintainer's to relicense. It is also the only option
+that scales to a twentieth language.
+
+What was measured on 2026-09-21, on English, to check the idea is real. Three signals were
+tested, each derivable from the corpus alone with no outside word list:
+
+| Signal | What it says | Result alone |
+|---|---|---|
+| Edit dominance | a misspelling sits one edit from a much commoner word | Fails. `vex` scores 234 and `alot` scores 48, so any cut that removes the typo removes the word. |
+| Derivational family | a real word has relatives: vex, vexed, vexing | Fails. `because` has no family at all; `teh` has nine. |
+| Source conservatism | the word survives in a corpus built from fewer, cleaner sources | Fails. The conservative list still contains `teh` and `alot`, and drops `vex`, `ember`, `flout`, `salve`, `vegetate` and `quell`, which is exactly the "ordinary words missing" defect the English rebuild removed. |
+
+No single signal separates them, which is why a borrowed lexicon was used the first time.
+Combined, they look viable: on the sample above, requiring both a high dominance and an empty
+family flags `alot`, `untill`, `definately`, `occured` and `becuase` while leaving every real
+word untouched, including the fragile ones. That is the right shape, because the invariant is
+"a correctly spelled word is never removed" and recall is the debt taken knowingly.
+
+**English is the control, and that is what makes this safe to attempt.** A known-good 80,000
+word English list already exists, built the old way with a lexicon. The corpus-only method is
+developed against it: if it reproduces English quality on the eval harness, it has earned the
+right to build the other eighteen. If it does not, that is known before anything ships, and the
+fallback is the per-language lexicon hunt with its licensing question intact.
+
+This is a tune-and-measure job, not a script to dash off. It belongs with the eval harness in
+milestone 2, after the pipeline cores.
 
 ## Edge cases
 
