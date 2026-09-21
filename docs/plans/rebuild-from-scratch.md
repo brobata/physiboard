@@ -187,8 +187,42 @@ developed against it: if it reproduces English quality on the eval harness, it h
 right to build the other eighteen. If it does not, that is known before anything ships, and the
 fallback is the per-language lexicon hunt with its licensing question intact.
 
-This is a tune-and-measure job, not a script to dash off. It belongs with the eval harness in
-milestone 2, after the pipeline cores.
+**Measured properly on 2026-09-21, the corpus-only filter does not clear the bar. The decision
+above is withdrawn.** Recording the negative result rather than the hope, because the hope was
+written here first.
+
+Two things went wrong with the earlier reasoning:
+
+*The lexicon is not ground truth, so "reproduce the lexicon list" was the wrong target.* The
+English spelling lexicon rejects `centre`, `labour`, `favourite`, `programme`, `colour`,
+`realise` and `organisation`, which a British user types every day, while admitting
+`stoichiometry` and `supernumerary`. A word list built to match it inherits its bias. The right
+target is the pair of properties the keyboard actually needs: it must contain what people type,
+and it must not contain misspellings, because a typo the keyboard believes is a word can never
+be corrected.
+
+*Against that target, the two corpus signals leak in both directions.* Tested on words that must
+go and words that must stay: seven of sixteen misspellings survive, including `teh`, `thier`,
+`wich`, `recieve` and `seperate`, and two real words are removed, `ember` and `tv`. Removing a
+real word is the failure the whole invariant exists to prevent, so this is disqualifying, not
+merely unfinished.
+
+The reason is structural rather than a matter of tuning. `ember` sits one edit from `member`,
+has no derivational family in the corpus, and is therefore indistinguishable by these signals
+from a misspelling of `member`. `tv` is two letters from `to`. Short words and confusable words
+occupy the same region of the space as typos, and no threshold over these two axes separates
+them.
+
+**Where that leaves the nineteen languages.** The honest options are now: use a spelling lexicon
+per language and resolve its licence, which is the only method measured to work; ship suggestions
+only for the eight languages that have one; or find a signal these tests did not cover, which
+would need data wordfreq does not carry, such as per-source corpora separating edited text from
+unedited, or n-gram context. The first is the shortest path and the licence question is narrower
+than it first looked, since several of the available dictionaries are permissively licensed. It
+should be settled per language, with the licence recorded next to each word list.
+
+The experiment scripts are in the session scratchpad and the method is written down here, so the
+next attempt starts from the measurements rather than repeating them.
 
 ## Edge cases
 
