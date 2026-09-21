@@ -273,7 +273,7 @@ The caret badge (section 4) needs the same permission and benefits from the same
 | # | Fact | Evidence |
 |---|---|---|
 | D1 | The Titan 2 Elite's physical keys carry a capacitive touch layer exposed as a separate input device named `touchPad` at `/dev/input/event4`, distinct from the key matrix (`TitanKey`, `/dev/input/event5`), the touchscreen (`fts_ts`, `/dev/input/event6`) and `ff_key` (`/dev/input/event7`). | DEVICE.md, "Companion devices" |
-| D2 | The touch layer reports multitouch absolute coordinates (ABS_MT) over a 1080 by 600 range, is flagged as a direct input surface (INPUT_PROP_DIRECT) and samples at about 90 Hz. | Stated in the brief for this document from the maintainer's capture; not yet recorded in DEVICE.md. Needs a `getevent -p /dev/input/event4` capture added to DEVICE.md before 3.0 builds on it. |
+| D2 | The touch layer reports multitouch absolute coordinates (ABS_MT) over a 1080 by 600 range, is flagged as a direct input surface (INPUT_PROP_DIRECT) and samples at about 90 Hz. | `getevent -p /dev/input/event4` on a Titan 2 Elite, `Titan 2 Elite_V02.00.04`, Android 16 (brobata/physiboard#14): ABS_MT_POSITION_X 0 to 1079, ABS_MT_POSITION_Y 0 to 599, ABS_MT_TOUCH_MAJOR 0 to 255, INPUT_PROP_DIRECT; the same node also declares KEY events for BTN_TOUCH, the D-pad and a handful of letters. `dumpsys input` shows Android hands it to apps as sources KEYBOARD \| TOUCHPAD with X 0 to 1079 and Y 0 to 748.75. Sample rate not measured. Still to be copied into DEVICE.md. |
 | D3 | Sym arrives as keycode 63 (scancode 253); Fn arrives as Ctrl repeats with scancode 251 and never sends a key-up. | keys document; DEVICE.md scancode map and Fn delivery model |
 | D4 | Upstream Pastiera's Titan 2 (non-Elite) trackpad device is `/dev/input/event7`, moved to `/dev/input/event6` from firmware V01.00.14. The Elite identifies its keyboard as `titan2elite_qwerty`, not `titan2`, so the firmware rule never applies to it and the legacy path is chosen. | commits 60bd83b "Select Titan 2 trackpad device by firmware", 867330f "Limit Titan 2 trackpad remap to V01.00.14"; device identification rules |
 | D5 | The vendor firmware can deliver keyboard-surface swipes as key events: keycodes 322 and 404 are treated as "swipe to delete" keys. Whether the Elite firmware actually emits them, and for which gesture, has not been captured. | commit 625b185 "Support alternate swipe delete keycode"; swipe-to-delete provider `titan2_keycode` |
@@ -330,9 +330,10 @@ capture as a "candidate" and does nothing. A gesture that qualifies within 250 m
 (wall-clock) of the previously accepted gesture is recorded as "debounced" and dropped.
 
 Third for an accepted up-swipe: start x clamped to 0..1440, then left third below 480,
-centre below 960, right otherwise. The 1440 width is upstream's Titan 2 value; against the
-Elite's 1080 range (D2) the right third can only be reached by starting at x >= 960 of 1080,
-which would need device confirmation.
+centre below 960, right otherwise. The 1440 width is upstream's Titan 2 value; on the Elite Android reports X from 0 to 1079
+(D2), so the right third only begins at x >= 960 of 1079, the rightmost tenth of the keys
+(brobata/physiboard#14). 3.0 should take the boundaries from the X range the event's device
+declares.
 
 ### 3.4 The Shizuku provider: gesture detection
 
@@ -899,7 +900,7 @@ D1 to D6 are in section 3.1. Additional:
 | Strip dips for a "Text box under the bar" app while the pad is open | the pad stays open | the dip is not a real window hide |
 | Sym chosen as trigger | hold-Sym-for-assistant never arms | two things would fight over one hold |
 | Trackpad reader (Shizuku provider) on the Elite | never sees a swipe | it opens `/dev/input/event7`, which is `ff_key` on the Elite (D4) |
-| Native provider third calculation | uses a 1440 px surface on a 1080 px layer | inherited from upstream; the right third needs x >= 960 (D2 unverified) |
+| Native provider third calculation | uses a 1440 px surface on a layer Android reports as 0 to 1079 | inherited from upstream; the right third needs x >= 960 of 1079 (D2, brobata/physiboard#14) |
 | Keycodes 322 and 404 on a fresh install | swallowed silently | `swipe_to_delete` off by default; they are consumed either way |
 | Trackpad debug activity | unreachable from the app | its launcher is never invoked |
 | Trackpad debug overlay service | cannot start | not in the manifest |
