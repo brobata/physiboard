@@ -4,6 +4,66 @@ PhysiBoard is a GPLv3 fork of [Pastiera](https://github.com/palsoftware/pastiera
 Andrea Palumbo (PalSoftware) and contributors. This file documents the fork's changes,
 as required by GPLv3 §5(a). Package: `brobata.physiboard`.
 
+## 2.0.7 (2026-09-19)
+
+Dictation waits for you to start speaking, Teams keeps its message box above the bar, and a
+word you spelled correctly is never autocorrected.
+
+<!-- /card -->
+
+- **Dictation no longer gives up on a breath.** Google's speech engines close the microphone
+  about two seconds after any sound and report nothing if no words came through. Press the
+  trigger, draw breath, start talking, and the engine had shut the microphone a few
+  milliseconds before the first word — the "No text recognized" toast was for the breath.
+  A silent result before any words have arrived now restarts listening, for up to ten seconds
+  and five restarts, instead of ending the session. A busy engine is retried after a short
+  delay for the same reason. The session also ends on its own when the text field goes away
+  or another app takes it, rather than leaving the microphone open against nothing.
+- **A second dictation goes after the first, not in front of it.** Words were inserted with
+  the cursor placed before them, and only the engine's final result moved it after. Google's
+  on-device engine sends the whole sentence as its last provisional result followed by an
+  empty final one, so the cursor never moved and the next sentence landed ahead of the previous
+  one. Provisional words now leave the cursor after themselves, and an empty final result
+  finishes the sentence from the last provisional one with the same spacing and capitalisation.
+- **Deleting dictated words no longer brings them back.** Dictate, change your mind, backspace
+  the words away, and a couple of seconds later they reappeared: when the session ended the
+  keyboard "finished" the utterance from the last words the engine had sent, over the top of
+  whatever you had done meanwhile. The keyboard now remembers exactly what it put on screen,
+  and if those words are no longer in front of the cursor when the engine's result arrives,
+  the rest of that utterance is dropped. What you typed stays. The next thing you dictate
+  starts fresh.
+- **Teams: the message box no longer hides under the bar.** Teams positions its own compose box
+  and only moves it when the keyboard animates or its window regains focus. With a hardware
+  keyboard the bar is already on screen when you tap the box: Teams resets its layout, asks for
+  a keyboard, there is nothing more to show, nothing animates, and the box stays behind the bar
+  until something else changes focus — which is why it looked intermittent. For apps on a new
+  list under *Keyboard → Text box under the bar* (Teams to begin with), the bar now dips for a
+  fifth of a second whenever the app asks for the keyboard. That dip is the animation those apps
+  wait for. Add any other app that behaves the same way to the list.
+- **Autocorrect only commits corrections it is sure of.** The engine always scored its
+  candidates but used the score only to order the three visible suggestions; the decision to
+  overwrite what you typed was a set of yes/no checks with no notion of "how sure". A typo that
+  matches two real words almost equally well is now offered on the bar rather than imposed. The
+  measure is the margin between the best candidate and the runner-up, so it means the same thing
+  for short and long words.
+- **A word you spelled correctly is never corrected.** The English word list is rebuilt: 80,000
+  entries instead of 50,000, ranked by how often people actually write each word and filtered
+  against a spelling lexicon so real misspellings from that data cannot sneak in as "words".
+  The old list was encyclopedic — it knew *passerine* and *subchannel* but not *vex*, *ember*
+  or *loathe*, which the keyboard then treated as typos. Against the test corpus, real words
+  overruled went from 4 to 0 and false corrections dropped by two thirds. The cost, taken on
+  purpose: some rarer typos that used to be corrected automatically are now only offered. Only
+  English is rebuilt; the other bundled languages are unchanged.
+- **The download is smaller despite the larger dictionary.** 2.0.6 accidentally shipped 13
+  build-only word lists, 27 MB of files nothing reads at runtime. They are gone.
+- **The Keyboard backlight quick-settings tile works again.** Since the package rename in
+  2.0 the tile's code sat under a package name the app manifest did not declare, so the tile
+  could be added to Quick Settings but could never be started. The lint check that would have
+  caught it had been baselined away. The tile is back where the manifest expects it and the
+  baseline entry is gone, so the check runs again.
+- **The caret badge no longer logs a window warning on every cursor move.** Internal fix: the
+  overlay is created from a window context of its own type.
+
 ## 2.0.6 (2026-09-08)
 
 A notification at night no longer lights the keyboard along with the ring.
