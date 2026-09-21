@@ -1,0 +1,16 @@
+# Android / Gradle
+.gradle/
+build/
+*/build/
+local.properties
+*.apk
+*.aab
+# IDE
+.idea/
+*.iml
+# Signing: the release keystore never enters the repo
+release/*.jks
+release/keystore.properties
+release/dist/
+# OS
+.DS_Store
