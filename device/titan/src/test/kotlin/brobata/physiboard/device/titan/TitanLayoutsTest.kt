@@ -206,4 +206,38 @@ class TitanLayoutsTest {
         val resolution = LayerResolver.resolveKeyDown(ctrlOneShot, TypingSessionState(), down(KeyId.Letter('G')), layout, settings, resolverSettings, context)
         assertEquals(Action.PassThrough, resolution.action)
     }
+
+    @Test
+    fun `every letter the spec names as having accents offers some`() {
+        // The spec names these base characters; each must offer at least one variation, or a
+        // long press on that key does nothing and the user simply cannot type the accent.
+        for (base in "aeioulcnszydgrpt") {
+            assertTrue(
+                layout.variations.listFor(base).isNotEmpty(),
+                "lowercase '$base' offers no variations",
+            )
+            val upper = base.uppercaseChar()
+            assertTrue(
+                layout.variations.listFor(upper).isNotEmpty(),
+                "uppercase '$upper' offers no variations",
+            )
+        }
+    }
+
+    @Test
+    fun `an uppercase accent list matches its lowercase one`() {
+        // Whatever a key offers, holding Shift must offer the same characters in capitals, so
+        // the two lists cannot drift apart as letters are added.
+        for (base in "aeioulcnszydgrt") {
+            val lower = layout.variations.listFor(base)
+            val upper = layout.variations.listFor(base.uppercaseChar())
+            assertTrue(lower.size == upper.size, "'$base' and '${base.uppercaseChar()}' differ in length")
+            for ((lo, up) in lower.zip(upper)) {
+                val expected = if (lo.length == 1 && lo[0].isLetter()) lo.uppercase() else lo
+                // The eszett is the one letter whose capital is a different character entirely.
+                if (lo == "ß") continue
+                assertTrue(up == expected, "'$base': $lo should uppercase to $expected but was $up")
+            }
+        }
+    }
 }

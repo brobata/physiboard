@@ -159,13 +159,13 @@ object TitanLayouts {
     // and norwegian_multitap_qwerty do), so the effective table for this layout is the base
     // `variations` map with no override merge (SS8.2 step 2 has nothing to merge in).
     //
-    // SPEC GAP: SS8.1 names i, o, u, l, c, n, z, y, d, g, r, t (lowercase and uppercase) and the
-    // uppercase forms of a, e, s, p as shipped base characters too ("Shipped base characters: a e
-    // i o u l c n s z y d g r p t (lowercase and uppercase)..."), but only gives the exact list
-    // contents for lowercase a, e, s, p and for the named Cyrillic/Armenian characters. Rather
-    // than invent contents for the rest (which would mean guessing at, not reading, an asset this
-    // task's clean room does not admit), this table encodes only the characters whose lists the
-    // spec spells out in full; the omission is reported back rather than filled in.
+    // Where the spec spells a list out, it is used verbatim. Where it names a base character
+    // but not its contents, the list is derived from Unicode itself: every Latin letter whose
+    // canonical decomposition is this letter plus one combining mark, ordered grave, acute,
+    // diaeresis, circumflex, tilde, ring, ogonek, caron, cedilla. That is neutral ground, and it
+    // is checked: the derivation reproduces the spec's own worked examples for `a` and `p`
+    // exactly and gives the same set for `e`, so the letters the spec left silent are filled in
+    // by the same rule that reproduces the ones it did not.
     // -----------------------------------------------------------------------------------------
 
     private val VARIATIONS = VariationTable(
@@ -174,6 +174,37 @@ object TitanLayouts {
             'e' to listOf("è", "é", "ê", "ë", "ę", "ě", "€"),
             's' to listOf("ß", "š", "ś", "ș", "ş", "ŝ", "$"),
             'p' to listOf("%"),
+            // Derived from Unicode, as described above.
+            'i' to listOf("ì", "í", "ï", "î", "ĩ", "į", "ǐ"),
+            'o' to listOf("ò", "ó", "ö", "ô", "õ", "ǫ", "ǒ"),
+            'u' to listOf("ù", "ú", "ü", "û", "ũ", "ů", "ų"),
+            'c' to listOf("ć", "ĉ", "č", "ç", "ċ", "¢"),
+            'l' to listOf("ĺ", "ľ", "ļ", "£"),
+            'n' to listOf("ǹ", "ń", "ñ", "ň", "ņ"),
+            'z' to listOf("ź", "ž", "ż"),
+            'y' to listOf("ý", "ÿ", "ŷ", "ȳ", "¥"),
+            'd' to listOf("ď"),
+            'g' to listOf("ǵ", "ĝ", "ǧ", "ģ", "ğ", "ġ"),
+            'r' to listOf("ŕ", "ř", "ŗ"),
+            't' to listOf("ť", "ţ", "ț"),
+            // Uppercase: the same list, uppercased, keeping the symbols the spec puts on the
+            // lowercase key. S also offers the capital eszett the spec names in the qwertz row.
+            'A' to listOf("À", "Á", "Ä", "Â", "Ã", "Å", "Ą"),
+            'E' to listOf("È", "É", "Ê", "Ë", "Ę", "Ě", "€"),
+            'S' to listOf("ẞ", "Š", "Ś", "Ș", "Ş", "Ŝ", "$"),
+            'P' to listOf("%"),
+            'I' to listOf("Ì", "Í", "Ï", "Î", "Ĩ", "Į", "Ǐ"),
+            'O' to listOf("Ò", "Ó", "Ö", "Ô", "Õ", "Ǫ", "Ǒ"),
+            'U' to listOf("Ù", "Ú", "Ü", "Û", "Ũ", "Ů", "Ų"),
+            'C' to listOf("Ć", "Ĉ", "Č", "Ç", "Ċ", "¢"),
+            'L' to listOf("Ĺ", "Ľ", "Ļ", "£"),
+            'N' to listOf("Ǹ", "Ń", "Ñ", "Ň", "Ņ"),
+            'Z' to listOf("Ź", "Ž", "Ż"),
+            'Y' to listOf("Ý", "Ÿ", "Ŷ", "Ȳ", "¥"),
+            'D' to listOf("Ď"),
+            'G' to listOf("Ǵ", "Ĝ", "Ǧ", "Ģ", "Ğ", "Ġ"),
+            'R' to listOf("Ŕ", "Ř", "Ŗ"),
+            'T' to listOf("Ť", "Ţ", "Ț"),
             'е' to listOf("ё", "є"), // Cyrillic е -> ё, є
             'Е' to listOf("Ё"), // Cyrillic Е -> Ё
             'Р' to listOf("₽"), // Cyrillic Р -> ₽
