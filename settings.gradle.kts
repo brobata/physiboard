@@ -6,6 +6,13 @@
  */
 pluginManagement {
     repositories {
+        google {
+            content {
+                includeGroupByRegex("com\\.android.*")
+                includeGroupByRegex("com\\.google.*")
+                includeGroupByRegex("androidx.*")
+            }
+        }
         mavenCentral()
         gradlePluginPortal()
     }
@@ -13,7 +20,10 @@ pluginManagement {
 
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-    repositories { mavenCentral() }
+    repositories {
+        google()
+        mavenCentral()
+    }
 }
 
 rootProject.name = "PhysiBoard"
@@ -22,3 +32,7 @@ include(":core:keys")
 include(":core:text")
 include(":core:dict")
 include(":device:titan")
+
+// The Android side. It adapts the pipeline to the platform and owns nothing else.
+include(":ime")
+include(":app")

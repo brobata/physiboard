@@ -1,11 +1,19 @@
 [versions]
 kotlin = "2.4.10"
 junit = "5.11.4"
+agp = "8.13.0"
+androidx-core = "1.15.0"
+androidx-appcompat = "1.7.0"
 
 [libraries]
 kotlin-test = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.ref = "kotlin" }
 junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter", version.ref = "junit" }
 junit-platform-launcher = { group = "org.junit.platform", name = "junit-platform-launcher" }
+androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "androidx-core" }
+androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "androidx-appcompat" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+android-application = { id = "com.android.application", version.ref = "agp" }
+android-library = { id = "com.android.library", version.ref = "agp" }
