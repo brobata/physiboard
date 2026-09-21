@@ -200,6 +200,29 @@ milestone 2, after the pipeline cores.
 | Broker pairing lost by a key path change | Key files stay at 2.x paths, covered by an importer test |
 | Spec gap discovered mid-build | Add to the spec from behavior on the device, never from reading old source |
 
+## What milestone 2 established, and one constraint it found
+
+The four pure-Kotlin modules are built and committed: `:core:keys` (87 tests), `:core:dict`
+(55), `:device:titan` (63) and `:core:text` (113). No Android import in any of them, so the
+whole typing pipeline runs under a JVM test.
+
+**A sequencing rule the IME module must obey.** A letter's case is resolved by `:core:keys`
+before `:core:text` ever sees it. But the spec requires that when a deferred space fires, the
+capitalisation rules are re-evaluated so the letter landing after it is capitalised on that same
+keystroke. A pure function handed an already-resolved letter cannot do that retroactively.
+
+So `:ime` must ask `:core:text` whether a deferred space is pending BEFORE it asks `:core:keys`
+to resolve the incoming keystroke, and feed that answer in. This is a sequencing responsibility
+that spans all three modules and belongs in the IME's own tests, not in any one module. It is
+written down here because it is invisible from inside each module and would otherwise be
+rediscovered as a bug: the first sentence typed after a question mark would quietly lose its
+capital.
+
+**Two spec contradictions to resolve** rather than leave to whoever reads them next: the
+double-space behaviour is described one way in its test row and another way in the trailing-space
+rule, and the Alt-layer follow-up reads as unconditional while only one of its three branches is
+explicitly exempted. Both were implemented literally and marked in the code.
+
 ## Pre-mortem
 
 1. **The parity cliff kills it.** 3.0 stays "almost ready" for months. Guardrail: sideload it
