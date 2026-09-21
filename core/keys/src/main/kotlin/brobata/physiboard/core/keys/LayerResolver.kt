@@ -1,0 +1,414 @@
+package brobata.physiboard.core.keys
+
+/**
+ * Decides what a non-modifier key produces, given the current [ModifierState] and a
+ * [LayoutDescription].
+ *
+ * spec: layers-sym-alt.md SS2 ("the layers in one picture"), SS5 (the Sym key session), SS6 (the
+ * Alt layer); keys-and-modifiers.md SS7 (what modifiers do to a key). Modifier keys themselves
+ * (Shift, Ctrl, Alt, Sym, Fn) never reach this object; a caller dispatches them to
+ * [ModifierMachine] instead. Nav-mode behaviour with no editable field focused
+ * (keys-and-modifiers.md SS15) is out of this module's scope: it belongs with the trackpad
+ * surface (`trackpad-caret-nav.md`, not read for this module), so a stroke with no editable field
+ * simply passes through here.
+ */
+object LayerResolver {
+
+    /** Facts about the focused field the caller already knows and this module cannot infer on its own. */
+    data class Context(
+        val hasEditableField: Boolean = true,
+        val isNumericField: Boolean = false,
+        val hasSelection: Boolean = false,
+        val hasTextBeforeCaret: Boolean = true,
+    )
+
+    /** spec: keys-and-modifiers.md SS7.7 (the three forward-delete-alternative switches) and SS7.1 (swipe-to-delete). */
+    data class LayerResolverSettings(
+        val shiftBackspaceDelete: Boolean = false,
+        val altBackspaceDelete: Boolean = false,
+        val backspaceAtStartDelete: Boolean = false,
+        val swipeToDeleteEnabled: Boolean = false,
+    )
+
+    data class Resolution(val state: ModifierState, val typing: TypingSessionState, val action: Action)
+
+    /**
+     * Resolves one non-modifier key-down. Follows the in-scope subset of keys-and-modifiers.md
+     * SS1.3's processing order: swipe-to-delete (SS7.1), the Ctrl+Space layout-switch chord and
+     * Space/Enter clearing Alt (SS6.4, SS7.5), Enter's Shift one-shot consumption (SS7.6),
+     * forward-delete alternatives (SS7.7), the Sym key session (layers-sym-alt.md SS5.3-5.4),
+     * then Alt, Ctrl or plain-key resolution.
+     */
+    fun resolveKeyDown(
+        state: ModifierState,
+        typing: TypingSessionState,
+        stroke: KeyStroke,
+        layout: LayoutDescription,
+        modifierSettings: ModifierSettings,
+        resolverSettings: LayerResolverSettings,
+        context: Context,
+    ): Resolution {
+        require(stroke.edge == KeyEdge.DOWN) { "not a key-down: $stroke" }
+        require(stroke.key !is KeyId.Modifier) { "modifier strokes go through ModifierMachine, not LayerResolver: ${stroke.key}" }
+
+        if (!context.hasEditableField) return Resolution(state, typing, Action.PassThrough)
+
+        if (stroke.repeatCount > 0) return resolveRepeat(state, typing, stroke, layout)
+
+        if (stroke.key == SWIPE_TO_DELETE) {
+            val action = if (resolverSettings.swipeToDeleteEnabled) Action.Edit(EditEffect.DELETE_WORD_BACKWARD) else Action.Ignored
+            return Resolution(state, typing, action)
+        }
+
+        if (stroke.key == SPACE && state.isCtrlActive(stroke.meta.ctrl)) {
+            return Resolution(applyCtrlSpaceLayoutSwitch(state), typing, ctrlSpaceLayoutSwitchAction(state))
+        }
+
+        if ((stroke.key == SPACE || stroke.key == ENTER) && modifierSettings.clearAltOnSpace &&
+            (state.alt.oneShot || state.alt.latched)
+        ) {
+            val altCleared = state.copy(alt = AltState())
+            return if (stroke.key == SPACE) {
+                Resolution(altCleared, typing, Action.Commit(" "))
+            } else {
+                Resolution(consumeShiftOneShot(altCleared), typing, Action.Edit(EditEffect.NEWLINE))
+            }
+        }
+
+        var working = if (stroke.key == ENTER) consumeShiftOneShot(state) else state
+
+        if (stroke.key == BACKSPACE && !context.hasSelection && isForwardDeleteAlternative(stroke, working, resolverSettings, context)) {
+            return Resolution(working, typing, Action.Edit(EditEffect.DELETE_CHAR_FORWARD))
+        }
+
+        val ctrlActiveNow = working.isCtrlActive(stroke.meta.ctrl)
+        val symHeld = working.sym.togglePending && !working.sym.chordUsed
+        if (symHeld && !ctrlActiveNow) {
+            val (afterChord, action) = trySymChord(working, stroke, layout, modifierSettings)
+            working = afterChord
+            if (action != null) return Resolution(working, typing, action)
+        }
+        if (working.sym.currentPageNumber != 0 && !working.isCtrlActive(stroke.meta.ctrl)) {
+            val (afterPage, action) = trySymPageKey(working, stroke, layout, modifierSettings)
+            working = afterPage
+            if (action != null) return Resolution(working, typing, action)
+        }
+
+        val ctrlActiveAnyForm = working.isCtrlActive(stroke.meta.ctrl) ||
+            (context.isNumericField && working.isCtrlPhysicalCombo(stroke.meta.ctrl))
+
+        return when {
+            ctrlActiveAnyForm -> resolveCtrlActive(working, typing, stroke, layout, modifierSettings, context)
+            context.isNumericField -> resolveAltActive(working, typing, stroke, layout)
+            working.isAltActive(stroke.meta.alt) -> resolveAltActive(working, typing, stroke, layout)
+            else -> resolvePlainKey(working, typing, stroke, layout)
+        }
+    }
+
+    /** spec: keys-and-modifiers.md SS8.3 step 3 ("key up before the timer: the timer is cancelled... the key up is consumed"). */
+    fun resolveKeyUp(state: ModifierState, typing: TypingSessionState, stroke: KeyStroke): Resolution {
+        require(stroke.edge == KeyEdge.UP) { "not a key-up: $stroke" }
+        val pending = typing.pendingLongPress
+        return if (pending != null && pending.key == stroke.key) {
+            Resolution(state, typing.copy(pendingLongPress = null), Action.Ignored)
+        } else {
+            Resolution(state, typing, Action.PassThrough)
+        }
+    }
+
+    /** Checks whether an armed long press has fired, and if so what it replaces the committed text with. spec: keys-and-modifiers.md SS8.3. */
+    fun resolveLongPressTick(typing: TypingSessionState, nowMs: Long, layout: LayoutDescription): Resolution? {
+        val pending = typing.pendingLongPress ?: return null
+        if (!LongPress.hasFired(pending, nowMs)) return null
+        val action = LongPress.replacement(pending, layout)
+        return Resolution(ModifierState(), typing.copy(pendingLongPress = null), action)
+    }
+
+    // -----------------------------------------------------------------
+    // Ctrl+Space and Space/Enter clearing Alt. spec: keys-and-modifiers.md SS6.4, SS7.5.
+    // -----------------------------------------------------------------
+
+    private fun applyCtrlSpaceLayoutSwitch(state: ModifierState): ModifierState =
+        state.copy(alt = AltState(), ctrl = CtrlState())
+
+    private fun ctrlSpaceLayoutSwitchAction(state: ModifierState): Action =
+        if (state.ctrl.latchFromNavMode) {
+            Action.Multiple(listOf(Action.RunCommand(KeyCommands.EXIT_NAV_MODE), Action.RunCommand(KeyCommands.SWITCH_LAYOUT)))
+        } else {
+            Action.RunCommand(KeyCommands.SWITCH_LAYOUT)
+        }
+
+    private fun consumeShiftOneShot(state: ModifierState): ModifierState =
+        if (state.shift.value == ShiftValue.ONE_SHOT) state.copy(shift = state.shift.copy(value = ShiftValue.OFF)) else state
+
+    // -----------------------------------------------------------------
+    // Forward-delete alternatives. spec: keys-and-modifiers.md SS7.7.
+    // -----------------------------------------------------------------
+
+    private fun isForwardDeleteAlternative(
+        stroke: KeyStroke,
+        state: ModifierState,
+        settings: LayerResolverSettings,
+        context: Context,
+    ): Boolean {
+        val altActive = state.isAltActive(stroke.meta.alt)
+        return when {
+            settings.shiftBackspaceDelete && stroke.meta.shift -> true
+            settings.altBackspaceDelete && altActive -> true
+            settings.backspaceAtStartDelete && !stroke.meta.shift && !altActive && !context.hasTextBeforeCaret -> true
+            else -> false
+        }
+    }
+
+    // -----------------------------------------------------------------
+    // The Sym key session. spec: layers-sym-alt.md SS5.3 (chords), SS5.4 (a page open).
+    // -----------------------------------------------------------------
+
+    private val EDIT_SHORTCUT_KEYS: Map<KeyId, EditEffect> = mapOf(
+        KeyId.Letter('C') to EditEffect.COPY,
+        KeyId.Letter('V') to EditEffect.PASTE,
+        KeyId.Letter('X') to EditEffect.CUT,
+        KeyId.Letter('A') to EditEffect.SELECT_ALL,
+    )
+
+    private fun trySymChord(
+        state: ModifierState,
+        stroke: KeyStroke,
+        layout: LayoutDescription,
+        settings: ModifierSettings,
+    ): Pair<ModifierState, Action?> {
+        if (settings.symEditShortcutsEnabled && !stroke.meta.alt) {
+            val effect = EDIT_SHORTCUT_KEYS[stroke.key]
+            if (effect != null) return ModifierMachine.symChordUsed(state) to Action.Edit(effect)
+        }
+
+        // Launcher shortcuts (layers-sym-alt.md SS5.3 step 2) belong to
+        // expansion-clipboard-pickers-launcher.md, not read for this module; a caller that owns
+        // that catalogue can intercept before calling this resolver.
+
+        val shiftEffective = state.shiftForcesUppercase(stroke.meta.shift)
+        val preferredPage = preferredSymTextPage(state.sym.currentPageNumber, layout.symPagesConfig)
+        val text = preferredPage?.let { CharacterResolution.symPageEntryText(pageMap(it, layout)[stroke.key], shiftEffective) }
+
+        val markedState = ModifierMachine.symChordUsed(state)
+        if (text == null) return markedState to null
+
+        // spec layers-sym-alt.md SS5.5: `sym_auto_close` makes using a key layer one-shot, and a
+        // chord that draws from the currently open key layer counts as using it.
+        val closed = if (settings.symAutoCloseEnabled) markedState.copy(sym = markedState.sym.copy(currentPageNumber = 0)) else markedState
+        return closed to Action.Commit(text)
+    }
+
+    private fun preferredSymTextPage(currentPageNumber: Int, pages: SymPagesConfig): SymPageId? {
+        val openPage = SymPageId.entries.firstOrNull { it.pageNumber == currentPageNumber && it.isKeyLayer }
+        if (openPage != null) return openPage
+        return pages.normalizedOrder.firstOrNull { it == SymPageId.EMOJI && pages.emojiEnabled || it == SymPageId.SYMBOLS && pages.symbolsEnabled }
+    }
+
+    private fun pageMap(page: SymPageId, layout: LayoutDescription): SymPageMap = when (page) {
+        SymPageId.EMOJI -> layout.emojiPage
+        SymPageId.SYMBOLS -> layout.symbolsPage
+        else -> SymPageMap()
+    }
+
+    private fun trySymPageKey(
+        state: ModifierState,
+        stroke: KeyStroke,
+        layout: LayoutDescription,
+        settings: ModifierSettings,
+    ): Pair<ModifierState, Action?> {
+        if (stroke.key == BACK) {
+            return state.copy(sym = state.sym.copy(currentPageNumber = 0)) to Action.Ignored
+        }
+        if (stroke.key == ENTER) {
+            return if (settings.symAutoCloseEnabled) {
+                state.copy(sym = state.sym.copy(currentPageNumber = 0)) to null
+            } else {
+                state to null
+            }
+        }
+
+        val pageId = SymPageId.entries.firstOrNull { it.pageNumber == state.sym.currentPageNumber }
+        if (pageId == null || !pageId.isKeyLayer) return state to null // panels (3, 4): not handled here
+
+        val shiftEffective = state.shiftForcesUppercase(stroke.meta.shift)
+        val text = CharacterResolution.symPageEntryText(pageMap(pageId, layout)[stroke.key], shiftEffective) ?: return state to null
+
+        val newState = if (settings.symAutoCloseEnabled) state.copy(sym = state.sym.copy(currentPageNumber = 0)) else state
+        return newState to Action.Commit(text)
+    }
+
+    // -----------------------------------------------------------------
+    // Alt active. spec: keys-and-modifiers.md SS7.2; layers-sym-alt.md SS6.2.
+    // -----------------------------------------------------------------
+
+    private fun resolveAltActive(state: ModifierState, typing: TypingSessionState, stroke: KeyStroke, layout: LayoutDescription): Resolution {
+        val consumed = if (state.alt.oneShot) state.copy(alt = state.alt.copy(oneShot = false)) else state
+        val clearedTyping = typing.copy(multiTapCycle = null, pendingLongPress = null)
+
+        if (stroke.key == BACK) return Resolution(consumed, clearedTyping, Action.PassThrough)
+        if (stroke.key == SPACE) return Resolution(consumed, clearedTyping, Action.Commit(" "))
+
+        val text = layout.deviceLayer[stroke.key]
+        val action = if (text != null) Action.Commit(text) else Action.PassThrough
+        return Resolution(consumed, clearedTyping, action)
+    }
+
+    // -----------------------------------------------------------------
+    // Ctrl active. spec: keys-and-modifiers.md SS7.3.
+    // -----------------------------------------------------------------
+
+    private val BASIC_EDIT_ACTIONS = setOf("copy", "cut", "paste", "select_all")
+
+    private val NAMED_CTRL_ACTIONS: Map<String, EditEffect> = mapOf(
+        "select_all" to EditEffect.SELECT_ALL,
+        "copy" to EditEffect.COPY,
+        "paste" to EditEffect.PASTE,
+        "cut" to EditEffect.CUT,
+        "undo" to EditEffect.UNDO,
+        "expand_selection_left" to EditEffect.EXPAND_SELECTION_LEFT,
+        "expand_selection_right" to EditEffect.EXPAND_SELECTION_RIGHT,
+        "expand_selection_word_left" to EditEffect.EXPAND_SELECTION_WORD_LEFT,
+        "expand_selection_word_right" to EditEffect.EXPAND_SELECTION_WORD_RIGHT,
+        "move_word_left" to EditEffect.MOVE_WORD_LEFT,
+        "move_word_right" to EditEffect.MOVE_WORD_RIGHT,
+        "page_start" to EditEffect.PAGE_START,
+        "page_end" to EditEffect.PAGE_END,
+        "media_play_pause" to EditEffect.MEDIA_PLAY_PAUSE,
+        "media_previous" to EditEffect.MEDIA_PREVIOUS,
+        "media_next" to EditEffect.MEDIA_NEXT,
+    )
+
+    private val SELECTION_EXTENDABLE_ACTIONS = setOf("move_word_left", "move_word_right", "page_start", "page_end")
+
+    private val SELECTION_EXTENDABLE_KEYCODES = setOf(
+        ControlKey.DPAD_UP, ControlKey.DPAD_DOWN, ControlKey.DPAD_LEFT, ControlKey.DPAD_RIGHT,
+        ControlKey.MOVE_HOME, ControlKey.MOVE_END, ControlKey.PAGE_UP, ControlKey.PAGE_DOWN,
+    )
+
+    private fun resolveCtrlActive(
+        state: ModifierState,
+        typing: TypingSessionState,
+        stroke: KeyStroke,
+        layout: LayoutDescription,
+        settings: ModifierSettings,
+        context: Context,
+    ): Resolution {
+        val clearedTyping = typing.copy(multiTapCycle = null, pendingLongPress = null)
+        val physicalCombo = state.isCtrlPhysicalCombo(stroke.meta.ctrl)
+        val navGrid = state.ctrl.latchFromNavMode || (physicalCombo && settings.navModeCtrlHoldEnabled)
+        val shortcutKeycode = shortcutKeycodeFor(stroke.key, layout, settings)
+        val mappingKeycode = if (navGrid) stroke.key else shortcutKeycode
+
+        val mapping = layout.ctrlMappings.mappingFor(mappingKeycode)
+        val isBasicEdit = mapping is CtrlMapping.NamedAction && mapping.actionId in BASIC_EDIT_ACTIONS
+        val numericForcesBasicEdit = context.isNumericField && isBasicEdit
+
+        if (physicalCombo && !navGrid && !numericForcesBasicEdit) {
+            return Resolution(state, clearedTyping, Action.ForwardAsCtrlCombo(shortcutKeycode))
+        }
+
+        val consumedOneShot = if (state.ctrl.oneShot && !state.ctrl.latchFromNavMode) {
+            state.copy(ctrl = state.ctrl.copy(oneShot = false))
+        } else {
+            state
+        }
+
+        val shiftActive = state.shift.pressed || stroke.meta.shift
+        val action = when (mapping) {
+            is CtrlMapping.Command -> Action.RunCommand(mapping.commandId)
+            is CtrlMapping.NamedAction -> resolveNamedCtrlAction(mapping.actionId, shiftActive)
+            CtrlMapping.NativeCtrl -> Action.ForwardAsCtrlCombo(shortcutKeycode)
+            is CtrlMapping.Keycode -> resolveCtrlKeycode(mapping.key, shiftActive)
+            CtrlMapping.None -> resolveNoCtrlMapping(stroke, physicalCombo, navGrid)
+        }
+        return Resolution(consumedOneShot, clearedTyping, action)
+    }
+
+    private fun shortcutKeycodeFor(key: KeyId, layout: LayoutDescription, settings: ModifierSettings): KeyId {
+        if (!settings.layoutAwareCtrlShortcuts) return key
+        val printed = CharacterResolution.baseCharacter(key, uppercase = false, tapIndex = 0, layout.baseLayout)
+        val letter = printed?.singleOrNull()?.takeIf { it.isLetter() } ?: return key
+        return KeyId.Letter(letter.uppercaseChar())
+    }
+
+    private fun resolveNamedCtrlAction(actionId: String, shiftActive: Boolean): Action {
+        val effect = NAMED_CTRL_ACTIONS[actionId] ?: return Action.PassThrough
+        return Action.Edit(effect, extendSelection = actionId in SELECTION_EXTENDABLE_ACTIONS && shiftActive)
+    }
+
+    private fun resolveCtrlKeycode(key: KeyId, shiftActive: Boolean): Action {
+        val control = (key as? KeyId.Control)?.key ?: return Action.PassThrough
+        val effect = when (control) {
+            ControlKey.DPAD_UP -> EditEffect.CURSOR_UP
+            ControlKey.DPAD_DOWN -> EditEffect.CURSOR_DOWN
+            ControlKey.DPAD_LEFT -> EditEffect.CURSOR_LEFT
+            ControlKey.DPAD_RIGHT -> EditEffect.CURSOR_RIGHT
+            ControlKey.DPAD_CENTER -> EditEffect.CURSOR_CENTER
+            ControlKey.TAB -> EditEffect.TAB
+            ControlKey.MOVE_HOME -> EditEffect.LINE_HOME
+            ControlKey.MOVE_END -> EditEffect.LINE_END
+            ControlKey.PAGE_UP -> EditEffect.PAGE_UP
+            ControlKey.PAGE_DOWN -> EditEffect.PAGE_DOWN
+            ControlKey.ESCAPE -> EditEffect.ESCAPE
+            ControlKey.FORWARD_DELETE -> EditEffect.DELETE_CHAR_FORWARD
+            else -> return Action.PassThrough
+        }
+        return Action.Edit(effect, extendSelection = control in SELECTION_EXTENDABLE_KEYCODES && shiftActive)
+    }
+
+    private fun resolveNoCtrlMapping(stroke: KeyStroke, physicalCombo: Boolean, navGrid: Boolean): Action = when {
+        stroke.key == BACKSPACE -> Action.Edit(EditEffect.DELETE_SELECTION_OR_WORD_BACKWARD)
+        stroke.key == ENTER || stroke.key == BACK -> Action.PassThrough
+        physicalCombo && !navGrid -> Action.ForwardAsCtrlCombo(stroke.key)
+        else -> Action.PassThrough
+    }
+
+    // -----------------------------------------------------------------
+    // Neither Alt nor Ctrl. spec: keys-and-modifiers.md SS7.4; SS9 (multi-tap).
+    // -----------------------------------------------------------------
+
+    private fun resolvePlainKey(state: ModifierState, typing: TypingSessionState, stroke: KeyStroke, layout: LayoutDescription): Resolution {
+        val uppercase = state.shiftForcesUppercase(stroke.meta.shift)
+
+        val isRealMultiTap = MultiTap.isMultiTapKey(stroke.key, layout.baseLayout) &&
+            !MultiTap.isSharpSException(stroke.key, uppercase, layout.baseLayout)
+
+        if (isRealMultiTap) {
+            val active = typing.multiTapCycle
+            if (active != null && active.key == stroke.key && MultiTap.isWithinWindow(active, stroke.timeMs)) {
+                val (newCycle, action) = MultiTap.advance(active, stroke.timeMs, layout.baseLayout)
+                val newTyping = TypingSessionState(newCycle, armLongPress(stroke.key, uppercase, newCycle.committedText, stroke.timeMs, layout))
+                return Resolution(state, newTyping, action)
+            }
+            val (newCycle, text) = MultiTap.begin(stroke.key, uppercase, stroke.timeMs, layout.baseLayout)
+            val newTyping = TypingSessionState(newCycle, armLongPress(stroke.key, uppercase, text, stroke.timeMs, layout))
+            return Resolution(consumeShiftOneShot(state), newTyping, Action.Commit(text))
+        }
+
+        val text = CharacterResolution.layoutOrLetterFallback(stroke.key, uppercase, tapIndex = 0, layout.baseLayout)
+            ?: return Resolution(state, typing.copy(multiTapCycle = null), Action.PassThrough)
+
+        val newTyping = TypingSessionState(multiTapCycle = null, pendingLongPress = armLongPress(stroke.key, uppercase, text, stroke.timeMs, layout))
+        return Resolution(consumeShiftOneShot(state), newTyping, Action.Commit(text))
+    }
+
+    private fun armLongPress(key: KeyId, shiftEffective: Boolean, committedText: String, nowMs: Long, layout: LayoutDescription): LongPress.Pending? =
+        if (LongPress.isEligible(key, shiftEffective, layout)) LongPress.arm(key, shiftEffective, committedText, nowMs, layout) else null
+
+    private fun resolveRepeat(state: ModifierState, typing: TypingSessionState, stroke: KeyStroke, layout: LayoutDescription): Resolution {
+        if (typing.pendingLongPress?.key == stroke.key) return Resolution(state, typing, Action.Ignored)
+        if (typing.multiTapCycle?.key == stroke.key) return Resolution(state, typing, Action.Ignored)
+
+        val uppercase = state.shiftForcesUppercase(stroke.meta.shift)
+        val text = CharacterResolution.layoutOrLetterFallback(stroke.key, uppercase, tapIndex = 0, layout.baseLayout)
+        val action = if (text != null) Action.Commit(text) else Action.PassThrough
+        return Resolution(state, typing, action)
+    }
+
+    private val SPACE = KeyId.Control(ControlKey.SPACE)
+    private val ENTER = KeyId.Control(ControlKey.ENTER)
+    private val BACK = KeyId.Control(ControlKey.BACK)
+    private val BACKSPACE = KeyId.Control(ControlKey.BACKSPACE)
+    private val SWIPE_TO_DELETE = KeyId.Control(ControlKey.SWIPE_TO_DELETE)
+}
