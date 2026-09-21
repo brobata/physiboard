@@ -1031,7 +1031,7 @@ trackpad, "map" the Fn Layer map.
 | Keep-screen-on on the overlay | keep | free |
 | Trackpad debug activity and overlay service | drop | unreachable and unregistered |
 | Keyboard-surface swipe, Shizuku provider | drop | reads the wrong device on the Elite; Shizuku is gone from the app |
-| Keyboard-surface swipe, native provider | undecided | the touch layer (D1, D2) is real hardware nobody has used from the IME on the Elite; needs a capture on the phone before deciding; if kept, thirds must be measured against 1080 not 1440 |
+| Keyboard-surface swipe, native provider | undecided | the touch layer (D1, D2) is real hardware nobody has used from the IME on the Elite; needs a capture on the phone before deciding (brobata/physiboard#11 offers one from an Elite); if kept, thirds must be measured again and the rows need a screen (settings-catalog.md section 13)st 1080 not 1440 |
 | Add-word gesture rule | drop unless the native provider is kept | it has no other trigger |
 | Firmware swipe keycodes 322 / 404 | undecided | needs a capture of what the Elite firmware sends |
 | Caret badge | keep | the reason the LED strip is off by default |
