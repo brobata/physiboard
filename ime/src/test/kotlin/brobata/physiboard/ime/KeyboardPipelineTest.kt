@@ -132,9 +132,11 @@ class KeyboardPipelineTest {
     }
 
     // -----------------------------------------------------------------------------------------
-    // The Space/Enter/Backspace bridge (see KeyboardPipeline.withBaselineControlAction's SPEC GAP
-    // note): without it these three keys would resolve to Action.PassThrough and never reach
-    // `:core:text`'s smart-space/backspace-undo logic at all.
+    // The Space/Enter/Backspace baseline (see LayerResolver.withBaselineControlAction's KDoc):
+    // without it these three keys would resolve to Action.PassThrough and never reach
+    // `:core:text`'s smart-space/backspace-undo logic at all. `:ime` no longer does anything to
+    // make this true; it is `:core:keys` answering these three ordinary presses correctly in the
+    // first place, and this pipeline just carries the answer through.
     // -----------------------------------------------------------------------------------------
 
     @Test

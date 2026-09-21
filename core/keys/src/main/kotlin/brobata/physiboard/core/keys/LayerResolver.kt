@@ -37,7 +37,9 @@ object LayerResolver {
      * SS1.3's processing order: swipe-to-delete (SS7.1), the Ctrl+Space layout-switch chord and
      * Space/Enter clearing Alt (SS6.4, SS7.5), Enter's Shift one-shot consumption (SS7.6),
      * forward-delete alternatives (SS7.7), the Sym key session (layers-sym-alt.md SS5.3-5.4),
-     * then Alt, Ctrl or plain-key resolution.
+     * then Alt, Ctrl or plain-key resolution. Whatever falls out of that chain still owing an
+     * ordinary Space, Enter or Backspace a real answer gets one from [withBaselineControlAction]
+     * (text-input.md SS5-SS8) before this returns.
      */
     fun resolveKeyDown(
         state: ModifierState,
@@ -53,6 +55,19 @@ object LayerResolver {
 
         if (!context.hasEditableField) return Resolution(state, typing, Action.PassThrough)
 
+        val resolution = resolveKeyDownOnEditableField(state, typing, stroke, layout, modifierSettings, resolverSettings, context)
+        return withBaselineControlAction(resolution, stroke, state, context)
+    }
+
+    private fun resolveKeyDownOnEditableField(
+        state: ModifierState,
+        typing: TypingSessionState,
+        stroke: KeyStroke,
+        layout: LayoutDescription,
+        modifierSettings: ModifierSettings,
+        resolverSettings: LayerResolverSettings,
+        context: Context,
+    ): Resolution {
         if (stroke.repeatCount > 0) return resolveRepeat(state, typing, stroke, layout)
 
         if (stroke.key == SWIPE_TO_DELETE) {
@@ -140,6 +155,44 @@ object LayerResolver {
 
     private fun consumeShiftOneShot(state: ModifierState): ModifierState =
         if (state.shift.value == ShiftValue.ONE_SHOT) state.copy(shift = state.shift.copy(value = ShiftValue.OFF)) else state
+
+    // -----------------------------------------------------------------
+    // The baseline text-input action for an ordinary Space, Enter or Backspace.
+    // spec: text-input.md SS5.5 ("every commit of a non-Alt character"), SS6.1/SS6.2 (Space),
+    // SS7 (Enter), SS8 (Backspace).
+    // -----------------------------------------------------------------
+
+    /**
+     * [CharacterResolution.layoutOrLetterFallback] only ever resolves a letter, a digit or a
+     * punctuation mark; Space, Enter and Backspace are [KeyId.Control] keys with no base-layout
+     * entry of their own, so every branch above ([resolvePlainKey], [resolveAltActive] for a key
+     * other than Space, and [resolveCtrlActive]'s own "no mapping, Enter or Back" case) answers
+     * an ordinary press of one of them with [Action.PassThrough]. Read on its own that is a
+     * defensible "the layout does not map it" (keys-and-modifiers.md SS7.4 step 11's bare
+     * fallback, "Enter, Space, Backspace ... reach the app as ordinary key events"), but
+     * text-input.md SS5 to SS8 expects the double-space period, the deferred-space debt, the
+     * legacy-autocorrect boundary hand-off and the Backspace undo table to run on every ordinary
+     * press of these three keys, not just the ones a layout happens to map. This substitutes the
+     * real action `:core:text` needs once every branch above has already had its say and still
+     * came back with [Action.PassThrough], for exactly the three control keys text-input.md
+     * names, and leaves every other [Action.PassThrough] alone: a Ctrl-active one (Ctrl is
+     * checked against the state [resolveKeyDown] was called with, since none of the branches
+     * above change whether Ctrl was active) is keys-and-modifiers.md SS7.3's own distinct
+     * "no mapping, Enter or Back: pass to app", not this gap, and a key that is neither Space,
+     * Enter nor Backspace was never in scope here.
+     */
+    private fun withBaselineControlAction(resolution: Resolution, stroke: KeyStroke, state: ModifierState, context: Context): Resolution {
+        if (resolution.action != Action.PassThrough) return resolution
+        val ctrlActive = state.isCtrlActive(stroke.meta.ctrl) || (context.isNumericField && state.isCtrlPhysicalCombo(stroke.meta.ctrl))
+        if (ctrlActive) return resolution
+        val action = when (stroke.key) {
+            SPACE -> Action.Commit(" ")
+            ENTER -> Action.Edit(EditEffect.NEWLINE)
+            BACKSPACE -> Action.Edit(EditEffect.DELETE_CHAR_BACKWARD)
+            else -> return resolution
+        }
+        return resolution.copy(action = action)
+    }
 
     // -----------------------------------------------------------------
     // Forward-delete alternatives. spec: keys-and-modifiers.md SS7.7.

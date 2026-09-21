@@ -199,13 +199,21 @@ object TextInputPipeline {
                     currentWord = state.currentWord.reset().onCharacterCommitted(ch),
                 )
                 // spec SS5.5: "the auto-cap rules are re-evaluated so the letter after '? ' gets
-                // Shift one-shot". This letter's own case was already resolved by `:core:keys`
-                // before this call (see the SPEC GAP note in the class KDoc of this file's report);
-                // what is armed here takes effect starting with the *next* keystroke.
+                // Shift one-shot" describes THIS letter: `:core:keys` already resolved its case
+                // from this same projected text before this call ever ran (the milestone-2
+                // sequencing rule, KeyboardPipeline.withDeferredSpaceForcedCase). An ArmOneShot
+                // decision here therefore belongs to the letter just committed, not the one after
+                // it; propagating it unchanged would arm a second, never-consumed one-shot that
+                // survives to capitalize whatever the user types next too ("? W" then a letter
+                // would give "? WX" instead of "? Wx"). It is downgraded to ClearOneShot (a safe
+                // no-op when nothing else is armed) so this module's armSource bookkeeping and the
+                // Shift state `:ime` maintains both agree nothing is left owed once this letter
+                // lands.
                 val projected = editor.textBeforeCursor?.let { it + " " }
                 val (capState, decision) = AutoCapitalization.evaluate(newState.autoCap, field, settings.autoCap, projected)
-                newState = newState.copy(autoCap = capState)
-                TextInputResult(ops, newState, decision)
+                val consumedByThisLetter = decision == CapDecision.ArmOneShot
+                newState = newState.copy(autoCap = if (consumedByThisLetter) capState.withArmSource(null) else capState)
+                TextInputResult(ops, newState, if (consumedByThisLetter) CapDecision.ClearOneShot else decision)
             }
             is DeferredSpaceOutcome.Kept -> TextInputResult(
                 listOf(EditorOp.CommitText(ch.toString())),

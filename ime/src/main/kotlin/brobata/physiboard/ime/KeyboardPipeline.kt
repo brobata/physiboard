@@ -1,8 +1,6 @@
 package brobata.physiboard.ime
 
 import brobata.physiboard.core.keys.Action
-import brobata.physiboard.core.keys.ControlKey
-import brobata.physiboard.core.keys.EditEffect
 import brobata.physiboard.core.keys.KeyEdge
 import brobata.physiboard.core.keys.KeyId
 import brobata.physiboard.core.keys.KeyStroke
@@ -157,55 +155,21 @@ internal class KeyboardPipeline(
             hasSelection = editor.fullText?.hasSelection ?: false,
             hasTextBeforeCaret = editor.textBeforeCursor?.isNotEmpty() ?: true,
         )
-        val preResolveState = modifierState
         val resolution = LayerResolver.resolveKeyDown(
             modifierState, typingState, effectiveStroke, layout, settings.modifier, settings.resolver, context,
         )
         modifierState = resolution.state
         typingState = resolution.typing
-        val action = withBaselineControlAction(resolution.action, effectiveStroke, preResolveState, isNumericField)
+        // `:core:keys` now answers an ordinary Space, Enter or Backspace with the real commit/edit
+        // action itself (text-input.md SS5-SS8; see LayerResolver.withBaselineControlAction), so
+        // this adapter has nothing left to decide here: whatever LayerResolver.resolveKeyDown
+        // returned is exactly what `:core:text` (or the app, for a genuine PassThrough) should see.
         return applyAction(
-            action,
+            resolution.action,
             shiftHeld = effectiveStroke.meta.shift,
             altActive = modifierState.isAltActive(effectiveStroke.meta.alt),
             editor,
         )
-    }
-
-    /**
-     * SPEC GAP: keys-and-modifiers.md SS7.4 step 11 says an otherwise-unhandled Space, Enter or
-     * Backspace "passes to app" as the bare fallback of the modifier-resolution stage ("Enter,
-     * Space, Backspace, navigation keys, and so on reach the app as ordinary key events"); at the
-     * same time text-input.md SS5-SS8 describes smart behaviour (double-space period, the
-     * autocorrect boundary on Space/Enter, Backspace undo) that has to run on every ordinary press
-     * of those same three keys for the keyboard to do anything but the platform's own default
-     * editing. Nothing in either document says which wins, and [Action.PassThrough] carries no tag
-     * saying whether it came from that SS7.4 fallback or from a Ctrl/Alt branch that has its own,
-     * different "pass to app" reason, chiefly SS7.3's "no mapping, Enter or Back: pass to app".
-     * This narrows the gap to that one documented exception, computed only from the same public
-     * [ModifierState.isCtrlActive] / [ModifierState.isCtrlPhysicalCombo] predicates `:core:keys`
-     * itself dispatches on, never by re-deciding anything `:core:keys` did not already decide, and
-     * substitutes the baseline text-input action there, so `:core:text` sees every ordinary Space,
-     * Enter and Backspace. A PassThrough while Ctrl is active is left untouched (SS7.3's own "no
-     * mapping, Enter or Back: pass to app"; a Ctrl-active Backspace never reaches this function at
-     * all, since `resolveCtrlActive` always gives it an explicit [Action.Edit], never PassThrough).
-     * Alt-active and numeric fields are deliberately NOT excluded: text-input.md's field table
-     * marks `NUMBER_OR_PHONE` "as text" for every one of these three keys, and neither spec
-     * document carves out an Alt-active exception for Enter or Backspace (only Space, which
-     * [LayerResolver] itself already answers with `Action.Commit(" ")` before this function ever
-     * sees it, so it never observes a PassThrough for Space in the first place).
-     */
-    private fun withBaselineControlAction(action: Action, stroke: KeyStroke, state: ModifierState, isNumericField: Boolean): Action {
-        if (action != Action.PassThrough) return action
-        val control = (stroke.key as? KeyId.Control)?.key ?: return action
-        val ctrlActive = state.isCtrlActive(stroke.meta.ctrl) || (isNumericField && state.isCtrlPhysicalCombo(stroke.meta.ctrl))
-        if (ctrlActive) return action
-        return when (control) {
-            ControlKey.SPACE -> Action.Commit(" ")
-            ControlKey.ENTER -> Action.Edit(EditEffect.NEWLINE)
-            ControlKey.BACKSPACE -> Action.Edit(EditEffect.DELETE_CHAR_BACKWARD)
-            else -> action
-        }
     }
 
     /**

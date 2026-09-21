@@ -189,6 +189,27 @@ class TextInputPipelineTest {
     }
 
     @Test
+    fun `the one-shot a deferred-space payout arms is consumed by that letter, not the next one`() {
+        // Defect 2: `:ime` resolves a letter's case before `:core:text` ever sees it (the
+        // milestone-2 sequencing rule; `session.type("W")` below stands in for that already-
+        // resolved capital, exactly like the existing "pays out through a full sentence" test
+        // above). But handleLetter's InsertSpaceBefore branch *also* re-evaluates auto-cap
+        // against the text as it will read once the withheld space lands ("? "), and that
+        // second evaluation arms the very same one-shot again with nothing to consume it. Through
+        // Session's pendingCapital plumbing (which mirrors `:ime`'s applyCapDecision), that stray
+        // arm survives to the next keystroke and capitalizes it too: "? WX" instead of "? Wx".
+        val settings = TextInputSettingsBundle(spacing = SpacingSettings(beforeNextTextList = "?"))
+        val session = Session(settings = settings)
+
+        session.altChar('?') // a space is owed but withheld
+        session.type("W") // already-resolved capital, as `:core:keys` would hand it over
+        assertEquals("? W", session.virtualField.text)
+
+        session.type("x")
+        assertEquals("? Wx", session.virtualField.text)
+    }
+
+    @Test
     fun `enter runs the same boundary hand-off as space before committing the newline`() {
         val dictionary = dict("hello" to 200)
         val resources = TextInputResources(dictionaries = listOf(dictionary))

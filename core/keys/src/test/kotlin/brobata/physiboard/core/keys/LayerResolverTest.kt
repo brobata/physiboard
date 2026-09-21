@@ -232,7 +232,7 @@ class LayerResolverTest {
     }
 
     @Test
-    fun `case 13 - Enter with auto-close closes the page and still reaches the app`() {
+    fun `case 13 - Enter with auto-close closes the page`() {
         val s = ModifierState(sym = SymSessionState(currentPageNumber = 1))
         val result = resolve(s, down(KeyId.Control(ControlKey.ENTER), 0))
         assertEquals(0, result.state.sym.currentPageNumber)
@@ -337,5 +337,41 @@ class LayerResolverTest {
         val result = resolve(ModifierState(), down(letter('A'), 0), context = noField)
         assertEquals(Action.PassThrough, result.action)
         assertNull(result.typing.pendingLongPress)
+    }
+
+    // Defect 1: an ordinary Space, Enter or Backspace must reach :core:text's smart rules
+    // (text-input.md SS5-SS8), not fall out as Action.PassThrough just because none of them has a
+    // base-layout entry. -----------------------------------------------------------------------
+
+    @Test
+    fun `an ordinary Space commits a plain space instead of passing through`() {
+        val result = resolve(ModifierState(), down(KeyId.Control(ControlKey.SPACE), 0))
+        assertEquals(Action.Commit(" "), result.action)
+    }
+
+    @Test
+    fun `an ordinary Enter resolves to a newline edit instead of passing through`() {
+        val result = resolve(ModifierState(), down(KeyId.Control(ControlKey.ENTER), 0))
+        assertEquals(Action.Edit(EditEffect.NEWLINE), result.action)
+    }
+
+    @Test
+    fun `an ordinary Backspace resolves to a backward-delete edit instead of passing through`() {
+        val result = resolve(ModifierState(), down(KeyId.Control(ControlKey.BACKSPACE), 0))
+        assertEquals(Action.Edit(EditEffect.DELETE_CHAR_BACKWARD), result.action)
+    }
+
+    @Test
+    fun `Ctrl held with no mapping still leaves Enter passed through, not turned into a newline`() {
+        val ctrlOneShot = ModifierState(ctrl = CtrlState(oneShot = true))
+        val result = resolve(ctrlOneShot, down(KeyId.Control(ControlKey.ENTER), 0))
+        assertEquals(Action.PassThrough, result.action)
+    }
+
+    @Test
+    fun `no editable field leaves an ordinary Enter passed through, not turned into a newline`() {
+        val noField = LayerResolver.Context(hasEditableField = false)
+        val result = resolve(ModifierState(), down(KeyId.Control(ControlKey.ENTER), 0), context = noField)
+        assertEquals(Action.PassThrough, result.action)
     }
 }
