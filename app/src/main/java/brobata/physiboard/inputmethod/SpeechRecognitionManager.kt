@@ -162,6 +162,31 @@ class SpeechRecognitionManager(
      */
     private var utteranceStartsSentence: Boolean = false
     private var utteranceFollowsLetter: Boolean = false
+    /** Exactly what was last set as composing text, so a user edit can be told apart from it. */
+    private var composedText: String = ""
+    /**
+     * An utterance the user took over: they deleted or changed the composing words while the
+     * engine was still listening. Its remaining partials and its final are dropped instead of
+     * being inserted over what the user typed; the next utterance that looks new starts afresh.
+     */
+    private var abandonedUtterance: String? = null
+
+    /** True while the composing words are still exactly what the keyboard put there. */
+    private fun composingIntact(inputConnection: InputConnection): Boolean {
+        if (!isComposingPartialText || composedText.isEmpty()) return true
+        val before = inputConnection.getTextBeforeCursor(composedText.length, 0) ?: return false
+        return before.toString() == composedText
+    }
+
+    /** The user edited the field mid-utterance: keep their text, drop the rest of the utterance. */
+    private fun abandonComposing(inputConnection: InputConnection) {
+        inputConnection.finishComposingText()
+        isComposingPartialText = false
+        abandonedUtterance = lastPartialText.ifBlank { composedText }
+        composedText = ""
+        lastPartialText = ""
+        Log.d(TAG, "Dictated words were edited by the user; the utterance is abandoned")
+    }
 
     /**
      * A partial is a NEW utterance (not a continuation of the previous one) when neither string
@@ -546,6 +571,16 @@ class SpeechRecognitionManager(
             val inputConnection = inputConnectionProvider() ?: return@post
 
             try {
+                // A partial belonging to an utterance the user took over is dropped; only a
+                // partial that looks like a new utterance ends the abandonment.
+                abandonedUtterance?.let { gone ->
+                    if (!looksLikeNewUtterance(gone, text)) return@post
+                    abandonedUtterance = null
+                }
+                if (!composingIntact(inputConnection)) {
+                    abandonComposing(inputConnection)
+                    return@post
+                }
                 // If the recognizer started a NEW utterance after a pause (within one session),
                 // commit the previous composing text and separate with a space, so the new
                 // utterance appends at the cursor instead of overwriting the previous sentence.
@@ -578,6 +613,7 @@ class SpeechRecognitionManager(
                 // typed or dictated lands ahead of it. Seen in Teams on a Titan 2.
                 inputConnection.setComposingText(formatted, 1)
                 isComposingPartialText = true
+                composedText = formatted
                 Log.d(TAG, "Partial text updated (composing): '$formatted'")
             } catch (e: Exception) {
                 Log.e(TAG, "Error updating partial text", e)
@@ -648,6 +684,17 @@ class SpeechRecognitionManager(
             val inputConnection = inputConnectionProvider() ?: return@post
             
             try {
+                // The final of an utterance the user took over is dropped, and so is a final
+                // arriving after the user edited the composing words: what they typed stays.
+                abandonedUtterance?.let { gone ->
+                    abandonedUtterance = null
+                    if (!looksLikeNewUtterance(gone, normalizedText)) { lastPartialText = ""; return@post }
+                }
+                if (!composingIntact(inputConnection)) {
+                    abandonComposing(inputConnection)
+                    abandonedUtterance = null
+                    return@post
+                }
                 var textToCommit = formatTextWithAutoCapitalization(normalizedText, inputConnection)
                 
                 // A space ahead of the words when they follow a letter. While a partial is
@@ -680,6 +727,7 @@ class SpeechRecognitionManager(
                     Log.d(TAG, "Final text inserted: '$textToCommit'")
                 }
                 lastPartialText = ""
+                composedText = ""
             } catch (e: Exception) {
                 Log.e(TAG, "Error replacing with final text", e)
                 failSession()
@@ -701,6 +749,7 @@ class SpeechRecognitionManager(
                     Log.d(TAG, "Partial text cleared")
                 }
                 lastPartialText = ""
+                composedText = ""
             } catch (e: Exception) {
                 Log.e(TAG, "Error clearing partial text", e)
                 failSession()
@@ -721,6 +770,8 @@ class SpeechRecognitionManager(
         }
 
         lastPartialText = ""
+        composedText = ""
+        abandonedUtterance = null
         ensureSpeechRecognizer()
         
         if (speechRecognizer == null) {
@@ -981,6 +1032,8 @@ class SpeechRecognitionManager(
     private fun failSession() {
         isComposingPartialText = false
         lastPartialText = ""
+        composedText = ""
+        abandonedUtterance = null
         onError?.invoke(context.getString(R.string.speech_recognition_error_generic))
         endSession(cancelRecognizer = true)
     }

@@ -106,4 +106,52 @@ class SpeechRecognitionUtteranceContextTest {
         idle()
         assertEquals("First sentence second one ", text())
     }
+
+    @Test
+    fun `deleting the dictated words does not bring them back when the utterance ends`() {
+        manager.updatePartialSpeechText("hello there")
+        idle()
+        assertEquals("Hello there", text())
+        // The user backspaces the words away (the editable is what the field holds).
+        editor.editable!!.delete(0, editor.editable!!.length)
+        assertEquals("", text())
+
+        manager.finishUtterance("hello there")
+        idle()
+        assertEquals("", text())
+    }
+
+    @Test
+    fun `deleting part of the dictated words keeps what is left`() {
+        manager.updatePartialSpeechText("hello there")
+        idle()
+        editor.editable!!.delete(6, 11)
+        assertEquals("Hello ", text())
+
+        manager.finishUtterance("hello there")
+        idle()
+        assertEquals("Hello ", text())
+    }
+
+    @Test
+    fun `later partials of an edited utterance are dropped but a new utterance is typed`() {
+        manager.updatePartialSpeechText("hello")
+        idle()
+        editor.editable!!.delete(0, 5)
+        assertEquals("", text())
+
+        manager.updatePartialSpeechText("hello there")
+        idle()
+        assertEquals("", text())
+        manager.updatePartialSpeechText("hello there my friend")
+        idle()
+        assertEquals("", text())
+
+        manager.updatePartialSpeechText("brand new words")
+        idle()
+        assertEquals("Brand new words", text())
+        manager.finishUtterance("brand new words")
+        idle()
+        assertEquals("Brand new words ", text())
+    }
 }
