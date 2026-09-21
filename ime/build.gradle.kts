@@ -26,4 +26,13 @@ dependencies {
     api(project(":core:text"))
     api(project(":device:titan"))
     implementation(libs.androidx.core.ktx)
+
+    testImplementation(libs.kotlin.test)
+    testImplementation(libs.junit.jupiter)
+    testRuntimeOnly(libs.junit.platform.launcher)
+}
+
+tasks.withType<Test> {
+    useJUnitPlatform()
+    testLogging { events("failed") }
 }

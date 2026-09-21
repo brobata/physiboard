@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Key feedback. The keyboard vibrates on its own account, not through the
+         notification channel, because notification vibration being off must not
+         silence typing feedback. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
     <application>
         <service
             android:name="brobata.physiboard.ime.PhysiBoardInputMethodService"

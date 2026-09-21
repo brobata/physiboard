@@ -3,6 +3,7 @@ package brobata.physiboard.ime
 import android.inputmethodservice.InputMethodService
 import android.view.KeyEvent
 import android.view.View
+import android.view.inputmethod.EditorInfo
 
 /**
  * The keyboard, as Android sees it.
@@ -15,7 +16,7 @@ import android.view.View
  *
  * PhysiBoard is a physical-keyboard keyboard, so it never offers a software
  * keyboard: [onEvaluateInputViewShown] stays false and the only surface it puts
- * on screen is the strip.
+ * on screen is the strip, rendered in the candidates view ([onCreateCandidatesView]).
  */
 class PhysiBoardInputMethodService : InputMethodService() {
 
@@ -23,10 +24,41 @@ class PhysiBoardInputMethodService : InputMethodService() {
 
     override fun onCreateInputView(): View? = null
 
-    /** A hardware keyboard is always present on this phone; never take the screen. */
-    override fun onEvaluateInputViewShown(): Boolean = false
+    /**
+     * A hardware keyboard is always present on this phone, so the answer is always no.
+     * The platform still wants its own implementation called, because it records the
+     * configuration it was asked about; the answer it returns is simply not ours.
+     */
+    override fun onEvaluateInputViewShown(): Boolean {
+        super.onEvaluateInputViewShown()
+        return false
+    }
 
     override fun onEvaluateFullscreenMode(): Boolean = false
+
+    override fun onCreateCandidatesView(): View = keyboard.onCreateCandidatesView()
+
+    override fun onStartInput(info: EditorInfo?, restarting: Boolean) {
+        super.onStartInput(info, restarting)
+        keyboard.onStartInput(info, restarting)
+    }
+
+    override fun onFinishInput() {
+        keyboard.onFinishInput()
+        super.onFinishInput()
+    }
+
+    override fun onUpdateSelection(
+        oldSelStart: Int,
+        oldSelEnd: Int,
+        newSelStart: Int,
+        newSelEnd: Int,
+        candidatesStart: Int,
+        candidatesEnd: Int,
+    ) {
+        super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
+        keyboard.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
+    }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean =
         keyboard.onKeyEvent(event) || super.onKeyDown(keyCode, event)
