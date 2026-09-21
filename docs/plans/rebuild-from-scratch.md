@@ -16,6 +16,10 @@ architecture, attribution, and license.
    pickers are overlays, not a keyboard. The AOSP LatinIME-derived view and its theming system
    are dropped, not ported.
 3. **2.x is frozen to crash fixes** from the day the spec phase ends until 3.0 ships as Latest.
+4. **License (decided 2026-09-21): GPLv3**, with a commercial license available from the
+   maintainer, a trademark notice on the name and icon, and a contributor agreement that lets
+   the maintainer relicense contributions. Tips through GitHub Sponsors; the About screen gets
+   a *Support PhysiBoard* row.
 
 ## The insight
 

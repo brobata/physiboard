@@ -21,5 +21,11 @@ contains source or source identifiers, and nothing in this branch is written by 
 
 ## License
 
-Not yet chosen. Until a license file appears here, no permission is granted to copy or
-redistribute this branch. The 2.x line remains GPLv3 on `legacy-2.x`.
+GPLv3. See [`LICENSE`](LICENSE) for the text and [`LICENSING.md`](LICENSING.md) for the
+commercial license, the trademark notice and how the 2.x line relates. Contributions are
+accepted under the agreement in [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
+## Support
+
+Free, no ads, no tracking, no paid tier. If it earns its keep on your phone, the Sponsor
+button on this page buys the maintainer a coffee.
