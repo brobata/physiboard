@@ -273,11 +273,12 @@ The caret badge (section 4) needs the same permission and benefits from the same
 | # | Fact | Evidence |
 |---|---|---|
 | D1 | The Titan 2 Elite's physical keys carry a capacitive touch layer exposed as a separate input device named `touchPad` at `/dev/input/event4`, distinct from the key matrix (`TitanKey`, `/dev/input/event5`), the touchscreen (`fts_ts`, `/dev/input/event6`) and `ff_key` (`/dev/input/event7`). | DEVICE.md, "Companion devices" |
-| D2 | The touch layer reports multitouch absolute coordinates (ABS_MT) over a 1080 by 600 range, is flagged as a direct input surface (INPUT_PROP_DIRECT) and samples at about 90 Hz. | Stated in the brief for this document from the maintainer's capture; not yet recorded in DEVICE.md. Needs a `getevent -p /dev/input/event4` capture added to DEVICE.md before 3.0 builds on it. |
+| D2 | The touch layer reports multitouch absolute coordinates (ABS_MT) over a 1080 by 600 range, is flagged as a direct input surface (INPUT_PROP_DIRECT) and samples at about 90 Hz. | `getevent -p /dev/input/event4` on a Titan 2 Elite, `Titan 2 Elite_V02.00.04`, Android 16 (brobata/physiboard#14): ABS_MT_POSITION_X 0 to 1079, ABS_MT_POSITION_Y 0 to 599, ABS_MT_TOUCH_MAJOR 0 to 255, INPUT_PROP_DIRECT; the same node also declares KEY events for BTN_TOUCH, the D-pad and a handful of letters. `dumpsys input` shows Android hands it to apps as sources KEYBOARD \| TOUCHPAD with X 0 to 1079 and Y 0 to 748.75. Sample rate not measured. Still to be copied into DEVICE.md. |
 | D3 | Sym arrives as keycode 63 (scancode 253); Fn arrives as Ctrl repeats with scancode 251 and never sends a key-up. | keys document; DEVICE.md scancode map and Fn delivery model |
 | D4 | Upstream Pastiera's Titan 2 (non-Elite) trackpad device is `/dev/input/event7`, moved to `/dev/input/event6` from firmware V01.00.14. The Elite identifies its keyboard as `titan2elite_qwerty`, not `titan2`, so the firmware rule never applies to it and the legacy path is chosen. | commits 60bd83b "Select Titan 2 trackpad device by firmware", 867330f "Limit Titan 2 trackpad remap to V01.00.14"; device identification rules |
 | D5 | The vendor firmware can deliver keyboard-surface swipes as key events: keycodes 322 and 404 are treated as "swipe to delete" keys. Whether the Elite firmware actually emits them, and for which gesture, has not been captured. | commit 625b185 "Support alternate swipe delete keycode"; swipe-to-delete provider `titan2_keycode` |
 | D6 | The Android input stack, on a Titan 2 running Android 16, can deliver the touch layer to the keyboard's own window as motion events from a device named `touchPad` with the touchpad source. | commits 82e0e48 "Add native Titan 2 trackpad gestures", ae06398 "Enable native trackpad gestures on Titan 2 Elite" |
+| D7 | On the Elite (`Titan 2 Elite_V02.00.04`, Android 16) the key surface reaches the IME's focused decor view as SOURCE_TOUCHPAD (0x100008) motion events from the `touchPad` device only while Unihertz's Scroll Assistant (Settings > Gestures > Keyboard gestures) is on; with it off nothing arrives at the IME. Event X spans 0 to 1079. Event Y is not the 0 to 748.75 that `dumpsys input` reports for the axis: flicks started at y 907 to 987 and ended at 516 to 685 on the 1080 by 1200 display, so a natural up-flick covers about 280 to 470 px in 80 to 150 ms (2.5 to 4.3 px/ms). Double-tap Cursor Assistant mode is different: it synthesizes KEYCODE_DPAD_* key events for drags (scanCode equal to the keycode, deviceId of `touchPad`, source KEYBOARD), and those are not flicks. | logcat with the native provider on, 2026-09-21: 11 accepted flicks, all three thirds reached with the device-range boundaries (brobata/physiboard#11, #14) |
 
 ### 3.2 Status on the Elite
 
@@ -293,6 +294,9 @@ superseded; its detector code remains, disabled, for upstream parity"). What rem
 - The default provider is `native_ime`, which needs no Shizuku.
 - The Shizuku provider would read `/dev/input/event7` on the Elite (D4), which is `ff_key`,
   not the touch layer, so it can never see a swipe there.
+- On the Elite the native provider works, but only while Scroll Assistant is on (D7). The
+  default `trackpad_suggestion_swipe_threshold` of 500 px rejects most natural flicks there
+  (280 to 470 px); 270 accepts them.
 - PhysiBoard does not use the Elite's keyboard-surface scroll gestures for cursor movement
   at all. Cursor movement is the screen trackpad (section 2) and nav mode (section 5).
 
@@ -330,9 +334,10 @@ capture as a "candidate" and does nothing. A gesture that qualifies within 250 m
 (wall-clock) of the previously accepted gesture is recorded as "debounced" and dropped.
 
 Third for an accepted up-swipe: start x clamped to 0..1440, then left third below 480,
-centre below 960, right otherwise. The 1440 width is upstream's Titan 2 value; against the
-Elite's 1080 range (D2) the right third can only be reached by starting at x >= 960 of 1080,
-which would need device confirmation.
+centre below 960, right otherwise. The 1440 width is upstream's Titan 2 value; on the Elite Android reports X from 0 to 1079
+(D2), so the right third only begins at x >= 960 of 1079, the rightmost tenth of the keys
+(brobata/physiboard#14). 3.0 should take the boundaries from the X range the event's device
+declares.
 
 ### 3.4 The Shizuku provider: gesture detection
 
@@ -899,7 +904,7 @@ D1 to D6 are in section 3.1. Additional:
 | Strip dips for a "Text box under the bar" app while the pad is open | the pad stays open | the dip is not a real window hide |
 | Sym chosen as trigger | hold-Sym-for-assistant never arms | two things would fight over one hold |
 | Trackpad reader (Shizuku provider) on the Elite | never sees a swipe | it opens `/dev/input/event7`, which is `ff_key` on the Elite (D4) |
-| Native provider third calculation | uses a 1440 px surface on a 1080 px layer | inherited from upstream; the right third needs x >= 960 (D2 unverified) |
+| Native provider third calculation | uses a 1440 px surface on a layer Android reports as 0 to 1079 | inherited from upstream; the right third needs x >= 960 of 1079 (D2, brobata/physiboard#14) |
 | Keycodes 322 and 404 on a fresh install | swallowed silently | `swipe_to_delete` off by default; they are consumed either way |
 | Trackpad debug activity | unreachable from the app | its launcher is never invoked |
 | Trackpad debug overlay service | cannot start | not in the manifest |
@@ -1031,7 +1036,7 @@ trackpad, "map" the Fn Layer map.
 | Keep-screen-on on the overlay | keep | free |
 | Trackpad debug activity and overlay service | drop | unreachable and unregistered |
 | Keyboard-surface swipe, Shizuku provider | drop | reads the wrong device on the Elite; Shizuku is gone from the app |
-| Keyboard-surface swipe, native provider | undecided | the touch layer (D1, D2) is real hardware nobody has used from the IME on the Elite; needs a capture on the phone before deciding; if kept, thirds must be measured against 1080 not 1440 |
+| Keyboard-surface swipe, native provider | keep (proposed) | works on the Elite with Scroll Assistant on (D7, brobata/physiboard#11); the thirds must come from the device's X range (D2, #14) and the default threshold needs lowering to the Elite's flick lengths; the rows need a screen (settings-catalog.md section 13) |
 | Add-word gesture rule | drop unless the native provider is kept | it has no other trigger |
 | Firmware swipe keycodes 322 / 404 | undecided | needs a capture of what the Elite firmware sends |
 | Caret badge | keep | the reason the LED strip is off by default |
