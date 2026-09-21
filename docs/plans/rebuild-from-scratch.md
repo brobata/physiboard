@@ -135,6 +135,40 @@ extended `build_en_wordlist.py` that handles all 19 languages from Leipzig. The 
 serves `<lang>.pbd` under a new path and verifies the checksum. The old `<lang>_base.dict` path
 stays untouched for 2.x installs.
 
+### Building the 19 dictionaries: a coverage and licensing problem, measured 2026-09-21
+
+The English rebuild that 2.x shipped worked because two sources were intersected: a frequency
+ranking (which knows what people actually write) and a spelling lexicon (which knows what is a
+real word). Frequency alone is not enough, and that is not a matter of taste: real text contains
+real misspellings, so a list built from frequency alone knows `alot` and `teh` and can then
+never correct them.
+
+Measured against the two libraries the English build used, the 19 languages split three ways:
+
+| Recipe available | Languages |
+|---|---|
+| Frequency and lexicon, the full recipe | de, en, es, fr, it, nl, pt, ru (all bundled) |
+| Frequency only, no lexicon | cs, da, el, hu, no, pl, sv, tr, uk, vi (da, no, pl, uk are bundled) |
+| Neither | gd |
+
+So four bundled languages (Danish, Norwegian, Polish, Ukrainian) would ship with exactly the
+defect the English rebuild removed.
+
+Spelling dictionaries for the missing languages do exist, around 80 of them packaged for Linux,
+and they would close the gap. The catch is licensing, and it now matters in a way it did not
+before 3.0 chose its licence: most of those dictionaries are GPL-family. Filtering a Leipzig
+frequency list through one arguably makes the result a derivative of it. That is harmless for
+the GPLv3 distribution and awkward for the commercial licence, because a word list the
+maintainer cannot relicense cannot be included in a commercial build.
+
+Unresolved, and to be decided per language before the builder is written. The options, from
+least to most work: ship frequency-only lists for those ten and rely on the confidence
+threshold to limit the damage; find a permissively licensed lexicon per language; derive the
+"is this a real word" signal from the corpora themselves, for example by requiring a word to
+appear across several independent sources; or drop suggestions for the languages that cannot be
+built cleanly. The Leipzig corpora themselves are CC-BY, attribution only, so the corpus is not
+the problem; only the filter is.
+
 ## Edge cases
 
 | Case | Handling |
