@@ -8,6 +8,7 @@ import brobata.physiboard.core.keys.KeyEdge
 import brobata.physiboard.core.keys.KeyId
 import brobata.physiboard.core.keys.KeyStroke
 import brobata.physiboard.core.keys.ModifierKey
+import brobata.physiboard.core.keys.PunctuationKey
 import brobata.physiboard.core.text.EditorOp
 import brobata.physiboard.core.text.EditorSnapshot
 import brobata.physiboard.core.text.FieldCapFlags
@@ -164,6 +165,49 @@ class KeyboardPipelineTest {
 
         assertTrue(result.consumed)
         assertEquals("h\n", editor.text)
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Defect 4: the same family as the Space/Enter/Backspace bridge above, but for a punctuation
+    // or digit key struck directly (a real physical period/comma/digit key, as an external or
+    // emulator keyboard sends, rather than the Titan's own Alt-layer route to the same
+    // characters). CharacterResolution.layoutOrDefaultCharacter used to fall back to the key's
+    // own glyph only for letters, so these fell out as Action.PassThrough and never reached
+    // `:core:text`: no boundary hand-off, no auto-cap re-evaluation, and the tracked word drifted
+    // out of step with text the app received but this pipeline never saw.
+    // -----------------------------------------------------------------------------------------
+
+    @Test
+    fun `a period key struck directly still reaches the app as committed text`() {
+        val pipeline = KeyboardPipeline(layout = layout)
+        val editor = FakeEditor()
+        pipeline.onStartInput(FieldContext(FieldKind.NORMAL))
+        step(pipeline, editor, letter('H'))
+        step(pipeline, editor, letter('I'))
+
+        val result = step(pipeline, editor, KeyId.Punctuation(PunctuationKey.PERIOD))
+
+        assertTrue(result.consumed, "an ordinary period must run through TextInputPipeline, not fall through untouched")
+        assertEquals("hi.", editor.text)
+    }
+
+    @Test
+    fun `a sentence ended with a struck period key still capitalises the next letter`() {
+        // This is the exact sequence that typed correctly in every unit test before defect 4 was
+        // found (because those tests only ever produced a period through the Alt layer) yet
+        // failed on the device: "hi" + a real period key + Space + a letter must capitalise it,
+        // the same as "hi" + Alt-period + Space + a letter already did.
+        val pipeline = KeyboardPipeline(layout = layout)
+        val editor = FakeEditor()
+        pipeline.onStartInput(FieldContext(FieldKind.NORMAL))
+        step(pipeline, editor, letter('H'))
+        step(pipeline, editor, letter('I'))
+        step(pipeline, editor, KeyId.Punctuation(PunctuationKey.PERIOD))
+        step(pipeline, editor, KeyId.Control(ControlKey.SPACE))
+
+        step(pipeline, editor, letter('T'))
+
+        assertEquals("hi. T", editor.text)
     }
 
     // -----------------------------------------------------------------------------------------

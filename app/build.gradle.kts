@@ -18,13 +18,15 @@ android {
     buildTypes {
         /*
          * The only build safe to put on the maintainer's phone while 2.x is the
-         * daily driver: a different applicationId means it cannot touch the
-         * release install's data or its keyboard registration.
+         * daily driver. It needs an id of its own for TWO reasons: it must not
+         * touch the 2.x release install, and it must not collide with the 2.x
+         * test build, which already owns `.sideload` and is signed with a
+         * different key. Installing over that fails outright.
          */
         create("sideload") {
             initWith(getByName("debug"))
-            applicationIdSuffix = ".sideload"
-            versionNameSuffix = "-sideload"
+            applicationIdSuffix = ".dev3"
+            versionNameSuffix = "-dev3"
             matchingFallbacks += listOf("debug")
         }
     }

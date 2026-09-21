@@ -59,16 +59,27 @@ object CharacterResolution {
     }
 
     /**
-     * [baseCharacter], falling back to [defaultCharacterText] only for a letter key with no
-     * layout entry. spec: keys-and-modifiers.md SS7.4 steps 9-10 ("an alphabetic keycode mapped
-     * in the layout: commit the layout character"; "any key whose system unicode character is a
-     * letter: commit it"). A digit or punctuation key with no layout entry is deliberately left
-     * unresolved here (step 11: "otherwise pass to app") since only letters get the system-map
-     * fallback.
+     * [baseCharacter], falling back to the key's own default glyph ([defaultCharacterText]) when
+     * the layout has no entry for it at all, for any key that carries a character at all (a
+     * letter, a digit or a punctuation mark; [defaultCharacter] is `null` for [KeyId.Modifier]
+     * and [KeyId.Control], so this still answers `null` for those and lets the caller fall
+     * through). spec: keys-and-modifiers.md SS7.4 steps 9-10 ("an alphabetic keycode mapped in
+     * the layout: commit the layout character"; "any key whose system unicode character is a
+     * letter: commit it") read on their own as if only letters get this fallback and a digit or
+     * punctuation key with no layout entry should fall to step 11's bare "otherwise pass to app".
+     * That was tried (a previous revision of this KDoc called it deliberate) and found wrong the
+     * same way Space, Enter and Backspace were (see [LayerResolver.withBaselineControlAction]):
+     * text-input.md SS5 and SS6 need the deferred-space debt, the double-space period, smart
+     * quotes, French spacing and the word-boundary hand-off to see every ordinary character, not
+     * only the ones a layout happens to map, and a device whose base layout maps just the 26
+     * letters (the Titan 2 Elite's, D1: punctuation and digits normally arrive through the Alt
+     * layer instead) left every digit and punctuation keystroke that reaches this function
+     * un-mapped, silently skipping `:core:text` and drifting its tracked word out of step with
+     * whatever the app actually received. Where keys-and-modifiers.md and text-input.md disagree
+     * about a character-bearing key, text-input.md wins, consistent with the other two cases.
      */
-    fun layoutOrLetterFallback(key: KeyId, uppercase: Boolean, tapIndex: Int, layout: LayoutMap): String? =
-        baseCharacter(key, uppercase, tapIndex, layout)
-            ?: (key as? KeyId.Letter)?.let { defaultCharacterText(key, uppercase) }
+    fun layoutOrDefaultCharacter(key: KeyId, uppercase: Boolean, tapIndex: Int, layout: LayoutMap): String? =
+        baseCharacter(key, uppercase, tapIndex, layout) ?: defaultCharacterText(key, uppercase)
 
     /** spec: layers-sym-alt.md SS3.1 ("uppercase entry... used when Shift is active during a Sym chord or long press"). */
     fun symPageEntryText(entry: SymPageEntry?, shiftEffective: Boolean): String? {

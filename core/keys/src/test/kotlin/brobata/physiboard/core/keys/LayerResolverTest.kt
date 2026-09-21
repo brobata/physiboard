@@ -293,8 +293,38 @@ class LayerResolverTest {
     // Sharp-S multi-tap exception, base plain-key resolution --------------------------------------
 
     @Test
-    fun `an unmapped punctuation key with no layout entry passes through`() {
+    fun `an unmapped punctuation key with no layout entry falls back to its own glyph`() {
+        // Defect 4 (the same family as Space/Enter/Backspace): the Titan's base layout maps only
+        // letters, so an ordinary period, comma or digit key must still reach `:core:text`, not
+        // vanish as Action.PassThrough the way it used to.
         val result = resolve(ModifierState(), down(KeyId.Punctuation(PunctuationKey.MINUS), 0))
+        assertEquals(Action.Commit("-"), result.action)
+    }
+
+    @Test
+    fun `an ordinary period commits its default glyph instead of passing through`() {
+        val result = resolve(ModifierState(), down(KeyId.Punctuation(PunctuationKey.PERIOD), 0))
+        assertEquals(Action.Commit("."), result.action)
+    }
+
+    @Test
+    fun `an ordinary comma commits its default glyph instead of passing through`() {
+        val result = resolve(ModifierState(), down(KeyId.Punctuation(PunctuationKey.COMMA), 0))
+        assertEquals(Action.Commit(","), result.action)
+    }
+
+    @Test
+    fun `an ordinary digit commits its default glyph instead of passing through`() {
+        val result = resolve(ModifierState(), down(KeyId.Digit('5'), 0))
+        assertEquals(Action.Commit("5"), result.action)
+    }
+
+    @Test
+    fun `a control key with no character of its own still passes through`() {
+        // TAB carries no text (unlike Space, Enter and Backspace, which get their own baseline
+        // action in withBaselineControlAction): CharacterResolution.defaultCharacter is null for
+        // every KeyId.Control, so this remains a genuine pass-to-app, not the defect-4 gap.
+        val result = resolve(ModifierState(), down(KeyId.Control(ControlKey.TAB), 0))
         assertEquals(Action.PassThrough, result.action)
     }
 

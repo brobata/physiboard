@@ -83,7 +83,7 @@ object LongPress {
         LongPressMode.ALT -> layout.deviceLayer[key] != null
         LongPressMode.SHIFT -> CharacterResolution.defaultCharacterText(key, uppercase = false)?.singleOrNull()?.isLetter() == true
         LongPressMode.VARIATIONS -> {
-            val produced = CharacterResolution.layoutOrLetterFallback(key, shiftEffective, tapIndex = 0, layout.baseLayout)
+            val produced = CharacterResolution.layoutOrDefaultCharacter(key, shiftEffective, tapIndex = 0, layout.baseLayout)
             produced?.singleOrNull()?.let { layout.variations.listFor(it).isNotEmpty() } == true
         }
         LongPressMode.SYM -> symEntryFor(key, shiftEffective, layout, usesEmojiPage(layout.symPagesConfig)) != null

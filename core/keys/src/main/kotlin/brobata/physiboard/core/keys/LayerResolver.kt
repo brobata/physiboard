@@ -163,7 +163,7 @@ object LayerResolver {
     // -----------------------------------------------------------------
 
     /**
-     * [CharacterResolution.layoutOrLetterFallback] only ever resolves a letter, a digit or a
+     * [CharacterResolution.layoutOrDefaultCharacter] only ever resolves a letter, a digit or a
      * punctuation mark; Space, Enter and Backspace are [KeyId.Control] keys with no base-layout
      * entry of their own, so every branch above ([resolvePlainKey], [resolveAltActive] for a key
      * other than Space, and [resolveCtrlActive]'s own "no mapping, Enter or Back" case) answers
@@ -439,7 +439,7 @@ object LayerResolver {
             return Resolution(consumeShiftOneShot(state), newTyping, Action.Commit(text))
         }
 
-        val text = CharacterResolution.layoutOrLetterFallback(stroke.key, uppercase, tapIndex = 0, layout.baseLayout)
+        val text = CharacterResolution.layoutOrDefaultCharacter(stroke.key, uppercase, tapIndex = 0, layout.baseLayout)
             ?: return Resolution(state, typing.copy(multiTapCycle = null), Action.PassThrough)
 
         val newTyping = TypingSessionState(multiTapCycle = null, pendingLongPress = armLongPress(stroke.key, uppercase, text, stroke.timeMs, layout))
@@ -454,7 +454,7 @@ object LayerResolver {
         if (typing.multiTapCycle?.key == stroke.key) return Resolution(state, typing, Action.Ignored)
 
         val uppercase = state.shiftForcesUppercase(stroke.meta.shift)
-        val text = CharacterResolution.layoutOrLetterFallback(stroke.key, uppercase, tapIndex = 0, layout.baseLayout)
+        val text = CharacterResolution.layoutOrDefaultCharacter(stroke.key, uppercase, tapIndex = 0, layout.baseLayout)
         val action = if (text != null) Action.Commit(text) else Action.PassThrough
         return Resolution(state, typing, action)
     }
