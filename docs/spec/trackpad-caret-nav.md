@@ -278,6 +278,7 @@ The caret badge (section 4) needs the same permission and benefits from the same
 | D4 | Upstream Pastiera's Titan 2 (non-Elite) trackpad device is `/dev/input/event7`, moved to `/dev/input/event6` from firmware V01.00.14. The Elite identifies its keyboard as `titan2elite_qwerty`, not `titan2`, so the firmware rule never applies to it and the legacy path is chosen. | commits 60bd83b "Select Titan 2 trackpad device by firmware", 867330f "Limit Titan 2 trackpad remap to V01.00.14"; device identification rules |
 | D5 | The vendor firmware can deliver keyboard-surface swipes as key events: keycodes 322 and 404 are treated as "swipe to delete" keys. Whether the Elite firmware actually emits them, and for which gesture, has not been captured. | commit 625b185 "Support alternate swipe delete keycode"; swipe-to-delete provider `titan2_keycode` |
 | D6 | The Android input stack, on a Titan 2 running Android 16, can deliver the touch layer to the keyboard's own window as motion events from a device named `touchPad` with the touchpad source. | commits 82e0e48 "Add native Titan 2 trackpad gestures", ae06398 "Enable native trackpad gestures on Titan 2 Elite" |
+| D7 | On the Elite (`Titan 2 Elite_V02.00.04`, Android 16) an up-swipe on the key surface reaches the focused app and the IME as a synthetic key event: KEYCODE_DPAD_UP, scanCode 19 (equal to the keycode, not the kernel scancode), deviceId of the `touchPad` device, source KEYBOARD (0x101), repeat 0, down then up. A down-swipe is KEYCODE_DPAD_DOWN, scanCode 20. The synthesis happens in system_server (log tags `A85ShortcutFunction`, `AguiKeyboardShortcut`) with Scroll Assistant off. In the same session no SOURCE_TOUCHPAD motion event reached the IME's focused decor view, and `dumpsys input` shows the reader mapping the device with a touch mapper in DIRECT mode bound to the display. | logcat and `dumpsys input`, 2026-09-21 (brobata/physiboard#11) |
 
 ### 3.2 Status on the Elite
 
@@ -293,6 +294,9 @@ superseded; its detector code remains, disabled, for upstream parity"). What rem
 - The default provider is `native_ime`, which needs no Shizuku.
 - The Shizuku provider would read `/dev/input/event7` on the Elite (D4), which is `ff_key`,
   not the touch layer, so it can never see a swipe there.
+- On the Elite the swipe arrives as KEYCODE_DPAD_UP from the `touchPad` device (D7), so the
+  native provider's motion listener never fires there; a keycode path like the swipe-to-delete
+  `titan2_keycode` provider is the one that can work, and it cannot know the third.
 - PhysiBoard does not use the Elite's keyboard-surface scroll gestures for cursor movement
   at all. Cursor movement is the screen trackpad (section 2) and nav mode (section 5).
 
@@ -1032,7 +1036,7 @@ trackpad, "map" the Fn Layer map.
 | Keep-screen-on on the overlay | keep | free |
 | Trackpad debug activity and overlay service | drop | unreachable and unregistered |
 | Keyboard-surface swipe, Shizuku provider | drop | reads the wrong device on the Elite; Shizuku is gone from the app |
-| Keyboard-surface swipe, native provider | undecided | the touch layer (D1, D2) is real hardware nobody has used from the IME on the Elite; needs a capture on the phone before deciding (brobata/physiboard#11 offers one from an Elite); if kept, thirds must be measured again and the rows need a screen (settings-catalog.md section 13)st 1080 not 1440 |
+| Keyboard-surface swipe, native provider | undecided | the touch layer (D1, D2) is real hardware; the capture (D7, brobata/physiboard#11) shows the Elite delivers the swipe as a KEYCODE_DPAD_UP key event, not touchpad motion, so keep a keycode provider (centre slot only) and treat the motion provider as other-device; the rows need a screen either way (settings-catalog.md section 13) |
 | Add-word gesture rule | drop unless the native provider is kept | it has no other trigger |
 | Firmware swipe keycodes 322 / 404 | undecided | needs a capture of what the Elite firmware sends |
 | Caret badge | keep | the reason the LED strip is off by default |
