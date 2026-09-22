@@ -257,6 +257,46 @@ double-space behaviour is described one way in its test row and another way in t
 rule, and the Alt-layer follow-up reads as unconditional while only one of its three branches is
 explicitly exempted. Both were implemented literally and marked in the code.
 
+## The editor is not a reliable narrator
+
+Added 2026-09-21, and it changes the pipeline's contract rather than adding a feature.
+
+A keyboard is usually designed against a plain text field that answers every question truthfully
+and immediately. Almost nothing a person actually types into behaves that way. Teams, Slack and
+Discord put a custom composer on screen that positions itself from keyboard insets. A web app
+installed to the home screen, PersaLink among them, reaches the keyboard through a browser's
+proxy connection. Compose and Flutter fields apply edits asynchronously. Some custom views
+accept text and never report their own state at all.
+
+That produced three distinct failures in 2.x, each fixed separately and late:
+
+| The editor... | Symptom | Where it bit |
+|---|---|---|
+| will not answer | reads come back null or throw | web views, custom composers |
+| answers with stale text | rules fire on text that is no longer there | asynchronous editors |
+| mishandles what is written | a composing region duplicates or loses text | web views, some custom editors |
+
+The lesson 2.x paid for is that these cannot be patched per app after the fact. They are a
+property of the contract, so 3.0 states the contract instead:
+
+1. **Never depend on reading back what you just wrote.** The pipeline keeps its own record of
+   what it committed. An editor read is a hint used to detect drift, not the source of truth for
+   the keyboard's own recent output. The dictation bug fixed in 2.0.7 and the deferred-space
+   capital bug found in milestone 2 are both the same mistake, and this rule forbids writing it.
+2. **Trust is a value the pipeline is given, not an assumption it makes.** Full trust for a
+   field that answers properly; hints-only where reads may be stale; blind where reads are
+   unavailable. Under reduced trust the rules that need context are switched off rather than run
+   on a guess, because typing plainly is always better than corrupting the field.
+3. **A composing region is a privilege, not a default.** Where an editor is known to mishandle
+   it, the keyboard commits directly and loses only the underline.
+4. **The app is an input to the pipeline, not a lookup inside it.** The package name arrives
+   with the field, already expanded through the browser-host rule that a home-screen web app
+   needs, and the per-app profile it selects is passed in like any other setting.
+
+The test for whether this has been done properly: every one of these behaviours must be provable
+on the JVM, with an editor that lies, refuses, or answers late, because none of it can be
+verified on a device without the app that misbehaves.
+
 ## Pre-mortem
 
 1. **The parity cliff kills it.** 3.0 stays "almost ready" for months. Guardrail: sideload it
