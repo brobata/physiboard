@@ -118,9 +118,46 @@ object TextInputPipeline {
         resources: TextInputResources,
         state: TextInputState,
         editor: EditorSnapshot,
+        /**
+         * spec: rebuild-from-scratch.md "The editor is not a reliable narrator" point 2: how far
+         * [editor]'s reads for this field may be trusted, supplied by the caller alongside [field]
+         * rather than assumed. Defaulting to [EditorTrust.FULL] means every existing caller that
+         * does not yet resolve a per-app profile ([AppProfile]) keeps today's behaviour exactly.
+         */
+        trust: EditorTrust = EditorTrust.FULL,
     ): TextInputResult = when (request) {
-        is TextInputRequest.Key -> handleAction(request.action, request.shiftHeld, request.altActive, field, settings, resources, state, editor)
+        is TextInputRequest.Key -> handleAction(request.action, request.shiftHeld, request.altActive, field, settings, resources, state, editor, trust)
         is TextInputRequest.AcceptSuggestion -> handleAcceptSuggestion(request.word, field, settings, state, editor)
+    }
+
+    /** [trust]-gated view of [EditorSnapshot.textBeforeCursor]: null whenever [EditorTrust.contextRulesAllowed] is false, so a rule that needs surrounding context (sentence-end capitalisation, boundary correction, the spacing rules that inspect what precedes) sees exactly what an unreadable field would give it, rather than a guess from a possibly-stale answer. spec: rebuild-from-scratch.md "The editor is not a reliable narrator" point 2. */
+    private fun EditorSnapshot.contextTextBeforeCursor(trust: EditorTrust): String? =
+        if (trust.contextRulesAllowed) textBeforeCursor else null
+
+    /**
+     * Runs [BoundaryEngine.evaluate] only when [trust] allows a context rule to run at all and the
+     * editor's own account still agrees with the word this pipeline is tracking ([DriftCheck]).
+     * spec: rebuild-from-scratch.md "The editor is not a reliable narrator" points 1 and 2: a
+     * stale, unavailable or disagreeing read skips the correction outright, exactly like
+     * [BoundaryOutcome.CommitPlain]; the caller still commits the boundary character itself.
+     */
+    private fun evaluateBoundarySafely(
+        trackedWord: String,
+        editor: EditorSnapshot,
+        trust: EditorTrust,
+        boundaryChar: Char,
+        resources: TextInputResources,
+        settings: TextInputSettingsBundle,
+        memory: AutocorrectMemory,
+    ): Pair<AutocorrectMemory, BoundaryOutcome> {
+        val editorWindow = editor.contextTextBeforeCursor(trust)?.takeLast(32)
+        return when (DriftCheck.evaluate(trackedWord, editorWindow)) {
+            is DriftCheck.Agreed -> BoundaryEngine.evaluate(
+                trackedWord, editorWindow!!, boundaryChar, resources.ruleSets, resources.dictionaries, resources.userWords,
+                settings.autocorrect, settings.rankingOptions, settings.lengthChangeAllowance, memory,
+            )
+            DriftCheck.Unavailable, DriftCheck.Disagreed -> memory.afterBoundaryWithoutReplacement() to BoundaryOutcome.CommitPlain
+        }
     }
 
     // ---------------------------------------------------------------------------------------
@@ -136,12 +173,13 @@ object TextInputPipeline {
         resources: TextInputResources,
         state: TextInputState,
         editor: EditorSnapshot,
+        trust: EditorTrust,
     ): TextInputResult = when (action) {
-        is Action.Commit -> handleCommit(action.text, field, settings, resources, state, editor)
-        is Action.Edit -> handleEdit(action.effect, action.extendSelection, shiftHeld, altActive, field, settings, resources, state, editor)
-        is Action.ReplaceRecent -> handleReplaceRecent(action.deleteCount, action.text, field, settings, resources, state, editor)
+        is Action.Commit -> handleCommit(action.text, field, settings, resources, state, editor, trust)
+        is Action.Edit -> handleEdit(action.effect, action.extendSelection, shiftHeld, altActive, field, settings, resources, state, editor, trust)
+        is Action.ReplaceRecent -> handleReplaceRecent(action.deleteCount, action.text, field, settings, resources, state, editor, trust)
         is Action.Multiple -> action.actions.fold(TextInputResult(emptyList(), state)) { acc, next ->
-            val step = handleAction(next, shiftHeld, altActive, field, settings, resources, acc.state, editor)
+            val step = handleAction(next, shiftHeld, altActive, field, settings, resources, acc.state, editor, trust)
             TextInputResult(acc.ops + step.ops, step.state, step.capDecision ?: acc.capDecision)
         }
         // Sym pages/chords, Ctrl combos, commands, status refreshes and plain pass-through carry
@@ -151,10 +189,10 @@ object TextInputPipeline {
         else -> TextInputResult(listOf(EditorOp.PassThroughKey), state)
     }
 
-    private fun handleCommit(text: String, field: FieldContext, settings: TextInputSettingsBundle, resources: TextInputResources, state: TextInputState, editor: EditorSnapshot): TextInputResult {
-        if (text == " ") return handleSpace(field, settings, resources, state, editor)
-        if (text.length == 1 && text[0].isLetter()) return handleLetter(text[0], field, settings, state, editor)
-        if (text.length == 1) return handleAltCharacter(text[0], field, settings, resources, state, editor)
+    private fun handleCommit(text: String, field: FieldContext, settings: TextInputSettingsBundle, resources: TextInputResources, state: TextInputState, editor: EditorSnapshot, trust: EditorTrust): TextInputResult {
+        if (text == " ") return handleSpace(field, settings, resources, state, editor, trust)
+        if (text.length == 1 && text[0].isLetter()) return handleLetter(text[0], field, settings, state, editor, trust)
+        if (text.length == 1) return handleAltCharacter(text[0], field, settings, resources, state, editor, trust)
         // A multi-character commit (a Sym-page string, an emoji, dictation, expansion, clipboard):
         // bypasses every smart feature. spec: SS5.3, SS17 ("Text expansion, dictation result,
         // clipboard paste: commit as plain text; deferred debt untouched, auto-space flag untouched").
@@ -171,10 +209,11 @@ object TextInputPipeline {
         resources: TextInputResources,
         state: TextInputState,
         editor: EditorSnapshot,
+        trust: EditorTrust,
     ): TextInputResult = when (effect) {
         EditEffect.DELETE_CHAR_BACKWARD -> handleBackspace(settings, state, editor, shiftHeld, altActive)
         EditEffect.DELETE_SELECTION_OR_WORD_BACKWARD, EditEffect.DELETE_WORD_BACKWARD -> handleDeleteWordBackward(editor, state)
-        EditEffect.NEWLINE -> handleEnter(field, settings, resources, state, editor)
+        EditEffect.NEWLINE -> handleEnter(field, settings, resources, state, editor, trust)
         EditEffect.SELECT_ALL -> editor.fullText?.let { TextInputResult(listOf(SelectAll.apply(it.text)), state) } ?: TextInputResult(emptyList(), state)
         EditEffect.MOVE_WORD_LEFT -> handleWordMove(MoveDirection.LEFT, extendSelection, state, editor)
         EditEffect.MOVE_WORD_RIGHT -> handleWordMove(MoveDirection.RIGHT, extendSelection, state, editor)
@@ -189,7 +228,7 @@ object TextInputPipeline {
     // An ordinary letter. spec: text-input.md SS5.1, SS5.5.
     // ---------------------------------------------------------------------------------------
 
-    private fun handleLetter(ch: Char, field: FieldContext, settings: TextInputSettingsBundle, state: TextInputState, editor: EditorSnapshot): TextInputResult {
+    private fun handleLetter(ch: Char, field: FieldContext, settings: TextInputSettingsBundle, state: TextInputState, editor: EditorSnapshot, trust: EditorTrust): TextInputResult {
         return when (val debt = DeferredSpace.onNextCommit(state.deferredSpace, ch.toString())) {
             is DeferredSpaceOutcome.InsertSpaceBefore -> {
                 val ops = listOf(EditorOp.CommitText(" "), EditorOp.CommitText(ch.toString()))
@@ -209,7 +248,7 @@ object TextInputPipeline {
                 // no-op when nothing else is armed) so this module's armSource bookkeeping and the
                 // Shift state `:ime` maintains both agree nothing is left owed once this letter
                 // lands.
-                val projected = editor.textBeforeCursor?.let { it + " " }
+                val projected = editor.contextTextBeforeCursor(trust)?.let { it + " " }
                 val (capState, decision) = AutoCapitalization.evaluate(newState.autoCap, field, settings.autoCap, projected)
                 val consumedByThisLetter = decision == CapDecision.ArmOneShot
                 newState = newState.copy(autoCap = if (consumedByThisLetter) capState.withArmSource(null) else capState)
@@ -236,17 +275,17 @@ object TextInputPipeline {
     // layer, which is how this function is reached for a single non-letter character.
     // ---------------------------------------------------------------------------------------
 
-    private fun handleAltCharacter(ch: Char, field: FieldContext, settings: TextInputSettingsBundle, resources: TextInputResources, state: TextInputState, editor: EditorSnapshot): TextInputResult {
-        val textBefore = editor.textBeforeCursor
+    private fun handleAltCharacter(ch: Char, field: FieldContext, settings: TextInputSettingsBundle, resources: TextInputResources, state: TextInputState, editor: EditorSnapshot, trust: EditorTrust): TextInputResult {
+        val textBefore = editor.contextTextBeforeCursor(trust)
 
         when (val debt = DeferredSpace.onNextCommit(state.deferredSpace, ch.toString())) {
             is DeferredSpaceOutcome.InsertSpaceBefore -> {
                 val ops = listOf(EditorOp.CommitText(" "), EditorOp.CommitText(ch.toString()))
-                return altFollowUp(ch, ops, state.copy(deferredSpace = DeferredSpaceDebt.none(), autoSpacePending = true), field, settings, resources, editor, allowBoundaryHandoff = false)
+                return altFollowUp(ch, ops, state.copy(deferredSpace = DeferredSpaceDebt.none(), autoSpacePending = true), field, settings, resources, editor, trust, allowBoundaryHandoff = false)
             }
             is DeferredSpaceOutcome.Kept -> {
                 val ops = listOf(EditorOp.CommitText(ch.toString()))
-                return altFollowUp(ch, ops, state.copy(deferredSpace = debt.debt), field, settings, resources, editor, allowBoundaryHandoff = false)
+                return altFollowUp(ch, ops, state.copy(deferredSpace = debt.debt), field, settings, resources, editor, trust, allowBoundaryHandoff = false)
             }
             else -> Unit
         }
@@ -262,25 +301,29 @@ object TextInputPipeline {
             // skips the boundary hand-off, rather than re-deriving a delete/re-commit sequence for
             // a boundary character the punctuation rule has already reshaped (a narrow no-break
             // space, or a cleaned-up comma).
-            if (ops != null) return altFollowUp(ch, ops, state.copy(autoSpacePending = false), field, settings, resources, editor, allowBoundaryHandoff = false)
+            if (ops != null) return altFollowUp(ch, ops, state.copy(autoSpacePending = false), field, settings, resources, editor, trust, allowBoundaryHandoff = false)
         }
 
-        if (ch == ',' && settings.spacing.commaSpace) {
-            val ops = CommaSpace.apply(textBefore ?: "")
-            return altFollowUp(ch, ops, state.copy(autoSpacePending = true), field, settings, resources, editor, allowBoundaryHandoff = false)
+        // spec: rebuild-from-scratch.md "The editor is not a reliable narrator" point 2: comma
+        // space inspects what precedes just like the other SS5.2 alternatives above, so it needs
+        // the same `textBefore != null` gate (previously missing here: it fell back to an empty
+        // string and ran on a guess rather than switching off, see the fix's own report).
+        if (ch == ',' && settings.spacing.commaSpace && textBefore != null) {
+            val ops = CommaSpace.apply(textBefore)
+            return altFollowUp(ch, ops, state.copy(autoSpacePending = true), field, settings, resources, editor, trust, allowBoundaryHandoff = false)
         }
 
         if (state.autoSpacePending && textBefore != null) {
             val two = textBefore.takeLast(2)
             val hasOpenQuote = ch == '"' && editor.lineBeforeCursor?.let { QuoteScan.hasUnclosedOpeningQuote(it) } == true
             val ops = AutoSpaceReplacement.apply(true, ch, two, settings.spacing.removeBeforeList, hasOpenQuote)
-            if (ops != null) return altFollowUp(ch, ops, state.copy(autoSpacePending = false), field, settings, resources, editor, allowBoundaryHandoff = false)
+            if (ops != null) return altFollowUp(ch, ops, state.copy(autoSpacePending = false), field, settings, resources, editor, trust, allowBoundaryHandoff = false)
         }
 
         // None of the SS5.2 alternatives applied: clear the auto-space flag and commit plainly,
         // then run the full SS5.4 follow-up, including the boundary hand-off.
         val plainOps = listOf(EditorOp.CommitText(ch.toString()))
-        return altFollowUp(ch, plainOps, state.copy(autoSpacePending = false), field, settings, resources, editor, allowBoundaryHandoff = true)
+        return altFollowUp(ch, plainOps, state.copy(autoSpacePending = false), field, settings, resources, editor, trust, allowBoundaryHandoff = true)
     }
 
     /** spec: text-input.md SS5.4. [precedingOps] is whatever SS5.2 already decided to commit for [ch]. */
@@ -292,6 +335,7 @@ object TextInputPipeline {
         settings: TextInputSettingsBundle,
         resources: TextInputResources,
         editor: EditorSnapshot,
+        trust: EditorTrust,
         allowBoundaryHandoff: Boolean,
     ): TextInputResult {
         var newState = stateAfterCommit
@@ -299,7 +343,7 @@ object TextInputPipeline {
             newState = newState.copy(deferredSpace = DeferredSpace.onPunctuationInList())
         }
 
-        val prevChar = editor.textBeforeCursor?.lastOrNull()
+        val prevChar = editor.contextTextBeforeCursor(trust)?.lastOrNull()
         if (WordChars.isApostrophe(ch) && prevChar != null && prevChar.isLetterOrDigit()) {
             newState = newState.copy(currentWord = newState.currentWord.onCharacterCommitted(ch))
             return TextInputResult(precedingOps, newState)
@@ -307,13 +351,7 @@ object TextInputPipeline {
 
         if (allowBoundaryHandoff && ch in WordChars.BOUNDARY_PUNCTUATION) {
             val trackedWord = newState.currentWord.word
-            // BoundaryEngine wants the word itself still present in this window (it needs it to
-            // match a text-replacement trigger); it strips the word internally only for its own
-            // hard-boundary scan.
-            val (memory, outcome) = BoundaryEngine.evaluate(
-                trackedWord, editor.textBeforeCursor.orEmpty().takeLast(32), ch, resources.ruleSets, resources.dictionaries, resources.userWords,
-                settings.autocorrect, settings.rankingOptions, settings.lengthChangeAllowance, newState.autocorrectMemory,
-            )
+            val (memory, outcome) = evaluateBoundarySafely(trackedWord, editor, trust, ch, resources, settings, newState.autocorrectMemory)
             newState = newState.copy(autocorrectMemory = memory, currentWord = CurrentWordTracker.empty())
             return when (outcome) {
                 is BoundaryOutcome.Replaced -> {
@@ -345,7 +383,7 @@ object TextInputPipeline {
      * replacement with a smart-punctuation rule in the same keystroke; it only clears a pending
      * auto-space flag, matching SS6.3's plain "Backspace clears the flag" family of rules.
      */
-    private fun handleReplaceRecent(deleteCount: Int, text: String, field: FieldContext, settings: TextInputSettingsBundle, resources: TextInputResources, state: TextInputState, editor: EditorSnapshot): TextInputResult {
+    private fun handleReplaceRecent(deleteCount: Int, text: String, field: FieldContext, settings: TextInputSettingsBundle, resources: TextInputResources, state: TextInputState, editor: EditorSnapshot, trust: EditorTrust): TextInputResult {
         val ops = listOf(EditorOp.ReplaceBeforeCursor(deleteCount, text))
         val ch = text.singleOrNull()
         val baseState = state.copy(autoSpacePending = false)
@@ -353,22 +391,22 @@ object TextInputPipeline {
             val tracker = if (ch != null) baseState.currentWord.onCharacterReplaced(ch) else CurrentWordTracker.empty()
             return TextInputResult(ops, baseState.copy(currentWord = tracker))
         }
-        return altFollowUp(ch, ops, baseState, field, settings, resources, editor, allowBoundaryHandoff = true)
+        return altFollowUp(ch, ops, baseState, field, settings, resources, editor, trust, allowBoundaryHandoff = true)
     }
 
     // ---------------------------------------------------------------------------------------
     // Space. spec: text-input.md SS6.1 (unrestricted), SS6.2 (restricted).
     // ---------------------------------------------------------------------------------------
 
-    private fun handleSpace(field: FieldContext, settings: TextInputSettingsBundle, resources: TextInputResources, state: TextInputState, editor: EditorSnapshot): TextInputResult {
-        val textBefore = editor.textBeforeCursor
+    private fun handleSpace(field: FieldContext, settings: TextInputSettingsBundle, resources: TextInputResources, state: TextInputState, editor: EditorSnapshot, trust: EditorTrust): TextInputResult {
+        val textBefore = editor.contextTextBeforeCursor(trust)
         val isSecondPress = state.doubleSpaceTimer.isSecondPress(editor.nowMs)
         var newState = state.copy(
             doubleSpaceTimer = state.doubleSpaceTimer.recordSpaceDown(editor.nowMs),
             deferredSpace = DeferredSpace.cancelled(),
         )
 
-        if (field.isRestricted) return handleRestrictedSpace(field, settings, resources, newState, editor)
+        if (field.isRestricted) return handleRestrictedSpace(field, settings, resources, newState, editor, trust)
 
         // SS6.1 step 1: double-space period.
         if (textBefore != null && field.doubleSpacePeriodAllowed) {
@@ -403,10 +441,7 @@ object TextInputPipeline {
 
         // SS6.1 step 5: the boundary hand-off, with its trailing-space guarantee.
         val trackedWord = newState.currentWord.word
-        val (memory, outcome) = BoundaryEngine.evaluate(
-            trackedWord, textBefore.orEmpty().takeLast(32), ' ', resources.ruleSets, resources.dictionaries, resources.userWords,
-            settings.autocorrect, settings.rankingOptions, settings.lengthChangeAllowance, newState.autocorrectMemory,
-        )
+        val (memory, outcome) = evaluateBoundarySafely(trackedWord, editor, trust, ' ', resources, settings, newState.autocorrectMemory)
         newState = newState.copy(autocorrectMemory = memory, currentWord = CurrentWordTracker.empty())
 
         val ops = mutableListOf<EditorOp>()
@@ -430,16 +465,12 @@ object TextInputPipeline {
     }
 
     /** spec: text-input.md SS6.2. */
-    private fun handleRestrictedSpace(field: FieldContext, settings: TextInputSettingsBundle, resources: TextInputResources, state: TextInputState, editor: EditorSnapshot): TextInputResult {
-        val textBefore = editor.textBeforeCursor
+    private fun handleRestrictedSpace(field: FieldContext, settings: TextInputSettingsBundle, resources: TextInputResources, state: TextInputState, editor: EditorSnapshot, trust: EditorTrust): TextInputResult {
         if (!settings.autocorrect.autoCorrectEnabled) {
             return TextInputResult(listOf(EditorOp.PassThroughKey), state)
         }
         val trackedWord = state.currentWord.word
-        val (memory, outcome) = BoundaryEngine.evaluate(
-            trackedWord, textBefore.orEmpty().takeLast(32), ' ', resources.ruleSets, resources.dictionaries, resources.userWords,
-            settings.autocorrect, settings.rankingOptions, settings.lengthChangeAllowance, state.autocorrectMemory,
-        )
+        val (memory, outcome) = evaluateBoundarySafely(trackedWord, editor, trust, ' ', resources, settings, state.autocorrectMemory)
         val newState = state.copy(autocorrectMemory = memory, currentWord = CurrentWordTracker.empty())
         return when (outcome) {
             is BoundaryOutcome.Replaced -> {
@@ -465,15 +496,12 @@ object TextInputPipeline {
     // "Enter becomes a newline" case, run through the same boundary hand-off as Space.
     // ---------------------------------------------------------------------------------------
 
-    private fun handleEnter(field: FieldContext, settings: TextInputSettingsBundle, resources: TextInputResources, state: TextInputState, editor: EditorSnapshot): TextInputResult {
+    private fun handleEnter(field: FieldContext, settings: TextInputSettingsBundle, resources: TextInputResources, state: TextInputState, editor: EditorSnapshot, trust: EditorTrust): TextInputResult {
         var newState = state.copy(deferredSpace = DeferredSpace.cancelled(), autoCap = state.autoCap.consumedUnconditionally())
-        val textBefore = editor.textBeforeCursor
+        val textBefore = editor.contextTextBeforeCursor(trust)
         val trackedWord = newState.currentWord.word
 
-        val (memory, outcome) = BoundaryEngine.evaluate(
-            trackedWord, textBefore.orEmpty().takeLast(32), '\n', resources.ruleSets, resources.dictionaries, resources.userWords,
-            settings.autocorrect, settings.rankingOptions, settings.lengthChangeAllowance, newState.autocorrectMemory,
-        )
+        val (memory, outcome) = evaluateBoundarySafely(trackedWord, editor, trust, '\n', resources, settings, newState.autocorrectMemory)
         newState = newState.copy(autocorrectMemory = memory, currentWord = CurrentWordTracker.empty(), autoSpacePending = false)
 
         val ops = mutableListOf<EditorOp>(EditorOp.FinishComposing)

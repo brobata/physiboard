@@ -17,6 +17,7 @@ import brobata.physiboard.core.text.CapDecision
 import brobata.physiboard.core.text.DeferredSpace
 import brobata.physiboard.core.text.EditorOp
 import brobata.physiboard.core.text.EditorSnapshot
+import brobata.physiboard.core.text.EditorTrust
 import brobata.physiboard.core.text.FieldContext
 import brobata.physiboard.core.text.FieldKind
 import brobata.physiboard.core.text.RankedSuggestion
@@ -72,6 +73,7 @@ internal class KeyboardPipeline(
     private var typingState = TypingSessionState()
     private var textInputState = TextInputState()
     private var activeField = FieldContext(FieldKind.NOT_EDITABLE)
+    private var activeTrust = EditorTrust.FULL
 
     val fieldContext: FieldContext get() = activeField
 
@@ -85,9 +87,15 @@ internal class KeyboardPipeline(
     // info: `:ime`'s job, not this class's, see KeyboardSession.classifyField).
     // -----------------------------------------------------------------------------------------
 
-    /** A field started (fresh or restarting). spec: text-input.md SS3, SS9.1 ("field start" trigger). */
-    fun onStartInput(field: FieldContext) {
+    /**
+     * A field started (fresh or restarting). spec: text-input.md SS3, SS9.1 ("field start"
+     * trigger). [trust] is the per-app profile's editor-trust default (spec: rebuild-from-scratch.md
+     * "The editor is not a reliable narrator" point 4, "the per-app profile it selects is passed
+     * in like any other setting"); [KeyboardSession] resolves it before calling this.
+     */
+    fun onStartInput(field: FieldContext, trust: EditorTrust = EditorTrust.FULL) {
         activeField = field
+        activeTrust = trust
         textInputState = textInputState.forNewField()
         typingState = TypingSessionState()
         modifierState = ModifierMachine.fullReset(modifierState, preserveNavModeLatch = true)
@@ -111,12 +119,18 @@ internal class KeyboardPipeline(
      * for a move it did not cause itself.
      */
     fun onExternalSelectionChange(textBeforeCursor: String?) {
+        // Resyncing the keyboard's own record to what the editor just reported is always allowed:
+        // that is the drift-recovery path itself (rebuild-from-scratch.md "The editor is not a
+        // reliable narrator" point 1), not a guess a reduced [activeTrust] should suppress.
         val resynced = textBeforeCursor?.let { textInputState.currentWord.syncedFrom(it) } ?: textInputState.currentWord.reset()
         textInputState = textInputState.copy(
             currentWord = resynced,
             deferredSpace = DeferredSpace.cancelled(),
         )
-        val (capState, decision) = AutoCapitalization.evaluate(textInputState.autoCap, activeField, settings.textInput.autoCap, textBeforeCursor)
+        // Sentence-end capitalisation, in contrast, needs surrounding context to be right rather
+        // than merely present, so it follows [activeTrust] like every other context rule (point 2).
+        val capContext = if (activeTrust.contextRulesAllowed) textBeforeCursor else null
+        val (capState, decision) = AutoCapitalization.evaluate(textInputState.autoCap, activeField, settings.textInput.autoCap, capContext)
         textInputState = textInputState.copy(autoCap = capState)
         applyCapDecision(decision)
     }
@@ -292,7 +306,7 @@ internal class KeyboardPipeline(
 
     private fun textPipelineStep(action: Action, shiftHeld: Boolean, altActive: Boolean, editor: EditorSnapshot): PipelineResult {
         val request = TextInputRequest.Key(action, shiftHeld = shiftHeld, altActive = altActive)
-        val result = TextInputPipeline.handle(request, activeField, settings.textInput, resources, textInputState, editor)
+        val result = TextInputPipeline.handle(request, activeField, settings.textInput, resources, textInputState, editor, activeTrust)
         textInputState = result.state
         result.capDecision?.let(::applyCapDecision)
         return toPipelineResult(result.ops)

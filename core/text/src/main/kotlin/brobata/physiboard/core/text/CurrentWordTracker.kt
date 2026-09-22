@@ -52,8 +52,7 @@ data class CurrentWordTracker private constructor(val word: String, private val 
      */
     fun syncedFrom(textBeforeCursor: String): CurrentWordTracker {
         val raw = WordChars.wordEndingAt(textBeforeCursor, textBeforeCursor.length)
-        val straightened = buildString(raw.length) { for (c in raw) append(WordChars.straighten(c)) }
-        return CurrentWordTracker(straightened.takeLast(maxLength), maxLength)
+        return CurrentWordTracker(WordChars.straightenAll(raw).takeLast(maxLength), maxLength)
     }
 
     private fun appendCapped(base: String, ch: Char): String =

@@ -12,6 +12,8 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
+import brobata.physiboard.core.text.AppProfile
+import brobata.physiboard.core.text.AppProfileResolver
 import brobata.physiboard.device.titan.KeyNormalizer
 import brobata.physiboard.device.titan.TitanLayouts
 
@@ -25,7 +27,16 @@ import brobata.physiboard.device.titan.TitanLayouts
  * clock for. spec: docs/plans/rebuild-from-scratch.md, "`:ime` decides nothing. It reads, it
  * calls, it applies."
  */
-internal class KeyboardSession(private val service: InputMethodService) {
+internal class KeyboardSession(
+    private val service: InputMethodService,
+    // SPEC GAP / missing module: there is no `:settings` module yet (rebuild-from-scratch build
+    // order step 6; this task's own instruction is not to build one), so the per-app profile list
+    // and the WebAPK-to-host lookup (per-app-behavior.md SS2.2, read from installed-package
+    // manifest metadata) are shipped defaults here, exactly like [KeyboardSettings]; wiring a real
+    // settings store later means constructing this session with real values instead.
+    private val appProfiles: List<AppProfile> = emptyList(),
+    private val webApkHost: (String) -> String? = { null },
+) {
 
     // SPEC GAP / missing module: the Titan 2 Elite is the only device this build ships to (this
     // module's own rebuild plan), so the layout is not yet selectable; when a settings/layout
@@ -60,8 +71,12 @@ internal class KeyboardSession(private val service: InputMethodService) {
 
     fun onStartInput(info: EditorInfo?, restarting: Boolean) {
         handler.removeCallbacks(longPressRunnable)
-        val field = classifyField(info)
-        pipeline.onStartInput(field)
+        // spec: per-app-behavior.md SS2.1, "the package name comes from the editor"; SS2.2's
+        // WebAPK-host rule is what lets a profile filed under a web app's own shell identity still
+        // match here, since `info.packageName` reports the host browser for one, never the shell.
+        val profile = AppProfileResolver.resolve(info?.packageName, appProfiles, webApkHost)
+        val field = classifyField(info, profile)
+        pipeline.onStartInput(field, profile.editorTrust)
         service.setCandidatesViewShown(field.isReallyEditable)
         refreshCandidatesStrip()
     }

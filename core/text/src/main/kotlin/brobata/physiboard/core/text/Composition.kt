@@ -39,20 +39,54 @@ object Composition {
      * be observed by `:ime` actually calling the `InputConnection`, so it is on `:ime` to check the
      * result of [EditorOp.SetComposingRegion] and discard the rest of this list if it failed,
      * rather than something this pure function could ever detect on its own.
+     *
+     * [composingSafety], when [ComposingSafety.UNSAFE], drops the whole composing dance in favour
+     * of a direct delete-and-commit (spec: rebuild-from-scratch.md "The editor is not a reliable
+     * narrator" point 3, "the keyboard commits directly and loses only the underline"): the app is
+     * still asked to finish whatever composition it may already be holding of its own accord, but
+     * this function never asks it to start one. That only works when the span to replace is
+     * anchored at the cursor ([charsBeforeCursor] equal to [targetLength], the ordinary long-press
+     * shape); for a span further back, a direct commit has no way to reach it without a composing
+     * region or an absolute document offset this module never has, so nothing is changed at all
+     * rather than guess at one (same "nothing is changed" rule as an outright refusal above).
      */
     fun replaceVariation(
         charsBeforeCursor: Int,
         targetLength: Int,
         replacement: String,
         selectionBeforeReplacement: TextWindow? = null,
-    ): List<EditorOp> = buildList {
-        add(EditorOp.FinishComposing)
-        add(EditorOp.SetComposingRegion(charsBeforeCursor, targetLength))
-        add(EditorOp.CommitText(replacement))
-        add(EditorOp.FinishComposing)
-        if (selectionBeforeReplacement != null) {
-            val shift = replacement.length - targetLength
-            add(EditorOp.SetSelection(selectionBeforeReplacement.cursorOrSelectionStart + shift, selectionBeforeReplacement.selectionEnd + shift))
+        composingSafety: ComposingSafety = ComposingSafety.SAFE,
+    ): List<EditorOp> {
+        if (composingSafety == ComposingSafety.UNSAFE) {
+            return replaceVariationWithoutComposing(charsBeforeCursor, targetLength, replacement, selectionBeforeReplacement)
+        }
+        return buildList {
+            add(EditorOp.FinishComposing)
+            add(EditorOp.SetComposingRegion(charsBeforeCursor, targetLength))
+            add(EditorOp.CommitText(replacement))
+            add(EditorOp.FinishComposing)
+            if (selectionBeforeReplacement != null) {
+                val shift = replacement.length - targetLength
+                add(EditorOp.SetSelection(selectionBeforeReplacement.cursorOrSelectionStart + shift, selectionBeforeReplacement.selectionEnd + shift))
+            }
+        }
+    }
+
+    private fun replaceVariationWithoutComposing(
+        charsBeforeCursor: Int,
+        targetLength: Int,
+        replacement: String,
+        selectionBeforeReplacement: TextWindow?,
+    ): List<EditorOp> {
+        if (charsBeforeCursor != targetLength) return emptyList()
+        return buildList {
+            add(EditorOp.FinishComposing)
+            add(EditorOp.DeleteSurrounding(charsBeforeCursor, 0))
+            add(EditorOp.CommitText(replacement))
+            if (selectionBeforeReplacement != null) {
+                val shift = replacement.length - targetLength
+                add(EditorOp.SetSelection(selectionBeforeReplacement.cursorOrSelectionStart + shift, selectionBeforeReplacement.selectionEnd + shift))
+            }
         }
     }
 }

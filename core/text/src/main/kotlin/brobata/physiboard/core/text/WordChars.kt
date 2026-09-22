@@ -21,6 +21,15 @@ object WordChars {
     fun straighten(ch: Char): Char = if (isApostrophe(ch)) '\'' else ch
 
     /**
+     * [straighten] applied to every character of [text]. Used wherever a live editor read is
+     * compared against this subsystem's own record ([CurrentWordTracker], [DriftCheck]), since the
+     * record folds apostrophe variants but a real commit does not (it types back exactly the key
+     * the user pressed); comparing both in this folded form keeps an apostrophe style difference
+     * from ever looking like drift.
+     */
+    fun straightenAll(text: String): String = buildString(text.length) { for (c in text) append(straighten(c)) }
+
+    /**
      * Whether `text[index]` joins a word, given the characters to its left in [text]. A letter or
      * digit in any script always joins; an apostrophe joins only when the character immediately
      * before it is itself a letter or digit, so "l'amico" is one word but a leading apostrophe

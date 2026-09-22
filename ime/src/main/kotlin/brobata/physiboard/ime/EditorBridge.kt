@@ -5,6 +5,7 @@ import android.view.KeyEvent
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
+import brobata.physiboard.core.text.AppProfile
 import brobata.physiboard.core.text.EditorOp
 import brobata.physiboard.core.text.EditorSnapshot
 import brobata.physiboard.core.text.FieldCapFlags
@@ -82,7 +83,11 @@ internal fun InputConnection.applyEditorOps(
                 EditorOp.FinishComposing -> finishComposingText()
                 is EditorOp.SetComposingRegion -> {
                     val start = (cursorAbsolute - op.charsBeforeCursor).coerceAtLeast(0)
-                    setComposingRegion(start, start + op.length)
+                    // spec: Composition.replaceVariation KDoc, "If the app refuses to set the
+                    // composing region, nothing is changed": that refusal can only be observed
+                    // here, so the ops that assumed it worked (the replacement text, the restoring
+                    // FinishComposing/SetSelection) must not run either.
+                    if (!setComposingRegion(start, start + op.length)) return
                 }
                 is EditorOp.SetSelection -> setSelection(windowStartOffset + op.start, windowStartOffset + op.end)
                 EditorOp.SendSpaceKeyFallback -> sendSpaceKeyFallback()
@@ -105,20 +110,26 @@ internal fun InputConnection.sendSpaceKeyFallback(nowMs: Long) {
  * Classifies the focused field from Android's own [EditorInfo] into the one value `:core:text`
  * ever sees. spec: text-input.md SS3.
  *
- * SPEC GAP: raw-mode apps ([FieldKind.RAW_MODE_APP]) and "editable but not really editable"
- * fields ([FieldContext.isEditableButNotReallyEditable]) both depend on a per-app list or a
- * custom-view heuristic that lives in a settings/data module not yet built (rebuild-from-scratch
- * build order step 6); this function never produces either value. Every field classifies as one
- * of the other [FieldKind]s, which is the closest correct answer until that module exists rather
- * than a guess at its data.
+ * [profile] supplies the two facts that [EditorInfo] alone cannot answer, closing the SPEC GAPs
+ * this function used to record: [AppProfile.exactTypingEnabled] escalates an otherwise-unrestricted
+ * text field to [FieldKind.RAW_MODE_APP] (per-app-behavior.md SS4.1, "every field that has no
+ * field-type restriction of its own"; SS4.2, "Raw mode is the reason only when none of those
+ * [variations] match" -- so it never overrides a variation already classified above), and
+ * [AppProfile.unclassifiedFieldsAreEditable] turns an unclassified field (`TYPE_NULL`, the only
+ * value `TYPE_MASK_CLASS` leaves once TEXT, NUMBER, PHONE and DATETIME are accounted for) into a
+ * [FieldKind.NORMAL] field with [FieldContext.isEditableButNotReallyEditable] set, matching
+ * text-input.md SS3's "some custom views" case, instead of the blanket [FieldKind.NOT_EDITABLE]
+ * every such field got before a profile could say otherwise (see [AppProfile]'s own KDoc for why
+ * this remains a caller-supplied flag rather than a heuristic).
  */
-internal fun classifyField(info: EditorInfo?): FieldContext {
+internal fun classifyField(info: EditorInfo?, profile: AppProfile = AppProfile.default(null)): FieldContext {
     if (info == null) return FieldContext(FieldKind.NOT_EDITABLE)
 
     val inputType = info.inputType
     val fieldClass = inputType and InputType.TYPE_MASK_CLASS
     val variation = inputType and InputType.TYPE_MASK_VARIATION
 
+    var isEditableButNotReallyEditable = false
     val kind = when (fieldClass) {
         InputType.TYPE_CLASS_TEXT -> when (variation) {
             InputType.TYPE_TEXT_VARIATION_URI -> FieldKind.URL
@@ -128,13 +139,18 @@ internal fun classifyField(info: EditorInfo?): FieldContext {
             -> FieldKind.PASSWORD
             InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS -> FieldKind.EMAIL
             InputType.TYPE_TEXT_VARIATION_FILTER -> FieldKind.FILTER
-            else -> FieldKind.NORMAL
+            else -> if (profile.exactTypingEnabled) FieldKind.RAW_MODE_APP else FieldKind.NORMAL
         }
         InputType.TYPE_CLASS_NUMBER ->
             if (variation == InputType.TYPE_NUMBER_VARIATION_PASSWORD) FieldKind.PASSWORD else FieldKind.NUMBER_OR_PHONE
         InputType.TYPE_CLASS_PHONE -> FieldKind.NUMBER_OR_PHONE
         InputType.TYPE_CLASS_DATETIME -> FieldKind.DATE_TIME
-        else -> FieldKind.NOT_EDITABLE
+        else -> if (profile.unclassifiedFieldsAreEditable) {
+            isEditableButNotReallyEditable = true
+            FieldKind.NORMAL
+        } else {
+            FieldKind.NOT_EDITABLE
+        }
     }
 
     val capFlags = FieldCapFlags(
@@ -148,6 +164,7 @@ internal fun classifyField(info: EditorInfo?): FieldContext {
         capFlags = capFlags,
         imeAction = imeActionOf(info),
         isMultiLine = inputType and InputType.TYPE_TEXT_FLAG_MULTI_LINE != 0,
+        isEditableButNotReallyEditable = isEditableButNotReallyEditable,
     )
 }
 
