@@ -33,6 +33,8 @@ include(":core:text")
 include(":core:dict")
 include(":core:pointer")
 include(":core:speech")
+include(":core:settings")
+include(":core:strip")
 include(":device:titan")
 
 // The Android side. It adapts the pipeline to the platform and owns nothing else.

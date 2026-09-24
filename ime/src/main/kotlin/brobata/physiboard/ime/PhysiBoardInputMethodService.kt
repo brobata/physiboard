@@ -21,7 +21,8 @@ import android.view.inputmethod.EditorInfo
  */
 class PhysiBoardInputMethodService : InputMethodService() {
 
-    private val keyboard by lazy { KeyboardSession(this) }
+    /** The settings store lives in `:app` (see [SettingsSourceOwner]); a host without one leaves the session on its shipped defaults. */
+    private val keyboard by lazy { KeyboardSession(this, settingsSource = (applicationContext as? SettingsSourceOwner)?.settingsSource) }
 
     override fun onCreateInputView(): View? = null
 
@@ -39,6 +40,39 @@ class PhysiBoardInputMethodService : InputMethodService() {
 
     override fun onCreateCandidatesView(): View = keyboard.onCreateCandidatesView()
 
+    /**
+     * spec: status-bar.md SS3.2 and SS12.2. The platform's answer is kept (it is "no" on this
+     * keyboard, see [onEvaluateInputViewShown]); what matters is that a refusal for a listed
+     * app is the trigger of the per-app dip, and a configuration change never is.
+     */
+    override fun onShowInputRequested(flags: Int, configChange: Boolean): Boolean {
+        val shown = super.onShowInputRequested(flags, configChange)
+        keyboard.onShowInputRequested(configurationChange = configChange, refused = !shown)
+        return shown
+    }
+
+    /**
+     * spec: status-bar.md SS12.2: "While the hold is on (the first 200 ms), every other request
+     * to show the candidates view is refused, including PhysiBoard's own re-show", so that the
+     * hide reaches the app as its own event (D5). A hide always goes through.
+     */
+    override fun setCandidatesViewShown(shown: Boolean) {
+        if (shown && keyboard.refusesCandidatesShow()) return
+        super.setCandidatesViewShown(shown)
+    }
+
+    /** spec: status-bar.md SS11: the inset policy is applied after the platform computed its own. */
+    override fun onComputeInsets(outInsets: Insets) {
+        super.onComputeInsets(outInsets)
+        keyboard.onComputeInsets(outInsets)
+    }
+
+    /** spec: status-bar.md SS13: "When the window is shown again the strip is refreshed immediately." */
+    override fun onWindowShown() {
+        super.onWindowShown()
+        keyboard.onKeyboardWindowShown()
+    }
+
     override fun onStartInput(info: EditorInfo?, restarting: Boolean) {
         super.onStartInput(info, restarting)
         keyboard.onStartInput(info, restarting)
@@ -55,7 +89,7 @@ class PhysiBoardInputMethodService : InputMethodService() {
         super.onDestroy()
     }
 
-    /** spec: trackpad-caret-nav.md SS2.4, the screen trackpad's own overlay lifetime ("removed on... the keyboard window hiding"). */
+    /** spec: status-bar.md SS13 (unless a dip is in flight, SS12.2) and trackpad-caret-nav.md SS2.4. */
     override fun onWindowHidden() {
         keyboard.onKeyboardWindowHidden()
         super.onWindowHidden()

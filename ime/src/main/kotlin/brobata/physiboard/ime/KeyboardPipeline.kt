@@ -15,6 +15,14 @@ import brobata.physiboard.core.keys.ModifierState
 import brobata.physiboard.core.keys.ShiftValue
 import brobata.physiboard.core.keys.TypingSessionState
 import brobata.physiboard.core.pointer.caret.ModifierGlyphInput
+import brobata.physiboard.core.strip.DipDecision
+import brobata.physiboard.core.strip.DipEffect
+import brobata.physiboard.core.strip.DipState
+import brobata.physiboard.core.strip.ModifierIndicatorInput
+import brobata.physiboard.core.strip.StripDip
+import brobata.physiboard.core.strip.StripInputs
+import brobata.physiboard.core.strip.StripModel
+import brobata.physiboard.core.strip.StripSettings
 import brobata.physiboard.core.text.AppProfile
 import brobata.physiboard.core.text.AutoCapitalization
 import brobata.physiboard.core.text.AutocorrectSettings
@@ -90,6 +98,13 @@ data class KeyboardSettings(
         rankingOptions = RankingOptions(useKeyboardProximity = true),
     ),
     val screenTrackpadEnabled: Boolean = false,
+    /**
+     * spec: status-bar.md SS15. Shipped defaults, same reasoning as [textInput]: the visibility
+     * mode is `ALWAYS` (D9, "the shipped first-run default is 'Always'"), the slots are SS6.3's
+     * first-run baseline, the dip list is seeded with Teams (SS12.2). A settings store constructs
+     * this from its own values later; nothing in the strip reads a preference.
+     */
+    val statusBar: StripSettings = StripSettings(),
 )
 
 /**
@@ -132,7 +147,7 @@ data class PipelineResult(
  * this milestone, so the default does nothing; see [KeyboardSession.handleCommand].
  */
 internal class KeyboardPipeline(
-    private val layout: LayoutDescription,
+    var layout: LayoutDescription,
     var resources: TextInputResources = TextInputResources(),
     var settings: KeyboardSettings = KeyboardSettings(),
     private val onCommand: (String) -> Unit = {},
@@ -420,6 +435,106 @@ internal class KeyboardPipeline(
         textInputState = result.state
         result.capDecision?.let(::applyCapDecision)
         return toPipelineResult(result.ops, result.enterDelivery)
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // The strip. spec: status-bar.md SS1 (the refresh snapshot), SS12 (the per-app dip), SS13
+    // (window hidden). `:core:strip` owns every rule; this class only supplies the modifier,
+    // field and suggestion facts it already holds, and keeps the dip's own small state.
+    // -----------------------------------------------------------------------------------------
+
+    private var dip = DipState()
+
+    /** The package the current field belongs to, or null when no field is open (SS3.5, "No package (no field) counts as not listed"). */
+    private val currentPackageName: String? get() = activeAppProfile.packageName.ifEmpty { null }
+
+    /**
+     * spec: status-bar.md SS1. Everything the strip needs that this pipeline knows: the ranked
+     * suggestions, the field's own suggestion permission, the modifier facts SS7 lights LEDs from
+     * (never a plain physical hold, SS17), nav mode (SS3.4), and the app. What only `:ime` knows
+     * (clipboard count, dictation, the loaded dictionary, the subtype) arrives as parameters.
+     *
+     * SPEC GAP: `:core:text` exposes no add-word candidate for the left slot yet (SS5.1); it is
+     * passed as null until the autocorrect pipeline surfaces one. SPEC GAP: "no dictionary is
+     * installed for the current language (checked by the language code of the current subtype)"
+     * (SS5.2) needs the subtype module; [dictionaryInstalled] is the caller's answer for the one
+     * language this milestone loads.
+     */
+    fun stripModel(clipboardCount: Int, dictationActive: Boolean, dictionaryInstalled: Boolean, subtypeLocale: String?): StripModel {
+        val inputs = StripInputs(
+            packageName = currentPackageName,
+            suggestions = suggestions().map { it.word },
+            addWordCandidate = null,
+            suggestionsEnabled = settings.textInput.autocorrect.suggestionsEnabled,
+            fieldAllowsSuggestions = activeField.suggestionsAllowed,
+            dictionaryInstalled = dictionaryInstalled,
+            modifiers = ModifierIndicatorInput(
+                capsLockOn = modifierState.shift.value == ShiftValue.CAPS,
+                shiftOneShotArmed = modifierState.shift.value == ShiftValue.ONE_SHOT,
+                ctrlLatched = modifierState.ctrl.latched,
+                ctrlOneShotArmed = modifierState.ctrl.oneShot,
+                altLatched = modifierState.alt.latched,
+                altOneShotArmed = modifierState.alt.oneShot,
+                symPage = modifierState.sym.currentPageNumber,
+            ),
+            navModeLatched = modifierState.ctrl.latchFromNavMode,
+            clipboardCount = clipboardCount,
+            dictationActive = dictationActive,
+            subtypeLocale = subtypeLocale,
+        )
+        return StripModel.build(inputs, settings.statusBar)
+    }
+
+    /**
+     * spec: status-bar.md SS6.1: the clipboard and microphone buttons release "a latched Shift or
+     * Alt layer" before acting. Only the layer latches go; a one-shot, caps lock, Ctrl and a
+     * physically held key are not layers and are left alone.
+     */
+    fun releaseLatchedLayersForStripButton() {
+        modifierState = modifierState.copy(
+            shift = modifierState.shift.copy(layerLatched = false),
+            alt = modifierState.alt.copy(latched = false, layerLatched = false),
+        )
+    }
+
+    /**
+     * spec: status-bar.md SS12.2, one refused show request for the current field's app at
+     * [nowMs]. [StripDip] decides; this only remembers the outcome and names the app.
+     */
+    fun onShowRequestRefused(nowMs: Long, stripRendered: Boolean, configurationChange: Boolean): DipDecision {
+        val decision = StripDip.onShowRefused(dip, nowMs, currentPackageName, settings.statusBar.dipApps, stripRendered, configurationChange)
+        dip = decision.state
+        return decision
+    }
+
+    /** spec SS12.2 step 3: the hold's timer fired; answers the re-show once, never twice. */
+    fun onDipHoldElapsed(nowMs: Long): List<DipEffect> {
+        val (next, effects) = StripDip.onHoldElapsed(dip, nowMs)
+        dip = next
+        return effects
+    }
+
+    /** spec SS12.2: while the hold is on, "every other request to show the candidates view is refused, including PhysiBoard's own re-show". */
+    fun refusesCandidatesShow(nowMs: Long): Boolean = StripDip.refusesShowRequest(dip, nowMs)
+
+    /** spec SS12.2, SS17: while the dip is in flight a real hide is indistinguishable from the blink and is treated as the blink. */
+    fun isDipInFlight(nowMs: Long): Boolean = StripDip.isInFlight(dip, nowMs)
+
+    /**
+     * spec: status-bar.md SS13, "When Android hides the window and no dip is in flight...
+     * modifier state is reset (nav mode preserved), and the suggestion context is reset." Returns
+     * false, having touched nothing, while a dip is in flight (SS12.2: "the field, the modifiers
+     * and the suggestion context survive the blink"). The suggestion context reset is
+     * [TextInputState.afterExternalCursorMove] with no text: the tracked word and every
+     * "text right before the cursor as this pipeline left it" fact go; auto-cap's field-level
+     * state stays because the field itself did not change.
+     */
+    fun onWindowHidden(nowMs: Long): Boolean {
+        if (StripDip.skipsWindowHidden(dip, nowMs)) return false
+        typingState = TypingSessionState()
+        modifierState = ModifierMachine.fullReset(modifierState, preserveNavModeLatch = true)
+        textInputState = textInputState.afterExternalCursorMove(null)
+        return true
     }
 
     // -----------------------------------------------------------------------------------------

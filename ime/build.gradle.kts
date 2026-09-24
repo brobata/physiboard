@@ -26,8 +26,12 @@ dependencies {
     api(project(":core:text"))
     api(project(":core:speech"))
     api(project(":core:pointer"))
+    api(project(":core:strip"))
     api(project(":device:titan"))
+    api(project(":core:settings"))
     implementation(libs.androidx.core.ktx)
+    // The settings store is read as a Flow (SettingsSource); collection happens on the main looper.
+    implementation(libs.kotlinx.coroutines.android)
 
     testImplementation(libs.kotlin.test)
     testImplementation(libs.junit.jupiter)

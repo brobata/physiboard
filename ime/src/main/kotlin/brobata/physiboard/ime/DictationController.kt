@@ -60,6 +60,13 @@ internal class DictationController(
 
     val isActive: Boolean get() = session?.active == true
 
+    /**
+     * The recognizer's audio level reports, for the strip's microphone button colour. spec:
+     * status-bar.md SS6.1, "on every audio level report, a red between (128, 0, 0) and
+     * (255, 50, 50)". Set by [KeyboardSession]; null when nothing on screen wants the level.
+     */
+    var onAudioLevel: ((Float) -> Unit)? = null
+
     // -----------------------------------------------------------------------------------------
     // The trigger. spec: dictation.md SS2, SS10.
     // -----------------------------------------------------------------------------------------
@@ -219,7 +226,9 @@ internal class DictationController(
     private val recognitionListener = object : RecognitionListener {
         override fun onReadyForSpeech(params: Bundle?) = dispatch(DictationEvent.ReadyForSpeech)
         override fun onBeginningOfSpeech() = dispatch(DictationEvent.BeginningOfSpeech)
-        override fun onRmsChanged(rmsdB: Float) = Unit // spec SS9: the strip's level colour, no `:settings`/status-bar wiring yet.
+        override fun onRmsChanged(rmsdB: Float) {
+            onAudioLevel?.invoke(rmsdB)
+        }
         override fun onBufferReceived(buffer: ByteArray?) = Unit
         override fun onEndOfSpeech() = Unit
         override fun onError(error: Int) = dispatch(DictationEvent.Error(error))

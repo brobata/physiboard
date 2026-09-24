@@ -45,4 +45,8 @@ dependencies {
     implementation(project(":ime"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
+    // The settings store (settings-catalog.md SS1, SS13 "one preference file with typed rows") and
+    // the one-shot 2.x importer that fills it (rebuild-from-scratch.md, "Settings").
+    implementation(libs.androidx.datastore.preferences)
+    implementation(libs.kotlinx.coroutines.android)
 }
