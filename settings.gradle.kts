@@ -31,6 +31,8 @@ rootProject.name = "PhysiBoard"
 include(":core:keys")
 include(":core:text")
 include(":core:dict")
+include(":core:pointer")
+include(":core:speech")
 include(":device:titan")
 
 // The Android side. It adapts the pipeline to the platform and owns nothing else.

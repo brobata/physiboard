@@ -24,6 +24,8 @@ kotlin {
 
 dependencies {
     api(project(":core:text"))
+    api(project(":core:speech"))
+    api(project(":core:pointer"))
     api(project(":device:titan"))
     implementation(libs.androidx.core.ktx)
 

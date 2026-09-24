@@ -6,6 +6,11 @@
          silence typing feedback. -->
     <uses-permission android:name="android.permission.VIBRATE" />
 
+    <!-- Dictation: spec dictation.md SS10. A keyboard service cannot show the runtime
+         permission dialog itself, so DictationController opens DictationPermissionActivity
+         to ask for it. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
     <application>
         <service
             android:name="brobata.physiboard.ime.PhysiBoardInputMethodService"
@@ -19,6 +24,16 @@
                 android:name="android.view.im"
                 android:resource="@xml/method" />
         </service>
+
+        <!-- spec dictation.md SS10: "translucent, title-less ... new task, clear top; excluded
+             from recents; single task; empty task affinity." -->
+        <activity
+            android:name="brobata.physiboard.ime.DictationPermissionActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:launchMode="singleTask" />
     </application>
 
 </manifest>

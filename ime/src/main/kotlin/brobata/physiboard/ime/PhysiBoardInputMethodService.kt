@@ -48,6 +48,12 @@ class PhysiBoardInputMethodService : InputMethodService() {
         super.onFinishInput()
     }
 
+    /** spec: dictation.md SS3, "Keyboard service destroyed: ... no session-end bookkeeping." */
+    override fun onDestroy() {
+        keyboard.onDictationServiceDestroyed()
+        super.onDestroy()
+    }
+
     override fun onUpdateSelection(
         oldSelStart: Int,
         oldSelEnd: Int,

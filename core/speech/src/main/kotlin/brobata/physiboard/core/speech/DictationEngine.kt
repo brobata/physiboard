@@ -1,0 +1,328 @@
+package brobata.physiboard.core.speech
+
+/**
+ * The whole dictation session as a state machine: `(state, event) -> (state, effects, text ops)`,
+ * with no Android import anywhere in this module. spec: dictation.md, whole document; the specific
+ * section is cited on each private handler below.
+ *
+ * [handle] is the single entry point. Every other function in this file is a private step of it,
+ * kept separate only so each one can cite the one spec rule it encodes; none of them is meant to be
+ * called on its own; the [FirstWordsGrace], [DictationModeDecision], [DictationErrorClassifier],
+ * [UtteranceFinisher] and [LanguageTagResolver] objects are the pieces of this decision that are
+ * useful standalone and are tested directly.
+ */
+object DictationEngine {
+
+    fun handle(
+        state: DictationSession?,
+        event: DictationEvent,
+        now: Long,
+        settings: DictationSettings,
+        textSettings: DictationTextSettings,
+        segmentedRefusalLatch: Boolean,
+    ): DictationOutcome = when (event) {
+        is DictationEvent.Trigger -> handleTrigger(state, event, now, settings, segmentedRefusalLatch)
+        else -> handleWithSession(state, event, now, settings, textSettings, segmentedRefusalLatch)
+    }
+
+    /** spec SS6.6 rule 7: "session already ended ... ignore." Every event but [DictationEvent.Trigger] needs a live session to act on. */
+    private fun handleWithSession(
+        state: DictationSession?,
+        event: DictationEvent,
+        now: Long,
+        settings: DictationSettings,
+        textSettings: DictationTextSettings,
+        segmentedRefusalLatch: Boolean,
+    ): DictationOutcome {
+        val session = state ?: return DictationOutcome(null)
+        return when (event) {
+            is DictationEvent.Trigger -> throw IllegalStateException("Trigger is handled before a session is required")
+            DictationEvent.ReadyForSpeech -> handleReady(session)
+            DictationEvent.BeginningOfSpeech -> handleBeginningOfSpeech(session)
+            is DictationEvent.PartialResult -> handlePartialResult(session, event.text, textSettings)
+            is DictationEvent.FinalResult -> handleFinalResult(session, event.text, now, settings, textSettings)
+            is DictationEvent.SegmentResult -> handleSegmentResult(session, event.text, now, settings, textSettings)
+            DictationEvent.SegmentedSessionEnded -> DictationOutcome(null, endEffects(session, cancelRecognizer = false))
+            is DictationEvent.Error -> handleError(session, event.code, now, settings, textSettings)
+            DictationEvent.EditorFieldClosed -> DictationOutcome(session.copy(editorGoneDeadlineMs = now + DictationTiming.EDITOR_GONE_GRACE_MS))
+            is DictationEvent.EditorFieldOpened -> handleEditorFieldOpened(session, event.ownerPackage)
+            DictationEvent.UserEditedComposingText -> DictationOutcome(session.copy(utterance = session.utterance.copy(pending = PendingUtterance.Invalidated)))
+            DictationEvent.EditorRejectedInsert -> DictationOutcome(null, endEffects(session, cancelRecognizer = true))
+            DictationEvent.StartFailed -> DictationOutcome(null, endEffects(session, cancelRecognizer = false))
+            DictationEvent.ClockTick -> handleClockTick(session, now)
+        }
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // Starting and stopping. spec: dictation.md SS2, SS2.6, SS6.1, SS6.5.
+    // ---------------------------------------------------------------------------------------
+
+    /**
+     * spec SS2: "if a session is currently marked active ... the trigger stops it; otherwise it
+     * starts one." spec SS15 edge case: "Trigger fired twice before the engine reports 'ready' ...
+     * restarts the session state and issues another request instead of stopping", which this
+     * reaches naturally since a not-yet-[DictationSession.active] session takes the same "start
+     * fresh" branch as no session at all.
+     */
+    private fun handleTrigger(
+        state: DictationSession?,
+        event: DictationEvent.Trigger,
+        now: Long,
+        settings: DictationSettings,
+        segmentedRefusalLatch: Boolean,
+    ): DictationOutcome {
+        if (state != null && state.active) return handleExplicitStop(state, now, settings)
+        val mode = DictationModeDecision.decide(settings, segmentedRefusalLatch)
+        val fresh = DictationSession.fresh(event.ownerPackage, now, mode, event.textBeforeSession)
+        return DictationOutcome(fresh, effects = listOf(DictationEffect.StartListening(mode)))
+    }
+
+    /** spec SS6.5: cancels the silence timer, arms the segmented watchdog if applicable, asks the engine to stop. */
+    private fun handleExplicitStop(session: DictationSession, now: Long, settings: DictationSettings): DictationOutcome {
+        val watchdog = if (session.mode == DictationMode.SEGMENTED) now + DictationTiming.watchdogMs(settings.pauseMs) else session.watchdogDeadlineMs
+        val next = session.copy(stopRequested = true, silenceDeadlineMs = null, watchdogDeadlineMs = watchdog)
+        return DictationOutcome(next, effects = listOf(DictationEffect.StopListening))
+    }
+
+    /** spec SS6.1: "Later 'ready' reports within the same session ... do neither; the cue and the strip state are once per session." */
+    private fun handleReady(session: DictationSession): DictationOutcome {
+        if (session.active) return DictationOutcome(session)
+        return DictationOutcome(session.copy(active = true), effects = listOf(DictationEffect.PlayStartCue))
+    }
+
+    /** spec SS6.3, SS6.4: beginning of speech cancels both the silence timer and the segmented watchdog. */
+    private fun handleBeginningOfSpeech(session: DictationSession): DictationOutcome =
+        DictationOutcome(session.copy(silenceDeadlineMs = null, watchdogDeadlineMs = null))
+
+    // ---------------------------------------------------------------------------------------
+    // Partials. spec SS7.1.
+    // ---------------------------------------------------------------------------------------
+
+    private fun handlePartialResult(session: DictationSession, text: String, textSettings: DictationTextSettings): DictationOutcome {
+        if (text.isBlank()) return DictationOutcome(session) // "Empty partials are ignored."
+        val next = session.copy(
+            heardSpeech = true,
+            utterance = session.utterance.copy(pending = PendingUtterance.Live(text)),
+            silenceDeadlineMs = null,
+            watchdogDeadlineMs = null,
+        )
+        val displayed = DictationPartialDisplay.display(text, session.utterance.context, textSettings)
+        return DictationOutcome(next, textOps = listOf(DictationTextOp.SetComposingText(displayed)))
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // Finals. spec SS7.3, SS3 ("pause 0"), SS6.3 (segmented mode ignored), SS6.4 (continuation).
+    // ---------------------------------------------------------------------------------------
+
+    private fun handleFinalResult(session: DictationSession, text: String?, now: Long, settings: DictationSettings, textSettings: DictationTextSettings): DictationOutcome {
+        val finished = finishFromResult(text, session.utterance, textSettings)
+
+        if (session.stopRequested) {
+            return DictationOutcome(null, endEffects(session, cancelRecognizer = false), finished.ops)
+        }
+        if (settings.pauseMs <= 0L) {
+            // spec SS3: "Pause set to 0 and a final arrives (restart-loop mode): one utterance per session."
+            return DictationOutcome(null, endEffects(session, cancelRecognizer = false), finished.ops)
+        }
+        if (session.mode == DictationMode.SEGMENTED) {
+            // spec SS6.3: "An ordinary final arriving in segmented mode means the engine ignored the
+            // request and ran a plain one-shot ... the watchdog (armed with zero segments) will
+            // close the session pause + 5000 ms later and set the latch." No new request is issued.
+            val next = session.copy(
+                utterance = UtteranceState(extendContext(session.utterance.context, finished.plainText), PendingUtterance.None),
+                watchdogDeadlineMs = now + DictationTiming.watchdogMs(settings.pauseMs),
+            )
+            return DictationOutcome(next, textOps = finished.ops)
+        }
+        // spec SS6.4: arm the silence timer and start a continuation at once.
+        val next = session.copy(
+            isContinuation = true,
+            requestStartMs = now,
+            silenceDeadlineMs = now + DictationTiming.silenceTimerMs(settings.pauseMs),
+            utterance = UtteranceState(extendContext(session.utterance.context, finished.plainText), PendingUtterance.None),
+        )
+        return DictationOutcome(next, listOf(DictationEffect.StartListening(DictationMode.RESTART_LOOP)), finished.ops)
+    }
+
+    /** spec SS6.3: one utterance inside a segmented session; committed like a final, then the watchdog is (re)armed. */
+    private fun handleSegmentResult(session: DictationSession, text: String, now: Long, settings: DictationSettings, textSettings: DictationTextSettings): DictationOutcome {
+        val finished = finishFromResult(text, session.utterance, textSettings)
+        val next = session.copy(
+            heardSpeech = true,
+            segmentsSeen = session.segmentsSeen + 1,
+            utterance = UtteranceState(extendContext(session.utterance.context, finished.plainText), PendingUtterance.None),
+            watchdogDeadlineMs = now + DictationTiming.watchdogMs(settings.pauseMs),
+            silenceDeadlineMs = null,
+        )
+        return DictationOutcome(next, textOps = finished.ops)
+    }
+
+    /**
+     * spec SS7.3: "A final with text finishes the utterance with that text. A final without text
+     * finishes the utterance from the last partial instead ... A final without text and with no
+     * partial remembered clears any composing region and inserts nothing." [PendingUtterance.Live]
+     * is the only case that can supply text for the second branch, so an [PendingUtterance.Invalidated]
+     * utterance (spec: the c440844 fix) silently takes the "inserts nothing" path here, structurally,
+     * with no condition to get wrong. A final that carries its OWN non-empty text is fresh data from
+     * the engine, not remembered state, so it is used regardless of invalidation.
+     */
+    private fun finishFromResult(text: String?, utterance: UtteranceState, textSettings: DictationTextSettings): UtteranceFinisher.Finished {
+        val resolvedText = if (!text.isNullOrEmpty()) text else (utterance.pending as? PendingUtterance.Live)?.text
+        return resolvedText?.let { UtteranceFinisher.finish(it, utterance.context, textSettings) } ?: UtteranceFinisher.NOTHING
+    }
+
+    /** The next utterance's frozen context is this utterance's context plus whatever this module itself just wrote; never a fresh read. See [UtteranceContext]'s KDoc. */
+    private fun extendContext(context: UtteranceContext, addedPlainText: String?): UtteranceContext =
+        if (addedPlainText == null) context else UtteranceContext((context.textBeforeUtterance ?: "") + addedPlainText)
+
+    // ---------------------------------------------------------------------------------------
+    // Errors. spec SS6.6: eight rules, tried top to bottom, first match wins.
+    // ---------------------------------------------------------------------------------------
+
+    private fun handleError(session: DictationSession, code: Int, now: Long, settings: DictationSettings, textSettings: DictationTextSettings): DictationOutcome {
+        // Rule 1: segmented refusal (SS6.3).
+        if (session.mode == DictationMode.SEGMENTED &&
+            session.segmentsSeen == 0 &&
+            session.active &&
+            !session.stopRequested &&
+            now - session.requestStartMs < DictationTiming.SEGMENTED_REFUSAL_WINDOW_MS &&
+            DictationErrorClassifier.isSegmentedRefusal(code)
+        ) {
+            val next = session.copy(
+                mode = DictationMode.RESTART_LOOP,
+                isContinuation = false,
+                requestStartMs = now,
+                utterance = session.utterance.copy(pending = PendingUtterance.None),
+            )
+            return DictationOutcome(next, listOf(DictationEffect.StartListening(DictationMode.RESTART_LOOP)), newSegmentedRefusalLatch = true)
+        }
+
+        // Rule 2: not a continuation, and the first-words grace conditions hold (SS6.2).
+        if (!session.isContinuation && FirstWordsGrace.canReListen(session, now, code)) {
+            val next = session.copy(restartsUsed = session.restartsUsed + 1, requestStartMs = now)
+            return if (DictationErrorClassifier.isBusy(code)) {
+                DictationOutcome(next.copy(busyRetryDeadlineMs = now + DictationTiming.BUSY_RETRY_DELAY_MS))
+            } else {
+                DictationOutcome(next, listOf(DictationEffect.StartListening(session.mode)))
+            }
+        }
+
+        // Rule 3: a continuation older than 700 ms ends with 7 or 6 (SS6.4).
+        if (session.isContinuation && DictationErrorClassifier.isQuiet(code) && now - session.requestStartMs >= DictationTiming.CONTINUATION_FAILURE_WINDOW_MS) {
+            val finished = finishPendingIfAny(session.utterance, textSettings)
+            return if (session.silenceDeadlineMs != null) {
+                val next = session.copy(
+                    utterance = UtteranceState(extendContext(session.utterance.context, finished.plainText), PendingUtterance.None),
+                    requestStartMs = now,
+                )
+                DictationOutcome(next, listOf(DictationEffect.StartListening(session.mode)), finished.ops)
+            } else {
+                DictationOutcome(null, endEffects(session, cancelRecognizer = false), finished.ops)
+            }
+        }
+
+        // Rule 4: segmented mode, 7 or 6, at least one segment already seen (SS6.3).
+        if (session.mode == DictationMode.SEGMENTED && DictationErrorClassifier.isQuiet(code) && session.segmentsSeen >= 1) {
+            val finished = finishPendingIfAny(session.utterance, textSettings)
+            return DictationOutcome(null, endEffects(session, cancelRecognizer = false), finished.ops)
+        }
+
+        // Rule 5: session active, 7 or 6, a non-blank partial is on screen (SS7.3).
+        val live = session.utterance.pending as? PendingUtterance.Live
+        if (session.active && DictationErrorClassifier.isQuiet(code) && live != null && live.text.isNotBlank()) {
+            val finished = UtteranceFinisher.finish(live.text, session.utterance.context, textSettings)
+            return if (!session.stopRequested && settings.pauseMs > 0L) {
+                val next = session.copy(
+                    isContinuation = true,
+                    requestStartMs = now,
+                    silenceDeadlineMs = now + DictationTiming.silenceTimerMs(settings.pauseMs),
+                    utterance = UtteranceState(extendContext(session.utterance.context, finished.plainText), PendingUtterance.None),
+                )
+                DictationOutcome(next, listOf(DictationEffect.StartListening(session.mode)), finished.ops)
+            } else {
+                DictationOutcome(null, endEffects(session, cancelRecognizer = false), finished.ops)
+            }
+        }
+
+        // Rule 6: session active, stop requested, 7 or 6.
+        if (session.active && session.stopRequested && DictationErrorClassifier.isQuiet(code)) {
+            return DictationOutcome(null, endEffects(session, cancelRecognizer = false), clearComposingOps(session.utterance.pending))
+        }
+
+        // Rule 7 (session already ended) never reaches this function; see [handleWithSession].
+
+        // Rule 8: anything else.
+        return DictationOutcome(
+            null,
+            endEffects(session, cancelRecognizer = false, message = DictationErrorClassifier.toastFor(code)),
+            clearComposingOps(session.utterance.pending),
+        )
+    }
+
+    private fun finishPendingIfAny(utterance: UtteranceState, textSettings: DictationTextSettings): UtteranceFinisher.Finished {
+        val live = utterance.pending as? PendingUtterance.Live ?: return UtteranceFinisher.NOTHING
+        return UtteranceFinisher.finish(live.text, utterance.context, textSettings)
+    }
+
+    /** spec SS3, SS6.4: a timer-driven ending discards an unconfirmed partial rather than committing it, unlike a recognizer-reported quiet error. */
+    private fun clearComposingOps(pending: PendingUtterance): List<DictationTextOp> =
+        if (pending is PendingUtterance.Live) listOf(DictationTextOp.SetComposingText(""), DictationTextOp.FinishComposing) else emptyList()
+
+    // ---------------------------------------------------------------------------------------
+    // Editor lifecycle. spec SS3.
+    // ---------------------------------------------------------------------------------------
+
+    private fun handleEditorFieldOpened(session: DictationSession, ownerPackage: String?): DictationOutcome {
+        if (ownerPackage != session.ownerPackage) {
+            // "Another app takes the editor ... immediately", no grace.
+            return DictationOutcome(null, endEffects(session, cancelRecognizer = true), clearComposingOps(session.utterance.pending))
+        }
+        // Same app, a new field: the 500 ms grace is cancelled and dictation continues.
+        return DictationOutcome(session.copy(editorGoneDeadlineMs = null))
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // The clock. spec SS6.3, SS6.4, SS3.
+    // ---------------------------------------------------------------------------------------
+
+    private fun handleClockTick(session: DictationSession, now: Long): DictationOutcome {
+        session.busyRetryDeadlineMs?.let { deadline ->
+            if (now >= deadline) {
+                return DictationOutcome(session.copy(busyRetryDeadlineMs = null), listOf(DictationEffect.StartListening(session.mode)))
+            }
+        }
+        session.silenceDeadlineMs?.let { deadline ->
+            if (now >= deadline) {
+                // spec SS6.4: "Expiry cancels the recognizer, clears any composing partial, and ends the session."
+                return DictationOutcome(null, endEffects(session, cancelRecognizer = true), clearComposingOps(session.utterance.pending))
+            }
+        }
+        session.watchdogDeadlineMs?.let { deadline ->
+            if (now >= deadline) {
+                // spec SS6.3: zero segments seen sets the refusal latch; one or more leaves it untouched.
+                val latch = if (session.segmentsSeen == 0) true else null
+                return DictationOutcome(null, endEffects(session, cancelRecognizer = true), newSegmentedRefusalLatch = latch)
+            }
+        }
+        session.editorGoneDeadlineMs?.let { deadline ->
+            if (now >= deadline) {
+                return DictationOutcome(null, endEffects(session, cancelRecognizer = true), clearComposingOps(session.utterance.pending))
+            }
+        }
+        return DictationOutcome(session)
+    }
+
+    // ---------------------------------------------------------------------------------------
+
+    /**
+     * spec SS8.1: "the stop cue plays when the session ends, and only if a start cue was played for
+     * it." [cancelRecognizer] distinguishes an ending that must still tear the in-flight request
+     * down (a timer fired with no recognizer answer coming) from one where the recognizer's own
+     * terminal callback already ended it.
+     */
+    private fun endEffects(session: DictationSession, cancelRecognizer: Boolean, message: DictationMessage? = null): List<DictationEffect> = buildList {
+        if (cancelRecognizer) add(DictationEffect.CancelListening)
+        if (session.active) add(DictationEffect.PlayStopCue)
+        message?.let { add(DictationEffect.ShowMessage(it)) }
+    }
+}

@@ -62,6 +62,19 @@ internal class KeyboardSession(
 
     private var candidatesStrip: CandidatesStripView? = null
 
+    // spec: dictation.md. `:core:speech` holds the session's own rules; this class only owns the
+    // two facts only `:ime` can supply: which field is current, and whether a key reaching the
+    // ordinary typing pipeline while dictation is listening means the user just edited the field
+    // out from under it (spec: the c440844 fix, DictationController.onUserEditedComposingText's
+    // own KDoc). `trigger` is exposed for a future key binding; this task does not wire one (its
+    // own instructions), so nothing calls it yet.
+    private val dictationController = DictationController(service) { service.currentInputConnection }
+    private var currentPackageName: String? = null
+
+    fun onDictationTrigger() = dictationController.trigger(currentPackageName)
+
+    fun onDictationServiceDestroyed() = dictationController.onServiceDestroyed()
+
     // SPEC GAP / missing module: there is no `:settings` module yet, so the primary suggestion
     // language cannot come from the current input style (dictionaries-languages.md SS8.7); `en`
     // is the only bundled dictionary today (docs/dictionaries.md), so it is the only one this
@@ -122,6 +135,8 @@ internal class KeyboardSession(
         val field = classifyField(info, profile)
         pipeline.onStartInput(field, profile.editorTrust, profile)
         service.setCandidatesViewShown(field.isReallyEditable)
+        currentPackageName = reportedPackage
+        dictationController.onEditorFieldOpened(reportedPackage)
         refreshCandidatesStrip()
     }
 
@@ -129,6 +144,7 @@ internal class KeyboardSession(
         handler.removeCallbacks(longPressRunnable)
         pipeline.onFinishInput()
         service.setCandidatesViewShown(false)
+        dictationController.onEditorFieldClosed()
     }
 
     fun onUpdateSelection(oldSelStart: Int, oldSelEnd: Int, newSelStart: Int, newSelEnd: Int, candidatesStart: Int, candidatesEnd: Int) {
@@ -158,6 +174,11 @@ internal class KeyboardSession(
         ) ?: return false
 
         val ic = service.currentInputConnection ?: return false
+        // spec: the c440844 fix. Any key reaching the ordinary typing pipeline while dictation is
+        // listening is the user changing the field by some means other than the dictation session
+        // itself (typing over it, or deleting it), so whatever the engine remembers of the current
+        // utterance can no longer be trusted; see DictationController.onUserEditedComposingText.
+        if (dictationController.isActive) dictationController.onUserEditedComposingText()
         val readout = ic.readEditorState(stroke.timeMs)
         val result = pipeline.onKeyStroke(stroke, readout.snapshot)
         val consumed = applyResult(ic, result, readout)
