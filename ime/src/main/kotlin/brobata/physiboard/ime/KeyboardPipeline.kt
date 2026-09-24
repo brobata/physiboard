@@ -16,6 +16,7 @@ import brobata.physiboard.core.keys.ShiftValue
 import brobata.physiboard.core.keys.TypingSessionState
 import brobata.physiboard.core.text.AppProfile
 import brobata.physiboard.core.text.AutoCapitalization
+import brobata.physiboard.core.text.AutocorrectSettings
 import brobata.physiboard.core.text.CapDecision
 import brobata.physiboard.core.text.DeferredSpace
 import brobata.physiboard.core.text.EditorOp
@@ -26,6 +27,7 @@ import brobata.physiboard.core.text.EnterIntent
 import brobata.physiboard.core.text.FieldContext
 import brobata.physiboard.core.text.FieldKind
 import brobata.physiboard.core.text.RankedSuggestion
+import brobata.physiboard.core.text.RankingOptions
 import brobata.physiboard.core.text.SuggestionRanking
 import brobata.physiboard.core.text.TextInputPipeline
 import brobata.physiboard.core.text.TextInputRequest
@@ -38,11 +40,33 @@ import brobata.physiboard.core.text.TextInputState
  * `:settings` module yet (docs/plans/rebuild-from-scratch.md build order step 6), so every field
  * here is a shipped default; wiring a real settings store later means constructing this from that
  * store instead of the defaults, not changing anything below.
+ *
+ * [textInput] deliberately does not use [TextInputSettingsBundle]'s own bare constructor defaults
+ * for the automatic-correction gate. `:core:text`'s own defaults are the settings-catalog.md
+ * "Code default" column: what a key reads as when it is literally absent from an empty
+ * preferences store. A real Titan 2 Elite never runs with an empty store: every device applies
+ * the factory baseline asset (`assets/common/default_settings.json`, settings-catalog.md SS4)
+ * before the keyboard ever starts, and that baseline's `auto_replace_on_space_enter` is `true`
+ * (SS4.1), not the code default's `false`. Since 3.0 has no settings module yet to apply that
+ * baseline for real, the value shipped here has to BE the baseline directly, or automatic
+ * correction (autocorrect-suggestions.md SS7.2 step 9, SS9) can never run on any build of this
+ * milestone regardless of anything else being wired correctly: `BoundaryEngine.evaluate` returns
+ * [brobata.physiboard.core.text.BoundaryOutcome.CommitPlain] unconditionally at its
+ * `autoReplaceOnSpaceEnter` gate before it ever reaches a dictionary lookup. `maxAutoReplaceDistance`
+ * and `useKeyboardProximity` are carried along from the same baseline entries (2 and `true`;
+ * settings-catalog.md SS4.1) for the same reason: they are not the failure this fixes on their
+ * own (an adjacent transposition like "wierd" is already within the code-default distance of 1),
+ * but shipping the code default for one baseline row and not its neighbours would just move the
+ * same "shipped default silently disagrees with the only device this milestone targets" mistake
+ * one row down.
  */
 data class KeyboardSettings(
     val modifier: ModifierSettings = ModifierSettings(),
     val resolver: LayerResolver.LayerResolverSettings = LayerResolver.LayerResolverSettings(),
-    val textInput: TextInputSettingsBundle = TextInputSettingsBundle(),
+    val textInput: TextInputSettingsBundle = TextInputSettingsBundle(
+        autocorrect = AutocorrectSettings(autoReplaceOnSpaceEnter = true, maxAutoReplaceDistance = 2),
+        rankingOptions = RankingOptions(useKeyboardProximity = true),
+    ),
 )
 
 /**
@@ -142,6 +166,10 @@ internal class KeyboardPipeline(
         textInputState = textInputState.copy(
             currentWord = resynced,
             deferredSpace = DeferredSpace.cancelled(),
+            // The cursor moved for a reason this pipeline did not cause, so a sentence-ending mark
+            // it remembered committing (TextInputState.justCommittedSentenceEnd) is no longer
+            // "immediately before the cursor" and must not survive to arm a later, unrelated Space.
+            justCommittedSentenceEnd = false,
         )
         // Sentence-end capitalisation, in contrast, needs surrounding context to be right rather
         // than merely present, so it follows [activeTrust] like every other context rule (point 2).

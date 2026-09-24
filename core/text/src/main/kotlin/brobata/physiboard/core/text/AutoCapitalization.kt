@@ -80,6 +80,23 @@ object AutoCapitalization {
      * a null value (an unreadable field) can never match a recorded suppression, matching SS2's
      * "the auto-cap suppression key ... when the app returns null there is no key and suppression
      * cannot be recorded" for the read side too.
+     *
+     * [knownSentenceEndPending] is the fallback rebuild-from-scratch.md's "the editor is not a
+     * reliable narrator" work built for the boundary/autocorrect engine ([DriftCheck]) but never
+     * extended to this decision: whether the caller independently knows, from its own very recent
+     * output rather than from [textBeforeCursor], that the text now ends in a sentence-ending mark
+     * followed only by whitespace (a period/question mark/exclamation mark it just committed
+     * itself, with nothing but the boundary whitespace after it). A caller that cannot make that
+     * claim passes `false`, which reduces to exactly today's read-only decision. One exists because
+     * "capitalize after sentence end" is the one arm condition in this function that depends on a
+     * character a *previous* keystroke committed still being visible in *this* keystroke's read;
+     * every other condition here (field start, CAP_WORDS, the newline case) depends only on
+     * whitespace or emptiness this same keystroke's own commit already guarantees, or on state the
+     * caller reads once and passes straight through. A field whose `InputConnection` answers a read
+     * with text that lags one commit behind (`EditorReadTrust.POSSIBLY_STALE`'s own documented
+     * failure mode: "an asynchronous Compose or Flutter field applying edits on its own schedule")
+     * would otherwise silently lose the mark and never arm, exactly like an ordinary "no" answer,
+     * with no way for this function to tell the two apart from [textBeforeCursor] alone.
      */
     fun evaluate(
         state: AutoCapState,
@@ -87,6 +104,7 @@ object AutoCapitalization {
         settings: AutoCapSettings,
         textBeforeCursor: String?,
         suppressionContext: String? = null,
+        knownSentenceEndPending: Boolean = false,
     ): Pair<AutoCapState, CapDecision> {
         if (field.capFlags.capCharacters) {
             // CAP_CHARACTERS wins outright and disables per-letter auto-cap entirely (SS9.2).
@@ -99,10 +117,6 @@ object AutoCapitalization {
             } else {
                 clearIfOwnedByAutoCap(state)
             }
-        }
-
-        if (textBeforeCursor == null) {
-            return clearIfOwnedByAutoCap(state)
         }
 
         if (!field.autoCapAllowed(settings.capitalizeRestrictedFields)) {
@@ -118,8 +132,17 @@ object AutoCapitalization {
             return state to CapDecision.Leave
         }
 
+        if (textBeforeCursor == null) {
+            return if (settings.capitalizeAfterSentenceEnd && knownSentenceEndPending) {
+                state.withArmSource(ShiftArmSource.AUTO_CAP) to CapDecision.ArmOneShot
+            } else {
+                clearIfOwnedByAutoCap(state)
+            }
+        }
+
         val armsAtTextStart = settings.capitalizeAtTextStart && (textBeforeCursor.isEmpty() || textBeforeCursor.endsWith("\n"))
-        val armsAfterSentence = settings.capitalizeAfterSentenceEnd && WordChars.endsSentenceFollowedByWhitespace(textBeforeCursor)
+        val armsAfterSentence = settings.capitalizeAfterSentenceEnd &&
+            (WordChars.endsSentenceFollowedByWhitespace(textBeforeCursor) || knownSentenceEndPending)
 
         return if (armsAtTextStart || armsAfterSentence) {
             state.withArmSource(ShiftArmSource.AUTO_CAP) to CapDecision.ArmOneShot

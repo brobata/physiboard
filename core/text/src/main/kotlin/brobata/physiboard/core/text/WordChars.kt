@@ -93,4 +93,19 @@ object WordChars {
         if (trimmed.length == textBeforeCursor.length) return false
         return endsSentence(trimmed)
     }
+
+    /**
+     * Whether [ch], a single character a caller just committed, is itself a sentence-ending mark
+     * by SS1's rule ("`!`, `?`; `.` when the character before it is not another `.`"), given
+     * [charBeforeIt] (null at the very start of the field). Exists so a caller can know, at the
+     * moment it commits the mark, whether "capitalize after sentence end" will eventually apply to
+     * it without re-deriving [endsSentence]'s ellipsis exception by hand; see
+     * [TextInputState.justCommittedSentenceEnd]'s own KDoc for why a caller needs this fact at all
+     * rather than only re-reading the field once whitespace follows.
+     */
+    fun isSentenceEndingMark(ch: Char, charBeforeIt: Char?): Boolean = when (ch) {
+        '!', '?' -> true
+        '.' -> charBeforeIt != '.'
+        else -> false
+    }
 }

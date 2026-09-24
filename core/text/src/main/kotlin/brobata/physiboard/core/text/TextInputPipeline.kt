@@ -50,6 +50,22 @@ data class TextInputState(
     val doubleSpaceTimer: DoubleSpaceTimer = DoubleSpaceTimer(),
     val autocorrectMemory: AutocorrectMemory = AutocorrectMemory(),
     val selectionAnchor: SelectionAnchorState? = null,
+    /**
+     * Set the instant an Alt-layer boundary punctuation commit is itself a sentence-ending mark
+     * ([WordChars.isSentenceEndingMark]); cleared the instant anything else is committed, or the
+     * instant a Space/Enter/double-space-period consumes it. This feeds
+     * [AutoCapitalization.evaluate]'s `knownSentenceEndPending` from the one place this pipeline
+     * can state it with certainty, independent of any editor read: the character it just committed
+     * for *this* keystroke. It exists because "capitalize after sentence end" (text-input.md SS9.2)
+     * is decided one keystroke later than the mark itself (Space is what supplies the trailing
+     * whitespace), so by the time that decision runs, the mark's own commit is something this
+     * pipeline would otherwise have to trust a fresh read of the editor to still show; see
+     * [AutoCapitalization.evaluate]'s own KDoc for why that read cannot always be trusted. This is
+     * exactly the same shape of fact [autoSpacePending] and [deferredSpace] already are ("something
+     * this pipeline itself just did, remembered for the very next keystroke"), not a private copy
+     * of the document (spec text-input.md SS2, "the keyboard never keeps a private copy").
+     */
+    val justCommittedSentenceEnd: Boolean = false,
 ) {
     fun forNewField(): TextInputState = TextInputState(autoCap = autoCap.forNewField())
 }
@@ -277,7 +293,10 @@ object TextInputPipeline {
     // An ordinary letter. spec: text-input.md SS5.1, SS5.5.
     // ---------------------------------------------------------------------------------------
 
-    private fun handleLetter(ch: Char, field: FieldContext, settings: TextInputSettingsBundle, state: TextInputState, editor: EditorSnapshot, trust: EditorTrust): TextInputResult {
+    private fun handleLetter(ch: Char, field: FieldContext, settings: TextInputSettingsBundle, rawState: TextInputState, editor: EditorSnapshot, trust: EditorTrust): TextInputResult {
+        // A letter is never a sentence-ending mark, so whatever this pipeline was remembering
+        // about a just-committed one no longer applies (see justCommittedSentenceEnd's own KDoc).
+        val state = rawState.copy(justCommittedSentenceEnd = false)
         return when (val debt = DeferredSpace.onNextCommit(state.deferredSpace, ch.toString())) {
             is DeferredSpaceOutcome.InsertSpaceBefore -> {
                 val ops = listOf(EditorOp.CommitText(" "), EditorOp.CommitText(ch.toString()))
@@ -393,6 +412,12 @@ object TextInputPipeline {
         }
 
         val prevChar = editor.contextTextBeforeCursor(trust)?.lastOrNull()
+        // spec: TextInputState.justCommittedSentenceEnd's own KDoc. [ch] just landed as the field's
+        // last character regardless of which SS5.2 alternative committed it, so this is the one
+        // place that can state with certainty (no editor read needed) whether the boundary the next
+        // Space/Enter/double-space-period sees will be a sentence-ending mark, independent of
+        // whether that keystroke's own read of the field still shows it.
+        newState = newState.copy(justCommittedSentenceEnd = WordChars.isSentenceEndingMark(ch, prevChar))
         if (WordChars.isApostrophe(ch) && prevChar != null && prevChar.isLetterOrDigit()) {
             newState = newState.copy(currentWord = newState.currentWord.onCharacterCommitted(ch))
             return TextInputResult(precedingOps, newState)
@@ -435,7 +460,7 @@ object TextInputPipeline {
     private fun handleReplaceRecent(deleteCount: Int, text: String, field: FieldContext, settings: TextInputSettingsBundle, resources: TextInputResources, state: TextInputState, editor: EditorSnapshot, trust: EditorTrust): TextInputResult {
         val ops = listOf(EditorOp.ReplaceBeforeCursor(deleteCount, text))
         val ch = text.singleOrNull()
-        val baseState = state.copy(autoSpacePending = false)
+        val baseState = state.copy(autoSpacePending = false, justCommittedSentenceEnd = false)
         if (ch == null || ch.isLetter()) {
             val tracker = if (ch != null) baseState.currentWord.onCharacterReplaced(ch) else CurrentWordTracker.empty()
             return TextInputResult(ops, baseState.copy(currentWord = tracker))
@@ -450,6 +475,15 @@ object TextInputPipeline {
     private fun handleSpace(field: FieldContext, settings: TextInputSettingsBundle, resources: TextInputResources, state: TextInputState, editor: EditorSnapshot, trust: EditorTrust): TextInputResult {
         val textBefore = editor.contextTextBeforeCursor(trust)
         val isSecondPress = state.doubleSpaceTimer.isSecondPress(editor.nowMs)
+        // Captured before anything below runs: see justCommittedSentenceEnd's own KDoc. Whatever
+        // this Space does with it, it is stale for any keystroke after this one, so every return
+        // below routes through finishWithCapReevaluation, which always clears it back to false.
+        // Gated by `trust` like every other context-dependent decision (MisbehavingEditorTest's
+        // "sentence-end capitalisation does not arm a one-shot when reads are possibly stale"):
+        // a field the caller has already decided not to trust gets no smart-capitalisation help at
+        // all, not even from a fact this pipeline is certain of on its own, matching the same
+        // conservative policy [contextTextBeforeCursor] already applies everywhere else in this file.
+        val sentenceEndPending = state.justCommittedSentenceEnd && trust.contextRulesAllowed
         var newState = state.copy(
             doubleSpaceTimer = state.doubleSpaceTimer.recordSpaceDown(editor.nowMs),
             deferredSpace = DeferredSpace.cancelled(),
@@ -462,13 +496,13 @@ object TextInputPipeline {
             when (val outcome = DoubleSpacePeriod.apply(settings.spacing.doubleSpaceToPeriod, textBefore, isSecondPress)) {
                 is DoubleSpacePeriodOutcome.Fires -> {
                     newState = newState.copy(autoSpacePending = false)
-                    return finishWithCapReevaluation(outcome.ops, newState, field, settings, textBefore)
+                    return finishWithCapReevaluation(outcome.ops, newState, field, settings, textBefore, sentenceEndPending)
                 }
                 DoubleSpacePeriodOutcome.BlockedBySentenceEnd -> {
                     // spec quirk (SS6.7, T3): this second space is *not* suppressed by the
                     // trailing-space rule; it is committed as an ordinary space and the chain
                     // continues no further (steps 2-5 are for a space that is still undecided).
-                    return finishWithCapReevaluation(listOf(EditorOp.CommitText(" ")), newState.copy(autoSpacePending = true), field, settings, textBefore)
+                    return finishWithCapReevaluation(listOf(EditorOp.CommitText(" ")), newState.copy(autoSpacePending = true), field, settings, textBefore, sentenceEndPending)
                 }
                 DoubleSpacePeriodOutcome.NotDue -> Unit
             }
@@ -477,14 +511,14 @@ object TextInputPipeline {
         // SS6.1 step 2: spaced hyphen to dash.
         if (textBefore != null && field.hyphenToDashAllowed) {
             SpacedHyphenDash.apply(textBefore, settings.spacing.dashStyle)?.let { ops ->
-                return finishWithCapReevaluation(ops, newState.copy(autoSpacePending = false), field, settings, textBefore)
+                return finishWithCapReevaluation(ops, newState.copy(autoSpacePending = false), field, settings, textBefore, sentenceEndPending)
             }
         }
 
         // SS6.1 step 3: smart quotes (mid-word quote to apostrophe is dropped for 3.0, SS19).
         if (textBefore != null && field.smartQuotesAllowed && settings.spacing.smartQuotes) {
             SmartQuotes.apply(textBefore, ' ', settings.spacing.smartQuoteStyle)?.let { ops ->
-                return finishWithCapReevaluation(ops, newState.copy(autoSpacePending = false), field, settings, textBefore)
+                return finishWithCapReevaluation(ops, newState.copy(autoSpacePending = false), field, settings, textBefore, sentenceEndPending)
             }
         }
 
@@ -510,7 +544,10 @@ object TextInputPipeline {
             ops += EditorOp.CommitText(" ")
         }
         newState = newState.copy(autoSpacePending = !replacementEndsInApostrophe)
-        return finishWithCapReevaluation(ops, newState, field, settings, textBefore)
+        // A replacement means the current word was not blank, so whatever justCommittedSentenceEnd
+        // was remembering predates a real word and is no longer "the mark right before this space".
+        val stillApplies = sentenceEndPending && outcome !is BoundaryOutcome.Replaced
+        return finishWithCapReevaluation(ops, newState, field, settings, textBefore, stillApplies)
     }
 
     /** spec: text-input.md SS6.2. */
@@ -520,7 +557,7 @@ object TextInputPipeline {
         }
         val trackedWord = state.currentWord.word
         val (memory, outcome) = evaluateBoundarySafely(trackedWord, editor, trust, ' ', resources, settings, state.autocorrectMemory)
-        val newState = state.copy(autocorrectMemory = memory, currentWord = CurrentWordTracker.empty())
+        val newState = state.copy(autocorrectMemory = memory, currentWord = CurrentWordTracker.empty(), justCommittedSentenceEnd = false)
         return when (outcome) {
             is BoundaryOutcome.Replaced -> {
                 val endsApostrophe = WordChars.isApostrophe(outcome.replacement.lastOrNull() ?: ' ')
@@ -532,10 +569,19 @@ object TextInputPipeline {
         }
     }
 
-    private fun finishWithCapReevaluation(ops: List<EditorOp>, state: TextInputState, field: FieldContext, settings: TextInputSettingsBundle, textBefore: String?): TextInputResult {
+    private fun finishWithCapReevaluation(
+        ops: List<EditorOp>,
+        state: TextInputState,
+        field: FieldContext,
+        settings: TextInputSettingsBundle,
+        textBefore: String?,
+        knownSentenceEndPending: Boolean = false,
+    ): TextInputResult {
         val projected = textBefore?.let { projectText(it, ops) }
-        val (capState, decision) = AutoCapitalization.evaluate(state.autoCap, field, settings.autoCap, projected)
-        return TextInputResult(ops, state.copy(autoCap = capState), decision)
+        val (capState, decision) = AutoCapitalization.evaluate(state.autoCap, field, settings.autoCap, projected, knownSentenceEndPending = knownSentenceEndPending)
+        // Consumed either way: this decision is the one place justCommittedSentenceEnd's fact gets
+        // used, and it is stale for any keystroke after this one regardless of the outcome.
+        return TextInputResult(ops, state.copy(autoCap = capState, justCommittedSentenceEnd = false), decision)
     }
 
     // ---------------------------------------------------------------------------------------
@@ -578,7 +624,7 @@ object TextInputPipeline {
      * Reached only when [EnterDecision] declines (no per-app opinion, or nav mode owns Enter).
      */
     private fun handleGenericEnter(field: FieldContext, settings: TextInputSettingsBundle, resources: TextInputResources, state: TextInputState, editor: EditorSnapshot, trust: EditorTrust): TextInputResult {
-        var newState = state.copy(deferredSpace = DeferredSpace.cancelled(), autoCap = state.autoCap.consumedUnconditionally())
+        var newState = state.copy(deferredSpace = DeferredSpace.cancelled(), autoCap = state.autoCap.consumedUnconditionally(), justCommittedSentenceEnd = false)
         val textBefore = editor.contextTextBeforeCursor(trust)
         val trackedWord = newState.currentWord.word
 
@@ -638,7 +684,7 @@ object TextInputPipeline {
 
     /** spec: per-app-behavior.md SS3.4 "Unsupported send": nothing is inserted, nothing is sent; only the universal deferred-space/one-shot cancellation applies (text-input.md SS7), not the word/auto-space reset the other mechanisms make. */
     private fun handleSwallowDelivery(intent: EnterIntent.Swallow, state: TextInputState): TextInputResult {
-        val newState = state.copy(deferredSpace = DeferredSpace.cancelled(), autoCap = state.autoCap.consumedUnconditionally())
+        val newState = state.copy(deferredSpace = DeferredSpace.cancelled(), autoCap = state.autoCap.consumedUnconditionally(), justCommittedSentenceEnd = false)
         return TextInputResult(emptyList(), newState, capDecision = null, enterDelivery = intent)
     }
 
@@ -648,6 +694,7 @@ object TextInputPipeline {
         autoCap = state.autoCap.consumedUnconditionally(),
         currentWord = CurrentWordTracker.empty(),
         autoSpacePending = false,
+        justCommittedSentenceEnd = false,
     )
 
     // ---------------------------------------------------------------------------------------
@@ -655,7 +702,7 @@ object TextInputPipeline {
     // ---------------------------------------------------------------------------------------
 
     private fun handleBackspace(settings: TextInputSettingsBundle, state: TextInputState, editor: EditorSnapshot, shiftHeld: Boolean, altActive: Boolean): TextInputResult {
-        val baseState = state.copy(deferredSpace = DeferredSpace.cancelled(), autoSpacePending = false)
+        val baseState = state.copy(deferredSpace = DeferredSpace.cancelled(), autoSpacePending = false, justCommittedSentenceEnd = false)
         val hasSelection = editor.fullText?.hasSelection ?: false
         val charsBeforeCursor = editor.textBeforeCursor?.length ?: 1
         val undoWindow = baseState.autocorrectMemory.lastReplacement?.let { last -> editor.textBeforeCursor?.takeLast(last.replacement.length + 2) }
@@ -674,7 +721,7 @@ object TextInputPipeline {
     }
 
     private fun handleDeleteWordBackward(editor: EditorSnapshot, state: TextInputState): TextInputResult {
-        val newState = state.copy(deferredSpace = DeferredSpace.cancelled(), autoSpacePending = false, currentWord = CurrentWordTracker.empty())
+        val newState = state.copy(deferredSpace = DeferredSpace.cancelled(), autoSpacePending = false, currentWord = CurrentWordTracker.empty(), justCommittedSentenceEnd = false)
         val hasSelection = editor.fullText?.hasSelection ?: false
         val ops = if (hasSelection) {
             listOf(EditorOp.CommitText(""))
@@ -744,7 +791,7 @@ object TextInputPipeline {
             add(EditorOp.Haptic)
         }
 
-        var newState = state.copy(currentWord = CurrentWordTracker.empty(), autoSpacePending = appendSpace)
+        var newState = state.copy(currentWord = CurrentWordTracker.empty(), autoSpacePending = appendSpace, justCommittedSentenceEnd = false)
         if (autoCapOverride) newState = newState.copy(autoCap = newState.autoCap.consumedUnconditionally())
         return TextInputResult(ops, newState)
     }

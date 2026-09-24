@@ -215,6 +215,25 @@ class KeyboardPipelineTest {
         assertEquals("hi. T", editor.text)
     }
 
+    @Test
+    fun `a sentence ended with Alt-layer period still capitalises the next letter after Space`() {
+        // The Titan 2 Elite has no physical period key at all (D1): every real keystroke that
+        // types "." goes through Alt+M, never the direct Punctuation(PERIOD) route the test above
+        // exercises. Diagnostic probe for the reported device failure.
+        val pipeline = KeyboardPipeline(layout = layout)
+        val editor = FakeEditor()
+        pipeline.onStartInput(FieldContext(FieldKind.NORMAL))
+        step(pipeline, editor, letter('H'))
+        step(pipeline, editor, letter('I'))
+        step(pipeline, editor, modifier(ModifierKey.ALT))
+        step(pipeline, editor, letter('M')) // Alt+M -> "." on the Titan Elite bottom row
+        step(pipeline, editor, KeyId.Control(ControlKey.SPACE))
+
+        step(pipeline, editor, letter('T'))
+
+        assertEquals("hi. T", editor.text)
+    }
+
     // -----------------------------------------------------------------------------------------
     // Field lifecycle
     // -----------------------------------------------------------------------------------------
@@ -241,6 +260,31 @@ class KeyboardPipelineTest {
         step(pipeline, editor, letter('H'))
 
         assertTrue(pipeline.suggestions().isEmpty())
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Failure 2 (device report): "wierd" typed into a plain field stayed "wierd". `:core:text`'s
+    // own BoundaryEngine/EnglishDictionaryInvariantTest already prove the correction fires when
+    // `auto_replace_on_space_enter` is on; what they cannot see is whether the shipped keyboard
+    // ever turns it on at all. settings-catalog.md SS4.1: every real Titan 2 Elite applies the
+    // factory baseline asset before the keyboard first runs, and that baseline's
+    // `auto_replace_on_space_enter` is true, not `:core:text`'s own bare "key absent" default of
+    // false. `KeyboardSettings()` is the shipped stand-in for that baseline (no `:settings`
+    // module exists yet), so this drives the pipeline with its production default settings
+    // (nothing passed in), exactly like a fresh install, rather than opting a test setting in.
+    // -----------------------------------------------------------------------------------------
+
+    @Test
+    fun `a genuine typo is corrected on Space using the shipped default settings, not a test-only override`() {
+        val dictionary = DictionaryIndex.build(LanguageCode.of("en")!!, listOf(WordFrequency("weird", 200)))
+        val pipeline = KeyboardPipeline(layout = layout, resources = TextInputResources(dictionaries = listOf(dictionary)))
+        val editor = FakeEditor()
+        pipeline.onStartInput(FieldContext(FieldKind.NORMAL))
+
+        for (c in "wierd") step(pipeline, editor, letter(c.uppercaseChar()))
+        step(pipeline, editor, KeyId.Control(ControlKey.SPACE))
+
+        assertEquals("weird ", editor.text)
     }
 
     @Test

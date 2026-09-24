@@ -288,4 +288,65 @@ class MisbehavingEditorTest {
 
         assertEquals("teh the ", editor.text)
     }
+
+    // -----------------------------------------------------------------------------------------
+    // Guarantee 5: a sentence-ending mark this pipeline just committed itself still arms
+    // "capitalize after sentence end" on the following Space even when the field's own read of
+    // that same keystroke has not caught up with that commit yet. Device report: "hi. there" typed
+    // into a plain field (no per-app profile in this milestone ever requests anything but
+    // [EditorTrust.FULL], so this is the only trust level a real device field ever runs under)
+    // came out "hi. there", not "hi. There" -- the field-start capital fired but the one after ". "
+    // did not. [TextInputPipelineTest]'s and [KeyboardPipelineTest]'s own replays of the same
+    // keystroke sequence against a fake editor that is always perfectly up to date already pass, so
+    // the gap is not in the rule; this reproduces the one thing that idealised fake editor cannot
+    // model: a field whose answer to a read genuinely lags its own most recent commit
+    // ([MisbehavingEditor]'s own `staleLag`), under full trust rather than
+    // [EditorReadTrust.POSSIBLY_STALE].
+    // -----------------------------------------------------------------------------------------
+
+    @Test
+    fun `a sentence-ending mark this pipeline just committed still arms capitalisation even if the next read has not caught up`() {
+        val settings = TextInputSettingsBundle()
+        val resources = TextInputResources()
+        val field = FieldContext(FieldKind.NORMAL)
+        // staleLag = 1: every read answers with the text as it stood one commit ago, so the read
+        // taken for the Space keystroke reports "hi", not "hi." -- the "." this same pipeline
+        // committed one keystroke earlier has not shown up in a read yet.
+        val editor = MisbehavingEditor(staleLag = 1)
+        var state = TextInputState()
+        var lastDecision: CapDecision? = null
+
+        for (ch in "hi. ") {
+            val result = TextInputPipeline.handle(TextInputRequest.Key(Action.Commit(ch.toString())), field, settings, resources, state, editor.snapshot())
+            editor.apply(result.ops)
+            state = result.state
+            lastDecision = result.capDecision
+        }
+
+        assertEquals(CapDecision.ArmOneShot, lastDecision)
+    }
+
+    @Test
+    fun `the same lagging read still respects possibly-stale trust and does not arm`() {
+        // Companion to the guarantee above: knowing our own last commit must not become a back door
+        // around a field the caller has explicitly decided not to trust (the existing "sentence-end
+        // capitalisation does not arm a one-shot when reads are possibly stale" guarantee above).
+        // Same lagging read, same keystrokes; only the trust level differs.
+        val settings = TextInputSettingsBundle()
+        val resources = TextInputResources()
+        val field = FieldContext(FieldKind.NORMAL)
+        val editor = MisbehavingEditor(staleLag = 1)
+        val trust = EditorTrust(reads = EditorReadTrust.POSSIBLY_STALE)
+        var state = TextInputState()
+        var lastDecision: CapDecision? = null
+
+        for (ch in "hi. ") {
+            val result = TextInputPipeline.handle(TextInputRequest.Key(Action.Commit(ch.toString())), field, settings, resources, state, editor.snapshot(), trust)
+            editor.apply(result.ops)
+            state = result.state
+            lastDecision = result.capDecision
+        }
+
+        assertEquals(CapDecision.Leave, lastDecision)
+    }
 }

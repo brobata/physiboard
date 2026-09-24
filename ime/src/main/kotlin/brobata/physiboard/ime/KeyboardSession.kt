@@ -8,6 +8,7 @@ import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.util.Log
 import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
@@ -152,17 +153,34 @@ internal class KeyboardSession(
             suppressNextSelectionUpdate = false
             return
         }
-        val textBeforeCursor = runCatching { service.currentInputConnection?.getTextBeforeCursor(240, 0)?.toString() }.getOrNull()
-        pipeline.onExternalSelectionChange(textBeforeCursor)
-        refreshCandidatesStrip()
+        runCatching {
+            val textBeforeCursor = runCatching { service.currentInputConnection?.getTextBeforeCursor(240, 0)?.toString() }.getOrNull()
+            pipeline.onExternalSelectionChange(textBeforeCursor)
+            refreshCandidatesStrip()
+        }.onFailure { error -> Log.e(TAG, "onUpdateSelection crashed", error) }
     }
 
     // -----------------------------------------------------------------------------------------
     // Key events
     // -----------------------------------------------------------------------------------------
 
-    /** True when PhysiBoard consumed the event and the app must not see it. */
-    fun onKeyEvent(event: KeyEvent): Boolean {
+    /**
+     * True when PhysiBoard consumed the event and the app must not see it.
+     *
+     * Every branch below is caught: this is the one function Android calls for every physical
+     * keystroke on the only keyboard the device has, so a `RuntimeException` escaping from
+     * anywhere in `:core:keys`/`:core:text` (an edge case none of their own JVM tests happened to
+     * cover) would otherwise propagate out through [InputMethodService.onKeyDown]/`onKeyUp` and
+     * crash this process outright -- a dead keyboard with no on-screen keyboard to fall back to and
+     * no obvious way back for the person holding the phone, a categorically worse failure than any
+     * single missing capital or correction. Falling through unconsumed on a failure, rather than
+     * swallowing the keystroke, means the app still gets the raw key even though PhysiBoard's own
+     * smart handling of it did not run. No JVM test can pin this guard the way the two typing
+     * defects above are pinned: it exists precisely for the exception a test did not anticipate, on
+     * the one code path (`android.inputmethodservice.InputMethodService`'s own callback contract)
+     * that no unit test in this project runs against for real.
+     */
+    fun onKeyEvent(event: KeyEvent): Boolean = runCatching {
         val stroke = KeyNormalizer.normalize(
             keyCode = event.keyCode,
             scanCode = event.scanCode,
@@ -171,9 +189,9 @@ internal class KeyboardSession(
             metaState = event.metaState,
             deviceId = event.deviceId,
             eventTimeMs = event.eventTime,
-        ) ?: return false
+        ) ?: return@runCatching false
 
-        val ic = service.currentInputConnection ?: return false
+        val ic = service.currentInputConnection ?: return@runCatching false
         // spec: the c440844 fix. Any key reaching the ordinary typing pipeline while dictation is
         // listening is the user changing the field by some means other than the dictation session
         // itself (typing over it, or deleting it), so whatever the engine remembers of the current
@@ -184,16 +202,21 @@ internal class KeyboardSession(
         val consumed = applyResult(ic, result, readout)
         scheduleLongPressIfNeeded()
         refreshCandidatesStrip()
-        return consumed
+        consumed
+    }.getOrElse { error ->
+        Log.e(TAG, "onKeyEvent crashed on keyCode=${event.keyCode}; letting the raw key through", error)
+        false
     }
 
     private fun onLongPressTick() {
-        val ic = service.currentInputConnection ?: return
-        val nowMs = SystemClock.uptimeMillis()
-        val readout = ic.readEditorState(nowMs)
-        val result = pipeline.checkLongPressTick(nowMs, readout.snapshot) ?: return
-        applyResult(ic, result, readout)
-        refreshCandidatesStrip()
+        runCatching {
+            val ic = service.currentInputConnection ?: return@runCatching
+            val nowMs = SystemClock.uptimeMillis()
+            val readout = ic.readEditorState(nowMs)
+            val result = pipeline.checkLongPressTick(nowMs, readout.snapshot) ?: return@runCatching
+            applyResult(ic, result, readout)
+            refreshCandidatesStrip()
+        }.onFailure { error -> Log.e(TAG, "onLongPressTick crashed", error) }
     }
 
     private fun scheduleLongPressIfNeeded() {
@@ -260,11 +283,13 @@ internal class KeyboardSession(
     }
 
     private fun onSuggestionTapped(word: String) {
-        val ic = service.currentInputConnection ?: return
-        val readout = ic.readEditorState(SystemClock.uptimeMillis())
-        val result = pipeline.onAcceptSuggestion(word, readout.snapshot)
-        applyResult(ic, result, readout)
-        refreshCandidatesStrip()
+        runCatching {
+            val ic = service.currentInputConnection ?: return@runCatching
+            val readout = ic.readEditorState(SystemClock.uptimeMillis())
+            val result = pipeline.onAcceptSuggestion(word, readout.snapshot)
+            applyResult(ic, result, readout)
+            refreshCandidatesStrip()
+        }.onFailure { error -> Log.e(TAG, "onSuggestionTapped crashed", error) }
     }
 
     private fun refreshCandidatesStrip() {
@@ -272,6 +297,7 @@ internal class KeyboardSession(
     }
 
     private companion object {
+        const val TAG = "PhysiBoardKeyboard"
         const val HAPTIC_DURATION_MS = 10L
         val PRIMARY_LANGUAGE: LanguageCode = LanguageCode.of("en")!!
     }
