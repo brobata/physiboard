@@ -181,6 +181,20 @@ class DictionaryIndex private constructor(
         /** Builds an index from a decoded `.pbd` document. */
         fun from(document: PbdDocument): DictionaryIndex = build(document.language, document.entries)
 
+        /**
+         * Parses a `.pbd` byte stream straight into an index, or returns null when the bytes are
+         * absent, truncated, or otherwise fail [PbdReader]'s checks (bad magic, unsupported
+         * version, checksum mismatch, ...). [PbdReader.read] itself never throws for a malformed
+         * file; this is the loading contract the running keyboard depends on to make a missing or
+         * corrupt dictionary asset degrade to "no suggestions" rather than a crash. spec:
+         * autocorrect-suggestions.md §2 point 3 ("the primary dictionary ... has finished
+         * loading. If it has not, the load is scheduled in the background").
+         */
+        fun fromPbdBytes(bytes: ByteArray): DictionaryIndex? = when (val result = PbdReader.read(bytes)) {
+            is PbdReadResult.Loaded -> from(result.document)
+            is PbdReadResult.Failed -> null
+        }
+
         /** Builds an index directly from a word list, for tests and for composing sources. */
         fun build(language: LanguageCode, entries: List<WordFrequency>): DictionaryIndex {
             val byKey = LinkedHashMap<String, MutableList<WordFrequency>>()

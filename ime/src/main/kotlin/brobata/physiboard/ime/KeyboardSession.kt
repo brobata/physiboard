@@ -12,6 +12,7 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
+import brobata.physiboard.core.dict.LanguageCode
 import brobata.physiboard.core.text.AppProfile
 import brobata.physiboard.core.text.AppProfileResolver
 import brobata.physiboard.device.titan.KeyNormalizer
@@ -47,6 +48,23 @@ internal class KeyboardSession(
     private val longPressRunnable = Runnable { onLongPressTick() }
 
     private var candidatesStrip: CandidatesStripView? = null
+
+    // SPEC GAP / missing module: there is no `:settings` module yet, so the primary suggestion
+    // language cannot come from the current input style (dictionaries-languages.md SS8.7); `en`
+    // is the only bundled dictionary today (docs/dictionaries.md), so it is the only one this
+    // milestone can load regardless. Wiring a real subtype-driven language is a change to this
+    // one line once a settings/subtype module exists.
+    private val dictionaryLoader = DictionaryAssetLoader(service.assets, handler)
+
+    init {
+        // spec: autocorrect-suggestions.md SS2 point 3 and the "computation runs off the main
+        // thread" rule: the keyboard must accept keystrokes immediately, typing with no
+        // suggestions, and only start suggesting once this background load lands.
+        dictionaryLoader.loadAsync(PRIMARY_LANGUAGE) { index ->
+            pipeline.resources = pipeline.resources.copy(dictionaries = listOf(index))
+            refreshCandidatesStrip()
+        }
+    }
 
     /**
      * Set right before this session calls [InputConnection.applyEditorOps] for a stroke that
@@ -194,5 +212,6 @@ internal class KeyboardSession(
 
     private companion object {
         const val HAPTIC_DURATION_MS = 10L
+        val PRIMARY_LANGUAGE: LanguageCode = LanguageCode.of("en")!!
     }
 }
