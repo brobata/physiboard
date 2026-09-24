@@ -67,6 +67,21 @@ import brobata.physiboard.core.text.TextInputState
  * SS2.1 names holding Fn as the primary trigger on this phone. Shipping the code default here
  * would leave the one dictation trigger this milestone wires (see [DictationController]) armed
  * in code but silent on every device that has no settings store to flip it back on.
+ *
+ * [screenTrackpadEnabled] deliberately does the OPPOSITE of [modifier] and [textInput] above: it
+ * ships the settings-catalog.md code default (`false`, SS row for `screen_trackpad_enabled`) and
+ * NOT the baseline (`true`). Every other field in this class ships the baseline because being
+ * silently absent would leave a real device behaving like a stripped-down 2.x install; the
+ * trackpad is the opposite case. It intercepts Space, the single most-pressed key on the
+ * keyboard, ahead of everything else in the key pipeline (trackpad-caret-nav.md SS2.2), and a
+ * hold that is mistaken for a deliberate one swallows that keystroke for good with no replay
+ * (SS2.3's "the swallowed down is not replayed when the hold succeeds"). Shipping the baseline
+ * here, as an earlier revision of this class did, means there is no settings store yet to ever
+ * turn it back off if that misfires -- which is exactly what reached the maintainer as a daily
+ * driver where every Space press lost its keystroke and dragged the caret across the word instead
+ * (see [brobata.physiboard.ime.KeyboardSession]'s own trackpad section). A feature a settings
+ * screen cannot yet switch off must not default to "on" here; [KeyboardSession] gates the whole
+ * interception on this flag so the fix is a real no-op, not a smaller window for the same bug.
  */
 data class KeyboardSettings(
     val modifier: ModifierSettings = ModifierSettings(fnLongPressSpeechEnabled = true),
@@ -75,6 +90,7 @@ data class KeyboardSettings(
         autocorrect = AutocorrectSettings(autoReplaceOnSpaceEnter = true, maxAutoReplaceDistance = 2),
         rankingOptions = RankingOptions(useKeyboardProximity = true),
     ),
+    val screenTrackpadEnabled: Boolean = false,
 )
 
 /**

@@ -77,11 +77,20 @@ internal class KeyboardSession(
     private var candidatesStrip: CandidatesStripView? = null
 
     // -----------------------------------------------------------------------------------------
-    // Screen trackpad. spec: trackpad-caret-nav.md SS2. The shipped baseline turns it on
-    // (`screen_trackpad_enabled` true, SS2.1), so it is wired unconditionally; there is no
-    // `:settings` module yet, so [TrackpadActivationSettings] and [TrackpadGestureSettings] are
-    // the shipped defaults, which already match that baseline (trigger Space, hold mode, 250 ms
-    // threshold, 32 px step) rather than needing an override the way [KeyboardSettings] does.
+    // Screen trackpad. spec: trackpad-caret-nav.md SS2. [TrackpadActivationSettings] and
+    // [TrackpadGestureSettings] below are the shipped defaults, matching the settings-catalog.md
+    // baseline (trigger Space, hold mode, 250 ms threshold, 32 px step) rather than needing an
+    // override the way [KeyboardPipeline.KeyboardSettings] does for a couple of its own fields.
+    //
+    // Whether the feature runs at all is a different question, gated by
+    // [KeyboardPipeline.KeyboardSettings.screenTrackpadEnabled] (checked at the top of
+    // [interceptForTrackpad], not here): that field ships `false`, the settings-catalog.md CODE
+    // DEFAULT for `screen_trackpad_enabled`, not the device baseline. An earlier revision wired
+    // this section unconditionally, reasoning (wrongly) that the baseline being `true` made an
+    // on/off gate unnecessary until a real `:settings` module existed; that shipped a feature
+    // intercepting Space, the single most-pressed key, ahead of everything else in the key
+    // pipeline, with no way for anyone to turn it back off when its hold-vs-tap timing misfired
+    // on ordinary typing. See [interceptForTrackpad]'s own KDoc for what the gate guarantees.
     // -----------------------------------------------------------------------------------------
 
     private val trackpad = TrackpadOverlayController(
@@ -382,22 +391,60 @@ internal class KeyboardSession(
      * (SS2.3, "the raw event is kept for replay") before finding out whether a replay is actually
      * needed; only an event the trackpad has no opinion about, or explicitly leaves alone, reaches
      * [processKeyStroke] afterward.
+     *
+     * The [KeyboardPipeline.KeyboardSettings.screenTrackpadEnabled] check below is a hard gate,
+     * not a preference the trackpad's own state machine is merely told about: when it is false
+     * this function returns before classifying the key, before touching any `pendingTrackpad*`
+     * field and before calling [trackpad] at all, so [TrackpadActivation] never sees the event and
+     * [TrackpadOverlayController] never arms its timer. A key this function declines always falls
+     * through to [onKeyEvent]'s own `normalizeStroke`/[processKeyStroke] call exactly as it would
+     * have before this class had a trackpad section, which is what makes "off" mean the ordinary
+     * path runs with nothing swallowed and nothing replayed, not just a smaller window for the
+     * same swallow-and-replay behaviour.
+     *
+     * Regression fixed here: caching a down below used to run for ANY of the five
+     * [TrackpadPhysicalKey] values (Space, either Shift, Sym, Back), not only the one actually
+     * configured as [TrackpadActivationSettings.triggerKey]. With the default trigger (Space),
+     * that meant a Shift key-down chording with a still-pending Space -- ordinary the moment a
+     * user capitalises the first letter of the next word, i.e. right after almost every sentence
+     * -- overwrote [pendingTrackpadDownEvent]/[pendingTrackpadDownStroke] with SHIFT's own down a
+     * single statement before [trackpad]'s chord-abort logic replayed whatever that field held
+     * (SS2.3: "the swallowed trigger down is replayed at once"). The replay therefore fired
+     * Shift's down instead of Space's: the real Space keystroke was dropped entirely (never typed
+     * directly, never replayed), and Shift's down reached `:core:keys` twice for one physical
+     * press -- once via the mis-replay, once via its own ordinary delivery moments later, both
+     * carrying the same event timestamp -- which satisfies `ModifierMachine.shiftDown`'s
+     * same-instant double-tap check and can latch Caps Lock with no real double tap ever
+     * happening (pinned at the `:core:keys` layer, where a real `KeyEvent` is not needed, by
+     * `ModifierMachineTest`'s "a Shift key-down delivered twice with no release in between..."
+     * case). Restricting the cache to a down that actually matches the configured trigger means a
+     * chording Shift/Sym/Back is never written into a slot it does not own, so the eventual
+     * replay -- if the trigger's own down is even still pending -- can only ever replay the
+     * trigger's own stroke.
      */
     private fun interceptForTrackpad(event: KeyEvent): Boolean {
+        if (!pipeline.settings.screenTrackpadEnabled) return false
         val trackpadKey = classifyTrackpadKey(event.keyCode)
+        val isTriggerKey = trackpadKey != null && TrackpadPhysicalKey.matchesTrigger(trackpadKey, trackpad.activationSettings.triggerKey)
         // spec SS2.2: "A Space down that already carries Ctrl or Alt in its meta state is never a trigger."
         val carriesDisqualifyingMeta = trackpadKey == TrackpadPhysicalKey.SPACE &&
             (event.metaState and KeyEvent.META_CTRL_ON != 0 || event.metaState and KeyEvent.META_ALT_ON != 0)
         return when (event.action) {
             KeyEvent.ACTION_DOWN -> {
-                if (trackpadKey != null) {
+                if (isTriggerKey) {
                     pendingTrackpadDownEvent = event
                     pendingTrackpadDownStroke = normalizeStroke(event)
                 }
                 trackpad.onKeyDown(trackpadKey, event.repeatCount, event.eventTime, carriesDisqualifyingMeta)
             }
             KeyEvent.ACTION_UP -> {
-                pendingTrackpadUpEvent = event
+                // Same reasoning as the down branch above: only the trigger's own up is ever
+                // useful to [replayPendingTrackpadDownAndUp], and caching unconditionally used to
+                // let an unrelated classified key's up (e.g. a Shift that was already held before
+                // Space went down, released while Space is still pending) overwrite this field a
+                // moment before the trigger's own up needed it, substituting the wrong stroke into
+                // the replay.
+                if (isTriggerKey) pendingTrackpadUpEvent = event
                 trackpad.onKeyUp(trackpadKey, event.eventTime)
             }
             else -> false

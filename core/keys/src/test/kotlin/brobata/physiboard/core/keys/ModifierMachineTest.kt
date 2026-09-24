@@ -83,6 +83,38 @@ class ModifierMachineTest {
         assertEquals(ShiftValue.OFF, s2.shift.value)
     }
 
+    // -----------------------------------------------------------------------------------------
+    // Regression (device report, trackpad wiring): shiftDown() has no memory of shiftUp() at all
+    // -- it only compares this down's time against the PREVIOUS down's time and whether the
+    // previous key was also Shift. So two shiftDown() calls back to back, with no shiftUp() ever
+    // in between and effectively no time apart, are read as a real double tap and latch Caps Lock,
+    // even though the physical key never came up and went back down. This is exactly what
+    // `:ime`'s KeyboardSession.interceptForTrackpad used to produce: while the trackpad's trigger
+    // (Space, by default) was PENDING, a Shift key-down chorded with it (ordinary when
+    // capitalising the next word right after a space) got cached into the same single-slot field
+    // meant for the trigger's own down, one statement before the trigger's chord-abort logic
+    // replayed whatever that field held; that replay fed the modifier machine one shiftDown for a
+    // key that then arrived a second time through its own, completely normal delivery a moment
+    // later, both carrying the identical event timestamp. Fixed by only caching a key for trigger
+    // replay when it actually matches the configured trigger (KeyboardSession no longer caches a
+    // Shift/Sym/Back down that is not the trigger itself), but that fix lives in `:ime` where a
+    // real KeyEvent cannot be constructed in a plain JVM test; this pins the `:core:keys` half of
+    // the hazard so nothing upstream can reintroduce a double shiftDown() for one physical press.
+    // -----------------------------------------------------------------------------------------
+
+    @Test
+    fun `a Shift key-down delivered twice with no release in between silently latches Caps Lock`() {
+        var s = ModifierState()
+        s = ModifierMachine.shiftDown(s, down(shift, 1_000), settings).state
+        assertEquals(ShiftValue.ONE_SHOT, s.shift.value, "the first, real down arms a plain one-shot")
+
+        // No shiftUp() call here: the physical key was never released. The second down carries the
+        // SAME timestamp as the first, exactly as replaying the very KeyEvent already delivered
+        // would (the bug's own shape, not a contrived one).
+        val (s2, _) = ModifierMachine.shiftDown(s, down(shift, 1_000), settings)
+        assertEquals(ShiftValue.CAPS, s2.shift.value, "a single physical Shift press must never be able to latch Caps Lock on its own")
+    }
+
     @Test
     fun `T6 - an intentional Shift hold with nothing typed restores the prior state`() {
         val (s1, _) = ModifierMachine.shiftDown(ModifierState(), down(shift, 0), settings)
