@@ -42,3 +42,15 @@ a spec is filled from device evidence and added here, never from reading old sou
 | `expansion-clipboard-pickers-launcher.md` | Text expansion, clipboard history, emoji and Unicode pickers, launcher shortcuts, quick launcher, commands |
 | `app-shell.md` | Onboarding, tutorial, diagnostics, update checker, about, notifications, build and release configuration |
 | `test-corpus.md` | Key sequences recorded on the Titan with expected text |
+
+## Amendments
+
+Places where a fix changed behaviour and the spec was updated to match, rather than the other way
+around.
+
+| Document | Section(s) | What changed | Commit |
+|---|---|---|---|
+| `keys-and-modifiers.md` | 2, 5.2, 5.3, 5.6, 21, 22 | The Shift/Alt layer latch dropped its own release-to-release timer; it now follows the same down-side double tap that sets caps lock or the Alt latch. Shift also gained Ctrl's "other key during the hold clears the one-shot" rule. | fcec53b |
+| `keys-and-modifiers.md` | 5.4, 5.5, 22 | The Alt+Ctrl dictation chord is removed; Alt or Ctrl down with the other's meta bit is now an ordinary press. | fcec53b |
+| `keys-and-modifiers.md` | 7.5 | Ctrl+Space only consumes and switches when another input subtype exists; with one layout, Fn+Space no longer vanishes. | fcec53b |
+| `autocorrect-suggestions.md` | 6.1, 7.2, 9, 10 | Primary case repair and the automatic-correction decision's "exact primary case" fact now consult the personal and default word stores and every loaded dictionary, not only the primary list. | fcec53b |

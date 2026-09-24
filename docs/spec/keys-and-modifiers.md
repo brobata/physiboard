@@ -151,8 +151,17 @@ Two timing constants govern every modifier:
 
 | Constant | Value | Used for |
 |---|---|---|
-| Double-tap window | 500 ms | second tap must land within this of the first tap (Shift: measured down-to-down; Ctrl/Alt: measured from the first tap's release to the second tap's down; layer latch: measured release-to-release) |
+| Double-tap window | 500 ms | second tap must land within this of the first tap (Shift: measured down-to-down; Ctrl/Alt: measured from the first tap's release to the second tap's down) |
 | Hold threshold | 300 ms | a press held longer than this with no other key is an "intentional hold" |
+
+The layer latch (Shift and Alt) has no timing constant of its own: it is set by whichever
+down-to-down double tap already sets the logical latch (caps lock or the Alt latch), not by a
+separate release-to-release measurement (section 5.6).
+
+Amended 2026-09-24: removed the layer latch's own release-to-release window; a release timer that
+disagreed with the down-to-down caps-lock window could uppercase text with the layer latch set and
+no badge to explain it, so the layer latch now reads the same double tap that sets the logical
+latch.
 
 ## 3. The Fn key on the Titan
 
@@ -326,18 +335,19 @@ and/or "hold for the trackpad" when those are configured.
 For Shift, Ctrl or Alt:
 
 1. **Latched-layer tap-off**: if this is a Shift key and the Shift layer latch is set, or an
-   Alt key and the Alt layer latch is set, the layer latch clears, the release-to-release timer
-   resets, that modifier's logical state is cleared entirely (Shift: OFF, no pressed flags; Alt:
-   no one-shot, no latch, no pressed flags), the status display refreshes, and the key is
-   consumed. Nothing else happens for this press. The pre-hold snapshot is discarded so a stale
-   one-shot cannot be resurrected.
+   Alt key and the Alt layer latch is set, the layer latch clears, that modifier's logical state
+   is cleared entirely (Shift: OFF, no pressed flags; Alt: no one-shot, no latch, no pressed
+   flags), the status display refreshes, and the key is consumed. Nothing else happens for this
+   press. The pre-hold snapshot is discarded so a stale one-shot cannot be resurrected.
 2. Otherwise a **snapshot** of all logical modifier state (Shift state, Ctrl one-shot, Ctrl
    latch, Ctrl latch-from-nav, Alt one-shot, Alt latch) is taken, the flags "status-bar
    interaction during hold" and "other key during hold" are cleared, and the key's down time is
    recorded.
 
-For any other key with repeat count 0: "other key during hold" is set and both
-release-to-release timers (Shift layer, Alt layer) reset.
+For any other key with repeat count 0: "other key during hold" is set.
+
+Amended 2026-09-24: dropped the release-to-release timer reset from both steps; the layer latch
+no longer keeps a timer of its own to reset (section 5.6), so there is nothing left here to clear.
 
 ### 5.3 Shift
 
@@ -362,12 +372,19 @@ changed. The down passes to the app.
   300 ms and no other key was pressed during the hold). The logical state is restored from the
   snapshot (so holding Shift for a while and releasing it leaves exactly what was there before:
   a hold is not a tap), the Shift layer latch clears, pressed flags clear, status refreshes.
-- Otherwise pressed flags clear (normal release). If the release is a **quick tap** (duration
-  under 300 ms, no other key, no status-bar interaction): when the previous quick Shift release
-  was at most 500 ms ago, the **Shift layer latch** is set (section 5.6) and the timer resets;
-  otherwise this release time is remembered. A non-quick release resets the timer.
+- Otherwise pressed flags clear (normal release). If another key was pressed during the hold and
+  Shift is ONE_SHOT, the one-shot clears, mirroring Ctrl's rule (section 5.4): the down armed it,
+  a chord used it, the release must not leave Shift waiting to capitalise one more key. If the
+  release is also a **quick tap** (duration under 300 ms, no other key, no status-bar interaction)
+  and Shift's value is now CAPS, the **Shift layer latch** is set (section 5.6) — this is the same
+  double tap that just latched caps lock on the down, not a separate release-to-release timer.
 
 The up passes to the app.
+
+Amended 2026-09-24: gave Shift the "other key during the hold clears the one-shot" rule Ctrl
+already had (a Shift held over a Backspace or Space no longer leaves a capital armed for the next
+letter), and set the Shift layer latch from the same down-side double tap that sets caps lock
+instead of its own release-to-release timer.
 
 Net user experience: tap Shift = next letter uppercase; tap Shift twice quickly = caps lock
 (and the layer latch); tap Shift once more = everything off; hold Shift and type = the held
@@ -376,9 +393,7 @@ by the first letter; hold Shift and release without typing = nothing changes.
 
 ### 5.4 Ctrl
 
-**Down** (editable field): if the event carries Alt meta (Alt physically held), Ctrl is not
-already pressed, and `alt_ctrl_speech_shortcut` is on (default true), speech recognition
-starts (or stops) and the key is consumed; no state change. Otherwise, if not already pressed:
+**Down**: if not already pressed:
 
 | Current | Condition | New | Note |
 |---|---|---|---|
@@ -404,28 +419,37 @@ Ctrl waiting for one more key. The up passes to the app.
 Ctrl has no layer latch of its own; a third tap on a latched Ctrl simply un-latches it via the
 table above.
 
+Amended 2026-09-24: dropped the Alt+Ctrl dictation chord from Ctrl's down handling; a Ctrl down
+with Alt meta set is now an ordinary Ctrl press, nothing more.
+
 ### 5.5 Alt
 
-**Down**: if the event carries Ctrl meta, Alt is not already pressed, and
-`alt_ctrl_speech_shortcut` is on, speech starts/stops and the key is consumed. Otherwise an open
-Sym page closes (status refresh), and if not already pressed the Ctrl table above applies with
-Alt substituted (there is no nav-mode row; `alt_tap_latches` plays the role of
-`ctrl_tap_latches`). The down is always consumed: the app never sees Alt go down, because on the
-Titan Alt is the symbol-layer key and the system's Alt behaviours (the symbol picker popup) are
-unwanted.
+**Down**: an open Sym page closes first (status refresh), and if not already pressed the Ctrl
+table above applies with Alt substituted (there is no nav-mode row; `alt_tap_latches` plays the
+role of `ctrl_tap_latches`). The down is always consumed: the app never sees Alt go down, because
+on the Titan Alt is the symbol-layer key and the system's Alt behaviours (the symbol picker popup)
+are unwanted. A Ctrl meta bit on the event (Ctrl physically held) makes no difference: Alt down
+with Ctrl held is an ordinary Alt press, the mirror image of Ctrl down with Alt held above.
 
-**Up**: as Ctrl, plus the quick-tap **Alt layer latch** on the second quick release within
-500 ms, mirroring Shift (section 5.6). The up passes to the app.
+**Up**: as Ctrl, plus: on a quick release (duration under 300 ms, no other key, no status-bar
+interaction) whose Alt is now latched, the **Alt layer latch** is set (section 5.6) — the same
+double tap that just Alt-latched on the down, not a separate release-to-release timer, mirroring
+Shift (section 5.3). The up passes to the app.
 
 Alt is also cleared by Space and Enter (section 6.4), by Ctrl+Space, by the Alt+Shift and
 Alt+Enter layout chords, by Sym while Alt is held, by starting dictation, and by the Fn burst.
 
+Amended 2026-09-24: dropped the Alt+Ctrl dictation chord from Alt's down handling (the Titan has
+no way to reach it that the Fn burst doesn't already dictate), and set the Alt layer latch from
+the down-side double tap instead of its own release-to-release timer, mirroring Shift.
+
 ### 5.6 Layer latches (Shift layer, Alt layer)
 
-The layer latch is a second, visual-level latch produced only by two quick releases of the same
-modifier within 500 ms. Because the second down of that pair also produces the logical latch
-(caps lock for Shift, Alt latch for Alt) through the down-side double-tap rule, a normal double
-tap sets both. The layer latch matters in three places:
+The layer latch is a second, visual-level flag set by the quick release (under 300 ms, no other
+key, no status-bar interaction) that closes the very double tap that already sets the logical
+latch (caps lock for Shift, Alt latch for Alt) through the down-side double-tap rule: a normal
+double tap sets both together, and the layer latch has no release-to-release timer of its own. The
+layer latch matters in three places:
 
 - A further tap of that modifier is the explicit "off" (section 5.2 step 1), consuming the key
   rather than passing it to the app.
@@ -434,8 +458,13 @@ tap sets both. The layer latch matters in three places:
 - Adding a word from the suggestion strip clears both layer latches and restores the pre-hold
   snapshot.
 
-Both layer latches, both release timers and the snapshot are cleared whenever modifier state
-is reset (section 6.5).
+Both layer latches and the snapshot are cleared whenever modifier state is reset (section 6.5).
+
+Amended 2026-09-24: the layer latch no longer has its own release-to-release timer. It used to be
+possible for that timer to disagree with the down-to-down window that sets the logical latch
+(down 0, up 250, down 520, up 560: caps lock off but the layer latched anyway), uppercasing text
+with no badge to explain it; the layer latch now simply reads the logical latch the down-side
+double tap already set.
 
 ## 6. Modifier consumption and clearing
 
@@ -584,10 +613,20 @@ Every commit above refreshes the status display 50 ms later (the "cursor update 
 |---|---|---|
 | Alt+Shift (either order, repeat 0, editable field) | `alt_shift_layout_switch` (false; true for installations that existed before the setting was introduced, recorded by `alt_shift_default_initialized`) | Alt and Shift state fully cleared; next input subtype; toast if `toast_on_layout_switch` (true); consumed |
 | Alt+Enter (repeat 0) | `alt_enter_layout_switch` (false) | Alt cleared; next subtype; toast; consumed, and every Enter repeat until the Enter key-up is consumed too (the Enter up itself is consumed) |
-| Ctrl+Space (Ctrl meta, pressed, latched or one-shot) | `ctrl_space_layout_switch` (true) | Alt cleared if active; Ctrl cleared, except that a user latch survives when `ctrl_tap_latches` and `ctrl_latch_stays_on_space` are both on and the latch did not come from nav mode; if the latch came from nav mode and is not kept, nav mode's notification is cancelled and nav state refreshed; next subtype; toast; consumed |
+| Ctrl+Space (Ctrl meta, pressed, latched or one-shot; only when another input subtype exists to switch to) | `ctrl_space_layout_switch` (true) | Alt cleared if active; Ctrl cleared, except that a user latch survives when `ctrl_tap_latches` and `ctrl_latch_stays_on_space` are both on and the latch did not come from nav mode; if the latch came from nav mode and is not kept, nav mode's notification is cancelled and nav state refreshed; next subtype; toast; consumed |
+
+With only one input subtype installed there is nothing to switch to, so the chord does not fire:
+a physical Fn+Space is forwarded to the app as the Ctrl+Space combo it is (section 7.3 step 1),
+and a logical Ctrl+Space (Ctrl one-shot or latched, no physical combo) resolves like any other key
+under Ctrl (section 7.3) — consuming a Ctrl one-shot and passing Space through as a plain space —
+instead of vanishing.
 
 A fresh Enter down with repeat 0 always clears the "consume Enter repeats" flag first, so a
 chord whose key-up was lost across a field change cannot swallow the next Enter.
+
+Amended 2026-09-24: Ctrl+Space now only consumes and switches when the caller has another input
+subtype to offer; with a single layout installed, Fn+Space used to vanish (consumed by the chord,
+switching to the only subtype there is) instead of reaching the app or the field.
 
 ### 7.6 Enter and Backspace housekeeping
 
@@ -1051,7 +1090,7 @@ committed text.
 | T19 | Alt down, up, Alt down t=200, up | Alt latched; Alt layer latched |
 | T20 | T19, Space down, `clear_alt_on_space` on, `alt_latch_stays_on_space` off | Alt off; Space passes as plain space |
 | T21 | T19, Space down, `alt_latch_stays_on_space` on | Alt latch true; one-shot false; Space plain |
-| T22 | Alt down (Ctrl meta set), `alt_ctrl_speech_shortcut` on | dictation start requested; consumed; Alt state unchanged |
+| T22 | Alt down t=0 (Ctrl meta set) | Alt one-shot; Alt pressed true; Alt down consumed (Ignored); no dictation toggle — the Alt+Ctrl chord is dropped (section 5.5), this is an ordinary Alt press |
 | T23 | Sym down r=0, Sym up | Sym page cycles 0 to 1; both events consumed |
 | T24 | Sym down r=0, C down r=0, C up, Sym up, `sym_edit_shortcuts` on | copy performed; no Sym page opened |
 | T25 | Sym down r=0, A down r=0 with no launcher shortcut on A, preferred chord page emoji | emoji for A committed; Sym up opens no page |
@@ -1091,6 +1130,9 @@ committed text.
 | T59 | Numeric field: V down with Ctrl meta, default mappings | paste performed (not the Alt digit, not Ctrl+V forwarded) |
 | T60 | Finish input while Ctrl latched | latch survives marked from nav mode; Shift and Alt cleared; layer latches cleared |
 
+Amended 2026-09-24: rewrote T22 for the dropped Alt+Ctrl dictation chord — Alt down with Ctrl meta
+set is now just an ordinary Alt press (one-shot armed, down consumed), not a dictation toggle.
+
 ## 22. Keep / Drop for 3.0
 
 | Item | Decision | Reasoning |
@@ -1102,10 +1144,10 @@ committed text.
 | Sym tap toggles on release; Sym chords (edit, launcher, symbol) | keep | the chord-without-flashing design is core Titan UX |
 | Hold Sym for assistant (600 ms) | keep | works with the clean Sym up/down; conflict rule with the trackpad trigger stays |
 | Shift/Ctrl/Alt one-shot, double-tap latch, 500 ms and 300 ms windows, consecutive-tap rule, hold restore | keep | the whole typing model rests on it |
-| Layer latches (Shift layer, Alt layer) as a second flag | undecided | they only add "third tap clears" and the uppercase forcing for Shift; 3.0 could fold them into the logical latch |
+| Layer latches (Shift layer, Alt layer) as a second flag | keep, folded into the logical latch | the separate release-to-release timer is gone (section 5.6); the layer latch now just reads the logical latch (caps lock or the Alt latch) the down-side double tap already set, so it adds only "third tap clears" and the uppercase forcing for Shift |
 | `shift_tap_latches`, `alt_tap_latches`, `ctrl_tap_latches`, `*_latch_stays_on_space` | drop | no UI since the Modifiers screen was deleted; defaults are the only tested path |
 | `clear_alt_on_space` | keep | on by default and relied on for symbol typing |
-| Alt+Ctrl dictation chord | undecided | on the Titan it is Alt held plus an Fn hold long enough to repeat; hold-Fn already dictates |
+| Alt+Ctrl dictation chord | drop (removed) | on the Titan it is Alt held plus an Fn hold long enough to repeat, and that same hold already toggles dictation via the Fn burst; keeping the chord would just toggle it back off |
 | Ctrl mapping file, its five types, migration, per-user copy | keep | Fn Layer is the Titan's cursor and edit surface; drop the unimplemented `toggle_minimal_ui` default |
 | `nav_mode_ctrl_hold_enabled`, `layout_aware_ctrl_shortcuts` | keep | both change what Fn chords do |
 | Nav mode toggled by Ctrl double tap outside text fields | undecided | unreachable from Fn on the Titan (D4); keep only if a real Ctrl key or a command can toggle it |
@@ -1127,6 +1169,10 @@ committed text.
 | Orange side key redirection with component-name validation | keep | the only way to give the side key a use; the validation is a security requirement |
 | Right Shift / Home / Recent vendor flags | keep read-only display | nothing to do with them beyond showing |
 | Diagnostics key logger | keep | device evidence for 3.0 comes from it |
+
+Amended 2026-09-24: resolved two rows that were "undecided" — the layer-latch flag is kept, now
+folded into the down-side double tap that already sets the logical latch, and the Alt+Ctrl
+dictation chord is dropped since the Fn burst already provides hold-to-dictate.
 
 ## 23. Provenance
 

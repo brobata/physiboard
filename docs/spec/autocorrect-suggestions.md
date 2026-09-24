@@ -302,12 +302,21 @@ Default user words come from `common/dictionaries/user_defaults.json`, copied on
 personal words but are excluded from starter suggestions.
 
 Both kinds are "known words": a personal word is never autocorrected, and it can never be
-filtered out of suggestions by frequency or capitalization rules.
+filtered out of suggestions by frequency or capitalization rules. This reaches primary case
+repair (section 7.2 step 8) and the automatic-correction decision's "exact primary case" fact
+(section 9) too: both check the personal and default stores, and every loaded dictionary, for an
+exact spelling before treating the primary list's own case as the only one that counts, so a
+lowercase word added here is never re-cased by either path.
 
 Settings screens announce changes with the broadcast
 `brobata.physiboard.ACTION_USER_DICTIONARY_UPDATED` (package-internal); the keyboard then
 re-reads both files, purges removed words from its indexes and rebuilds the fuzzy index in the
 background.
+
+Amended 2026-09-24: spelled out that the "known word" protection is not just about suggestions
+and automatic correction, but also binds primary case repair and the exact-case check underneath
+it, which previously consulted only the primary dictionary and could recase a word the user had
+just added.
 
 ### 6.2 Adding from the strip
 
@@ -368,10 +377,12 @@ With suggestions active for the field (not restricted, engine present):
    Done.
 7. If `auto_replace_on_space_enter` is off: the boundary is committed. Done.
 8. **Primary case repair**: if the word equals its lookup word, contains a letter, has no
-   uppercase letter, the primary dictionary's entries for its key (top 8) contain no entry spelled
-   exactly as typed, and one of them equals it ignoring case and contains an uppercase letter,
-   that entry replaces the word (`problem` -> `Problem` when only `Problem` exists; `und` stays
-   when `und` exists beside `Und`). Skipped if the word was rejected (7.5). Done.
+   uppercase letter, no active dictionary and neither word store has an entry spelled exactly as
+   typed (section 6.1; the same test as section 9's "exact primary case" fact), and the primary
+   dictionary's entries for its key (top 8) include one that equals it ignoring case and contains
+   an uppercase letter, that entry replaces the word (`problem` -> `Problem` when only `Problem`
+   exists; `und` stays when `und` exists beside `Und`, in any active dictionary or either word
+   store). Skipped if the word was rejected (7.5). Done.
 9. **Automatic correction** (section 9). If it commits, done.
 10. Otherwise the boundary is committed and the last-replacement memory is cleared.
 
@@ -379,6 +390,10 @@ Steps 6, 8 and 9 all commit the same way: delete the word before the cursor, com
 replacement, remember the pair for undo, reset the tracker, then append the boundary. A haptic
 fires on every replacement. Each attempt is recorded in the debug capture (section 12) with its
 outcome.
+
+Amended 2026-09-24: step 8's "no entry spelled exactly as typed" test now covers the personal and
+default word stores and every loaded dictionary, not only the primary list, so a lowercase word
+the user added is left alone even when the primary list knows only the capitalised form.
 
 ### 7.3 Committing the boundary
 
@@ -544,14 +559,15 @@ Facts gathered about the top candidate (after apostrophe recomposition):
 - known: the lookup word is known in any active dictionary (an additional dictionary that is
   still loading counts as "known", deferring correction rather than risking a wrong one);
 - exact known: some entry is spelled exactly as the lookup word (case-insensitive);
-- exact primary case: the primary dictionary has an entry spelled exactly as typed;
+- exact primary case: some active dictionary or either word store (section 6.1) has an entry
+  spelled exactly as typed — not the primary list alone;
 - rejected: in the rejected set (7.5).
 
 The candidate is committed only when **all** of these hold:
 
 | Gate | Rule |
 |---|---|
-| Known word | The word is not known; or it is a case variant and the primary dictionary has no entry in the typed case; or it is an orthographic variant and no entry is spelled exactly as typed |
+| Known word | The word is not known; or it is a case variant and no active dictionary or word store has an entry in the typed case; or it is an orthographic variant and no entry is spelled exactly as typed |
 | Not rejected | The word is not in the rejected set |
 | Confidence | confidence ≥ 0.02 |
 | Safe shape | See below |
@@ -592,13 +608,24 @@ export unless "incl. autocorrections" is switched on.
 2 percent of it, so the correction is left on the strip for the user to tap instead of being
 imposed.
 
+Amended 2026-09-24: "exact primary case" and the case-variant leg of the Known Word gate now check
+every loaded dictionary and both word stores, not only the primary list, so a lowercase word the
+user added no longer looks like a case mismatch worth correcting.
+
 ## 10. The rule: a correctly spelled word is never overwritten
 
 Stated plainly: if the typed word is in any active dictionary, automatic correction leaves it
-alone. The only replacements a known word can receive are a case repair (`problem` ->
-`Problem` when the dictionary has only the capitalized form) and an accent repair (`perche` ->
+alone. "Any active dictionary" includes the personal and default word stores (section 6.1), which
+are merged into every loaded dictionary, so a lowercase word the user has added is exactly as
+protected as one the shipped list already knows. The only replacements a known word can receive
+are a case repair (`problem` -> `Problem`, only when no active dictionary or either word store has
+the word spelled exactly as typed, just in a different case) and an accent repair (`perche` ->
 `perché` when no entry is spelled `perche`). Text replacement rules are exempt from this rule in
 practice (8.3, step 4).
+
+Amended 2026-09-24: made explicit that "any active dictionary" reaches the personal and default
+stores, and that case repair is itself bound by this rule and not just the automatic-correction
+path; a personal or secondary-dictionary spelling used to have no say over case repair.
 
 The rule is only as good as the dictionary: a real word the dictionary has never heard of looks
 exactly like a typo. Measured on 2026-09-09 against the previous English list (50,000 entries,
