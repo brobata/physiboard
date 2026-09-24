@@ -3,6 +3,7 @@ package brobata.physiboard.ime
 import android.inputmethodservice.InputMethodService
 import android.view.KeyEvent
 import android.view.View
+import android.view.inputmethod.CursorAnchorInfo
 import android.view.inputmethod.EditorInfo
 
 /**
@@ -52,6 +53,18 @@ class PhysiBoardInputMethodService : InputMethodService() {
     override fun onDestroy() {
         keyboard.onDictationServiceDestroyed()
         super.onDestroy()
+    }
+
+    /** spec: trackpad-caret-nav.md SS2.4, the screen trackpad's own overlay lifetime ("removed on... the keyboard window hiding"). */
+    override fun onWindowHidden() {
+        keyboard.onKeyboardWindowHidden()
+        super.onWindowHidden()
+    }
+
+    /** spec: trackpad-caret-nav.md SS4.7, the cursor-anchor reports [KeyboardSession] requests for the caret badge. */
+    override fun onUpdateCursorAnchorInfo(cursorAnchorInfo: CursorAnchorInfo) {
+        super.onUpdateCursorAnchorInfo(cursorAnchorInfo)
+        keyboard.onUpdateCursorAnchorInfo(cursorAnchorInfo)
     }
 
     override fun onUpdateSelection(

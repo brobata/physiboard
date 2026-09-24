@@ -14,6 +14,7 @@ import brobata.physiboard.core.keys.ModifierSettings
 import brobata.physiboard.core.keys.ModifierState
 import brobata.physiboard.core.keys.ShiftValue
 import brobata.physiboard.core.keys.TypingSessionState
+import brobata.physiboard.core.pointer.caret.ModifierGlyphInput
 import brobata.physiboard.core.text.AppProfile
 import brobata.physiboard.core.text.AutoCapitalization
 import brobata.physiboard.core.text.AutocorrectSettings
@@ -59,9 +60,16 @@ import brobata.physiboard.core.text.TextInputState
  * but shipping the code default for one baseline row and not its neighbours would just move the
  * same "shipped default silently disagrees with the only device this milestone targets" mistake
  * one row down.
+ *
+ * [modifier] overrides [ModifierSettings]'s own bare `fnLongPressSpeechEnabled = false` for the
+ * identical reason: settings-catalog.md SS2.8 lists `fn_long_press_speech`'s code default as
+ * `false` but its baseline as `true` ("the first-run defaults turn it on"), and dictation.md
+ * SS2.1 names holding Fn as the primary trigger on this phone. Shipping the code default here
+ * would leave the one dictation trigger this milestone wires (see [DictationController]) armed
+ * in code but silent on every device that has no settings store to flip it back on.
  */
 data class KeyboardSettings(
-    val modifier: ModifierSettings = ModifierSettings(),
+    val modifier: ModifierSettings = ModifierSettings(fnLongPressSpeechEnabled = true),
     val resolver: LayerResolver.LayerResolverSettings = LayerResolver.LayerResolverSettings(),
     val textInput: TextInputSettingsBundle = TextInputSettingsBundle(
         autocorrect = AutocorrectSettings(autoReplaceOnSpaceEnter = true, maxAutoReplaceDistance = 2),
@@ -112,6 +120,33 @@ internal class KeyboardPipeline(
     private var activeAppProfile = AppProfile.default(null)
 
     val fieldContext: FieldContext get() = activeField
+
+    /**
+     * The caret badge's own small view of the modifier state. spec: trackpad-caret-nav.md SS4.2's
+     * table, one field per row; [ModifierGlyphInput] is `:core:pointer`'s type on purpose (its own
+     * KDoc), so this is the one place that translates `:core:keys`' richer [ModifierState] into it.
+     */
+    fun modifierGlyphInput(): ModifierGlyphInput = ModifierGlyphInput(
+        capsLockOn = modifierState.shift.value == ShiftValue.CAPS,
+        shiftOneShotArmed = modifierState.shift.value == ShiftValue.ONE_SHOT,
+        shiftPhysicallyHeld = modifierState.shift.physicallyPressed,
+        altLatched = modifierState.alt.latched,
+        altOneShotArmed = modifierState.alt.oneShot,
+        altPhysicallyHeld = modifierState.alt.physicallyPressed,
+        ctrlLatchedNotNavMode = modifierState.ctrl.latched && !modifierState.ctrl.latchFromNavMode,
+        ctrlOneShotArmed = modifierState.ctrl.oneShot,
+        ctrlPhysicallyHeld = modifierState.ctrl.physicallyPressed,
+        symPageOpen = modifierState.sym.currentPageNumber != 0,
+    )
+
+    /**
+     * spec: trackpad-caret-nav.md SS2.6, "whether Shift is on is re-read on every move event":
+     * physically held, one-shot armed, or the visual Shift layer latched. Exposed for
+     * [brobata.physiboard.ime.pointer.TrackpadOverlayController], the one caller outside this
+     * class that needs a live answer to "is Shift active" without seeing [ModifierState] itself.
+     */
+    fun isTrackpadShiftActive(): Boolean =
+        modifierState.shift.physicallyPressed || modifierState.shift.value == ShiftValue.ONE_SHOT || modifierState.shift.layerLatched
 
     private val ENTER_KEY = KeyId.Control(ControlKey.ENTER)
 

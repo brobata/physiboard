@@ -11,6 +11,13 @@
          to ask for it. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
+    <!-- Screen trackpad and caret badge: spec trackpad-caret-nav.md SS2.1, SS4.1. Both overlays
+         are TYPE_APPLICATION_OVERLAY windows drawn above the app being typed into, so both need
+         "Display over other apps". OverlayPermission.availability re-checks the real grant on
+         every show (never cached); this declaration alone does not grant it, it only lets the
+         user grant it from the system's per-app permission screen. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
     <application>
         <service
             android:name="brobata.physiboard.ime.PhysiBoardInputMethodService"

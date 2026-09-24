@@ -11,9 +11,20 @@ import android.os.VibratorManager
 import android.util.Log
 import android.view.KeyEvent
 import android.view.View
+import android.view.inputmethod.CursorAnchorInfo
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import brobata.physiboard.core.dict.LanguageCode
+import brobata.physiboard.core.keys.KeyCommands
+import brobata.physiboard.core.keys.KeyStroke
+import brobata.physiboard.core.pointer.caret.CaretGeometry
+import brobata.physiboard.core.pointer.caret.CaretUsability
+import brobata.physiboard.core.pointer.caret.CursorAnchorReport
+import brobata.physiboard.core.pointer.caret.CursorUpdateRequestState
+import brobata.physiboard.core.pointer.caret.CursorUpdateRetrySchedule
+import brobata.physiboard.core.pointer.trackpad.TrackpadActivationSettings
+import brobata.physiboard.core.pointer.trackpad.TrackpadGestureSettings
+import brobata.physiboard.core.pointer.trackpad.TrackpadPhysicalKey
 import brobata.physiboard.core.text.AppProfile
 import brobata.physiboard.core.text.AppProfileResolver
 import brobata.physiboard.core.text.EnterOverride
@@ -21,6 +32,8 @@ import brobata.physiboard.core.text.EnterOverrideResolver
 import brobata.physiboard.core.text.MessagingPreset
 import brobata.physiboard.device.titan.KeyNormalizer
 import brobata.physiboard.device.titan.TitanLayouts
+import brobata.physiboard.ime.pointer.CaretBadgeOverlayController
+import brobata.physiboard.ime.pointer.TrackpadOverlayController
 
 /**
  * Where one key event meets the pipeline.
@@ -63,12 +76,61 @@ internal class KeyboardSession(
 
     private var candidatesStrip: CandidatesStripView? = null
 
+    // -----------------------------------------------------------------------------------------
+    // Screen trackpad. spec: trackpad-caret-nav.md SS2. The shipped baseline turns it on
+    // (`screen_trackpad_enabled` true, SS2.1), so it is wired unconditionally; there is no
+    // `:settings` module yet, so [TrackpadActivationSettings] and [TrackpadGestureSettings] are
+    // the shipped defaults, which already match that baseline (trigger Space, hold mode, 250 ms
+    // threshold, 32 px step) rather than needing an override the way [KeyboardSettings] does.
+    // -----------------------------------------------------------------------------------------
+
+    private val trackpad = TrackpadOverlayController(
+        service = service,
+        handler = handler,
+        activationSettings = TrackpadActivationSettings(),
+        gestureSettings = TrackpadGestureSettings(),
+        isShiftActive = pipeline::isTrackpadShiftActive,
+        currentInputConnection = { service.currentInputConnection },
+        replayTriggerDown = ::replayPendingTrackpadDown,
+        replayTriggerDownAndUp = ::replayPendingTrackpadDownAndUp,
+    )
+
+    /**
+     * The trigger-down [interceptForTrackpad] swallowed, kept only so [replayPendingTrackpadDown]
+     * and [replayPendingTrackpadDownAndUp] have a stroke to replay. spec: SS2.3, "the raw event is
+     * kept for replay". Never read except by those two functions, and cleared by both before they
+     * do anything else, so a crash mid-replay cannot leave a stale down to be replayed twice.
+     */
+    private var pendingTrackpadDownEvent: KeyEvent? = null
+    private var pendingTrackpadDownStroke: KeyStroke? = null
+
+    /** The up event [interceptForTrackpad] is currently deciding about, reused as-is for a down-and-up replay. */
+    private var pendingTrackpadUpEvent: KeyEvent? = null
+
+    // -----------------------------------------------------------------------------------------
+    // Caret badge. spec: trackpad-caret-nav.md SS4. `caret_modifier_badge`'s baseline default is
+    // true (SS4.8); same no-`:settings`-module reasoning as the trackpad above, so this is also
+    // wired unconditionally.
+    // -----------------------------------------------------------------------------------------
+
+    private val caretBadge = CaretBadgeOverlayController(service)
+
+    /** The editor's last usable cursor-anchor report, or null; SS4.6, "forgotten... when the editor finishes". */
+    private var lastCaretGeometry: CaretGeometry? = null
+
+    /** spec: SS4.7's retry bookkeeping, one instance per editor (reset in [onStartInput]). */
+    private var cursorUpdateState = CursorUpdateRequestState()
+
+    /** Groups every scheduled cursor-update retry so [onStartInput]/[onFinishInput] can cancel them all in one call. */
+    private val cursorUpdateToken = Any()
+
     // spec: dictation.md. `:core:speech` holds the session's own rules; this class only owns the
     // two facts only `:ime` can supply: which field is current, and whether a key reaching the
     // ordinary typing pipeline while dictation is listening means the user just edited the field
     // out from under it (spec: the c440844 fix, DictationController.onUserEditedComposingText's
-    // own KDoc). `trigger` is exposed for a future key binding; this task does not wire one (its
-    // own instructions), so nothing calls it yet.
+    // own KDoc). `trigger` is now wired to the Fn-burst command [handleCommand] receives from
+    // `:core:keys` (keys-and-modifiers.md SS3.3) and to the microphone key of a future strip; this
+    // task only wires the former.
     private val dictationController = DictationController(service) { service.currentInputConnection }
     private var currentPackageName: String? = null
 
@@ -116,6 +178,12 @@ internal class KeyboardSession(
 
     fun onStartInput(info: EditorInfo?, restarting: Boolean) {
         handler.removeCallbacks(longPressRunnable)
+        // spec: trackpad-caret-nav.md SS4.6, "forgotten... when monitoring restarts for a new
+        // editor" and SS4.7, "every new editor drops it": the old caret and retry count belong to
+        // the field that just closed, restarting or not.
+        lastCaretGeometry = null
+        cursorUpdateState = CursorUpdateRequestState()
+        scheduleCursorUpdateRetries()
         // spec: per-app-behavior.md SS2.1, "the package name comes from the editor"; SS2.2's
         // WebAPK-host rule is what lets a profile filed under a web app's own shell identity still
         // match here, since `info.packageName` reports the host browser for one, never the shell.
@@ -143,9 +211,89 @@ internal class KeyboardSession(
 
     fun onFinishInput() {
         handler.removeCallbacks(longPressRunnable)
+        handler.removeCallbacksAndMessages(cursorUpdateToken)
         pipeline.onFinishInput()
         service.setCandidatesViewShown(false)
         dictationController.onEditorFieldClosed()
+        // spec: SS4.6, "forgotten and the badge hidden when the editor finishes".
+        lastCaretGeometry = null
+        caretBadge.hide()
+    }
+
+    /**
+     * spec: trackpad-caret-nav.md SS2.4, "removed on... the keyboard window hiding". A new Android
+     * entry point independent of any keystroke, guarded the same way [onKeyEvent] is: a bug in the
+     * trackpad's own cleanup must not escape onto the input method's callback thread.
+     */
+    fun onKeyboardWindowHidden() {
+        runCatching { trackpad.onKeyboardWindowHidden() }.onFailure { error -> Log.e(TAG, "onKeyboardWindowHidden crashed", error) }
+    }
+
+    /**
+     * spec: trackpad-caret-nav.md SS4.7, the editor's own cursor-anchor report. A new Android entry
+     * point Android can call at any time once [requestCursorUpdates] succeeds, guarded the same way
+     * [onKeyEvent] is, since a misbehaving editor's report is exactly the kind of input this
+     * function did not choose to receive.
+     */
+    fun onUpdateCursorAnchorInfo(info: CursorAnchorInfo) {
+        runCatching {
+            cursorUpdateState = CursorUpdateRetrySchedule.onRequestAccepted(cursorUpdateState)
+            // spec SS4.6: "unusable... when any of its horizontal, top or bottom values is not a
+            // number". The platform's own contract for these three getters is exactly that: NaN
+            // when the editor did not report an insertion marker, never an exception, so
+            // [CaretUsability.isUsable] is the only filter needed here.
+            val report = CursorAnchorReport(
+                horizontalPx = info.insertionMarkerHorizontal,
+                topPx = info.insertionMarkerTop,
+                bottomPx = info.insertionMarkerBottom,
+                hasInvisibleRegion = info.insertionMarkerFlags and CursorAnchorInfo.FLAG_HAS_INVISIBLE_REGION != 0,
+                hasVisibleRegion = info.insertionMarkerFlags and CursorAnchorInfo.FLAG_HAS_VISIBLE_REGION != 0,
+            )
+            lastCaretGeometry = if (CaretUsability.isUsable(report)) {
+                CaretGeometry(leftPx = report.horizontalPx!!, topPx = report.topPx!!, bottomPx = report.bottomPx!!)
+            } else {
+                null
+            }
+            refreshCaretBadge()
+        }.onFailure { error -> Log.e(TAG, "onUpdateCursorAnchorInfo crashed", error) }
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Cursor-anchor requests. spec: trackpad-caret-nav.md SS4.7.
+    // -----------------------------------------------------------------------------------------
+
+    /** The immediate request plus the four staged retries (80, 250, 600, 1200 ms), all cancellable together via [cursorUpdateToken]. */
+    private fun scheduleCursorUpdateRetries() {
+        handler.removeCallbacksAndMessages(cursorUpdateToken)
+        attemptCursorUpdateRequest()
+        CursorUpdateRetrySchedule.SCHEDULE_OFFSETS_MS.drop(1).forEach { offsetMs ->
+            handler.postDelayed({ attemptCursorUpdateRequest() }, cursorUpdateToken, offsetMs)
+        }
+    }
+
+    /** spec: SS4.7, "on every strip refresh:... while the setting is on and no request has been accepted yet, a retry is attempted". */
+    private fun retryCursorUpdateOnRefresh() {
+        if (cursorUpdateState.accepted) return
+        val (nextState, shouldAttempt) = CursorUpdateRetrySchedule.onRefresh(cursorUpdateState)
+        cursorUpdateState = nextState
+        if (shouldAttempt) issueCursorUpdateRequest()
+    }
+
+    private fun attemptCursorUpdateRequest() {
+        if (cursorUpdateState.accepted) return
+        val (nextState, shouldAttempt) = CursorUpdateRetrySchedule.onScheduledAttempt(cursorUpdateState)
+        cursorUpdateState = nextState
+        if (shouldAttempt) issueCursorUpdateRequest()
+    }
+
+    private fun issueCursorUpdateRequest() {
+        runCatching {
+            val ic = service.currentInputConnection ?: return@runCatching
+            val flags = InputConnection.CURSOR_UPDATE_IMMEDIATE or InputConnection.CURSOR_UPDATE_MONITOR
+            if (ic.requestCursorUpdates(flags)) {
+                cursorUpdateState = CursorUpdateRetrySchedule.onRequestAccepted(cursorUpdateState)
+            }
+        }.onFailure { error -> Log.e(TAG, "requestCursorUpdates crashed", error) }
     }
 
     fun onUpdateSelection(oldSelStart: Int, oldSelEnd: Int, newSelStart: Int, newSelEnd: Int, candidatesStart: Int, candidatesEnd: Int) {
@@ -181,17 +329,35 @@ internal class KeyboardSession(
      * that no unit test in this project runs against for real.
      */
     fun onKeyEvent(event: KeyEvent): Boolean = runCatching {
-        val stroke = KeyNormalizer.normalize(
-            keyCode = event.keyCode,
-            scanCode = event.scanCode,
-            action = event.action,
-            repeatCount = event.repeatCount,
-            metaState = event.metaState,
-            deviceId = event.deviceId,
-            eventTimeMs = event.eventTime,
-        ) ?: return@runCatching false
+        if (interceptForTrackpad(event)) return@runCatching true
+        val stroke = normalizeStroke(event) ?: return@runCatching false
+        processKeyStroke(stroke)
+    }.getOrElse { error ->
+        Log.e(TAG, "onKeyEvent crashed on keyCode=${event.keyCode}; letting the raw key through", error)
+        false
+    }
 
-        val ic = service.currentInputConnection ?: return@runCatching false
+    private fun normalizeStroke(event: KeyEvent): KeyStroke? = KeyNormalizer.normalize(
+        keyCode = event.keyCode,
+        scanCode = event.scanCode,
+        action = event.action,
+        repeatCount = event.repeatCount,
+        metaState = event.metaState,
+        deviceId = event.deviceId,
+        eventTimeMs = event.eventTime,
+    )
+
+    /**
+     * Runs one already-classified [KeyStroke] through [KeyboardPipeline] and applies whatever
+     * comes back. spec: docs/plans/rebuild-from-scratch.md, "`:ime` decides nothing. It reads, it
+     * calls, it applies." [onKeyEvent] calls this for a stroke [interceptForTrackpad] left alone;
+     * [replayPendingTrackpadDown] and [replayPendingTrackpadDownAndUp] call it again for a stroke
+     * the trackpad swallowed and then decided, after all, was not a hold (trackpad-caret-nav.md
+     * SS2.3: "the swallowed down... replayed through the normal pipeline, so a quick tap still
+     * types the key").
+     */
+    private fun processKeyStroke(stroke: KeyStroke): Boolean {
+        val ic = service.currentInputConnection ?: return false
         // spec: the c440844 fix. Any key reaching the ordinary typing pipeline while dictation is
         // listening is the user changing the field by some means other than the dictation session
         // itself (typing over it, or deleting it), so whatever the engine remembers of the current
@@ -202,10 +368,90 @@ internal class KeyboardSession(
         val consumed = applyResult(ic, result, readout)
         scheduleLongPressIfNeeded()
         refreshCandidatesStrip()
-        consumed
-    }.getOrElse { error ->
-        Log.e(TAG, "onKeyEvent crashed on keyCode=${event.keyCode}; letting the raw key through", error)
-        false
+        return consumed
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Screen trackpad's trigger. spec: trackpad-caret-nav.md SS2.2, "before everything else in
+    // the key pipeline." Runs from inside [onKeyEvent]'s own guard, ahead of [processKeyStroke].
+    // -----------------------------------------------------------------------------------------
+
+    /**
+     * spec: SS2.2's trigger-key table and SS2.3's activation-mode table. Classifies [event] and
+     * hands it to [TrackpadOverlayController], caching whatever it would need to replay later
+     * (SS2.3, "the raw event is kept for replay") before finding out whether a replay is actually
+     * needed; only an event the trackpad has no opinion about, or explicitly leaves alone, reaches
+     * [processKeyStroke] afterward.
+     */
+    private fun interceptForTrackpad(event: KeyEvent): Boolean {
+        val trackpadKey = classifyTrackpadKey(event.keyCode)
+        // spec SS2.2: "A Space down that already carries Ctrl or Alt in its meta state is never a trigger."
+        val carriesDisqualifyingMeta = trackpadKey == TrackpadPhysicalKey.SPACE &&
+            (event.metaState and KeyEvent.META_CTRL_ON != 0 || event.metaState and KeyEvent.META_ALT_ON != 0)
+        return when (event.action) {
+            KeyEvent.ACTION_DOWN -> {
+                if (trackpadKey != null) {
+                    pendingTrackpadDownEvent = event
+                    pendingTrackpadDownStroke = normalizeStroke(event)
+                }
+                trackpad.onKeyDown(trackpadKey, event.repeatCount, event.eventTime, carriesDisqualifyingMeta)
+            }
+            KeyEvent.ACTION_UP -> {
+                pendingTrackpadUpEvent = event
+                trackpad.onKeyUp(trackpadKey, event.eventTime)
+            }
+            else -> false
+        }
+    }
+
+    /**
+     * spec: SS2.2's `screen_trackpad_trigger_key` table. [TrackpadPhysicalKey] deliberately keeps
+     * Left and Right Shift apart (its own KDoc), which `:device:titan`'s `KeyId.Modifier(SHIFT)`
+     * does not, so this reads the raw keycode directly rather than going through [KeyNormalizer].
+     */
+    private fun classifyTrackpadKey(keyCode: Int): TrackpadPhysicalKey? = when (keyCode) {
+        KeyEvent.KEYCODE_SPACE -> TrackpadPhysicalKey.SPACE
+        KeyEvent.KEYCODE_SHIFT_LEFT -> TrackpadPhysicalKey.SHIFT_LEFT
+        KeyEvent.KEYCODE_SHIFT_RIGHT -> TrackpadPhysicalKey.SHIFT_RIGHT
+        KeyEvent.KEYCODE_SYM -> TrackpadPhysicalKey.SYM
+        KeyEvent.KEYCODE_BACK -> TrackpadPhysicalKey.BACK
+        else -> null
+    }
+
+    /**
+     * spec: SS2.3, the chord and permission-failure rows ("the swallowed trigger down is replayed
+     * at once" / "trigger down replayed"). Called by [trackpad] itself, from inside a key event
+     * this class is already guarding ([onKeyEvent]) or from its own hold timer, which is why this
+     * wraps its own work rather than trusting the caller's guard.
+     */
+    private fun replayPendingTrackpadDown() {
+        val downEvent = pendingTrackpadDownEvent
+        val downStroke = pendingTrackpadDownStroke
+        pendingTrackpadDownEvent = null
+        pendingTrackpadDownStroke = null
+        if (downStroke == null) return
+        runCatching {
+            // spec SS2.3: "If the normal pipeline does not handle the replayed down, the raw down
+            // ... [is] sent to the editor through the input connection instead."
+            if (!processKeyStroke(downStroke)) downEvent?.let { service.currentInputConnection?.sendKeyEvent(it) }
+        }.onFailure { error -> Log.e(TAG, "trackpad replay (down) crashed", error) }
+    }
+
+    /** spec: SS2.3's `hold` row, "the swallowed down and the up are replayed through the normal pipeline". */
+    private fun replayPendingTrackpadDownAndUp() {
+        val downEvent = pendingTrackpadDownEvent
+        val downStroke = pendingTrackpadDownStroke
+        val upEvent = pendingTrackpadUpEvent
+        pendingTrackpadDownEvent = null
+        pendingTrackpadDownStroke = null
+        pendingTrackpadUpEvent = null
+        runCatching {
+            val downConsumed = downStroke?.let(::processKeyStroke) ?: false
+            if (!downConsumed) downEvent?.let { service.currentInputConnection?.sendKeyEvent(it) }
+            val upStroke = upEvent?.let(::normalizeStroke)
+            val upConsumed = upStroke?.let(::processKeyStroke) ?: false
+            if (!upConsumed) upEvent?.let { service.currentInputConnection?.sendKeyEvent(it) }
+        }.onFailure { error -> Log.e(TAG, "trackpad replay (down+up) crashed", error) }
     }
 
     private fun onLongPressTick() {
@@ -259,14 +505,26 @@ internal class KeyboardSession(
 
     // -----------------------------------------------------------------------------------------
     // Commands. spec: keys-and-modifiers.md SS3.3, SS4.4, SS15 item 3, SS12.2 (a Fn Layer
-    // `command` mapping): every id below names a subsystem (dictation, layout switching, nav
-    // mode, the assistant) that has no owning module yet (rebuild-from-scratch build order steps
-    // 4-5). There is nothing for `:ime` to call, so every command is accepted and ignored rather
-    // than guessed at; wiring a real handler later is a change to this one function.
+    // `command` mapping): every id below names a subsystem that has no owning module yet
+    // (rebuild-from-scratch build order steps 4-5) except dictation, wired below; layout
+    // switching, nav mode's own exit command and the assistant are accepted and ignored rather
+    // than guessed at; wiring each one is a change to this one function.
     // -----------------------------------------------------------------------------------------
 
+    /**
+     * spec: keys-and-modifiers.md SS3.3, the Fn burst's own [KeyCommands.TOGGLE_DICTATION].
+     * `:core:keys`' `ModifierMachine.fnBurstDown` is what counts the burst and emits this id (five
+     * Fn-origin repeats, D3's "never sends a key-up" is exactly why a duration-based hold cannot
+     * see it, dictation.md SS2.1); this is the one line that turns that count into a real session.
+     * Wrapped like every other new entry point this task adds: [DictationController.trigger] does
+     * real Android work (a permission check, possibly starting an activity) on the same call stack
+     * that reached here from [onKeyEvent], and that stack's own `runCatching` is a defense the
+     * command dispatch itself must not rely on being present forever.
+     */
     private fun handleCommand(commandId: String) {
-        // Intentionally empty; see the KDoc above.
+        if (commandId == KeyCommands.TOGGLE_DICTATION) {
+            runCatching { onDictationTrigger() }.onFailure { error -> Log.e(TAG, "dictation trigger crashed", error) }
+        }
     }
 
     // -----------------------------------------------------------------------------------------
@@ -292,8 +550,23 @@ internal class KeyboardSession(
         }.onFailure { error -> Log.e(TAG, "onSuggestionTapped crashed", error) }
     }
 
+    /** spec: status-bar.md's "refresh"; also SS4.6's "recomputes its items on every strip refresh" for the caret badge and SS4.7's refresh-driven retry. */
     private fun refreshCandidatesStrip() {
         candidatesStrip?.update(pipeline.suggestions().map { it.word })
+        refreshCaretBadge()
+        retryCursorUpdateOnRefresh()
+    }
+
+    /**
+     * spec: trackpad-caret-nav.md SS4.6. Self-guarded rather than trusting its callers: some of
+     * [refreshCandidatesStrip]'s own call sites (the dictionary loader's background callback,
+     * [onStartInput]) predate this task and are not wrapped in a `runCatching` of their own.
+     */
+    private fun refreshCaretBadge() {
+        runCatching {
+            val metrics = service.resources.displayMetrics
+            caretBadge.update(pipeline.modifierGlyphInput(), lastCaretGeometry, metrics.widthPixels.toFloat(), metrics.density)
+        }.onFailure { error -> Log.e(TAG, "caret badge refresh crashed", error) }
     }
 
     private companion object {

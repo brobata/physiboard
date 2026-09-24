@@ -5,6 +5,7 @@ import android.graphics.PixelFormat
 import android.inputmethodservice.InputMethodService
 import android.os.Handler
 import android.os.SystemClock
+import android.util.Log
 import android.view.Gravity
 import android.view.KeyEvent
 import android.view.WindowManager
@@ -32,17 +33,17 @@ import brobata.physiboard.core.pointer.trackpad.TrackpadPhysicalKey
  * will actually take the window, read fresh through [OverlayPermission] on every check exactly as
  * SS4.6 requires of the caret badge (SS2.1 makes the same permission the trackpad's own).
  *
- * NEEDS A REAL DEVICE, not done by this class:
- *  - Running [onKeyDown]/[onKeyUp] ahead of the normal key pipeline for the configured trigger key
- *    (SS2.2: "before everything else in the key pipeline") and only forwarding the event to
- *    [KeyboardPipeline] when it comes back not consumed. `PhysiBoardInputMethodService`'s current
- *    `onKeyDown`/`onKeyUp` call `KeyboardSession.onKeyEvent` unconditionally; wiring this in ahead
- *    of that call, and replaying [TrackpadActivationEffect.replayTriggerDownAndUp] /
- *    [TrackpadActivationEffect.replayTriggerDownOnly] back through the normal pipeline the way
- *    SS2.3's "replaying flag" describes, is the remaining integration work.
+ * [replayTriggerDown] and [replayTriggerDownAndUp] are the caller's own hook for SS2.3's
+ * "replaying flag": this class only ever decides that a swallowed trigger down must go back
+ * through the ordinary key pipeline (or, for a quick tap, that down and its up both must), never
+ * how, since only `KeyboardSession` holds the stroke to replay and the pipeline to replay it into.
+ *
+ * NEEDS A REAL DEVICE, not proven by a JVM test:
  *  - Whether the overlay actually claims every touch and leaves the editor focused underneath it
- *    (SS2.4's "not focusable... the app underneath receives none while the overlay is up") can
- *    only be observed on the Titan.
+ *    (SS2.4's "not focusable... the app underneath receives none while the overlay is up").
+ *  - Whether [onKeyDown]/[onKeyUp] really do run ahead of the rest of the key pipeline for every
+ *    input method callback ordering Android might use, which is `KeyboardSession`'s own wiring,
+ *    not something this class can assert about itself.
  */
 internal class TrackpadOverlayController(
     private val service: InputMethodService,
@@ -51,6 +52,8 @@ internal class TrackpadOverlayController(
     var gestureSettings: TrackpadGestureSettings,
     private val isShiftActive: () -> Boolean,
     private val currentInputConnection: () -> InputConnection?,
+    private val replayTriggerDown: () -> Unit,
+    private val replayTriggerDownAndUp: () -> Unit,
 ) {
     private var activationState = TrackpadActivationState()
     private var overlayView: TrackpadOverlayView? = null
@@ -78,9 +81,16 @@ internal class TrackpadOverlayController(
         closeOverlay()
     }
 
+    /**
+     * The one timer this class owns, firing off its own `Handler` rather than inside a key event.
+     * Guarded the same way `KeyboardSession.onLongPressTick` is: a bug here must not escape onto
+     * the main thread and take the whole keyboard process down with it.
+     */
     private fun onHoldTimerTick() {
-        val result = TrackpadActivation.onHoldTimerFired(activationState, SystemClock.uptimeMillis(), activationSettings, availability())
-        apply(result.state, result.effect)
+        runCatching {
+            val result = TrackpadActivation.onHoldTimerFired(activationState, SystemClock.uptimeMillis(), activationSettings, availability())
+            apply(result.state, result.effect)
+        }.onFailure { error -> Log.e(TAG, "onHoldTimerTick crashed", error) }
     }
 
     private fun scheduleTimerIfNeeded() {
@@ -101,8 +111,13 @@ internal class TrackpadOverlayController(
                 Toast.makeText(service, "Screen trackpad needs Display over other apps. Enable it in PhysiBoard settings.", Toast.LENGTH_SHORT).show()
             }
         }
-        // replayTriggerDownAndUp / replayTriggerDownOnly: see this class's own "NEEDS A REAL
-        // DEVICE" note above; there is no owning caller yet to hand the replay back to.
+        // spec SS2.3: "the raw event is kept for replay". Which stroke(s) that is belongs to the
+        // caller (see this class's own KDoc); this only ever tells it which shape of replay SS2.3
+        // asks for. A tap replays down-and-up; a chord or a permission failure replays the down
+        // alone and lets the trigger's real up flow through untouched once it eventually arrives
+        // (TrackpadActivation's own ABORTED-phase "not consumed" answer for that up).
+        if (effect.replayTriggerDownAndUp) replayTriggerDownAndUp()
+        else if (effect.replayTriggerDownOnly) replayTriggerDown()
     }
 
     private fun openOverlay() {
@@ -168,5 +183,9 @@ internal class TrackpadOverlayController(
         step.axis == CursorAxis.HORIZONTAL -> KeyEvent.KEYCODE_DPAD_LEFT
         step.positive -> KeyEvent.KEYCODE_DPAD_DOWN
         else -> KeyEvent.KEYCODE_DPAD_UP
+    }
+
+    private companion object {
+        const val TAG = "PhysiBoardTrackpad"
     }
 }
