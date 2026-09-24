@@ -47,6 +47,20 @@ A difference is not automatically a bug in 3.0. It means the two disagree, and t
 which is right: 2.x has its own defects, several of which `docs/spec/` records and 3.0
 deliberately does not reproduce. Check the relevant spec section before changing anything.
 
+## When a capture fails
+
+`capture.sh` refuses rather than guessing, and that is deliberate: an earlier, looser version
+happily returned the battery percentage from the status bar, which looks like a successful
+capture and quietly makes the whole comparison meaningless. If it says no field was on screen,
+one of these is true:
+
+- the phone's screen is off, so the only window is the system's own
+- the notification shade is open over the app
+- nothing is focused, so tap into the field first and check the cursor is in it
+
+It retries four times, because a dump is a snapshot of a tree that moves and a window animating
+can produce one dump with no field a moment before another with the field right there.
+
 ## The part that still needs a person
 
 Keystrokes cannot be injected. `adb input` bypasses the input method entirely, and writing to the
