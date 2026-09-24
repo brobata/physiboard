@@ -34,5 +34,8 @@ include(":core:dict")
 include(":device:titan")
 
 // The Android side. It adapts the pipeline to the platform and owns nothing else.
+// Third-party, Apache-2.0, kept at arm's length. See broker/NOTICE.
+include(":broker")
+
 include(":ime")
 include(":app")

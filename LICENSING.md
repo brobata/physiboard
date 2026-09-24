@@ -26,6 +26,20 @@ by the PhysiBoard project. Saying "based on PhysiBoard" is fine.
 *Unihertz*, *Titan* and *Titan 2 Elite* are marks of Unihertz. PhysiBoard is not affiliated
 with, endorsed by, or supported by Unihertz.
 
+## Third-party code
+
+`broker/` is a vendored subset of **[Shizuku](https://github.com/RikkaApps/Shizuku)** by
+RikkaApps, under the Apache License 2.0, together with its prebuilt `libadb.so`. It keeps its
+original package name so attribution is visible in the source and in stack traces. It is not
+PhysiBoard's work and is not under PhysiBoard's licence: Apache-2.0 travels with it, and the
+full text is in `third_party/licenses/`. See `broker/NOTICE`.
+
+It is a separate Gradle module so the boundary is visible in the build rather than only in a
+comment, and so it is plain that the clean-room rule governing the rest of 3.0 does not apply
+to it.
+
+The bundled dictionaries carry their own terms; see [`docs/dictionaries.md`](docs/dictionaries.md).
+
 ## The 2.x line
 
 PhysiBoard 1.x and 2.x were a GPLv3 fork of Pastiera by Andrea Palumbo (PalSoftware) and

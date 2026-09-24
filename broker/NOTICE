@@ -1,0 +1,24 @@
+This module is a vendored subset of Shizuku.
+
+    Project:  Shizuku, by RikkaApps
+    Source:   https://github.com/RikkaApps/Shizuku
+    Licence:  Apache License, Version 2.0
+              (full text at third_party/licenses/Apache-2.0.txt)
+
+The original package name `moe.shizuku.manager.adb` is preserved so that
+attribution is visible in stack traces and in the source tree itself. These
+files are not PhysiBoard's own work and are not covered by PhysiBoard's
+licence; they carry Apache-2.0 and its terms travel with them.
+
+`libadb.so` is a prebuilt native library from the same project.
+
+PhysiBoard uses this to pair once with the phone's own Wireless Debugging, so
+the keyboard can set the backlight and drive the notification ring without
+requiring root or a separate app to be installed.
+
+Upstream's own pairing SERVICE is deliberately not carried over. It existed to
+drive a notification and a screen belonging to the app around it, which is
+integration rather than protocol, so PhysiBoard 3.0 writes its own against the
+pairing CLIENT here. What remains in this module is the ADB protocol, the key
+handling, the discovery and the pairing client: the parts that are genuinely
+third-party.

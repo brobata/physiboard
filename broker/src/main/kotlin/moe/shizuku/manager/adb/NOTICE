@@ -1,0 +1,17 @@
+Vendored Shizuku wireless-ADB source
+=====================================
+
+The Kotlin source files in this directory (AdbClient.kt, AdbException.kt,
+AdbKey.kt, AdbMdns.kt, AdbMessage.kt, AdbPairingClient.kt, AdbPairingService.kt,
+AdbProtocol.kt) are vendored from Shizuku (https://github.com/RikkaApps/Shizuku)
+by RikkaApps.
+
+They are licensed under the Apache License, Version 2.0. The full license text is
+included in the repository at third_party/licenses/Apache-2.0.txt.
+
+The `moe.shizuku.manager.adb` package name is preserved intentionally. The bundled
+prebuilt native library `libadb.so` has its JNI entry class hardcoded to
+`moe/shizuku/manager/adb/PairingContext`, so the package path must not be renamed.
+
+EmbeddedAdbInit.kt in this directory is NOT from Shizuku. It is PhysiBoard's own
+glue code and is covered by the project's GPLv3 license.
