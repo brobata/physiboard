@@ -50,3 +50,5 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.kotlinx.coroutines.android)
 }
+    // The one process-wide wiring of the broker, pairing, setup pass and ring (PrivilegedServicesOwner).
+    implementation(project(":device:privileged"))

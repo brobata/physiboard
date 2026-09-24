@@ -17,3 +17,6 @@ release/dist/
 
 # Gradle wrapper: the jar is tooling, and is committed on purpose so a clone can build.
 !gradle/wrapper/gradle-wrapper.jar
+
+# Kotlin daemon scratch
+.kotlin/

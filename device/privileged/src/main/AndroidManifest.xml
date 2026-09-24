@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- The broker talks TCP to the phone's own adbd on 127.0.0.1; loopback still needs INTERNET. spec: broker-privileged-toolbox.md SS1. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- The pairing watcher is a foreground service of type connectedDevice (SS4.1 step 3). Android 14
+         requires that type to be backed by one of a fixed set of permissions; the multicast one is a
+         normal permission and is also what mDNS discovery of the pairing service rides on. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+
+    <!-- The pairing code arrives as a notification (SS4.1); the ring is announced by one (ring SS5.6). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+
+    <!-- Held only once the paired broker runs `pm grant` (SS7 step 4); declared so that grant has
+         something to land on. Writes the keyboard-light master switch (ring SS5.8, tile SS2.2). -->
+    <uses-permission
+        android:name="android.permission.WRITE_SECURE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
+
+    <application>
+
+        <!-- spec: broker-privileged-toolbox.md SS4.1 step 3. -->
+        <service
+            android:name="brobata.physiboard.device.privileged.broker.PairingWatcherService"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice" />
+
+        <!-- spec: device-backlight-ring.md SS2.2. Declared under the name the class compiles to;
+             2.x named a package the class had left and the system could not instantiate it. -->
+        <service
+            android:name="brobata.physiboard.device.privileged.backlight.KeyboardBacklightTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_ring_bulb"
+            android:label="@string/privileged_tile_keyboard_light"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <!-- spec: device-backlight-ring.md SS5.2. The component the setup pass allow-lists. -->
+        <service
+            android:name="brobata.physiboard.device.privileged.ring.NotificationRingListener"
+            android:exported="true"
+            android:label="@string/privileged_ring_listener_label"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
+        <!-- spec: device-backlight-ring.md SS5.6: single-task, no-history, excluded from recents,
+             its own task affinity, shown when locked, turns the screen on, black, no preview, no
+             animation. -->
+        <activity
+            android:name="brobata.physiboard.device.privileged.ring.NotificationRingActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:noHistory="true"
+            android:showWhenLocked="true"
+            android:taskAffinity="brobata.physiboard.ring"
+            android:theme="@style/PhysiBoardRingTheme"
+            android:turnScreenOn="true" />
+    </application>
+
+</manifest>

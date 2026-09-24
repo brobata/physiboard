@@ -1,10 +1,13 @@
 package brobata.physiboard.ime
 
 import android.inputmethodservice.InputMethodService
+import android.util.Log
 import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.CursorAnchorInfo
 import android.view.inputmethod.EditorInfo
+import brobata.physiboard.device.privileged.PrivilegedServices
+import brobata.physiboard.device.privileged.setup.SetupReasons
 
 /**
  * The keyboard, as Android sees it.
@@ -23,6 +26,19 @@ class PhysiBoardInputMethodService : InputMethodService() {
 
     /** The settings store lives in `:app` (see [SettingsSourceOwner]); a host without one leaves the session on its shipped defaults. */
     private val keyboard by lazy { KeyboardSession(this, settingsSource = (applicationContext as? SettingsSourceOwner)?.settingsSource) }
+
+    /**
+     * spec: broker-privileged-toolbox.md SS7: the privileged setup pass runs at every IME start
+     * (reason `ime_start`), off the main thread, because the IME is the process that survives
+     * boot on this ROM (D17: a foreground service from BOOT_COMPLETED crashes). Guarded like
+     * every other entry point Android calls here; a host without `:app`'s wiring gets null and
+     * nothing runs.
+     */
+    override fun onCreate() {
+        super.onCreate()
+        runCatching { PrivilegedServices.from(this)?.runSetupAsync(SetupReasons.IME_START) }
+            .onFailure { error -> Log.e(TAG, "privileged setup at IME start crashed", error) }
+    }
 
     override fun onCreateInputView(): View? = null
 
@@ -118,4 +134,8 @@ class PhysiBoardInputMethodService : InputMethodService() {
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean =
         keyboard.onKeyEvent(event) || super.onKeyUp(keyCode, event)
+
+    private companion object {
+        const val TAG = "PhysiBoardIme"
+    }
 }

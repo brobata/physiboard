@@ -37,6 +37,11 @@ include(":core:settings")
 include(":core:strip")
 include(":device:titan")
 
+// The privileged side of the Titan work: pairing, the setup pass, the backlight and the ring.
+// Android, because every one of them touches a service, a window or a system setting; the
+// decisions it executes stay in :device:titan and are tested there.
+include(":device:privileged")
+
 // The Android side. It adapts the pipeline to the platform and owns nothing else.
 // Third-party, Apache-2.0, kept at arm's length. See broker/NOTICE.
 include(":broker")

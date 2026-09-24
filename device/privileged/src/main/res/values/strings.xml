@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- spec: device-backlight-ring.md SS2.2 ("A Quick Settings tile labelled Keyboard light"). -->
+    <string name="privileged_tile_keyboard_light">Keyboard light</string>
+    <!-- spec: device-backlight-ring.md SS5.2 ("a notification listener service (label "Notification ring")"). -->
+    <string name="privileged_ring_listener_label">Notification ring</string>
+</resources>

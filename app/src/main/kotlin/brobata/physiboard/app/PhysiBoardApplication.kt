@@ -5,6 +5,9 @@ import android.util.Log
 import brobata.physiboard.app.settings.LegacyImporter
 import brobata.physiboard.app.settings.SettingsStore
 import brobata.physiboard.core.settings.Settings
+import brobata.physiboard.device.privileged.DeviceStateStore
+import brobata.physiboard.device.privileged.PrivilegedServices
+import brobata.physiboard.device.privileged.PrivilegedServicesOwner
 import brobata.physiboard.ime.SettingsSource
 import brobata.physiboard.ime.SettingsSourceOwner
 import kotlinx.coroutines.CompletableDeferred
@@ -15,6 +18,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 /**
  * The process's one home for the settings store. The keyboard service and the app share this
@@ -26,8 +30,13 @@ import kotlinx.coroutines.launch
  * a keyboard that read the empty store first would type with the first-run defaults for a
  * moment and then flip to the imported values mid-word. The keyboard keeps its shipped defaults
  * in the meantime, so typing never waits on this.
+ *
+ * It is also the process's one home for the privileged side ([privileged]): the pairing, the
+ * broker, the setup pass, the backlight and the ring all reach the same instance through the
+ * application context, which is what the components `:device:privileged` declares and the
+ * settings screens both have (broker-privileged-toolbox.md SS5.2, SS6: one verdict, one lock).
  */
-class PhysiBoardApplication : Application(), SettingsSourceOwner {
+class PhysiBoardApplication : Application(), SettingsSourceOwner, PrivilegedServicesOwner {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val importSettled = CompletableDeferred<Unit>()
@@ -40,6 +49,14 @@ class PhysiBoardApplication : Application(), SettingsSourceOwner {
             emitAll(settingsStore.settings)
         }
     }
+
+    /**
+     * The entry point the settings screens use for pairing and every privileged feature:
+     * `(application as PrivilegedServicesOwner).privileged`, then `.pairing` (arm, state, code
+     * entry; `PairingWatcherService.arm(context)` for the notification route), `.broker`
+     * (the shared verdict), `.setup`, `.backlight`, `.ring`, `.reset`.
+     */
+    override val privileged: PrivilegedServices by lazy { PrivilegedServices(this, StoreBridge()) }
 
     override fun onCreate() {
         super.onCreate()
@@ -58,7 +75,25 @@ class PhysiBoardApplication : Application(), SettingsSourceOwner {
                 Log.e(TAG, "2.x settings import failed", error)
             } finally {
                 importSettled.complete(Unit)
+                // device-backlight-ring.md SS5.8: heal a ring that darkened the keyboard and then
+                // died with its process. After the import, so a 2.x record is seen too.
+                runCatching { privileged.onProcessStart() }.onFailure { Log.e(TAG, "privileged start crashed", it) }
             }
+        }
+    }
+
+    /**
+     * `:device:privileged`'s synchronous view of the store. Its callers are the broker worker,
+     * the ring listener's worker and the tile's worker, never the main thread, and the ring's
+     * keyboard-dark record must be committed before the switch is written (SS5.8 step 2), so
+     * blocking on the DataStore write here is the point, not a shortcut.
+     */
+    private inner class StoreBridge : DeviceStateStore {
+        override fun snapshot(): Settings = runBlocking { settingsStore.current() }
+
+        override fun update(transform: (Settings) -> Settings): Settings = runBlocking {
+            settingsStore.update(transform)
+            settingsStore.current()
         }
     }
 
