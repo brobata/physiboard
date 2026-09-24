@@ -1,6 +1,8 @@
 package brobata.physiboard.ime
 
 import brobata.physiboard.core.keys.Action
+import brobata.physiboard.core.keys.ControlKey
+import brobata.physiboard.core.keys.EditEffect
 import brobata.physiboard.core.keys.KeyEdge
 import brobata.physiboard.core.keys.KeyId
 import brobata.physiboard.core.keys.KeyStroke
@@ -12,12 +14,15 @@ import brobata.physiboard.core.keys.ModifierSettings
 import brobata.physiboard.core.keys.ModifierState
 import brobata.physiboard.core.keys.ShiftValue
 import brobata.physiboard.core.keys.TypingSessionState
+import brobata.physiboard.core.text.AppProfile
 import brobata.physiboard.core.text.AutoCapitalization
 import brobata.physiboard.core.text.CapDecision
 import brobata.physiboard.core.text.DeferredSpace
 import brobata.physiboard.core.text.EditorOp
 import brobata.physiboard.core.text.EditorSnapshot
 import brobata.physiboard.core.text.EditorTrust
+import brobata.physiboard.core.text.EnterBehavior
+import brobata.physiboard.core.text.EnterIntent
 import brobata.physiboard.core.text.FieldContext
 import brobata.physiboard.core.text.FieldKind
 import brobata.physiboard.core.text.RankedSuggestion
@@ -40,8 +45,14 @@ data class KeyboardSettings(
     val textInput: TextInputSettingsBundle = TextInputSettingsBundle(),
 )
 
-/** What [KeyboardSession] must still do to the real `InputConnection` after one pipeline call. */
-data class PipelineResult(val ops: List<EditorOp>, val consumed: Boolean) {
+/**
+ * What [KeyboardSession] must still do to the real `InputConnection` after one pipeline call.
+ * [enterDelivery] is non-null only for the Enter deliveries per-app-behavior.md SS3.4 hands to
+ * `:ime` to perform for real (see [brobata.physiboard.core.text.TextInputResult.enterDelivery]);
+ * [consumed] for those is provisional until [KeyboardSession] learns whether the real call was
+ * delivered (SS3.4, "Handled if and only if the request was delivered").
+ */
+data class PipelineResult(val ops: List<EditorOp>, val consumed: Boolean, val enterDelivery: EnterIntent? = null) {
     companion object {
         val NOT_CONSUMED: PipelineResult = PipelineResult(emptyList(), consumed = false)
         val CONSUMED_NO_OP: PipelineResult = PipelineResult(emptyList(), consumed = true)
@@ -74,8 +85,11 @@ internal class KeyboardPipeline(
     private var textInputState = TextInputState()
     private var activeField = FieldContext(FieldKind.NOT_EDITABLE)
     private var activeTrust = EditorTrust.FULL
+    private var activeAppProfile = AppProfile.default(null)
 
     val fieldContext: FieldContext get() = activeField
+
+    private val ENTER_KEY = KeyId.Control(ControlKey.ENTER)
 
     /** When a long press is armed, the wall-clock time (same basis as [KeyStroke.timeMs]) it fires at. spec: keys-and-modifiers.md SS8.3. */
     val pendingLongPressDeadlineMs: Long?
@@ -89,13 +103,15 @@ internal class KeyboardPipeline(
 
     /**
      * A field started (fresh or restarting). spec: text-input.md SS3, SS9.1 ("field start"
-     * trigger). [trust] is the per-app profile's editor-trust default (spec: rebuild-from-scratch.md
+     * trigger). [trust] is the per-app profile's editor-trust default, and [appProfile] the same
+     * profile in full, including its already-resolved Enter fields (spec: rebuild-from-scratch.md
      * "The editor is not a reliable narrator" point 4, "the per-app profile it selects is passed
-     * in like any other setting"); [KeyboardSession] resolves it before calling this.
+     * in like any other setting"); [KeyboardSession] resolves both before calling this.
      */
-    fun onStartInput(field: FieldContext, trust: EditorTrust = EditorTrust.FULL) {
+    fun onStartInput(field: FieldContext, trust: EditorTrust = EditorTrust.FULL, appProfile: AppProfile = AppProfile.default(null)) {
         activeField = field
         activeTrust = trust
+        activeAppProfile = appProfile
         textInputState = textInputState.forNewField()
         typingState = TypingSessionState()
         modifierState = ModifierMachine.fullReset(modifierState, preserveNavModeLatch = true)
@@ -178,12 +194,39 @@ internal class KeyboardPipeline(
         // action itself (text-input.md SS5-SS8; see LayerResolver.withBaselineControlAction), so
         // this adapter has nothing left to decide here: whatever LayerResolver.resolveKeyDown
         // returned is exactly what `:core:text` (or the app, for a genuine PassThrough) should see.
+        // The one exception is [redirectEnterForPerAppBehavior]'s own narrow override, see its KDoc.
+        val ctrlActive = modifierState.isCtrlActive(effectiveStroke.meta.ctrl)
+        val shiftActive = effectiveStroke.meta.shift || modifierState.shift.layerLatched
         return applyAction(
-            resolution.action,
+            redirectEnterForPerAppBehavior(effectiveStroke, resolution.action),
             shiftHeld = effectiveStroke.meta.shift,
             altActive = modifierState.isAltActive(effectiveStroke.meta.alt),
             editor,
+            ctrlActive = ctrlActive,
+            shiftActive = shiftActive,
         )
+    }
+
+    /**
+     * spec: per-app-behavior.md SS3.5 step 4: a per-app Enter behaviour must be consulted before
+     * Ctrl's own "no mapping: pass to app" answer (keys-and-modifiers.md SS7.3, this is
+     * [LayerResolver.resolveCtrlActive]'s [Action.PassThrough]/[Action.ForwardAsCtrlCombo] for an
+     * unmapped Enter) gets the last word, since SS3.7's Ctrl+Enter-sends behaviours must reach
+     * `:core:text`'s decision instead of leaving as a raw key event Android delivers untouched
+     * (D4: Fn arrives as a held Ctrl on the Titan, so a send-on-Enter app's daily Fn+Enter would
+     * otherwise never be recognised as a send at all).
+     *
+     * Left alone whenever [activeAppProfile] has no wanted behaviour for the current app
+     * ([EnterBehavior.APP_DEFAULT]), so every app with no per-app opinion keeps exactly the
+     * behaviour `:core:keys`'s own `LayerResolverTest` already tests ("Ctrl held with no mapping
+     * still leaves Enter passed through, not turned into a newline"): per-app-behavior.md's own
+     * generic step (SS3.5 step 4e) never mentions Ctrl at all, so there is nothing for this
+     * redirect to do for an unconfigured app.
+     */
+    private fun redirectEnterForPerAppBehavior(stroke: KeyStroke, action: Action): Action {
+        if (stroke.key != ENTER_KEY || activeAppProfile.enterBehavior == EnterBehavior.APP_DEFAULT) return action
+        val bypassedCoreText = action == Action.PassThrough || action is Action.ForwardAsCtrlCombo
+        return if (bypassedCoreText) Action.Edit(EditEffect.NEWLINE) else action
     }
 
     /**
@@ -247,7 +290,7 @@ internal class KeyboardPipeline(
         val result = TextInputPipeline.handle(TextInputRequest.AcceptSuggestion(word), activeField, settings.textInput, resources, textInputState, editor)
         textInputState = result.state
         result.capDecision?.let(::applyCapDecision)
-        return toPipelineResult(result.ops)
+        return toPipelineResult(result.ops, result.enterDelivery)
     }
 
     // -----------------------------------------------------------------------------------------
@@ -281,17 +324,28 @@ internal class KeyboardPipeline(
      * no-ops; only [Action.Commit], [Action.Edit] and [Action.ReplaceRecent] (alone or inside a
      * [Action.Multiple]) carry text and go through [TextInputPipeline].
      */
-    private fun applyAction(action: Action, shiftHeld: Boolean, altActive: Boolean, editor: EditorSnapshot): PipelineResult {
+    private fun applyAction(
+        action: Action,
+        shiftHeld: Boolean,
+        altActive: Boolean,
+        editor: EditorSnapshot,
+        ctrlActive: Boolean = false,
+        shiftActive: Boolean = false,
+    ): PipelineResult {
         dispatchCommands(action)
         return when (action) {
             Action.PassThrough -> PipelineResult.NOT_CONSUMED
             Action.Ignored, Action.StateOnly -> PipelineResult.CONSUMED_NO_OP
             is Action.ForwardAsCtrlCombo -> PipelineResult.NOT_CONSUMED
             is Action.RunCommand -> PipelineResult.CONSUMED_NO_OP
-            is Action.Commit, is Action.Edit, is Action.ReplaceRecent -> textPipelineStep(action, shiftHeld, altActive, editor)
+            is Action.Commit, is Action.Edit, is Action.ReplaceRecent -> textPipelineStep(action, shiftHeld, altActive, ctrlActive, shiftActive, editor)
             is Action.Multiple -> {
                 val textActions = action.actions.filter { it is Action.Commit || it is Action.Edit || it is Action.ReplaceRecent }
-                if (textActions.isEmpty()) PipelineResult.CONSUMED_NO_OP else textPipelineStep(Action.Multiple(textActions), shiftHeld, altActive, editor)
+                if (textActions.isEmpty()) {
+                    PipelineResult.CONSUMED_NO_OP
+                } else {
+                    textPipelineStep(Action.Multiple(textActions), shiftHeld, altActive, ctrlActive, shiftActive, editor)
+                }
             }
         }
     }
@@ -304,17 +358,34 @@ internal class KeyboardPipeline(
         }
     }
 
-    private fun textPipelineStep(action: Action, shiftHeld: Boolean, altActive: Boolean, editor: EditorSnapshot): PipelineResult {
-        val request = TextInputRequest.Key(action, shiftHeld = shiftHeld, altActive = altActive)
-        val result = TextInputPipeline.handle(request, activeField, settings.textInput, resources, textInputState, editor, activeTrust)
+    private fun textPipelineStep(action: Action, shiftHeld: Boolean, altActive: Boolean, ctrlActive: Boolean, shiftActive: Boolean, editor: EditorSnapshot): PipelineResult {
+        // spec: per-app-behavior.md SS3.5 step 4e, SS3.10; nav mode has no owning module yet (see
+        // EnterDecision.decide's own KDoc), so this is always "nav mode is not active".
+        val request = TextInputRequest.Key(action, shiftHeld = shiftHeld, altActive = altActive, ctrlActive = ctrlActive, shiftActive = shiftActive, navModeActive = false)
+        val result = TextInputPipeline.handle(request, activeField, settings.textInput, resources, textInputState, editor, activeTrust, activeAppProfile)
         textInputState = result.state
         result.capDecision?.let(::applyCapDecision)
-        return toPipelineResult(result.ops)
+        return toPipelineResult(result.ops, result.enterDelivery)
     }
 
-    /** spec: text-input.md EditorOp.PassThroughKey KDoc: as the sole op it means "no text change; the caller decides", which for every producer in `:core:text` means "let the physical key through". */
-    private fun toPipelineResult(ops: List<EditorOp>): PipelineResult =
-        if (ops.size == 1 && ops[0] == EditorOp.PassThroughKey) PipelineResult.NOT_CONSUMED else PipelineResult(ops, consumed = true)
+    /** spec: text-input.md EditorOp.PassThroughKey KDoc: as the sole op it means "no text change; the caller decides", which for every producer in `:core:text` means "let the physical key through". [enterDelivery] carries per-app-behavior.md SS3.4's real `InputConnection` call forward to [KeyboardSession], which alone knows whether it was actually delivered; [consumed] is provisional in that case (see [PipelineResult]'s own KDoc). */
+    private fun toPipelineResult(ops: List<EditorOp>, enterDelivery: EnterIntent?): PipelineResult = when {
+        enterDelivery != null -> PipelineResult(ops, consumed = true, enterDelivery = enterDelivery)
+        ops.size == 1 && ops[0] == EditorOp.PassThroughKey -> PipelineResult.NOT_CONSUMED
+        else -> PipelineResult(ops, consumed = true)
+    }
+
+    /**
+     * spec: per-app-behavior.md SS3.4, "clear the Ctrl state (latch, one-shot, nav-mode latch ...)"
+     * once a Ctrl-triggered Enter delivery succeeds (or a swallow with an active Ctrl state is
+     * reported). Only the latch/one-shot bits are cleared, never `pressed`/`physicallyPressed`:
+     * those track a real, still-held key (D4: Fn never sends a key-up), which this Enter delivery
+     * has no business erasing. Nav mode's own "cancel the notification, refresh nav mode" follow-up
+     * (SS3.4) has no owning module yet, matching [KeyboardSession.handleCommand]'s own note.
+     */
+    fun clearCtrlStateAfterEnterSend() {
+        modifierState = modifierState.copy(ctrl = modifierState.ctrl.copy(oneShot = false, latched = false, latchFromNavMode = false))
+    }
 
     /** spec: text-input.md SS9.3. `:core:text` decides the auto-cap outcome; only applying it to `:core:keys`' own Shift state is this module's job (TextInputResult's own KDoc). */
     private fun applyCapDecision(decision: CapDecision) {

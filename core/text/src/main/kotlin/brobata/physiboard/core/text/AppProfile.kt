@@ -20,6 +20,25 @@ enum class EnterBehavior {
 }
 
 /**
+ * How a "send" chosen by [EnterBehavior] is delivered to the app. spec: per-app-behavior.md SS3.1
+ * ("Send method"), SS3.6 ("Choosing the send mechanism"). [EnterDecision] is what turns one of
+ * these into an [EnterIntent]; this type is only the stored choice.
+ */
+enum class EnterSendMethod {
+    /** Discord: [EnterIntent.SendPlainEnter]. Every other app: the editor action if allowed, else [EnterIntent.Swallow]. spec: SS3.6. */
+    AUTO,
+
+    /** Request the field's own editor action, or Send (id 4) as the fallback, when allowed; otherwise [EnterIntent.Swallow]. spec: SS3.4, SS3.6. */
+    EDITOR_ACTION,
+
+    /** Always [EnterIntent.SendCtrlEnter]. spec: SS3.6. */
+    CTRL_ENTER,
+
+    /** Always [EnterIntent.SendPlainEnter]. spec: SS3.6. */
+    PLAIN_ENTER,
+}
+
+/**
  * What per-app-behavior.md says varies per app, resolved once (spec: rebuild-from-scratch.md "The
  * editor is not a reliable narrator" point 4, "The app is an input to the pipeline, not a lookup
  * inside it") and handed to the pipeline like any other setting rather than looked up from inside
@@ -30,8 +49,23 @@ enum class EnterBehavior {
  */
 data class AppProfile(
     val packageName: String,
-    /** spec: per-app-behavior.md SS3 ("Enter key behavior"). */
+    /**
+     * spec: per-app-behavior.md SS3 ("Enter key behavior"). Already resolved for [packageName]
+     * from the user's override list and the messaging preset (SS3.3) by [EnterOverrideResolver]
+     * before this profile is built; [EnterDecision] (the thing that actually acts on this field)
+     * never re-derives it, so the ordering rule SS3.3 depends on (override checked before any
+     * preset list) lives in exactly one place.
+     */
     val enterBehavior: EnterBehavior = EnterBehavior.APP_DEFAULT,
+    /** spec: per-app-behavior.md SS3.3 ("Send method for P"); resolved the same way as [enterBehavior]. */
+    val enterSendMethod: EnterSendMethod = EnterSendMethod.AUTO,
+    /**
+     * spec: per-app-behavior.md SS3.3 ("Editor action allowed for P"): true when [packageName] is
+     * one of the 8 send-action packages, or when the user has any override row for it at all
+     * (regardless of that row's own content). [EnterOverrideResolver.isEditorActionAllowed]
+     * computes this; it is carried here, not recomputed, for the same reason [enterBehavior] is.
+     */
+    val enterActionAllowed: Boolean = false,
     /**
      * "Exact typing", the raw mode [FieldKind.RAW_MODE_APP] names. spec: per-app-behavior.md SS4.1:
      * every field with no field-type restriction of its own turns off suggestions, autocorrect,

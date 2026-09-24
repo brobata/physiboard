@@ -8,6 +8,7 @@ import android.view.inputmethod.InputConnection
 import brobata.physiboard.core.text.AppProfile
 import brobata.physiboard.core.text.EditorOp
 import brobata.physiboard.core.text.EditorSnapshot
+import brobata.physiboard.core.text.EnterIntent
 import brobata.physiboard.core.text.FieldCapFlags
 import brobata.physiboard.core.text.FieldContext
 import brobata.physiboard.core.text.FieldKind
@@ -107,6 +108,48 @@ internal fun InputConnection.sendSpaceKeyFallback(nowMs: Long) {
 }
 
 /**
+ * Performs the real `InputConnection` call an [EnterIntent] `:core:text` handed back describes,
+ * and answers whether it was delivered. spec: per-app-behavior.md SS3.4: this return value is
+ * exactly the hard-won fact the whole feature is built around, "Android reports only that the
+ * connection was alive, never whether the app acted on it" -- [InputConnection.performEditorAction]
+ * and [InputConnection.sendKeyEvent] both only ever report that. [EnterIntent.Decline] and
+ * [EnterIntent.InsertNewline] never reach here: `:core:text` settles both itself (see
+ * [brobata.physiboard.core.text.TextInputResult.enterDelivery]'s own KDoc), so this only performs
+ * the four cases SS3.4 calls "delivery mechanisms" plus swallow.
+ */
+internal fun InputConnection.performEnterDelivery(intent: EnterIntent, nowMs: Long): Boolean = when (intent) {
+    is EnterIntent.RequestEditorAction -> performEditorAction(intent.actionId)
+    EnterIntent.SendPlainEnter -> sendEnterKeyEvent(nowMs, metaState = 0)
+    EnterIntent.SendCtrlEnter -> sendEnterKeyEvent(nowMs, metaState = KeyEvent.META_CTRL_ON or KeyEvent.META_CTRL_LEFT_ON)
+    // spec SS3.4 "Unsupported send": "Reported as handled" unconditionally; nothing is actually
+    // sent, so there is no real delivery outcome to ask the connection about.
+    is EnterIntent.Swallow -> true
+    EnterIntent.Decline, EnterIntent.InsertNewline -> true
+}
+
+/** spec: per-app-behavior.md SS3.4 "Plain Enter"/"Ctrl+Enter": keycode 66, key down then key up, [metaState] 0 or META_CTRL_ON|META_CTRL_LEFT_ON. */
+private fun InputConnection.sendEnterKeyEvent(nowMs: Long, metaState: Int): Boolean {
+    val down = sendKeyEvent(KeyEvent(nowMs, nowMs, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER, 0, metaState))
+    val up = sendKeyEvent(KeyEvent(nowMs, nowMs, KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER, 0, metaState))
+    return down && up
+}
+
+/**
+ * Whether a delivered [EnterIntent] should clear the Ctrl state (latch, one-shot, nav-mode latch).
+ * spec: SS3.4: an editor-action send clears it only when this particular send was Ctrl-triggered;
+ * Plain Enter and Ctrl+Enter always clear it once delivered ("always, not only for Ctrl-triggered
+ * sends"); a swallow clears it immediately, not conditioned on any delivery outcome ("if any Ctrl
+ * state was active it is cleared"), which [performEnterDelivery] already always reports delivered
+ * for, so gating on [delivered] here still matches SS3.4 exactly for every case.
+ */
+internal fun EnterIntent.clearsCtrlState(delivered: Boolean): Boolean = delivered && when (this) {
+    is EnterIntent.RequestEditorAction -> clearCtrlIfDelivered
+    EnterIntent.SendPlainEnter, EnterIntent.SendCtrlEnter -> true
+    is EnterIntent.Swallow -> clearCtrlNow
+    EnterIntent.Decline, EnterIntent.InsertNewline -> false
+}
+
+/**
  * Classifies the focused field from Android's own [EditorInfo] into the one value `:core:text`
  * ever sees. spec: text-input.md SS3.
  *
@@ -168,9 +211,21 @@ internal fun classifyField(info: EditorInfo?, profile: AppProfile = AppProfile.d
     )
 }
 
+/**
+ * spec: per-app-behavior.md SS3.9: "if the field's imeOptions has the 'no Enter action' flag,
+ * none; else the field's explicit actionId if non-zero, else the action bits of imeOptions; the
+ * result counts only if it is one of Go, Search, Send, Next, Done, Previous. Unspecified and None
+ * give 'none'." The no-Enter-action flag is checked first and wins outright (T28: a field with
+ * both that flag and Search bits set resolves to none, not Search); a non-empty [EditorInfo.actionLabel]
+ * (a custom action label, text-input.md's own broader vocabulary, not one SS3.9 names) is checked
+ * next, before the actionId/options precedence, since a field that bothers to set a label is
+ * declaring an action of its own even when [EditorInfo.actionId] is left at 0.
+ */
 private fun imeActionOf(info: EditorInfo): ImeAction {
+    if (info.imeOptions and EditorInfo.IME_FLAG_NO_ENTER_ACTION != 0) return ImeAction.NONE
     if (!info.actionLabel.isNullOrEmpty()) return ImeAction.CUSTOM
-    return when (info.imeOptions and EditorInfo.IME_MASK_ACTION) {
+    val resolvedActionId = if (info.actionId != 0) info.actionId else (info.imeOptions and EditorInfo.IME_MASK_ACTION)
+    return when (resolvedActionId) {
         EditorInfo.IME_ACTION_GO -> ImeAction.GO
         EditorInfo.IME_ACTION_SEARCH -> ImeAction.SEARCH
         EditorInfo.IME_ACTION_SEND -> ImeAction.SEND

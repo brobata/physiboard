@@ -17,8 +17,22 @@ sealed class TextInputRequest {
      * [shiftHeld] and [altActive] carry the physical-modifier facts [Backspace] needs
      * (`shift_backspace_delete`, `alt_backspace_delete`) that are not otherwise recoverable from
      * an already-resolved [Action]; a caller not driving those two settings can leave them false.
+     *
+     * [ctrlActive] and [shiftActive] are a separate pair, for [EnterDecision] only: the fuller
+     * per-app-behavior.md SS3.5 step 4 "Ctrl active"/"Shift active" definitions (event meta, held,
+     * latched, one-shot, or the nav-mode latch for Ctrl; event meta or the Shift layer latch for
+     * Shift, its one-shot already consumed earlier in the same step), which is not the same fact
+     * [shiftHeld] carries for [Backspace]. A caller not driving per-app Enter behaviour can leave
+     * both false.
      */
-    data class Key(val action: Action, val shiftHeld: Boolean = false, val altActive: Boolean = false) : TextInputRequest()
+    data class Key(
+        val action: Action,
+        val shiftHeld: Boolean = false,
+        val altActive: Boolean = false,
+        val ctrlActive: Boolean = false,
+        val shiftActive: Boolean = false,
+        val navModeActive: Boolean = false,
+    ) : TextInputRequest()
 
     /** [word] is the candidate as shown on the slot; casing is reapplied here, not carried in. */
     data class AcceptSuggestion(val word: String) : TextInputRequest()
@@ -82,7 +96,19 @@ data class TextInputSettingsBundle(
  * caller must still apply to `:core:keys`' own Shift one-shot (this module never touches it
  * directly, spec text-input.md SS9).
  */
-data class TextInputResult(val ops: List<EditorOp>, val state: TextInputState, val capDecision: CapDecision? = null)
+data class TextInputResult(
+    val ops: List<EditorOp>,
+    val state: TextInputState,
+    val capDecision: CapDecision? = null,
+    /**
+     * Non-null only when [handleEnter]'s call to [EnterDecision] resolved to something `:ime` must
+     * still perform against the real `InputConnection` (an editor-action request, a plain Enter or
+     * Ctrl+Enter key event, or a swallow that still needs its Ctrl state cleared). spec: per-app-
+     * behavior.md SS3.4. A plain newline or a decline to the generic path are settled by [ops]
+     * alone, exactly like every other request this pipeline handles, so those never set this.
+     */
+    val enterDelivery: EnterIntent? = null,
+)
 
 /**
  * The single entry point for turning one resolved decision into editor operations, chaining the
@@ -125,8 +151,20 @@ object TextInputPipeline {
          * does not yet resolve a per-app profile ([AppProfile]) keeps today's behaviour exactly.
          */
         trust: EditorTrust = EditorTrust.FULL,
+        /**
+         * spec: rebuild-from-scratch.md "The editor is not a reliable narrator" point 4, "The app
+         * is an input to the pipeline, not a lookup inside it": the current app's already-resolved
+         * settings, handed in like [trust] rather than looked up from inside this module. Only
+         * [handleEnter] reads it (via [EnterDecision]); defaulting to [AppProfile.default] with
+         * `null` keeps every existing caller's Enter behaviour exactly as it was before this
+         * profile existed (a plain newline, or the field's own action when it declares one).
+         */
+        appProfile: AppProfile = AppProfile.default(null),
     ): TextInputResult = when (request) {
-        is TextInputRequest.Key -> handleAction(request.action, request.shiftHeld, request.altActive, field, settings, resources, state, editor, trust)
+        is TextInputRequest.Key -> handleAction(
+            request.action, request.shiftHeld, request.altActive, request.ctrlActive, request.shiftActive, request.navModeActive,
+            field, settings, resources, state, editor, trust, appProfile,
+        )
         is TextInputRequest.AcceptSuggestion -> handleAcceptSuggestion(request.word, field, settings, state, editor)
     }
 
@@ -168,19 +206,26 @@ object TextInputPipeline {
         action: Action,
         shiftHeld: Boolean,
         altActive: Boolean,
+        ctrlActive: Boolean,
+        shiftActive: Boolean,
+        navModeActive: Boolean,
         field: FieldContext,
         settings: TextInputSettingsBundle,
         resources: TextInputResources,
         state: TextInputState,
         editor: EditorSnapshot,
         trust: EditorTrust,
+        appProfile: AppProfile,
     ): TextInputResult = when (action) {
         is Action.Commit -> handleCommit(action.text, field, settings, resources, state, editor, trust)
-        is Action.Edit -> handleEdit(action.effect, action.extendSelection, shiftHeld, altActive, field, settings, resources, state, editor, trust)
+        is Action.Edit -> handleEdit(
+            action.effect, action.extendSelection, shiftHeld, altActive, ctrlActive, shiftActive, navModeActive,
+            field, settings, resources, state, editor, trust, appProfile,
+        )
         is Action.ReplaceRecent -> handleReplaceRecent(action.deleteCount, action.text, field, settings, resources, state, editor, trust)
         is Action.Multiple -> action.actions.fold(TextInputResult(emptyList(), state)) { acc, next ->
-            val step = handleAction(next, shiftHeld, altActive, field, settings, resources, acc.state, editor, trust)
-            TextInputResult(acc.ops + step.ops, step.state, step.capDecision ?: acc.capDecision)
+            val step = handleAction(next, shiftHeld, altActive, ctrlActive, shiftActive, navModeActive, field, settings, resources, acc.state, editor, trust, appProfile)
+            TextInputResult(acc.ops + step.ops, step.state, step.capDecision ?: acc.capDecision, step.enterDelivery ?: acc.enterDelivery)
         }
         // Sym pages/chords, Ctrl combos, commands, status refreshes and plain pass-through carry
         // no text-level behaviour of their own (spec: text-input.md SS5.3, "committed as plain
@@ -204,16 +249,20 @@ object TextInputPipeline {
         extendSelection: Boolean,
         shiftHeld: Boolean,
         altActive: Boolean,
+        ctrlActive: Boolean,
+        shiftActive: Boolean,
+        navModeActive: Boolean,
         field: FieldContext,
         settings: TextInputSettingsBundle,
         resources: TextInputResources,
         state: TextInputState,
         editor: EditorSnapshot,
         trust: EditorTrust,
+        appProfile: AppProfile,
     ): TextInputResult = when (effect) {
         EditEffect.DELETE_CHAR_BACKWARD -> handleBackspace(settings, state, editor, shiftHeld, altActive)
         EditEffect.DELETE_SELECTION_OR_WORD_BACKWARD, EditEffect.DELETE_WORD_BACKWARD -> handleDeleteWordBackward(editor, state)
-        EditEffect.NEWLINE -> handleEnter(field, settings, resources, state, editor, trust)
+        EditEffect.NEWLINE -> handleEnter(field, settings, resources, state, editor, trust, appProfile, ctrlActive, shiftActive, navModeActive)
         EditEffect.SELECT_ALL -> editor.fullText?.let { TextInputResult(listOf(SelectAll.apply(it.text)), state) } ?: TextInputResult(emptyList(), state)
         EditEffect.MOVE_WORD_LEFT -> handleWordMove(MoveDirection.LEFT, extendSelection, state, editor)
         EditEffect.MOVE_WORD_RIGHT -> handleWordMove(MoveDirection.RIGHT, extendSelection, state, editor)
@@ -496,7 +545,39 @@ object TextInputPipeline {
     // "Enter becomes a newline" case, run through the same boundary hand-off as Space.
     // ---------------------------------------------------------------------------------------
 
-    private fun handleEnter(field: FieldContext, settings: TextInputSettingsBundle, resources: TextInputResources, state: TextInputState, editor: EditorSnapshot, trust: EditorTrust): TextInputResult {
+    /**
+     * spec: per-app-behavior.md SS3.5 step 4: consults [EnterDecision] before anything else about
+     * this Enter is decided. [EnterIntent.Decline] is the only branch that still runs
+     * [handleGenericEnter] (today's whole pre-existing body, unchanged): every other branch is one
+     * of SS3.4's delivery mechanisms, none of which run the autocorrect/boundary engine at all
+     * (only the generic decline path does, text-input.md SS7).
+     */
+    private fun handleEnter(
+        field: FieldContext,
+        settings: TextInputSettingsBundle,
+        resources: TextInputResources,
+        state: TextInputState,
+        editor: EditorSnapshot,
+        trust: EditorTrust,
+        appProfile: AppProfile,
+        ctrlActive: Boolean,
+        shiftActive: Boolean,
+        navModeActive: Boolean,
+    ): TextInputResult = when (val intent = EnterDecision.decide(appProfile, field, ctrlActive, shiftActive, navModeActive)) {
+        EnterIntent.Decline -> handleGenericEnter(field, settings, resources, state, editor, trust)
+        EnterIntent.InsertNewline -> handlePerAppNewline(field, settings, state, editor, trust)
+        is EnterIntent.RequestEditorAction -> handleEditorActionDelivery(intent, field, settings, state, editor, trust)
+        EnterIntent.SendPlainEnter, EnterIntent.SendCtrlEnter -> handleKeyEventDelivery(intent, state)
+        is EnterIntent.Swallow -> handleSwallowDelivery(intent, state)
+    }
+
+    /**
+     * The pre-existing "Enter becomes a newline" path (text-input.md SS7): cancel the deferred-
+     * space debt and the auto-cap bookkeeping unconditionally, run the boundary/autocorrect engine
+     * with `'\n'` as the boundary character exactly like Space does, then commit the newline.
+     * Reached only when [EnterDecision] declines (no per-app opinion, or nav mode owns Enter).
+     */
+    private fun handleGenericEnter(field: FieldContext, settings: TextInputSettingsBundle, resources: TextInputResources, state: TextInputState, editor: EditorSnapshot, trust: EditorTrust): TextInputResult {
         var newState = state.copy(deferredSpace = DeferredSpace.cancelled(), autoCap = state.autoCap.consumedUnconditionally())
         val textBefore = editor.contextTextBeforeCursor(trust)
         val trackedWord = newState.currentWord.word
@@ -519,6 +600,55 @@ object TextInputPipeline {
         val (capState, decision) = AutoCapitalization.evaluate(newState.autoCap, field, settings.autoCap, projected)
         return TextInputResult(ops, newState.copy(autoCap = capState), decision)
     }
+
+    /** spec: per-app-behavior.md SS3.4 "Newline": finish composing, commit "\n", auto-cap, reset the suggestion context. No autocorrect/boundary engine, unlike [handleGenericEnter]. */
+    private fun handlePerAppNewline(field: FieldContext, settings: TextInputSettingsBundle, state: TextInputState, editor: EditorSnapshot, trust: EditorTrust): TextInputResult {
+        val newState = cancelledEnterState(state)
+        val ops = listOf(EditorOp.FinishComposing, EditorOp.CommitText("\n"))
+        val projected = editor.contextTextBeforeCursor(trust)?.let { it + "\n" }
+        val (capState, decision) = AutoCapitalization.evaluate(newState.autoCap, field, settings.autoCap, projected)
+        return TextInputResult(ops, newState.copy(autoCap = capState), decision)
+    }
+
+    /**
+     * spec: per-app-behavior.md SS3.4 "Editor action": finish composing, run the after-Enter
+     * auto-cap check, then hand [intent] to `:ime` as [TextInputResult.enterDelivery]. Used both
+     * for an explicit per-app send and for [EnterDecision]'s step-e generic request; SS3.4
+     * describes one mechanism for both.
+     */
+    private fun handleEditorActionDelivery(
+        intent: EnterIntent.RequestEditorAction,
+        field: FieldContext,
+        settings: TextInputSettingsBundle,
+        state: TextInputState,
+        editor: EditorSnapshot,
+        trust: EditorTrust,
+    ): TextInputResult {
+        val newState = cancelledEnterState(state)
+        val projected = editor.contextTextBeforeCursor(trust)?.let { it + "\n" }
+        val (capState, decision) = AutoCapitalization.evaluate(newState.autoCap, field, settings.autoCap, projected)
+        return TextInputResult(listOf(EditorOp.FinishComposing), newState.copy(autoCap = capState), decision, enterDelivery = intent)
+    }
+
+    /** spec: per-app-behavior.md SS3.4 "Plain Enter"/"Ctrl+Enter": finish composing, hand [intent] to `:ime`. Neither mechanism runs the auto-cap check (unlike [handleEditorActionDelivery]). */
+    private fun handleKeyEventDelivery(intent: EnterIntent, state: TextInputState): TextInputResult {
+        val newState = cancelledEnterState(state)
+        return TextInputResult(listOf(EditorOp.FinishComposing), newState, capDecision = null, enterDelivery = intent)
+    }
+
+    /** spec: per-app-behavior.md SS3.4 "Unsupported send": nothing is inserted, nothing is sent; only the universal deferred-space/one-shot cancellation applies (text-input.md SS7), not the word/auto-space reset the other mechanisms make. */
+    private fun handleSwallowDelivery(intent: EnterIntent.Swallow, state: TextInputState): TextInputResult {
+        val newState = state.copy(deferredSpace = DeferredSpace.cancelled(), autoCap = state.autoCap.consumedUnconditionally())
+        return TextInputResult(emptyList(), newState, capDecision = null, enterDelivery = intent)
+    }
+
+    /** spec: text-input.md SS7, "Before any Enter handling the deferred-space debt is cancelled and a Shift one-shot is consumed": common to every per-app delivery mechanism except [handleSwallowDelivery] (SS3.4 keeps that one to exactly "nothing is inserted, nothing is sent"). */
+    private fun cancelledEnterState(state: TextInputState): TextInputState = state.copy(
+        deferredSpace = DeferredSpace.cancelled(),
+        autoCap = state.autoCap.consumedUnconditionally(),
+        currentWord = CurrentWordTracker.empty(),
+        autoSpacePending = false,
+    )
 
     // ---------------------------------------------------------------------------------------
     // Backspace. spec: text-input.md SS8.

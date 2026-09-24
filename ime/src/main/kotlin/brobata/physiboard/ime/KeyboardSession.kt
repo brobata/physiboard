@@ -15,6 +15,9 @@ import android.view.inputmethod.InputConnection
 import brobata.physiboard.core.dict.LanguageCode
 import brobata.physiboard.core.text.AppProfile
 import brobata.physiboard.core.text.AppProfileResolver
+import brobata.physiboard.core.text.EnterOverride
+import brobata.physiboard.core.text.EnterOverrideResolver
+import brobata.physiboard.core.text.MessagingPreset
 import brobata.physiboard.device.titan.KeyNormalizer
 import brobata.physiboard.device.titan.TitanLayouts
 
@@ -37,6 +40,16 @@ internal class KeyboardSession(
     // settings store later means constructing this session with real values instead.
     private val appProfiles: List<AppProfile> = emptyList(),
     private val webApkHost: (String) -> String? = { null },
+    // SPEC GAP / missing module: same as [appProfiles] above; the Enter override list and the
+    // messaging preset (per-app-behavior.md SS3.12) are shipped defaults until a settings store
+    // exists. The master switch defaults true and the preset to `SEND_SHIFT_NEWLINE`, matching
+    // SS3.12's own "first-run defaults" (the one-shot baseline 2.x writes before any settings
+    // exist), so a fresh build behaves like a fresh install rather than like every Enter override
+    // being silently off; the four seeded WhatsApp/Discord/Messages/Instagram override rows that
+    // baseline also writes are left for that future settings layer to seed, not hardcoded here.
+    private val enterOverrides: List<EnterOverride> = emptyList(),
+    private val enterPreset: MessagingPreset = MessagingPreset.SEND_SHIFT_NEWLINE,
+    private val enterBehaviorEnabled: Boolean = true,
 ) {
 
     // SPEC GAP / missing module: the Titan 2 Elite is the only device this build ships to (this
@@ -92,9 +105,22 @@ internal class KeyboardSession(
         // spec: per-app-behavior.md SS2.1, "the package name comes from the editor"; SS2.2's
         // WebAPK-host rule is what lets a profile filed under a web app's own shell identity still
         // match here, since `info.packageName` reports the host browser for one, never the shell.
-        val profile = AppProfileResolver.resolve(info?.packageName, appProfiles, webApkHost)
+        val exactTypingProfile = AppProfileResolver.resolve(info?.packageName, appProfiles, webApkHost)
+        // spec: SS2.2, "Only the exact-typing list is expanded ... The Enter behavior overrides ...
+        // are matched by exact package name": no WebAPK-host lookup here, unlike the line above.
+        val reportedPackage = info?.packageName
+        val profile = exactTypingProfile.copy(
+            // [AppProfile.packageName] on the matched exact-typing entry can be a WebAPK's own
+            // shell identity (SS4.5); [EnterDecision] needs the reported package itself (SS2.2, no
+            // WebAPK expansion for Enter), which is also what its own Discord `auto` special case
+            // (SS3.6) compares against.
+            packageName = reportedPackage.orEmpty(),
+            enterBehavior = EnterOverrideResolver.resolveBehavior(reportedPackage, enterOverrides, enterPreset, enterBehaviorEnabled),
+            enterSendMethod = EnterOverrideResolver.resolveSendMethod(reportedPackage, enterOverrides, enterBehaviorEnabled),
+            enterActionAllowed = EnterOverrideResolver.isEditorActionAllowed(reportedPackage, enterOverrides, enterBehaviorEnabled),
+        )
         val field = classifyField(info, profile)
-        pipeline.onStartInput(field, profile.editorTrust)
+        pipeline.onStartInput(field, profile.editorTrust, profile)
         service.setCandidatesViewShown(field.isReallyEditable)
         refreshCandidatesStrip()
     }
@@ -134,10 +160,10 @@ internal class KeyboardSession(
         val ic = service.currentInputConnection ?: return false
         val readout = ic.readEditorState(stroke.timeMs)
         val result = pipeline.onKeyStroke(stroke, readout.snapshot)
-        applyResult(ic, result, readout)
+        val consumed = applyResult(ic, result, readout)
         scheduleLongPressIfNeeded()
         refreshCandidatesStrip()
-        return result.consumed
+        return consumed
     }
 
     private fun onLongPressTick() {
@@ -156,16 +182,30 @@ internal class KeyboardSession(
         handler.postDelayed(longPressRunnable, delay)
     }
 
-    private fun applyResult(ic: InputConnection, result: PipelineResult, readout: EditorReadout) {
-        if (result.ops.isEmpty()) return
-        suppressNextSelectionUpdate = true
-        ic.applyEditorOps(
-            ops = result.ops,
-            windowStartOffset = readout.documentStartOffset,
-            cursorAbsolute = readout.cursorAbsolute,
-            sendSpaceKeyFallback = { ic.sendSpaceKeyFallback(SystemClock.uptimeMillis()) },
-            haptic = ::performHaptic,
-        )
+    /**
+     * Applies whatever [result] carries, and answers whether the key should count as consumed.
+     * [PipelineResult.ops] apply exactly as before; [PipelineResult.enterDelivery], when present,
+     * is per-app-behavior.md SS3.4's real `InputConnection` call ([EditorBridge.performEnterDelivery]),
+     * the one place in this whole feature where "was it delivered" can finally be answered, and
+     * where a Ctrl-triggered send's Ctrl state actually gets cleared once that answer is yes.
+     */
+    private fun applyResult(ic: InputConnection, result: PipelineResult, readout: EditorReadout): Boolean {
+        if (result.ops.isNotEmpty()) {
+            suppressNextSelectionUpdate = true
+            ic.applyEditorOps(
+                ops = result.ops,
+                windowStartOffset = readout.documentStartOffset,
+                cursorAbsolute = readout.cursorAbsolute,
+                sendSpaceKeyFallback = { ic.sendSpaceKeyFallback(SystemClock.uptimeMillis()) },
+                haptic = ::performHaptic,
+            )
+        }
+        val delivery = result.enterDelivery ?: return result.consumed
+        val delivered = ic.performEnterDelivery(delivery, SystemClock.uptimeMillis())
+        if (delivery.clearsCtrlState(delivered)) {
+            pipeline.clearCtrlStateAfterEnterSend()
+        }
+        return delivered
     }
 
     /** spec: text-input.md's several "trigger a haptic on replacement" rules. Provisional: the real duration/style is a theme setting (status-bar.md SS9), not wired yet (no `:settings` module). */

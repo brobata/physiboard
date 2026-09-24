@@ -9,11 +9,15 @@ import brobata.physiboard.core.keys.KeyId
 import brobata.physiboard.core.keys.KeyStroke
 import brobata.physiboard.core.keys.ModifierKey
 import brobata.physiboard.core.keys.PunctuationKey
+import brobata.physiboard.core.text.AppProfile
 import brobata.physiboard.core.text.EditorOp
 import brobata.physiboard.core.text.EditorSnapshot
+import brobata.physiboard.core.text.EnterBehavior
+import brobata.physiboard.core.text.EnterIntent
 import brobata.physiboard.core.text.FieldCapFlags
 import brobata.physiboard.core.text.FieldContext
 import brobata.physiboard.core.text.FieldKind
+import brobata.physiboard.core.text.ImeAction
 import brobata.physiboard.core.text.SpacingSettings
 import brobata.physiboard.core.text.TextInputResources
 import brobata.physiboard.core.text.TextInputSettingsBundle
@@ -22,6 +26,7 @@ import brobata.physiboard.device.titan.TitanLayouts
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -267,6 +272,58 @@ class KeyboardPipelineTest {
         // the document; TextInputPipeline.handleAcceptSuggestion re-evaluates it at the accepted
         // span's own start, exactly as it does for every other commit path.
         assertEquals("Hello ", editor.text)
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Per-app Enter behaviour: per-app-behavior.md SS3.5 step 4. `:core:text`'s own
+    // EnterDecisionTest/TextInputPipelineEnterDeliveryTest cover the decision and delivery shapes;
+    // these prove the `:ime`-side wiring that only [KeyboardPipeline] can: the app profile actually
+    // reaches [TextInputPipeline], and a Ctrl-active Enter with a per-app opinion is redirected
+    // into the pipeline instead of being left as a raw pass-through/forwarded combo.
+    // -----------------------------------------------------------------------------------------
+
+    @Test
+    fun `a send-on-Enter profile asks for the field's editor action instead of a newline`() {
+        val pipeline = KeyboardPipeline(layout = layout)
+        val editor = FakeEditor()
+        val profile = AppProfile(packageName = "com.whatsapp", enterBehavior = EnterBehavior.SEND_SHIFT_NEWLINE, enterActionAllowed = true)
+        pipeline.onStartInput(FieldContext(FieldKind.NORMAL, imeAction = ImeAction.SEND), appProfile = profile)
+
+        val result = step(pipeline, editor, KeyId.Control(ControlKey.ENTER))
+
+        assertTrue(result.consumed)
+        assertEquals(EnterIntent.RequestEditorAction(4, clearCtrlIfDelivered = false), result.enterDelivery)
+        assertEquals("", editor.text, "no newline should have been committed")
+    }
+
+    @Test
+    fun `Ctrl+Enter with a per-app opinion is redirected into the pipeline instead of passing through raw`() {
+        val pipeline = KeyboardPipeline(layout = layout)
+        val editor = FakeEditor()
+        val profile = AppProfile(packageName = "com.whatsapp", enterBehavior = EnterBehavior.SEND_SHIFT_NEWLINE, enterActionAllowed = true)
+        pipeline.onStartInput(FieldContext(FieldKind.NORMAL, imeAction = ImeAction.SEND), appProfile = profile)
+
+        step(pipeline, editor, modifier(ModifierKey.CTRL))
+        val result = step(pipeline, editor, KeyId.Control(ControlKey.ENTER))
+
+        assertTrue(result.consumed, "a Ctrl-triggered send must be consumed, not left for the app's own raw Ctrl+Enter handling")
+        assertEquals(EnterIntent.RequestEditorAction(4, clearCtrlIfDelivered = true), result.enterDelivery)
+    }
+
+    @Test
+    fun `Ctrl+Enter with no per-app opinion still passes through raw, unchanged from today`() {
+        // Regression guard for LayerResolverTest's "Ctrl held with no mapping still leaves Enter
+        // passed through": the redirect must never fire for an app with no wanted behaviour.
+        val pipeline = KeyboardPipeline(layout = layout)
+        val editor = FakeEditor()
+        pipeline.onStartInput(FieldContext(FieldKind.NORMAL, imeAction = ImeAction.SEND))
+
+        step(pipeline, editor, modifier(ModifierKey.CTRL))
+        val result = step(pipeline, editor, KeyId.Control(ControlKey.ENTER))
+
+        assertFalse(result.consumed)
+        assertNull(result.enterDelivery)
+        assertEquals(emptyList(), result.ops)
     }
 
     @Test
