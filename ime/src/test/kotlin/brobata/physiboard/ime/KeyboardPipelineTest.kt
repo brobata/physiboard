@@ -49,6 +49,11 @@ class KeyboardPipelineTest {
             return EditorSnapshot(textBeforeCursor = text, fullText = TextWindow(text, text.length, text.length), nowMs = clock)
         }
 
+        /** Advances the clock without a keystroke, so a test can put two real key events on either side of the 500 ms double-space-to-period window (spec: text-input.md SS6.7, SS13). */
+        fun advanceClock(ms: Long) {
+            clock += ms
+        }
+
         fun apply(ops: List<EditorOp>) {
             for (op in ops) {
                 text = when (op) {
@@ -157,6 +162,48 @@ class KeyboardPipelineTest {
 
         assertTrue(result.consumed, "a plain Space must run through TextInputPipeline.handleSpace, not fall through untouched")
         assertEquals("hi ", editor.text)
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Regression (device report, 2.x daily-driver keyboard): pressing the real Space key twice
+    // only ever produced one space, because `:core:text`'s trailing-space guarantee treated any
+    // pre-existing trailing space as one it had already supplied, including the user's own
+    // previous, separate Space keystroke. Every existing rule-level test only ever exercised
+    // `DoubleSpacePeriod.apply` directly with a hand-picked `isSecondPressWithinWindow`, so none of
+    // them ever drove two real Space key-downs through the pipeline the way a device does; these
+    // do, through the same `KeyboardPipeline.onKeyStroke` entry point a physical key event reaches.
+    // -----------------------------------------------------------------------------------------
+
+    @Test
+    fun `pressing the real Space key twice, slowly, inserts two spaces`() {
+        val pipeline = KeyboardPipeline(layout = layout)
+        val editor = FakeEditor()
+        pipeline.onStartInput(FieldContext(FieldKind.NORMAL))
+        step(pipeline, editor, letter('H'))
+        step(pipeline, editor, letter('I'))
+
+        step(pipeline, editor, KeyId.Control(ControlKey.SPACE))
+        assertEquals("hi ", editor.text)
+
+        editor.advanceClock(600) // outside the 500ms double-space-to-period window
+        val result = step(pipeline, editor, KeyId.Control(ControlKey.SPACE))
+
+        assertTrue(result.consumed)
+        assertEquals("hi  ", editor.text, "a second, deliberate Space press must still insert its own space")
+    }
+
+    @Test
+    fun `pressing the real Space key twice, quickly, still converts to a period`() {
+        val pipeline = KeyboardPipeline(layout = layout)
+        val editor = FakeEditor()
+        pipeline.onStartInput(FieldContext(FieldKind.NORMAL))
+        step(pipeline, editor, letter('H'))
+        step(pipeline, editor, letter('I'))
+
+        step(pipeline, editor, KeyId.Control(ControlKey.SPACE))
+        step(pipeline, editor, KeyId.Control(ControlKey.SPACE)) // FakeEditor.nextSnapshot() only advances 50ms per step, well inside the window
+
+        assertEquals("hi. ", editor.text)
     }
 
     @Test

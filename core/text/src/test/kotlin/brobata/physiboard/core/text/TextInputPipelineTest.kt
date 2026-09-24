@@ -54,7 +54,8 @@ class TextInputPipelineTest {
             }
         }
 
-        fun snapshot(limit: Int = 240): EditorSnapshot = EditorSnapshot(textBeforeCursor = text.substring(maxOf(0, cursor - limit), cursor))
+        fun snapshot(limit: Int = 240, nowMs: Long = 0L): EditorSnapshot =
+            EditorSnapshot(textBeforeCursor = text.substring(maxOf(0, cursor - limit), cursor), nowMs = nowMs)
     }
 
     /**
@@ -73,6 +74,15 @@ class TextInputPipelineTest {
         var state = TextInputState()
         var pendingCapital = false
 
+        /**
+         * The wall clock [DoubleSpaceTimer] measures Space key-downs against. Real Space presses
+         * always advance it (see [space]'s own call below); a test that also needs to simulate the
+         * user pausing between two presses calls this directly first, so a "slowly apart" pair
+         * exercises the same 500 ms window a real device clock would (spec: text-input.md SS6.7,
+         * SS13).
+         */
+        var clockMs = 0L
+
         fun type(text: String) {
             for (ch in text) type(ch)
         }
@@ -88,8 +98,14 @@ class TextInputPipelineTest {
         fun backspace() = key(Action.Edit(EditEffect.DELETE_CHAR_BACKWARD))
         fun altChar(ch: Char) = key(Action.Commit(ch.toString()))
 
+        fun acceptSuggestion(word: String) =
+            apply(TextInputPipeline.handle(TextInputRequest.AcceptSuggestion(word), field, settings, resources, state, virtualField.snapshot(nowMs = clockMs)))
+
         private fun key(action: Action) {
-            val result = TextInputPipeline.handle(TextInputRequest.Key(action), field, settings, resources, state, virtualField.snapshot())
+            apply(TextInputPipeline.handle(TextInputRequest.Key(action), field, settings, resources, state, virtualField.snapshot(nowMs = clockMs)))
+        }
+
+        private fun apply(result: TextInputResult) {
             virtualField.apply(result.ops)
             state = result.state
             when (result.capDecision) {
@@ -219,5 +235,81 @@ class TextInputPipelineTest {
         session.type("hellp")
         session.enter()
         assertEquals("hello\n", session.virtualField.text)
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Regression: pressing Space more than once used to always produce exactly one space, because
+    // the trailing-space guarantee (SS6.1 step 5) treated ANY pre-existing trailing space as one
+    // it had already supplied, including a space the user had just typed with a previous, separate
+    // Space press. Fixed per spec Keep/Drop SS19 ("make a typed space after a typed space insert
+    // one"); these pin the fix and the cases the original guard was legitimately protecting.
+    // -----------------------------------------------------------------------------------------
+
+    @Test
+    fun `two deliberate Space presses more than 500ms apart each insert their own space`() {
+        // T2's "only one space ends up in the field" outcome is the 2.x bug this rewrite fixes
+        // (spec Keep/Drop SS19); outside the double-space window, two presses must give two spaces.
+        val session = Session()
+        session.type("hello")
+
+        session.space()
+        assertEquals("hello ", session.virtualField.text, "the first Space should land normally")
+
+        session.clockMs += 600 // outside the 500ms double-space-to-period window
+        session.space()
+        assertEquals("hello  ", session.virtualField.text, "a second, deliberate Space press must still insert its own space, not find a trailing space and commit nothing")
+    }
+
+    @Test
+    fun `two Space presses within 500ms still convert to a period, not two spaces`() {
+        // The double-space-to-period rule must still fire for a fast pair (spec SS6.7, T1); the
+        // fix above must not turn a fast double-space into two literal spaces.
+        val session = Session()
+        session.type("hello")
+
+        session.space()
+        session.space() // clockMs unchanged: both presses land in the same instant, well inside 500ms
+
+        assertEquals("hello. ", session.virtualField.text)
+    }
+
+    @Test
+    fun `a Space pressed right after accepting a suggestion does not double the auto-space, but a later press does`() {
+        // What the guard was actually for (text-input.md SS6.3): a trailing space THIS module put
+        // in the field on its own initiative (here, accepting a suggestion) must not be doubled by
+        // the very next Space. That protection is a one-time credit, not a standing licence to
+        // swallow every later press: once it has been spent, an ordinary second press behaves like
+        // any other deliberate Space.
+        val session = Session()
+
+        session.acceptSuggestion("hello")
+        assertEquals("hello ", session.virtualField.text, "accepting the suggestion should have appended its own trailing space")
+
+        session.space() // deliberate, but the accepted suggestion already supplied this space
+        assertEquals("hello ", session.virtualField.text, "a Space right after an accepted suggestion must not double it")
+
+        session.clockMs += 600
+        session.space() // the one-time credit is spent; this is now an ordinary deliberate press
+        assertEquals("hello  ", session.virtualField.text, "once the auto-space credit is spent, the next deliberate Space must still land")
+    }
+
+    @Test
+    fun `a Space pressed right after an automatic correction does not double it either`() {
+        val dictionary = dict("the" to 220)
+        val resources = TextInputResources(dictionaries = listOf(dictionary))
+        val settings = TextInputSettingsBundle(autocorrect = AutocorrectSettings(autoReplaceOnSpaceEnter = true, maxAutoReplaceDistance = 1))
+        val session = Session(settings = settings, resources = resources)
+
+        session.type("teh")
+        session.space() // corrects to "the" and supplies the boundary's own trailing space
+        assertEquals("the ", session.virtualField.text)
+
+        session.clockMs += 600
+        session.space() // absorbs the correction's own auto-space rather than doubling it
+        assertEquals("the ", session.virtualField.text, "a Space right after an automatic correction must not double it")
+
+        session.clockMs += 600
+        session.space() // the credit is spent; a further deliberate press lands normally
+        assertEquals("the  ", session.virtualField.text)
     }
 }

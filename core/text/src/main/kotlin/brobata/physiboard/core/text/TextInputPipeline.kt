@@ -502,7 +502,11 @@ object TextInputPipeline {
                     // spec quirk (SS6.7, T3): this second space is *not* suppressed by the
                     // trailing-space rule; it is committed as an ordinary space and the chain
                     // continues no further (steps 2-5 are for a space that is still undecided).
-                    return finishWithCapReevaluation(listOf(EditorOp.CommitText(" ")), newState.copy(autoSpacePending = true), field, settings, textBefore, sentenceEndPending)
+                    // It is the user's own space, not one this module inserted on its own
+                    // initiative, so it does not arm autoSpacePending either (spec Keep/Drop
+                    // SS19): a third deliberate press right after this one must still land its
+                    // own space rather than being read as "doubling" this one.
+                    return finishWithCapReevaluation(listOf(EditorOp.CommitText(" ")), newState.copy(autoSpacePending = false), field, settings, textBefore, sentenceEndPending)
                 }
                 DoubleSpacePeriodOutcome.NotDue -> Unit
             }
@@ -522,14 +526,25 @@ object TextInputPipeline {
             }
         }
 
-        // SS6.1 step 5: the boundary hand-off, with its trailing-space guarantee.
+        // SS6.1 step 5: the boundary hand-off, with its trailing-space guarantee. That
+        // guarantee exists to avoid doubling a space THIS module put in the field on its own
+        // initiative, not one the user is deliberately pressing right now: an unconsumed
+        // keyboard-inserted auto-space still sitting there from an earlier call
+        // (state.autoSpacePending, SS6.3: set after accepting a suggestion, an auto-replace or
+        // autocorrect that committed a space, or comma space) is exactly one such space, and so
+        // is a replacement this very outcome is about to commit when that replacement text
+        // itself already ends in a space. A trailing space the field already held for any other
+        // reason, most of all the user's own previous keystroke, is not: this pipeline had
+        // wrongly folded that case in too (spec Keep/Drop SS19, "make a typed space after a
+        // typed space insert one"), which is what let a second, deliberate Space press find a
+        // trailing space and commit nothing at all.
         val trackedWord = newState.currentWord.word
         val (memory, outcome) = evaluateBoundarySafely(trackedWord, editor, trust, ' ', resources, settings, newState.autocorrectMemory)
         newState = newState.copy(autocorrectMemory = memory, currentWord = CurrentWordTracker.empty())
 
         val ops = mutableListOf<EditorOp>()
         var replacementEndsInApostrophe = false
-        var textNowEndsWithSpace = textBefore?.endsWith(" ") == true
+        var textNowEndsWithSpace = state.autoSpacePending && textBefore?.endsWith(" ") == true
         when (outcome) {
             is BoundaryOutcome.Replaced -> {
                 ops += EditorOp.DeleteSurrounding(outcome.original.length, 0)
@@ -543,7 +558,12 @@ object TextInputPipeline {
         if (!replacementEndsInApostrophe && !textNowEndsWithSpace) {
             ops += EditorOp.CommitText(" ")
         }
-        newState = newState.copy(autoSpacePending = !replacementEndsInApostrophe)
+        // Only a real replacement just committed by this call is a keyboard-inserted space the
+        // next Space press must not double (spec SS6.3); a plain user-typed space is no longer
+        // flagged here (spec Keep/Drop SS19, "stop flagging user-typed spaces as auto-space so
+        // the help text becomes true"), matching what "Remove before" (SS6.3) was always
+        // supposed to see for an ordinary typed space.
+        newState = newState.copy(autoSpacePending = outcome is BoundaryOutcome.Replaced && !replacementEndsInApostrophe)
         // A replacement means the current word was not blank, so whatever justCommittedSentenceEnd
         // was remembering predates a real word and is no longer "the mark right before this space".
         val stillApplies = sentenceEndPending && outcome !is BoundaryOutcome.Replaced
