@@ -103,8 +103,9 @@ internal class DictationController(
 
     /**
      * spec: the c440844 fix, [brobata.physiboard.core.speech.PendingUtterance]'s own KDoc. Called
-     * for any key that reaches the ordinary typing pipeline while a dictation session is running:
-     * that is by definition the user changing the field by some means other than the dictation
+     * when the ordinary typing pipeline actually changed the field's text while a dictation
+     * session is running (never for a bare modifier press, a key-up or a Fn repeat, which edit
+     * nothing): that is the user changing the field by some means other than the dictation
      * session itself, so whatever the engine remembers of this utterance can no longer be trusted.
      */
     fun onUserEditedComposingText() {

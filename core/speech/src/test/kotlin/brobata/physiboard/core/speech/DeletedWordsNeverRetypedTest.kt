@@ -48,6 +48,40 @@ class DeletedWordsNeverRetypedTest {
     }
 
     @Test
+    fun `a final that carries its own text after the user deletes the words inserts nothing`() {
+        // Google's engine repeats the whole utterance in the final; the words it repeats are
+        // the ones the user just removed, so the final must be a no-op too, not "fresh data".
+        val edited = handle(sessionWithComposingWords(), DictationEvent.UserEditedComposingText, now = 200L)
+        val ended = handle(edited.session, DictationEvent.FinalResult("delete me"), now = 300L)
+        assertTrue(ended.textOps.isEmpty())
+    }
+
+    @Test
+    fun `a later partial of the same utterance after the user deletes the words writes nothing`() {
+        val edited = handle(sessionWithComposingWords(), DictationEvent.UserEditedComposingText, now = 200L)
+        val later = handle(edited.session, DictationEvent.PartialResult("delete me please"), now = 250L)
+        assertTrue(later.textOps.isEmpty())
+        // ... and the utterance stays invalidated through to its final.
+        val ended = handle(later.session, DictationEvent.FinalResult("delete me please"), now = 300L)
+        assertTrue(ended.textOps.isEmpty())
+    }
+
+    @Test
+    fun `a segment result after the user deletes the words inserts nothing`() {
+        val edited = handle(sessionWithComposingWords(), DictationEvent.UserEditedComposingText, now = 200L)
+        val ended = handle(edited.session, DictationEvent.SegmentResult("delete me"), now = 300L)
+        assertTrue(ended.textOps.isEmpty())
+    }
+
+    @Test
+    fun `invalidation ends at the utterance boundary so the next utterance composes again`() {
+        val edited = handle(sessionWithComposingWords(), DictationEvent.UserEditedComposingText, now = 200L)
+        val ended = handle(edited.session, DictationEvent.FinalResult("delete me"), now = 300L)
+        val next = handle(ended.session, DictationEvent.PartialResult("keep me"), now = 400L)
+        assertEquals(listOf(DictationTextOp.SetComposingText("Keep me")), next.textOps)
+    }
+
+    @Test
     fun `control- without an edit, the same empty final does finish the utterance`() {
         val ended = handle(sessionWithComposingWords(), DictationEvent.FinalResult(null), now = 300L)
         assertEquals(listOf(DictationTextOp.SetComposingText("Delete me "), DictationTextOp.FinishComposing), ended.textOps)

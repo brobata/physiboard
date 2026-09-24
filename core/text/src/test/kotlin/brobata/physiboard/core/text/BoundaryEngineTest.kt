@@ -103,4 +103,62 @@ class BoundaryEngineTest {
         )
         assertEquals(BoundaryOutcome.CommitPlain, outcome)
     }
+
+    // -----------------------------------------------------------------------------------------
+    // B9: primary case repair must respect every source of "spelled exactly as typed". spec:
+    // autocorrect-suggestions.md SS6.1 ("a personal word is never autocorrected"; the personal
+    // store "is merged into every dictionary that is loaded"), SS10.
+    // -----------------------------------------------------------------------------------------
+
+    @Test
+    fun `SS6-1 a user-added lowercase word is not case-repaired from the primary dictionary`() {
+        val userWords = UserWordStore.empty().withPersonalWordAdded("paris", nowMillis = 0L)
+        val (_, outcome) = BoundaryEngine.evaluate(
+            trackedWord = "paris", textBeforeCursor32 = "paris", boundaryChar = ' ',
+            ruleSets = emptyList(), dictionaries = listOf(dict("Paris" to 200)), userWords = userWords,
+            settings = AutocorrectSettings(autoReplaceOnSpaceEnter = true), rankingOptions = RankingOptions(),
+            lengthChangeAllowance = 2, memory = AutocorrectMemory(),
+        )
+        assertEquals(BoundaryOutcome.CommitPlain, outcome)
+    }
+
+    @Test
+    fun `SS10 a word spelled exactly as typed in a secondary dictionary is not case-repaired`() {
+        val (_, outcome) = evaluate(
+            "chef",
+            ' ',
+            dictionaries = listOf(dict("Chef" to 200), dict("chef" to 150)),
+            settings = AutocorrectSettings(autoReplaceOnSpaceEnter = true),
+        )
+        assertEquals(BoundaryOutcome.CommitPlain, outcome)
+    }
+
+    @Test
+    fun `SS7-2 the hard-boundary scan still excludes a tracked word the field spells with a curly apostrophe`() {
+        // The tracker folds apostrophes to the straight one; the field holds the key as pressed.
+        // If the two are compared without folding, the word is never excluded from the 32-character
+        // window, the scan stops on its own trailing letter, and the emoji before it is never seen.
+        val (_, outcome) = BoundaryEngine.evaluate(
+            trackedWord = "we'll", textBeforeCursor32 = "\uD83D\uDE42 we\u2019ll", boundaryChar = ' ',
+            ruleSets = emptyList(), dictionaries = listOf(dict("We'll" to 200)), userWords = UserWordStore.empty(),
+            settings = AutocorrectSettings(autoReplaceOnSpaceEnter = true), rankingOptions = RankingOptions(),
+            lengthChangeAllowance = 2, memory = AutocorrectMemory(),
+        )
+        assertEquals(BoundaryOutcome.CommitPlain, outcome)
+    }
+
+    @Test
+    fun `SS7-5 a boundary on a blank word or behind a hard boundary clears the undo memory`() {
+        val memory = AutocorrectMemory().afterReplacement("teh", "the")
+        val (afterBlank, _) = evaluate("", ' ', dictionaries = listOf(dict("the" to 100)), memory = memory)
+        assertEquals(null, afterBlank.lastReplacement)
+
+        val (afterHard, _) = BoundaryEngine.evaluate(
+            trackedWord = "lo", textBeforeCursor32 = "@lo", boundaryChar = ' ',
+            ruleSets = emptyList(), dictionaries = listOf(dict("lo" to 10)), userWords = UserWordStore.empty(),
+            settings = AutocorrectSettings(autoReplaceOnSpaceEnter = true), rankingOptions = RankingOptions(),
+            lengthChangeAllowance = 0, memory = memory,
+        )
+        assertEquals(null, afterHard.lastReplacement)
+    }
 }

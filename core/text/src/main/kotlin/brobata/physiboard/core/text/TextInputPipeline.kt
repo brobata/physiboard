@@ -68,6 +68,29 @@ data class TextInputState(
     val justCommittedSentenceEnd: Boolean = false,
 ) {
     fun forNewField(): TextInputState = TextInputState(autoCap = autoCap.forNewField())
+
+    /**
+     * The cursor moved for a reason this pipeline did not cause (a tap, a selection, the app
+     * editing its own field). Every fact here that describes "the text right before the cursor as
+     * this pipeline left it" is void after such a move: the deferred-space debt (spec: text-input.md
+     * SS2, "every cursor change that is not the one-character forward step caused by its own last
+     * commit clears the deferred-space state"), the auto-space flag (SS6.3 names one specific space
+     * the next punctuation may replace, and it is no longer before the cursor), the undo memory
+     * (autocorrect-suggestions.md SS7.5 verifies the replacement against the text right before the
+     * cursor, which is now some other text), and the just-committed sentence end. The tracked word
+     * is re-derived from [textBeforeCursor] (autocorrect-suggestions.md SS1.2), or emptied when the
+     * field would not answer; resyncing to what the editor reports is the drift-recovery path
+     * itself (rebuild-from-scratch.md "The editor is not a reliable narrator" point 1), so it is
+     * not something a reduced trust withholds. Auto-cap is left to the caller, which owns the
+     * trust decision for that context rule.
+     */
+    fun afterExternalCursorMove(textBeforeCursor: String?): TextInputState = copy(
+        currentWord = textBeforeCursor?.let { currentWord.syncedFrom(it) } ?: currentWord.reset(),
+        deferredSpace = DeferredSpace.cancelled(),
+        autoSpacePending = false,
+        autocorrectMemory = autocorrectMemory.afterBoundaryWithoutReplacement(),
+        justCommittedSentenceEnd = false,
+    )
 }
 
 /**
@@ -181,7 +204,8 @@ object TextInputPipeline {
             request.action, request.shiftHeld, request.altActive, request.ctrlActive, request.shiftActive, request.navModeActive,
             field, settings, resources, state, editor, trust, appProfile,
         )
-        is TextInputRequest.AcceptSuggestion -> handleAcceptSuggestion(request.word, field, settings, state, editor)
+        // A strip tap is "any other key" to the double-space window (text-input.md SS6.7).
+        is TextInputRequest.AcceptSuggestion -> handleAcceptSuggestion(request.word, field, settings, state.copy(doubleSpaceTimer = state.doubleSpaceTimer.reset()), editor, trust)
     }
 
     /** [trust]-gated view of [EditorSnapshot.textBeforeCursor]: null whenever [EditorTrust.contextRulesAllowed] is false, so a rule that needs surrounding context (sentence-end capitalisation, boundary correction, the spacing rules that inspect what precedes) sees exactly what an unreadable field would give it, rather than a guess from a possibly-stale answer. spec: rebuild-from-scratch.md "The editor is not a reliable narrator" point 2. */
@@ -197,6 +221,7 @@ object TextInputPipeline {
      */
     private fun evaluateBoundarySafely(
         trackedWord: String,
+        field: FieldContext,
         editor: EditorSnapshot,
         trust: EditorTrust,
         boundaryChar: Char,
@@ -204,6 +229,11 @@ object TextInputPipeline {
         settings: TextInputSettingsBundle,
         memory: AutocorrectMemory,
     ): Pair<AutocorrectMemory, BoundaryOutcome> {
+        // spec: autocorrect-suggestions.md SS7.4 (a restricted field gets "no rule, no case repair,
+        // no correction; a boundary is committed as typed") and text-input.md SS3's "Autocorrect"
+        // column, which [FieldContext.autocorrectAllowed] encodes: the engine is not consulted at
+        // all, for Space, Enter and boundary punctuation alike, since 3.0 has one engine (SS18 W4).
+        if (!field.autocorrectAllowed) return memory.afterBoundaryWithoutReplacement() to BoundaryOutcome.CommitPlain
         val editorWindow = editor.contextTextBeforeCursor(trust)?.takeLast(32)
         return when (DriftCheck.evaluate(trackedWord, editorWindow)) {
             is DriftCheck.Agreed -> BoundaryEngine.evaluate(
@@ -228,26 +258,34 @@ object TextInputPipeline {
         field: FieldContext,
         settings: TextInputSettingsBundle,
         resources: TextInputResources,
-        state: TextInputState,
+        rawState: TextInputState,
         editor: EditorSnapshot,
         trust: EditorTrust,
         appProfile: AppProfile,
-    ): TextInputResult = when (action) {
-        is Action.Commit -> handleCommit(action.text, field, settings, resources, state, editor, trust)
-        is Action.Edit -> handleEdit(
-            action.effect, action.extendSelection, shiftHeld, altActive, ctrlActive, shiftActive, navModeActive,
-            field, settings, resources, state, editor, trust, appProfile,
-        )
-        is Action.ReplaceRecent -> handleReplaceRecent(action.deleteCount, action.text, field, settings, resources, state, editor, trust)
-        is Action.Multiple -> action.actions.fold(TextInputResult(emptyList(), state)) { acc, next ->
-            val step = handleAction(next, shiftHeld, altActive, ctrlActive, shiftActive, navModeActive, field, settings, resources, acc.state, editor, trust, appProfile)
-            TextInputResult(acc.ops + step.ops, step.state, step.capDecision ?: acc.capDecision, step.enterDelivery ?: acc.enterDelivery)
+    ): TextInputResult {
+        // spec: text-input.md SS6.7, "The Space timer is reset by any other key": every action that
+        // is not a Space commit closes the double-space window before it is handled ([Action.Multiple]
+        // leaves that to each of its parts; a bare state change is not a key the user typed).
+        val isSpace = action is Action.Commit && action.text == " "
+        val leavesTimerAlone = isSpace || action is Action.Multiple || action === Action.StateOnly || action === Action.Ignored
+        val state = if (leavesTimerAlone) rawState else rawState.copy(doubleSpaceTimer = rawState.doubleSpaceTimer.reset())
+        return when (action) {
+            is Action.Commit -> handleCommit(action.text, field, settings, resources, state, editor, trust)
+            is Action.Edit -> handleEdit(
+                action.effect, action.extendSelection, shiftHeld, altActive, ctrlActive, shiftActive, navModeActive,
+                field, settings, resources, state, editor, trust, appProfile,
+            )
+            is Action.ReplaceRecent -> handleReplaceRecent(action.deleteCount, action.text, field, settings, resources, state, editor, trust)
+            is Action.Multiple -> action.actions.fold(TextInputResult(emptyList(), state)) { acc, next ->
+                val step = handleAction(next, shiftHeld, altActive, ctrlActive, shiftActive, navModeActive, field, settings, resources, acc.state, editor, trust, appProfile)
+                TextInputResult(acc.ops + step.ops, step.state, step.capDecision ?: acc.capDecision, step.enterDelivery ?: acc.enterDelivery)
+            }
+            // Sym pages/chords, Ctrl combos, commands, status refreshes and plain pass-through carry
+            // no text-level behaviour of their own (spec: text-input.md SS5.3, "committed as plain
+            // text with no spacing or capitalization logic at all"); the caller applies the key or
+            // command itself.
+            else -> TextInputResult(listOf(EditorOp.PassThroughKey), state)
         }
-        // Sym pages/chords, Ctrl combos, commands, status refreshes and plain pass-through carry
-        // no text-level behaviour of their own (spec: text-input.md SS5.3, "committed as plain
-        // text with no spacing or capitalization logic at all"); the caller applies the key or
-        // command itself.
-        else -> TextInputResult(listOf(EditorOp.PassThroughKey), state)
     }
 
     private fun handleCommit(text: String, field: FieldContext, settings: TextInputSettingsBundle, resources: TextInputResources, state: TextInputState, editor: EditorSnapshot, trust: EditorTrust): TextInputResult {
@@ -257,7 +295,8 @@ object TextInputPipeline {
         // A multi-character commit (a Sym-page string, an emoji, dictation, expansion, clipboard):
         // bypasses every smart feature. spec: SS5.3, SS17 ("Text expansion, dictation result,
         // clipboard paste: commit as plain text; deferred debt untouched, auto-space flag untouched").
-        return TextInputResult(listOf(EditorOp.CommitText(text)), state.copy(currentWord = CurrentWordTracker.empty()))
+        // justCommittedSentenceEnd's own contract: "cleared the instant anything else is committed".
+        return TextInputResult(listOf(EditorOp.CommitText(text)), state.copy(currentWord = CurrentWordTracker.empty(), justCommittedSentenceEnd = false))
     }
 
     private fun handleEdit(
@@ -276,8 +315,8 @@ object TextInputPipeline {
         trust: EditorTrust,
         appProfile: AppProfile,
     ): TextInputResult = when (effect) {
-        EditEffect.DELETE_CHAR_BACKWARD -> handleBackspace(settings, state, editor, shiftHeld, altActive)
-        EditEffect.DELETE_SELECTION_OR_WORD_BACKWARD, EditEffect.DELETE_WORD_BACKWARD -> handleDeleteWordBackward(editor, state)
+        EditEffect.DELETE_CHAR_BACKWARD -> handleBackspace(settings, state, editor, trust, shiftHeld, altActive)
+        EditEffect.DELETE_SELECTION_OR_WORD_BACKWARD, EditEffect.DELETE_WORD_BACKWARD -> handleDeleteWordBackward(editor, trust, state)
         EditEffect.NEWLINE -> handleEnter(field, settings, resources, state, editor, trust, appProfile, ctrlActive, shiftActive, navModeActive)
         EditEffect.SELECT_ALL -> editor.fullText?.let { TextInputResult(listOf(SelectAll.apply(it.text)), state) } ?: TextInputResult(emptyList(), state)
         EditEffect.MOVE_WORD_LEFT -> handleWordMove(MoveDirection.LEFT, extendSelection, state, editor)
@@ -296,7 +335,13 @@ object TextInputPipeline {
     private fun handleLetter(ch: Char, field: FieldContext, settings: TextInputSettingsBundle, rawState: TextInputState, editor: EditorSnapshot, trust: EditorTrust): TextInputResult {
         // A letter is never a sentence-ending mark, so whatever this pipeline was remembering
         // about a just-committed one no longer applies (see justCommittedSentenceEnd's own KDoc).
-        val state = rawState.copy(justCommittedSentenceEnd = false)
+        // spec: autocorrect-suggestions.md SS7.5: any typed character clears the undo memory, and
+        // a letter or digit empties the rejected set ("a rejection survives only until the next
+        // word starts").
+        val state = rawState.copy(
+            justCommittedSentenceEnd = false,
+            autocorrectMemory = rawState.autocorrectMemory.afterAnyCharacterTyped().afterLetterOrDigitTyped(),
+        )
         return when (val debt = DeferredSpace.onNextCommit(state.deferredSpace, ch.toString())) {
             is DeferredSpaceOutcome.InsertSpaceBefore -> {
                 val ops = listOf(EditorOp.CommitText(" "), EditorOp.CommitText(ch.toString()))
@@ -343,8 +388,11 @@ object TextInputPipeline {
     // layer, which is how this function is reached for a single non-letter character.
     // ---------------------------------------------------------------------------------------
 
-    private fun handleAltCharacter(ch: Char, field: FieldContext, settings: TextInputSettingsBundle, resources: TextInputResources, state: TextInputState, editor: EditorSnapshot, trust: EditorTrust): TextInputResult {
+    private fun handleAltCharacter(ch: Char, field: FieldContext, settings: TextInputSettingsBundle, resources: TextInputResources, rawState: TextInputState, editor: EditorSnapshot, trust: EditorTrust): TextInputResult {
         val textBefore = editor.contextTextBeforeCursor(trust)
+        // spec: autocorrect-suggestions.md SS7.5: the undo memory is cleared when any character is
+        // typed (a boundary hand-off below may set it afresh); a digit also empties the rejected set.
+        val state = rawState.copy(autocorrectMemory = rawState.autocorrectMemory.afterAnyCharacterTyped().let { if (ch.isDigit()) it.afterLetterOrDigitTyped() else it })
 
         when (val debt = DeferredSpace.onNextCommit(state.deferredSpace, ch.toString())) {
             is DeferredSpaceOutcome.InsertSpaceBefore -> {
@@ -418,14 +466,18 @@ object TextInputPipeline {
         // Space/Enter/double-space-period sees will be a sentence-ending mark, independent of
         // whether that keystroke's own read of the field still shows it.
         newState = newState.copy(justCommittedSentenceEnd = WordChars.isSentenceEndingMark(ch, prevChar))
-        if (WordChars.isApostrophe(ch) && prevChar != null && prevChar.isLetterOrDigit()) {
+        if (WordChars.isApostrophe(ch)) {
+            // SS5.4 step 3, "the character before it is a letter or digit": decided from the
+            // keyboard's own record of the word rather than an editor read (rebuild-from-scratch.md
+            // "The editor is not a reliable narrator" point 1); [CurrentWordTracker.onCharacterCommitted]
+            // applies exactly that rule and resets when it does not hold.
             newState = newState.copy(currentWord = newState.currentWord.onCharacterCommitted(ch))
             return TextInputResult(precedingOps, newState)
         }
 
         if (allowBoundaryHandoff && ch in WordChars.BOUNDARY_PUNCTUATION) {
             val trackedWord = newState.currentWord.word
-            val (memory, outcome) = evaluateBoundarySafely(trackedWord, editor, trust, ch, resources, settings, newState.autocorrectMemory)
+            val (memory, outcome) = evaluateBoundarySafely(trackedWord, field, editor, trust, ch, resources, settings, newState.autocorrectMemory)
             newState = newState.copy(autocorrectMemory = memory, currentWord = CurrentWordTracker.empty())
             return when (outcome) {
                 is BoundaryOutcome.Replaced -> {
@@ -460,12 +512,25 @@ object TextInputPipeline {
     private fun handleReplaceRecent(deleteCount: Int, text: String, field: FieldContext, settings: TextInputSettingsBundle, resources: TextInputResources, state: TextInputState, editor: EditorSnapshot, trust: EditorTrust): TextInputResult {
         val ops = listOf(EditorOp.ReplaceBeforeCursor(deleteCount, text))
         val ch = text.singleOrNull()
-        val baseState = state.copy(autoSpacePending = false, justCommittedSentenceEnd = false)
+        // spec: autocorrect-suggestions.md SS7.5: a typed character clears the undo memory.
+        val baseState = state.copy(autoSpacePending = false, justCommittedSentenceEnd = false, autocorrectMemory = state.autocorrectMemory.afterAnyCharacterTyped())
         if (ch == null || ch.isLetter()) {
             val tracker = if (ch != null) baseState.currentWord.onCharacterReplaced(ch) else CurrentWordTracker.empty()
-            return TextInputResult(ops, baseState.copy(currentWord = tracker))
+            val memory = if (ch != null) baseState.autocorrectMemory.afterLetterOrDigitTyped() else baseState.autocorrectMemory
+            return TextInputResult(ops, baseState.copy(currentWord = tracker, autocorrectMemory = memory))
         }
-        return altFollowUp(ch, ops, baseState, field, settings, resources, editor, trust, allowBoundaryHandoff = true)
+        // The letter the long press deletes was committed by the previous stroke, so it is still
+        // the last character of both the tracked word and the editor's read for this stroke. The
+        // follow-up must run on the word as it stands once that letter is gone (text-input.md
+        // SS5.2, "the letter is deleted and the Alt-layer character is committed with exactly the
+        // same ... follow-up"): otherwise the boundary engine is asked about "catm" while the
+        // field holds "cat.", corrects a word the user spelled correctly, and its delete count
+        // swallows the space before it (autocorrect-suggestions.md SS10). Both records drop the
+        // same count, so DriftCheck still compares like with like.
+        var tracker = baseState.currentWord
+        repeat(deleteCount) { tracker = tracker.onBackspace() }
+        val editorAfterDelete = editor.copy(textBeforeCursor = editor.textBeforeCursor?.dropLast(deleteCount))
+        return altFollowUp(ch, ops, baseState.copy(currentWord = tracker), field, settings, resources, editorAfterDelete, trust, allowBoundaryHandoff = true)
     }
 
     // ---------------------------------------------------------------------------------------
@@ -489,7 +554,7 @@ object TextInputPipeline {
             deferredSpace = DeferredSpace.cancelled(),
         )
 
-        if (field.isRestricted) return handleRestrictedSpace(field, settings, resources, newState, editor, trust)
+        if (field.isRestricted) return handleRestrictedSpace(newState)
 
         // SS6.1 step 1: double-space period.
         if (textBefore != null && field.doubleSpacePeriodAllowed) {
@@ -539,7 +604,7 @@ object TextInputPipeline {
         // typed space insert one"), which is what let a second, deliberate Space press find a
         // trailing space and commit nothing at all.
         val trackedWord = newState.currentWord.word
-        val (memory, outcome) = evaluateBoundarySafely(trackedWord, editor, trust, ' ', resources, settings, newState.autocorrectMemory)
+        val (memory, outcome) = evaluateBoundarySafely(trackedWord, field, editor, trust, ' ', resources, settings, newState.autocorrectMemory)
         newState = newState.copy(autocorrectMemory = memory, currentWord = CurrentWordTracker.empty())
 
         val ops = mutableListOf<EditorOp>()
@@ -570,24 +635,21 @@ object TextInputPipeline {
         return finishWithCapReevaluation(ops, newState, field, settings, textBefore, stillApplies)
     }
 
-    /** spec: text-input.md SS6.2. */
-    private fun handleRestrictedSpace(field: FieldContext, settings: TextInputSettingsBundle, resources: TextInputResources, state: TextInputState, editor: EditorSnapshot, trust: EditorTrust): TextInputResult {
-        if (!settings.autocorrect.autoCorrectEnabled) {
-            return TextInputResult(listOf(EditorOp.PassThroughKey), state)
-        }
-        val trackedWord = state.currentWord.word
-        val (memory, outcome) = evaluateBoundarySafely(trackedWord, editor, trust, ' ', resources, settings, state.autocorrectMemory)
-        val newState = state.copy(autocorrectMemory = memory, currentWord = CurrentWordTracker.empty(), justCommittedSentenceEnd = false)
-        return when (outcome) {
-            is BoundaryOutcome.Replaced -> {
-                val endsApostrophe = WordChars.isApostrophe(outcome.replacement.lastOrNull() ?: ' ')
-                val ops = mutableListOf<EditorOp>(EditorOp.DeleteSurrounding(outcome.original.length, 0), EditorOp.CommitText(outcome.replacement), EditorOp.Haptic)
-                if (!endsApostrophe) ops += EditorOp.CommitText(" ")
-                TextInputResult(ops, newState.copy(autoSpacePending = !endsApostrophe))
-            }
-            BoundaryOutcome.CommitPlain -> TextInputResult(listOf(EditorOp.PassThroughKey), newState)
-        }
-    }
+    /**
+     * spec: text-input.md SS6.2, read with autocorrect-suggestions.md SS7.4: SS6.2's hand-off "when
+     * autocorrect is enabled" is the legacy path SS7.4 declares unreachable ("auto_correct_enabled
+     * is treated as false whenever the field is restricted") and SS18 W4 drops. The boundary
+     * passes with no engine consulted, so the word is left as typed and the key falls through to
+     * the system; the tracked word resets and the undo memory clears as at any other boundary.
+     */
+    private fun handleRestrictedSpace(state: TextInputState): TextInputResult = TextInputResult(
+        listOf(EditorOp.PassThroughKey),
+        state.copy(
+            autocorrectMemory = state.autocorrectMemory.afterBoundaryWithoutReplacement(),
+            currentWord = CurrentWordTracker.empty(),
+            justCommittedSentenceEnd = false,
+        ),
+    )
 
     private fun finishWithCapReevaluation(
         ops: List<EditorOp>,
@@ -648,7 +710,7 @@ object TextInputPipeline {
         val textBefore = editor.contextTextBeforeCursor(trust)
         val trackedWord = newState.currentWord.word
 
-        val (memory, outcome) = evaluateBoundarySafely(trackedWord, editor, trust, '\n', resources, settings, newState.autocorrectMemory)
+        val (memory, outcome) = evaluateBoundarySafely(trackedWord, field, editor, trust, '\n', resources, settings, newState.autocorrectMemory)
         newState = newState.copy(autocorrectMemory = memory, currentWord = CurrentWordTracker.empty(), autoSpacePending = false)
 
         val ops = mutableListOf<EditorOp>(EditorOp.FinishComposing)
@@ -721,11 +783,22 @@ object TextInputPipeline {
     // Backspace. spec: text-input.md SS8.
     // ---------------------------------------------------------------------------------------
 
-    private fun handleBackspace(settings: TextInputSettingsBundle, state: TextInputState, editor: EditorSnapshot, shiftHeld: Boolean, altActive: Boolean): TextInputResult {
+    /**
+     * spec: text-input.md SS8. Every read here is gated by [trust] (rebuild-from-scratch.md "The
+     * editor is not a reliable narrator" point 2): whether a selection exists, whether the cursor
+     * is at the field start, and whether the text still ends in the last replacement are all
+     * surrounding context, so under reduced trust the forward-delete alternatives and the undo
+     * switch off and the key falls through as a plain Backspace. A stale empty read must never
+     * turn the Backspace the user pressed into a forward delete of nothing.
+     */
+    private fun handleBackspace(settings: TextInputSettingsBundle, state: TextInputState, editor: EditorSnapshot, trust: EditorTrust, shiftHeld: Boolean, altActive: Boolean): TextInputResult {
         val baseState = state.copy(deferredSpace = DeferredSpace.cancelled(), autoSpacePending = false, justCommittedSentenceEnd = false)
-        val hasSelection = editor.fullText?.hasSelection ?: false
-        val charsBeforeCursor = editor.textBeforeCursor?.length ?: 1
-        val undoWindow = baseState.autocorrectMemory.lastReplacement?.let { last -> editor.textBeforeCursor?.takeLast(last.replacement.length + 2) }
+        val contextBefore = editor.contextTextBeforeCursor(trust)
+        // With the selection unknowable, the forward-delete alternatives are skipped exactly as
+        // they are for a selection (SS8 step 2): [Backspace.decide] takes that as `hasSelection`.
+        val hasSelection = if (trust.contextRulesAllowed) editor.fullText?.hasSelection ?: false else true
+        val charsBeforeCursor = contextBefore?.length ?: 1
+        val undoWindow = baseState.autocorrectMemory.lastReplacement?.let { last -> contextBefore?.takeLast(last.replacement.length + 2) }
 
         return when (val decision = Backspace.decide(hasSelection, shiftHeld, altActive, settings.backspace, charsBeforeCursor, baseState.autocorrectMemory, undoWindow)) {
             Backspace.Decision.DeleteForward -> TextInputResult(listOf(EditorOp.DeleteSurrounding(0, 1)), baseState)
@@ -740,14 +813,21 @@ object TextInputPipeline {
         }
     }
 
-    private fun handleDeleteWordBackward(editor: EditorSnapshot, state: TextInputState): TextInputResult {
+    /**
+     * spec: text-input.md SS8, Ctrl+Backspace. Both branches need a read the pipeline can trust
+     * (the selection, or the 100 characters before the cursor); when neither is available the key
+     * passes through so the app performs its own word delete, rather than a `DeleteSurrounding(0, 0)`
+     * that swallows the keystroke (rebuild-from-scratch.md "The editor is not a reliable narrator"
+     * point 2, "a keystroke is never swallowed").
+     */
+    private fun handleDeleteWordBackward(editor: EditorSnapshot, trust: EditorTrust, state: TextInputState): TextInputResult {
         val newState = state.copy(deferredSpace = DeferredSpace.cancelled(), autoSpacePending = false, currentWord = CurrentWordTracker.empty(), justCommittedSentenceEnd = false)
-        val hasSelection = editor.fullText?.hasSelection ?: false
-        val ops = if (hasSelection) {
-            listOf(EditorOp.CommitText(""))
-        } else {
-            val count = DeleteWordBackward.countToDelete(editor.textBeforeCursor.orEmpty().takeLast(100))
-            listOf(EditorOp.DeleteSurrounding(count, 0))
+        val hasSelection = trust.contextRulesAllowed && editor.fullText?.hasSelection == true
+        val textBefore = editor.contextTextBeforeCursor(trust)
+        val ops = when {
+            hasSelection -> listOf(EditorOp.CommitText(""))
+            textBefore == null -> listOf(EditorOp.PassThroughKey)
+            else -> listOf(EditorOp.DeleteSurrounding(DeleteWordBackward.countToDelete(textBefore.takeLast(100)), 0))
         }
         return TextInputResult(ops, newState)
     }
@@ -758,14 +838,16 @@ object TextInputPipeline {
     // ---------------------------------------------------------------------------------------
 
     private fun handleWordMove(direction: MoveDirection, extendSelection: Boolean, state: TextInputState, editor: EditorSnapshot): TextInputResult {
-        val window = editor.fullText ?: return TextInputResult(emptyList(), state)
+        // spec SS2: without a document read there are "no word-wise moves" of the keyboard's own;
+        // the key still reaches the app, which can move its own cursor, rather than vanishing.
+        val window = editor.fullText ?: return TextInputResult(listOf(EditorOp.PassThroughKey), state)
         if (extendSelection) return handleExpand(direction, wordWise = true, state, editor)
         val op = if (direction == MoveDirection.LEFT) WordMotion.moveLeft(window) else WordMotion.moveRight(window)
         return TextInputResult(listOf(op), state.copy(selectionAnchor = null))
     }
 
     private fun handleExpand(direction: MoveDirection, wordWise: Boolean, state: TextInputState, editor: EditorSnapshot): TextInputResult {
-        val window = editor.fullText ?: return TextInputResult(emptyList(), state)
+        val window = editor.fullText ?: return TextInputResult(listOf(EditorOp.PassThroughKey), state)
         val result = if (wordWise) {
             SelectionExpansion.expandWord(state.selectionAnchor, window, direction)
         } else {
@@ -778,34 +860,49 @@ object TextInputPipeline {
     // Accepting a suggestion. spec: autocorrect-suggestions.md SS5, SS6.11.
     // ---------------------------------------------------------------------------------------
 
-    private fun handleAcceptSuggestion(word: String, field: FieldContext, settings: TextInputSettingsBundle, state: TextInputState, editor: EditorSnapshot): TextInputResult {
-        val window = editor.fullText
-        val spanStart: Int
-        val spanEnd: Int
+    /**
+     * spec: autocorrect-suggestions.md SS5 (the word span around the cursor is deleted and the
+     * suggestion committed in its place). The span comes from the whole-document read when
+     * [trust] lets a context rule use one; otherwise it is the pipeline's own record of the word
+     * it committed ([TextInputState.currentWord], rebuild-from-scratch.md "The editor is not a
+     * reliable narrator" point 1), which needs no read at all. Without either there is nothing to
+     * delete, and only then is the suggestion appended as it stands.
+     */
+    private fun handleAcceptSuggestion(word: String, field: FieldContext, settings: TextInputSettingsBundle, state: TextInputState, editor: EditorSnapshot, trust: EditorTrust): TextInputResult {
+        val window = if (trust.contextRulesAllowed) editor.fullText else null
+        val deleteBefore: Int
+        val deleteAfter: Int
         val typedSpan: String
+        val textBeforeSpan: String?
+        val nextChar: Char?
         if (window != null) {
             val cursor = window.cursorOrSelectionStart
             val left = WordChars.wordEndingAt(window.text, cursor, maxLength = 64)
             val right = WordChars.wordStartingAt(window.text, cursor, maxLength = 64)
-            spanStart = cursor - left.length
-            spanEnd = cursor + right.length
+            deleteBefore = left.length
+            deleteAfter = right.length
             typedSpan = left + right
+            textBeforeSpan = window.text.substring(0, cursor - left.length)
+            nextChar = window.text.getOrNull(cursor + right.length)
         } else {
-            spanStart = 0
-            spanEnd = 0
-            typedSpan = word
+            val tracked = state.currentWord.word
+            deleteBefore = tracked.length
+            deleteAfter = 0
+            typedSpan = tracked
+            textBeforeSpan = editor.contextTextBeforeCursor(trust)?.let { before ->
+                if (WordChars.straightenAll(before).endsWith(tracked)) before.dropLast(tracked.length) else null
+            }
+            nextChar = null
         }
 
-        val textBeforeSpan = window?.text?.substring(0, spanStart)
         val (_, capAtSpan) = AutoCapitalization.evaluate(state.autoCap, field, settings.autoCap, textBeforeSpan)
         val autoCapOverride = settings.autoCap.capitalizeAtTextStart && capAtSpan == CapDecision.ArmOneShot
 
         val recased = CasingRules.forTappedSuggestion(typedSpan.ifEmpty { word }, word, autoCapOverride)
-        val nextChar = window?.text?.getOrNull(spanEnd)
         val appendSpace = !recased.endsWith("'") && nextChar?.isWhitespace() != true
 
         val ops = buildList {
-            if (window != null) add(EditorOp.DeleteSurrounding(window.cursorOrSelectionStart - spanStart, spanEnd - window.cursorOrSelectionStart))
+            if (deleteBefore + deleteAfter > 0) add(EditorOp.DeleteSurrounding(deleteBefore, deleteAfter))
             add(EditorOp.CommitText(recased))
             if (appendSpace) add(EditorOp.CommitText(" "))
             add(EditorOp.Haptic)

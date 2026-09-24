@@ -145,4 +145,54 @@ class TrackpadActivationTest {
         assertTrue(repeat.consumed)
         assertEquals(TrackpadPhase.ACTIVE_HOLD, repeat.state.phase)
     }
+
+    // -----------------------------------------------------------------------------------------
+    // Review C7: four ways the trigger key's own events went astray around a sticky overlay, a
+    // missing permission and a late hold timer. spec SS2.3: "the raw event is kept for replay";
+    // a swallowed down must always be paired or replayed, never simply lost.
+    // -----------------------------------------------------------------------------------------
+
+    @Test
+    fun `C7 - the tap that closes a sticky overlay is not remembered as a first tap, and its up is consumed`() {
+        val open = TrackpadActivationState(phase = TrackpadPhase.ACTIVE_STICKY)
+        val closingDown = TrackpadActivation.onKeyDown(open, TrackpadPhysicalKey.SHIFT_LEFT, 0, 1000, false, doubleTapSettings, OverlayAvailability.AVAILABLE)
+        assertTrue(closingDown.consumed)
+        assertTrue(closingDown.effect.closeOverlay)
+
+        val closingUp = TrackpadActivation.onKeyUp(closingDown.state, TrackpadPhysicalKey.SHIFT_LEFT, 1050, doubleTapSettings)
+        assertTrue(closingUp.consumed, "the up of a swallowed closing down must not reach the app unpaired")
+        assertEquals(null, closingUp.state.lastReleaseAtMs, "the closing tap is not the first tap of a new double tap")
+
+        val nextDown = TrackpadActivation.onKeyDown(closingUp.state, TrackpadPhysicalKey.SHIFT_LEFT, 0, 1200, false, doubleTapSettings, OverlayAvailability.AVAILABLE)
+        assertFalse(nextDown.consumed, "one tap after closing must not reopen the overlay")
+        assertFalse(nextDown.effect.openOverlaySticky)
+    }
+
+    @Test
+    fun `C7 - a missing permission in single-tap mode replays the trigger so the key still types`() {
+        val singleTap = TrackpadActivationSettings(triggerKey = TriggerKey.SPACE, activationMode = ActivationMode.SINGLE_TAP)
+        val down = TrackpadActivation.onKeyDown(TrackpadActivationState(), TrackpadPhysicalKey.SPACE, 0, 0, false, singleTap, OverlayAvailability.PERMISSION_MISSING)
+        assertTrue(down.consumed)
+        assertTrue(down.effect.showPermissionToast)
+        assertTrue(down.effect.replayTriggerDownOnly, "Space must still type when the overlay cannot open")
+    }
+
+    @Test
+    fun `C7 - a missing permission on a double tap replays the trigger so the key still types`() {
+        val firstUp = TrackpadActivationState(lastReleaseAtMs = 40, lastReleaseKey = TrackpadPhysicalKey.SHIFT_LEFT)
+        val secondDown = TrackpadActivation.onKeyDown(firstUp, TrackpadPhysicalKey.SHIFT_LEFT, 0, 300, false, doubleTapSettings, OverlayAvailability.PERMISSION_MISSING)
+        assertTrue(secondDown.consumed)
+        assertTrue(secondDown.effect.replayTriggerDownOnly)
+    }
+
+    @Test
+    fun `C7 - a trigger released past the threshold before the timer ticked replays the key instead of losing it`() {
+        val down = TrackpadActivation.onKeyDown(TrackpadActivationState(), TrackpadPhysicalKey.SPACE, 0, 0, false, holdSettings, OverlayAvailability.AVAILABLE)
+        // The handler ran late: the up arrives at 260 ms with the timer never having fired.
+        val up = TrackpadActivation.onKeyUp(down.state, TrackpadPhysicalKey.SPACE, 260, holdSettings)
+        assertTrue(up.consumed)
+        assertTrue(up.effect.replayTriggerDownAndUp, "nothing opened, so the held Space must still type")
+        assertFalse(up.effect.closeOverlay)
+        assertEquals(TrackpadPhase.IDLE, up.state.phase)
+    }
 }

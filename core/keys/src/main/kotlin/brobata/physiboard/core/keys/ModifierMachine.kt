@@ -29,6 +29,10 @@ object ModifierMachine {
     fun shiftDown(state: ModifierState, stroke: KeyStroke, settings: ModifierSettings): Result {
         require(stroke.key == KeyId.Modifier(ModifierKey.SHIFT)) { "not a Shift stroke: ${stroke.key}" }
         if (stroke.repeatCount > 0) return Result(state, Action.PassThrough)
+        // spec SS5.1: "the state machine ignores a down while already pressed". Both Shift keys
+        // normalise to the one SHIFT key, so holding one and pressing the other arrives here as a
+        // second down and must not read as a double tap (review A7).
+        if (state.shift.pressed) return Result(state, Action.PassThrough)
 
         if (state.shift.layerLatched) {
             val cleared = state.copy(
@@ -72,8 +76,10 @@ object ModifierMachine {
 
         if (intentionalHold) {
             val snapshot = state.holdBookkeeping.snapshot
+            val restored = snapshot?.shiftValue ?: state.shift.value
             val newShift = state.shift.copy(
-                value = snapshot?.shiftValue ?: state.shift.value,
+                // Review A4's rule holds here too, as it does for Ctrl ("in both cases", SS5.4).
+                value = if (otherKeyDuringHold && restored == ShiftValue.ONE_SHOT) ShiftValue.OFF else restored,
                 pressed = false,
                 physicallyPressed = false,
                 layerLatched = false,
@@ -81,22 +87,28 @@ object ModifierMachine {
             return Result(state.copy(shift = newShift), Action.PassThrough)
         }
 
+        // SPEC AMENDMENT (review A3): SS5.3 sets the Shift layer latch from its own
+        // release-to-release timer (at most 500 ms) while caps lock uses the down-to-down window
+        // (under 500 ms). The two can disagree (down 0, up 250, down 520, up 560: caps OFF but the
+        // layer latched), which uppercases every letter with no badge to explain it. The layer
+        // latch is now set exactly when the quick release closes the double tap that latched
+        // caps, which is what SS5.6 describes ("a normal double tap sets both") and what SS22
+        // suggests ("fold them into the logical latch"). The separate release timer is gone.
         val isQuickTap = duration < settings.holdThresholdMs && !otherKeyDuringHold && !externalInteraction
-        var lastQuickReleaseAtMs: Long? = state.shift.lastQuickReleaseAtMs
-        var layerLatched = state.shift.layerLatched
-        if (isQuickTap) {
-            val previousQuick = state.shift.lastQuickReleaseAtMs
-            layerLatched = previousQuick != null && (stroke.timeMs - previousQuick) <= settings.doubleTapWindowMs
-            lastQuickReleaseAtMs = stroke.timeMs
-        } else {
-            lastQuickReleaseAtMs = null
-        }
+        val closesDoubleTap = isQuickTap && state.shift.value == ShiftValue.CAPS
+
+        // SPEC AMENDMENT (review A4): SS5.3 gives Shift no "other key during the hold clears the
+        // one-shot" rule; SS5.4 gives Ctrl one. Without it, Shift held over a Backspace or Space
+        // (keys that consume no one-shot, SS6.1) leaves ONE_SHOT armed and capitalises the next
+        // letter. Shift gets Ctrl's rule: the down armed it, the chord used it, the release must
+        // not leave Shift waiting for one more key. Caps lock survives, as Ctrl's latch does.
+        val value = if (otherKeyDuringHold && state.shift.value == ShiftValue.ONE_SHOT) ShiftValue.OFF else state.shift.value
 
         val newShift = state.shift.copy(
+            value = value,
             pressed = false,
             physicallyPressed = false,
-            layerLatched = state.shift.layerLatched || layerLatched,
-            lastQuickReleaseAtMs = lastQuickReleaseAtMs,
+            layerLatched = state.shift.layerLatched || closesDoubleTap,
         )
         return Result(state.copy(shift = newShift), Action.PassThrough)
     }
@@ -113,10 +125,6 @@ object ModifierMachine {
     ): Result {
         require(stroke.key == KeyId.Modifier(ModifierKey.CTRL)) { "not a Ctrl stroke: ${stroke.key}" }
         if (stroke.repeatCount > 0) return Result(state, Action.PassThrough)
-
-        if (stroke.meta.alt && !state.ctrl.pressed && settings.altCtrlSpeechShortcutEnabled) {
-            return Result(state, Action.RunCommand(KeyCommands.TOGGLE_DICTATION))
-        }
         if (state.ctrl.pressed) return Result(state, Action.PassThrough)
 
         val snapshot = snapshotOf(state)
@@ -207,9 +215,11 @@ object ModifierMachine {
             return Result(cleared, Action.StateOnly)
         }
 
-        if (stroke.meta.ctrl && !state.alt.pressed && settings.altCtrlSpeechShortcutEnabled) {
-            return Result(state, Action.RunCommand(KeyCommands.TOGGLE_DICTATION))
-        }
+        // SPEC AMENDMENT (review A6): the Alt+Ctrl dictation chord of SS5.4/SS5.5 is dropped.
+        // SS22 marks it undecided: on the Titan "Ctrl" is a held Fn, so the chord could only fire
+        // from Alt plus an Fn hold, and that same Fn hold is the burst that already toggles
+        // dictation (SS3.3), toggling it straight back off. An Alt or Ctrl down with the other's
+        // meta bit is now an ordinary press of that key.
 
         val symPageWasOpen = state.sym.currentPageNumber != 0
         val stateWithPageClosed = if (symPageWasOpen) state.copy(sym = state.sym.copy(currentPageNumber = 0)) else state
@@ -265,21 +275,14 @@ object ModifierMachine {
             return Result(state.copy(alt = newAlt), Action.PassThrough)
         }
 
+        // SPEC AMENDMENT (review A3, the Alt mirror of shiftUp): the Alt layer latch follows the
+        // Alt latch the down-side double tap produced, with no release timer of its own.
         val isQuickTap = duration < settings.holdThresholdMs && !otherKeyDuringHold && !externalInteraction
-        var lastQuickReleaseAtMs: Long? = state.alt.lastQuickReleaseAtMs
-        var justLatched = false
-        if (isQuickTap) {
-            val previousQuick = state.alt.lastQuickReleaseAtMs
-            justLatched = previousQuick != null && (stroke.timeMs - previousQuick) <= settings.doubleTapWindowMs
-            lastQuickReleaseAtMs = stroke.timeMs
-        } else {
-            lastQuickReleaseAtMs = null
-        }
+        val closesDoubleTap = isQuickTap && state.alt.latched
 
         val newAlt = state.alt.copy(
             pressed = false, physicallyPressed = false, lastReleaseAtMs = stroke.timeMs,
-            layerLatched = state.alt.layerLatched || justLatched,
-            lastQuickReleaseAtMs = lastQuickReleaseAtMs,
+            layerLatched = state.alt.layerLatched || closesDoubleTap,
         )
         return Result(state.copy(alt = newAlt), Action.PassThrough)
     }
@@ -414,8 +417,9 @@ object ModifierMachine {
 
     /**
      * Bookkeeping every non-modifier key-down at repeat 0 performs before layer resolution: it
-     * marks that a modifier hold (if any) saw another key, resets the Shift/Alt layer-latch
-     * release timers, and blocks an in-progress Fn burst.
+     * marks that a modifier hold (if any) saw another key and blocks an in-progress Fn burst.
+     * (SS5.2's "both release-to-release timers reset" has nothing left to reset: the layer
+     * latches follow the down-side double tap since review A3.)
      *
      * spec: keys-and-modifiers.md SS5.2 ("for any other key with repeat count 0..."), SS5.1
      * ("cleared by every non-modifier down (Sym counts as non-modifier here)"), SS3.3 ("any
@@ -433,8 +437,6 @@ object ModifierMachine {
         val fnBurst = if (state.fnBurst.count > 0) state.fnBurst.copy(blocked = true) else state.fnBurst
         return state.copy(
             holdBookkeeping = state.holdBookkeeping.copy(otherKeyDuringHold = true),
-            shift = state.shift.copy(lastQuickReleaseAtMs = null),
-            alt = state.alt.copy(lastQuickReleaseAtMs = null),
             fnBurst = fnBurst,
             lastKeyWasModifier = null,
         )

@@ -51,7 +51,7 @@ class PhysiBoardInputMethodService : InputMethodService() {
 
     /** spec: dictation.md SS3, "Keyboard service destroyed: ... no session-end bookkeeping." */
     override fun onDestroy() {
-        keyboard.onDictationServiceDestroyed()
+        keyboard.onServiceDestroyed()
         super.onDestroy()
     }
 

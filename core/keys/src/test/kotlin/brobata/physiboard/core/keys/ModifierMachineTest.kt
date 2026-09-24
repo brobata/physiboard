@@ -103,16 +103,16 @@ class ModifierMachineTest {
     // -----------------------------------------------------------------------------------------
 
     @Test
-    fun `a Shift key-down delivered twice with no release in between silently latches Caps Lock`() {
+    fun `A7 - a second Shift down while Shift is already pressed changes nothing (spec SS5-1, two Shifts normalise to one key)`() {
         var s = ModifierState()
         s = ModifierMachine.shiftDown(s, down(shift, 1_000), settings).state
         assertEquals(ShiftValue.ONE_SHOT, s.shift.value, "the first, real down arms a plain one-shot")
 
-        // No shiftUp() call here: the physical key was never released. The second down carries the
-        // SAME timestamp as the first, exactly as replaying the very KeyEvent already delivered
-        // would (the bug's own shape, not a contrived one).
-        val (s2, _) = ModifierMachine.shiftDown(s, down(shift, 1_000), settings)
-        assertEquals(ShiftValue.CAPS, s2.shift.value, "a single physical Shift press must never be able to latch Caps Lock on its own")
+        // No shiftUp() call here: the physical key was never released. Holding one Shift and
+        // pressing the other, or a replayed down, both arrive exactly like this.
+        val (s2, action) = ModifierMachine.shiftDown(s, down(shift, 1_050), settings)
+        assertEquals(s, s2, "a single physical Shift press must never be able to latch Caps Lock on its own")
+        assertEquals(Action.PassThrough, action)
     }
 
     @Test
@@ -239,10 +239,19 @@ class ModifierMachineTest {
     }
 
     @Test
-    fun `T22 - Alt held plus Ctrl meta requests dictation without changing Alt state`() {
+    fun `T22 amended (A6) - Alt down with Ctrl meta is an ordinary Alt press, the Alt+Ctrl dictation chord is dropped (spec SS22 undecided, Fn hold already dictates)`() {
         val (s2, action) = ModifierMachine.altDown(ModifierState(), down(alt, 0, meta = ModifierFlags(ctrl = true)), settings)
-        assertEquals(Action.RunCommand(KeyCommands.TOGGLE_DICTATION), action)
-        assertFalse(s2.alt.pressed)
+        assertEquals(Action.Ignored, action)
+        assertTrue(s2.alt.pressed)
+        assertTrue(s2.alt.oneShot)
+    }
+
+    @Test
+    fun `A6 - Ctrl down with Alt meta is an ordinary Ctrl press, never a dictation toggle`() {
+        val (s2, action) = ModifierMachine.ctrlDown(ModifierState(), down(ctrl, 0, meta = ModifierFlags(alt = true)), settings)
+        assertEquals(Action.PassThrough, action)
+        assertTrue(s2.ctrl.pressed)
+        assertTrue(s2.ctrl.oneShot)
     }
 
     // Sym: T23-T28 -----------------------------------------------------------------------------
@@ -358,6 +367,70 @@ class ModifierMachineTest {
         assertFalse(reset.alt.layerLatched)
         assertTrue(reset.ctrl.latched)
         assertTrue(reset.ctrl.latchFromNavMode)
+    }
+
+    // Review findings A3, A4 (2026-09-24): the layer latch and the one-shot after a chorded hold.
+
+    @Test
+    fun `A3 - a second Shift tap whose down is outside 500 ms latches neither caps nor the layer (spec SS2, one double-tap window)`() {
+        var s = ModifierState()
+        s = ModifierMachine.shiftDown(s, down(shift, 0), settings).state
+        s = ModifierMachine.shiftUp(s, up(shift, 250), settings).state
+        s = ModifierMachine.shiftDown(s, down(shift, 520), settings).state
+        s = ModifierMachine.shiftUp(s, up(shift, 560), settings).state
+        assertEquals(ShiftValue.OFF, s.shift.value)
+        assertFalse(s.shift.layerLatched, "a layer latch with Shift OFF would uppercase every letter with no badge to say why")
+    }
+
+    @Test
+    fun `A3 - the Shift layer latch is set exactly when the double tap latched caps (spec SS5-6, a normal double tap sets both)`() {
+        var s = ModifierState()
+        s = ModifierMachine.shiftDown(s, down(shift, 0), settings).state
+        s = ModifierMachine.shiftUp(s, up(shift, 250), settings).state
+        s = ModifierMachine.shiftDown(s, down(shift, 480), settings).state
+        s = ModifierMachine.shiftUp(s, up(shift, 760), settings).state
+        assertEquals(ShiftValue.CAPS, s.shift.value)
+        assertTrue(s.shift.layerLatched)
+    }
+
+    @Test
+    fun `A3 - the Alt layer latch follows the Alt latch with the same window (spec SS5-6 mirrors Shift)`() {
+        var s = ModifierState()
+        s = ModifierMachine.altDown(s, down(alt, 0), settings).state
+        s = ModifierMachine.altUp(s, up(alt, 50), settings).state
+        s = ModifierMachine.altDown(s, down(alt, 540), settings).state
+        s = ModifierMachine.altUp(s, up(alt, 560), settings).state
+        assertTrue(s.alt.latched, "release-to-down is 490 ms, inside the window")
+        assertTrue(s.alt.layerLatched)
+    }
+
+    @Test
+    fun `A4 - Shift held while Backspace is pressed leaves no one-shot armed for the next letter (the Ctrl rule of spec SS5-4, given to Shift)`() {
+        var s = ModifierState()
+        s = ModifierMachine.shiftDown(s, down(shift, 0), settings).state
+        s = ModifierMachine.onOtherKeyDown(s, down(KeyId.Control(ControlKey.BACKSPACE), 100))
+        val (s2, _) = ModifierMachine.shiftUp(s, up(shift, 200), settings)
+        assertEquals(ShiftValue.OFF, s2.shift.value)
+    }
+
+    @Test
+    fun `A4 - Shift held while Space is pressed leaves no one-shot armed, even after a long hold`() {
+        var s = ModifierState()
+        s = ModifierMachine.shiftDown(s, down(shift, 0), settings).state
+        s = ModifierMachine.onOtherKeyDown(s, down(KeyId.Control(ControlKey.SPACE), 100))
+        val (s2, _) = ModifierMachine.shiftUp(s, up(shift, 900), settings)
+        assertEquals(ShiftValue.OFF, s2.shift.value)
+    }
+
+    @Test
+    fun `A4 - caps lock survives a chorded hold, only the one-shot clears (as Ctrl's latch does)`() {
+        var s = ModifierState()
+        s = ModifierMachine.shiftDown(s, down(shift, 0), settings).state
+        s = ModifierMachine.shiftUp(s, up(shift, 50), settings).state
+        s = ModifierMachine.shiftDown(s, down(shift, 200), settings).state
+        s = ModifierMachine.onOtherKeyDown(s, down(KeyId.Control(ControlKey.BACKSPACE), 300))
+        val (s2, _) = ModifierMachine.shiftUp(s, up(shift, 400), settings)
+        assertEquals(ShiftValue.CAPS, s2.shift.value)
     }
 
     // Test fixtures ------------------------------------------------------------------------------

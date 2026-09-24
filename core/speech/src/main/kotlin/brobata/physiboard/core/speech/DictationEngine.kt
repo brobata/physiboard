@@ -42,13 +42,13 @@ object DictationEngine {
             is DictationEvent.PartialResult -> handlePartialResult(session, event.text, textSettings)
             is DictationEvent.FinalResult -> handleFinalResult(session, event.text, now, settings, textSettings)
             is DictationEvent.SegmentResult -> handleSegmentResult(session, event.text, now, settings, textSettings)
-            DictationEvent.SegmentedSessionEnded -> DictationOutcome(null, endEffects(session, cancelRecognizer = false))
+            DictationEvent.SegmentedSessionEnded -> DictationOutcome(null, endEffects(session, cancelRecognizer = false), clearComposingOps(session.utterance.pending))
             is DictationEvent.Error -> handleError(session, event.code, now, settings, textSettings)
             DictationEvent.EditorFieldClosed -> DictationOutcome(session.copy(editorGoneDeadlineMs = now + DictationTiming.EDITOR_GONE_GRACE_MS))
             is DictationEvent.EditorFieldOpened -> handleEditorFieldOpened(session, event.ownerPackage)
             DictationEvent.UserEditedComposingText -> DictationOutcome(session.copy(utterance = session.utterance.copy(pending = PendingUtterance.Invalidated)))
-            DictationEvent.EditorRejectedInsert -> DictationOutcome(null, endEffects(session, cancelRecognizer = true))
-            DictationEvent.StartFailed -> DictationOutcome(null, endEffects(session, cancelRecognizer = false))
+            DictationEvent.EditorRejectedInsert -> DictationOutcome(null, endEffects(session, cancelRecognizer = true), clearComposingOps(session.utterance.pending))
+            DictationEvent.StartFailed -> DictationOutcome(null, endEffects(session, cancelRecognizer = false), clearComposingOps(session.utterance.pending))
             DictationEvent.ClockTick -> handleClockTick(session, now)
         }
     }
@@ -77,10 +77,20 @@ object DictationEngine {
         return DictationOutcome(fresh, effects = listOf(DictationEffect.StartListening(mode)))
     }
 
-    /** spec SS6.5: cancels the silence timer, arms the segmented watchdog if applicable, asks the engine to stop. */
+    /**
+     * spec SS6.5: cancels the silence timer and asks the engine to stop; SS6.3: the watchdog "is
+     * also armed ... on an explicit stop". The watchdog is armed in both modes, because a
+     * recognizer that never answers stopListening would otherwise leave the session active for
+     * ever, with every later trigger taking this stop branch again. A pending busy retry is
+     * dropped too: the user asked for the microphone to close, so nothing may reopen it.
+     */
     private fun handleExplicitStop(session: DictationSession, now: Long, settings: DictationSettings): DictationOutcome {
-        val watchdog = if (session.mode == DictationMode.SEGMENTED) now + DictationTiming.watchdogMs(settings.pauseMs) else session.watchdogDeadlineMs
-        val next = session.copy(stopRequested = true, silenceDeadlineMs = null, watchdogDeadlineMs = watchdog)
+        val next = session.copy(
+            stopRequested = true,
+            silenceDeadlineMs = null,
+            busyRetryDeadlineMs = null,
+            watchdogDeadlineMs = now + DictationTiming.watchdogMs(settings.pauseMs),
+        )
         return DictationOutcome(next, effects = listOf(DictationEffect.StopListening))
     }
 
@@ -98,14 +108,22 @@ object DictationEngine {
     // Partials. spec SS7.1.
     // ---------------------------------------------------------------------------------------
 
+    /**
+     * spec SS7.1, plus the c440844 invariant: once the user has edited the field under this
+     * utterance ([PendingUtterance.Invalidated]) every later partial of the same utterance is
+     * still speech for the timers' purposes but writes nothing, since a new composing text would
+     * put the deleted words straight back. The utterance stays invalidated until its boundary.
+     */
     private fun handlePartialResult(session: DictationSession, text: String, textSettings: DictationTextSettings): DictationOutcome {
         if (text.isBlank()) return DictationOutcome(session) // "Empty partials are ignored."
+        val invalidated = session.utterance.pending is PendingUtterance.Invalidated
         val next = session.copy(
             heardSpeech = true,
-            utterance = session.utterance.copy(pending = PendingUtterance.Live(text)),
+            utterance = if (invalidated) session.utterance else session.utterance.copy(pending = PendingUtterance.Live(text)),
             silenceDeadlineMs = null,
             watchdogDeadlineMs = null,
         )
+        if (invalidated) return DictationOutcome(next)
         val displayed = DictationPartialDisplay.display(text, session.utterance.context, textSettings)
         return DictationOutcome(next, textOps = listOf(DictationTextOp.SetComposingText(displayed)))
     }
@@ -129,13 +147,16 @@ object DictationEngine {
             // request and ran a plain one-shot ... the watchdog (armed with zero segments) will
             // close the session pause + 5000 ms later and set the latch." No new request is issued.
             val next = session.copy(
+                heardSpeech = true,
                 utterance = UtteranceState(extendContext(session.utterance.context, finished.plainText), PendingUtterance.None),
                 watchdogDeadlineMs = now + DictationTiming.watchdogMs(settings.pauseMs),
             )
             return DictationOutcome(next, textOps = finished.ops)
         }
-        // spec SS6.4: arm the silence timer and start a continuation at once.
+        // spec SS6.4: arm the silence timer and start a continuation at once. spec SS1: a final,
+        // like a non-empty partial, means the session has heard speech.
         val next = session.copy(
+            heardSpeech = true,
             isContinuation = true,
             requestStartMs = now,
             silenceDeadlineMs = now + DictationTiming.silenceTimerMs(settings.pauseMs),
@@ -160,14 +181,19 @@ object DictationEngine {
     /**
      * spec SS7.3: "A final with text finishes the utterance with that text. A final without text
      * finishes the utterance from the last partial instead ... A final without text and with no
-     * partial remembered clears any composing region and inserts nothing." [PendingUtterance.Live]
-     * is the only case that can supply text for the second branch, so an [PendingUtterance.Invalidated]
-     * utterance (spec: the c440844 fix) silently takes the "inserts nothing" path here, structurally,
-     * with no condition to get wrong. A final that carries its OWN non-empty text is fresh data from
-     * the engine, not remembered state, so it is used regardless of invalidation.
+     * partial remembered clears any composing region and inserts nothing."
+     *
+     * The c440844 invariant, "words the user deleted are never typed back", governs both branches:
+     * an [PendingUtterance.Invalidated] utterance finishes with nothing even when the final carries
+     * its own text, because the engine's final normally repeats the very words the user just
+     * removed (D3: the whole utterance arrives as the last partial and again as the final). The
+     * callers of this function all reset the pending state to [PendingUtterance.None] afterwards,
+     * which is the utterance boundary where invalidation ends.
      */
     private fun finishFromResult(text: String?, utterance: UtteranceState, textSettings: DictationTextSettings): UtteranceFinisher.Finished {
-        val resolvedText = if (!text.isNullOrEmpty()) text else (utterance.pending as? PendingUtterance.Live)?.text
+        if (utterance.pending is PendingUtterance.Invalidated) return UtteranceFinisher.NOTHING
+        // A whitespace-only final carries no words of its own (SS7.3's "final without text").
+        val resolvedText = if (!text.isNullOrBlank()) text else (utterance.pending as? PendingUtterance.Live)?.text
         return resolvedText?.let { UtteranceFinisher.finish(it, utterance.context, textSettings) } ?: UtteranceFinisher.NOTHING
     }
 
@@ -185,7 +211,7 @@ object DictationEngine {
             session.segmentsSeen == 0 &&
             session.active &&
             !session.stopRequested &&
-            now - session.requestStartMs < DictationTiming.SEGMENTED_REFUSAL_WINDOW_MS &&
+            now - session.sessionStartMs < DictationTiming.SEGMENTED_REFUSAL_WINDOW_MS && // SS6.3: "within 1200 ms of the session start"
             DictationErrorClassifier.isSegmentedRefusal(code)
         ) {
             val next = session.copy(
@@ -194,7 +220,12 @@ object DictationEngine {
                 requestStartMs = now,
                 utterance = session.utterance.copy(pending = PendingUtterance.None),
             )
-            return DictationOutcome(next, listOf(DictationEffect.StartListening(DictationMode.RESTART_LOOP)), newSegmentedRefusalLatch = true)
+            return DictationOutcome(
+                next,
+                listOf(DictationEffect.StartListening(DictationMode.RESTART_LOOP)),
+                clearComposingOps(session.utterance.pending),
+                newSegmentedRefusalLatch = true,
+            )
         }
 
         // Rule 2: not a continuation, and the first-words grace conditions hold (SS6.2).
@@ -264,7 +295,7 @@ object DictationEngine {
         return UtteranceFinisher.finish(live.text, utterance.context, textSettings)
     }
 
-    /** spec SS3, SS6.4: a timer-driven ending discards an unconfirmed partial rather than committing it, unlike a recognizer-reported quiet error. */
+    /** spec SS3's ending table: every row that ends the session (or, for a segmented refusal, drops the request) clears the composing partial rather than committing it, unlike a recognizer-reported quiet error. */
     private fun clearComposingOps(pending: PendingUtterance): List<DictationTextOp> =
         if (pending is PendingUtterance.Live) listOf(DictationTextOp.SetComposingText(""), DictationTextOp.FinishComposing) else emptyList()
 
@@ -299,9 +330,11 @@ object DictationEngine {
         }
         session.watchdogDeadlineMs?.let { deadline ->
             if (now >= deadline) {
-                // spec SS6.3: zero segments seen sets the refusal latch; one or more leaves it untouched.
-                val latch = if (session.segmentsSeen == 0) true else null
-                return DictationOutcome(null, endEffects(session, cancelRecognizer = true), newSegmentedRefusalLatch = latch)
+                // spec SS6.3: zero segments seen sets the refusal latch; one or more leaves it
+                // untouched. Only a segmented session can say anything about segmented support;
+                // the same watchdog after a restart-loop stop (SS6.5) says nothing about it.
+                val latch = if (session.mode == DictationMode.SEGMENTED && session.segmentsSeen == 0) true else null
+                return DictationOutcome(null, endEffects(session, cancelRecognizer = true), clearComposingOps(session.utterance.pending), newSegmentedRefusalLatch = latch)
             }
         }
         session.editorGoneDeadlineMs?.let { deadline ->

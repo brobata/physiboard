@@ -16,10 +16,10 @@ package brobata.physiboard.core.speech
  * Here, [DictationEngine.handle] moves the state to [Invalidated] the moment it learns the user
  * changed the field mid-utterance ([DictationEvent.UserEditedComposingText]), and [Invalidated]
  * carries no text field at all: there is no expression anywhere in this module that can pull a
- * string out of it, so a stale insert cannot be written even by mistake. Fresh data always wins: a
- * new non-empty partial or a final that carries its own text moves the state straight to a new
- * [Live] regardless of a prior [Invalidated], since that is the engine's own current answer, not
- * memory of something now gone.
+ * string out of it, so a stale insert cannot be written even by mistake. Invalidation lasts for
+ * the rest of that utterance: a later partial of it and its final (which normally repeat the very
+ * words the user removed) write nothing. It ends at the utterance boundary, where the engine
+ * resets to [None] and the next utterance composes normally.
  */
 sealed class PendingUtterance {
     /** Nothing has been heard yet in this utterance. */

@@ -49,12 +49,17 @@ object BoundaryEngine {
         lengthChangeAllowance: Int,
         memory: AutocorrectMemory,
     ): Pair<AutocorrectMemory, BoundaryOutcome> {
+        // spec: SS7.5, "the undo memory is cleared ... when a boundary passes without a
+        // replacement": a blank word and a hard boundary are both boundaries that pass without one.
         if (trackedWord.isBlank()) {
-            return memory to BoundaryOutcome.CommitPlain
+            return memory.afterBoundaryWithoutReplacement() to BoundaryOutcome.CommitPlain
         }
-        val textBeforeWord = if (textBeforeCursor32.endsWith(trackedWord)) textBeforeCursor32.dropLast(trackedWord.length) else textBeforeCursor32
+        // [trackedWord] folds apostrophes to the straight one (CurrentWordTracker); the field holds
+        // the key as pressed, so the comparison folds the window the same way (WordChars.straightenAll),
+        // exactly as DriftCheck does, or a curly apostrophe would keep the word inside the scan.
+        val textBeforeWord = if (WordChars.straightenAll(textBeforeCursor32).endsWith(trackedWord)) textBeforeCursor32.dropLast(trackedWord.length) else textBeforeCursor32
         if (hasHardBoundaryBeforeCursor(textBeforeWord)) {
-            return memory to BoundaryOutcome.CommitPlain
+            return memory.afterBoundaryWithoutReplacement() to BoundaryOutcome.CommitPlain
         }
 
         fun isKnown(word: String): Boolean = dictionaries.any { it.contains(word) } || userWords.isKnown(word)
@@ -80,7 +85,7 @@ object BoundaryEngine {
 
         val primaryDict = dictionaries.firstOrNull()
         if (!memory.isRejected(trackedWord)) {
-            val repaired = primaryCaseRepair(trackedWord, primaryDict)
+            val repaired = primaryCaseRepair(trackedWord, primaryDict, dictionaries, userWords)
             if (repaired != null) {
                 val ops = listOf(EditorOp.DeleteSurrounding(trackedWord.length, 0), EditorOp.CommitText(repaired), EditorOp.Haptic)
                 val newMemory = memory.afterReplacement(trackedWord, repaired)
@@ -119,14 +124,32 @@ object BoundaryEngine {
         return !(ch.isLetterOrDigit() || WordChars.isApostrophe(ch))
     }
 
-    /** spec: SS7.2 step 8, "Primary case repair". */
-    private fun primaryCaseRepair(word: String, primaryDict: DictionaryIndex?): String? {
+    /**
+     * spec: SS7.2 step 8, "Primary case repair". The "no entry spelled exactly as typed" test
+     * covers every source of known words, not only the primary list: the personal store is
+     * "merged into every dictionary that is loaded" and "a personal word is never autocorrected"
+     * (SS6.1), and SS10 forbids overwriting a word that is in any active dictionary, so a
+     * lowercase spelling the user added, or one a secondary dictionary carries, is left alone
+     * even when the primary list knows only the capitalised form.
+     */
+    private fun primaryCaseRepair(word: String, primaryDict: DictionaryIndex?, dictionaries: List<DictionaryIndex>, userWords: UserWordStore): String? {
         if (primaryDict == null) return null
         if (word.isEmpty() || word.none { it.isLetter() } || word.any { it.isUpperCase() }) return null
+        if (spelledExactlyAsTyped(word, dictionaries, userWords)) return null
         val entries = mutableListOf<WordFrequency>()
         primaryDict.entriesForExactKey(word, limit = 8, into = entries)
-        if (entries.any { it.word == word }) return null
         return entries.firstOrNull { it.word.equals(word, ignoreCase = true) && it.word.any { c -> c.isUpperCase() } }?.word
+    }
+
+    /** Whether some active dictionary or the personal store holds [word] in exactly this spelling and case. spec: SS6.1, SS10. */
+    private fun spelledExactlyAsTyped(word: String, dictionaries: List<DictionaryIndex>, userWords: UserWordStore): Boolean {
+        if (userWords.personalWords().any { it.word == word } || userWords.defaultWords().any { it.word == word }) return true
+        val entries = mutableListOf<WordFrequency>()
+        return dictionaries.any { dict ->
+            entries.clear()
+            dict.entriesForExactKey(word, limit = 8, into = entries)
+            entries.any { it.word == word }
+        }
     }
 
     private fun buildFacts(
@@ -137,15 +160,19 @@ object BoundaryEngine {
         userWords: UserWordStore,
         memory: AutocorrectMemory,
     ): AutocorrectCandidateFacts {
+        // A case variant is decided first: normalizedKey folds case as well as accents, so a
+        // candidate differing only in case shares the word's key and would otherwise be classified
+        // as orthographic, leaving the case-variant leg of KnownWordGate (SS9, "Known word" row)
+        // unreachable. spec: SS9 facts table.
         val sameKey = DictNormalization.normalizedKey(word) == DictNormalization.normalizedKey(top.word)
-        val isOrthographic = sameKey && word != top.word
-        val isCaseVariant = word.equals(top.word, ignoreCase = true) && word != top.word && !isOrthographic
+        val isCaseVariant = word.equals(top.word, ignoreCase = true) && word != top.word
+        val isOrthographic = sameKey && word != top.word && !isCaseVariant
         val isKnown = dictionaries.any { it.contains(word) } || userWords.isKnown(word)
-        val primaryDict = dictionaries.firstOrNull()
-        val exactEntries = mutableListOf<WordFrequency>()
-        primaryDict?.entriesForExactKey(word, limit = 8, into = exactEntries)
-        val exactPrimaryCaseExists = exactEntries.any { it.word == word }
-        val exactKnownExists = dictionaries.any { dict ->
+        // spec: SS9 facts, read with SS6.1 (the personal store "is merged into every dictionary
+        // that is loaded", so a personal spelling counts as an entry of the primary list too) and
+        // SS10: "exact primary case" is the same "spelled exactly as typed" test step 8 applies.
+        val exactPrimaryCaseExists = spelledExactlyAsTyped(word, dictionaries, userWords)
+        val exactKnownExists = userWords.isKnown(word) || dictionaries.any { dict ->
             val entries = mutableListOf<WordFrequency>()
             dict.entriesForExactKey(word, limit = 8, into = entries)
             entries.any { it.word.equals(word, ignoreCase = true) }

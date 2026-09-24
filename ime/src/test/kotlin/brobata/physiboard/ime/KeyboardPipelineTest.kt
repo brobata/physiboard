@@ -6,6 +6,7 @@ import brobata.physiboard.core.dict.WordFrequency
 import brobata.physiboard.core.keys.ControlKey
 import brobata.physiboard.core.keys.KeyEdge
 import brobata.physiboard.core.keys.KeyId
+import brobata.physiboard.core.keys.ModifierFlags
 import brobata.physiboard.core.keys.KeyStroke
 import brobata.physiboard.core.keys.ModifierKey
 import brobata.physiboard.core.keys.PunctuationKey
@@ -430,5 +431,105 @@ class KeyboardPipelineTest {
 
         assertEquals("h", editor.text)
         assertFalse(editor.text == "H")
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Dictation's c440844 invariant from the glue side: only a stroke that actually changed the
+    // field's text may invalidate the utterance. A modifier press, a key-up and a Fn repeat all
+    // reach the pipeline while dictation is listening (the user is still holding Fn after the
+    // burst that started it), and none of them edits the field.
+    // -----------------------------------------------------------------------------------------
+
+    @Test
+    fun `a modifier-only stroke during dictation edits no text and so must not invalidate the utterance`() {
+        val pipeline = KeyboardPipeline(layout = layout)
+        val editor = FakeEditor()
+        pipeline.onStartInput(FieldContext(FieldKind.NORMAL))
+
+        val shiftDown = step(pipeline, editor, modifier(ModifierKey.SHIFT))
+        assertFalse(AppliedEditAccounting.changesText(shiftDown.ops))
+
+        val fnRepeat = pipeline.onKeyStroke(KeyStroke(modifier(ModifierKey.FN), KeyEdge.DOWN, 3, 100), editor.nextSnapshot())
+        assertFalse(AppliedEditAccounting.changesText(fnRepeat.ops))
+
+        val letterUp = pipeline.onKeyStroke(KeyStroke(letter('H'), KeyEdge.UP, 0, 200), editor.nextSnapshot())
+        assertFalse(AppliedEditAccounting.changesText(letterUp.ops))
+    }
+
+    @Test
+    fun `a letter or a backspace during dictation does edit the text`() {
+        val pipeline = KeyboardPipeline(layout = layout)
+        val editor = FakeEditor()
+        pipeline.onStartInput(FieldContext(FieldKind.NORMAL))
+
+        assertTrue(AppliedEditAccounting.changesText(step(pipeline, editor, letter('H')).ops))
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Restarting input (text-input.md line 85: reclassify; line 463: reset a Shift one-shot and
+    // re-evaluate auto-cap; nothing says the tracked word is wiped). Chrome and WebViews restart
+    // input mid-word, so wiping it there killed autocorrect and Backspace-undo in web fields.
+    // -----------------------------------------------------------------------------------------
+
+    @Test
+    fun `a restart mid-word keeps the tracked word so the boundary can still correct it`() {
+        val dictionary = DictionaryIndex.build(LanguageCode.of("en")!!, listOf(WordFrequency("weird", 200)))
+        val pipeline = KeyboardPipeline(layout = layout, resources = TextInputResources(dictionaries = listOf(dictionary)))
+        val editor = FakeEditor()
+        pipeline.onStartInput(FieldContext(FieldKind.NORMAL))
+        for (c in "wie") step(pipeline, editor, letter(c.uppercaseChar()))
+
+        pipeline.onRestartInput(FieldContext(FieldKind.NORMAL), textBeforeCursor = editor.text)
+        for (c in "rd") step(pipeline, editor, letter(c.uppercaseChar()))
+        step(pipeline, editor, KeyId.Control(ControlKey.SPACE))
+
+        assertEquals("weird ", editor.text)
+    }
+
+    @Test
+    fun `a restart drops a Shift one-shot but a fresh field start still wipes the word`() {
+        val pipeline = KeyboardPipeline(layout = layout)
+        val editor = FakeEditor()
+        pipeline.onStartInput(FieldContext(FieldKind.NORMAL))
+        for (c in "wie") step(pipeline, editor, letter(c.uppercaseChar()))
+        step(pipeline, editor, modifier(ModifierKey.SHIFT))
+
+        pipeline.onRestartInput(FieldContext(FieldKind.NORMAL), textBeforeCursor = editor.text)
+        step(pipeline, editor, letter('R'))
+        assertEquals("wier", editor.text, "the one-shot must not survive a restart")
+
+        pipeline.onStartInput(FieldContext(FieldKind.NORMAL))
+        assertTrue(pipeline.suggestions().isEmpty())
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Whole-document reads (text-input.md SS19 "unify"): only the strokes that can produce a
+    // selection or word-motion op need the extracted text; a plain letter, Space, Enter, a
+    // modifier press or a key-up must not cost an O(document) IPC each.
+    // -----------------------------------------------------------------------------------------
+
+    @Test
+    fun `plain letters, Space, Enter, modifiers and key-ups do not need the whole document`() {
+        val pipeline = KeyboardPipeline(layout = layout)
+        pipeline.onStartInput(FieldContext(FieldKind.NORMAL))
+        assertFalse(pipeline.needsWholeDocument(KeyStroke(letter('H'), KeyEdge.DOWN, 0, 0)))
+        assertFalse(pipeline.needsWholeDocument(KeyStroke(KeyId.Control(ControlKey.SPACE), KeyEdge.DOWN, 0, 0)))
+        assertFalse(pipeline.needsWholeDocument(KeyStroke(KeyId.Control(ControlKey.ENTER), KeyEdge.DOWN, 0, 0)))
+        assertFalse(pipeline.needsWholeDocument(KeyStroke(modifier(ModifierKey.CTRL), KeyEdge.DOWN, 0, 0)))
+        assertFalse(pipeline.needsWholeDocument(KeyStroke(KeyId.Control(ControlKey.BACKSPACE), KeyEdge.UP, 0, 0)))
+    }
+
+    @Test
+    fun `Backspace, arrows and any Ctrl or Alt stroke read the whole document`() {
+        val pipeline = KeyboardPipeline(layout = layout)
+        val editor = FakeEditor()
+        pipeline.onStartInput(FieldContext(FieldKind.NORMAL))
+        assertTrue(pipeline.needsWholeDocument(KeyStroke(KeyId.Control(ControlKey.BACKSPACE), KeyEdge.DOWN, 0, 0)))
+        assertTrue(pipeline.needsWholeDocument(KeyStroke(KeyId.Control(ControlKey.DPAD_LEFT), KeyEdge.DOWN, 0, 0)))
+        assertTrue(pipeline.needsWholeDocument(KeyStroke(letter('A'), KeyEdge.DOWN, 0, 0, ModifierFlags(ctrl = true))))
+
+        // A Ctrl one-shot armed by a previous press makes the next letter a Ctrl combo too.
+        step(pipeline, editor, modifier(ModifierKey.CTRL))
+        assertTrue(pipeline.needsWholeDocument(KeyStroke(letter('A'), KeyEdge.DOWN, 0, 0)))
     }
 }

@@ -14,14 +14,15 @@ enum class ShiftValue { OFF, ONE_SHOT, CAPS }
  * [downAtMs] doubles as both "the down that is currently held" (for hold-duration and the
  * intentional-hold restore on release) and "the previous Shift down" (for the down-to-down
  * double-tap window), because both readings name the same instant: the most recent Shift
- * key-down.
+ * key-down. [layerLatched] is set by the quick release that closes a caps-lock double tap and
+ * never on its own (SPEC AMENDMENT, review A3: SS2's separate release-to-release window is gone),
+ * so it never outlives [ShiftValue.CAPS] except through the same tap that clears both.
  */
 data class ShiftState(
     val value: ShiftValue = ShiftValue.OFF,
     val pressed: Boolean = false,
     val physicallyPressed: Boolean = false,
     val downAtMs: Long? = null,
-    val lastQuickReleaseAtMs: Long? = null,
     val layerLatched: Boolean = false,
 )
 
@@ -44,7 +45,8 @@ data class CtrlState(
 /**
  * Everything the spec tracks about Alt between events.
  *
- * spec: keys-and-modifiers.md SS2, SS5.5, SS5.6 (the Alt layer latch mirrors Shift's).
+ * spec: keys-and-modifiers.md SS2, SS5.5, SS5.6 (the Alt layer latch mirrors Shift's, and like
+ * Shift's follows the down-side double tap rather than a release timer; review A3).
  */
 data class AltState(
     val oneShot: Boolean = false,
@@ -54,7 +56,6 @@ data class AltState(
     val downAtMs: Long? = null,
     val lastReleaseAtMs: Long? = null,
     val layerLatched: Boolean = false,
-    val lastQuickReleaseAtMs: Long? = null,
 )
 
 /**
@@ -150,7 +151,8 @@ data class ModifierState(
  * layers-sym-alt.md SS12. `shift_tap_latches`, `ctrl_tap_latches`, `alt_tap_latches` and the two
  * `*_latch_stays_on_space` preferences are dropped for 3.0 (SS22 Keep/Drop: "no UI since the
  * Modifiers screen was deleted; defaults are the only tested path"), so this type has no field
- * for them; the transitions below always take the shipped-default branch.
+ * for them; the transitions below always take the shipped-default branch. `alt_ctrl_speech_shortcut`
+ * is dropped with the chord itself (SS22 "undecided"; see [ModifierMachine.altDown], review A6).
  */
 data class ModifierSettings(
     val doubleTapWindowMs: Long = 500,
@@ -158,7 +160,6 @@ data class ModifierSettings(
     val clearAltOnSpace: Boolean = true,
     val navModeCtrlHoldEnabled: Boolean = false,
     val layoutAwareCtrlShortcuts: Boolean = false,
-    val altCtrlSpeechShortcutEnabled: Boolean = true,
     val fnLongPressSpeechEnabled: Boolean = false,
     val fnBurstResetMs: Long = 200,
     val fnBurstTriggerCount: Int = 5,

@@ -74,6 +74,9 @@ class TextInputPipelineTest {
         var state = TextInputState()
         var pendingCapital = false
 
+        /** The ops the last request produced, for a test that needs to assert what the pipeline asked for rather than only the text. */
+        var lastOps: List<EditorOp> = emptyList()
+
         /**
          * The wall clock [DoubleSpaceTimer] measures Space key-downs against. Real Space presses
          * always advance it (see [space]'s own call below); a test that also needs to simulate the
@@ -88,15 +91,43 @@ class TextInputPipelineTest {
         }
 
         fun type(ch: Char) {
+            if (ch == ' ') return space()
             val cased = if (pendingCapital && ch.isLetter()) ch.uppercaseChar() else ch
             pendingCapital = false
             key(Action.Commit(cased.toString()))
         }
 
-        fun space() = key(Action.Commit(" "))
+        /** Space as the user experiences it: in a restricted field the key falls through (text-input.md SS6.2) and the system delivers the space, replayed here. */
+        fun space() {
+            key(Action.Commit(" "))
+            if (lastOps == listOf(EditorOp.PassThroughKey)) virtualField.apply(listOf(EditorOp.CommitText(" ")))
+        }
+
         fun enter() = key(Action.Edit(EditEffect.NEWLINE))
-        fun backspace() = key(Action.Edit(EditEffect.DELETE_CHAR_BACKWARD))
         fun altChar(ch: Char) = key(Action.Commit(ch.toString()))
+
+        /** A multi-character commit (a Sym-page string, an expansion, a paste). spec: text-input.md SS5.3. */
+        fun commit(text: String) = key(Action.Commit(text))
+
+        /**
+         * Backspace as the user experiences it: when the pipeline lets the key fall through
+         * (text-input.md SS8 step 7) the system delivers DEL to the app, which deletes one
+         * character; that system-side deletion is replayed here so a sequence can continue past it.
+         */
+        fun backspace() {
+            key(Action.Edit(EditEffect.DELETE_CHAR_BACKWARD))
+            if (lastOps == listOf(EditorOp.PassThroughKey)) virtualField.apply(listOf(EditorOp.DeleteSurrounding(1, 0)))
+        }
+
+        /**
+         * A letter key held past the long-press threshold in the default "alt" mode: the letter
+         * was committed on key-down and is now deleted and replaced by its Alt-layer character in
+         * one batch edit (text-input.md SS5.2; `:core:keys` hands this over as [Action.ReplaceRecent]).
+         */
+        fun longPressAlt(letter: Char, alt: Char) {
+            type(letter)
+            key(Action.ReplaceRecent(1, alt.toString()))
+        }
 
         fun acceptSuggestion(word: String) =
             apply(TextInputPipeline.handle(TextInputRequest.AcceptSuggestion(word), field, settings, resources, state, virtualField.snapshot(nowMs = clockMs)))
@@ -106,6 +137,7 @@ class TextInputPipelineTest {
         }
 
         private fun apply(result: TextInputResult) {
+            lastOps = result.ops
             virtualField.apply(result.ops)
             state = result.state
             when (result.capDecision) {
@@ -282,15 +314,17 @@ class TextInputPipelineTest {
         // any other deliberate Space.
         val session = Session()
 
+        // "Hello", not "hello": the span sits at text start, where auto-capitalization applies to
+        // an accepted suggestion (autocorrect-suggestions.md SS5, "capitalized regardless").
         session.acceptSuggestion("hello")
-        assertEquals("hello ", session.virtualField.text, "accepting the suggestion should have appended its own trailing space")
+        assertEquals("Hello ", session.virtualField.text, "accepting the suggestion should have appended its own trailing space")
 
         session.space() // deliberate, but the accepted suggestion already supplied this space
-        assertEquals("hello ", session.virtualField.text, "a Space right after an accepted suggestion must not double it")
+        assertEquals("Hello ", session.virtualField.text, "a Space right after an accepted suggestion must not double it")
 
         session.clockMs += 600
         session.space() // the one-time credit is spent; this is now an ordinary deliberate press
-        assertEquals("hello  ", session.virtualField.text, "once the auto-space credit is spent, the next deliberate Space must still land")
+        assertEquals("Hello  ", session.virtualField.text, "once the auto-space credit is spent, the next deliberate Space must still land")
     }
 
     @Test
@@ -311,5 +345,204 @@ class TextInputPipelineTest {
         session.clockMs += 600
         session.space() // the credit is spent; a further deliberate press lands normally
         assertEquals("the  ", session.virtualField.text)
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // B1: a long-press Alt punctuation mark must run the follow-up on the word as it stands once
+    // the letter is gone, not on the word with the deleted letter still counted. spec: text-
+    // input.md SS5.2 ("the letter is deleted and the Alt-layer character is committed with exactly
+    // the same three checks and the same follow-up"); autocorrect-suggestions.md SS10.
+    // -----------------------------------------------------------------------------------------
+
+    @Test
+    fun `SS5-2 a long-press period after a correctly spelled word leaves the word and its space alone`() {
+        val dictionary = dict("cats" to 250, "cat" to 100, "have" to 200, "i" to 200, "a" to 200)
+        val resources = TextInputResources(dictionaries = listOf(dictionary))
+        val settings = TextInputSettingsBundle(autocorrect = AutocorrectSettings(autoReplaceOnSpaceEnter = true, maxAutoReplaceDistance = 1), lengthChangeAllowance = 2)
+        val session = Session(settings = settings, resources = resources)
+
+        session.type("I have a cat")
+        session.longPressAlt('m', '.') // the held key's letter lands first, then the long press swaps it for "."
+        assertEquals("I have a cat.", session.virtualField.text, "the boundary engine must see \"cat\", not \"catm\": a known word is never overwritten")
+    }
+
+    @Test
+    fun `SS5-2 a long-press period still corrects the misspelled word before it`() {
+        val dictionary = dict("hello" to 200)
+        val resources = TextInputResources(dictionaries = listOf(dictionary))
+        val settings = TextInputSettingsBundle(autocorrect = AutocorrectSettings(autoReplaceOnSpaceEnter = true, maxAutoReplaceDistance = 1))
+        val session = Session(settings = settings, resources = resources)
+
+        session.type("hellp")
+        session.longPressAlt('m', '.')
+        assertEquals("hello.", session.virtualField.text)
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // B2: a restricted field gets no rule, no case repair and no correction at any boundary.
+    // spec: autocorrect-suggestions.md SS7.4; text-input.md SS3 ("Autocorrect" column), SS6.2.
+    // -----------------------------------------------------------------------------------------
+
+    private fun correctingSettings() = TextInputSettingsBundle(autocorrect = AutocorrectSettings(autoCorrectEnabled = true, autoReplaceOnSpaceEnter = true, maxAutoReplaceDistance = 1))
+
+    @Test
+    fun `SS7-4 a URL bar gets no case repair from boundary punctuation`() {
+        val session = Session(field = FieldContext(FieldKind.URL), settings = correctingSettings(), resources = TextInputResources(dictionaries = listOf(dict("Paris" to 200))))
+        session.type("wiki/paris")
+        session.altChar('/')
+        assertEquals("wiki/paris/", session.virtualField.text)
+    }
+
+    @Test
+    fun `SS7-4 a raw-mode app gets no correction on Space, the key falls through`() {
+        val session = Session(field = FieldContext(FieldKind.RAW_MODE_APP), settings = correctingSettings(), resources = TextInputResources(dictionaries = listOf(dict("commit" to 200))))
+        session.type("git comit")
+        session.space()
+        assertEquals(listOf(EditorOp.PassThroughKey), session.lastOps)
+        assertEquals("git comit ", session.virtualField.text)
+    }
+
+    @Test
+    fun `SS7-4 a password field gets no correction from boundary punctuation`() {
+        val session = Session(field = FieldContext(FieldKind.PASSWORD), settings = correctingSettings(), resources = TextInputResources(dictionaries = listOf(dict("the" to 200))))
+        session.type("teh")
+        session.altChar('.')
+        session.type("x")
+        assertEquals("teh.x", session.virtualField.text)
+    }
+
+    @Test
+    fun `SS7-4 an email field gets no text replacement on Enter`() {
+        val ruleSet = RuleSet("en", null, mapOf("dont" to "don't"))
+        val session = Session(field = FieldContext(FieldKind.EMAIL, isMultiLine = true), settings = correctingSettings(), resources = TextInputResources(ruleSets = listOf(ruleSet)))
+        session.type("dont")
+        session.enter()
+        assertEquals("dont\n", session.virtualField.text)
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // B3: the undo memory is cleared when any character is typed and when a boundary passes
+    // without a replacement; the rejected set is cleared by the next letter or digit. spec:
+    // autocorrect-suggestions.md SS7.5.
+    // -----------------------------------------------------------------------------------------
+
+    private fun theSession(): Session = Session(
+        settings = TextInputSettingsBundle(autocorrect = AutocorrectSettings(autoReplaceOnSpaceEnter = true, maxAutoReplaceDistance = 1)),
+        resources = TextInputResources(dictionaries = listOf(dict("the" to 220))),
+    )
+
+    @Test
+    fun `SS7-5 Enter after a corrected word is a boundary without a replacement, so Backspace no longer undoes it`() {
+        val session = theSession()
+        session.type("teh")
+        session.space()
+        session.enter()
+        assertEquals("the \n", session.virtualField.text)
+
+        session.backspace() // deletes the newline like any other character; the correction was accepted
+        assertEquals("the ", session.virtualField.text)
+    }
+
+    @Test
+    fun `SS7-5 typing a character after a correction clears the undo memory`() {
+        val session = theSession()
+        session.type("teh")
+        session.space()
+        session.type("a")
+        session.backspace() // deletes "a"
+        session.backspace() // deletes the space; must not resurrect "teh"
+        assertEquals("the", session.virtualField.text)
+    }
+
+    @Test
+    fun `SS7-5 a rejection survives only until the next letter is typed`() {
+        val session = theSession()
+        session.type("teh")
+        session.space()
+        session.backspace() // undo: "teh", rejected
+        assertEquals("teh", session.virtualField.text)
+        repeat(3) { session.backspace() }
+        assertEquals("", session.virtualField.text)
+
+        session.type("teh") // a new word starts: the rejection is gone
+        session.space()
+        assertEquals("the ", session.virtualField.text)
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // B4: accepting a suggestion without a whole-document read replaces the tracked word rather
+    // than appending to it. spec: autocorrect-suggestions.md SS5 ("deleted and the suggestion
+    // committed in its place"); rebuild-from-scratch.md "The editor is not a reliable narrator"
+    // point 1 (the pipeline's own record of what it committed).
+    // -----------------------------------------------------------------------------------------
+
+    @Test
+    fun `SS5 accepting a suggestion with no document read replaces the tracked word`() {
+        val session = Session()
+        session.type("hel")
+        session.acceptSuggestion("hello")
+        // Capitalised because the span sits at text start, where auto-capitalization applies
+        // (SS5, "the first letter is capitalized regardless"); the point here is that "hel" is gone.
+        assertEquals("Hello ", session.virtualField.text)
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // B6: the double-space timer is reset by any other key. spec: text-input.md SS6.7.
+    // -----------------------------------------------------------------------------------------
+
+    @Test
+    fun `SS6-7 a letter and a Backspace between two quick Spaces reset the double-space window`() {
+        val session = Session()
+        session.type("hello")
+        session.space()
+        session.type("x")
+        session.backspace()
+        session.clockMs += 100
+        session.space()
+        assertEquals("hello  ", session.virtualField.text, "the second Space is not the second press of a pair once another key intervened")
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // B7: a multi-character commit clears the just-committed-sentence-end fact. spec: text-
+    // input.md SS5.3 (no capitalization logic at all) and TextInputState.justCommittedSentenceEnd's
+    // own contract ("cleared the instant anything else is committed").
+    // -----------------------------------------------------------------------------------------
+
+    @Test
+    fun `SS5-3 a multi-character commit after a sentence end does not carry the sentence end to the next Space`() {
+        val session = Session()
+        session.altChar('!')
+        session.commit("abc")
+        assertEquals(false, session.state.justCommittedSentenceEnd)
+        session.space()
+        session.type("w")
+        assertEquals("!abc w", session.virtualField.text)
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // B8: an external cursor move drops every fact that was about "the text right before the
+    // cursor as this pipeline left it". spec: text-input.md SS2 ("every cursor change that is not
+    // the one-character forward step caused by its own last commit clears the deferred-space
+    // state ..."), SS6.3 (the auto-space flag names a specific space), autocorrect-suggestions.md
+    // SS7.5 (undo checks the text right before the cursor).
+    // -----------------------------------------------------------------------------------------
+
+    @Test
+    fun `SS2 an external cursor move clears the auto-space flag and the undo memory and resyncs the word`() {
+        val before = TextInputState(
+            currentWord = CurrentWordTracker.empty().onCharacterCommitted('x'),
+            deferredSpace = DeferredSpace.onPunctuationInList(),
+            autoSpacePending = true,
+            autocorrectMemory = AutocorrectMemory().afterReplacement("teh", "the"),
+            justCommittedSentenceEnd = true,
+        )
+        val after = before.afterExternalCursorMove("some wor")
+        assertEquals("wor", after.currentWord.word)
+        assertEquals(DeferredSpaceDebt.none(), after.deferredSpace)
+        assertEquals(false, after.autoSpacePending)
+        assertEquals(null, after.autocorrectMemory.lastReplacement)
+        assertEquals(false, after.justCommittedSentenceEnd)
+
+        assertEquals("", before.afterExternalCursorMove(null).currentWord.word, "an unreadable field resets the word rather than keeping a stale one")
     }
 }

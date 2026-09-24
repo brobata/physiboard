@@ -34,6 +34,18 @@ sealed class PbdFormatError(val reason: String) {
     /** The stored checksum does not match the checksum computed while reading the file. */
     data class ChecksumMismatch(val expected: Long, val actual: Long) :
         PbdFormatError("checksum mismatch: expected $expected, computed $actual")
+
+    /**
+     * A block's count, length or word offset points outside the file. A single flipped bit in
+     * a length field produces exactly this, so it is a refusal and not a crash.
+     */
+    data class CorruptBlock(val detail: String) : PbdFormatError("corrupt block: $detail")
+
+    /**
+     * The stream itself failed (an I/O error, not a format error). Reported rather than thrown
+     * because the reader runs on a start-up thread where a throw would kill the keyboard.
+     */
+    data class Unreadable(val detail: String) : PbdFormatError("unreadable: $detail")
 }
 
 /** The outcome of reading a `.pbd` file: its decoded contents, or why it was refused. */

@@ -61,20 +61,27 @@ class DictionaryIndex private constructor(
         val end = upperBoundForPrefix(key, start)
         if (start >= end) return 0
 
-        val candidates = ArrayList<WordFrequency>(minOf(limit, entryWords.size))
-        for (g in start until end) {
-            for (i in groupOffsets[g] until groupOffsets[g + 1]) {
-                candidates.add(WordFrequency(entryWords[i], entryFrequencies[i]))
+        // A one-letter prefix matches thousands of entries; only the best [limit] of them are
+        // wanted, so they are selected through a bounded heap rather than sorted in full.
+        val first = groupOffsets[start]
+        val last = groupOffsets[end]
+        val matchCount = last - first
+        val selected: List<WordFrequency>
+        if (matchCount <= limit) {
+            val all = ArrayList<WordFrequency>(matchCount)
+            for (i in first until last) all.add(WordFrequency(entryWords[i], entryFrequencies[i]))
+            all.sortWith(BEST_FIRST)
+            selected = all
+        } else {
+            val worstFirst = java.util.PriorityQueue(limit + 1, BEST_FIRST.reversed())
+            for (i in first until last) {
+                worstFirst.add(WordFrequency(entryWords[i], entryFrequencies[i]))
+                if (worstFirst.size > limit) worstFirst.poll()
             }
+            selected = worstFirst.toMutableList().apply { sortWith(BEST_FIRST) }
         }
-        candidates.sortWith(compareByDescending<WordFrequency> { it.frequency }.thenBy { it.word })
-        var added = 0
-        for (candidate in candidates) {
-            if (added >= limit) break
-            into.add(candidate)
-            added++
-        }
-        return added
+        into.addAll(selected)
+        return selected.size
     }
 
     /**
@@ -89,7 +96,7 @@ class DictionaryIndex private constructor(
         if (group < 0) return 0
         val entries = (groupOffsets[group] until groupOffsets[group + 1])
             .map { WordFrequency(entryWords[it], entryFrequencies[it]) }
-            .sortedWith(compareByDescending<WordFrequency> { it.frequency }.thenBy { it.word })
+            .sortedWith(BEST_FIRST)
         var added = 0
         for (entry in entries) {
             if (added >= limit) break
@@ -107,30 +114,63 @@ class DictionaryIndex private constructor(
      * §3.5 keeps once distance is greater than 0. Distance is [EditDistance.osaDistance].
      * spec: autocorrect-suggestions.md §3.4.
      *
-     * Candidates are restricted up front to normalized keys whose length is within
-     * [maxDistance] of [word]'s, since no edit sequence shorter than that can bridge a larger
-     * length gap; this keeps a query proportional to the words near the typed length rather
-     * than the whole dictionary.
+     * This runs on every keystroke, so it must not visit the whole list. The sorted key array is
+     * walked as if it were a trie: one distance-table row per character of the current key,
+     * kept for the length of the common prefix with the next key (so "abandon" and "abandoned"
+     * share seven rows), and whenever the smallest value in a row already exceeds
+     * [maxDistance] every key sharing that prefix is skipped in one binary search, since no
+     * extension of the prefix can get any closer. Keys longer than the query plus [maxDistance]
+     * are skipped the same way; keys shorter than the query minus it are not scored. Together
+     * that bounds the work to the few hundred prefixes within reach of the query rather than
+     * the tens of thousands of keys in the length window, and to one scratch table per call
+     * rather than three arrays per key. The results are exactly those of scoring every key.
      */
     fun neighbours(word: String, maxDistance: Int, limit: Int, into: MutableList<ScoredCandidate>): Int {
         if (limit <= 0 || maxDistance < 0) return 0
         val key = DictNormalization.normalizedKey(word)
-        if (key.isEmpty()) return 0
+        if (key.isEmpty() || normalizedKeys.isEmpty()) return 0
 
-        val maxKnownLength = lengthBucketStart.size - 2
-        val minLen = maxOf(0, key.length - maxDistance)
-        val maxLen = minOf(maxKnownLength, key.length + maxDistance)
-        if (minLen > maxLen) return 0
+        val queryLength = key.length
+        val minLength = maxOf(0, queryLength - maxDistance)
+        val maxLength = minOf(lengthBucketStart.size - 2, queryLength + maxDistance)
+        if (minLength > maxLength) return 0
 
+        val walk = PrefixWalk(key, maxLength)
         val found = ArrayList<ScoredCandidate>()
-        for (len in minLen..maxLen) {
-            for (i in lengthBucketStart[len] until lengthBucketStart[len + 1]) {
-                val group = lengthOrder[i]
-                val distance = EditDistance.osaDistance(key, normalizedKeys[group], maxDistance)
-                if (distance > maxDistance) continue
-                val bestIndex = groupOffsets[group]
-                found.add(ScoredCandidate(entryWords[bestIndex], entryFrequencies[bestIndex], distance))
+        var i = 0
+        var previous = ""
+        var validDepth = 0
+        while (i < normalizedKeys.size) {
+            val candidate = normalizedKeys[i]
+            var depth = minOf(commonPrefixLength(previous, candidate), validDepth)
+            var prunedAt = -1
+            while (depth < candidate.length) {
+                if (depth == maxLength) {
+                    // Every later key with this prefix is longer still.
+                    prunedAt = depth
+                    break
+                }
+                depth++
+                walk.fillRow(depth, candidate)
+                if (walk.rowMinimum(depth) > maxDistance) {
+                    prunedAt = depth
+                    break
+                }
             }
+            previous = candidate
+            validDepth = depth
+            if (prunedAt >= 0) {
+                i = upperBoundForPrefix(candidate.substring(0, prunedAt), i + 1)
+                continue
+            }
+            if (candidate.length >= minLength) {
+                val distance = walk.distanceAt(depth)
+                if (distance <= maxDistance) {
+                    val bestIndex = groupOffsets[i]
+                    found.add(ScoredCandidate(entryWords[bestIndex], entryFrequencies[bestIndex], distance))
+                }
+            }
+            i++
         }
         found.sortWith(
             compareBy<ScoredCandidate> { it.distance }
@@ -144,6 +184,54 @@ class DictionaryIndex private constructor(
             added++
         }
         return added
+    }
+
+    /**
+     * The optimal-string-alignment table for one query against a growing candidate prefix, one
+     * row per prefix length, in a single flat array reused for the whole walk. Row `d` holds the
+     * distances of the candidate's first `d` characters against every prefix of the query, the
+     * same recurrence as [EditDistance.osaDistance] (which is symmetric, so which string is
+     * the row and which the column does not matter).
+     */
+    private class PrefixWalk(private val query: String, maxDepth: Int) {
+        private val width = query.length + 1
+        private val rows = IntArray((maxDepth + 1) * width)
+
+        init {
+            for (j in 0 until width) rows[j] = j
+        }
+
+        fun fillRow(depth: Int, candidate: String) {
+            val current = depth * width
+            val previous = current - width
+            val beforePrevious = previous - width
+            val candidateChar = candidate[depth - 1]
+            rows[current] = depth
+            for (j in 1 until width) {
+                val cost = if (query[j - 1] == candidateChar) 0 else 1
+                var value = minOf(rows[current + j - 1] + 1, rows[previous + j] + 1, rows[previous + j - 1] + cost)
+                if (depth > 1 && j > 1 && candidateChar == query[j - 2] && candidate[depth - 2] == query[j - 1]) {
+                    value = minOf(value, rows[beforePrevious + j - 2] + 1)
+                }
+                rows[current + j] = value
+            }
+        }
+
+        fun rowMinimum(depth: Int): Int {
+            val base = depth * width
+            var minimum = rows[base]
+            for (j in 1 until width) if (rows[base + j] < minimum) minimum = rows[base + j]
+            return minimum
+        }
+
+        fun distanceAt(depth: Int): Int = rows[depth * width + width - 1]
+    }
+
+    private fun commonPrefixLength(a: String, b: String): Int {
+        val limit = minOf(a.length, b.length)
+        var n = 0
+        while (n < limit && a[n] == b[n]) n++
+        return n
     }
 
     private fun groupIndexOf(key: String): Int {
@@ -171,13 +259,25 @@ class DictionaryIndex private constructor(
         return lo
     }
 
+    /**
+     * The first index at or after [from] whose key does not start with [prefix]. Keys are sorted,
+     * so those with the prefix form one contiguous run from [from]; a binary search finds its end
+     * without touching every key in a large run (a one-letter prefix covers thousands).
+     */
     private fun upperBoundForPrefix(prefix: String, from: Int): Int {
-        var i = from
-        while (i < normalizedKeys.size && normalizedKeys[i].startsWith(prefix)) i++
-        return i
+        var lo = from
+        var hi = normalizedKeys.size
+        while (lo < hi) {
+            val mid = (lo + hi) ushr 1
+            if (normalizedKeys[mid].startsWith(prefix)) lo = mid + 1 else hi = mid
+        }
+        return lo
     }
 
     companion object {
+        /** The order every ranked answer comes back in: highest raw frequency first, spelling as the tie-break. */
+        private val BEST_FIRST: Comparator<WordFrequency> = compareByDescending<WordFrequency> { it.frequency }.thenBy { it.word }
+
         /** Builds an index from a decoded `.pbd` document. */
         fun from(document: PbdDocument): DictionaryIndex = build(document.language, document.entries)
 

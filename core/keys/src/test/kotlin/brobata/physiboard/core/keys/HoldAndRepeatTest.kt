@@ -108,7 +108,7 @@ class HoldAndRepeatTest {
     fun `T47 - the timer firing while the key is still down replaces the letter with the Alt value`() {
         val l = altLongPressLayout()
         val down0 = LayerResolver.resolveKeyDown(ModifierState(), TypingSessionState(), down(KeyId.Letter('A'), 0), l, settings, resolverSettings, field)
-        val fired = LayerResolver.resolveLongPressTick(down0.typing, 300, l)
+        val fired = LayerResolver.resolveLongPressTick(down0.state, down0.typing, 300, l)
         assertEquals(Action.ReplaceRecent(1, "#"), fired?.action)
     }
 
@@ -116,7 +116,7 @@ class HoldAndRepeatTest {
     fun `T48 - shift mode replaces the letter with its layout uppercase`() {
         val l = altLongPressLayout().copy(longPress = LongPressSettings(mode = LongPressMode.SHIFT, thresholdMs = 300))
         val down0 = LayerResolver.resolveKeyDown(ModifierState(), TypingSessionState(), down(KeyId.Letter('A'), 0), l, settings, resolverSettings, field)
-        val fired = LayerResolver.resolveLongPressTick(down0.typing, 300, l)
+        val fired = LayerResolver.resolveLongPressTick(down0.state, down0.typing, 300, l)
         assertEquals(Action.ReplaceRecent(1, "A"), fired?.action)
     }
 
@@ -151,7 +151,7 @@ class HoldAndRepeatTest {
         val l = variationsLayout()
         val down0 = LayerResolver.resolveKeyDown(ModifierState(), TypingSessionState(), down(KeyId.Letter('U'), 0), l, settings, resolverSettings, field)
         assertEquals(Action.Commit("u"), down0.action)
-        val fired = LayerResolver.resolveLongPressTick(down0.typing, 60, l)
+        val fired = LayerResolver.resolveLongPressTick(down0.state, down0.typing, 60, l)
         assertEquals(Action.ReplaceRecent(1, "ü"), fired?.action)
     }
 
@@ -161,7 +161,7 @@ class HoldAndRepeatTest {
         val shiftOneShot = ModifierState(shift = ShiftState(value = ShiftValue.ONE_SHOT))
         val down0 = LayerResolver.resolveKeyDown(shiftOneShot, TypingSessionState(), down(KeyId.Letter('U'), 0), l, settings, resolverSettings, field)
         assertEquals(Action.Commit("U"), down0.action)
-        val fired = LayerResolver.resolveLongPressTick(down0.typing, 60, l)
+        val fired = LayerResolver.resolveLongPressTick(down0.state, down0.typing, 60, l)
         assertEquals(Action.ReplaceRecent(1, "Ü"), fired?.action)
     }
 
@@ -177,7 +177,7 @@ class HoldAndRepeatTest {
             longPress = LongPressSettings(mode = LongPressMode.SYM, thresholdMs = 50),
         )
         val down0 = LayerResolver.resolveKeyDown(ModifierState(), TypingSessionState(), down(KeyId.Letter('Q'), 0), l, settings, resolverSettings, field)
-        val fired = LayerResolver.resolveLongPressTick(down0.typing, 60, l)
+        val fired = LayerResolver.resolveLongPressTick(down0.state, down0.typing, 60, l)
         assertEquals(Action.ReplaceRecent(1, "😀"), fired?.action)
     }
 
@@ -193,7 +193,7 @@ class HoldAndRepeatTest {
             longPress = LongPressSettings(mode = LongPressMode.SYM_SYMBOLS, thresholdMs = 50),
         )
         val down0 = LayerResolver.resolveKeyDown(ModifierState(), TypingSessionState(), down(KeyId.Letter('Q'), 0), l, settings, resolverSettings, field)
-        val fired = LayerResolver.resolveLongPressTick(down0.typing, 60, l)
+        val fired = LayerResolver.resolveLongPressTick(down0.state, down0.typing, 60, l)
         assertEquals(Action.ReplaceRecent(1, "~"), fired?.action)
     }
 
@@ -212,5 +212,95 @@ class HoldAndRepeatTest {
         assertFalse(down0.typing.pendingLongPress != null)
         val repeat = LayerResolver.resolveKeyDown(down0.state, down0.typing, down(KeyId.Letter('Z'), 50, repeat = 1), l, settings, resolverSettings, field)
         assertEquals(Action.Commit("z"), repeat.action)
+    }
+
+    // Review findings A1, A2, A5 (2026-09-24): what a held key does after its long press fires,
+    // what the tick leaves behind, and what another key does to an armed press. ----------------
+
+    @Test
+    fun `A1 - repeats after a fired long press are consumed until the key comes up (spec SS8-1, the timer decides, not the repeats)`() {
+        val l = altLongPressLayout()
+        val down0 = LayerResolver.resolveKeyDown(ModifierState(), TypingSessionState(), down(KeyId.Letter('A'), 0), l, settings, resolverSettings, field)
+        val fired = LayerResolver.resolveLongPressTick(down0.state, down0.typing, 300, l)
+        assertEquals(Action.ReplaceRecent(1, "#"), fired?.action)
+
+        val repeat = LayerResolver.resolveKeyDown(fired!!.state, fired.typing, down(KeyId.Letter('A'), 400, repeat = 1), l, settings, resolverSettings, field)
+        assertEquals(Action.Ignored, repeat.action, "the held key must not type its base letter after the replacement")
+        val laterRepeat = LayerResolver.resolveKeyDown(repeat.state, repeat.typing, down(KeyId.Letter('A'), 450, repeat = 2), l, settings, resolverSettings, field)
+        assertEquals(Action.Ignored, laterRepeat.action)
+
+        val up = LayerResolver.resolveKeyUp(laterRepeat.state, laterRepeat.typing, KeyStroke(KeyId.Letter('A'), KeyEdge.UP, 0, 500))
+        assertEquals(Action.Ignored, up.action, "spec SS1-4 step 13: the up of a tracked press is consumed")
+        val fresh = LayerResolver.resolveKeyDown(up.state, up.typing, down(KeyId.Letter('A'), 600), l, settings, resolverSettings, field)
+        assertEquals(Action.Commit("a"), fresh.action, "a new press after the up types normally again")
+    }
+
+    @Test
+    fun `A1 - a tick never fires twice for one press`() {
+        val l = altLongPressLayout()
+        val down0 = LayerResolver.resolveKeyDown(ModifierState(), TypingSessionState(), down(KeyId.Letter('A'), 0), l, settings, resolverSettings, field)
+        val fired = LayerResolver.resolveLongPressTick(down0.state, down0.typing, 300, l)!!
+        assertEquals(null, LayerResolver.resolveLongPressTick(fired.state, fired.typing, 900, l))
+    }
+
+    @Test
+    fun `A1 - a held key with Alt latched repeats through the Alt layer, not the base layout (spec SS8-1 re-enters the normal path)`() {
+        val l = altLongPressLayout()
+        val altLatched = ModifierState(alt = AltState(latched = true))
+        val down0 = LayerResolver.resolveKeyDown(altLatched, TypingSessionState(), down(KeyId.Letter('A'), 0), l, settings, resolverSettings, field)
+        assertEquals(Action.Commit("#"), down0.action)
+        val repeat = LayerResolver.resolveKeyDown(down0.state, down0.typing, down(KeyId.Letter('A'), 450, repeat = 1), l, settings, resolverSettings, field)
+        assertEquals(Action.Commit("#"), repeat.action)
+    }
+
+    @Test
+    fun `A1 - a held key with Ctrl physically held repeats as the Ctrl combo, not the base letter (spec SS7-3 step 1)`() {
+        val l = altLongPressLayout()
+        val ctrlMeta = ModifierFlags(ctrl = true)
+        val down0 = LayerResolver.resolveKeyDown(ModifierState(), TypingSessionState(), down(KeyId.Letter('S'), 0, meta = ctrlMeta), l, settings, resolverSettings, field)
+        assertEquals(Action.ForwardAsCtrlCombo(KeyId.Letter('S')), down0.action)
+        val repeat = LayerResolver.resolveKeyDown(down0.state, down0.typing, down(KeyId.Letter('S'), 450, repeat = 1, meta = ctrlMeta), l, settings, resolverSettings, field)
+        assertEquals(Action.ForwardAsCtrlCombo(KeyId.Letter('S')), repeat.action)
+    }
+
+    @Test
+    fun `A1 - a repeat of a multi-tap key with no open cycle is still consumed (spec SS8-1, holding must not churn the variants)`() {
+        val repeat = LayerResolver.resolveKeyDown(ModifierState(), TypingSessionState(), down(kKey, 500, repeat = 1), multiTapLayout(), settings, resolverSettings, field)
+        assertEquals(Action.Ignored, repeat.action)
+        assertEquals(null, repeat.typing.multiTapCycle)
+    }
+
+    @Test
+    fun `A2 - a fired long press leaves every modifier exactly as it was (spec SS8-3 names no modifier change)`() {
+        val l = altLongPressLayout()
+        val busy = ModifierState(
+            shift = ShiftState(value = ShiftValue.CAPS, layerLatched = true),
+            ctrl = CtrlState(latched = true, latchFromNavMode = true),
+            alt = AltState(pressed = true, physicallyPressed = true),
+            sym = SymSessionState(currentPageNumber = 2),
+        )
+        val down0 = LayerResolver.resolveKeyDown(ModifierState(), TypingSessionState(), down(KeyId.Letter('A'), 0), l, settings, resolverSettings, field)
+        val fired = LayerResolver.resolveLongPressTick(busy, down0.typing, 300, l)
+        assertEquals(busy, fired?.state)
+    }
+
+    @Test
+    fun `A5 - a different key going down cancels the armed long press so the tick cannot eat the new key`() {
+        val l = altLongPressLayout(thresholdMs = 500)
+        val aDown = LayerResolver.resolveKeyDown(ModifierState(), TypingSessionState(), down(KeyId.Letter('A'), 0), l, settings, resolverSettings, field)
+        val spaceDown = LayerResolver.resolveKeyDown(aDown.state, aDown.typing, down(KeyId.Control(ControlKey.SPACE), 80), l, settings, resolverSettings, field)
+        assertEquals(Action.Commit(" "), spaceDown.action)
+        assertEquals(null, spaceDown.typing.pendingLongPress)
+        assertEquals(null, LayerResolver.resolveLongPressTick(spaceDown.state, spaceDown.typing, 500, l))
+    }
+
+    @Test
+    fun `A5 - a repeat of the still-held key after another key cancelled its long press types the letter and arms nothing new`() {
+        val l = altLongPressLayout(thresholdMs = 500)
+        val aDown = LayerResolver.resolveKeyDown(ModifierState(), TypingSessionState(), down(KeyId.Letter('A'), 0), l, settings, resolverSettings, field)
+        val sDown = LayerResolver.resolveKeyDown(aDown.state, aDown.typing, down(KeyId.Letter('S'), 80), l, settings, resolverSettings, field)
+        val aRepeat = LayerResolver.resolveKeyDown(sDown.state, sDown.typing, down(KeyId.Letter('A'), 400, repeat = 1), l, settings, resolverSettings, field)
+        assertEquals(Action.Commit("a"), aRepeat.action)
+        assertEquals(null, aRepeat.typing.pendingLongPress, "spec SS8-2: eligibility is computed on the key-down, never on a repeat")
     }
 }

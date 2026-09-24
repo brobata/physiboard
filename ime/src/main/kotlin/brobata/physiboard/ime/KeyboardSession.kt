@@ -27,6 +27,7 @@ import brobata.physiboard.core.pointer.trackpad.TrackpadGestureSettings
 import brobata.physiboard.core.pointer.trackpad.TrackpadPhysicalKey
 import brobata.physiboard.core.text.AppProfile
 import brobata.physiboard.core.text.AppProfileResolver
+import brobata.physiboard.core.text.EnterIntent
 import brobata.physiboard.core.text.EnterOverride
 import brobata.physiboard.core.text.EnterOverrideResolver
 import brobata.physiboard.core.text.MessagingPreset
@@ -145,7 +146,19 @@ internal class KeyboardSession(
 
     fun onDictationTrigger() = dictationController.trigger(currentPackageName)
 
-    fun onDictationServiceDestroyed() = dictationController.onServiceDestroyed()
+    /**
+     * The service is going away. Every callback this session posted on the main handler (the
+     * long-press tick, the staged cursor-update retries, the trackpad's hold timer, dictation's
+     * clock) would otherwise fire against a destroyed service; spec dictation.md SS3 "Keyboard
+     * service destroyed: timers cancelled".
+     */
+    fun onServiceDestroyed() {
+        handler.removeCallbacks(longPressRunnable)
+        handler.removeCallbacksAndMessages(cursorUpdateToken)
+        runCatching { trackpad.onKeyboardWindowHidden() }.onFailure { error -> Log.e(TAG, "trackpad teardown crashed", error) }
+        runCatching { caretBadge.hide() }.onFailure { error -> Log.e(TAG, "caret badge teardown crashed", error) }
+        dictationController.onServiceDestroyed()
+    }
 
     // SPEC GAP / missing module: there is no `:settings` module yet, so the primary suggestion
     // language cannot come from the current input style (dictionaries-languages.md SS8.7); `en`
@@ -171,9 +184,14 @@ internal class KeyboardSession(
      * "every cursor change that is not the one-character forward step caused by its own last
      * commit". Distinguishing our own edit from a genuinely external one is exactly the fact only
      * this Android-side glue can know (a pure module never sees the real, asynchronous
-     * `InputConnection` callback), so the flag lives here rather than in [KeyboardPipeline].
+     * `InputConnection` callback), so it lives here; the arithmetic itself is
+     * [AppliedEditAccounting]'s, where JUnit can reach it. See [OwnEditExpectation] for why this
+     * is a position with an expiry and not a boolean.
      */
-    private var suppressNextSelectionUpdate = false
+    private var ownEdit: OwnEditExpectation? = null
+
+    /** The selection start the editor last reported, the cursor fact used when a stroke does not read the whole document. */
+    private var lastReportedSelStart = 0
 
     private val vibrator: Vibrator? by lazy {
         runCatching {
@@ -211,7 +229,16 @@ internal class KeyboardSession(
             enterActionAllowed = EnterOverrideResolver.isEditorActionAllowed(reportedPackage, enterOverrides, enterBehaviorEnabled),
         )
         val field = classifyField(info, profile)
-        pipeline.onStartInput(field, profile.editorTrust, profile)
+        ownEdit = null
+        lastReportedSelStart = info?.initialSelStart?.coerceAtLeast(0) ?: 0
+        if (restarting) {
+            // spec: text-input.md line 85, 463, 497: a restart reclassifies and re-evaluates, but
+            // does not wipe the word in progress; web fields restart input mid-word all the time.
+            val textBeforeCursor = runCatching { service.currentInputConnection?.getTextBeforeCursor(TEXT_BEFORE_CURSOR_READ, 0)?.toString() }.getOrNull()
+            pipeline.onRestartInput(field, profile.editorTrust, profile, textBeforeCursor)
+        } else {
+            pipeline.onStartInput(field, profile.editorTrust, profile)
+        }
         service.setCandidatesViewShown(field.isReallyEditable)
         currentPackageName = reportedPackage
         dictationController.onEditorFieldOpened(reportedPackage)
@@ -306,12 +333,19 @@ internal class KeyboardSession(
     }
 
     fun onUpdateSelection(oldSelStart: Int, oldSelEnd: Int, newSelStart: Int, newSelEnd: Int, candidatesStart: Int, candidatesEnd: Int) {
-        if (suppressNextSelectionUpdate) {
-            suppressNextSelectionUpdate = false
-            return
+        lastReportedSelStart = newSelStart
+        ownEdit?.let { expectation ->
+            when (expectation.classify(newSelStart, SystemClock.uptimeMillis())) {
+                OwnEditExpectation.Verdict.OWN_EDIT -> {
+                    ownEdit = null
+                    return
+                }
+                OwnEditExpectation.Verdict.STILL_SETTLING -> return
+                OwnEditExpectation.Verdict.EXTERNAL -> ownEdit = null
+            }
         }
         runCatching {
-            val textBeforeCursor = runCatching { service.currentInputConnection?.getTextBeforeCursor(240, 0)?.toString() }.getOrNull()
+            val textBeforeCursor = runCatching { service.currentInputConnection?.getTextBeforeCursor(TEXT_BEFORE_CURSOR_READ, 0)?.toString() }.getOrNull()
             pipeline.onExternalSelectionChange(textBeforeCursor)
             refreshCandidatesStrip()
         }.onFailure { error -> Log.e(TAG, "onUpdateSelection crashed", error) }
@@ -367,12 +401,7 @@ internal class KeyboardSession(
      */
     private fun processKeyStroke(stroke: KeyStroke): Boolean {
         val ic = service.currentInputConnection ?: return false
-        // spec: the c440844 fix. Any key reaching the ordinary typing pipeline while dictation is
-        // listening is the user changing the field by some means other than the dictation session
-        // itself (typing over it, or deleting it), so whatever the engine remembers of the current
-        // utterance can no longer be trusted; see DictationController.onUserEditedComposingText.
-        if (dictationController.isActive) dictationController.onUserEditedComposingText()
-        val readout = ic.readEditorState(stroke.timeMs)
+        val readout = ic.readEditorState(stroke.timeMs, wholeDocument = pipeline.needsWholeDocument(stroke), fallbackCursorAbsolute = lastReportedSelStart)
         val result = pipeline.onKeyStroke(stroke, readout.snapshot)
         val consumed = applyResult(ic, result, readout)
         scheduleLongPressIfNeeded()
@@ -505,7 +534,7 @@ internal class KeyboardSession(
         runCatching {
             val ic = service.currentInputConnection ?: return@runCatching
             val nowMs = SystemClock.uptimeMillis()
-            val readout = ic.readEditorState(nowMs)
+            val readout = ic.readEditorState(nowMs, wholeDocument = false, fallbackCursorAbsolute = lastReportedSelStart)
             val result = pipeline.checkLongPressTick(nowMs, readout.snapshot) ?: return@runCatching
             applyResult(ic, result, readout)
             refreshCandidatesStrip()
@@ -528,7 +557,12 @@ internal class KeyboardSession(
      */
     private fun applyResult(ic: InputConnection, result: PipelineResult, readout: EditorReadout): Boolean {
         if (result.ops.isNotEmpty()) {
-            suppressNextSelectionUpdate = true
+            if (AppliedEditAccounting.movesCursor(result.ops)) {
+                ownEdit = OwnEditExpectation(
+                    selStart = AppliedEditAccounting.expectedCursorAfter(readout.cursorAbsolute, readout.documentStartOffset, result.ops),
+                    expiresAtMs = SystemClock.uptimeMillis() + OwnEditExpectation.SETTLE_WINDOW_MS,
+                )
+            }
             ic.applyEditorOps(
                 ops = result.ops,
                 windowStartOffset = readout.documentStartOffset,
@@ -536,14 +570,30 @@ internal class KeyboardSession(
                 sendSpaceKeyFallback = { ic.sendSpaceKeyFallback(SystemClock.uptimeMillis()) },
                 haptic = ::performHaptic,
             )
+            // spec: the c440844 invariant. Only an edit this keyboard actually made to the text
+            // (never a modifier press, a key-up or a Fn repeat) means the user changed the field
+            // under a listening dictation session; see DictationController.onUserEditedComposingText.
+            if (AppliedEditAccounting.changesText(result.ops)) noteFieldEditedDuringDictation()
         }
         val delivery = result.enterDelivery ?: return result.consumed
         val delivered = ic.performEnterDelivery(delivery, SystemClock.uptimeMillis())
         if (delivery.clearsCtrlState(delivered)) {
             pipeline.clearCtrlStateAfterEnterSend()
         }
+        if (delivered && delivery.editsField) noteFieldEditedDuringDictation()
         return delivered
     }
+
+    private fun noteFieldEditedDuringDictation() {
+        if (dictationController.isActive) dictationController.onUserEditedComposingText()
+    }
+
+    /** A delivered send or newline changes the field (or clears it entirely); a swallow or a decline leaves it untouched. */
+    private val EnterIntent.editsField: Boolean
+        get() = when (this) {
+            is EnterIntent.RequestEditorAction, EnterIntent.SendPlainEnter, EnterIntent.SendCtrlEnter, EnterIntent.InsertNewline -> true
+            is EnterIntent.Swallow, EnterIntent.Decline -> false
+        }
 
     /** spec: text-input.md's several "trigger a haptic on replacement" rules. Provisional: the real duration/style is a theme setting (status-bar.md SS9), not wired yet (no `:settings` module). */
     private fun performHaptic() {
@@ -590,7 +640,7 @@ internal class KeyboardSession(
     private fun onSuggestionTapped(word: String) {
         runCatching {
             val ic = service.currentInputConnection ?: return@runCatching
-            val readout = ic.readEditorState(SystemClock.uptimeMillis())
+            val readout = ic.readEditorState(SystemClock.uptimeMillis(), wholeDocument = true, fallbackCursorAbsolute = lastReportedSelStart)
             val result = pipeline.onAcceptSuggestion(word, readout.snapshot)
             applyResult(ic, result, readout)
             refreshCandidatesStrip()
@@ -619,6 +669,9 @@ internal class KeyboardSession(
     private companion object {
         const val TAG = "PhysiBoardKeyboard"
         const val HAPTIC_DURATION_MS = 10L
+
+        /** spec: text-input.md SS2's one unified 240-character read. */
+        const val TEXT_BEFORE_CURSOR_READ = 240
         val PRIMARY_LANGUAGE: LanguageCode = LanguageCode.of("en")!!
     }
 }

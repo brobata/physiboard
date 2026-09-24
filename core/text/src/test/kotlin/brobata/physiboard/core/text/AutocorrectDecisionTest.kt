@@ -1,5 +1,10 @@
 package brobata.physiboard.core.text
 
+import brobata.physiboard.core.dict.DictionaryIndex
+import brobata.physiboard.core.dict.LanguageCode
+import brobata.physiboard.core.dict.UserWordStore
+import brobata.physiboard.core.dict.WordFrequency
+import brobata.physiboard.core.keys.Action
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -173,5 +178,50 @@ class AutocorrectDecisionTest {
         )
         val outcome = AutocorrectDecision.evaluate(facts, maxAutoReplaceDistance = 2, lengthChangeAllowance = 2)
         assertEquals(AutocorrectOutcome.Refuse(AutocorrectRefusalReason.TOO_CLOSE_TO_CALL), outcome)
+    }
+
+    // ---- The invariant, adversarially, through the paths that reach the decision ----
+
+    private val en = LanguageCode.of("en")!!
+    private fun dict(vararg entries: Pair<String, Int>): DictionaryIndex = DictionaryIndex.build(en, entries.map { WordFrequency(it.first, it.second) })
+
+    /** Types [keys] into a plain field one request at a time and returns the field's text; a [Action.ReplaceRecent] stands in for a long press. */
+    private fun typeThrough(actions: List<Action>, resources: TextInputResources): String {
+        var text = ""
+        var state = TextInputState()
+        val settings = TextInputSettingsBundle(autocorrect = AutocorrectSettings(autoReplaceOnSpaceEnter = true, maxAutoReplaceDistance = 1), lengthChangeAllowance = 2)
+        for (action in actions) {
+            val result = TextInputPipeline.handle(TextInputRequest.Key(action), FieldContext(FieldKind.NORMAL), settings, resources, state, EditorSnapshot(textBeforeCursor = text))
+            for (op in result.ops) {
+                when (op) {
+                    is EditorOp.CommitText -> text += op.text
+                    is EditorOp.DeleteSurrounding -> text = text.dropLast(op.before)
+                    is EditorOp.ReplaceBeforeCursor -> text = text.dropLast(op.count) + op.text
+                    else -> Unit
+                }
+            }
+            state = result.state
+        }
+        return text
+    }
+
+    @Test
+    fun `invariant - a long-press punctuation mark never overwrites the correctly spelled word before it`() {
+        // The long press commits the held key's letter first and swaps it for the mark a moment
+        // later (text-input.md SS5.2). The decision must be asked about "cat", never "catm": with
+        // "cats" the best candidate for "catm", the letter-inclusive question overwrites a known word.
+        val resources = TextInputResources(dictionaries = listOf(dict("cats" to 250, "cat" to 100, "have" to 200, "i" to 200, "a" to 200)))
+        val actions = "I have a cat".map { Action.Commit(it.toString()) } + Action.Commit("m") + Action.ReplaceRecent(1, ".")
+        assertEquals("I have a cat.", typeThrough(actions, resources))
+    }
+
+    @Test
+    fun `invariant - a user-added lowercase word is never recased by primary case repair`() {
+        val resources = TextInputResources(
+            dictionaries = listOf(dict("Paris" to 200)),
+            userWords = UserWordStore.empty().withPersonalWordAdded("paris", nowMillis = 0L),
+        )
+        val actions = "paris".map { Action.Commit(it.toString()) } + Action.Commit(" ")
+        assertEquals("paris ", typeThrough(actions, resources))
     }
 }

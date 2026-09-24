@@ -19,7 +19,6 @@ import brobata.physiboard.core.text.AppProfile
 import brobata.physiboard.core.text.AutoCapitalization
 import brobata.physiboard.core.text.AutocorrectSettings
 import brobata.physiboard.core.text.CapDecision
-import brobata.physiboard.core.text.DeferredSpace
 import brobata.physiboard.core.text.EditorOp
 import brobata.physiboard.core.text.EditorSnapshot
 import brobata.physiboard.core.text.EditorTrust
@@ -195,6 +194,31 @@ internal class KeyboardPipeline(
         }
     }
 
+    /**
+     * The same field's input restarted, which web fields and WebViews do freely mid-word. spec:
+     * text-input.md line 85 (a restart reclassifies the field), line 463 (a restart resets a Shift
+     * one-shot and re-evaluates auto-cap) and line 497 (restart-scoped state is kept). Unlike
+     * [onStartInput] this keeps the tracked word, resynced from [textBeforeCursor], and every other
+     * fact that describes text still before the cursor, so autocorrect and Backspace-undo survive
+     * a restart instead of dying at the first one.
+     */
+    fun onRestartInput(
+        field: FieldContext,
+        trust: EditorTrust = EditorTrust.FULL,
+        appProfile: AppProfile = AppProfile.default(null),
+        textBeforeCursor: String?,
+    ) {
+        activeField = field
+        activeTrust = trust
+        activeAppProfile = appProfile
+        val resynced = textBeforeCursor?.let { textInputState.currentWord.syncedFrom(it) } ?: textInputState.currentWord
+        applyCapDecision(CapDecision.ClearOneShot)
+        val capContext = if (activeTrust.contextRulesAllowed) textBeforeCursor else null
+        val (capState, decision) = AutoCapitalization.evaluate(textInputState.autoCap, activeField, settings.textInput.autoCap, capContext)
+        textInputState = textInputState.copy(currentWord = resynced, autoCap = capState)
+        applyCapDecision(decision)
+    }
+
     /** spec: status-bar.md SS13, "field finishes": modifiers reset, nav mode preserved. */
     fun onFinishInput() {
         typingState = TypingSessionState()
@@ -213,15 +237,7 @@ internal class KeyboardPipeline(
         // Resyncing the keyboard's own record to what the editor just reported is always allowed:
         // that is the drift-recovery path itself (rebuild-from-scratch.md "The editor is not a
         // reliable narrator" point 1), not a guess a reduced [activeTrust] should suppress.
-        val resynced = textBeforeCursor?.let { textInputState.currentWord.syncedFrom(it) } ?: textInputState.currentWord.reset()
-        textInputState = textInputState.copy(
-            currentWord = resynced,
-            deferredSpace = DeferredSpace.cancelled(),
-            // The cursor moved for a reason this pipeline did not cause, so a sentence-ending mark
-            // it remembered committing (TextInputState.justCommittedSentenceEnd) is no longer
-            // "immediately before the cursor" and must not survive to arm a later, unrelated Space.
-            justCommittedSentenceEnd = false,
-        )
+        textInputState = textInputState.afterExternalCursorMove(textBeforeCursor)
         // Sentence-end capitalisation, in contrast, needs surrounding context to be right rather
         // than merely present, so it follows [activeTrust] like every other context rule (point 2).
         val capContext = if (activeTrust.contextRulesAllowed) textBeforeCursor else null
@@ -233,6 +249,22 @@ internal class KeyboardPipeline(
     // -----------------------------------------------------------------------------------------
     // One key event. spec: docs/plans/rebuild-from-scratch.md "Keypress data flow".
     // -----------------------------------------------------------------------------------------
+
+    /**
+     * Whether [stroke] can produce an op that needs the whole document: a selection or word
+     * motion (text-input.md SS10, all Ctrl combos or navigation keys) or a Backspace that must know
+     * whether a selection exists (SS8). Every plain letter, Space, Enter, modifier press and key-up
+     * is answered from the 240-character window alone (SS19 "unify"), so the O(document)
+     * extracted-text request is not paid on every keystroke of a long note.
+     */
+    fun needsWholeDocument(stroke: KeyStroke): Boolean {
+        if (stroke.edge != KeyEdge.DOWN) return false
+        return when (val key = stroke.key) {
+            is KeyId.Modifier -> false
+            is KeyId.Control -> key.key != ControlKey.SPACE && key.key != ControlKey.ENTER || modifierState.isCtrlActive(stroke.meta.ctrl)
+            is KeyId.Letter, is KeyId.Digit, is KeyId.Punctuation -> modifierState.isCtrlActive(stroke.meta.ctrl)
+        }
+    }
 
     fun onKeyStroke(stroke: KeyStroke, editor: EditorSnapshot): PipelineResult {
         if (stroke.key is KeyId.Modifier) {
@@ -345,7 +377,7 @@ internal class KeyboardPipeline(
     // -----------------------------------------------------------------------------------------
 
     fun checkLongPressTick(nowMs: Long, editor: EditorSnapshot): PipelineResult? {
-        val resolution = LayerResolver.resolveLongPressTick(typingState, nowMs, layout) ?: return null
+        val resolution = LayerResolver.resolveLongPressTick(modifierState, typingState, nowMs, layout) ?: return null
         modifierState = resolution.state
         typingState = resolution.typing
         return applyAction(resolution.action, shiftHeld = false, altActive = false, editor)

@@ -159,7 +159,7 @@ class LayerResolverTest {
     @Test
     fun `T58 - Ctrl+Space clears a nav-mode latch and cancels the nav notification`() {
         val state = ModifierState(ctrl = CtrlState(latched = true, latchFromNavMode = true))
-        val result = resolve(state, down(KeyId.Control(ControlKey.SPACE), 0, meta = ModifierFlags(ctrl = true)))
+        val result = resolve(state, down(KeyId.Control(ControlKey.SPACE), 0, meta = ModifierFlags(ctrl = true)), context = field.copy(canSwitchLayout = true))
         assertFalse(result.state.ctrl.latched)
         assertEquals(
             Action.Multiple(listOf(Action.RunCommand(KeyCommands.EXIT_NAV_MODE), Action.RunCommand(KeyCommands.SWITCH_LAYOUT))),
@@ -403,5 +403,36 @@ class LayerResolverTest {
         val noField = LayerResolver.Context(hasEditableField = false)
         val result = resolve(ModifierState(), down(KeyId.Control(ControlKey.ENTER), 0), context = noField)
         assertEquals(Action.PassThrough, result.action)
+    }
+
+    // Review finding A8 (2026-09-24): Ctrl+Space with nothing to switch to. ---------------------
+
+    @Test
+    fun `A8 - Fn+Space with no other layout to switch to is not a chord and is forwarded like any unmapped Fn key (spec SS7-3 step 1)`() {
+        val result = resolve(ModifierState(), down(KeyId.Control(ControlKey.SPACE), 0, meta = ModifierFlags(ctrl = true)))
+        assertEquals(Action.ForwardAsCtrlCombo(KeyId.Control(ControlKey.SPACE)), result.action)
+    }
+
+    @Test
+    fun `A8 - Ctrl one-shot then Space with no other layout passes Space to the app and consumes the one-shot (spec SS7-3 step 2)`() {
+        val result = resolve(ModifierState(ctrl = CtrlState(oneShot = true)), down(KeyId.Control(ControlKey.SPACE), 0))
+        assertEquals(Action.PassThrough, result.action)
+        assertFalse(result.state.ctrl.oneShot)
+    }
+
+    @Test
+    fun `A8 - Ctrl+Space with another layout available runs the switch and clears Ctrl (spec SS7-5, T57 shape)`() {
+        val result = resolve(ModifierState(ctrl = CtrlState(oneShot = true)), down(KeyId.Control(ControlKey.SPACE), 0), context = field.copy(canSwitchLayout = true))
+        assertEquals(Action.RunCommand(KeyCommands.SWITCH_LAYOUT), result.action)
+        assertFalse(result.state.ctrl.oneShot)
+    }
+
+    @Test
+    fun `A8 - a Space repeat while Fn stays held does not switch layouts again and again`() {
+        val ctx = field.copy(canSwitchLayout = true)
+        val first = resolve(ModifierState(), down(KeyId.Control(ControlKey.SPACE), 0, meta = ModifierFlags(ctrl = true)), context = ctx)
+        assertEquals(Action.RunCommand(KeyCommands.SWITCH_LAYOUT), first.action)
+        val repeat = resolve(first.state, down(KeyId.Control(ControlKey.SPACE), 450, repeat = 1, meta = ModifierFlags(ctrl = true)), context = ctx, typing = first.typing)
+        assertEquals(Action.Ignored, repeat.action)
     }
 }

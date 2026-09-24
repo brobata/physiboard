@@ -349,4 +349,75 @@ class MisbehavingEditorTest {
 
         assertEquals(CapDecision.Leave, lastDecision)
     }
+
+    // -----------------------------------------------------------------------------------------
+    // B5: under reduced trust a rule that needs surrounding context switches off, and a keystroke
+    // is never swallowed. spec: rebuild-from-scratch.md "The editor is not a reliable narrator"
+    // point 2 ("switched off rather than run on a guess, because typing plainly is always better
+    // than corrupting the field"); text-input.md SS8.
+    // -----------------------------------------------------------------------------------------
+
+    @Test
+    fun `Ctrl+Backspace with an unreadable field passes the key through rather than deleting nothing`() {
+        val trust = EditorTrust(reads = EditorReadTrust.UNAVAILABLE)
+        val result = TextInputPipeline.handle(
+            TextInputRequest.Key(Action.Edit(EditEffect.DELETE_WORD_BACKWARD)),
+            FieldContext(FieldKind.NORMAL), TextInputSettingsBundle(), TextInputResources(), TextInputState(),
+            EditorSnapshot(textBeforeCursor = null), trust,
+        )
+        assertEquals(listOf(EditorOp.PassThroughKey), result.ops)
+    }
+
+    @Test
+    fun `Ctrl+arrow with an unreadable document passes the key through rather than moving nothing`() {
+        val trust = EditorTrust(reads = EditorReadTrust.UNAVAILABLE)
+        val result = TextInputPipeline.handle(
+            TextInputRequest.Key(Action.Edit(EditEffect.MOVE_WORD_LEFT)),
+            FieldContext(FieldKind.NORMAL), TextInputSettingsBundle(), TextInputResources(), TextInputState(),
+            EditorSnapshot(textBeforeCursor = null, fullText = null), trust,
+        )
+        assertEquals(listOf(EditorOp.PassThroughKey), result.ops)
+    }
+
+    @Test
+    fun `a selection shortcut with an unreadable document passes the key through rather than selecting nothing`() {
+        val trust = EditorTrust(reads = EditorReadTrust.UNAVAILABLE)
+        val result = TextInputPipeline.handle(
+            TextInputRequest.Key(Action.Edit(EditEffect.EXPAND_SELECTION_WORD_RIGHT)),
+            FieldContext(FieldKind.NORMAL), TextInputSettingsBundle(), TextInputResources(), TextInputState(),
+            EditorSnapshot(textBeforeCursor = "hello", fullText = null), trust,
+        )
+        assertEquals(listOf(EditorOp.PassThroughKey), result.ops)
+    }
+
+    @Test
+    fun `Backspace at field start does not become a forward delete on a possibly stale empty read`() {
+        // The stale read says the field is empty; the true field holds "ab". A forward delete here
+        // would delete nothing and swallow the Backspace the user actually pressed.
+        val settings = TextInputSettingsBundle(backspace = BackspaceSettings(backspaceAtStartDeletesForward = true))
+        val trust = EditorTrust(reads = EditorReadTrust.POSSIBLY_STALE)
+        val result = TextInputPipeline.handle(
+            TextInputRequest.Key(Action.Edit(EditEffect.DELETE_CHAR_BACKWARD)),
+            FieldContext(FieldKind.NORMAL), settings, TextInputResources(), TextInputState(),
+            EditorSnapshot(textBeforeCursor = ""), trust,
+        )
+        assertEquals(listOf(EditorOp.PassThroughKey), result.ops)
+    }
+
+    @Test
+    fun `an apostrophe continues the tracked word from the keyboard's own record when reads are refused`() {
+        val editor = MisbehavingEditor(refuseReads = true)
+        val trust = EditorTrust(reads = EditorReadTrust.UNAVAILABLE)
+        var state = TextInputState()
+        val field = FieldContext(FieldKind.NORMAL)
+
+        for (ch in "we'll") {
+            val result = TextInputPipeline.handle(TextInputRequest.Key(Action.Commit(ch.toString())), field, TextInputSettingsBundle(), TextInputResources(), state, editor.snapshot(), trust)
+            editor.apply(result.ops)
+            state = result.state
+        }
+
+        assertEquals("we'll", editor.text)
+        assertEquals("we'll", state.currentWord.word, "spec autocorrect-suggestions.md SS1.1: \"we'\" can still become \"we'll\" without asking the editor what precedes")
+    }
 }

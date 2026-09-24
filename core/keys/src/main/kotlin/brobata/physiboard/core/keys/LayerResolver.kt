@@ -14,12 +14,23 @@ package brobata.physiboard.core.keys
  */
 object LayerResolver {
 
-    /** Facts about the focused field the caller already knows and this module cannot infer on its own. */
+    /**
+     * Facts about the focused field and the session the caller already knows and this module
+     * cannot infer on its own.
+     *
+     * [canSwitchLayout]: whether the caller has a "next subtype" to switch to (keys-and-modifiers.md
+     * SS7.5, the Ctrl+Space chord). SPEC AMENDMENT (review A8): SS7.5 makes Ctrl+Space a consumed
+     * chord unconditionally, but with a single layout there is nothing to switch and a Fn+Space
+     * then simply vanishes. The chord fires only when the caller says a switch is possible;
+     * otherwise Space resolves like any other key under Ctrl (SS7.3), so a physical Fn+Space is
+     * forwarded to the app as the Ctrl combo it is and a logical Ctrl passes Space through.
+     */
     data class Context(
         val hasEditableField: Boolean = true,
         val isNumericField: Boolean = false,
         val hasSelection: Boolean = false,
         val hasTextBeforeCaret: Boolean = true,
+        val canSwitchLayout: Boolean = false,
     )
 
     /** spec: keys-and-modifiers.md SS7.7 (the three forward-delete-alternative switches) and SS7.1 (swipe-to-delete). */
@@ -61,21 +72,25 @@ object LayerResolver {
 
     private fun resolveKeyDownOnEditableField(
         state: ModifierState,
-        typing: TypingSessionState,
+        previousTyping: TypingSessionState,
         stroke: KeyStroke,
         layout: LayoutDescription,
         modifierSettings: ModifierSettings,
         resolverSettings: LayerResolverSettings,
         context: Context,
     ): Resolution {
-        if (stroke.repeatCount > 0) return resolveRepeat(state, typing, stroke, layout)
+        if (stroke.isRepeat && repeatIsConsumedByItsOwnPress(previousTyping, stroke)) return Resolution(state, previousTyping, Action.Ignored)
+        val typing = if (stroke.isInitialPress) forgetOnNewPress(previousTyping, stroke.key) else previousTyping
 
         if (stroke.key == SWIPE_TO_DELETE) {
             val action = if (resolverSettings.swipeToDeleteEnabled) Action.Edit(EditEffect.DELETE_WORD_BACKWARD) else Action.Ignored
             return Resolution(state, typing, action)
         }
 
-        if (stroke.key == SPACE && state.isCtrlActive(stroke.meta.ctrl)) {
+        if (stroke.key == SPACE && state.isCtrlActive(stroke.meta.ctrl) && context.canSwitchLayout) {
+            // A Space repeat while Fn stays held must not switch again on every repeat; it is
+            // consumed like the Enter repeats after an Alt+Enter switch (SS7.5).
+            if (stroke.isRepeat) return Resolution(state, typing, Action.Ignored)
             return Resolution(applyCtrlSpaceLayoutSwitch(state), typing, ctrlSpaceLayoutSwitchAction(state))
         }
 
@@ -120,24 +135,65 @@ object LayerResolver {
         }
     }
 
-    /** spec: keys-and-modifiers.md SS8.3 step 3 ("key up before the timer: the timer is cancelled... the key up is consumed"). */
+    /**
+     * spec: keys-and-modifiers.md SS8.3 ("if the key is released first, the timer is cancelled")
+     * and SS1.4 step 13 ("consumed if a press was being tracked"): a press is tracked from its
+     * arming until this up, whether or not the timer fired in between.
+     */
     fun resolveKeyUp(state: ModifierState, typing: TypingSessionState, stroke: KeyStroke): Resolution {
         require(stroke.edge == KeyEdge.UP) { "not a key-up: $stroke" }
-        val pending = typing.pendingLongPress
-        return if (pending != null && pending.key == stroke.key) {
-            Resolution(state, typing.copy(pendingLongPress = null), Action.Ignored)
-        } else {
-            Resolution(state, typing, Action.PassThrough)
-        }
+        val pendingForThisKey = typing.pendingLongPress?.key == stroke.key
+        val firedForThisKey = typing.longPressFiredKey == stroke.key
+        if (!pendingForThisKey && !firedForThisKey) return Resolution(state, typing, Action.PassThrough)
+        val released = typing.copy(
+            pendingLongPress = if (pendingForThisKey) null else typing.pendingLongPress,
+            longPressFiredKey = if (firedForThisKey) null else typing.longPressFiredKey,
+        )
+        return Resolution(state, released, Action.Ignored)
     }
 
-    /** Checks whether an armed long press has fired, and if so what it replaces the committed text with. spec: keys-and-modifiers.md SS8.3. */
-    fun resolveLongPressTick(typing: TypingSessionState, nowMs: Long, layout: LayoutDescription): Resolution? {
+    /**
+     * Checks whether an armed long press has fired, and if so what it replaces the committed
+     * text with. spec: keys-and-modifiers.md SS8.3. The replacement changes text only; SS8.3
+     * names no modifier change, so [state] comes back exactly as given (review A2: a fresh
+     * state here wiped caps lock, latches, the open Sym page and the held flags on every long
+     * press). The key stays tracked as [TypingSessionState.longPressFiredKey] until its key-up.
+     */
+    fun resolveLongPressTick(state: ModifierState, typing: TypingSessionState, nowMs: Long, layout: LayoutDescription): Resolution? {
         val pending = typing.pendingLongPress ?: return null
         if (!LongPress.hasFired(pending, nowMs)) return null
         val action = LongPress.replacement(pending, layout)
-        return Resolution(ModifierState(), typing.copy(pendingLongPress = null), action)
+        return Resolution(state, typing.copy(pendingLongPress = null, longPressFiredKey = pending.key), action)
     }
+
+    // -----------------------------------------------------------------
+    // What a press does to the previous press's bookkeeping. spec: keys-and-modifiers.md SS8.1, SS8.3, SS9.
+    // -----------------------------------------------------------------
+
+    /**
+     * spec: keys-and-modifiers.md SS8.1: "a key with a pending long press consumes them (the timer
+     * decides the outcome, not the repeats)" and "multi-tap keys consume them"; a press whose
+     * timer already fired is still that press. Every other repeat re-enters the normal path
+     * below, so a held key under Alt, Ctrl or Sym repeats through that layer, not the base one.
+     */
+    private fun repeatIsConsumedByItsOwnPress(typing: TypingSessionState, stroke: KeyStroke): Boolean =
+        typing.pendingLongPress?.key == stroke.key ||
+            typing.longPressFiredKey == stroke.key ||
+            typing.multiTapCycle?.key == stroke.key
+
+    /**
+     * A fresh press (repeat 0) of any key ends whatever the previous press left armed: the
+     * pending long press (review A5: otherwise a long press firing after a Space deletes the
+     * space, not the letter; SS8.3's replacement is only ever of the character that press
+     * committed), the multi-tap cycle of a different key (SS1.3 step 16, SS9), and a stale
+     * fired-press marker for this same key (its up was lost). A different key's fired marker
+     * stays: that key is still held and its repeats must still be consumed.
+     */
+    private fun forgetOnNewPress(typing: TypingSessionState, key: KeyId): TypingSessionState = TypingSessionState(
+        multiTapCycle = typing.multiTapCycle?.takeIf { it.key == key },
+        pendingLongPress = null,
+        longPressFiredKey = typing.longPressFiredKey?.takeIf { it != key },
+    )
 
     // -----------------------------------------------------------------
     // Ctrl+Space and Space/Enter clearing Alt. spec: keys-and-modifiers.md SS6.4, SS7.5.
@@ -428,36 +484,33 @@ object LayerResolver {
             !MultiTap.isSharpSException(stroke.key, uppercase, layout.baseLayout)
 
         if (isRealMultiTap) {
+            // spec SS8.1: holding a multi-tap key must not churn through its variants.
+            if (stroke.isRepeat) return Resolution(state, typing, Action.Ignored)
             val active = typing.multiTapCycle
             if (active != null && active.key == stroke.key && MultiTap.isWithinWindow(active, stroke.timeMs)) {
                 val (newCycle, action) = MultiTap.advance(active, stroke.timeMs, layout.baseLayout)
-                val newTyping = TypingSessionState(newCycle, armLongPress(stroke.key, uppercase, newCycle.committedText, stroke.timeMs, layout))
+                val newTyping = typing.copy(multiTapCycle = newCycle, pendingLongPress = armLongPress(stroke, uppercase, newCycle.committedText, layout))
                 return Resolution(state, newTyping, action)
             }
             val (newCycle, text) = MultiTap.begin(stroke.key, uppercase, stroke.timeMs, layout.baseLayout)
-            val newTyping = TypingSessionState(newCycle, armLongPress(stroke.key, uppercase, text, stroke.timeMs, layout))
+            val newTyping = typing.copy(multiTapCycle = newCycle, pendingLongPress = armLongPress(stroke, uppercase, text, layout))
             return Resolution(consumeShiftOneShot(state), newTyping, Action.Commit(text))
         }
 
         val text = CharacterResolution.layoutOrDefaultCharacter(stroke.key, uppercase, tapIndex = 0, layout.baseLayout)
             ?: return Resolution(state, typing.copy(multiTapCycle = null), Action.PassThrough)
 
-        val newTyping = TypingSessionState(multiTapCycle = null, pendingLongPress = armLongPress(stroke.key, uppercase, text, stroke.timeMs, layout))
+        val newTyping = typing.copy(multiTapCycle = null, pendingLongPress = armLongPress(stroke, uppercase, text, layout))
         return Resolution(consumeShiftOneShot(state), newTyping, Action.Commit(text))
     }
 
-    private fun armLongPress(key: KeyId, shiftEffective: Boolean, committedText: String, nowMs: Long, layout: LayoutDescription): LongPress.Pending? =
-        if (LongPress.isEligible(key, shiftEffective, layout)) LongPress.arm(key, shiftEffective, committedText, nowMs, layout) else null
-
-    private fun resolveRepeat(state: ModifierState, typing: TypingSessionState, stroke: KeyStroke, layout: LayoutDescription): Resolution {
-        if (typing.pendingLongPress?.key == stroke.key) return Resolution(state, typing, Action.Ignored)
-        if (typing.multiTapCycle?.key == stroke.key) return Resolution(state, typing, Action.Ignored)
-
-        val uppercase = state.shiftForcesUppercase(stroke.meta.shift)
-        val text = CharacterResolution.layoutOrDefaultCharacter(stroke.key, uppercase, tapIndex = 0, layout.baseLayout)
-        val action = if (text != null) Action.Commit(text) else Action.PassThrough
-        return Resolution(state, typing, action)
-    }
+    /** spec: keys-and-modifiers.md SS8.2 ("eligibility, computed on key-down"): a repeat of a still-held key never arms a new long press. */
+    private fun armLongPress(stroke: KeyStroke, shiftEffective: Boolean, committedText: String, layout: LayoutDescription): LongPress.Pending? =
+        if (stroke.isInitialPress && LongPress.isEligible(stroke.key, shiftEffective, layout)) {
+            LongPress.arm(stroke.key, shiftEffective, committedText, stroke.timeMs, layout)
+        } else {
+            null
+        }
 
     private val SPACE = KeyId.Control(ControlKey.SPACE)
     private val ENTER = KeyId.Control(ControlKey.ENTER)

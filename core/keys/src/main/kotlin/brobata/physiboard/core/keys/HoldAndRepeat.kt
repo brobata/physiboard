@@ -144,8 +144,14 @@ object LongPress {
  * The per-key session state [LayerResolver] threads alongside [ModifierState]: at most one
  * multi-tap cycle and one armed long press at a time, matching the spec's own single-key focus
  * (keys-and-modifiers.md SS9, SS8.3).
+ *
+ * [longPressFiredKey] is the key whose long press already fired and has not come up yet. The
+ * press stays tracked until its key-up (keys-and-modifiers.md SS1.4 step 13) so the system's
+ * auto-repeats keep being consumed after the replacement (SS8.1: "the timer decides the outcome,
+ * not the repeats"); without it a held Q reads "0qqq" instead of "0".
  */
 data class TypingSessionState(
     val multiTapCycle: MultiTap.Cycle? = null,
     val pendingLongPress: LongPress.Pending? = null,
+    val longPressFiredKey: KeyId? = null,
 )

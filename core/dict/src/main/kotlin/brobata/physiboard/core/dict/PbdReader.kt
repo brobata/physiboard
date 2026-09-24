@@ -2,6 +2,7 @@ package brobata.physiboard.core.dict
 
 import java.io.DataInputStream
 import java.io.EOFException
+import java.io.IOException
 import java.io.InputStream
 import java.util.zip.CRC32
 import java.util.zip.CheckedInputStream
@@ -69,16 +70,35 @@ import java.util.zip.CheckedInputStream
  */
 object PbdReader {
 
+    /**
+     * The largest WORD block this reader will allocate for. The biggest real list is well
+     * under a million entries; a count above this can only come from a damaged length field,
+     * and refusing it here keeps a flipped bit from turning into a multi-gigabyte allocation.
+     */
+    internal const val MAX_ENTRIES = 1 shl 20
+
+    /** The largest block payload this reader will buffer, for the same reason as [MAX_ENTRIES]. */
+    internal const val MAX_BLOCK_BYTES = 32 shl 20
+
     /** Reads a complete `.pbd` file already held in memory. */
     fun read(bytes: ByteArray): PbdReadResult = read(DataInputStream(bytes.inputStream()))
 
     /** Reads a `.pbd` file from a stream, consuming it to the end (or to the first error). */
     fun read(input: InputStream): PbdReadResult = read(DataInputStream(input))
 
+    /**
+     * Every failure becomes a typed refusal. This runs on a start-up thread where an escaped
+     * exception kills the keyboard process, so the last two catches are a safety net for any
+     * damage the explicit checks in [readHeaderAndBody] did not anticipate.
+     */
     private fun read(header: DataInputStream): PbdReadResult = try {
         readHeaderAndBody(header)
     } catch (e: EOFException) {
         PbdReadResult.Failed(PbdFormatError.Truncated)
+    } catch (e: IOException) {
+        PbdReadResult.Failed(PbdFormatError.Unreadable(e.message ?: e::class.java.simpleName))
+    } catch (e: RuntimeException) {
+        PbdReadResult.Failed(PbdFormatError.CorruptBlock(e.message ?: e::class.java.simpleName))
     }
 
     private fun readHeaderAndBody(header: DataInputStream): PbdReadResult {
@@ -109,28 +129,28 @@ object PbdReader {
         var structuralError: PbdFormatError? = null
 
         while (true) {
-            val tag = try {
-                body.readInt()
-            } catch (e: EOFException) {
+            val tag = readBlockTag(body) ?: break
+            val length = body.readInt()
+            if (length < 0) {
+                // The frame cannot be trusted past this point, so the rest of the file is
+                // drained through the checksum and the complaint waits its turn below.
+                structuralError = PbdFormatError.CorruptBlock("block length $length is negative")
+                drain(body)
                 break
             }
-            val length = body.readInt()
             if (tag == PbdFormat.WORD_BLOCK_TAG && decodedWords == null) {
-                val blockCount = body.readInt()
-                val offsets = IntArray(blockCount)
-                val lengths = IntArray(blockCount)
-                val frequencies = IntArray(blockCount)
-                for (i in 0 until blockCount) {
-                    offsets[i] = body.readInt()
-                    lengths[i] = body.readUnsignedShort()
-                    frequencies[i] = body.readUnsignedShort()
-                }
-                val blob = ByteArray(length - 4 - blockCount * 8)
-                body.readFully(blob)
-                val words = Array(blockCount) { i -> String(blob, offsets[i], lengths[i], Charsets.UTF_8) }
-                decodedWords = DecodedWordBlock(words, frequencies)
-                if (blockCount != headerWordCount) {
-                    structuralError = PbdFormatError.WordCountMismatch(headerWordCount, blockCount)
+                when (val block = readWordBlock(body, length)) {
+                    is WordBlockOutcome.Decoded -> {
+                        decodedWords = block.words
+                        if (block.words.words.size != headerWordCount) {
+                            structuralError = PbdFormatError.WordCountMismatch(headerWordCount, block.words.words.size)
+                        }
+                    }
+                    is WordBlockOutcome.Corrupt -> {
+                        structuralError = block.error
+                        drain(body)
+                        break
+                    }
                 }
             } else {
                 skipFully(body, length.toLong())
@@ -151,6 +171,63 @@ object PbdReader {
         return PbdReadResult.Loaded(PbdDocument(language, version, entries))
     }
 
+    /**
+     * Reads the next block's tag, or null at a clean end of file. A tag cut off after one to
+     * three bytes is a truncated file, not a checksum disagreement, so it is reported as such.
+     */
+    private fun readBlockTag(body: DataInputStream): Int? {
+        val first = body.read()
+        if (first < 0) return null
+        var tag = first
+        repeat(3) {
+            val next = body.read()
+            if (next < 0) throw EOFException()
+            tag = (tag shl 8) or next
+        }
+        return tag
+    }
+
+    /**
+     * Decodes a WORD block payload of [length] bytes, validating every count and offset
+     * against the block's own bounds before allocating or indexing anything.
+     */
+    private fun readWordBlock(body: DataInputStream, length: Int): WordBlockOutcome {
+        if (length < 4) return WordBlockOutcome.Corrupt(PbdFormatError.CorruptBlock("WORD block length $length is too short"))
+        if (length > MAX_BLOCK_BYTES) {
+            return WordBlockOutcome.Corrupt(PbdFormatError.CorruptBlock("WORD block length $length exceeds $MAX_BLOCK_BYTES"))
+        }
+        val blockCount = body.readInt()
+        if (blockCount < 0 || blockCount > MAX_ENTRIES) {
+            return WordBlockOutcome.Corrupt(PbdFormatError.CorruptBlock("WORD block entry count $blockCount is out of range"))
+        }
+        val tableBytes = 4L + blockCount * 8L
+        if (tableBytes > length) {
+            return WordBlockOutcome.Corrupt(
+                PbdFormatError.CorruptBlock("WORD block entry count $blockCount does not fit its length $length"),
+            )
+        }
+        val offsets = IntArray(blockCount)
+        val lengths = IntArray(blockCount)
+        val frequencies = IntArray(blockCount)
+        for (i in 0 until blockCount) {
+            offsets[i] = body.readInt()
+            lengths[i] = body.readUnsignedShort()
+            frequencies[i] = body.readUnsignedShort()
+        }
+        val blob = ByteArray((length - tableBytes).toInt())
+        body.readFully(blob)
+        for (i in 0 until blockCount) {
+            val offset = offsets[i]
+            if (offset < 0 || offset > blob.size - lengths[i]) {
+                return WordBlockOutcome.Corrupt(
+                    PbdFormatError.CorruptBlock("entry $i at offset $offset length ${lengths[i]} lies outside the word bytes"),
+                )
+            }
+        }
+        val words = Array(blockCount) { i -> String(blob, offsets[i], lengths[i], Charsets.UTF_8) }
+        return WordBlockOutcome.Decoded(DecodedWordBlock(words, frequencies))
+    }
+
     private fun skipFully(input: InputStream, count: Long) {
         var remaining = count
         while (remaining > 0) {
@@ -164,5 +241,16 @@ object PbdReader {
         }
     }
 
+    /** Consumes the rest of the stream so the checksum covers the whole file. */
+    private fun drain(input: InputStream) {
+        val scratch = ByteArray(8192)
+        while (input.read(scratch) != -1) { /* counting only */ }
+    }
+
     private class DecodedWordBlock(val words: Array<String>, val frequencies: IntArray)
+
+    private sealed class WordBlockOutcome {
+        class Decoded(val words: DecodedWordBlock) : WordBlockOutcome()
+        class Corrupt(val error: PbdFormatError) : WordBlockOutcome()
+    }
 }

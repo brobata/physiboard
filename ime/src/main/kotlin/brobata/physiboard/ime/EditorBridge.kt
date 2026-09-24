@@ -33,13 +33,21 @@ internal data class EditorReadout(
 )
 
 /**
- * Reads the unified window text-input.md SS19 calls for, plus the whole document via extracted
- * text for the selection/word-motion primitives (SS19: "drop" the 1000-character fallback reads;
- * an app that refuses the extracted-text request simply gets no selection helpers, spec SS2).
+ * Reads the unified window text-input.md SS19 calls for, plus, only when [wholeDocument] is set,
+ * the whole document via extracted text for the selection/word-motion primitives (SS19: "drop"
+ * the 1000-character fallback reads; an app that refuses the extracted-text request simply gets
+ * no selection helpers, spec SS2). Extracting the document is an O(document) IPC, so
+ * [KeyboardPipeline.needsWholeDocument] decides per stroke whether it is worth paying for.
+ * [fallbackCursorAbsolute] is the caller's best knowledge of the cursor (the editor's last
+ * selection report) for when the document is not read.
  */
-internal fun InputConnection.readEditorState(nowMs: Long): EditorReadout {
+internal fun InputConnection.readEditorState(nowMs: Long, wholeDocument: Boolean, fallbackCursorAbsolute: Int): EditorReadout {
     val before = runCatching { getTextBeforeCursor(TEXT_BEFORE_CURSOR_WINDOW, 0)?.toString() }.getOrNull()
-    val extracted = runCatching { getExtractedText(ExtractedTextRequest().apply { hintMaxChars = 0 }, 0) }.getOrNull()
+    val extracted = if (wholeDocument) {
+        runCatching { getExtractedText(ExtractedTextRequest().apply { hintMaxChars = 0 }, 0) }.getOrNull()
+    } else {
+        null
+    }
 
     val fullText = extracted?.text?.let { charSequence ->
         val text = charSequence.toString()
@@ -48,7 +56,7 @@ internal fun InputConnection.readEditorState(nowMs: Long): EditorReadout {
         TextWindow(text, start, end)
     }
     val documentStartOffset = extracted?.startOffset ?: 0
-    val cursorAbsolute = if (extracted != null) documentStartOffset + extracted.selectionStart else 0
+    val cursorAbsolute = if (extracted != null) documentStartOffset + extracted.selectionStart else fallbackCursorAbsolute.coerceAtLeast(0)
 
     return EditorReadout(
         snapshot = EditorSnapshot(textBeforeCursor = before, fullText = fullText, nowMs = nowMs),

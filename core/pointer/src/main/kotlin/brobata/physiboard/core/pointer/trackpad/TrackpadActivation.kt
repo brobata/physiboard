@@ -32,6 +32,12 @@ data class TrackpadActivationState(
     val pendingSinceMs: Long? = null,
     val lastReleaseAtMs: Long? = null,
     val lastReleaseKey: TrackpadPhysicalKey? = null,
+    /**
+     * A trigger down just closed a sticky overlay and was swallowed, so its up is still to come:
+     * that up is swallowed too (never an unpaired up for the app) and is not the first tap of a
+     * new double tap. spec SS2.3, every swallowed down is paired or replayed.
+     */
+    val closingTapUpPending: Boolean = false,
 )
 
 /**
@@ -159,7 +165,7 @@ object TrackpadActivation {
     ): TrackpadActivationResult = when (state.phase) {
         TrackpadPhase.ACTIVE_HOLD -> TrackpadActivationResult(state, consumed = true)
         TrackpadPhase.ACTIVE_STICKY -> if (repeatCount == 0) {
-            TrackpadActivationResult(idle(), consumed = true, effect = TrackpadActivationEffect(closeOverlay = true))
+            TrackpadActivationResult(TrackpadActivationState(closingTapUpPending = true), consumed = true, effect = TrackpadActivationEffect(closeOverlay = true))
         } else {
             TrackpadActivationResult(state, consumed = true)
         }
@@ -208,9 +214,10 @@ object TrackpadActivation {
     } else {
         // SPEC GAP: SS2.3's missing-permission toast is written for the hold-timer-fires row only;
         // SS2.1 and SS2.9 make "the overlay cannot be added without the permission" a fact of the
-        // whole feature, not one specific to hold mode, so the same toast-and-do-nothing choice is
-        // extended here rather than silently opening a window that will fail.
-        TrackpadActivationResult(idle(), consumed = true, effect = TrackpadActivationEffect(showPermissionToast = true))
+        // whole feature, not one specific to hold mode, so the same toast-and-replay choice is
+        // extended here rather than silently opening a window that will fail: the swallowed
+        // trigger down is replayed so the key (Space, most often) still types.
+        TrackpadActivationResult(idle(), consumed = true, effect = TrackpadActivationEffect(showPermissionToast = true, replayTriggerDownOnly = true))
     }
 
     private fun onTriggerUp(
@@ -224,17 +231,19 @@ object TrackpadActivation {
             if (since != null && timeMs - since < settings.holdThresholdMs) {
                 TrackpadActivationResult(idle(), consumed = true, effect = TrackpadActivationEffect(replayTriggerDownAndUp = true))
             } else {
-                // Defensive: the timer should already have fired via onHoldTimerFired by now.
-                TrackpadActivationResult(idle(), consumed = true, effect = TrackpadActivationEffect(closeOverlay = true))
+                // The timer should have fired by now but has not (a late handler): nothing opened,
+                // so the held key is replayed as a tap rather than vanishing.
+                TrackpadActivationResult(idle(), consumed = true, effect = TrackpadActivationEffect(replayTriggerDownAndUp = true))
             }
         }
         TrackpadPhase.ACTIVE_HOLD -> TrackpadActivationResult(idle(), consumed = true, effect = TrackpadActivationEffect(closeOverlay = true))
         TrackpadPhase.ACTIVE_STICKY -> TrackpadActivationResult(state, consumed = true)
         TrackpadPhase.ABORTED -> TrackpadActivationResult(idle(), consumed = false)
-        TrackpadPhase.IDLE -> if (settings.activationMode == ActivationMode.DOUBLE_TAP) {
-            TrackpadActivationResult(state.copy(lastReleaseAtMs = timeMs, lastReleaseKey = key), consumed = false)
-        } else {
-            TrackpadActivationResult(state, consumed = false)
+        TrackpadPhase.IDLE -> when {
+            state.closingTapUpPending -> TrackpadActivationResult(idle(), consumed = true)
+            settings.activationMode == ActivationMode.DOUBLE_TAP ->
+                TrackpadActivationResult(state.copy(lastReleaseAtMs = timeMs, lastReleaseKey = key), consumed = false)
+            else -> TrackpadActivationResult(state, consumed = false)
         }
     }
 
