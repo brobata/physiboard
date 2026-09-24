@@ -32,6 +32,8 @@ sealed class TextInputRequest {
         val ctrlActive: Boolean = false,
         val shiftActive: Boolean = false,
         val navModeActive: Boolean = false,
+        /** The key is an auto-repeat of a held key, not a fresh press. spec: text-input.md SS6.7 needs two deliberate presses. */
+        val isRepeat: Boolean = false,
     ) : TextInputRequest()
 
     /** [word] is the candidate as shown on the slot; casing is reapplied here, not carried in. */
@@ -202,6 +204,7 @@ object TextInputPipeline {
     ): TextInputResult = when (request) {
         is TextInputRequest.Key -> handleAction(
             request.action, request.shiftHeld, request.altActive, request.ctrlActive, request.shiftActive, request.navModeActive,
+            request.isRepeat,
             field, settings, resources, state, editor, trust, appProfile,
         )
         // A strip tap is "any other key" to the double-space window (text-input.md SS6.7).
@@ -255,6 +258,7 @@ object TextInputPipeline {
         ctrlActive: Boolean,
         shiftActive: Boolean,
         navModeActive: Boolean,
+        isRepeat: Boolean,
         field: FieldContext,
         settings: TextInputSettingsBundle,
         resources: TextInputResources,
@@ -270,14 +274,14 @@ object TextInputPipeline {
         val leavesTimerAlone = isSpace || action is Action.Multiple || action === Action.StateOnly || action === Action.Ignored
         val state = if (leavesTimerAlone) rawState else rawState.copy(doubleSpaceTimer = rawState.doubleSpaceTimer.reset())
         return when (action) {
-            is Action.Commit -> handleCommit(action.text, field, settings, resources, state, editor, trust)
+            is Action.Commit -> handleCommit(action.text, field, settings, resources, state, editor, trust, isRepeat)
             is Action.Edit -> handleEdit(
                 action.effect, action.extendSelection, shiftHeld, altActive, ctrlActive, shiftActive, navModeActive,
                 field, settings, resources, state, editor, trust, appProfile,
             )
             is Action.ReplaceRecent -> handleReplaceRecent(action.deleteCount, action.text, field, settings, resources, state, editor, trust)
             is Action.Multiple -> action.actions.fold(TextInputResult(emptyList(), state)) { acc, next ->
-                val step = handleAction(next, shiftHeld, altActive, ctrlActive, shiftActive, navModeActive, field, settings, resources, acc.state, editor, trust, appProfile)
+                val step = handleAction(next, shiftHeld, altActive, ctrlActive, shiftActive, navModeActive, isRepeat, field, settings, resources, acc.state, editor, trust, appProfile)
                 TextInputResult(acc.ops + step.ops, step.state, step.capDecision ?: acc.capDecision, step.enterDelivery ?: acc.enterDelivery)
             }
             // Sym pages/chords, Ctrl combos, commands, status refreshes and plain pass-through carry
@@ -288,8 +292,8 @@ object TextInputPipeline {
         }
     }
 
-    private fun handleCommit(text: String, field: FieldContext, settings: TextInputSettingsBundle, resources: TextInputResources, state: TextInputState, editor: EditorSnapshot, trust: EditorTrust): TextInputResult {
-        if (text == " ") return handleSpace(field, settings, resources, state, editor, trust)
+    private fun handleCommit(text: String, field: FieldContext, settings: TextInputSettingsBundle, resources: TextInputResources, state: TextInputState, editor: EditorSnapshot, trust: EditorTrust, isRepeat: Boolean): TextInputResult {
+        if (text == " ") return handleSpace(field, settings, resources, state, editor, trust, isRepeat)
         if (text.length == 1 && text[0].isLetter()) return handleLetter(text[0], field, settings, state, editor, trust)
         if (text.length == 1) return handleAltCharacter(text[0], field, settings, resources, state, editor, trust)
         // A multi-character commit (a Sym-page string, an emoji, dictation, expansion, clipboard):
@@ -318,7 +322,8 @@ object TextInputPipeline {
         EditEffect.DELETE_CHAR_BACKWARD -> handleBackspace(settings, state, editor, trust, shiftHeld, altActive)
         EditEffect.DELETE_SELECTION_OR_WORD_BACKWARD, EditEffect.DELETE_WORD_BACKWARD -> handleDeleteWordBackward(editor, trust, state)
         EditEffect.NEWLINE -> handleEnter(field, settings, resources, state, editor, trust, appProfile, ctrlActive, shiftActive, navModeActive)
-        EditEffect.SELECT_ALL -> editor.fullText?.let { TextInputResult(listOf(SelectAll.apply(it.text)), state) } ?: TextInputResult(emptyList(), state)
+        // Without a document read the key goes to the app (which can select all itself) rather than being eaten; same as handleWordMove.
+        EditEffect.SELECT_ALL -> editor.fullText?.let { TextInputResult(listOf(SelectAll.apply(it.text)), state) } ?: TextInputResult(listOf(EditorOp.PassThroughKey), state)
         EditEffect.MOVE_WORD_LEFT -> handleWordMove(MoveDirection.LEFT, extendSelection, state, editor)
         EditEffect.MOVE_WORD_RIGHT -> handleWordMove(MoveDirection.RIGHT, extendSelection, state, editor)
         EditEffect.EXPAND_SELECTION_LEFT -> handleExpand(MoveDirection.LEFT, wordWise = false, state, editor)
@@ -537,9 +542,11 @@ object TextInputPipeline {
     // Space. spec: text-input.md SS6.1 (unrestricted), SS6.2 (restricted).
     // ---------------------------------------------------------------------------------------
 
-    private fun handleSpace(field: FieldContext, settings: TextInputSettingsBundle, resources: TextInputResources, state: TextInputState, editor: EditorSnapshot, trust: EditorTrust): TextInputResult {
+    private fun handleSpace(field: FieldContext, settings: TextInputSettingsBundle, resources: TextInputResources, state: TextInputState, editor: EditorSnapshot, trust: EditorTrust, isRepeat: Boolean): TextInputResult {
         val textBefore = editor.contextTextBeforeCursor(trust)
-        val isSecondPress = state.doubleSpaceTimer.isSecondPress(editor.nowMs)
+        // SS6.7 is two deliberate presses: a held Space's auto-repeat (onset about 400 ms, inside
+        // the 500 ms window) is one press and must never become a full stop.
+        val isSecondPress = !isRepeat && state.doubleSpaceTimer.isSecondPress(editor.nowMs)
         // Captured before anything below runs: see justCommittedSentenceEnd's own KDoc. Whatever
         // this Space does with it, it is stale for any keystroke after this one, so every return
         // below routes through finishWithCapReevaluation, which always clears it back to false.

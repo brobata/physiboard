@@ -117,11 +117,13 @@ object DictationEngine {
     private fun handlePartialResult(session: DictationSession, text: String, textSettings: DictationTextSettings): DictationOutcome {
         if (text.isBlank()) return DictationOutcome(session) // "Empty partials are ignored."
         val invalidated = session.utterance.pending is PendingUtterance.Invalidated
+        // After a stop the watchdog is the only thing guaranteed to end the session (SS6.5: the
+        // recognizer may never answer), so a trailing partial must not disarm it.
         val next = session.copy(
             heardSpeech = true,
             utterance = if (invalidated) session.utterance else session.utterance.copy(pending = PendingUtterance.Live(text)),
-            silenceDeadlineMs = null,
-            watchdogDeadlineMs = null,
+            silenceDeadlineMs = if (session.stopRequested) session.silenceDeadlineMs else null,
+            watchdogDeadlineMs = if (session.stopRequested) session.watchdogDeadlineMs else null,
         )
         if (invalidated) return DictationOutcome(next)
         val displayed = DictationPartialDisplay.display(text, session.utterance.context, textSettings)

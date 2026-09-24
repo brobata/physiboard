@@ -136,4 +136,15 @@ class DictationEndingsTest {
         val ended = handle(composing(restartLoop), DictationEvent.FinalResult("   "), now = 300L, restartLoop)
         assertEquals(listOf(DictationTextOp.SetComposingText("Half a thought "), DictationTextOp.FinishComposing), ended.textOps)
     }
+
+    @Test
+    fun `a trailing partial after a stop does not disarm the watchdog, so the session still ends`() {
+        val stopped = handle(readySession(restartLoop), DictationEvent.Trigger("app", ""), now = 500L, restartLoop)
+        val deadline = stopped.session!!.watchdogDeadlineMs!!
+        val trailing = handle(stopped.session, DictationEvent.PartialResult("late words"), now = 600L, restartLoop)
+        assertEquals(deadline, trailing.session!!.watchdogDeadlineMs, "a partial after a stop must not leave the session with no timer")
+
+        val fired = handle(trailing.session, DictationEvent.ClockTick, now = deadline, restartLoop)
+        assertNull(fired.session)
+    }
 }

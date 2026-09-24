@@ -99,7 +99,17 @@ data class KeyboardSettings(
  * [consumed] for those is provisional until [KeyboardSession] learns whether the real call was
  * delivered (SS3.4, "Handled if and only if the request was delivered").
  */
-data class PipelineResult(val ops: List<EditorOp>, val consumed: Boolean, val enterDelivery: EnterIntent? = null) {
+data class PipelineResult(
+    val ops: List<EditorOp>,
+    val consumed: Boolean,
+    val enterDelivery: EnterIntent? = null,
+    /**
+     * The key was handed to the app unconsumed and the app is expected to edit the field with it
+     * (a plain Backspace or Delete, a Ctrl+Backspace under reduced trust, a forwarded Ctrl+X/V/Z).
+     * Dictation's c440844 invariant needs that fact as much as an edit this keyboard made itself.
+     */
+    val appMayEditField: Boolean = false,
+) {
     companion object {
         val NOT_CONSUMED: PipelineResult = PipelineResult(emptyList(), consumed = false)
         val CONSUMED_NO_OP: PipelineResult = PipelineResult(emptyList(), consumed = true)
@@ -262,7 +272,10 @@ internal class KeyboardPipeline(
         return when (val key = stroke.key) {
             is KeyId.Modifier -> false
             is KeyId.Control -> key.key != ControlKey.SPACE && key.key != ControlKey.ENTER || modifierState.isCtrlActive(stroke.meta.ctrl)
-            is KeyId.Letter, is KeyId.Digit, is KeyId.Punctuation -> modifierState.isCtrlActive(stroke.meta.ctrl)
+            // A letter under a still-held Sym is a chord (keys-and-modifiers.md, Sym+A selects
+            // all), not a letter; the same fields LayerResolver reads to decide that.
+            is KeyId.Letter, is KeyId.Digit, is KeyId.Punctuation ->
+                modifierState.isCtrlActive(stroke.meta.ctrl) || (modifierState.sym.togglePending && !modifierState.sym.chordUsed)
         }
     }
 
@@ -308,14 +321,19 @@ internal class KeyboardPipeline(
         // The one exception is [redirectEnterForPerAppBehavior]'s own narrow override, see its KDoc.
         val ctrlActive = modifierState.isCtrlActive(effectiveStroke.meta.ctrl)
         val shiftActive = effectiveStroke.meta.shift || modifierState.shift.layerLatched
-        return applyAction(
+        val result = applyAction(
             redirectEnterForPerAppBehavior(effectiveStroke, resolution.action),
             shiftHeld = effectiveStroke.meta.shift,
             altActive = modifierState.isAltActive(effectiveStroke.meta.alt),
             editor,
             ctrlActive = ctrlActive,
             shiftActive = shiftActive,
+            isRepeat = effectiveStroke.repeatCount > 0,
         )
+        // A key the app will delete or paste with is as much an edit of the field as one this
+        // keyboard made itself (dictation's c440844 invariant, see PipelineResult.appMayEditField).
+        val appEdits = !result.consumed && AppliedEditAccounting.appEditsWithPassThrough(effectiveStroke.key, ctrlActive)
+        return if (appEdits) result.copy(appMayEditField = true) else result
     }
 
     /**
@@ -442,6 +460,7 @@ internal class KeyboardPipeline(
         editor: EditorSnapshot,
         ctrlActive: Boolean = false,
         shiftActive: Boolean = false,
+        isRepeat: Boolean = false,
     ): PipelineResult {
         dispatchCommands(action)
         return when (action) {
@@ -449,13 +468,13 @@ internal class KeyboardPipeline(
             Action.Ignored, Action.StateOnly -> PipelineResult.CONSUMED_NO_OP
             is Action.ForwardAsCtrlCombo -> PipelineResult.NOT_CONSUMED
             is Action.RunCommand -> PipelineResult.CONSUMED_NO_OP
-            is Action.Commit, is Action.Edit, is Action.ReplaceRecent -> textPipelineStep(action, shiftHeld, altActive, ctrlActive, shiftActive, editor)
+            is Action.Commit, is Action.Edit, is Action.ReplaceRecent -> textPipelineStep(action, shiftHeld, altActive, ctrlActive, shiftActive, isRepeat, editor)
             is Action.Multiple -> {
                 val textActions = action.actions.filter { it is Action.Commit || it is Action.Edit || it is Action.ReplaceRecent }
                 if (textActions.isEmpty()) {
                     PipelineResult.CONSUMED_NO_OP
                 } else {
-                    textPipelineStep(Action.Multiple(textActions), shiftHeld, altActive, ctrlActive, shiftActive, editor)
+                    textPipelineStep(Action.Multiple(textActions), shiftHeld, altActive, ctrlActive, shiftActive, isRepeat, editor)
                 }
             }
         }
@@ -469,10 +488,10 @@ internal class KeyboardPipeline(
         }
     }
 
-    private fun textPipelineStep(action: Action, shiftHeld: Boolean, altActive: Boolean, ctrlActive: Boolean, shiftActive: Boolean, editor: EditorSnapshot): PipelineResult {
+    private fun textPipelineStep(action: Action, shiftHeld: Boolean, altActive: Boolean, ctrlActive: Boolean, shiftActive: Boolean, isRepeat: Boolean, editor: EditorSnapshot): PipelineResult {
         // spec: per-app-behavior.md SS3.5 step 4e, SS3.10; nav mode has no owning module yet (see
         // EnterDecision.decide's own KDoc), so this is always "nav mode is not active".
-        val request = TextInputRequest.Key(action, shiftHeld = shiftHeld, altActive = altActive, ctrlActive = ctrlActive, shiftActive = shiftActive, navModeActive = false)
+        val request = TextInputRequest.Key(action, shiftHeld = shiftHeld, altActive = altActive, ctrlActive = ctrlActive, shiftActive = shiftActive, navModeActive = false, isRepeat = isRepeat)
         val result = TextInputPipeline.handle(request, activeField, settings.textInput, resources, textInputState, editor, activeTrust, activeAppProfile)
         textInputState = result.state
         result.capDecision?.let(::applyCapDecision)

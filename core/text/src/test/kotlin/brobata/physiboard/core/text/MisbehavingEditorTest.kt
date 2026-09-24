@@ -380,6 +380,17 @@ class MisbehavingEditorTest {
     }
 
     @Test
+    fun `select-all with an unreadable document passes the key through rather than being eaten`() {
+        val trust = EditorTrust(reads = EditorReadTrust.UNAVAILABLE)
+        val result = TextInputPipeline.handle(
+            TextInputRequest.Key(Action.Edit(EditEffect.SELECT_ALL)),
+            FieldContext(FieldKind.NORMAL), TextInputSettingsBundle(), TextInputResources(), TextInputState(),
+            EditorSnapshot(textBeforeCursor = "hello", fullText = null), trust,
+        )
+        assertEquals(listOf(EditorOp.PassThroughKey), result.ops)
+    }
+
+    @Test
     fun `a selection shortcut with an unreadable document passes the key through rather than selecting nothing`() {
         val trust = EditorTrust(reads = EditorReadTrust.UNAVAILABLE)
         val result = TextInputPipeline.handle(

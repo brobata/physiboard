@@ -236,6 +236,9 @@ internal class KeyboardSession(
             // does not wipe the word in progress; web fields restart input mid-word all the time.
             val textBeforeCursor = runCatching { service.currentInputConnection?.getTextBeforeCursor(TEXT_BEFORE_CURSOR_READ, 0)?.toString() }.getOrNull()
             pipeline.onRestartInput(field, profile.editorTrust, profile, textBeforeCursor)
+            // The pipeline keeps a pending long press across a restart (the key is still held);
+            // the timer cancelled above is re-armed for it rather than leaving it to never fire.
+            scheduleLongPressIfNeeded()
         } else {
             pipeline.onStartInput(field, profile.editorTrust, profile)
         }
@@ -570,11 +573,12 @@ internal class KeyboardSession(
                 sendSpaceKeyFallback = { ic.sendSpaceKeyFallback(SystemClock.uptimeMillis()) },
                 haptic = ::performHaptic,
             )
-            // spec: the c440844 invariant. Only an edit this keyboard actually made to the text
-            // (never a modifier press, a key-up or a Fn repeat) means the user changed the field
-            // under a listening dictation session; see DictationController.onUserEditedComposingText.
-            if (AppliedEditAccounting.changesText(result.ops)) noteFieldEditedDuringDictation()
         }
+        // spec: the c440844 invariant. An edit this keyboard made to the text, or a key it handed
+        // to the app knowing the app will delete or paste with it (never a modifier press, a
+        // key-up or a Fn repeat), means the user changed the field under a listening dictation
+        // session; see DictationController.onUserEditedComposingText.
+        if (AppliedEditAccounting.editsField(result)) noteFieldEditedDuringDictation()
         val delivery = result.enterDelivery ?: return result.consumed
         val delivered = ic.performEnterDelivery(delivery, SystemClock.uptimeMillis())
         if (delivery.clearsCtrlState(delivered)) {

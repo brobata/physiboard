@@ -1,5 +1,7 @@
 package brobata.physiboard.ime
 
+import brobata.physiboard.core.keys.ControlKey
+import brobata.physiboard.core.keys.KeyId
 import brobata.physiboard.core.text.EditorOp
 
 /**
@@ -28,6 +30,20 @@ internal object AppliedEditAccounting {
             is EditorOp.SetComposingRegion, is EditorOp.SetSelection, EditorOp.FinishComposing, EditorOp.Haptic, EditorOp.PassThroughKey -> false
         }
     }
+
+    /**
+     * Whether a key-down handed to the app unconsumed will make the app edit the field: a plain
+     * Backspace or Delete (text-input.md SS8's fall-through), or a Ctrl combo the app treats as
+     * cut, paste, undo or redo. Ctrl+A, Ctrl+C and Ctrl+arrows change nothing and are not listed.
+     */
+    fun appEditsWithPassThrough(key: KeyId, ctrlActive: Boolean): Boolean = when (key) {
+        is KeyId.Control -> key.key == ControlKey.BACKSPACE || key.key == ControlKey.FORWARD_DELETE || key.key == ControlKey.SWIPE_TO_DELETE
+        is KeyId.Letter -> ctrlActive && key.qwertyLetter.uppercaseChar() in "XVZY"
+        is KeyId.Digit, is KeyId.Punctuation, is KeyId.Modifier -> false
+    }
+
+    /** True when a stroke's result edits the field one way or the other: ops this keyboard applies, or a key the app will edit with. */
+    fun editsField(result: PipelineResult): Boolean = changesText(result.ops) || result.appMayEditField
 
     /** True when applying [ops] leaves the cursor somewhere the editor may report: any text change, or a selection op. */
     fun movesCursor(ops: List<EditorOp>): Boolean = changesText(ops) || ops.any { it is EditorOp.SetSelection }

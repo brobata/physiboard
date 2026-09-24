@@ -12,7 +12,9 @@ import brobata.physiboard.core.keys.ModifierKey
 import brobata.physiboard.core.keys.PunctuationKey
 import brobata.physiboard.core.text.AppProfile
 import brobata.physiboard.core.text.EditorOp
+import brobata.physiboard.core.text.EditorReadTrust
 import brobata.physiboard.core.text.EditorSnapshot
+import brobata.physiboard.core.text.EditorTrust
 import brobata.physiboard.core.text.EnterBehavior
 import brobata.physiboard.core.text.EnterIntent
 import brobata.physiboard.core.text.FieldCapFlags
@@ -27,6 +29,7 @@ import brobata.physiboard.device.titan.TitanLayouts
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -462,7 +465,33 @@ class KeyboardPipelineTest {
         val editor = FakeEditor()
         pipeline.onStartInput(FieldContext(FieldKind.NORMAL))
 
-        assertTrue(AppliedEditAccounting.changesText(step(pipeline, editor, letter('H')).ops))
+        assertTrue(AppliedEditAccounting.editsField(step(pipeline, editor, letter('H'))))
+        // A plain Backspace is a pass-through: the app deletes, not this keyboard, but the field
+        // still changed under the utterance and the deleted words must never be typed back.
+        val backspace = step(pipeline, editor, KeyId.Control(ControlKey.BACKSPACE))
+        assertFalse(backspace.consumed)
+        assertTrue(AppliedEditAccounting.editsField(backspace))
+    }
+
+    @Test
+    fun `Ctrl+Backspace under reduced trust passes through and still counts as editing the field`() {
+        val pipeline = KeyboardPipeline(layout = layout)
+        val editor = FakeEditor()
+        pipeline.onStartInput(FieldContext(FieldKind.NORMAL), trust = EditorTrust(reads = EditorReadTrust.UNAVAILABLE))
+        step(pipeline, editor, modifier(ModifierKey.CTRL))
+
+        val result = pipeline.onKeyStroke(KeyStroke(KeyId.Control(ControlKey.BACKSPACE), KeyEdge.DOWN, 0, 100), EditorSnapshot(textBeforeCursor = null, nowMs = 100))
+        assertFalse(result.consumed)
+        assertTrue(AppliedEditAccounting.editsField(result))
+    }
+
+    @Test
+    fun `a Ctrl+A or a key-up handed to the app does not count as editing the field`() {
+        val pipeline = KeyboardPipeline(layout = layout)
+        val editor = FakeEditor()
+        pipeline.onStartInput(FieldContext(FieldKind.NORMAL))
+        val up = pipeline.onKeyStroke(KeyStroke(KeyId.Control(ControlKey.BACKSPACE), KeyEdge.UP, 0, 100), editor.nextSnapshot())
+        assertFalse(AppliedEditAccounting.editsField(up))
     }
 
     // -----------------------------------------------------------------------------------------
@@ -531,5 +560,49 @@ class KeyboardPipelineTest {
         // A Ctrl one-shot armed by a previous press makes the next letter a Ctrl combo too.
         step(pipeline, editor, modifier(ModifierKey.CTRL))
         assertTrue(pipeline.needsWholeDocument(KeyStroke(letter('A'), KeyEdge.DOWN, 0, 0)))
+    }
+
+    @Test
+    fun `a letter under a held Sym is a chord (Sym+A selects all) and reads the whole document`() {
+        val pipeline = KeyboardPipeline(layout = layout)
+        val editor = FakeEditor()
+        pipeline.onStartInput(FieldContext(FieldKind.NORMAL))
+        step(pipeline, editor, modifier(ModifierKey.SYM)) // Sym down and still held: a chord is pending
+        assertTrue(pipeline.needsWholeDocument(KeyStroke(letter('A'), KeyEdge.DOWN, 0, 50)))
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Holding Space. LayerResolver answers every Space repeat with Commit(" "), and the repeat
+    // onset (about 400 ms) is inside the double-space window (500 ms), so without a gate the
+    // first repeat of a held Space typed ". ". spec text-input.md SS6.7 is about two presses.
+    // -----------------------------------------------------------------------------------------
+
+    @Test
+    fun `a Space auto-repeat inside the double-space window commits a space, not a full stop`() {
+        val pipeline = KeyboardPipeline(layout = layout)
+        val editor = FakeEditor()
+        pipeline.onStartInput(FieldContext(FieldKind.NORMAL))
+        step(pipeline, editor, letter('H'))
+        step(pipeline, editor, letter('I'))
+        step(pipeline, editor, KeyId.Control(ControlKey.SPACE))
+
+        val snapshot = editor.nextSnapshot() // 50 ms later, well inside the window
+        val repeat = pipeline.onKeyStroke(KeyStroke(KeyId.Control(ControlKey.SPACE), KeyEdge.DOWN, 1, snapshot.nowMs), snapshot)
+        editor.apply(repeat.ops)
+
+        assertEquals("hi  ", editor.text)
+    }
+
+    @Test
+    fun `a pending long press survives a restart so the session can reschedule its timer`() {
+        val pipeline = KeyboardPipeline(layout = layout)
+        val editor = FakeEditor()
+        pipeline.onStartInput(FieldContext(FieldKind.NORMAL))
+        step(pipeline, editor, letter('Q'))
+        val deadline = pipeline.pendingLongPressDeadlineMs
+        assertNotNull(deadline)
+
+        pipeline.onRestartInput(FieldContext(FieldKind.NORMAL), textBeforeCursor = editor.text)
+        assertEquals(deadline, pipeline.pendingLongPressDeadlineMs)
     }
 }
