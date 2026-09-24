@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
 }
 
 android {
@@ -35,6 +36,12 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
+    // The settings app (rebuild-from-scratch.md, "Settings") is Compose/Material 3; the rest of
+    // `:app` (the importer, the store) has no UI and needs none of this.
+    buildFeatures {
+        compose = true
+    }
 }
 
 kotlin {
@@ -43,12 +50,26 @@ kotlin {
 
 dependencies {
     implementation(project(":ime"))
+    // The one process-wide wiring of the broker, pairing, setup pass and ring (PrivilegedServicesOwner).
+    implementation(project(":device:privileged"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     // The settings store (settings-catalog.md SS1, SS13 "one preference file with typed rows") and
     // the one-shot 2.x importer that fills it (rebuild-from-scratch.md, "Settings").
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.kotlinx.coroutines.android)
+
+    // The settings app itself: Jetpack Compose plus Material 3 (settings-catalog.md SS9, "the
+    // settings app"). The BOM pins every Compose artifact's version in one place.
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    debugImplementation(libs.androidx.compose.ui.tooling)
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material.icons.extended)
+    implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
 }
-    // The one process-wide wiring of the broker, pairing, setup pass and ring (PrivilegedServicesOwner).
-    implementation(project(":device:privileged"))
