@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- app-shell.md SS10.5: the debug report file share, cache path `debug-reports/`. -->
+<paths>
+    <cache-path name="debug-reports" path="debug-reports/" />
+</paths>

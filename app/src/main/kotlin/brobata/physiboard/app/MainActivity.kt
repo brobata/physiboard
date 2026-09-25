@@ -3,20 +3,36 @@ package brobata.physiboard.app
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.layout.fillMaxSize
 import brobata.physiboard.app.settings.ui.LocalSettingsController
+import brobata.physiboard.app.settings.ui.PhysiBoardTheme
+import brobata.physiboard.app.settings.ui.Routes
 import brobata.physiboard.app.settings.ui.SettingsApp
 import brobata.physiboard.app.settings.ui.rememberSettingsController
+import brobata.physiboard.core.shell.LaunchDestination
+import brobata.physiboard.core.shell.LaunchRouting
+import kotlinx.coroutines.flow.first
 
 /**
  * The settings app (settings-catalog.md SS9, "the settings app"): a single activity holding the
  * whole push/pop screen stack (SettingsApp / SettingsNavHost). The milestone-3 typing field this
  * class used to be the entire content of now lives at the "Test field" row
  * (rebuild-from-scratch.md, "Leave MainActivity's typing field reachable from a Test field row").
+ *
+ * Launch routing (app-shell.md SS3) waits for the gated settings flow's first real emission (past
+ * the 2.x import) before drawing anything, then builds the NavHost with that one destination:
+ * `NavHost`'s start destination is fixed when the graph is built, so deciding it from a `State`
+ * that can still flip from the shipped defaults to the imported values would either flash setup
+ * for an existing install or leave the graph pointed at the wrong screen once the real value
+ * arrives.
  */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -24,10 +40,19 @@ class MainActivity : ComponentActivity() {
         val application = application as PhysiBoardApplication
         setContent {
             val controller = rememberSettingsController(application.settingsSource.settings, application.settingsStore)
-            MaterialTheme {
+            var startDestination by remember { mutableStateOf<String?>(null) }
+            LaunchedEffect(Unit) {
+                val shell = application.settingsSource.settings.first().shell
+                startDestination = when (LaunchRouting.decide(shell.tutorialCompleted, shell.lastSeenWhatsNewVersion.ifBlank { null }, BuildConfig.VERSION_NAME)) {
+                    LaunchDestination.SETUP -> Routes.SETUP
+                    LaunchDestination.WHATS_NEW -> Routes.WHATS_NEW
+                    LaunchDestination.HOME -> Routes.HOME
+                }
+            }
+            PhysiBoardTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     CompositionLocalProvider(LocalSettingsController provides controller) {
-                        SettingsApp()
+                        startDestination?.let { SettingsApp(startDestination = it) }
                     }
                 }
             }

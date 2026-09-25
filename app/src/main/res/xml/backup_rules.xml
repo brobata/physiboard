@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  app-shell.md SS23.6: auto backup and device transfer carry the settings store. 3.0 has one
+  preferences file (settings-catalog.md SS1.1), not the several 2.x split across, so there is
+  nothing here to exclude yet; a future persisted file (dictionaries, layouts) that should not
+  travel in a backup gets an <exclude> row here when it lands.
+-->
+<full-backup-content>
+    <include domain="file" path="datastore/physiboard_settings.preferences_pb" />
+</full-backup-content>

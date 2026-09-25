@@ -41,6 +41,9 @@ android {
     // `:app` (the importer, the store) has no UI and needs none of this.
     buildFeatures {
         compose = true
+        // BuildConfig.VERSION_NAME feeds the launch-routing decision and the update checker
+        // (app-shell.md SS3, SS13): the app shell needs the live version name, not a duplicate copy.
+        buildConfig = true
     }
 }
 
@@ -52,6 +55,9 @@ dependencies {
     implementation(project(":ime"))
     // The one process-wide wiring of the broker, pairing, setup pass and ring (PrivilegedServicesOwner).
     implementation(project(":device:privileged"))
+    // The app shell as plain Kotlin (app-shell.md): update checker, what's-new note, launch
+    // routing, first-run steps, the debug capture store, the backup codec.
+    implementation(project(":core:shell"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     // The settings store (settings-catalog.md SS1, SS13 "one preference file with typed rows") and

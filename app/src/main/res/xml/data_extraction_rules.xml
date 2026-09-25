@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- app-shell.md SS23.6: the Android 12+ rules, kept identical to backup_rules.xml's set. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="file" path="datastore/physiboard_settings.preferences_pb" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="file" path="datastore/physiboard_settings.preferences_pb" />
+    </device-transfer>
+</data-extraction-rules>
