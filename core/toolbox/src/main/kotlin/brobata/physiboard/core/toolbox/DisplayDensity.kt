@@ -4,7 +4,6 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonPrimitive
 
 /** What `wm density` reported. spec: broker-privileged-toolbox.md SS13. */
 data class DensityReading(val physicalDpi: Int, val currentDpi: Int, val overridden: Boolean)
@@ -27,12 +26,13 @@ object PendingRevertRecord {
 object PendingRevertCodec {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
+    // A pending-revert record with a wrong-typed field used to throw out of here, on the path that runs at every IME start.
     fun decode(text: String?): PendingRevert? {
         if (text.isNullOrBlank()) return null
         val obj = runCatching { json.parseToJsonElement(text) as? JsonObject }.getOrNull() ?: return null
-        val id = obj["id"]?.jsonPrimitive?.contentOrNull ?: return null
-        val apply = obj["apply"]?.jsonPrimitive?.contentOrNull ?: return null
-        val revert = obj["revert"]?.jsonPrimitive?.contentOrNull ?: return null
+        val id = (obj["id"] as? JsonPrimitive)?.contentOrNull ?: return null
+        val apply = (obj["apply"] as? JsonPrimitive)?.contentOrNull ?: return null
+        val revert = (obj["revert"] as? JsonPrimitive)?.contentOrNull ?: return null
         return PendingRevert(id, apply, revert)
     }
 

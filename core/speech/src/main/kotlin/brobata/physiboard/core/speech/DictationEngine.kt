@@ -118,33 +118,13 @@ object DictationEngine {
         val text = SessionEcho.strip(rawText, session.utterance.finishedThisSession)
         if (text.isBlank()) return DictationOutcome(session) // "Empty partials are ignored."
         val invalidated = session.utterance.pending is PendingUtterance.Invalidated
-        // spec SS7.2, "New utterance inside one request": a partial that does not look like the
-        // one composing commits the previous words first (a space between them when the text
-        // before the cursor ends in a letter or digit) and starts a fresh composing region.
-        val previous = (session.utterance.pending as? PendingUtterance.Live)?.text
-        if (previous != null && !SameUtteranceCheck.isSameUtterance(previous, text)) {
-            val previousDisplayed = DictationPartialDisplay.display(previous, session.utterance.context, textSettings)
-            val joiner = if (previousDisplayed.lastOrNull()?.isLetterOrDigit() == true) " " else ""
-            val extended = session.utterance.copy(
-                context = extendContext(session.utterance.context, previousDisplayed + joiner),
-                pending = PendingUtterance.Live(text),
-                finishedThisSession = SessionEcho.extend(session.utterance.finishedThisSession, previous),
-            )
-            val next = session.copy(
-                heardSpeech = true,
-                utterance = extended,
-                silenceDeadlineMs = if (session.stopRequested) session.silenceDeadlineMs else null,
-                watchdogDeadlineMs = if (session.stopRequested) session.watchdogDeadlineMs else null,
-            )
-            val ops = buildList {
-                add(DictationTextOp.FinishComposing)
-                if (joiner.isNotEmpty()) add(DictationTextOp.CommitText(joiner))
-                add(DictationTextOp.SetComposingText(DictationPartialDisplay.display(text, extended.context, textSettings)))
-            }
-            return DictationOutcome(next, textOps = ops)
-        }
-        // After a stop the watchdog is the only thing guaranteed to end the session (SS6.5: the
-        // recognizer may never answer), so a trailing partial must not disarm it.
+        // SPEC GAP: SS7.2's "new utterance inside one request" is written, tested and
+        // deliberately NOT wired. dictation.md's own keep-or-drop table marks it undecided
+        // ("written for a pre-segmented world; check whether Google still restarts hypotheses
+        // inside one request"), and SameUtteranceCheck answers "different" for an ordinary
+        // recognizer self-correction ("the coffee is hot" then "that coffee is hot"), which
+        // would commit the first hypothesis and compose the second after it: the very text
+        // duplication SessionEcho was added to stop. Wire it only with device evidence.
         val next = session.copy(
             heardSpeech = true,
             utterance = if (invalidated) session.utterance else session.utterance.copy(pending = PendingUtterance.Live(text)),
@@ -280,7 +260,7 @@ object DictationEngine {
             val finished = finishPendingIfAny(session.utterance, textSettings)
             return if (session.silenceDeadlineMs != null) {
                 val next = session.copy(
-                    utterance = UtteranceState(extendContext(session.utterance.context, finished.plainText), PendingUtterance.None),
+                    utterance = afterFinish(session.utterance, finished),
                     requestStartMs = now,
                 )
                 DictationOutcome(next, listOf(DictationEffect.StartListening(session.mode)), finished.ops)
@@ -304,7 +284,7 @@ object DictationEngine {
                     isContinuation = true,
                     requestStartMs = now,
                     silenceDeadlineMs = now + DictationTiming.silenceTimerMs(settings.pauseMs),
-                    utterance = UtteranceState(extendContext(session.utterance.context, finished.plainText), PendingUtterance.None),
+                    utterance = afterFinish(session.utterance, finished),
                 )
                 DictationOutcome(next, listOf(DictationEffect.StartListening(session.mode)), finished.ops)
             } else {

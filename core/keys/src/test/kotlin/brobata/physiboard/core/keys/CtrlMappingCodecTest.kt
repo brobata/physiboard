@@ -2,6 +2,7 @@ package brobata.physiboard.core.keys
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /** spec: trackpad-caret-nav.md SS5.4, SS5.8; keys-and-modifiers.md SS12. */
 class CtrlMappingCodecTest {
@@ -37,5 +38,15 @@ class CtrlMappingCodecTest {
         assertEquals(CtrlMappingTable(), CtrlMappingCodec.decode(null))
         assertEquals(CtrlMappingTable(), CtrlMappingCodec.decode(""))
         assertEquals(CtrlMappingTable(), CtrlMappingCodec.decode("not json"))
+    }
+
+    /** spec layers-sym-alt.md SS5.8: "Save writes the whole 26-key map", so a key switched off is written as its own record, not omitted. */
+    @Test
+    fun `a save writes all twenty-six keys, including the ones switched off`() {
+        val encoded = CtrlMappingCodec.encode(CtrlMappingTable(mapOf(KeyId.Letter('A') to CtrlMapping.NativeCtrl)))
+        for (letter in 'A'..'Z') assertTrue(encoded.contains("KEYCODE_$letter"), "$letter is missing from the saved map")
+        val table = CtrlMappingCodec.decode(encoded)
+        assertEquals(CtrlMapping.NativeCtrl, table.mappingFor(KeyId.Letter('A')))
+        assertEquals(CtrlMapping.None, table.mappingFor(KeyId.Letter('B')))
     }
 }

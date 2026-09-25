@@ -39,16 +39,16 @@ class SessionEchoTest {
         assertEquals(emptyList(), echo.textOps)
     }
 
+    /**
+     * SS7.2's new-utterance rule is deliberately not wired: dictation.md's keep-or-drop table
+     * marks it undecided, and it duplicates text when the recognizer corrects itself. A partial
+     * that differs replaces the composing region, which is SS7.1's plain overwrite.
+     */
     @Test
-    fun `spec 7-2 a partial that is not the same utterance commits the previous words and composes after a space`() {
+    fun `a differing partial overwrites the composing region rather than committing the previous one`() {
         val s = handle(ready(), DictationEvent.PartialResult("see you tomorrow"), now = 100L).session
         val fresh = handle(s, DictationEvent.PartialResult("bring the car"), now = 300L)
-        assertEquals(
-            listOf(DictationTextOp.FinishComposing, DictationTextOp.CommitText(" "), DictationTextOp.SetComposingText("bring the car")),
-            fresh.textOps,
-        )
-        val final = handle(fresh.session, DictationEvent.FinalResult("bring the car"), now = 400L)
-        assertEquals(DictationTextOp.SetComposingText("bring the car "), final.textOps.first())
+        assertEquals(listOf(DictationTextOp.SetComposingText("Bring the car")), fresh.textOps)
     }
 
     @Test
@@ -58,5 +58,11 @@ class SessionEchoTest {
         assertEquals("world peace", SessionEcho.strip("world peace", "hello world"))
         assertEquals("hello", SessionEcho.strip("hello", ""))
         assertEquals("hello world", SessionEcho.extend("hello", "world "))
+    }
+
+    @Test
+    fun `the echo matches words the finisher punctuated`() {
+        assertEquals("how are you", SessionEcho.strip("hello world how are you", "Hello world."))
+        assertEquals("", SessionEcho.strip("hello world", "Hello, world!"))
     }
 }

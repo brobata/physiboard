@@ -244,7 +244,11 @@ object TextInputPipeline {
         // column, which [FieldContext.autocorrectAllowed] encodes: the engine is not consulted at
         // all, for Space, Enter and boundary punctuation alike, since 3.0 has one engine (SS18 W4).
         if (!field.autocorrectAllowed) return memory.afterBoundaryWithoutReplacement() to BoundaryOutcome.CommitPlain
-        val editorWindow = editor.contextTextBeforeCursor(trust, trackedWord)?.takeLast(32)
+        // spec autocorrect-suggestions.md SS7.2 step 3 wants 32 characters of context before the
+        // word; the window has to carry the word itself as well, or the drift check can never see
+        // the word it is comparing and every boundary on a word longer than the window reads as a
+        // disagreeing editor. The hard-boundary scan stops at the first real character either way.
+        val editorWindow = editor.contextTextBeforeCursor(trust, trackedWord)?.takeLast(trackedWord.length + 32)
         return when (DriftCheck.evaluate(trackedWord, editorWindow)) {
             is DriftCheck.Agreed -> BoundaryEngine.evaluate(
                 trackedWord, editorWindow!!, boundaryChar, resources.ruleSets, resources.dictionaries, resources.userWords,

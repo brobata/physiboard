@@ -38,7 +38,12 @@ object ModifierMachine {
         // normalise to the one SHIFT key, so holding one and pressing the other arrives here as a
         // second down and must not read as a double tap (review A7).
         if (state.shift.pressed) return Result(state, Action.PassThrough)
-        if (canSwitchLayout && settings.altShiftLayoutSwitch && (stroke.meta.alt || state.alt.physicallyPressed)) {
+        // spec SS5.2 step 1: a tap on a latched modifier quietly releases the latch. That answer
+        // comes first, so holding Alt while tapping Shift to clear its latch does not switch the
+        // layout instead of releasing it (2026-09-25 review).
+        if (!state.shift.layerLatched &&
+            canSwitchLayout && settings.altShiftLayoutSwitch && (stroke.meta.alt || state.alt.physicallyPressed)
+        ) {
             return Result(altShiftChordCleared(state, ModifierKey.SHIFT), Action.RunCommand(KeyCommands.SWITCH_LAYOUT))
         }
 
@@ -214,7 +219,10 @@ object ModifierMachine {
     fun altDown(state: ModifierState, stroke: KeyStroke, settings: ModifierSettings, canSwitchLayout: Boolean = false): Result {
         require(stroke.key == KeyId.Modifier(ModifierKey.ALT)) { "not an Alt stroke: ${stroke.key}" }
         if (stroke.repeatCount > 0) return Result(state, Action.Ignored)
-        if (!state.alt.pressed && canSwitchLayout && settings.altShiftLayoutSwitch && (stroke.meta.shift || state.shift.physicallyPressed)) {
+        // The latch tap-off wins here too; see [shiftDown].
+        if (!state.alt.pressed && !state.alt.layerLatched &&
+            canSwitchLayout && settings.altShiftLayoutSwitch && (stroke.meta.shift || state.shift.physicallyPressed)
+        ) {
             return Result(altShiftChordCleared(state, ModifierKey.ALT), Action.RunCommand(KeyCommands.SWITCH_LAYOUT))
         }
 

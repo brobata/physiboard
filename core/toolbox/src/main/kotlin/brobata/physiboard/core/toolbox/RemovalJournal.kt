@@ -5,7 +5,6 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 
 /** What a package's state was before Remove bloat touched it. spec: broker-privileged-toolbox.md SS12.6. */
@@ -29,15 +28,16 @@ object RemovalJournalCodec {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
     /** spec: SS12.6 ("An unreadable journal reads as empty; a record with an unknown `prev` reads as ACTIVE and an unknown `action` as DISABLED"); T13, T14. */
+    // spec SS12.6: "an unreadable journal reads as empty". A record whose field carries the wrong JSON type used to throw out of here.
     fun decode(text: String?): List<JournalRecord> {
         if (text.isNullOrBlank()) return emptyList()
         val array = runCatching { json.parseToJsonElement(text) as? JsonArray }.getOrNull() ?: return emptyList()
         return array.mapNotNull { element ->
             val obj = element as? JsonObject ?: return@mapNotNull null
-            val pkg = obj["pkg"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
-            val prevRaw = obj["prev"]?.jsonPrimitive?.contentOrNull
-            val actionRaw = obj["action"]?.jsonPrimitive?.contentOrNull
-            val at = obj["at"]?.jsonPrimitive?.longOrNull ?: 0L
+            val pkg = (obj["pkg"] as? JsonPrimitive)?.contentOrNull ?: return@mapNotNull null
+            val prevRaw = (obj["prev"] as? JsonPrimitive)?.contentOrNull
+            val actionRaw = (obj["action"] as? JsonPrimitive)?.contentOrNull
+            val at = (obj["at"] as? JsonPrimitive)?.longOrNull ?: 0L
             JournalRecord(
                 packageName = pkg,
                 prev = JournalPriorState.entries.firstOrNull { it.name == prevRaw } ?: JournalPriorState.ACTIVE,

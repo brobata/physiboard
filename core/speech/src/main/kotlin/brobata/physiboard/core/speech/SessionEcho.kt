@@ -17,13 +17,19 @@ object SessionEcho {
         if (done.isEmpty()) return result
         val said = words(result)
         if (said.size < done.size) return result
-        for (i in done.indices) if (!said[i].equals(done[i], ignoreCase = true)) return result
+        // The words already in the field carry whatever the finisher added ("world." after
+        // automatic punctuation); the engine re-reports them bare. Comparing them as written
+        // failed to match, and the whole transcript was composed again.
+        for (i in done.indices) if (!bare(said[i]).equals(bare(done[i]), ignoreCase = true)) return result
         return said.drop(done.size).joinToString(" ")
     }
 
     /** [finished] extended by the words of [plainText], the form [strip] compares against. */
     fun extend(finished: String, plainText: String?): String =
         if (plainText.isNullOrBlank()) finished else (words(finished) + words(plainText)).joinToString(" ")
+
+    /** A word without the punctuation either side of it, which is all this comparison is about. */
+    private fun bare(word: String): String = word.trim { !it.isLetterOrDigit() && it != '\'' }
 
     private fun words(text: String): List<String> = text.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
 }

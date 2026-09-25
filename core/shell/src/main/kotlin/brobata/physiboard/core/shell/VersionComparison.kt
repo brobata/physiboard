@@ -27,7 +27,10 @@ object VersionComparison {
         val parts = core.split('.').mapNotNull { part ->
             val digits = part.takeWhile { it.isDigit() }
             digits.ifEmpty { null }
-        }.map { it.toInt() }
+            // A segment too large for an Int is not a number this comparison can use. Dropping it
+            // falls back to the string comparison rather than throwing out of the update check,
+            // which spec SS13.9 says can never crash the app.
+        }.mapNotNull { it.toIntOrNull() }
         return parts.ifEmpty { null }
     }
 

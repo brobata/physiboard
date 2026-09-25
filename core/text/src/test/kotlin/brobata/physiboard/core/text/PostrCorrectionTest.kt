@@ -35,4 +35,33 @@ class PostrCorrectionTest {
         val result = key(Action.Commit(" "))
         assertEquals("poster ", text, "ops at the space: ${result.ops}; settings: ${settings.autocorrect}")
     }
+
+    /** A word longer than the 32-character context window used to read as a disagreeing editor, so no boundary rule ever ran on it. */
+    @Test
+    fun `a very long word still reaches the boundary engine`() {
+        val word = "supercalifragilisticexpialidocious"
+        val typo = word.replace('g', 'h')
+        val index = DictionaryIndex.build(en, listOf(WordFrequency(word, 200)))
+        val settings = TextInputSettingsBundle(
+            autocorrect = AutocorrectSettings(autoReplaceOnSpaceEnter = true, maxAutoReplaceDistance = 2),
+            lengthChangeAllowance = LengthChangeAllowance.forLanguage("en"),
+        )
+        var state = TextInputState()
+        var text = ""
+        fun key(ch: Char) {
+            val result = TextInputPipeline.handle(
+                TextInputRequest.Key(Action.Commit(ch.toString())), FieldContext(FieldKind.NORMAL), settings,
+                TextInputResources(dictionaries = listOf(index)), state, EditorSnapshot(textBeforeCursor = text),
+            )
+            state = result.state
+            for (op in result.ops) when (op) {
+                is EditorOp.CommitText -> text += op.text
+                is EditorOp.DeleteSurrounding -> text = text.dropLast(op.before)
+                else -> Unit
+            }
+        }
+        typo.forEach { key(it) }
+        key(' ')
+        assertEquals("$word ", text, "a typo 34 characters long should still be corrected")
+    }
 }

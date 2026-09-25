@@ -46,7 +46,9 @@ object CtrlMappingCodec {
         val mappings = LinkedHashMap<String, JsonObject>()
         for (letter in 'A'..'Z') {
             val mapping = table.mappingFor(KeyId.Letter(letter))
-            if (mapping == CtrlMapping.None) continue
+            // spec layers-sym-alt.md: a key the user switched off is stored as its own "none"
+            // record. Omitting it made the key read back as its default on the next load, so
+            // switching an Fn-layer key off never survived a save.
             mappings["KEYCODE_$letter"] = encodeMapping(mapping) ?: continue
         }
         return json.encodeToString(JsonObject.serializer(), JsonObject(mapOf("mappings" to JsonObject(mappings))))
@@ -61,7 +63,8 @@ object CtrlMappingCodec {
         is CtrlMapping.NamedAction -> JsonObject(mapOf("type" to JsonPrimitive("action"), "action" to JsonPrimitive(mapping.actionId)))
         is CtrlMapping.Command -> JsonObject(mapOf("type" to JsonPrimitive("command"), "command" to JsonPrimitive(mapping.commandId)))
         CtrlMapping.NativeCtrl -> JsonObject(mapOf("type" to JsonPrimitive("native_ctrl")))
-        CtrlMapping.None -> null
+        // The decoder already reads "none"; writing it is what makes a switched-off key survive a save.
+        CtrlMapping.None -> JsonObject(mapOf("type" to JsonPrimitive("none")))
     }
 
     /** SS5.4: "The mapping file is loaded from the private files directory when it exists, else from the assets." An unreadable file decodes to an empty table (every key `none`). */
