@@ -274,6 +274,7 @@ internal class KeyboardSession(
         // spec: status-bar.md SS6.1: the microphone button follows the recognizer's level reports.
         // Dictation starts asynchronously, so the first report is also the first moment the strip
         // can learn the session is active; the refresh is equality-guarded and cheap.
+        dictationController.onActiveChanged = { _ -> runCatching { refreshCandidatesStrip() }.onFailure { error -> Log.e(TAG, "dictation state refresh crashed", error) } }
         dictationController.onAudioLevel = { level ->
             runCatching {
                 refreshCandidatesStrip()
@@ -487,7 +488,11 @@ internal class KeyboardSession(
 
     /** spec: status-bar.md SS13, "When the window is shown again the strip is refreshed immediately." */
     fun onKeyboardWindowShown() {
-        runCatching { refreshCandidatesStrip() }.onFailure { error -> Log.e(TAG, "onKeyboardWindowShown crashed", error) }
+        runCatching {
+            val textBeforeCursor = runCatching { service.currentInputConnection?.getTextBeforeCursor(TEXT_BEFORE_CURSOR_READ, 0)?.toString() }.getOrNull()
+            pipeline.onWindowShown(textBeforeCursor)
+            refreshCandidatesStrip()
+        }.onFailure { error -> Log.e(TAG, "onKeyboardWindowShown crashed", error) }
     }
 
     // -----------------------------------------------------------------------------------------

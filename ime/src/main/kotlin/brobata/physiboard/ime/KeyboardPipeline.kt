@@ -773,6 +773,22 @@ internal class KeyboardPipeline(
      * "text right before the cursor as this pipeline left it" fact go; auto-cap's field-level
      * state stays because the field itself did not change.
      */
+    /**
+     * spec: status-bar.md SS13 ("When the window is shown again...") read with text-input.md
+     * line 463 (auto-cap is re-evaluated whenever the field's state is re-established). Android
+     * can deliver the previous field's window-hidden event after the new field's start, and
+     * [onWindowHidden] resets the modifiers, which threw away the start-of-text capital armed by
+     * [onStartInput] (Messages on the Titan, 2026-09-25: the first letter of every message came
+     * out lower-case). Re-deciding from the editor's text is idempotent: it arms only where the
+     * rules say, and clears only a one-shot auto-cap itself armed.
+     */
+    fun onWindowShown(textBeforeCursor: String?) {
+        val capContext = if (activeTrust.contextRulesAllowed) textBeforeCursor else null
+        val (capState, decision) = AutoCapitalization.evaluate(textInputState.autoCap, activeField, settings.textInput.autoCap, capContext)
+        textInputState = textInputState.copy(autoCap = capState)
+        applyCapDecision(decision)
+    }
+
     fun onWindowHidden(nowMs: Long): Boolean {
         if (StripDip.skipsWindowHidden(dip, nowMs)) return false
         typingState = TypingSessionState()

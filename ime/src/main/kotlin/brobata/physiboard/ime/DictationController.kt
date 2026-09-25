@@ -70,6 +70,13 @@ internal class DictationController(
      */
     var onAudioLevel: ((Float) -> Unit)? = null
 
+    /**
+     * Fires when [isActive] flips, so the strip can re-render the microphone. Without it the
+     * button turned red on the trigger and stayed red after the session ended, because nothing
+     * asked the strip to look again (Titan, 2026-09-25).
+     */
+    var onActiveChanged: ((Boolean) -> Unit)? = null
+
     // -----------------------------------------------------------------------------------------
     // The trigger. spec: dictation.md SS2, SS10.
     // -----------------------------------------------------------------------------------------
@@ -128,6 +135,7 @@ internal class DictationController(
 
     /** spec SS3: "Keyboard service destroyed: timers cancelled, recognizer destroyed, partial cleared; no session-end bookkeeping." */
     fun onServiceDestroyed() {
+        if (isActive) runCatching { onActiveChanged?.invoke(false) }
         handler.removeCallbacks(clockRunnable)
         runCatching { recognizer?.destroy() }
         recognizer = null
@@ -139,8 +147,10 @@ internal class DictationController(
     // -----------------------------------------------------------------------------------------
 
     private fun dispatch(event: DictationEvent) {
+        val wasActive = isActive
         val outcome = DictationEngine.handle(session, event, now(), settings, textSettings, segmentedRefusalLatch)
         session = outcome.session
+        if (isActive != wasActive) runCatching { onActiveChanged?.invoke(isActive) }
         outcome.newSegmentedRefusalLatch?.let { segmentedRefusalLatch = it }
         // spec SS3: "The field rejected an insert (exception while writing)": the one write this
         // whole feature makes that can throw (a hostile or misbehaving editor), so it is the one
