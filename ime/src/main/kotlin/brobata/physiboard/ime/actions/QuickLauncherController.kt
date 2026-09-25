@@ -141,7 +141,7 @@ internal class QuickLauncherController(
                 apply(effect)
             }
             KeyEvent.ACTION_UP -> {
-                val (next, effect) = QuickLauncherKeys.onKeyUp(keyState, key, event.isCanceled, symHeld, quickLauncherKey)
+                val (next, effect) = QuickLauncherKeys.onKeyUp(keyState, key, event.isCanceled)
                 keyState = next
                 apply(effect)
             }

@@ -44,6 +44,13 @@ class SuggestionRankingTest {
     }
 
     @Test
+    fun `effective frequency clamps a negative raw value to the floor instead of NaN`() {
+        val result = SuggestionRanking.effectiveFrequency(-5)
+        assertEquals(1.0, result)
+        assertTrue(!result.isNaN(), "a corrupt negative raw frequency must not propagate NaN into scoring")
+    }
+
+    @Test
     fun `a completion must be longer than the typed word`() {
         val index = dict("hall" to 200, "hallo" to 200)
         val results = SuggestionRanking.suggest("hall", listOf(index), UserWordStore.empty(), RankingOptions())

@@ -14,15 +14,35 @@ class DictionaryCatalogTest {
     )
 
     @Test
-    fun `a bundled file dedups ahead of a writable-tier file with the same name, per SS6`() {
+    fun `a writable-tier file dedups ahead of a bundled file with the same name, per SS17's dedup fix`() {
         val local = listOf(
             LocalDictionaryFile("en_base.dict", "en", DictionaryOrigin.BUNDLED),
             LocalDictionaryFile("en_base.dict", "en", DictionaryOrigin.DOWNLOADED),
         )
         val rows = DictionaryCatalog.merge(local, emptyList()) { it }
         val row = rows.single()
-        assertEquals(DictionaryOrigin.BUNDLED, row.installedOrigin)
-        assertFalse("Imported" in row.badges)
+        assertEquals(DictionaryOrigin.DOWNLOADED, row.installedOrigin)
+        assertTrue("Imported" in row.badges)
+        assertTrue(row.canUninstall)
+    }
+
+    @Test
+    fun `an imported file dedups ahead of a downloaded file with the same name, per SS17's dedup fix`() {
+        val local = listOf(
+            LocalDictionaryFile("en_base.dict", "en", DictionaryOrigin.DOWNLOADED),
+            LocalDictionaryFile("en_base.dict", "en", DictionaryOrigin.IMPORTED),
+        )
+        val rows = DictionaryCatalog.merge(local, emptyList()) { it }
+        val row = rows.single()
+        assertEquals(DictionaryOrigin.IMPORTED, row.installedOrigin)
+    }
+
+    @Test
+    fun `an installed row always shows the local-language name, never the manifest's, per SS6`() {
+        val local = listOf(LocalDictionaryFile("de_base.dict", "de", DictionaryOrigin.IMPORTED))
+        val rows = DictionaryCatalog.merge(local, listOf(item("de_base.dict").copy(name = "German (Basic)"))) { code -> if (code == "de") "Deutsch" else code }
+        val row = rows.single()
+        assertEquals("Deutsch", row.displayName)
     }
 
     @Test

@@ -211,8 +211,13 @@ object SuggestionRanking {
         return diffs.size == 2 && word[diffs[0]] == candidate[diffs[1]] && word[diffs[1]] == candidate[diffs[0]]
     }
 
-    /** spec: SS3.2, raw 0..255 to effective frequency `(raw/255)^0.75 * 1600`, floored at 1. */
-    fun effectiveFrequency(raw: Int): Double = maxOf(1.0, (raw / 255.0).pow(0.75) * 1600.0)
+    /**
+     * spec: SS3.2, raw 0..255 to effective frequency `(raw/255)^0.75 * 1600`, floored at 1. A
+     * negative raw value (a corrupt or malformed dictionary/user-word entry) is clamped to 0
+     * before the `pow` call rather than left to propagate NaN, matching this module's other
+     * malformed-input guards.
+     */
+    fun effectiveFrequency(raw: Int): Double = maxOf(1.0, (raw.coerceAtLeast(0) / 255.0).pow(0.75) * 1600.0)
 
     private fun score(
         typedWord: String,

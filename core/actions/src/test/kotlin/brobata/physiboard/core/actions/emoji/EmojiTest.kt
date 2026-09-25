@@ -128,6 +128,19 @@ class EmojiTest {
     }
 
     @Test
+    fun `Ctrl+X with a selection cuts it, and with no selection does neither half, per SS4-5`() {
+        val withSelection = SearchCapture.onKeyDown(SearchFieldState("hello", 0, 5), KeyId.Letter('X'), ctrl = true, altOrMeta = false, layoutText = "x", eventChar = 'x')
+        val cut = assertIs<CaptureResult.CopyToClipboard>(withSelection)
+        assertEquals("hello", cut.text)
+        assertEquals("", cut.state.text)
+
+        val noSelection = SearchCapture.onKeyDown(SearchFieldState("hello", 2, 2), KeyId.Letter('X'), ctrl = true, altOrMeta = false, layoutText = "x", eventChar = 'x')
+        val noOp = assertIs<CaptureResult.Consumed>(noSelection)
+        assertEquals("hello", noOp.state.text, "no selection means cut deletes nothing")
+        assertFalse(noOp.queryChanged)
+    }
+
+    @Test
     fun `D1 the Titan's 1080 px width gives 10 columns and the settings dialogs 11`() {
         assertEquals(10, EmojiPickerGeometry.columns(1080, 1.875))
         assertEquals(4, EmojiPickerGeometry.columns(200, 1.875))

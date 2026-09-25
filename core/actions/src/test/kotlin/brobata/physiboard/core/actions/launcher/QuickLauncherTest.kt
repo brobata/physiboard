@@ -133,7 +133,7 @@ class QuickLauncherTest {
     fun `T40 Back is consumed on down and dismisses on up`() {
         val (afterDown, downEffect) = QuickLauncherKeys.onKeyDown(SheetKeyState(), back, symHeld = false, ctrl = false, quickLauncherKey = space, layoutText = null, eventChar = null)
         assertEquals(SheetKeyEffect.ConsumedOnly, downEffect)
-        val (_, upEffect) = QuickLauncherKeys.onKeyUp(afterDown, back, cancelled = false, symHeld = false, quickLauncherKey = space)
+        val (_, upEffect) = QuickLauncherKeys.onKeyUp(afterDown, back, cancelled = false)
         assertEquals(SheetKeyEffect.Dismiss, upEffect)
     }
 
@@ -141,15 +141,25 @@ class QuickLauncherTest {
     fun `T41 Sym held plus the launcher's own key toggles it closed on release`() {
         val (afterDown, downEffect) = QuickLauncherKeys.onKeyDown(SheetKeyState(), space, symHeld = true, ctrl = false, quickLauncherKey = space, layoutText = " ", eventChar = ' ')
         assertEquals(SheetKeyEffect.ConsumedOnly, downEffect)
-        val (_, upEffect) = QuickLauncherKeys.onKeyUp(afterDown, space, cancelled = false, symHeld = true, quickLauncherKey = space)
+        val (_, upEffect) = QuickLauncherKeys.onKeyUp(afterDown, space, cancelled = false)
         assertEquals(SheetKeyEffect.Dismiss, upEffect)
+    }
+
+    @Test
+    fun `releasing Sym slightly before the bound key still dismisses, per SS7-1`() {
+        // The down-time decision (Sym was held when the key went down) must be remembered and
+        // used at release, not recomputed from whatever is held live at that later moment.
+        val (afterDown, downEffect) = QuickLauncherKeys.onKeyDown(SheetKeyState(), space, symHeld = true, ctrl = false, quickLauncherKey = space, layoutText = " ", eventChar = ' ')
+        assertEquals(SheetKeyEffect.ConsumedOnly, downEffect)
+        val (_, upEffect) = QuickLauncherKeys.onKeyUp(afterDown, space, cancelled = false)
+        assertEquals(SheetKeyEffect.Dismiss, upEffect, "the sheet must still dismiss even though Sym is no longer held at release")
     }
 
     @Test
     fun `T42 a plain Sym tap is not consumed`() {
         val sym = KeyId.Modifier(ModifierKey.SYM)
         assertEquals(SheetKeyEffect.NotConsumed, QuickLauncherKeys.onKeyDown(SheetKeyState(), sym, false, false, space, null, null).second)
-        assertEquals(SheetKeyEffect.NotConsumed, QuickLauncherKeys.onKeyUp(SheetKeyState(), sym, false, false, space).second)
+        assertEquals(SheetKeyEffect.NotConsumed, QuickLauncherKeys.onKeyUp(SheetKeyState(), sym, false).second)
     }
 
     @Test
@@ -163,9 +173,9 @@ class QuickLauncherTest {
     fun `Enter launches the top match once and a cancelled release does nothing`() {
         val (afterDown, effect) = QuickLauncherKeys.onKeyDown(SheetKeyState(), KeyId.Control(ControlKey.ENTER), false, false, space, null, '\n')
         assertEquals(SheetKeyEffect.LaunchTop, effect)
-        assertEquals(SheetKeyEffect.ConsumedOnly, QuickLauncherKeys.onKeyUp(afterDown, KeyId.Control(ControlKey.ENTER), false, false, space).second)
-        assertEquals(SheetKeyEffect.LaunchTop, QuickLauncherKeys.onKeyUp(SheetKeyState(), KeyId.Control(ControlKey.ENTER), false, false, space).second, "a release without a prior handled down launches")
-        assertEquals(SheetKeyEffect.ConsumedOnly, QuickLauncherKeys.onKeyUp(afterDown, KeyId.Control(ControlKey.ENTER), cancelled = true, symHeld = false, quickLauncherKey = space).second)
+        assertEquals(SheetKeyEffect.ConsumedOnly, QuickLauncherKeys.onKeyUp(afterDown, KeyId.Control(ControlKey.ENTER), false).second)
+        assertEquals(SheetKeyEffect.LaunchTop, QuickLauncherKeys.onKeyUp(SheetKeyState(), KeyId.Control(ControlKey.ENTER), false).second, "a release without a prior handled down launches")
+        assertEquals(SheetKeyEffect.ConsumedOnly, QuickLauncherKeys.onKeyUp(afterDown, KeyId.Control(ControlKey.ENTER), cancelled = true).second)
     }
 
     @Test

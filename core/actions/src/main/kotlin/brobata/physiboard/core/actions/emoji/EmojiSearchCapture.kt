@@ -67,9 +67,13 @@ object SearchCapture {
             return when (key) {
                 KeyId.Letter('A') -> CaptureResult.Consumed(state.copy(selectionStart = 0, selectionEnd = state.text.length, pendingSelectAll = true), queryChanged = false)
                 KeyId.Letter('C') -> CaptureResult.CopyToClipboard(state, selectedText(state))
+                // spec SS4.5's Ctrl+X row is silent on "no selection"; unlike Backspace's
+                // explicit fallback to "the last character", cut has no fallback target, so with
+                // nothing selected it is consumed but does nothing, rather than the previous
+                // behaviour of copying the whole query to the clipboard while deleting nothing.
                 KeyId.Letter('X') -> {
-                    val selected = selectedText(state)
-                    CaptureResult.CopyToClipboard(deleteSelection(state), selected)
+                    if (!state.hasSelection) CaptureResult.Consumed(state, queryChanged = false)
+                    else CaptureResult.CopyToClipboard(deleteSelection(state), selectedText(state))
                 }
                 KeyId.Letter('V') -> CaptureResult.RequestPaste(state)
                 else -> CaptureResult.HandToField(state)

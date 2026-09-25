@@ -302,8 +302,16 @@ object QuickLauncherRanking {
     fun sourceHue(source: CommandSource): Int = source.hue
 }
 
-/** The sheet's key bookkeeping: which downs were consumed so their releases are consumed too. spec SS7.1, SS7.3. */
-data class SheetKeyState(val consumedDowns: Set<KeyId> = emptySet(), val enterHandledDown: Boolean = false)
+/**
+ * The sheet's key bookkeeping: which downs were consumed so their releases are consumed too, and
+ * which downs were decided as a dismissal ([dismissDowns]) so the release acts on that same
+ * decision rather than recomputing it from whatever is held at release time. spec SS7.1, SS7.3.
+ */
+data class SheetKeyState(
+    val consumedDowns: Set<KeyId> = emptySet(),
+    val enterHandledDown: Boolean = false,
+    val dismissDowns: Set<KeyId> = emptySet(),
+)
 
 /** What the sheet does with one key. spec SS7.3. */
 sealed class SheetKeyEffect {
@@ -338,7 +346,9 @@ object QuickLauncherKeys {
     ): Pair<SheetKeyState, SheetKeyEffect> {
         if (key is KeyId.Modifier) return state to SheetKeyEffect.NotConsumed
         val isDismissKey = key == BACK || key == ESCAPE || (symHeld && key == quickLauncherKey)
-        if (isDismissKey) return state.copy(consumedDowns = state.consumedDowns + key) to SheetKeyEffect.ConsumedOnly
+        if (isDismissKey) {
+            return state.copy(consumedDowns = state.consumedDowns + key, dismissDowns = state.dismissDowns + key) to SheetKeyEffect.ConsumedOnly
+        }
         if (key == ENTER) return state.copy(consumedDowns = state.consumedDowns + key, enterHandledDown = true) to SheetKeyEffect.LaunchTop
         if (key == BACKSPACE) return state.copy(consumedDowns = state.consumedDowns + key) to SheetKeyEffect.DeleteLast
         if (ctrl) return state to SheetKeyEffect.NotConsumed
@@ -346,14 +356,23 @@ object QuickLauncherKeys {
         return state.copy(consumedDowns = state.consumedDowns + key) to SheetKeyEffect.AppendText(text)
     }
 
-    /** spec SS7.1: dismiss keys act on release; a cancelled release does nothing; SS7.3: an Enter release without a handled down launches. */
-    fun onKeyUp(state: SheetKeyState, key: KeyId, cancelled: Boolean, symHeld: Boolean, quickLauncherKey: KeyId?): Pair<SheetKeyState, SheetKeyEffect> {
+    /**
+     * spec SS7.1: dismiss keys act on release; a cancelled release does nothing. The dismiss
+     * decision is the one made at key down ([SheetKeyState.dismissDowns]), not recomputed from
+     * whatever is held at release: releasing Sym slightly before the bound key must still dismiss.
+     * SS7.3: an Enter release without a handled down launches.
+     */
+    fun onKeyUp(state: SheetKeyState, key: KeyId, cancelled: Boolean): Pair<SheetKeyState, SheetKeyEffect> {
         if (key is KeyId.Modifier) return state to SheetKeyEffect.NotConsumed
         val wasConsumed = key in state.consumedDowns
-        val next = state.copy(consumedDowns = state.consumedDowns - key, enterHandledDown = if (key == ENTER) false else state.enterHandledDown)
+        val wasDismissDown = key in state.dismissDowns
+        val next = state.copy(
+            consumedDowns = state.consumedDowns - key,
+            dismissDowns = state.dismissDowns - key,
+            enterHandledDown = if (key == ENTER) false else state.enterHandledDown,
+        )
         if (cancelled) return next to (if (wasConsumed) SheetKeyEffect.ConsumedOnly else SheetKeyEffect.NotConsumed)
-        val isDismissKey = key == BACK || key == ESCAPE || (symHeld && key == quickLauncherKey)
-        if (isDismissKey && wasConsumed) return next to SheetKeyEffect.Dismiss
+        if (wasDismissDown && wasConsumed) return next to SheetKeyEffect.Dismiss
         if (key == ENTER && !state.enterHandledDown) return next to SheetKeyEffect.LaunchTop
         return next to (if (wasConsumed) SheetKeyEffect.ConsumedOnly else SheetKeyEffect.NotConsumed)
     }

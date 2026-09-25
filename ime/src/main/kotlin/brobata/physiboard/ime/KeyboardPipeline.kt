@@ -476,7 +476,7 @@ internal class KeyboardPipeline(
         powerMode = next
         if (effect.restoreNavMode) restoreNavModeLatch()
         val fromArmedMode = effect.fireKey != null
-        val decision = LauncherKeyRouter.outsideTextField(stroke.key, settings.launcherShortcuts, settings.launcherKeys, ctrlLatch, foregroundIsHome, fromArmedMode)
+        val decision = LauncherKeyRouter.outsideTextField(stroke.key, settings.launcherShortcuts, settings.launcherKeys, ctrlLatch, foregroundIsHome, fromArmedMode, symPhysicallyHeld = stroke.meta.sym)
         if (decision == LauncherKeyDecision.FallThrough) return if (effect.consumed) PipelineResult.CONSUMED_NO_OP else null
         return PipelineResult(emptyList(), consumed = true, launcherKey = decision)
     }

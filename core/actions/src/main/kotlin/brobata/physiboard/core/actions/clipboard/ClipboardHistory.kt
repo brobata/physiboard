@@ -76,14 +76,33 @@ data class ClipboardHistory(
     /**
      * spec SS3.2: the table is loaded in the background; "a clip copied before the load finished is
      * already in memory, so a stored row with the same text is deleted as superseded rather than
-     * loaded twice". Returns the merged history and the ids of the stored rows to delete.
+     * loaded twice". [Clip.text] duplicates already sitting among [stored] itself (left over from
+     * an older, buggier version that did not enforce SS3.1's one-row-per-text rule) are collapsed
+     * the same way: the same-text row with the latest timestamp is kept, the rest are reported as
+     * superseded too, so a reload does not keep re-loading rows [capture] would never have created.
+     * Returns the merged history and the ids of the stored rows to delete.
      */
     fun mergeLoaded(stored: List<Clip>): Pair<ClipboardHistory, List<Long>> {
         val inMemoryTexts = entries.map { it.text }.toSet()
-        val superseded = stored.filter { it.text in inMemoryTexts }.map { it.id }
-        val loaded = stored.filter { it.text !in inMemoryTexts }
+        val superseded = mutableListOf<Long>()
+        val keptByText = LinkedHashMap<String, Clip>()
+        for (clip in stored) {
+            if (clip.text in inMemoryTexts) {
+                superseded += clip.id
+                continue
+            }
+            val existing = keptByText[clip.text]
+            when {
+                existing == null -> keptByText[clip.text] = clip
+                clip.timestampMs > existing.timestampMs -> {
+                    superseded += existing.id
+                    keptByText[clip.text] = clip
+                }
+                else -> superseded += clip.id
+            }
+        }
         val maxId = (entries.map { it.id } + stored.map { it.id }).maxOrNull() ?: 0
-        return copy(entries = loaded + entries, nextId = maxOf(nextId, maxId + 1)) to superseded
+        return copy(entries = keptByText.values.toList() + entries, nextId = maxOf(nextId, maxId + 1)) to superseded
     }
 
     private fun replace(clip: Clip): ClipboardHistory = copy(entries = entries.map { if (it.id == clip.id) clip else it })

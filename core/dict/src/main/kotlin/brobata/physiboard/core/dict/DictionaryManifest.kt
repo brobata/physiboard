@@ -126,11 +126,12 @@ data class DictionaryRow(
 object DictionaryCatalog {
 
     /**
-     * SS6: "The local list is built as bundled files first, then writable-tier files, and
-     * deduplicated by file name keeping the first," then merged with the manifest by lowercase
-     * file name. [displayNameFor] supplies the local-language display name (SS6: "the language's
-     * own name in its own language... computed from the language code"), since that table is a
-     * device/locale concern this module does not own.
+     * SS6/SS17 (Keep/Drop, "Installed-dictionaries screen dedup that hides installed files
+     * behind bundled rows | Fix"): a file the user installed or imported must win the dedup over
+     * a bundled file of the same name, so it stays visible and removable, then merged with the
+     * manifest by lowercase file name. [displayNameFor] supplies the local-language display name
+     * (SS6: "the language's own name in its own language... computed from the language code"),
+     * since that table is a device/locale concern this module does not own.
      */
     fun merge(
         local: List<LocalDictionaryFile>,
@@ -138,7 +139,13 @@ object DictionaryCatalog {
         displayNameFor: (String) -> String,
     ): List<DictionaryRow> {
         val dedupedLocal = LinkedHashMap<String, LocalDictionaryFile>()
-        for (file in local) dedupedLocal.putIfAbsent(file.fileName.lowercase(), file)
+        for (file in local) {
+            val key = file.fileName.lowercase()
+            val existing = dedupedLocal[key]
+            if (existing == null || originPriority(file.origin) > originPriority(existing.origin)) {
+                dedupedLocal[key] = file
+            }
+        }
 
         val manifestByFileName = manifest.associateBy { it.filename.lowercase() }
         val rows = LinkedHashMap<String, DictionaryRow>()
@@ -148,7 +155,8 @@ object DictionaryCatalog {
             rows[key] = DictionaryRow(
                 languageCode = file.languageCode,
                 fileName = file.fileName,
-                displayName = item?.name ?: displayNameFor(file.languageCode),
+                // SS6: local rows always show the local-language name, never the manifest's.
+                displayName = displayNameFor(file.languageCode),
                 installed = true,
                 installedOrigin = file.origin,
                 manifestItem = item,
@@ -169,6 +177,13 @@ object DictionaryCatalog {
             )
         }
         return rows.values.sortedBy { it.displayName.lowercase() }
+    }
+
+    /** SS17's dedup fix: a user's own file always outranks a bundled one of the same name. */
+    private fun originPriority(origin: DictionaryOrigin): Int = when (origin) {
+        DictionaryOrigin.IMPORTED -> 2
+        DictionaryOrigin.DOWNLOADED -> 1
+        DictionaryOrigin.BUNDLED -> 0
     }
 
     /**

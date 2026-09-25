@@ -91,4 +91,12 @@ class ClipboardHistoryTest {
         assertEquals(listOf("a", "b"), merged.ordered.map { it.text })
         assertEquals(9, merged.nextId)
     }
+
+    @Test
+    fun `duplicate rows already in storage are collapsed, keeping the latest timestamp`() {
+        val (merged, superseded) = ClipboardHistory().mergeLoaded(listOf(Clip(1, "dup", 10), Clip(2, "dup", 30), Clip(3, "dup", 20)))
+        assertEquals(setOf(1L, 3L), superseded.toSet(), "the two older duplicate rows are cleaned up")
+        assertEquals(listOf(Clip(2, "dup", 30)), merged.entries, "the latest-timestamped duplicate is the one kept")
+        assertEquals(4, merged.nextId)
+    }
 }

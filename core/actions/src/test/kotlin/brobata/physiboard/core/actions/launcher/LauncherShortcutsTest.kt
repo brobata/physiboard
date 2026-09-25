@@ -156,6 +156,30 @@ class LauncherShortcutsTest {
     }
 
     @Test
+    fun `B - a physically held Sym fires the assigned key directly outside a text field, even unarmed`() {
+        val decision = LauncherKeyRouter.outsideTextField(
+            KeyId.Control(ControlKey.SPACE), shortcuts, settings, ctrlLatchActive = false,
+            foregroundIsHome = false, fromArmedMode = false, symPhysicallyHeld = true,
+        )
+        assertIs<LauncherKeyDecision.Run>(decision)
+        // Ctrl latch still blocks it, and it needs power_shortcuts_enabled, not the home switch.
+        assertEquals(
+            LauncherKeyDecision.FallThrough,
+            LauncherKeyRouter.outsideTextField(
+                KeyId.Control(ControlKey.SPACE), shortcuts, settings, ctrlLatchActive = true,
+                foregroundIsHome = false, fromArmedMode = false, symPhysicallyHeld = true,
+            ),
+        )
+        assertEquals(
+            LauncherKeyDecision.FallThrough,
+            LauncherKeyRouter.outsideTextField(
+                KeyId.Control(ControlKey.SPACE), shortcuts, settings.copy(symShortcutsEnabled = false), ctrlLatchActive = false,
+                foregroundIsHome = false, fromArmedMode = false, symPhysicallyHeld = true,
+            ),
+        )
+    }
+
+    @Test
     fun `B - the mode disarms by itself after 5000 ms and does nothing when power shortcuts are off`() {
         val (armed, _) = PowerShortcutMode.onSymDown(PowerShortcutState.IDLE, 0, true, false)
         val (still, _) = PowerShortcutMode.onTimeout(armed, 4999)

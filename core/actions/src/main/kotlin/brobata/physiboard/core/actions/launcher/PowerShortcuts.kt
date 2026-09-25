@@ -100,7 +100,10 @@ object LauncherKeyRouter {
      * spec SS6.2 A: with no editable field, no Ctrl latch, the foreground package one that answers
      * HOME, `launcher_shortcuts_enabled` on, and the key one of the 29: an assignment runs, an
      * unassigned key opens the sheet. Also the second half of case B once the armed mode fires a
-     * key ([fromArmedMode], which does not need the home screen or the home-screen switch).
+     * key ([fromArmedMode], which does not need the home screen or the home-screen switch), and
+     * SS6.2 B's last paragraph: a Sym that is physically held when the key goes down
+     * ([symPhysicallyHeld]) fires it the same way, even when the armed mode was never entered,
+     * as long as `power_shortcuts_enabled` is on. This mirrors [inTextField]'s `symHeldOrPending`.
      */
     fun outsideTextField(
         key: KeyId,
@@ -109,10 +112,12 @@ object LauncherKeyRouter {
         ctrlLatchActive: Boolean,
         foregroundIsHome: Boolean,
         fromArmedMode: Boolean,
+        symPhysicallyHeld: Boolean = false,
     ): LauncherKeyDecision {
         val keycode = AssignableKeys.keycodeOf(key) ?: return LauncherKeyDecision.FallThrough
         if (ctrlLatchActive) return LauncherKeyDecision.FallThrough
-        if (!fromArmedMode && !(settings.homeScreenShortcutsEnabled && foregroundIsHome)) return LauncherKeyDecision.FallThrough
+        val symChordFires = symPhysicallyHeld && settings.symShortcutsEnabled
+        if (!fromArmedMode && !symChordFires && !(settings.homeScreenShortcutsEnabled && foregroundIsHome)) return LauncherKeyDecision.FallThrough
         val entry = shortcuts[keycode]
         return if (entry != null) LauncherKeyDecision.Run(keycode, entry) else LauncherKeyDecision.OpenAssignmentSheet(keycode)
     }
