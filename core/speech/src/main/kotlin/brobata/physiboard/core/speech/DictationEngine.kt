@@ -114,9 +114,35 @@ object DictationEngine {
      * still speech for the timers' purposes but writes nothing, since a new composing text would
      * put the deleted words straight back. The utterance stays invalidated until its boundary.
      */
-    private fun handlePartialResult(session: DictationSession, text: String, textSettings: DictationTextSettings): DictationOutcome {
+    private fun handlePartialResult(session: DictationSession, rawText: String, textSettings: DictationTextSettings): DictationOutcome {
+        val text = SessionEcho.strip(rawText, session.utterance.finishedThisSession)
         if (text.isBlank()) return DictationOutcome(session) // "Empty partials are ignored."
         val invalidated = session.utterance.pending is PendingUtterance.Invalidated
+        // spec SS7.2, "New utterance inside one request": a partial that does not look like the
+        // one composing commits the previous words first (a space between them when the text
+        // before the cursor ends in a letter or digit) and starts a fresh composing region.
+        val previous = (session.utterance.pending as? PendingUtterance.Live)?.text
+        if (previous != null && !SameUtteranceCheck.isSameUtterance(previous, text)) {
+            val previousDisplayed = DictationPartialDisplay.display(previous, session.utterance.context, textSettings)
+            val joiner = if (previousDisplayed.lastOrNull()?.isLetterOrDigit() == true) " " else ""
+            val extended = session.utterance.copy(
+                context = extendContext(session.utterance.context, previousDisplayed + joiner),
+                pending = PendingUtterance.Live(text),
+                finishedThisSession = SessionEcho.extend(session.utterance.finishedThisSession, previous),
+            )
+            val next = session.copy(
+                heardSpeech = true,
+                utterance = extended,
+                silenceDeadlineMs = if (session.stopRequested) session.silenceDeadlineMs else null,
+                watchdogDeadlineMs = if (session.stopRequested) session.watchdogDeadlineMs else null,
+            )
+            val ops = buildList {
+                add(DictationTextOp.FinishComposing)
+                if (joiner.isNotEmpty()) add(DictationTextOp.CommitText(joiner))
+                add(DictationTextOp.SetComposingText(DictationPartialDisplay.display(text, extended.context, textSettings)))
+            }
+            return DictationOutcome(next, textOps = ops)
+        }
         // After a stop the watchdog is the only thing guaranteed to end the session (SS6.5: the
         // recognizer may never answer), so a trailing partial must not disarm it.
         val next = session.copy(
@@ -150,7 +176,7 @@ object DictationEngine {
             // close the session pause + 5000 ms later and set the latch." No new request is issued.
             val next = session.copy(
                 heardSpeech = true,
-                utterance = UtteranceState(extendContext(session.utterance.context, finished.plainText), PendingUtterance.None),
+                utterance = afterFinish(session.utterance, finished),
                 watchdogDeadlineMs = now + DictationTiming.watchdogMs(settings.pauseMs),
             )
             return DictationOutcome(next, textOps = finished.ops)
@@ -162,7 +188,7 @@ object DictationEngine {
             isContinuation = true,
             requestStartMs = now,
             silenceDeadlineMs = now + DictationTiming.silenceTimerMs(settings.pauseMs),
-            utterance = UtteranceState(extendContext(session.utterance.context, finished.plainText), PendingUtterance.None),
+            utterance = afterFinish(session.utterance, finished),
         )
         return DictationOutcome(next, listOf(DictationEffect.StartListening(DictationMode.RESTART_LOOP)), finished.ops)
     }
@@ -173,7 +199,7 @@ object DictationEngine {
         val next = session.copy(
             heardSpeech = true,
             segmentsSeen = session.segmentsSeen + 1,
-            utterance = UtteranceState(extendContext(session.utterance.context, finished.plainText), PendingUtterance.None),
+            utterance = afterFinish(session.utterance, finished),
             watchdogDeadlineMs = now + DictationTiming.watchdogMs(settings.pauseMs),
             silenceDeadlineMs = null,
         )
@@ -192,12 +218,21 @@ object DictationEngine {
      * callers of this function all reset the pending state to [PendingUtterance.None] afterwards,
      * which is the utterance boundary where invalidation ends.
      */
-    private fun finishFromResult(text: String?, utterance: UtteranceState, textSettings: DictationTextSettings): UtteranceFinisher.Finished {
+    private fun finishFromResult(rawText: String?, utterance: UtteranceState, textSettings: DictationTextSettings): UtteranceFinisher.Finished {
         if (utterance.pending is PendingUtterance.Invalidated) return UtteranceFinisher.NOTHING
+        // The echo of what this session already finished is not part of this utterance (SessionEcho).
+        val text = rawText?.let { SessionEcho.strip(it, utterance.finishedThisSession) }
         // A whitespace-only final carries no words of its own (SS7.3's "final without text").
         val resolvedText = if (!text.isNullOrBlank()) text else (utterance.pending as? PendingUtterance.Live)?.text
         return resolvedText?.let { UtteranceFinisher.finish(it, utterance.context, textSettings) } ?: UtteranceFinisher.NOTHING
     }
+
+    /** The state after an utterance finished: context extended, nothing pending, and the finished words remembered for [SessionEcho]. */
+    private fun afterFinish(utterance: UtteranceState, finished: UtteranceFinisher.Finished): UtteranceState = UtteranceState(
+        context = extendContext(utterance.context, finished.plainText),
+        pending = PendingUtterance.None,
+        finishedThisSession = SessionEcho.extend(utterance.finishedThisSession, finished.plainText),
+    )
 
     /** The next utterance's frozen context is this utterance's context plus whatever this module itself just wrote; never a fresh read. See [UtteranceContext]'s KDoc. */
     private fun extendContext(context: UtteranceContext, addedPlainText: String?): UtteranceContext =

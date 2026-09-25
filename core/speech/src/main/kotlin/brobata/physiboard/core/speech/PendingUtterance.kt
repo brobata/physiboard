@@ -33,4 +33,15 @@ sealed class PendingUtterance {
 }
 
 /** One utterance's frozen context (spec: [UtteranceContext]) paired with what has been heard of it so far. */
-data class UtteranceState(val context: UtteranceContext, val pending: PendingUtterance)
+data class UtteranceState(
+    val context: UtteranceContext,
+    val pending: PendingUtterance,
+    /**
+     * Every word this session has already finished into the field, in order. A recognizer that
+     * reports the running transcript of the whole session (Google's segmented session on the
+     * Titan, 2026-09-25: each partial and each segment repeated everything already committed)
+     * has that echo removed by [SessionEcho] before anything is composed, or the field grows by
+     * the whole transcript again at every segment.
+     */
+    val finishedThisSession: String = "",
+)
