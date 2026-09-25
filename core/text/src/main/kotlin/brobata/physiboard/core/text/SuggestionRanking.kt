@@ -154,6 +154,47 @@ object SuggestionRanking {
     }
 
     /** spec: SS3.5, "Distant substitution": same length, not a transposition, some differing pair more than 2.5 key-widths apart. */
+    /**
+     * spec: autocorrect-suggestions.md SS3.6 "Edit type": a dropped letter (+0.5) outranks a
+     * substitution (+0.4 when every changed key is adjacent or the two are transposed, else
+     * +0.2), which outranks an extra letter (+0.3 when the typed word doubles a letter the
+     * candidate does not, +0.1 when it doubles any letter, else 0). The spec gates this on
+     * `use_edit_type_ranking`, a setting 3.0 dropped (settings-catalog Keep/Drop); it is applied
+     * unconditionally here because on a physical keyboard a missed key is the common typo, and
+     * without it the same-length bonus alone turned "postr" into "posts" rather than "poster"
+     * (Titan, 2026-09-25). Decision to confirm with the maintainer; noted in the plan.
+     */
+    internal fun editTypeTerm(typedWord: String, candidateWord: String): Double = when (candidateWord.length - typedWord.length) {
+        1 -> 0.5
+        0 -> if (isTransposition(typedWord, candidateWord) || changedKeysAllAdjacent(typedWord, candidateWord)) 0.4 else 0.2
+        -1 -> {
+            val doubled = doubledPairCount(typedWord)
+            when {
+                doubled > doubledPairCount(candidateWord) -> 0.3
+                doubled > 0 -> 0.1
+                else -> 0.0
+            }
+        }
+        else -> 0.0
+    }
+
+    private fun changedKeysAllAdjacent(word: String, candidate: String): Boolean {
+        if (word.length != candidate.length) return false
+        var changed = 0
+        for (i in word.indices) {
+            if (word[i] == candidate[i]) continue
+            changed++
+            val d = QwertyGrid.distance(word[i], candidate[i]) ?: return false
+            if (d > ADJACENT_KEY_DISTANCE) return false
+        }
+        return changed > 0
+    }
+
+    /** Adjacent equal letters, counted per position, so "helllo" holds two and "hello" one: the candidate broke a double. */
+    private fun doubledPairCount(word: String): Int = (1 until word.length).count { word[it] == word[it - 1] }
+
+    private const val ADJACENT_KEY_DISTANCE = 1.15
+
     private fun isDistantSubstitution(word: String, candidate: String): Boolean {
         if (isTransposition(word, candidate)) return false
         for (i in word.indices) {
@@ -200,6 +241,8 @@ object SuggestionRanking {
             2 -> 0.05
             else -> -0.15 * minOf(lengthDiff, 4)
         }
+
+        if (distance > 0) total += editTypeTerm(typedWord, candidateWord)
 
         if (candidateWord.any { it.isDigit() }) total -= if (n <= 2) 3.0 else 1.5
         val hasSymbol = candidateWord.any { !it.isLetterOrDigit() && !WordChars.isApostrophe(it) }

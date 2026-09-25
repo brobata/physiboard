@@ -50,4 +50,23 @@ class SuggestionRankingTest {
         assertTrue(results.none { it.word == "hall" }, "the word itself is never suggested")
         assertTrue(results.any { it.word == "hallo" })
     }
+
+    /** Titan, 2026-09-25: "postr" was corrected to "posts"; the maintainer meant "poster". Frequencies are the shipped English list's. */
+    @Test
+    fun `a dropped letter outranks a same-length substitution of a more frequent word`() {
+        val index = dict("poster" to 132, "posts" to 144, "post" to 164)
+        val results = SuggestionRanking.suggest("postr", listOf(index), UserWordStore.empty(), RankingOptions())
+        assertEquals("poster", results.first().word, results.joinToString { it.word })
+    }
+
+    @Test
+    fun `the edit-type term prefers insert over substitute over delete`() {
+        assertEquals(0.5, SuggestionRanking.editTypeTerm("postr", "poster"))
+        assertEquals(0.4, SuggestionRanking.editTypeTerm("hsllo", "hallo"), "a and s are adjacent")
+        assertEquals(0.4, SuggestionRanking.editTypeTerm("teh", "the"), "a transposition")
+        assertEquals(0.2, SuggestionRanking.editTypeTerm("postr", "posts"), "r and s are not adjacent")
+        assertEquals(0.3, SuggestionRanking.editTypeTerm("helllo", "hello"), "the extra letter breaks a doubled pair")
+        assertEquals(0.1, SuggestionRanking.editTypeTerm("hellox", "hello"), "some doubled letter, but the candidate keeps it")
+        assertEquals(0.0, SuggestionRanking.editTypeTerm("helo", "hel"))
+    }
 }
