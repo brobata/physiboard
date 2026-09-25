@@ -421,6 +421,7 @@ internal class KeyboardSession(
             enterActionAllowed = EnterOverrideResolver.isEditorActionAllowed(reportedPackage, enterOverrides, enterBehaviorEnabled),
         )
         val field = classifyField(info, profile)
+        Log.i(TAG, "field: pkg=$reportedPackage restarting=$restarting inputType=0x${Integer.toHexString(info?.inputType ?: 0)} caps=${field.capFlags} kind=${field.kind} trust=${profile.editorTrust}")
         ownEdit = null
         lastReportedSelStart = info?.initialSelStart?.coerceAtLeast(0) ?: 0
         if (restarting) {
@@ -643,9 +644,11 @@ internal class KeyboardSession(
     fun onUpdateSelection(oldSelStart: Int, oldSelEnd: Int, newSelStart: Int, newSelEnd: Int, candidatesStart: Int, candidatesEnd: Int) {
         lastReportedSelStart = newSelStart
         ownEdit?.let { expectation ->
-            when (expectation.classify(newSelStart, SystemClock.uptimeMillis())) {
+            val verdict = expectation.classify(newSelStart, SystemClock.uptimeMillis())
+            Log.i(TAG, "selection: $oldSelStart->$newSelStart verdict=$verdict")
+            when (verdict) {
                 OwnEditExpectation.Verdict.OWN_EDIT -> {
-                    ownEdit = null
+                    ownEdit = expectation.copy(matched = true)
                     return
                 }
                 OwnEditExpectation.Verdict.STILL_SETTLING -> return
@@ -654,6 +657,7 @@ internal class KeyboardSession(
         }
         runCatching {
             val textBeforeCursor = runCatching { service.currentInputConnection?.getTextBeforeCursor(TEXT_BEFORE_CURSOR_READ, 0)?.toString() }.getOrNull()
+            Log.i(TAG, "selection external: $oldSelStart->$newSelStart textBefore='${textBeforeCursor?.takeLast(12)}'")
             pipeline.onExternalSelectionChange(textBeforeCursor, selectionCollapsed = newSelStart == newSelEnd)
             // spec SS4.5: the app's own caret moved between two captured keys, so capture drops.
             emojiPicker.onAppSelectionChanged()
@@ -714,8 +718,13 @@ internal class KeyboardSession(
     private fun processKeyStroke(stroke: KeyStroke): Boolean {
         val ic = service.currentInputConnection ?: return false
         val readout = ic.readEditorState(stroke.timeMs, wholeDocument = pipeline.needsWholeDocument(stroke), fallbackCursorAbsolute = lastReportedSelStart)
+        val glyphBefore = pipeline.modifierGlyphInput()
         val result = pipeline.onKeyStroke(stroke, readout.snapshot)
         val consumed = applyResult(ic, result, readout)
+        if (stroke.edge == KeyEdge.DOWN) {
+            val g = pipeline.modifierGlyphInput()
+            Log.i(TAG, "stroke: ${stroke.key} shiftMeta=${stroke.meta.shift} before[caps=${glyphBefore.capsLockOn} oneShot=${glyphBefore.shiftOneShotArmed}] after[caps=${g.capsLockOn} oneShot=${g.shiftOneShotArmed}] textBefore='${readout.snapshot.textBeforeCursor?.takeLast(12)}' ops=${result.ops}")
+        }
         scheduleLongPressIfNeeded()
         // spec expansion-clipboard-pickers-launcher.md SS6.2: an assigned key fired, or the Sym-armed mode just armed.
         result.launcherKey?.let { decision -> runCatching { launcherKeys.perform(decision) }.onFailure { error -> Log.e(TAG, "launcher key crashed", error) } }

@@ -67,7 +67,19 @@ class PairingWatcherService : Service() {
             }
             when (intent?.action) {
                 ACTION_ARM -> {
-                    showForeground(searchingNotification())
+                    // The setup card re-arms every 1500 ms while unpaired (spec SS4.1 step 3), so
+                    // this must show the notification for the state the coordinator is already
+                    // in: posting "Searching" unconditionally overwrote "Pairing service found"
+                    // a second after every discovery (Titan, 2026-09-25) and the code entry
+                    // never appeared. A terminal state has no foreground notification, so the
+                    // searching one stands in until the coordinator moves.
+                    showForeground(
+                        when (val current = services.pairing.state.value) {
+                            is PairingState.ServiceFound -> foundNotification(current.port)
+                            PairingState.Pairing -> pairingNotification()
+                            else -> searchingNotification()
+                        },
+                    )
                     services.pairing.arm()
                 }
                 ACTION_STOP -> {

@@ -79,4 +79,14 @@ class AppliedEditAccountingTest {
         assertEquals(OwnEditExpectation.Verdict.STILL_SETTLING, expectation.classify(newSelStart = 11, nowMs = 1010))
         assertEquals(OwnEditExpectation.Verdict.EXTERNAL, expectation.classify(newSelStart = 40, nowMs = 1300))
     }
+
+    @Test
+    fun `a second cursor report inside the settle window after the app already agreed is noise, not an external move`() {
+        // Titan 2026-09-25, web chat field: "0->1" (agreed) then "1->0" ten milliseconds later.
+        val expectation = OwnEditExpectation(selStart = 1, expiresAtMs = 1_300L)
+        assertEquals(OwnEditExpectation.Verdict.OWN_EDIT, expectation.classify(1, 1_010L))
+        val matched = expectation.copy(matched = true)
+        assertEquals(OwnEditExpectation.Verdict.STILL_SETTLING, matched.classify(0, 1_020L))
+        assertEquals(OwnEditExpectation.Verdict.EXTERNAL, matched.classify(0, 1_400L))
+    }
 }

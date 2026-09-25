@@ -85,7 +85,14 @@ internal object AppliedEditAccounting {
  * real tap, and which a batch reporting twice consumed on the first report so the second was
  * mistaken for a tap and wiped the state right after a correction.
  */
-internal data class OwnEditExpectation(val selStart: Int, val expiresAtMs: Long) {
+/**
+ * [matched] is set once the app has reported the cursor where the edit put it. The expectation
+ * is then kept, not dropped, until [expiresAtMs]: a web field on the Titan (2026-09-25) followed
+ * every own-edit report with a second one moving the cursor to 0 and reading "", which, taken as
+ * an external move, wiped the tracked word and re-armed the start-of-text capital on every
+ * letter. Anything the app says inside the settle window after it already agreed is noise.
+ */
+internal data class OwnEditExpectation(val selStart: Int, val expiresAtMs: Long, val matched: Boolean = false) {
 
     enum class Verdict {
         /** The editor reported exactly the position our edit produces: the expectation is met. */

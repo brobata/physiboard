@@ -8,6 +8,7 @@ import brobata.physiboard.core.keys.Action
 import brobata.physiboard.core.keys.EditEffect
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 
 /**
  * Whole-sequence tests for [TextInputPipeline]. Every rule chained inside it already has its own
@@ -544,5 +545,29 @@ class TextInputPipelineTest {
         assertEquals(false, after.justCommittedSentenceEnd)
 
         assertEquals("", before.afterExternalCursorMove(null).currentWord.word, "an unreadable field resets the word rather than keeping a stale one")
+    }
+
+    /**
+     * Titan, 2026-09-25, a web chat field in Chrome: after every committed letter the editor
+     * answered "" for the text before the cursor. Read literally that is "start of text", so
+     * every letter of the first word was capitalised ("TESTING"), and because the editor never
+     * showed the period, nothing was capitalised after one. The read disagrees with the word
+     * this pipeline typed, so no context rule may act on it; the sentence end is still known
+     * from the pipeline's own record.
+     */
+    @Test
+    fun `an editor that answers empty after every committed letter capitalises only the first letter and after a sentence end`() {
+        val lying = EditorSnapshot(textBeforeCursor = "")
+        var state = TextInputState()
+        fun press(ch: Char): CapDecision? {
+            val result = TextInputPipeline.handle(TextInputRequest.Key(Action.Commit(ch.toString())), normalField, TextInputSettingsBundle(), TextInputResources(), state, lying)
+            state = result.state
+            return result.capDecision
+        }
+        assertNotEquals(CapDecision.ArmOneShot, press('T'), "the letter just typed is not a new start of text")
+        assertNotEquals(CapDecision.ArmOneShot, press('e'), "the empty read disagrees with the tracked word: no capital")
+        assertEquals("Te", state.currentWord.word, "the tracked word survives the lying read")
+        press('.')
+        assertEquals(CapDecision.ArmOneShot, press(' '), "the sentence end is known from the pipeline's own record, not the read")
     }
 }
