@@ -63,11 +63,18 @@ class PreferencesDiagnosticsStore(private val prefs: SharedPreferences) : Diagno
         return VerdictRecord(verdict, prefs.getLong(BROKER_STATUS_AT, 0L))
     }
 
+    override fun setPairingWatcherArmed(armed: Boolean) {
+        prefs.edit(commit = true) { putBoolean(PAIRING_WATCHER_ARMED, armed) }
+    }
+
+    override fun isPairingWatcherArmed(): Boolean = prefs.getBoolean(PAIRING_WATCHER_ARMED, false)
+
     companion object {
         const val FILE_NAME = "privileged_diagnostics"
         private const val DEVICE_VALUE = "privileged_backlight_device_value"
         private const val DEVICE_VALUE_AT = "privileged_backlight_device_value_at"
         private const val BROKER_STATUS = "privileged_broker_status"
         private const val BROKER_STATUS_AT = "privileged_broker_status_at"
+        private const val PAIRING_WATCHER_ARMED = "privileged_pairing_watcher_armed"
     }
 }

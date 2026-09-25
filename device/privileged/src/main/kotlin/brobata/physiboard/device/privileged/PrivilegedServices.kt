@@ -10,7 +10,9 @@ import brobata.physiboard.device.privileged.backlight.GlobalMasterSwitchAccess
 import brobata.physiboard.device.privileged.backlight.KeyboardBacklightController
 import brobata.physiboard.device.privileged.backlight.MasterSwitchAccess
 import brobata.physiboard.device.privileged.broker.AndroidAdbTransport
+import brobata.physiboard.device.privileged.broker.BrokerRules
 import brobata.physiboard.device.privileged.broker.PairingCoordinator
+import brobata.physiboard.device.privileged.broker.PairingWatcherService
 import brobata.physiboard.device.privileged.broker.PrivilegedBroker
 import brobata.physiboard.device.privileged.ring.AndroidRingLauncher
 import brobata.physiboard.device.privileged.ring.DelayedRunner
@@ -139,6 +141,23 @@ class PrivilegedServices(
     fun onProcessStart() {
         worker.execute {
             runCatching { ringBacklight.restore() }.onFailure { Log.e(TAG, "orphan restore crashed", it) }
+            runCatching { rearmPairingWatcherIfNeeded() }.onFailure { Log.e(TAG, "pairing watcher re-arm crashed", it) }
+        }
+    }
+
+    /**
+     * spec: broker-privileged-toolbox.md SS4.1 step 3, the re-arm gap: the setup card is the only
+     * thing that normally arms the watcher, so a process death with no key stored and no card on
+     * screen leaves nothing listening for a pairing dialog opened from Android's own Settings.
+     * [BrokerRules.shouldRearmPairingWatcherAtProcessStart] is the pure decision; this is just its
+     * Android host. [PairingWatcherService.arm] already catches a refused foreground start (a
+     * background-start restriction on Android 12+) and falls back to a plain start, itself caught,
+     * so a total refusal here does nothing to the persisted flag: it is left as-is for the next
+     * setup card to pick up.
+     */
+    private fun rearmPairingWatcherIfNeeded() {
+        if (BrokerRules.shouldRearmPairingWatcherAtProcessStart(diagnostics.isPairingWatcherArmed(), broker.isPaired())) {
+            PairingWatcherService.arm(appContext)
         }
     }
 

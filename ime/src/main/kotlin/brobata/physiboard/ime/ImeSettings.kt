@@ -243,10 +243,10 @@ internal object ImeSettings {
      * `auto_correct_enabled_languages`, or when that is empty "the system language if it is one
      * of it, en, es, fr, de, pl, otherwise en"; each code's set is the bundled set overlaid with
      * the user's `auto_correct_custom_<code>` rules, and a code outside the bundled seven with
-     * custom rules is its own set. [bundled] is keyed by code.
-     *
-     * SPEC GAP: no bundled `auto_corrections_<code>.json` is in the 3.0 tree yet, so [bundled]
-     * is empty from `:ime` today and only the user's own substitutions are searched.
+     * custom rules is its own set. [bundled] is keyed by code; `:ime` fills it from
+     * [RuleSetAssetLoader], today only with `en` (`it`, `es`, `fr`, `de`, `pl` are documented
+     * gaps: the spec's own bundled rule text is not something a clean-room author can reproduce
+     * from first knowledge the way the English rules could be).
      */
     fun ruleSets(s: Settings, systemLanguage: String, bundled: Map<String, RuleSet> = emptyMap()): List<RuleSet> {
         val chosen = s.correction.textReplacementLanguages.map { it.trim().lowercase() }.filter { it.isNotEmpty() }
@@ -339,8 +339,8 @@ internal object ImeSettings {
     /** The one bundled language's locale, what `:ime` scores theme overrides and extra-language lookups against until a subtype module exists. */
     const val DEFAULT_SUBTYPE_LOCALE: String = "en"
 
-    /** spec: autocorrect-suggestions.md SS8.1's bundled codes minus `x-pastiera`, the ones the absent-value rule may pick. */
-    private val BUNDLED_RULE_SET_CODES: Set<String> = setOf("it", "en", "es", "fr", "de", "pl")
+    /** spec: autocorrect-suggestions.md SS8.1's bundled codes minus `x-pastiera`, the ones the absent-value rule may pick and [RuleSetAssetLoader] tries to load. */
+    val BUNDLED_RULE_SET_CODES: Set<String> = setOf("it", "en", "es", "fr", "de", "pl")
 
     /** spec: autocorrect-suggestions.md SS8.1: `__name` is the display name, never a rule. */
     private const val RESERVED_NAME_KEY = "__name"

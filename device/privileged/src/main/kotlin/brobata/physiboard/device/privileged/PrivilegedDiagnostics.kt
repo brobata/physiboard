@@ -45,6 +45,18 @@ interface DiagnosticsStore {
     fun backlightDeviceValue(): DeviceValueRecord?
     fun recordBrokerVerdict(record: VerdictRecord)
     fun brokerVerdict(): VerdictRecord?
+
+    /**
+     * spec: broker-privileged-toolbox.md SS4.1 step 3, the re-arm gap fix. Whether the pairing
+     * watcher was armed the last time anything set this flag, surviving the process dying so the
+     * next process start can decide whether to re-arm it (see
+     * [brobata.physiboard.device.privileged.broker.BrokerRules.shouldRearmPairingWatcherAtProcessStart]).
+     * Cleared on "Stop" and on a successful pairing; left alone on a failed attempt, because the
+     * user has not given up and the watcher may still need discovering again after a process
+     * death.
+     */
+    fun setPairingWatcherArmed(armed: Boolean)
+    fun isPairingWatcherArmed(): Boolean
 }
 
 /** The JVM tests' store, and the fallback for a host that wires nothing. */
@@ -74,6 +86,15 @@ class InMemoryDiagnosticsStore : DiagnosticsStore {
     }
 
     override fun brokerVerdict(): VerdictRecord? = verdict
+
+    @Volatile
+    private var pairingWatcherArmed = false
+
+    override fun setPairingWatcherArmed(armed: Boolean) {
+        pairingWatcherArmed = armed
+    }
+
+    override fun isPairingWatcherArmed(): Boolean = pairingWatcherArmed
 }
 
 /** Everything the debug export's `[privileged]` section needs that is not already in a [DiagnosticsStore]. spec: SS8. */

@@ -73,4 +73,16 @@ object BrokerRules {
 
     /** spec: SS6 step 5 ("<exception simple name>: <message>"). */
     fun errorText(error: Throwable): String = "${error::class.simpleName}: ${error.message}"
+
+    /**
+     * spec: SS4.1 step 3, the re-arm gap. The watcher is normally armed only by the setup card
+     * while it is visible; when the process dies with no key stored (reinstall, low memory) and
+     * no card is on screen, nothing re-arms it, so a pairing dialog opened from Android's own
+     * Settings is never discovered. Re-arming at the next process start is only correct when the
+     * watcher was actually doing something when the process died ([wasArmed]) and pairing is
+     * still outstanding ([hasStoredKey] false); a flag that was never set means no card armed it
+     * this run, and a stored key means the flow already finished.
+     */
+    fun shouldRearmPairingWatcherAtProcessStart(wasArmed: Boolean, hasStoredKey: Boolean): Boolean =
+        wasArmed && !hasStoredKey
 }

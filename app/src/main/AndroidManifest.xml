@@ -1,6 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- app-shell.md SS8.2: without this, package visibility (AppsFilter) hides every other
+         installed input-method service from InputMethodManager#getEnabledInputMethodList() and
+         from resolving Settings.Secure#default_input_method, so the enabled/selected probe can
+         never tell PhysiBoard apart from another keyboard on the phone (including a differently
+         flavored build of itself, e.g. dev vs release applicationId). -->
+    <queries>
+        <intent>
+            <action android:name="android.view.InputMethod" />
+        </intent>
+    </queries>
+
     <!-- app-shell.md SS13.2: the update checker's one GitHub GET. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- app-shell.md SS4.4: the home screen's one-time POST_NOTIFICATIONS prompt on Android 13+. -->

@@ -54,7 +54,17 @@ class PairingWatcherService : Service() {
         runCatching {
             ensureChannel()
             val services = PrivilegedServices.from(this) ?: return
-            stateJob = scope.launch { services.pairing.state.collect { state -> runCatching { render(state) }.onFailure { Log.e(TAG, "render crashed", it) } } }
+            stateJob = scope.launch {
+                services.pairing.state.collect { state ->
+                    runCatching {
+                        // spec SS4.1 step 3 re-arm gap fix: cleared on a successful pairing, left
+                        // alone on a failure (the user has not given up, and the watcher may need
+                        // discovering again after a process death before they retry).
+                        if (state is PairingState.Paired) services.diagnostics.setPairingWatcherArmed(false)
+                        render(state)
+                    }.onFailure { Log.e(TAG, "render crashed", it) }
+                }
+            }
         }.onFailure { Log.e(TAG, "onCreate crashed", it) }
     }
 
@@ -81,9 +91,13 @@ class PairingWatcherService : Service() {
                         },
                     )
                     services.pairing.arm()
+                    // spec SS4.1 step 3 re-arm gap fix: this is the one place the watcher is
+                    // actually armed, so this is where the persisted flag is set.
+                    services.diagnostics.setPairingWatcherArmed(true)
                 }
                 ACTION_STOP -> {
                     services.pairing.disarm()
+                    services.diagnostics.setPairingWatcherArmed(false)
                     stopSelf()
                 }
                 ACTION_REPLY -> {
