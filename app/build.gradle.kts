@@ -4,6 +4,29 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+/*
+ * The maintainer's signing keystore lives OUTSIDE this repo (docs/release.md). These four
+ * variables are read from the environment rather than a checked-in file; when any is missing the
+ * release build type below is left unsigned instead of failing, so `:app:assembleRelease` still
+ * works for anyone measuring shrink or running CI without the real keystore.
+ */
+val releaseKeystorePath = System.getenv("PASTIERA_KEYSTORE_PATH")
+val releaseKeystorePassword = System.getenv("PASTIERA_KEYSTORE_PASSWORD")
+val releaseKeyAlias = System.getenv("PASTIERA_KEY_ALIAS")
+val releaseKeyPassword = System.getenv("PASTIERA_KEY_PASSWORD")
+val releaseSigningReady = !releaseKeystorePath.isNullOrBlank() &&
+    !releaseKeystorePassword.isNullOrBlank() &&
+    !releaseKeyAlias.isNullOrBlank() &&
+    !releaseKeyPassword.isNullOrBlank()
+
+if (!releaseSigningReady) {
+    logger.warn(
+        "PhysiBoard release: PASTIERA_KEYSTORE_PATH/PASTIERA_KEYSTORE_PASSWORD/" +
+            "PASTIERA_KEY_ALIAS/PASTIERA_KEY_PASSWORD are not all set; :app:assembleRelease will " +
+            "produce an unsigned APK (docs/release.md)."
+    )
+}
+
 android {
     namespace = "brobata.physiboard.app"
     compileSdk = 36
@@ -16,7 +39,30 @@ android {
         versionName = "3.0.0-dev"
     }
 
+    signingConfigs {
+        if (releaseSigningReady) {
+            create("release") {
+                storeFile = file(releaseKeystorePath!!)
+                storePassword = releaseKeystorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
+        release {
+            // The 76 MB unshrunk build (measured from `sideload`) is mostly Compose and unused
+            // framework code R8 can remove once it can see the whole app; docs/release.md SS
+            // "Shrinking" has the before/after. Every module this depends on that is itself an
+            // Android library ships its own consumerProguardFiles, so this file only needs the
+            // keeps that R8 cannot infer from :app's own code (docs/release.md has the reasoning
+            // for each block).
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (releaseSigningReady) signingConfig = signingConfigs.getByName("release")
+        }
         /*
          * The only build safe to put on the maintainer's phone while 2.x is the
          * daily driver. It needs an id of its own for TWO reasons: it must not

@@ -262,6 +262,14 @@ internal class KeyboardSession(
     private val loadedDictionaries = linkedMapOf<LanguageCode, DictionaryIndex>()
     private val dictionaryLoadsInFlight = mutableSetOf<LanguageCode>()
 
+    /**
+     * spec: autocorrect-suggestions.md SS8.1: the bundled substitution rule sets, loaded once (a
+     * few kilobytes, unlike a dictionary) and handed to [ImeSettings.ruleSets] on every settings
+     * change. Only `auto_corrections_en.json` ships today; the other five bundled codes are a
+     * documented gap ([ImeSettings.ruleSets]'s own KDoc).
+     */
+    private val bundledRuleSets = RuleSetAssetLoader(service.assets).loadAll(ImeSettings.BUNDLED_RULE_SET_CODES)
+
     /** spec: dictionaries-languages.md SS8.4, the active style's extra suggestion languages (`input_style_suggestion_locales`). */
     private var extraLanguages: List<LanguageCode> = emptyList()
 
@@ -333,7 +341,7 @@ internal class KeyboardSession(
         }
         // spec: autocorrect-suggestions.md SS8.2 and dictionaries-languages.md SS8.4: the rule
         // sets searched and the extra suggestion languages both come from the store.
-        pipeline.resources = pipeline.resources.copy(ruleSets = ImeSettings.ruleSets(settings, java.util.Locale.getDefault().language))
+        pipeline.resources = pipeline.resources.copy(ruleSets = ImeSettings.ruleSets(settings, java.util.Locale.getDefault().language, bundledRuleSets))
         extraLanguages = ImeSettings.extraSuggestionLanguages(settings, PRIMARY_LANGUAGE, PRIMARY_LANGUAGE.value)
         rebuildDictionaries()
         extraLanguages.forEach(::loadDictionary)
@@ -424,7 +432,7 @@ internal class KeyboardSession(
             enterActionAllowed = EnterOverrideResolver.isEditorActionAllowed(reportedPackage, enterOverrides, enterBehaviorEnabled),
         )
         val field = classifyField(info, profile)
-        Log.i(TAG, "field: pkg=$reportedPackage restarting=$restarting inputType=0x${Integer.toHexString(info?.inputType ?: 0)} caps=${field.capFlags} kind=${field.kind} trust=${profile.editorTrust}")
+        DiagnosticLog.i(TAG) { "field: pkg=$reportedPackage restarting=$restarting inputType=0x${Integer.toHexString(info?.inputType ?: 0)} caps=${field.capFlags} kind=${field.kind} trust=${profile.editorTrust}" }
         ownEdit = null
         lastReportedSelStart = info?.initialSelStart?.coerceAtLeast(0) ?: 0
         if (restarting) {
@@ -654,7 +662,7 @@ internal class KeyboardSession(
         lastReportedSelectionCollapsed = newSelStart == newSelEnd
         ownEdit?.let { expectation ->
             val verdict = expectation.classify(newSelStart, SystemClock.uptimeMillis())
-            Log.i(TAG, "selection: $oldSelStart->$newSelStart verdict=$verdict")
+            DiagnosticLog.i(TAG) { "selection: $oldSelStart->$newSelStart verdict=$verdict" }
             when (verdict) {
                 OwnEditExpectation.Verdict.OWN_EDIT -> {
                     ownEdit = expectation.copy(matched = true)
@@ -666,7 +674,7 @@ internal class KeyboardSession(
         }
         runCatching {
             val textBeforeCursor = runCatching { service.currentInputConnection?.getTextBeforeCursor(TEXT_BEFORE_CURSOR_READ, 0)?.toString() }.getOrNull()
-            Log.i(TAG, "selection external: $oldSelStart->$newSelStart textBefore='${textBeforeCursor?.takeLast(12)}'")
+            DiagnosticLog.i(TAG) { "selection external: $oldSelStart->$newSelStart textBefore='${textBeforeCursor?.takeLast(12)}'" }
             pipeline.onExternalSelectionChange(textBeforeCursor, selectionCollapsed = newSelStart == newSelEnd)
             // spec SS4.5: the app's own caret moved between two captured keys, so capture drops.
             emojiPicker.onAppSelectionChanged()
@@ -737,7 +745,7 @@ internal class KeyboardSession(
         }
         if (stroke.edge == KeyEdge.DOWN) {
             val g = pipeline.modifierGlyphInput()
-            Log.i(TAG, "stroke: ${stroke.key} shiftMeta=${stroke.meta.shift} before[caps=${glyphBefore.capsLockOn} oneShot=${glyphBefore.shiftOneShotArmed}] after[caps=${g.capsLockOn} oneShot=${g.shiftOneShotArmed}] textBefore='${readout.snapshot.textBeforeCursor?.takeLast(12)}' ops=${result.ops} dicts=${pipeline.resources.dictionaries.size} sugg=${runCatching { pipeline.suggestions().map { it.word } }.getOrDefault(emptyList())}")
+            DiagnosticLog.i(TAG) { "stroke: ${stroke.key} shiftMeta=${stroke.meta.shift} before[caps=${glyphBefore.capsLockOn} oneShot=${glyphBefore.shiftOneShotArmed}] after[caps=${g.capsLockOn} oneShot=${g.shiftOneShotArmed}] textBefore='${readout.snapshot.textBeforeCursor?.takeLast(12)}' ops=${result.ops} dicts=${pipeline.resources.dictionaries.size} sugg=${runCatching { pipeline.suggestions().map { it.word } }.getOrDefault(emptyList())}" }
         }
         scheduleLongPressIfNeeded()
         // spec expansion-clipboard-pickers-launcher.md SS6.2: an assigned key fired, or the Sym-armed mode just armed.
@@ -1239,7 +1247,7 @@ internal class KeyboardSession(
                 // spec SS6.1: "a tap within 500 ms of the last accepted tap is ignored".
                 val now = SystemClock.uptimeMillis()
                 if (LanguageTapDebounce.accepts(lastLanguageTapMs, now)) lastLanguageTapMs = now
-                Log.i(TAG, "language button: no input-style switching yet (placeholder)")
+                DiagnosticLog.i(TAG) { "language button: no input-style switching yet (placeholder)" }
             }
             StripAction.OpenSettings -> openOwnApp()
             // spec layers-sym-alt.md SS4.3: the clipboard and emoji picker buttons open their page directly and toggle; the key layers still have no surface.
@@ -1247,9 +1255,9 @@ internal class KeyboardSession(
                 pipeline.toggleSymPage(action.page)
                 syncSymPanels()
             } else {
-                Log.i(TAG, "${button.id}: Sym page ${action.page} has no surface yet (placeholder)")
+                DiagnosticLog.i(TAG) { "${button.id}: Sym page ${action.page} has no surface yet (placeholder)" }
             }
-            StripAction.OpenQuickActions -> Log.i(TAG, "quick actions overlay not built yet (placeholder)")
+            StripAction.OpenQuickActions -> DiagnosticLog.i(TAG) { "quick actions overlay not built yet (placeholder)" }
         }
     }
 

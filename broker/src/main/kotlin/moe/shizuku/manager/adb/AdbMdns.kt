@@ -12,6 +12,7 @@ import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.Observer
+import brobata.physiboard.broker.BuildConfig
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.NetworkInterface
@@ -70,8 +71,9 @@ class AdbMdns(
                     .any { resolvedService.host.hostAddress == it.hostAddress }
             }
         val listening = isPortAvailable(resolvedService.port)
-        // PhysiBoard: the phone ships with verbose logging off, so the verdict is logged at info.
-        Log.i(TAG, "onServiceResolved: ${resolvedService.serviceName} host=${resolvedService.host?.hostAddress} port=${resolvedService.port} running=$running local=$local listening=$listening")
+        // PhysiBoard: the phone ships with verbose logging off, so the verdict is logged at info,
+        // but only in a build that keeps BuildConfig.DEBUG true (docs/release.md, "Logging").
+        if (BuildConfig.DEBUG) Log.i(TAG, "onServiceResolved: ${resolvedService.serviceName} host=${resolvedService.host?.hostAddress} port=${resolvedService.port} running=$running local=$local listening=$listening")
         if (running && local && listening) {
             serviceName = resolvedService.serviceName
             observer.onChanged(resolvedService.port)
@@ -89,33 +91,33 @@ class AdbMdns(
 
     internal class DiscoveryListener(private val adbMdns: AdbMdns) : NsdManager.DiscoveryListener {
         override fun onDiscoveryStarted(serviceType: String) {
-            Log.i(TAG, "onDiscoveryStarted: $serviceType")
+            if (BuildConfig.DEBUG) Log.i(TAG, "onDiscoveryStarted: $serviceType")
 
             adbMdns.onDiscoveryStart()
         }
 
         override fun onStartDiscoveryFailed(serviceType: String, errorCode: Int) {
-            Log.i(TAG, "onStartDiscoveryFailed: $serviceType, $errorCode")
+            if (BuildConfig.DEBUG) Log.i(TAG, "onStartDiscoveryFailed: $serviceType, $errorCode")
         }
 
         override fun onDiscoveryStopped(serviceType: String) {
-            Log.i(TAG, "onDiscoveryStopped: $serviceType")
+            if (BuildConfig.DEBUG) Log.i(TAG, "onDiscoveryStopped: $serviceType")
 
             adbMdns.onDiscoveryStop()
         }
 
         override fun onStopDiscoveryFailed(serviceType: String, errorCode: Int) {
-            Log.i(TAG, "onStopDiscoveryFailed: $serviceType, $errorCode")
+            if (BuildConfig.DEBUG) Log.i(TAG, "onStopDiscoveryFailed: $serviceType, $errorCode")
         }
 
         override fun onServiceFound(serviceInfo: NsdServiceInfo) {
-            Log.i(TAG, "onServiceFound: ${serviceInfo.serviceName}")
+            if (BuildConfig.DEBUG) Log.i(TAG, "onServiceFound: ${serviceInfo.serviceName}")
 
             adbMdns.onServiceFound(serviceInfo)
         }
 
         override fun onServiceLost(serviceInfo: NsdServiceInfo) {
-            Log.i(TAG, "onServiceLost: ${serviceInfo.serviceName}")
+            if (BuildConfig.DEBUG) Log.i(TAG, "onServiceLost: ${serviceInfo.serviceName}")
 
             adbMdns.onServiceLost(serviceInfo)
         }
@@ -123,7 +125,7 @@ class AdbMdns(
 
     internal class ResolveListener(private val adbMdns: AdbMdns) : NsdManager.ResolveListener {
         override fun onResolveFailed(nsdServiceInfo: NsdServiceInfo, i: Int) {
-            Log.i(TAG, "onResolveFailed: ${nsdServiceInfo.serviceName}, $i")
+            if (BuildConfig.DEBUG) Log.i(TAG, "onResolveFailed: ${nsdServiceInfo.serviceName}, $i")
         }
 
         override fun onServiceResolved(nsdServiceInfo: NsdServiceInfo) {

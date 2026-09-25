@@ -19,7 +19,13 @@ plugins {
 android {
     namespace = "brobata.physiboard.broker"
     compileSdk = 36
-    defaultConfig { minSdk = 31 }
+    defaultConfig {
+        minSdk = 31
+        // Carried into any app that depends on this module: the vendored client's JNI native
+        // method names and its reflection into platform Conscrypt must survive R8 untouched
+        // (docs/release.md, "Shrinking").
+        consumerProguardFiles("proguard-rules.pro")
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -27,6 +33,9 @@ android {
     sourceSets["main"].java.srcDir("src/main/kotlin")
     // Upstream code, carried unchanged; its warnings are not ours to fix.
     lint { checkReleaseBuilds = false; abortOnError = false }
+    // AdbMdns.kt reads this to compile its phone-testing Log.i trail to nothing outside
+    // `sideload`/`debug` (docs/release.md, "Logging"); the vendored code is otherwise unchanged.
+    buildFeatures { buildConfig = true }
 }
 
 kotlin {

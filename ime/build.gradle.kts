@@ -11,11 +11,19 @@ plugins {
 android {
     namespace = "brobata.physiboard.ime"
     compileSdk = 36
-    defaultConfig { minSdk = 31 }
+    defaultConfig {
+        minSdk = 31
+        // Carried into any app that depends on this module, so R8 always keeps the service the
+        // system instantiates by class name (docs/release.md, "Shrinking").
+        consumerProguardFiles("proguard-rules.pro")
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+    // DiagnosticLog.i (KeyboardSession.kt, DictionaryAssetLoader.kt) reads this to compile the
+    // phone-testing Log.i trail to nothing outside `sideload`/`debug` (docs/release.md, "Logging").
+    buildFeatures { buildConfig = true }
 }
 
 kotlin {

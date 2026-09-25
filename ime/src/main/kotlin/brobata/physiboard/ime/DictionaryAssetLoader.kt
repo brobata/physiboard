@@ -2,7 +2,6 @@ package brobata.physiboard.ime
 
 import android.content.res.AssetManager
 import android.os.Handler
-import android.util.Log
 import brobata.physiboard.core.dict.DictionaryIndex
 import brobata.physiboard.core.dict.LanguageCode
 import java.io.IOException
@@ -32,7 +31,7 @@ internal class DictionaryAssetLoader(
             val bytes = readAssetBytes(language)
             val index = bytes?.let(DictionaryIndex::fromPbdBytes)
             // The phone drops verbose logs, and a silently missing dictionary reads as "autocorrect is broken".
-            Log.i(TAG, "dictionary $language: asset=${bytes?.size ?: "missing"} bytes, index=${if (index != null) "loaded" else "FAILED"}")
+            DiagnosticLog.i(TAG) { "dictionary $language: asset=${bytes?.size ?: "missing"} bytes, index=${if (index != null) "loaded" else "FAILED"}" }
             if (index != null) mainHandler.post { onLoaded(index) }
         }, "physiboard-dict-loader-$language").apply { isDaemon = true }.start()
     }

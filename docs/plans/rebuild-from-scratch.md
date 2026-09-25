@@ -314,15 +314,19 @@ verified on a device without the app that misbehaves.
    every device quirk as a numbered fact with evidence, every setting with its default and 2.x
    preference key. Record the pipeline test corpus (key sequences -> expected text) on the
    Titan. Then move `main` to `legacy-2.x`, tag it, and start `main` as an orphan branch.
-2. **Pipeline core.** `:core:keys`, `:core:text`, `:core:dict`, `:device:titan`, JVM tests
-   against the corpus. New dictionary format and the builder script for all 19 languages.
-3. **Minimal IME.** `:ime` that types, corrects, and shows the strip. Sideload it. Daily-drive it.
-4. **Device features.** Broker, backlight, ring, trackpad, caret badge, dictation.
-5. **App behaviors.** Per-app Enter, exact typing, nudge, text expansion, clipboard, pickers.
-6. **Settings and importer.** Compose hubs, DataStore, legacy import, onboarding, diagnostics,
-   update checker, backup.
-7. **Release.** License change commit, notices rewritten to credit Pastiera as the project this
-   succeeds rather than derives from, changelog reset to 3.0.0, published as Latest.
+2. **[Done, 2026-09-25] Pipeline core.** `:core:keys`, `:core:text`, `:core:dict`, `:device:titan`,
+   JVM tests against the corpus. New dictionary format and the builder script for all 19 languages.
+3. **[Done, 2026-09-25] Minimal IME.** `:ime` that types, corrects, and shows the strip. Sideload
+   it. Daily-drive it.
+4. **[Done, 2026-09-25] Device features.** Broker, backlight, ring, trackpad, caret badge,
+   dictation.
+5. **[Done, 2026-09-25] App behaviors.** Per-app Enter, exact typing, nudge, text expansion,
+   clipboard, pickers.
+6. **[Done, 2026-09-25] Settings and importer.** Compose hubs, DataStore, legacy import,
+   onboarding, diagnostics, update checker, backup.
+7. **[In progress, 2026-09-25] Release.** License change commit, notices rewritten to credit
+   Pastiera as the project this succeeds rather than derives from, changelog reset to 3.0.0,
+   published as Latest.
 
 ## Complexity
 
