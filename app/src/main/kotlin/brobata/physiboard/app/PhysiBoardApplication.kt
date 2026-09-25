@@ -4,7 +4,9 @@ import android.app.Application
 import android.util.Log
 import brobata.physiboard.app.settings.LegacyImporter
 import brobata.physiboard.app.settings.SettingsStore
+import brobata.physiboard.app.shell.UpdateCheckScheduler
 import brobata.physiboard.core.settings.Settings
+import brobata.physiboard.core.shell.GithubChecks
 import brobata.physiboard.device.privileged.DeviceStateStore
 import brobata.physiboard.device.privileged.PrivilegedServices
 import brobata.physiboard.device.privileged.PrivilegedServicesOwner
@@ -61,6 +63,10 @@ class PhysiBoardApplication : Application(), SettingsSourceOwner, PrivilegedServ
     override fun onCreate() {
         super.onCreate()
         settingsStore = SettingsStore.open(this)
+        // app-shell.md SS13.7: the daily background check is (re)armed or torn down once per
+        // process start, from the one component that runs whether the launcher activity or the
+        // keyboard service brought this process up, and never from `:ime` itself.
+        scheduleUpdateCheck()
         scope.launch {
             try {
                 when (val outcome = LegacyImporter(this@PhysiBoardApplication, settingsStore).runOnce()) {
@@ -80,6 +86,17 @@ class PhysiBoardApplication : Application(), SettingsSourceOwner, PrivilegedServ
                 runCatching { privileged.onProcessStart() }.onFailure { Log.e(TAG, "privileged start crashed", it) }
             }
         }
+    }
+
+    /**
+     * spec: SS13.7, SS1's "GitHub checks allowed" gate. Matches the `buildFlagOn = true` every
+     * other GitHub-checks call site uses today (no F-Droid flavor exists yet to flip it; app-shell.md
+     * SS30 leaves that undecided): [GithubChecks.allowed] still runs so a build that later gains a
+     * real "must not call GitHub" signal (an F-Droid install) never schedules this job.
+     */
+    private fun scheduleUpdateCheck() {
+        val installer = runCatching { packageManager.getInstallSourceInfo(packageName).installingPackageName }.getOrNull()
+        UpdateCheckScheduler.scheduleOrCancel(this, GithubChecks.allowed(buildFlagOn = true, installerPackageName = installer))
     }
 
     /**

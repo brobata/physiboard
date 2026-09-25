@@ -20,3 +20,7 @@ release/dist/
 
 # Kotlin daemon scratch
 .kotlin/
+
+# Generated at build time (app-shell.md SS5.1) by :app's generateWhatsNewAsset task, from
+# CHANGELOG.md; never hand-edited or committed.
+/app/src/main/assets/common/whats_new.md

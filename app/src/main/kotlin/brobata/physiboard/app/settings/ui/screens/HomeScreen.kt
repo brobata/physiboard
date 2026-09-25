@@ -91,8 +91,10 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
     val installer = remember { runCatching { context.packageManager.getInstallSourceInfo(context.packageName).installingPackageName }.getOrNull() }
     val githubChecksAllowed = remember { GithubChecks.allowed(buildFlagOn = true, installerPackageName = installer) }
     if (githubChecksAllowed) {
-        // spec: SS6.5, SS13.7. The daily background job this trigger would also (re)schedule is
-        // not wired in this milestone (no WorkManager dependency yet); see this module's report.
+        // spec: SS6.5. The interactive check this screen also runs on its own creation. The daily
+        // background job (SS13.7) is armed once per process start from PhysiBoardApplication, not
+        // re-enqueued here: its keep-if-existing policy makes that equivalent for an always-on
+        // single-process app, and it keeps the job's scheduling out of any path `:ime` alone starts.
         AutoUpdateCheckOnCreate(updateState, BuildConfig.VERSION_NAME, settings.shell.dismissedReleases)
     }
 

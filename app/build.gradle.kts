@@ -128,4 +128,63 @@ dependencies {
     // parsed JSON on this module's own side (the settings-screens agent's feature work); only the
     // JSON tree API is needed, same as every other module that parses stored JSON by hand.
     implementation(libs.kotlinx.serialization.json)
+    // app-shell.md SS13.7: the daily background update check, a periodic job constrained to a
+    // connected network. Scheduled/cancelled from PhysiBoardApplication only; :ime never touches it.
+    implementation(libs.androidx.work.runtime.ktx)
+}
+
+/*
+ * app-shell.md SS5.1: builds the What's New asset from CHANGELOG.md before assets are merged, so
+ * WhatsNewScreen never falls back to its "up to date" copy for a real release. This reimplements
+ * brobata.physiboard.core.shell.ChangeRecordSection.extractCard's rule (the pure, JVM-tested
+ * version lives there) rather than loading :core:shell's compiled output into the build script's
+ * own classpath, which is awkward for a project dependency; see this module's report for the
+ * duplication risk that creates between the two copies of the rule.
+ *
+ * The asset is written into the main source set (`common/whats_new.md`, read straight from
+ * `assets/` at runtime), which every variant's merge-assets step, its lint model and several
+ * other tasks all read; hooking `dependsOn` onto each one by name is brittle and Gradle's own
+ * implicit-dependency validation rejects a task output that some of those consumers read without
+ * declaring the edge. Instead this small, deterministic text transform of a checked-in file runs
+ * once, synchronously, while this script is configured (the same phase AGP itself reads
+ * `defaultConfig.versionName` in), so the asset already exists on disk before any task graph is
+ * built. `generateWhatsNewAsset` still exists as an explicit, independently runnable task for
+ * `./gradlew generateWhatsNewAsset` and for CI to depend on by name.
+ */
+val generateWhatsNewAsset = tasks.register("generateWhatsNewAsset") {
+    group = "physiboard"
+    description = "Rebuilds app/src/main/assets/common/whats_new.md from CHANGELOG.md (app-shell.md SS5.1)."
+    doLast { writeWhatsNewAsset() }
+}
+
+writeWhatsNewAsset()
+
+fun writeWhatsNewAsset() {
+    val changelogFile = rootProject.file("CHANGELOG.md")
+    val outputFile = file("src/main/assets/common/whats_new.md")
+    val versionName = android.defaultConfig.versionName.orEmpty()
+    outputFile.parentFile.mkdirs()
+    outputFile.writeText(extractWhatsNewCard(changelogFile.readText(), versionName))
+}
+
+/**
+ * Gradle-side mirror of [brobata.physiboard.core.shell.ChangeRecordSection.extractCard] (app-shell.md
+ * SS5.1). Keep the two in step: this copy exists only because the build script cannot cheaply
+ * depend on :core:shell's compiled classes; the pure, tested rule stays there.
+ */
+fun extractWhatsNewCard(changeRecord: String, versionName: String): String {
+    val versionHeading = Regex("^##\\s+(\\d+\\.\\d+(?:\\.\\d+)?)")
+    val lines = changeRecord.lines()
+    val headingIndex = lines.indexOfFirst { it.startsWith("## $versionName ") }
+    val startIndex = if (headingIndex >= 0) headingIndex else lines.indexOfFirst { versionHeading.containsMatchIn(it) }
+    if (startIndex < 0) return ""
+
+    val body = mutableListOf<String>()
+    for (i in (startIndex + 1) until lines.size) {
+        val line = lines[i]
+        if (line.startsWith("## ")) break
+        if (line.trim().startsWith("<!-- /card -->")) break
+        body += line
+    }
+    return body.joinToString("\n").trim().let { if (it.isEmpty()) "" else it + "\n" }
 }
