@@ -39,4 +39,19 @@ class StripInsetsTest {
         assertEquals(124, decision.contentTopPx)
         assertEquals(PxRect(0, 124, 1080, 229), decision.touchableRect)
     }
+
+    @Test
+    fun `T15b the strip's own top edge wins over a stale platform snapshot while it is on screen`() {
+        // Titan 2026-09-25: platform reported content 105 / visible 105 in a 105 px window (strip counted as hidden) while the strip was drawn.
+        val decision = StripInsets.decide(candidatesOnly = true, contentTopPx = 105, visibleTopPx = 105, windowWidthPx = 1076, windowHeightPx = 105, stripTopPx = 0)
+        assertEquals(0, decision.contentTopPx)
+        assertEquals(TouchableArea.REGION, decision.touchable)
+        assertEquals(PxRect(0, 0, 1076, 105), decision.touchableRect)
+    }
+
+    @Test
+    fun `T15c with the strip off screen the platform snapshot stands`() {
+        val decision = StripInsets.decide(candidatesOnly = true, contentTopPx = 105, visibleTopPx = 105, windowWidthPx = 1076, windowHeightPx = 105, stripTopPx = null)
+        assertEquals(105, decision.contentTopPx)
+    }
 }

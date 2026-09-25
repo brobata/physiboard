@@ -27,9 +27,21 @@ object StripInsets {
      * view never shows (no soft keyboard), so [candidatesOnly] is false only while the platform
      * has nothing of ours on screen at all.
      */
-    fun decide(candidatesOnly: Boolean, contentTopPx: Int, visibleTopPx: Int, windowWidthPx: Int, windowHeightPx: Int): InsetDecision {
+    fun decide(
+        candidatesOnly: Boolean,
+        contentTopPx: Int,
+        visibleTopPx: Int,
+        windowWidthPx: Int,
+        windowHeightPx: Int,
+        stripTopPx: Int? = null,
+    ): InsetDecision {
         if (!candidatesOnly) return InsetDecision(contentTopPx, touchable = null, touchableRect = null)
-        val newContentTop = visibleTopPx
+        // The platform's visible inset is a snapshot of its own candidates frame, which on the
+        // Titan (Android 16) can still read "hidden" while the strip is already drawn, so the
+        // app was told to make room for nothing and the strip floated over its text box. When
+        // the strip is on screen its own top edge is the truth (spec SS11: "exactly the strip's
+        // visible band"); [stripTopPx] is null whenever it is not.
+        val newContentTop = stripTopPx ?: visibleTopPx
         if (windowWidthPx <= 0 || windowHeightPx <= newContentTop) {
             return InsetDecision(newContentTop, TouchableArea.CONTENT, touchableRect = null)
         }

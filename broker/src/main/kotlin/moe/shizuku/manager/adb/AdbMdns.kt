@@ -62,15 +62,17 @@ class AdbMdns(
     }
 
     private fun onServiceResolved(resolvedService: NsdServiceInfo) {
-        if (running && NetworkInterface.getNetworkInterfaces()
-                .asSequence()
-                .any { networkInterface ->
-                    networkInterface.inetAddresses
-                        .asSequence()
-                        .any { resolvedService.host.hostAddress == it.hostAddress }
-                }
-            && isPortAvailable(resolvedService.port)
-        ) {
+        val local = NetworkInterface.getNetworkInterfaces()
+            .asSequence()
+            .any { networkInterface ->
+                networkInterface.inetAddresses
+                    .asSequence()
+                    .any { resolvedService.host.hostAddress == it.hostAddress }
+            }
+        val listening = isPortAvailable(resolvedService.port)
+        // PhysiBoard: the phone ships with verbose logging off, so the verdict is logged at info.
+        Log.i(TAG, "onServiceResolved: ${resolvedService.serviceName} host=${resolvedService.host?.hostAddress} port=${resolvedService.port} running=$running local=$local listening=$listening")
+        if (running && local && listening) {
             serviceName = resolvedService.serviceName
             observer.onChanged(resolvedService.port)
         }
@@ -87,40 +89,42 @@ class AdbMdns(
 
     internal class DiscoveryListener(private val adbMdns: AdbMdns) : NsdManager.DiscoveryListener {
         override fun onDiscoveryStarted(serviceType: String) {
-            Log.v(TAG, "onDiscoveryStarted: $serviceType")
+            Log.i(TAG, "onDiscoveryStarted: $serviceType")
 
             adbMdns.onDiscoveryStart()
         }
 
         override fun onStartDiscoveryFailed(serviceType: String, errorCode: Int) {
-            Log.v(TAG, "onStartDiscoveryFailed: $serviceType, $errorCode")
+            Log.i(TAG, "onStartDiscoveryFailed: $serviceType, $errorCode")
         }
 
         override fun onDiscoveryStopped(serviceType: String) {
-            Log.v(TAG, "onDiscoveryStopped: $serviceType")
+            Log.i(TAG, "onDiscoveryStopped: $serviceType")
 
             adbMdns.onDiscoveryStop()
         }
 
         override fun onStopDiscoveryFailed(serviceType: String, errorCode: Int) {
-            Log.v(TAG, "onStopDiscoveryFailed: $serviceType, $errorCode")
+            Log.i(TAG, "onStopDiscoveryFailed: $serviceType, $errorCode")
         }
 
         override fun onServiceFound(serviceInfo: NsdServiceInfo) {
-            Log.v(TAG, "onServiceFound: ${serviceInfo.serviceName}")
+            Log.i(TAG, "onServiceFound: ${serviceInfo.serviceName}")
 
             adbMdns.onServiceFound(serviceInfo)
         }
 
         override fun onServiceLost(serviceInfo: NsdServiceInfo) {
-            Log.v(TAG, "onServiceLost: ${serviceInfo.serviceName}")
+            Log.i(TAG, "onServiceLost: ${serviceInfo.serviceName}")
 
             adbMdns.onServiceLost(serviceInfo)
         }
     }
 
     internal class ResolveListener(private val adbMdns: AdbMdns) : NsdManager.ResolveListener {
-        override fun onResolveFailed(nsdServiceInfo: NsdServiceInfo, i: Int) {}
+        override fun onResolveFailed(nsdServiceInfo: NsdServiceInfo, i: Int) {
+            Log.i(TAG, "onResolveFailed: ${nsdServiceInfo.serviceName}, $i")
+        }
 
         override fun onServiceResolved(nsdServiceInfo: NsdServiceInfo) {
             adbMdns.onServiceResolved(nsdServiceInfo)

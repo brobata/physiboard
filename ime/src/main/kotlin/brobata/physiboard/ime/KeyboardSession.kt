@@ -540,12 +540,21 @@ internal class KeyboardSession(
     fun onComputeInsets(outInsets: InputMethodService.Insets) {
         runCatching {
             val decor = service.window?.window?.decorView
+            val bar = statusBar
+            val loc = IntArray(2).also { bar?.getLocationInWindow(it) }
+            val stripTop = loc[1].takeIf { bar != null && bar.isShown && bar.height > 0 }
+            // This keyboard never shows an input view (the service's onEvaluateInputViewShown is
+            // false), so the window is always in candidates-only mode. The platform's own
+            // isInputViewShown() cannot be asked: on Android 16 it returns whether the window
+            // is visible at all, which was true here and left the app told to make room for
+            // nothing, so the strip floated over its text box (Titan, 2026-09-25).
             val decision = StripInsets.decide(
-                candidatesOnly = !service.isInputViewShown,
+                candidatesOnly = true,
                 contentTopPx = outInsets.contentTopInsets,
                 visibleTopPx = outInsets.visibleTopInsets,
                 windowWidthPx = decor?.width ?: 0,
                 windowHeightPx = decor?.height ?: 0,
+                stripTopPx = stripTop,
             )
             outInsets.contentTopInsets = decision.contentTopPx
             when (decision.touchable) {
