@@ -37,6 +37,7 @@ import brobata.physiboard.core.strip.StripButton
 import brobata.physiboard.core.strip.StripSettings
 import brobata.physiboard.core.strip.StripTheme
 import brobata.physiboard.core.strip.StripVisibilityMode
+import brobata.physiboard.core.text.LengthChangeAllowance
 import brobata.physiboard.core.text.AppProfile
 import brobata.physiboard.core.text.AutoCapSettings
 import brobata.physiboard.core.text.AutocorrectSettings
@@ -112,6 +113,7 @@ internal object ImeSettings {
                     altBackspaceDeletesForward = s.typing.altBackspaceDeletesForward,
                     backspaceAtStartDeletesForward = s.typing.backspaceAtStartDeletesForward,
                 ),
+                lengthChangeAllowance = LengthChangeAllowance.forLanguage(subtypeLocale),
                 autocorrect = AutocorrectSettings(
                     suggestionsEnabled = s.correction.suggestionsEnabled,
                     autoCorrectEnabled = s.correction.textReplacementsEnabled,

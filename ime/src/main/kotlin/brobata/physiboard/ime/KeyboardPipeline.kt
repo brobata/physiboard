@@ -36,6 +36,7 @@ import brobata.physiboard.core.strip.StripDip
 import brobata.physiboard.core.strip.StripInputs
 import brobata.physiboard.core.strip.StripModel
 import brobata.physiboard.core.strip.StripSettings
+import brobata.physiboard.core.text.LengthChangeAllowance
 import brobata.physiboard.core.text.AppProfile
 import brobata.physiboard.core.text.AutoCapitalization
 import brobata.physiboard.core.text.AutocorrectSettings
@@ -107,6 +108,8 @@ data class KeyboardSettings(
     val modifier: ModifierSettings = ModifierSettings(fnLongPressSpeechEnabled = true),
     val resolver: LayerResolver.LayerResolverSettings = LayerResolver.LayerResolverSettings(),
     val textInput: TextInputSettingsBundle = TextInputSettingsBundle(
+        // The shipped keyboard is English (DEFAULT_SUBTYPE_LOCALE): spec autocorrect-suggestions.md SS9 step 8.
+        lengthChangeAllowance = LengthChangeAllowance.ENGLISH,
         autocorrect = AutocorrectSettings(autoReplaceOnSpaceEnter = true, maxAutoReplaceDistance = 2),
         rankingOptions = RankingOptions(useKeyboardProximity = true),
     ),
@@ -277,7 +280,12 @@ internal class KeyboardPipeline(
      * "The editor is not a reliable narrator" point 4, "the per-app profile it selects is passed
      * in like any other setting"); [KeyboardSession] resolves both before calling this.
      */
-    fun onStartInput(field: FieldContext, trust: EditorTrust = EditorTrust.FULL, appProfile: AppProfile = AppProfile.default(null)) {
+    fun onStartInput(
+        field: FieldContext,
+        trust: EditorTrust = EditorTrust.FULL,
+        appProfile: AppProfile = AppProfile.default(null),
+        textBeforeCursor: String? = null,
+    ) {
         activeField = field
         activeTrust = trust
         activeAppProfile = appProfile
@@ -287,7 +295,16 @@ internal class KeyboardPipeline(
         expansion = ExpansionState.EMPTY
         if (AutoCapitalization.evaluateFieldStartCapsLock(field)) {
             applyCapDecision(CapDecision.EnableCapsLock)
+            return
         }
+        // spec: text-input.md SS9.2, "capitalize at text start": the first letter of a fresh
+        // field is decided here, from the editor's opening text, because an app that never
+        // reports a selection change before the first key (Messages on the Titan, 2026-09-25)
+        // otherwise gets no evaluation until after that letter has already been typed.
+        val capContext = if (trust.contextRulesAllowed) textBeforeCursor else null
+        val (capState, decision) = AutoCapitalization.evaluate(textInputState.autoCap, field, settings.textInput.autoCap, capContext)
+        textInputState = textInputState.copy(autoCap = capState)
+        applyCapDecision(decision)
     }
 
     /**

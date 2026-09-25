@@ -435,7 +435,8 @@ internal class KeyboardSession(
             // the timer cancelled above is re-armed for it rather than leaving it to never fire.
             scheduleLongPressIfNeeded()
         } else {
-            pipeline.onStartInput(field, profile.editorTrust, profile)
+            val textBeforeCursor = runCatching { service.currentInputConnection?.getTextBeforeCursor(TEXT_BEFORE_CURSOR_READ, 0)?.toString() }.getOrNull()
+            pipeline.onStartInput(field, profile.editorTrust, profile, textBeforeCursor)
         }
         service.setCandidatesViewShown(field.isReallyEditable)
         currentPackageName = reportedPackage
@@ -731,7 +732,7 @@ internal class KeyboardSession(
         }
         if (stroke.edge == KeyEdge.DOWN) {
             val g = pipeline.modifierGlyphInput()
-            Log.i(TAG, "stroke: ${stroke.key} shiftMeta=${stroke.meta.shift} before[caps=${glyphBefore.capsLockOn} oneShot=${glyphBefore.shiftOneShotArmed}] after[caps=${g.capsLockOn} oneShot=${g.shiftOneShotArmed}] textBefore='${readout.snapshot.textBeforeCursor?.takeLast(12)}' ops=${result.ops}")
+            Log.i(TAG, "stroke: ${stroke.key} shiftMeta=${stroke.meta.shift} before[caps=${glyphBefore.capsLockOn} oneShot=${glyphBefore.shiftOneShotArmed}] after[caps=${g.capsLockOn} oneShot=${g.shiftOneShotArmed}] textBefore='${readout.snapshot.textBeforeCursor?.takeLast(12)}' ops=${result.ops} dicts=${pipeline.resources.dictionaries.size} sugg=${runCatching { pipeline.suggestions().map { it.word } }.getOrDefault(emptyList())}")
         }
         scheduleLongPressIfNeeded()
         // spec expansion-clipboard-pickers-launcher.md SS6.2: an assigned key fired, or the Sym-armed mode just armed.
