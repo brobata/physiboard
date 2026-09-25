@@ -13,6 +13,15 @@ import kotlinx.coroutines.flow.Flow
  */
 interface SettingsSource {
     val settings: Flow<Settings>
+
+    /**
+     * Stores a change the keyboard itself made, without waiting for it. The keyboard reads its
+     * settings and does not own them, so this is deliberately narrow: the only rows it writes
+     * are the ones a keystroke changes, such as the active layout, which
+     * dictionaries-languages.md SS10 says is "rewritten by every language switch". A host that
+     * has no store does nothing. Never called on a path that needs the result.
+     */
+    fun write(transform: (Settings) -> Settings) = Unit
 }
 
 /**

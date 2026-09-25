@@ -50,6 +50,11 @@ class PhysiBoardApplication : Application(), SettingsSourceOwner, PrivilegedServ
             importSettled.await()
             emitAll(settingsStore.settings)
         }
+
+        /** The keyboard's own write-back (the active layout after a switch); it runs on the app's scope, never on the caller's thread. */
+        override fun write(transform: (Settings) -> Settings) {
+            scope.launch { runCatching { settingsStore.update(transform) }.onFailure { Log.e(TAG, "keyboard settings write failed", it) } }
+        }
     }
 
     /**

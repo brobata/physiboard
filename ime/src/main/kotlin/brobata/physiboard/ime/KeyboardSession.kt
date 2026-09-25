@@ -458,6 +458,10 @@ internal class KeyboardSession(
         val next = InputStyleCatalog.next(styles, currentStyle.key) ?: return
         currentStyle = next
         applySettings(lastSettings, announceSwitch = true)
+        // spec dictionaries-languages.md SS10: `keyboard_layout` is "rewritten by every language
+        // switch", so the choice survives the next start instead of falling back to the
+        // locale-derived pick.
+        settingsSource?.write { stored -> stored.copy(languages = stored.languages.copy(keyboardLayout = next.layoutId)) }
     }
 
     /**
