@@ -17,6 +17,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import brobata.physiboard.app.settings.ui.brokerBlockerState
+import brobata.physiboard.app.settings.ui.WatchBrokerVerdict
 import brobata.physiboard.app.PhysiBoardApplication
 import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.RowList
@@ -49,7 +51,8 @@ fun SmartBacklightScreen(onBack: () -> Unit, onNavigateToolbox: () -> Unit) {
 
     val enabled = settings.device.smartBacklightEnabled
     val latch = settings.captures.smartBacklightApplied
-    val blocker = privileged.broker.blocker()
+    WatchBrokerVerdict(privileged)
+    val blocker = brokerBlockerState(privileged)
 
     LaunchedEffect(enabled, latch, verdict) {
         while (true) {

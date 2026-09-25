@@ -34,6 +34,15 @@ internal class EmojiAssets(private val assets: AssetManager, private val mainHan
     private var categories: List<EmojiCategory>? = null
     private val indexes = LinkedHashMap<List<String>, EmojiSearchIndex>()
 
+    /**
+     * Ends the loader thread. Called when the keyboard service is destroyed: without it every
+     * rebind of the service (switching input method away and back) left another parked
+     * "physiboard-emoji" thread behind (2026-09-25 review).
+     */
+    fun shutdown() {
+        runCatching { executor.shutdownNow() }
+    }
+
     fun loadAsync(localeTags: List<String>, onLoaded: (EmojiData?) -> Unit) {
         executor.execute {
             val data = runCatching { load(localeTags) }.onFailure { Log.e(TAG, "emoji load failed", it) }.getOrNull()

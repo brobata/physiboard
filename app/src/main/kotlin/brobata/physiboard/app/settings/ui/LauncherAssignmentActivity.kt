@@ -57,7 +57,9 @@ import brobata.physiboard.core.actions.launcher.AssignmentSheet
 import brobata.physiboard.core.actions.launcher.LauncherShortcuts
 import brobata.physiboard.core.actions.launcher.ShortcutEntry
 import brobata.physiboard.ime.actions.AndroidCommandCatalog
-import kotlinx.coroutines.runBlocking
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 
 /**
  * The assignment sheet (expansion-clipboard-pickers-launcher.md SS6.4): a transparent,
@@ -85,10 +87,16 @@ class LauncherAssignmentActivity : ComponentActivity() {
         val application = application as PhysiBoardApplication
         val store = application.settingsStore
         val catalog = AndroidCommandCatalog(this)
-        val existing = runBlocking { LauncherShortcuts.parse(store.current().launcher.assignedKeysJson)[keycode] }
 
         setContent {
             PhysiBoardTheme {
+                // The store is a DataStore: reading or writing it blocks. This sheet opens from a
+                // hardware key press and must not stall the main thread while it does (2026-09-25
+                // review); the assignment is read into state and every write runs in the scope.
+                val scope = rememberCoroutineScope()
+                val existing by produceState<ShortcutEntry?>(initialValue = null, keycode) {
+                    value = LauncherShortcuts.parse(store.current().launcher.assignedKeysJson)[keycode]
+                }
                 AssignmentSheetContent(
                     keyLabel = AssignableKeys.label(keycode),
                     keycode = keycode,
@@ -97,18 +105,20 @@ class LauncherAssignmentActivity : ComponentActivity() {
                     hasAssignment = existing != null,
                     onClose = { finishWith(Activity.RESULT_CANCELED) },
                     onRemove = {
-                        runBlocking { store.update { s -> s.copy(launcher = s.launcher.copy(assignedKeysJson = LauncherShortcuts.encode(LauncherShortcuts.parse(s.launcher.assignedKeysJson).remove(keycode)))) } }
-                        finishWith(AssignmentSheet.RESULT_REMOVED)
+                        scope.launch {
+                            store.update { s -> s.copy(launcher = s.launcher.copy(assignedKeysJson = LauncherShortcuts.encode(LauncherShortcuts.parse(s.launcher.assignedKeysJson).remove(keycode)))) }
+                            finishWith(AssignmentSheet.RESULT_REMOVED)
+                        }
                     },
                     onChoose = { command ->
-                        runBlocking {
+                        scope.launch {
                             store.update { s ->
                                 val current = LauncherShortcuts.parse(s.launcher.assignedKeysJson).applyDefault(defaultAlreadyAssigned = s.launcher.assignedKeysJson.isNotBlank()).shortcuts
                                 s.copy(launcher = s.launcher.copy(assignedKeysJson = LauncherShortcuts.encode(current.assign(keycode, ShortcutEntry.of(command)))))
                             }
+                            if (!skipLaunch) launchNow(command)
+                            finishWith(AssignmentSheet.RESULT_ASSIGNED)
                         }
-                        if (!skipLaunch) launchNow(command)
-                        finishWith(AssignmentSheet.RESULT_ASSIGNED)
                     },
                 )
             }

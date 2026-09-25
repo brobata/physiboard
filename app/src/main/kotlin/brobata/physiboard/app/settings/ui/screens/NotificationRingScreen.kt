@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import brobata.physiboard.app.settings.ui.WatchBrokerVerdict
 import brobata.physiboard.app.PhysiBoardApplication
 import brobata.physiboard.app.settings.ui.AppCatalog
 import brobata.physiboard.app.settings.ui.ButtonRow
@@ -72,6 +73,8 @@ fun NotificationRingScreen(onBack: () -> Unit, onNavigateFit: () -> Unit, onNavi
     var granting by remember { mutableStateOf(false) }
     var editingColorFor by remember { mutableStateOf<String?>(null) }
     var showAddApp by remember { mutableStateOf(false) }
+    // spec broker-privileged-toolbox.md SS5.2: a screen showing a verdict polls for it.
+    WatchBrokerVerdict(privileged)
     val verdict by privileged.broker.verdict.collectAsState()
 
     LaunchedEffect(Unit) {

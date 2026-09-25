@@ -21,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import brobata.physiboard.app.settings.ui.WatchBrokerVerdict
 import brobata.physiboard.app.PhysiBoardApplication
 import brobata.physiboard.app.settings.ui.ButtonRow
 import brobata.physiboard.app.settings.ui.RowList
@@ -48,6 +49,8 @@ fun RemoveBloatScreen(onBack: () -> Unit, onNavigateToolbox: () -> Unit) {
     val privileged = application.privileged
     val scope = rememberCoroutineScope()
     val isTitanElite = remember { AndroidDeviceProfile.isTitan2Elite() }
+    // spec broker-privileged-toolbox.md SS5.2: a screen showing a verdict polls for it.
+    WatchBrokerVerdict(privileged)
     val verdict by privileged.broker.verdict.collectAsState()
 
     var states by remember { mutableStateOf<Map<String, BloatState>>(emptyMap()) }

@@ -166,7 +166,12 @@ fun ScreenDensityScreen(onBack: () -> Unit, onNavigateToolbox: () -> Unit) {
             title = { Text("Can you still read this?") },
             text = { Text("Reverting to the stock density in $seconds seconds unless you keep it. If the screen is unusable, just wait — this undoes itself.") },
             confirmButton = {
-                TextButton(onClick = { density.keep(); countdown = null; overridden = true }) { Text("Keep it") }
+                TextButton(onClick = {
+                    // keep() commits the pending-revert record synchronously, like its three siblings here.
+                    scope.launch(Dispatchers.IO) { density.keep() }
+                    countdown = null
+                    overridden = true
+                }) { Text("Keep it") }
             },
             dismissButton = {
                 TextButton(onClick = {

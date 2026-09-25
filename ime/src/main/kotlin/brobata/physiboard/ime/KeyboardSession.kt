@@ -248,6 +248,7 @@ internal class KeyboardSession(
         runCatching { expansionPopup.hide(); clipboardPanel.hide(); emojiPicker.hide(); quickLauncher.onServiceDestroyed() }
             .onFailure { error -> Log.e(TAG, "panel teardown crashed", error) }
         clipboard.onServiceDestroyed()
+        runCatching { emojiAssets.shutdown() }.onFailure { error -> Log.e(TAG, "emoji loader teardown crashed", error) }
         launcherKeys.onServiceDestroyed()
     }
 
@@ -295,6 +296,10 @@ internal class KeyboardSession(
         loadDictionary(PRIMARY_LANGUAGE)
         // The store is read the same way: the shipped defaults above stand until the first value
         // arrives, and every later emission re-applies live (settings-catalog.md SS1).
+        // spec expansion-clipboard-pickers-launcher.md SS3.1: `clipboard_history_enabled` is read
+        // once, at service creation. With no store to read (a host without `:app`'s wiring) that
+        // read is the shipped default, and it still has to happen or the clipboard never starts.
+        if (settingsSource == null) clipboard.applyEnabledOnce(Settings().expansion.clipboardHistoryEnabled)
         settingsSource?.let { source ->
             settingsScope.launch {
                 source.settings.collect { settings ->

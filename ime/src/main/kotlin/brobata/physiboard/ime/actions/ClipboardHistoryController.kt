@@ -30,20 +30,24 @@ internal class ClipboardHistoryController(
     private val onChanged: () -> Unit,
 ) {
     /** spec SS3.1: read once; the store's first emission is the "service creation" read, later changes wait for a restart. */
-    private var enabled: Boolean = true
+    private var enabled: Boolean = false
     private var enabledSettled = false
 
+    /**
+     * spec SS3.1: "Capture only happens when `clipboard_history_enabled` was true at service
+     * creation." Nothing is listened to, loaded or captured before this lands, because the
+     * store's first emission arrives after construction: the controller used to register the
+     * listener and capture the system clipboard in its own `init`, so a disabled history still
+     * wrote the current clip to the database at every service start (2026-09-25 review).
+     */
     fun applyEnabledOnce(value: Boolean) {
         if (enabledSettled) return
         enabledSettled = true
-        if (value == enabled) return
         enabled = value
-        if (!value) {
-            clipboardManager?.removePrimaryClipChangedListener(listener)
-            mainHandler.removeCallbacks(cleanupRunnable)
-            history = ClipboardHistory()
-            onChanged()
-        }
+        if (!value) return
+        clipboardManager?.addPrimaryClipChangedListener(listener)
+        loadAsync()
+        runCatching { captureCurrent() }.onFailure { Log.e(TAG, "initial capture crashed", it) }
     }
 
     var retentionMinutes: Long = ClipboardHistory.DEFAULT_RETENTION_MINUTES
@@ -66,11 +70,6 @@ internal class ClipboardHistoryController(
         }
     }
 
-    init {
-        clipboardManager?.addPrimaryClipChangedListener(listener)
-        loadAsync()
-        runCatching { captureCurrent() }.onFailure { Log.e(TAG, "initial capture crashed", it) }
-    }
 
     /** spec SS3.3: the 60 s cleanup timer runs while a field is active and also pushes the count. */
     fun onFieldStarted() {
