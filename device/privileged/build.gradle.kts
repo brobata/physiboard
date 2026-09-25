@@ -38,6 +38,10 @@ kotlin {
 dependencies {
     api(project(":device:titan"))
     api(project(":core:settings"))
+    // Remove bloat, Screen density, System tweaks and Key mapping: the decisions stay pure there
+    // (broker-privileged-toolbox.md SS12 to SS15); this module executes them and persists their
+    // JSON-shaped records.
+    api(project(":core:toolbox"))
     // Third-party pairing and connect client, used and never modified (broker/NOTICE).
     implementation(project(":broker"))
     // AdbMdns reports its port through a lifecycle Observer; nothing else of lifecycle is used.

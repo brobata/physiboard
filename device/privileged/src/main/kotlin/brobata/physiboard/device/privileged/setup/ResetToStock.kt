@@ -39,6 +39,9 @@ object VendorKeyRows {
     const val FN_FUNCTION = "fn_programmable_key_function"
     const val SIDE_KEY_PACKAGE = "func1_long_press_package"
     const val SIDE_KEY_ACTIVITY = "func1_long_press_activity"
+
+    /** spec: SS9 ("the vendor ignores every slot unless this is on; stock already has it on"); dictation.md SS11.3. */
+    const val SIDE_KEY_SHORTCUT_ENABLE = "func1_shortcut_key_enable"
 }
 
 /**

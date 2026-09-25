@@ -20,11 +20,22 @@ import brobata.physiboard.device.privileged.ring.RingBacklight
 import brobata.physiboard.device.privileged.ring.RingCoordinator
 import brobata.physiboard.device.privileged.ring.ScreenProbe
 import brobata.physiboard.device.privileged.setup.AndroidPermissionProbe
+import brobata.physiboard.device.privileged.setup.AndroidSystemSettingsAccess
 import brobata.physiboard.device.privileged.setup.AppIdentity
+import brobata.physiboard.device.privileged.setup.FnCtrlRemap
 import brobata.physiboard.device.privileged.setup.PermissionProbe
 import brobata.physiboard.device.privileged.setup.PrivilegedSetup
 import brobata.physiboard.device.privileged.setup.ResetToStock
 import brobata.physiboard.device.privileged.setup.SetupReasons
+import brobata.physiboard.device.privileged.setup.SideKeyAssistantRemap
+import brobata.physiboard.device.privileged.setup.SystemSettingsAccess
+import brobata.physiboard.device.privileged.toolbox.AndroidDeviceProfile
+import brobata.physiboard.device.privileged.toolbox.BloatRemover
+import brobata.physiboard.device.privileged.toolbox.DisplayDensityController
+import brobata.physiboard.device.privileged.toolbox.KeyMappingReader
+import brobata.physiboard.device.privileged.toolbox.PreferencesToolboxStateStore
+import brobata.physiboard.device.privileged.toolbox.SystemTweaksController
+import brobata.physiboard.device.privileged.toolbox.ToolboxStateStore
 import java.util.concurrent.Executor
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -99,10 +110,28 @@ class PrivilegedServices(
     )
     val pairing: PairingCoordinator = PairingCoordinator(AndroidAdbTransport(appContext), broker, worker) { runSetupAsync(SetupReasons.PAIRING_SUCCEEDED) }
 
+    /** Backs the Remove bloat, Screen density and System tweaks screens; not in the app's backup file. spec: SS12.6, SS13, SS20. */
+    val toolboxStore: ToolboxStateStore = PreferencesToolboxStateStore(appContext)
+    val bloatRemover: BloatRemover = BloatRemover(broker, toolboxStore, AndroidDeviceProfile)
+    val density: DisplayDensityController = DisplayDensityController(broker, toolboxStore)
+    val tweaks: SystemTweaksController = SystemTweaksController(broker)
+
+    /** `Settings.System` needs no broker to read (SS15); the Key mapping screen and the Fn/side-key remaps share this one seam. */
+    val systemSettings: SystemSettingsAccess = AndroidSystemSettingsAccess(appContext)
+    val keyMapping: KeyMappingReader = KeyMappingReader(systemSettings, identity)
+
+    /** "Set Fn key to Ctrl" (keys-and-modifiers.md SS3.6) and the orange key's vendor slot (dictation.md SS11.3, unwired: see that class's own note). */
+    val fnCtrlRemap: FnCtrlRemap = FnCtrlRemap(broker, systemSettings, store)
+    val sideKeyAssistantRemap: SideKeyAssistantRemap = SideKeyAssistantRemap(broker, systemSettings, store, identity)
+
     /** The setup pass on the worker: at pairing success, at IME start, and from the backlight screen. spec: SS7. */
     fun runSetupAsync(reason: String) {
         worker.execute {
             runCatching { setup.run(reason) }.onFailure { Log.e(TAG, "setup pass crashed", it) }
+            // spec: SS23 Keep/Drop ("Pending density revert checked at IME start: keep, and fix").
+            if (reason == SetupReasons.IME_START) {
+                runCatching { density.checkPendingRevertAtStart() }.onFailure { Log.e(TAG, "pending density revert crashed", it) }
+            }
         }
     }
 
