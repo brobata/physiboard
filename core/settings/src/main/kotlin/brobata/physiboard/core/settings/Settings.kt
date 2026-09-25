@@ -119,9 +119,19 @@ data class SubstitutionSet(val displayName: String = "", val rules: Map<String, 
 data class LanguagePrefs(
     val keyboardLayout: String = "qwerty",
     val layoutAutoByLocale: Boolean = true,
-    val altShiftLayoutSwitch: Boolean = true,
+    /**
+     * The project's default-ON rule: all three layout-switch chords intercept a key combination
+     * the user presses constantly (Alt+Shift, Alt+Enter, Ctrl+Space) ahead of the app ever seeing
+     * it, so every one of them ships OFF here regardless of the 2.x baseline these rows carried
+     * (dictionaries-languages.md SS9.1's table has `alt_shift_layout_switch` and
+     * `ctrl_space_layout_switch` both true) until each has survived real use on the maintainer's
+     * own Titan. Switching a style from the settings screen or the strip's language button does
+     * not go through these switches at all (`KeyboardSession.switchToNextInputStyle`), so all
+     * three staying off never blocks switching itself.
+     */
+    val altShiftLayoutSwitch: Boolean = false,
     val altEnterLayoutSwitch: Boolean = false,
-    val ctrlSpaceLayoutSwitch: Boolean = true,
+    val ctrlSpaceLayoutSwitch: Boolean = false,
     val toastOnLayoutSwitch: Boolean = true,
     /** `custom_input_styles`, split on `;`. Empty means the app's predefined list. */
     val inputStyles: List<String> = emptyList(),

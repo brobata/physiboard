@@ -37,6 +37,8 @@ dependencies {
     api(project(":core:strip"))
     api(project(":device:titan"))
     api(project(":core:settings"))
+    // The available input styles, the current one, the cycle order and what a switch changes (dictionaries-languages.md SS8, SS9).
+    api(project(":core:subtype"))
     // Expansion, clipboard history, the pickers, launcher keys and the command catalogue (expansion-clipboard-pickers-launcher.md).
     api(project(":core:actions"))
     // The privileged setup pass runs at every IME start (broker-privileged-toolbox.md SS7, D17: the IME is what survives boot on this ROM).

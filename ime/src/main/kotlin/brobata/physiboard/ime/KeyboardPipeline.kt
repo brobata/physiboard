@@ -210,10 +210,9 @@ internal class KeyboardPipeline(
     /**
      * spec: keys-and-modifiers.md SS7.5: the layout-switch chords fire "only when another input
      * subtype exists to switch to"; with one installed "the chord does not fire". `:ime` supplies
-     * the fact; every chord's own switch (`ModifierSettings`) is checked on top of it.
-     *
-     * SPEC GAP: no subtype module exists yet, so `:ime` never sets this and every chord stays a
-     * pass-through on the device, whatever its switch says.
+     * the fact from `:core:subtype`'s own catalog (`InputStyleCatalog.anotherStyleAvailable`, set
+     * in `KeyboardSession.applySettings`); every chord's own switch (`ModifierSettings`) is
+     * checked on top of it.
      */
     var anotherSubtypeAvailable: Boolean = false
 

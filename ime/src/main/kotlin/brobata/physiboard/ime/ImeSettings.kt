@@ -176,11 +176,10 @@ internal object ImeSettings {
      * uppercase map is emptied", letter keys only, and one with no usable entry "is treated as
      * absent".
      *
-     * SPEC GAP: `keyboard_layout` (the active physical layout id) has no reader here because the
-     * Titan 2 Elite QWERTY is the only [LayoutDescription] 3.0 ships (`TitanLayouts`); when a
-     * second layout exists this is where [base] is chosen by `s.languages.keyboardLayout`, with
-     * `layoutAutoByLocale` deciding between that row and the subtype's own mapping
-     * (dictionaries-languages.md SS10).
+     * [base] is the current input style's own layout, resolved by the caller through
+     * `:core:subtype`'s `InputStyleCatalog.layoutFor` (dictionaries-languages.md SS10); this
+     * function only overlays the customizations every layout gets regardless of which style is
+     * active.
      */
     fun layout(base: LayoutDescription, s: Settings): LayoutDescription = base.copy(
         emojiPage = customSymPage(s.symPages.customEmojiPage) ?: base.emojiPage,

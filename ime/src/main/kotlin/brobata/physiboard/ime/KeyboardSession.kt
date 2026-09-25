@@ -41,6 +41,9 @@ import brobata.physiboard.core.pointer.trackpad.TrackpadPhysicalKey
 import brobata.physiboard.core.settings.Settings
 import brobata.physiboard.core.speech.AssistantLaunch
 import brobata.physiboard.core.speech.AssistantRequest
+import brobata.physiboard.core.subtype.InputStyle
+import brobata.physiboard.core.subtype.InputStyleCatalog
+import brobata.physiboard.core.subtype.ShippedLayout
 import brobata.physiboard.core.strip.DipEffect
 import brobata.physiboard.core.strip.LanguageTapDebounce
 import brobata.physiboard.core.strip.Slot
@@ -105,10 +108,31 @@ internal class KeyboardSession(
     /** Collects [settingsSource] on the main looper for the session's lifetime; cancelled in [onServiceDestroyed]. */
     private val settingsScope = MainScope()
 
-    // SPEC GAP / missing module: the Titan 2 Elite is the only device this build ships to (this
-    // module's own rebuild plan), so the layout is not yet selectable; when a settings/layout
-    // module exists this becomes a caller-supplied value instead of a constant.
-    private val pipeline = KeyboardPipeline(layout = TitanLayouts.titan2EliteQwerty(), onCommand = ::handleCommand)
+    // -----------------------------------------------------------------------------------------
+    // Layout switching. spec: dictionaries-languages.md SS8, SS9; keys-and-modifiers.md SS7.5.
+    // `:core:subtype` owns the available styles, the cycle order and what one switch changes;
+    // this class supplies the shipped layout catalog, the store's own settings, and the real
+    // dictionary-load/Toast calls only `:ime` can make.
+    // -----------------------------------------------------------------------------------------
+
+    /** The Titan 2 Elite is the only device this build ships to (docs/plans/rebuild-from-scratch.md), so this catalog has exactly one entry; a second shipped layout is out of this milestone's scope (`:core:subtype`'s own KDoc). */
+    private val shippedLayouts: List<ShippedLayout> = listOf(
+        ShippedLayout(layoutId = SHIPPED_LAYOUT_ID, defaultLocale = ImeSettings.DEFAULT_SUBTYPE_LOCALE, layout = TitanLayouts.titan2EliteQwerty()),
+    )
+
+    /** spec dictionaries-languages.md SS9: the style the keyboard currently types with. Reassigned by [applySettings] (a settings-driven refresh) and [switchToNextInputStyle] (a chord, the language button, or a future settings-screen switch). */
+    private var currentStyle: InputStyle = InputStyle(locale = shippedLayouts.first().defaultLocale, layoutId = shippedLayouts.first().layoutId, shipped = true)
+
+    /** spec SS8.7: the active style's own language, the one `:core:dict` loads a dictionary for. Kept alongside [currentStyle] rather than derived on every use, since [rebuildDictionaries] and the dictionary loader both need it. */
+    private var primaryLanguage: LanguageCode = LanguageCode.fromLocale(currentStyle.locale) ?: LanguageCode.of(ImeSettings.DEFAULT_SUBTYPE_LOCALE)!!
+
+    /** spec dictionaries-languages.md SS10: `keyboard_layout_auto_by_locale` picks the starting style once, at the first settings emission; every later emission keeps [currentStyle] if it still exists in the (possibly changed) available list instead of re-picking it from the system locale. */
+    private var startupStyleChosen = false
+
+    /** The last [Settings] [applySettings] received, kept so [switchToNextInputStyle] can reapply everything a switch changes without waiting for the store to re-emit. */
+    private var lastSettings: Settings = Settings()
+
+    private val pipeline = KeyboardPipeline(layout = shippedLayouts.first().layout, onCommand = ::handleCommand)
 
     private val handler = Handler(Looper.getMainLooper())
     private val longPressRunnable = Runnable { onLongPressTick() }
@@ -252,11 +276,11 @@ internal class KeyboardSession(
         launcherKeys.onServiceDestroyed()
     }
 
-    // SPEC GAP / missing module: there is no `:settings` module yet, so the primary suggestion
-    // language cannot come from the current input style (dictionaries-languages.md SS8.7); `en`
-    // is the only bundled dictionary today (docs/dictionaries.md), so it is the only one this
-    // milestone can load regardless. Wiring a real subtype-driven language is a change to this
-    // one line once a settings/subtype module exists.
+    // spec dictionaries-languages.md SS8.7: [primaryLanguage] names which dictionary to load, from
+    // the current input style. `en` is the only bundled dictionary today (docs/dictionaries.md),
+    // so switching to a style whose language is not `en` simply loads no dictionary for it
+    // (DictionaryAssetLoader's own KDoc: a missing asset is a silent, already-handled failure),
+    // not a crash; bundling the other eighteen is a documented gap of its own, unrelated to this.
     private val dictionaryLoader = DictionaryAssetLoader(service.assets, handler)
 
     /** The loaded dictionaries by language, primary and extras alike; [rebuildDictionaries] hands the wanted ones to the pipeline, primary first. */
@@ -293,7 +317,7 @@ internal class KeyboardSession(
         // spec: autocorrect-suggestions.md SS2 point 3 and the "computation runs off the main
         // thread" rule: the keyboard must accept keystrokes immediately, typing with no
         // suggestions, and only start suggesting once this background load lands.
-        loadDictionary(PRIMARY_LANGUAGE)
+        loadDictionary(primaryLanguage)
         // The store is read the same way: the shipped defaults above stand until the first value
         // arrives, and every later emission re-applies live (settings-catalog.md SS1).
         // spec expansion-clipboard-pickers-launcher.md SS3.1: `clipboard_history_enabled` is read
@@ -328,15 +352,37 @@ internal class KeyboardSession(
 
     /** spec SS8.4: "engines for languages no longer listed are dropped"; the primary comes first (`TextInputResources`' own contract). */
     private fun rebuildDictionaries() {
-        val wanted = (listOf(PRIMARY_LANGUAGE) + extraLanguages).mapNotNull { loadedDictionaries[it] }
+        val wanted = (listOf(primaryLanguage) + extraLanguages).mapNotNull { loadedDictionaries[it] }
         if (wanted != pipeline.resources.dictionaries) pipeline.resources = pipeline.resources.copy(dictionaries = wanted)
     }
 
-    /** One stored [Settings] value, handed to every module that takes a bundle; [ImeSettings] names which row feeds which field. */
-    private fun applySettings(settings: Settings) {
+    /**
+     * One stored [Settings] value, handed to every module that takes a bundle; [ImeSettings]
+     * names which row feeds which field. [announceSwitch] is true only when
+     * [switchToNextInputStyle] calls this to reapply a just-chosen style (spec
+     * dictionaries-languages.md SS9.3 step 6's toast); a plain settings-driven refresh never
+     * announces one.
+     */
+    private fun applySettings(settings: Settings, announceSwitch: Boolean = false) {
+        lastSettings = settings
+        // spec dictionaries-languages.md SS8.2, SS9 and keys-and-modifiers.md SS7.5: the
+        // available styles and whether a chord (or the language button) has anywhere to switch to
+        // are both recomputed from the store on every emission; SS10's
+        // `keyboard_layout_auto_by_locale` only ever picks the starting style, at the very first
+        // emission ([startupStyleChosen]); a later one keeps [currentStyle] if it still exists.
+        val styles = InputStyleCatalog.availableStyles(shippedLayouts, settings.languages)
+        currentStyle = if (!startupStyleChosen) {
+            startupStyleChosen = true
+            InputStyleCatalog.startupStyle(styles, java.util.Locale.getDefault().toString(), settings.languages.layoutAutoByLocale) ?: currentStyle
+        } else {
+            InputStyleCatalog.current(styles, currentStyle.key) ?: currentStyle
+        }
+        pipeline.anotherSubtypeAvailable = InputStyleCatalog.anotherStyleAvailable(styles)
+        primaryLanguage = LanguageCode.fromLocale(currentStyle.locale) ?: primaryLanguage
+
         val previousStrip = pipeline.settings.statusBar
-        pipeline.settings = ImeSettings.keyboardSettings(settings, PRIMARY_LANGUAGE.value)
-        pipeline.layout = ImeSettings.layout(TitanLayouts.titan2EliteQwerty(), settings)
+        pipeline.settings = ImeSettings.keyboardSettings(settings, currentStyle.locale)
+        pipeline.layout = ImeSettings.layout(InputStyleCatalog.layoutFor(currentStyle, shippedLayouts) ?: pipeline.layout, settings)
         // spec: status-bar.md SS9 and SS4: the theme, bar height and corner insets are the view's
         // construction facts, so a change to any of them rebuilds the candidates view; every other
         // strip row (visibility, apps, slots, the dip list) is read on the next refresh.
@@ -347,9 +393,16 @@ internal class KeyboardSession(
         // spec: autocorrect-suggestions.md SS8.2 and dictionaries-languages.md SS8.4: the rule
         // sets searched and the extra suggestion languages both come from the store.
         pipeline.resources = pipeline.resources.copy(ruleSets = ImeSettings.ruleSets(settings, java.util.Locale.getDefault().language, bundledRuleSets))
-        extraLanguages = ImeSettings.extraSuggestionLanguages(settings, PRIMARY_LANGUAGE, PRIMARY_LANGUAGE.value)
+        extraLanguages = ImeSettings.extraSuggestionLanguages(settings, primaryLanguage, currentStyle.locale)
+        loadDictionary(primaryLanguage)
         rebuildDictionaries()
         extraLanguages.forEach(::loadDictionary)
+        if (announceSwitch && settings.languages.toastOnLayoutSwitch) {
+            runCatching {
+                val text = InputStyleCatalog.switchToastText(currentStyle, extraLanguages.map { it.value })
+                android.widget.Toast.makeText(service, text, android.widget.Toast.LENGTH_SHORT).show()
+            }.onFailure { error -> Log.e(TAG, "layout switch toast crashed", error) }
+        }
         // spec: trackpad-caret-nav.md SS4.7: "if the setting's value differs from the last one
         // seen, the counters reset and the request is re-issued".
         val badge = ImeSettings.caretBadge(settings)
@@ -381,6 +434,30 @@ internal class KeyboardSession(
         quickLauncher.executor = commandExecutor
         tapHapticUseSystem = settings.feedback.tapHapticUseSystem
         tapHapticDurationMs = settings.feedback.tapHapticDurationMs
+    }
+
+    /**
+     * spec keys-and-modifiers.md SS7.5's three chords and dictionaries-languages.md SS9's button
+     * and menu: cycles [currentStyle] to [InputStyleCatalog.next] and reapplies everything a
+     * switch changes (the layout `:core:keys` resolves against, the primary dictionary
+     * `:core:dict` loads, the strip's theme override and the language button's label) through
+     * [applySettings], then announces it.
+     *
+     * Called from [handleCommand]'s [KeyCommands.SWITCH_LAYOUT] (the three chords, once
+     * `:core:keys` has already decided to fire one) and from the strip's language button
+     * ([performStripAction]'s [StripAction.CycleLanguage]) directly, so both keep switching styles
+     * with all three chords off (the project's default-ON rule, `LanguagePrefs`'s own KDoc):
+     * neither path reads `alt_shift_layout_switch`/`alt_enter_layout_switch`/
+     * `ctrl_space_layout_switch` at all, only [KeyboardPipeline.anotherSubtypeAvailable] (whether
+     * there is anywhere to switch to), which this function does not gate on either -- with one
+     * available style [InputStyleCatalog.next] simply returns that same style and nothing visible
+     * changes.
+     */
+    private fun switchToNextInputStyle() {
+        val styles = InputStyleCatalog.availableStyles(shippedLayouts, lastSettings.languages)
+        val next = InputStyleCatalog.next(styles, currentStyle.key) ?: return
+        currentStyle = next
+        applySettings(lastSettings, announceSwitch = true)
     }
 
     /**
@@ -1125,11 +1202,10 @@ internal class KeyboardSession(
     }
 
     // -----------------------------------------------------------------------------------------
-    // Commands. spec: keys-and-modifiers.md SS3.3, SS4.4, SS15 item 3, SS12.2 (a Fn Layer
-    // `command` mapping): every id below names a subsystem that has no owning module yet
-    // (rebuild-from-scratch build order steps 4-5) except dictation, wired below; layout
-    // switching, nav mode's own exit command and the assistant are accepted and ignored rather
-    // than guessed at; wiring each one is a change to this one function.
+    // Commands. spec: keys-and-modifiers.md SS3.3, SS4.4, SS7.5, SS15 item 3, SS12.2 (a Fn Layer
+    // `command` mapping): dictation, the assistant and layout switching are wired below; nav
+    // mode's own exit command has no owning module yet and is accepted and ignored rather than
+    // guessed at; wiring it is a change to this one function.
     // -----------------------------------------------------------------------------------------
 
     /**
@@ -1149,6 +1225,9 @@ internal class KeyboardSession(
             KeyCommands.LAUNCH_ASSISTANT -> runCatching {
                 if (!startVoiceAssistant()) android.widget.Toast.makeText(service, brobata.physiboard.core.actions.commands.CommandFailure.NO_VOICE_ASSISTANT, android.widget.Toast.LENGTH_SHORT).show()
             }.onFailure { error -> Log.e(TAG, "assistant launch crashed", error) }
+            // spec keys-and-modifiers.md SS7.5: the three layout-switch chords, once `:core:keys`
+            // has already decided one fires (LayerResolver.Context.canSwitchLayout).
+            KeyCommands.SWITCH_LAYOUT -> runCatching { switchToNextInputStyle() }.onFailure { error -> Log.e(TAG, "layout switch crashed", error) }
         }
     }
 
@@ -1237,11 +1316,11 @@ internal class KeyboardSession(
     }
 
     /**
-     * spec SS6.1's actions, wired to what exists today. Dictation (dictation.md) and the Ctrl+Z /
-     * Ctrl+Y key events are real. SPEC GAP / missing module for the rest: the Sym pages
-     * (layers-sym-alt.md), language switching (dictionaries-languages.md), the quick-actions
-     * overlay (SS6.4) and a settings app do not exist in this milestone, so those buttons render,
-     * give their haptic, and do nothing visible; "Open settings" launches the app's only activity.
+     * spec SS6.1's actions, wired to what exists today. Dictation (dictation.md), the Ctrl+Z /
+     * Ctrl+Y key events and language switching (dictionaries-languages.md SS9.1's button row) are
+     * real. SPEC GAP / missing module for the rest: the Sym pages (layers-sym-alt.md) and the
+     * quick-actions overlay (SS6.4) do not exist in this milestone, so those buttons render, give
+     * their haptic, and do nothing visible; "Open settings" launches the app's only activity.
      */
     private fun performStripAction(action: StripAction, button: StripButton) {
         when (action) {
@@ -1251,8 +1330,10 @@ internal class KeyboardSession(
             StripAction.CycleLanguage -> {
                 // spec SS6.1: "a tap within 500 ms of the last accepted tap is ignored".
                 val now = SystemClock.uptimeMillis()
-                if (LanguageTapDebounce.accepts(lastLanguageTapMs, now)) lastLanguageTapMs = now
-                DiagnosticLog.i(TAG) { "language button: no input-style switching yet (placeholder)" }
+                if (LanguageTapDebounce.accepts(lastLanguageTapMs, now)) {
+                    lastLanguageTapMs = now
+                    runCatching { switchToNextInputStyle() }.onFailure { error -> Log.e(TAG, "language button switch crashed", error) }
+                }
             }
             StripAction.OpenSettings -> openOwnApp()
             // spec layers-sym-alt.md SS4.3: the clipboard and emoji picker buttons open their page directly and toggle; the key layers still have no surface.
@@ -1296,7 +1377,7 @@ internal class KeyboardSession(
                         clipboardCount = clipboard.count, // spec expansion-clipboard-pickers-launcher.md SS3.4: the count is pushed on every refresh.
                         dictationActive = dictationController.isActive,
                         dictionaryInstalled = pipeline.resources.dictionaries.isNotEmpty(),
-                        subtypeLocale = PRIMARY_LANGUAGE.value, // SPEC GAP / missing module: no subtype yet; the one bundled language.
+                        subtypeLocale = currentStyle.locale, // spec dictionaries-languages.md SS9.2: the language button's text follows the active input style.
                         clipboardOverlayOpen = clipboardPanel.isShown,
                     ),
                 )
@@ -1328,6 +1409,8 @@ internal class KeyboardSession(
 
         /** spec: text-input.md SS2's one unified 240-character read. */
         const val TEXT_BEFORE_CURSOR_READ = 240
-        val PRIMARY_LANGUAGE: LanguageCode = LanguageCode.of("en")!!
+
+        /** The one layout id `:device:titan` ships (`TitanLayouts.titan2EliteQwerty()`); matches `keyboard_layout`'s own default (`Settings.kt`'s `LanguagePrefs`). */
+        const val SHIPPED_LAYOUT_ID = "qwerty"
     }
 }

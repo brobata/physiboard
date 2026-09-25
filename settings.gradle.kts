@@ -36,6 +36,10 @@ include(":core:speech")
 include(":core:settings")
 include(":core:strip")
 include(":core:actions")
+// Layout switching between input styles: the available styles, the current one, the cycle order
+// and what one switch changes (dictionaries-languages.md SS8, SS9). Depends on :core:settings
+// (LanguagePrefs) and :core:keys (LayoutDescription) only.
+include(":core:subtype")
 // The T2E toolbox's decisions: the bloat catalog and its journal, the density arithmetic, system
 // tweaks and the key mapping inventory (broker-privileged-toolbox.md SS12 to SS15). Depends on
 // nothing else so its rules can be pinned on the JVM without pulling in the settings schema.

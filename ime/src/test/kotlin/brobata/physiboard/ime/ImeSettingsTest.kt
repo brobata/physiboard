@@ -52,12 +52,14 @@ class ImeSettingsTest {
         // The strip is the other difference: `KeyboardSettings()` ships `:core:strip`'s own
         // Slate Dark and first-run slots, while the store's default is the catalogue's baseline
         // hardware theme (settings-catalog.md SS3.1), which is what every Titan actually has.
-        // And `alt_shift_layout_switch`: the store carries the catalogue's baseline (true, SS4.1)
-        // while `:core:keys` ships the code default (false); the chord is still inert on the
-        // device until a subtype module sets KeyboardPipeline.anotherSubtypeAvailable.
+        // And `ctrl_space_layout_switch`: `:core:keys`'s own bare `ModifierSettings` ships its
+        // code default true, while `Settings.kt`'s `LanguagePrefs` now ships every layout-switch
+        // chord off by the project's default-ON rule (see its own KDoc) until each survives real
+        // use on the maintainer's Titan; `ImeSettings.keyboardSettings` always applies the
+        // store's row on top of the bare code default, so this is the one field left disagreeing.
         val shipped = KeyboardSettings()
         val expected = shipped.copy(
-            modifier = shipped.modifier.copy(altShiftLayoutSwitch = true),
+            modifier = shipped.modifier.copy(ctrlSpaceLayoutSwitch = false),
             textInput = shipped.textInput.copy(autocorrect = shipped.textInput.autocorrect.copy(useKeyboardProximity = true)),
             statusBar = ImeSettings.stripSettings(Settings()),
         )

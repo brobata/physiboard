@@ -322,6 +322,12 @@ class LegacyImportTest {
         )
         val r = LegacyImport.import(baseline)
         val expected = Settings(
+            // `alt_shift_layout_switch` is present in the real 2.x factory baseline (true,
+            // settings-catalog.md SS4.1); the importer carries the literal value it finds, so this
+            // stays true regardless of `LanguagePrefs`'s own bare default (false, the project's
+            // default-ON rule, `Settings.kt`'s own KDoc) that a fresh 3.0 install with no 2.x data
+            // to import would otherwise start from.
+            languages = LanguagePrefs(altShiftLayoutSwitch = true),
             perApp = PerAppPrefs(exactTypingPackages = setOf("org.chromium.webapk.a5d49fddf77614419_v2")),
             device = DevicePrefs(ringAppColors = mapOf("co.kidcasa.app" to -757066, "com.google.android.apps.googlevoice" to -13318311)),
             dictation = DictationPrefs(sideKeyAssistant = true),
