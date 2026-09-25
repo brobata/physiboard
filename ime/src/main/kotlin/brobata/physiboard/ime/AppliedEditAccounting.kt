@@ -45,6 +45,23 @@ internal object AppliedEditAccounting {
     /** True when a stroke's result edits the field one way or the other: ops this keyboard applies, or a key the app will edit with. */
     fun editsField(result: PipelineResult): Boolean = changesText(result.ops) || result.appMayEditField
 
+    /**
+     * Where the cursor will be once the app has applied a key the keyboard passed through
+     * unchanged, or null when that cannot be known (a selection, a paste, an undo). A plain
+     * Backspace lands one before the cursor; forward delete leaves it in place. This exists so
+     * the app's report of that edit is recognised as the keyboard's own consequence: taken as an
+     * external move, a web field's "cursor 0, no text" answer after a Backspace (Titan,
+     * 2026-09-25) re-armed the start-of-text capital and the next letter came out upper-case.
+     */
+    fun expectedCursorAfterPassThrough(key: KeyId, cursorAbsolute: Int, hasSelection: Boolean): Int? {
+        if (hasSelection || key !is KeyId.Control) return null
+        return when (key.key) {
+            ControlKey.BACKSPACE -> (cursorAbsolute - 1).coerceAtLeast(0)
+            ControlKey.FORWARD_DELETE -> cursorAbsolute.coerceAtLeast(0)
+            else -> null
+        }
+    }
+
     /** True when applying [ops] leaves the cursor somewhere the editor may report: any text change, or a selection op. */
     fun movesCursor(ops: List<EditorOp>): Boolean = changesText(ops) || ops.any { it is EditorOp.SetSelection }
 

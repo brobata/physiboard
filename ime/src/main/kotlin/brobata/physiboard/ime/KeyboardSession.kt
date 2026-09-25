@@ -384,6 +384,8 @@ internal class KeyboardSession(
 
     /** The selection start the editor last reported, the cursor fact used when a stroke does not read the whole document. */
     private var lastReportedSelStart = 0
+    /** The editor's last report said the selection was collapsed; a passed-through Backspace on a real selection lands somewhere this side cannot predict. */
+    private var lastReportedSelectionCollapsed = true
 
     private val vibrator: Vibrator? by lazy {
         runCatching {
@@ -643,6 +645,7 @@ internal class KeyboardSession(
 
     fun onUpdateSelection(oldSelStart: Int, oldSelEnd: Int, newSelStart: Int, newSelEnd: Int, candidatesStart: Int, candidatesEnd: Int) {
         lastReportedSelStart = newSelStart
+        lastReportedSelectionCollapsed = newSelStart == newSelEnd
         ownEdit?.let { expectation ->
             val verdict = expectation.classify(newSelStart, SystemClock.uptimeMillis())
             Log.i(TAG, "selection: $oldSelStart->$newSelStart verdict=$verdict")
@@ -721,6 +724,11 @@ internal class KeyboardSession(
         val glyphBefore = pipeline.modifierGlyphInput()
         val result = pipeline.onKeyStroke(stroke, readout.snapshot)
         val consumed = applyResult(ic, result, readout)
+        if (result.appMayEditField && stroke.edge == KeyEdge.DOWN && !AppliedEditAccounting.movesCursor(result.ops)) {
+            AppliedEditAccounting.expectedCursorAfterPassThrough(stroke.key, readout.cursorAbsolute, hasSelection = !lastReportedSelectionCollapsed)?.let { expected ->
+                ownEdit = OwnEditExpectation(selStart = expected, expiresAtMs = SystemClock.uptimeMillis() + OwnEditExpectation.SETTLE_WINDOW_MS)
+            }
+        }
         if (stroke.edge == KeyEdge.DOWN) {
             val g = pipeline.modifierGlyphInput()
             Log.i(TAG, "stroke: ${stroke.key} shiftMeta=${stroke.meta.shift} before[caps=${glyphBefore.capsLockOn} oneShot=${glyphBefore.shiftOneShotArmed}] after[caps=${g.capsLockOn} oneShot=${g.shiftOneShotArmed}] textBefore='${readout.snapshot.textBeforeCursor?.takeLast(12)}' ops=${result.ops}")

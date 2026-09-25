@@ -1,5 +1,7 @@
 package brobata.physiboard.ime
 
+import brobata.physiboard.core.keys.ControlKey
+import brobata.physiboard.core.keys.KeyId
 import brobata.physiboard.core.text.EditorOp
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -88,5 +90,14 @@ class AppliedEditAccountingTest {
         val matched = expectation.copy(matched = true)
         assertEquals(OwnEditExpectation.Verdict.STILL_SETTLING, matched.classify(0, 1_020L))
         assertEquals(OwnEditExpectation.Verdict.EXTERNAL, matched.classify(0, 1_400L))
+    }
+
+    @Test
+    fun `a passed-through Backspace is expected to land one before the cursor, forward delete in place, anything else unknown`() {
+        assertEquals(4, AppliedEditAccounting.expectedCursorAfterPassThrough(KeyId.Control(ControlKey.BACKSPACE), 5, hasSelection = false))
+        assertEquals(0, AppliedEditAccounting.expectedCursorAfterPassThrough(KeyId.Control(ControlKey.BACKSPACE), 0, hasSelection = false))
+        assertEquals(5, AppliedEditAccounting.expectedCursorAfterPassThrough(KeyId.Control(ControlKey.FORWARD_DELETE), 5, hasSelection = false))
+        assertEquals(null, AppliedEditAccounting.expectedCursorAfterPassThrough(KeyId.Control(ControlKey.BACKSPACE), 5, hasSelection = true))
+        assertEquals(null, AppliedEditAccounting.expectedCursorAfterPassThrough(KeyId.Letter('X'), 5, hasSelection = false))
     }
 }
