@@ -22,6 +22,7 @@ import brobata.physiboard.core.actions.clipboard.Clip
 import brobata.physiboard.core.actions.feedback.TapVibration
 import brobata.physiboard.core.actions.launcher.AssignableKeys
 import brobata.physiboard.core.actions.snippets.SnippetExpansion
+import brobata.physiboard.core.dict.DictionaryIndex
 import brobata.physiboard.core.dict.LanguageCode
 import brobata.physiboard.core.keys.CharacterResolution
 import brobata.physiboard.core.keys.KeyEdge
@@ -31,12 +32,15 @@ import brobata.physiboard.core.keys.KeyStroke
 import brobata.physiboard.core.pointer.caret.CaretGeometry
 import brobata.physiboard.core.pointer.caret.CaretUsability
 import brobata.physiboard.core.pointer.caret.CursorAnchorReport
+import brobata.physiboard.core.pointer.caret.CursorUpdateRequestPolicy
 import brobata.physiboard.core.pointer.caret.CursorUpdateRequestState
 import brobata.physiboard.core.pointer.caret.CursorUpdateRetrySchedule
 import brobata.physiboard.core.pointer.trackpad.TrackpadActivationSettings
 import brobata.physiboard.core.pointer.trackpad.TrackpadGestureSettings
 import brobata.physiboard.core.pointer.trackpad.TrackpadPhysicalKey
 import brobata.physiboard.core.settings.Settings
+import brobata.physiboard.core.speech.AssistantLaunch
+import brobata.physiboard.core.speech.AssistantRequest
 import brobata.physiboard.core.strip.DipEffect
 import brobata.physiboard.core.strip.LanguageTapDebounce
 import brobata.physiboard.core.strip.Slot
@@ -254,6 +258,16 @@ internal class KeyboardSession(
     // one line once a settings/subtype module exists.
     private val dictionaryLoader = DictionaryAssetLoader(service.assets, handler)
 
+    /** The loaded dictionaries by language, primary and extras alike; [rebuildDictionaries] hands the wanted ones to the pipeline, primary first. */
+    private val loadedDictionaries = linkedMapOf<LanguageCode, DictionaryIndex>()
+    private val dictionaryLoadsInFlight = mutableSetOf<LanguageCode>()
+
+    /** spec: dictionaries-languages.md SS8.4, the active style's extra suggestion languages (`input_style_suggestion_locales`). */
+    private var extraLanguages: List<LanguageCode> = emptyList()
+
+    /** spec: dictation.md SS11.2, `assistant_action`; null is `auto`. */
+    private var assistantRequest: AssistantRequest? = null
+
     init {
         quickLauncher.executor = commandExecutor
         quickLauncher.quickLauncherKey = pipeline.settings.launcherShortcuts.quickLauncherKeycode?.let(AssignableKeys::keyOf)
@@ -269,10 +283,7 @@ internal class KeyboardSession(
         // spec: autocorrect-suggestions.md SS2 point 3 and the "computation runs off the main
         // thread" rule: the keyboard must accept keystrokes immediately, typing with no
         // suggestions, and only start suggesting once this background load lands.
-        dictionaryLoader.loadAsync(PRIMARY_LANGUAGE) { index ->
-            pipeline.resources = pipeline.resources.copy(dictionaries = listOf(index))
-            refreshCandidatesStrip()
-        }
+        loadDictionary(PRIMARY_LANGUAGE)
         // The store is read the same way: the shipped defaults above stand until the first value
         // arrives, and every later emission re-applies live (settings-catalog.md SS1).
         settingsSource?.let { source ->
@@ -284,10 +295,58 @@ internal class KeyboardSession(
         }
     }
 
+    /**
+     * spec: autocorrect-suggestions.md SS2 point 3 and the "computation runs off the main thread"
+     * rule: the keyboard must accept keystrokes immediately, typing with no suggestions, and only
+     * start suggesting once the background load lands; dictionaries-languages.md SS8.4: an extra
+     * language "that has not finished loading is simply absent... the load is scheduled and the
+     * strip refreshes when it completes".
+     */
+    private fun loadDictionary(language: LanguageCode) {
+        if (language in loadedDictionaries || !dictionaryLoadsInFlight.add(language)) return
+        dictionaryLoader.loadAsync(language) { index ->
+            dictionaryLoadsInFlight.remove(language)
+            loadedDictionaries[language] = index
+            rebuildDictionaries()
+            refreshCandidatesStrip()
+        }
+    }
+
+    /** spec SS8.4: "engines for languages no longer listed are dropped"; the primary comes first (`TextInputResources`' own contract). */
+    private fun rebuildDictionaries() {
+        val wanted = (listOf(PRIMARY_LANGUAGE) + extraLanguages).mapNotNull { loadedDictionaries[it] }
+        if (wanted != pipeline.resources.dictionaries) pipeline.resources = pipeline.resources.copy(dictionaries = wanted)
+    }
+
     /** One stored [Settings] value, handed to every module that takes a bundle; [ImeSettings] names which row feeds which field. */
     private fun applySettings(settings: Settings) {
-        pipeline.settings = ImeSettings.keyboardSettings(settings)
+        val previousStrip = pipeline.settings.statusBar
+        pipeline.settings = ImeSettings.keyboardSettings(settings, PRIMARY_LANGUAGE.value)
         pipeline.layout = ImeSettings.layout(TitanLayouts.titan2EliteQwerty(), settings)
+        // spec: status-bar.md SS9 and SS4: the theme, bar height and corner insets are the view's
+        // construction facts, so a change to any of them rebuilds the candidates view; every other
+        // strip row (visibility, apps, slots, the dip list) is read on the next refresh.
+        val strip = pipeline.settings.statusBar
+        if (statusBar != null && (strip.theme != previousStrip.theme || strip.barHeightDp != previousStrip.barHeightDp || strip.roundedCorners != previousStrip.roundedCorners)) {
+            runCatching { service.setCandidatesView(onCreateCandidatesView()) }.onFailure { error -> Log.e(TAG, "strip rebuild crashed", error) }
+        }
+        // spec: autocorrect-suggestions.md SS8.2 and dictionaries-languages.md SS8.4: the rule
+        // sets searched and the extra suggestion languages both come from the store.
+        pipeline.resources = pipeline.resources.copy(ruleSets = ImeSettings.ruleSets(settings, java.util.Locale.getDefault().language))
+        extraLanguages = ImeSettings.extraSuggestionLanguages(settings, PRIMARY_LANGUAGE, PRIMARY_LANGUAGE.value)
+        rebuildDictionaries()
+        extraLanguages.forEach(::loadDictionary)
+        // spec: trackpad-caret-nav.md SS4.7: "if the setting's value differs from the last one
+        // seen, the counters reset and the request is re-issued".
+        val badge = ImeSettings.caretBadge(settings)
+        val badgeSwitchChanged = caretBadge.settings.enabled != badge.enabled
+        caretBadge.settings = badge
+        if (badgeSwitchChanged) {
+            cursorUpdateState = CursorUpdateRequestState()
+            scheduleCursorUpdateRetries()
+            refreshCaretBadge()
+        }
+        assistantRequest = ImeSettings.assistantRequest(settings)
         trackpad.activationSettings = ImeSettings.trackpadActivation(settings)
         trackpad.gestureSettings = ImeSettings.trackpadGesture(settings)
         appProfiles = ImeSettings.appProfiles(settings)
@@ -561,7 +620,11 @@ internal class KeyboardSession(
     private fun issueCursorUpdateRequest() {
         runCatching {
             val ic = service.currentInputConnection ?: return@runCatching
-            val flags = InputConnection.CURSOR_UPDATE_IMMEDIATE or InputConnection.CURSOR_UPDATE_MONITOR
+            // spec SS4.7: reports are asked for while the badge (or the emoji-picker search) needs
+            // them; "with neither, a request with no flags is issued to turn monitoring off".
+            // SPEC GAP: the emoji picker's search does not read the caret yet, so its half is false.
+            val wanted = CursorUpdateRequestPolicy.wantsReports(caretBadge.settings.enabled, emojiSearchNeedsCaret = false)
+            val flags = if (wanted) InputConnection.CURSOR_UPDATE_IMMEDIATE or InputConnection.CURSOR_UPDATE_MONITOR else 0
             if (ic.requestCursorUpdates(flags)) {
                 cursorUpdateState = CursorUpdateRetrySchedule.onRequestAccepted(cursorUpdateState)
             }
@@ -775,11 +838,33 @@ internal class KeyboardSession(
     // What the command executor cannot do on its own. spec SS8.2.
     // -----------------------------------------------------------------------------------------
 
-    /** spec SS8.2 `pastiera.voice_assistant`: "Open it already listening" (dictation.md SS11's assistant intent). */
-    private fun startVoiceAssistant(): Boolean = runCatching {
-        service.startActivity(Intent(Intent.ACTION_VOICE_COMMAND).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    /**
+     * spec SS8.2 `pastiera.voice_assistant`: "Open it already listening"; dictation.md SS11.2's
+     * launch: the requests in `assistant_action`'s order ([AssistantLaunch]), first targeted at the
+     * assistant package `Settings.Secure` names (steps 2 and 3, "targeting avoids the system
+     * chooser"), then untargeted (step 4); "the first that starts wins".
+     */
+    private fun startVoiceAssistant(): Boolean {
+        val order = AssistantLaunch.order(assistantRequest)
+        val assistantPackage = assistantPackageName()
+        if (assistantPackage != null && order.any { startAssistantIntent(it, assistantPackage) }) return true
+        return order.any { startAssistantIntent(it, targetPackage = null) }
+    }
+
+    private fun startAssistantIntent(request: AssistantRequest, targetPackage: String?): Boolean = runCatching {
+        val intent = Intent(request.intentAction).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        targetPackage?.let(intent::setPackage)
+        if (intent.resolveActivity(service.packageManager) == null) return false
+        service.startActivity(intent)
         true
     }.getOrDefault(false)
+
+    /** spec dictation.md SS11.2 step 2: "the first non-empty of `Settings.Secure` keys `assistant` and `voice_interaction_service`, taken as a flattened component's package, or as a bare package name". */
+    private fun assistantPackageName(): String? = runCatching {
+        listOf("assistant", "voice_interaction_service")
+            .firstNotNullOfOrNull { key -> android.provider.Settings.Secure.getString(service.contentResolver, key)?.takeIf { it.isNotBlank() } }
+            ?.let { raw -> android.content.ComponentName.unflattenFromString(raw)?.packageName ?: raw }
+    }.getOrNull()
 
     /** spec SS8.2 "Navigation": a keycode is sent as a key pair; the four editing actions go through the editor's context menu; the rest have no owning module yet. */
     private fun runNavAction(mappingType: String, value: String): Boolean {
@@ -1013,8 +1098,12 @@ internal class KeyboardSession(
      * command dispatch itself must not rely on being present forever.
      */
     private fun handleCommand(commandId: String) {
-        if (commandId == KeyCommands.TOGGLE_DICTATION) {
-            runCatching { onDictationTrigger() }.onFailure { error -> Log.e(TAG, "dictation trigger crashed", error) }
+        when (commandId) {
+            KeyCommands.TOGGLE_DICTATION -> runCatching { onDictationTrigger() }.onFailure { error -> Log.e(TAG, "dictation trigger crashed", error) }
+            // spec: keys-and-modifiers.md SS4.4: the Sym hold "launches the assistant already listening"; "if no assistant is available... a toast".
+            KeyCommands.LAUNCH_ASSISTANT -> runCatching {
+                if (!startVoiceAssistant()) android.widget.Toast.makeText(service, brobata.physiboard.core.actions.commands.CommandFailure.NO_VOICE_ASSISTANT, android.widget.Toast.LENGTH_SHORT).show()
+            }.onFailure { error -> Log.e(TAG, "assistant launch crashed", error) }
         }
     }
 

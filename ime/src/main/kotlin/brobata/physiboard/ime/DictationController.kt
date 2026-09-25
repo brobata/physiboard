@@ -17,6 +17,8 @@ import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.view.inputmethod.InputConnection
 import androidx.core.content.ContextCompat
+import brobata.physiboard.core.speech.CuePattern
+import brobata.physiboard.core.speech.DictationCues
 import brobata.physiboard.core.speech.DictationEffect
 import brobata.physiboard.core.speech.DictationEngine
 import brobata.physiboard.core.speech.DictationEvent
@@ -26,6 +28,7 @@ import brobata.physiboard.core.speech.DictationSession
 import brobata.physiboard.core.speech.DictationSettings
 import brobata.physiboard.core.speech.DictationTextSettings
 import brobata.physiboard.core.speech.LanguageTagResolver
+import brobata.physiboard.core.speech.RecognizerRequestOptions
 import java.util.Locale
 
 /**
@@ -196,6 +199,9 @@ internal class DictationController(
     /** spec SS5, SS5.1. */
     private fun buildRecognizerIntent(mode: DictationMode): Intent {
         val pauseMs = settings.pauseMs
+        // spec SS4.2: masking follows `dictation_mask_offensive`; formatting is asked for only on
+        // Android 13 or later with `dictation_auto_punctuation` on. `:core:speech` decides both.
+        val options = RecognizerRequestOptions.from(settings)
         val languageTag = LanguageTagResolver.resolve(subtypeLanguageTag, Locale.getDefault().toLanguageTag())
         return Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
@@ -203,13 +209,13 @@ internal class DictationController(
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
             putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, service.packageName)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-            putExtra(RecognizerIntent.EXTRA_MASK_OFFENSIVE_WORDS, true)
+            putExtra(RecognizerIntent.EXTRA_MASK_OFFENSIVE_WORDS, options.maskOffensive)
             if (pauseMs > 0L) {
                 putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, pauseMs)
                 putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, pauseMs)
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                putExtra(RecognizerIntent.EXTRA_ENABLE_FORMATTING, RecognizerIntent.FORMATTING_OPTIMIZE_QUALITY)
+                if (options.enableFormatting) putExtra(RecognizerIntent.EXTRA_ENABLE_FORMATTING, RecognizerIntent.FORMATTING_OPTIMIZE_QUALITY)
                 // SPEC GAP: the exact segmented-session extra key/shape needs device evidence (D-series
                 // facts in dictation.md are all Titan measurements this task's clean-room rule forbids
                 // rederiving from the old source); EXTRA_SEGMENTED_SESSION keyed to the pause is the
@@ -256,14 +262,22 @@ internal class DictationController(
         runCatching { (service.getSystemService(InputMethodService.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)?.defaultVibrator }.getOrNull()
     }
 
+    /** spec SS8.1: `dictation_haptics` and the system toggle both gate; the pattern is the strength's row of the cue table. */
     private fun playCue(isStart: Boolean) {
-        val durationMs = if (isStart) START_CUE_MS else STOP_CUE_MS
-        runCatching { vibrator?.vibrate(VibrationEffect.createOneShot(durationMs, VibrationEffect.DEFAULT_AMPLITUDE)) }
+        if (!DictationCues.shouldPlay(settings.hapticsEnabled, systemHapticsEnabled())) return
+        val pattern = if (isStart) DictationCues.startCue(settings.hapticStrength) else DictationCues.stopCue(settings.hapticStrength)
+        runCatching { vibrator?.vibrate(waveform(pattern)) }
     }
+
+    /** spec SS8.1: "the system's own haptic feedback toggle (`Settings.System` key `haptic_feedback_enabled`, read as on when unreadable)". */
+    private fun systemHapticsEnabled(): Boolean = runCatching {
+        android.provider.Settings.System.getInt(service.contentResolver, android.provider.Settings.System.HAPTIC_FEEDBACK_ENABLED, 1) != 0
+    }.getOrDefault(true)
+
+    private fun waveform(pattern: CuePattern): VibrationEffect =
+        VibrationEffect.createWaveform(pattern.timingsMs.toLongArray(), pattern.amplitudes.toIntArray(), -1)
 
     private companion object {
         const val TEXT_BEFORE_SESSION_WINDOW = 240
-        const val START_CUE_MS = 60L
-        const val STOP_CUE_MS = 90L
     }
 }

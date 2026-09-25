@@ -14,7 +14,32 @@ data class DictationSettings(
     val pauseMs: Long = 2_000L,
     val segmentedSessionEnabled: Boolean = true,
     val androidApiLevel: Int = 0,
+    /** `dictation_mask_offensive`, the per-request profanity masking (spec SS4.2); the catalogue's code default. */
+    val maskOffensive: Boolean = true,
+    /** `dictation_auto_punctuation`: ask the engine to punctuate and capitalise, Android 13 and later only (spec SS4.2). */
+    val autoPunctuation: Boolean = true,
+    /** `dictation_haptics`: the start and stop cues (spec SS8.1); the system haptic toggle gates them again at play time. */
+    val hapticsEnabled: Boolean = true,
+    /** `dictation_haptic_strength`: which of SS8.1's three pulse tables the cues use. */
+    val hapticStrength: CueStrength = CueStrength.STRONG,
 )
+
+/**
+ * What the recognizer request carries beyond the pause. spec: dictation.md SS4.2: masking is
+ * "the value of `dictation_mask_offensive`", and formatting is asked for "on Android 13 or
+ * later, when `dictation_auto_punctuation` is on". Decided here so the API-level gate is a JVM
+ * fact, not something `:ime` re-derives beside the intent.
+ */
+data class RecognizerRequestOptions(val maskOffensive: Boolean, val enableFormatting: Boolean) {
+    companion object {
+        private const val MIN_API_LEVEL_FOR_FORMATTING = 33
+
+        fun from(settings: DictationSettings): RecognizerRequestOptions = RecognizerRequestOptions(
+            maskOffensive = settings.maskOffensive,
+            enableFormatting = settings.autoPunctuation && settings.androidApiLevel >= MIN_API_LEVEL_FOR_FORMATTING,
+        )
+    }
+}
 
 /**
  * The text-shaping settings [UtteranceFinisher] and [DictationPartialDisplay] read. Kept separate

@@ -19,6 +19,45 @@ class ModifierMachineTest {
     private fun up(key: KeyId, timeMs: Long, meta: ModifierFlags = ModifierFlags()) =
         KeyStroke(key, KeyEdge.UP, 0, timeMs, meta)
 
+    // Alt+Shift layout chord. spec: keys-and-modifiers.md SS7.5 ------------------------------
+
+    @Test
+    fun `alt_shift_layout_switch on - Shift down while Alt is held runs the switch and clears both (spec SS7-5)`() {
+        val chord = settings.copy(altShiftLayoutSwitch = true)
+        val (held, _) = ModifierMachine.altDown(ModifierState(), down(alt, 0), chord)
+        val (after, action) = ModifierMachine.shiftDown(held, down(shift, 100, meta = ModifierFlags(alt = true)), chord, canSwitchLayout = true)
+        assertEquals(Action.RunCommand(KeyCommands.SWITCH_LAYOUT), action)
+        assertEquals(ShiftState(), after.shift)
+        assertEquals(AltState(), after.alt)
+    }
+
+    @Test
+    fun `alt_shift_layout_switch on - Alt down while Shift is held runs the switch too, either order (spec SS7-5)`() {
+        val chord = settings.copy(altShiftLayoutSwitch = true)
+        val (held, _) = ModifierMachine.shiftDown(ModifierState(), down(shift, 0), chord)
+        val (after, action) = ModifierMachine.altDown(held, down(alt, 100, meta = ModifierFlags(shift = true)), chord, canSwitchLayout = true)
+        assertEquals(Action.RunCommand(KeyCommands.SWITCH_LAYOUT), action)
+        assertEquals(ShiftState(), after.shift)
+        assertEquals(AltState(), after.alt)
+    }
+
+    @Test
+    fun `alt_shift_layout_switch off (the default) - Shift down while Alt is held is an ordinary Shift press`() {
+        val (held, _) = ModifierMachine.altDown(ModifierState(), down(alt, 0), settings)
+        val (after, action) = ModifierMachine.shiftDown(held, down(shift, 100, meta = ModifierFlags(alt = true)), settings, canSwitchLayout = true)
+        assertEquals(Action.PassThrough, action)
+        assertTrue(after.shift.pressed)
+        assertTrue(after.alt.physicallyPressed)
+    }
+
+    @Test
+    fun `alt_shift_layout_switch on but only one layout installed - the chord does not fire (spec SS7-5)`() {
+        val chord = settings.copy(altShiftLayoutSwitch = true)
+        val (held, _) = ModifierMachine.altDown(ModifierState(), down(alt, 0), chord)
+        val (_, action) = ModifierMachine.shiftDown(held, down(shift, 100, meta = ModifierFlags(alt = true)), chord)
+        assertEquals(Action.PassThrough, action)
+    }
+
     // T1, T2 -------------------------------------------------------------------------------
 
     @Test

@@ -18,7 +18,9 @@ import brobata.physiboard.core.pointer.trackpad.TrackpadActivation
 import brobata.physiboard.core.pointer.trackpad.TrackpadActivationEffect
 import brobata.physiboard.core.pointer.trackpad.TrackpadActivationSettings
 import brobata.physiboard.core.pointer.trackpad.TrackpadActivationState
+import brobata.physiboard.core.pointer.trackpad.HintPill
 import brobata.physiboard.core.pointer.trackpad.TrackpadGestureSettings
+import brobata.physiboard.core.pointer.trackpad.TrackpadHint
 import brobata.physiboard.core.pointer.trackpad.TrackpadPhase
 import brobata.physiboard.core.pointer.trackpad.TrackpadPhysicalKey
 
@@ -161,11 +163,14 @@ internal class TrackpadOverlayController(
         }
     }
 
-    private fun hintFor(shiftActive: Boolean): String = when {
-        shiftActive -> "⇧ Select"
-        activationState.phase == TrackpadPhase.ACTIVE_STICKY -> "✥ Cursor · tap to exit"
-        else -> "✥ Cursor"
-    }
+    /** spec SS2.5: the pill's text, or none with `screen_trackpad_show_hint` off; [TrackpadHint] decides. */
+    private fun hintFor(shiftActive: Boolean): String? =
+        when (TrackpadHint.pill(gestureSettings.showHint, shiftActive, sticky = activationState.phase == TrackpadPhase.ACTIVE_STICKY)) {
+            HintPill.HIDDEN -> null
+            HintPill.SELECT -> "⇧ Select"
+            HintPill.CURSOR_TAP_TO_EXIT -> "✥ Cursor · tap to exit"
+            HintPill.CURSOR -> "✥ Cursor"
+        }
 
     private fun sendSteps(steps: List<CursorStep>) {
         val ic = currentInputConnection() ?: return

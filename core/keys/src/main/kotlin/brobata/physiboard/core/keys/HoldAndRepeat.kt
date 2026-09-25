@@ -154,4 +154,6 @@ data class TypingSessionState(
     val multiTapCycle: MultiTap.Cycle? = null,
     val pendingLongPress: LongPress.Pending? = null,
     val longPressFiredKey: KeyId? = null,
+    /** spec: keys-and-modifiers.md SS7.5: after a consumed Alt+Enter "every Enter repeat until the Enter key-up is consumed too (the Enter up itself is consumed)". */
+    val consumeEnterRepeatsUntilUp: Boolean = false,
 )

@@ -168,4 +168,13 @@ data class ModifierSettings(
     val symAssistantHoldMs: Long = 600,
     val symEditShortcutsEnabled: Boolean = true,
     val symAutoCloseEnabled: Boolean = true,
+    /**
+     * The three layout-switch chords of keys-and-modifiers.md SS7.5, each at the catalogue's
+     * code default (settings-catalog.md SS2.3). Every chord also needs the caller's "another
+     * input subtype exists" fact (SS7.5, "with only one input subtype installed there is nothing
+     * to switch to, so the chord does not fire"), so a switch alone never consumes a key.
+     */
+    val altShiftLayoutSwitch: Boolean = false,
+    val altEnterLayoutSwitch: Boolean = false,
+    val ctrlSpaceLayoutSwitch: Boolean = true,
 )

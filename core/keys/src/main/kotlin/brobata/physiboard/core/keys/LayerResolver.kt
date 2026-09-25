@@ -80,6 +80,9 @@ object LayerResolver {
         context: Context,
     ): Resolution {
         if (stroke.isRepeat && repeatIsConsumedByItsOwnPress(previousTyping, stroke)) return Resolution(state, previousTyping, Action.Ignored)
+        // spec SS7.5: Enter repeats after a consumed Alt+Enter are swallowed until the key-up, and
+        // "a fresh Enter down with repeat 0 always clears the 'consume Enter repeats' flag first".
+        if (stroke.key == ENTER && stroke.isRepeat && previousTyping.consumeEnterRepeatsUntilUp) return Resolution(state, previousTyping, Action.Ignored)
         val typing = if (stroke.isInitialPress) forgetOnNewPress(previousTyping, stroke.key) else previousTyping
 
         if (stroke.key == SWIPE_TO_DELETE) {
@@ -87,11 +90,18 @@ object LayerResolver {
             return Resolution(state, typing, action)
         }
 
-        if (stroke.key == SPACE && state.isCtrlActive(stroke.meta.ctrl) && context.canSwitchLayout) {
+        if (stroke.key == SPACE && state.isCtrlActive(stroke.meta.ctrl) && context.canSwitchLayout && modifierSettings.ctrlSpaceLayoutSwitch) {
             // A Space repeat while Fn stays held must not switch again on every repeat; it is
             // consumed like the Enter repeats after an Alt+Enter switch (SS7.5).
             if (stroke.isRepeat) return Resolution(state, typing, Action.Ignored)
             return Resolution(applyCtrlSpaceLayoutSwitch(state), typing, ctrlSpaceLayoutSwitchAction(state))
+        }
+
+        // spec SS7.5, the Alt+Enter row: "Alt cleared; next subtype; toast; consumed, and every
+        // Enter repeat until the Enter key-up is consumed too". The repeats are swallowed above
+        // through [TypingSessionState.consumeEnterRepeatsUntilUp]; the key-up in [resolveKeyUp].
+        if (stroke.key == ENTER && stroke.isInitialPress && state.isAltActive(stroke.meta.alt) && context.canSwitchLayout && modifierSettings.altEnterLayoutSwitch) {
+            return Resolution(state.copy(alt = AltState()), typing.copy(consumeEnterRepeatsUntilUp = true), Action.RunCommand(KeyCommands.SWITCH_LAYOUT))
         }
 
         if ((stroke.key == SPACE || stroke.key == ENTER) && modifierSettings.clearAltOnSpace &&
@@ -142,6 +152,10 @@ object LayerResolver {
      */
     fun resolveKeyUp(state: ModifierState, typing: TypingSessionState, stroke: KeyStroke): Resolution {
         require(stroke.edge == KeyEdge.UP) { "not a key-up: $stroke" }
+        // spec SS7.5, Alt+Enter: "the Enter up itself is consumed" and ends the repeat swallow.
+        if (stroke.key == ENTER && typing.consumeEnterRepeatsUntilUp) {
+            return Resolution(state, typing.copy(consumeEnterRepeatsUntilUp = false), Action.Ignored)
+        }
         val pendingForThisKey = typing.pendingLongPress?.key == stroke.key
         val firedForThisKey = typing.longPressFiredKey == stroke.key
         if (!pendingForThisKey && !firedForThisKey) return Resolution(state, typing, Action.PassThrough)
@@ -193,6 +207,9 @@ object LayerResolver {
         multiTapCycle = typing.multiTapCycle?.takeIf { it.key == key },
         pendingLongPress = null,
         longPressFiredKey = typing.longPressFiredKey?.takeIf { it != key },
+        // spec SS7.5: only "a fresh Enter down with repeat 0" clears the swallow; another key
+        // chorded while Enter is still held must not let the next Enter repeat through.
+        consumeEnterRepeatsUntilUp = typing.consumeEnterRepeatsUntilUp && key != ENTER,
     )
 
     // -----------------------------------------------------------------

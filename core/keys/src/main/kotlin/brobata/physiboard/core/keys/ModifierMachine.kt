@@ -26,13 +26,21 @@ object ModifierMachine {
     // Shift. spec: keys-and-modifiers.md SS5.3, SS5.6.
     // ---------------------------------------------------------------------
 
-    fun shiftDown(state: ModifierState, stroke: KeyStroke, settings: ModifierSettings): Result {
+    /**
+     * [canSwitchLayout] is the caller's "another input subtype exists" fact (SS7.5): with it, an
+     * `alt_shift_layout_switch` chord fires here when Alt is held (physically or by the event's
+     * meta bit) as Shift goes down; the mirror order lives in [altDown].
+     */
+    fun shiftDown(state: ModifierState, stroke: KeyStroke, settings: ModifierSettings, canSwitchLayout: Boolean = false): Result {
         require(stroke.key == KeyId.Modifier(ModifierKey.SHIFT)) { "not a Shift stroke: ${stroke.key}" }
         if (stroke.repeatCount > 0) return Result(state, Action.PassThrough)
         // spec SS5.1: "the state machine ignores a down while already pressed". Both Shift keys
         // normalise to the one SHIFT key, so holding one and pressing the other arrives here as a
         // second down and must not read as a double tap (review A7).
         if (state.shift.pressed) return Result(state, Action.PassThrough)
+        if (canSwitchLayout && settings.altShiftLayoutSwitch && (stroke.meta.alt || state.alt.physicallyPressed)) {
+            return Result(altShiftChordCleared(state, ModifierKey.SHIFT), Action.RunCommand(KeyCommands.SWITCH_LAYOUT))
+        }
 
         if (state.shift.layerLatched) {
             val cleared = state.copy(
@@ -202,9 +210,13 @@ object ModifierMachine {
     // Alt. spec: keys-and-modifiers.md SS5.5, SS5.6.
     // ---------------------------------------------------------------------
 
-    fun altDown(state: ModifierState, stroke: KeyStroke, settings: ModifierSettings): Result {
+    /** [canSwitchLayout] as on [shiftDown]: the Alt+Shift chord in its "Shift first" order. */
+    fun altDown(state: ModifierState, stroke: KeyStroke, settings: ModifierSettings, canSwitchLayout: Boolean = false): Result {
         require(stroke.key == KeyId.Modifier(ModifierKey.ALT)) { "not an Alt stroke: ${stroke.key}" }
         if (stroke.repeatCount > 0) return Result(state, Action.Ignored)
+        if (!state.alt.pressed && canSwitchLayout && settings.altShiftLayoutSwitch && (stroke.meta.shift || state.shift.physicallyPressed)) {
+            return Result(altShiftChordCleared(state, ModifierKey.ALT), Action.RunCommand(KeyCommands.SWITCH_LAYOUT))
+        }
 
         if (state.alt.layerLatched) {
             val cleared = state.copy(
@@ -286,6 +298,14 @@ object ModifierMachine {
         )
         return Result(state.copy(alt = newAlt), Action.PassThrough)
     }
+
+    /** spec SS7.5, Alt+Shift: "Alt and Shift state fully cleared; next input subtype; toast; consumed". */
+    private fun altShiftChordCleared(state: ModifierState, chordKey: ModifierKey): ModifierState = state.copy(
+        shift = ShiftState(),
+        alt = AltState(),
+        holdBookkeeping = HoldBookkeeping(),
+        lastKeyWasModifier = chordKey,
+    )
 
     // ---------------------------------------------------------------------
     // Sym. spec: keys-and-modifiers.md SS4; layers-sym-alt.md SS5.

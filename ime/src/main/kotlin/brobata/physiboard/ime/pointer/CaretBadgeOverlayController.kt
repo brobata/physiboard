@@ -8,6 +8,7 @@ import android.view.WindowManager
 import brobata.physiboard.core.pointer.OverlayAvailability
 import brobata.physiboard.core.pointer.caret.BadgeSize
 import brobata.physiboard.core.pointer.caret.CaretBadge
+import brobata.physiboard.core.pointer.caret.CaretBadgeSettings
 import brobata.physiboard.core.pointer.caret.CaretBadgePlacement
 import brobata.physiboard.core.pointer.caret.CaretGeometry
 import brobata.physiboard.core.pointer.caret.ModifierGlyphInput
@@ -41,12 +42,25 @@ internal class CaretBadgeOverlayController(private val service: InputMethodServi
     private var badgeView: CaretBadgeOverlayView? = null
     private var rejected = false
 
+    /** spec SS4.8's three rows; the colours reach a live badge at once, the switch on the next [update]. */
+    var settings: CaretBadgeSettings = CaretBadgeSettings()
+        set(value) {
+            field = value
+            badgeView?.armedColorArgb = value.armedColorArgb
+            badgeView?.lockedColorArgb = value.lockedColorArgb
+        }
+
     /**
      * Recomputes and shows, moves or hides the badge. spec SS4.6: "recomputes its items on every
      * strip refresh... If it became empty the badge hides... a caret is unusable when...".
      */
     fun update(modifierInput: ModifierGlyphInput, caret: CaretGeometry?, screenWidthPx: Float, pxPerDp: Float) {
         if (rejected) return
+        // spec SS4.8: `caret_modifier_badge` is "whether the badge exists".
+        if (!settings.enabled) {
+            hide()
+            return
+        }
         if (OverlayPermission.availability(service) != OverlayAvailability.AVAILABLE) {
             hide()
             return
@@ -67,11 +81,6 @@ internal class CaretBadgeOverlayController(private val service: InputMethodServi
         runCatching { windowManager().updateViewLayout(view, params) }
     }
 
-    fun setColors(armedArgb: Int, lockedArgb: Int) {
-        badgeView?.armedColorArgb = armedArgb
-        badgeView?.lockedColorArgb = lockedArgb
-    }
-
     /** spec SS4.6: "The remembered caret is forgotten and the badge hidden when the editor finishes...". */
     fun hide() {
         val view = badgeView ?: return
@@ -81,6 +90,8 @@ internal class CaretBadgeOverlayController(private val service: InputMethodServi
 
     private fun createView(): CaretBadgeOverlayView? {
         val view = CaretBadgeOverlayView(overlayContext)
+        view.armedColorArgb = settings.armedColorArgb
+        view.lockedColorArgb = settings.lockedColorArgb
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,

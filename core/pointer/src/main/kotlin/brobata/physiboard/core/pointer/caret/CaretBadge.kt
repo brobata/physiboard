@@ -74,6 +74,18 @@ object CaretBadge {
         if (input.symPageOpen) BadgeItem(ModifierGlyph.SYM, GlyphStyle.ARMED_FULL) else null
 }
 
+/**
+ * The badge's three stored rows. spec: trackpad-caret-nav.md SS4.8: `caret_modifier_badge`
+ * ("whether the badge exists and whether cursor updates are requested for it") and the two
+ * colours, one-shot/held items in [armedColorArgb], locked ones in [lockedColorArgb]. The
+ * defaults are the catalogue's code defaults, not the Titan baseline; the store supplies that.
+ */
+data class CaretBadgeSettings(
+    val enabled: Boolean = true,
+    val armedColorArgb: Int = 0xFF2563EB.toInt(),
+    val lockedColorArgb: Int = 0xFFDC2626.toInt(),
+)
+
 /** One colour, as a straight alpha/red/green/blue tuple, no platform colour-int packing assumed. */
 data class BadgeColor(val alpha: Int, val red: Int, val green: Int, val blue: Int)
 

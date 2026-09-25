@@ -3,16 +3,33 @@ package brobata.physiboard.ime
 import brobata.physiboard.core.keys.LongPressMode
 import brobata.physiboard.core.pointer.trackpad.ActivationMode
 import brobata.physiboard.core.pointer.trackpad.TriggerKey
+import brobata.physiboard.core.dict.LanguageCode
+import brobata.physiboard.core.dict.RuleSet
+import brobata.physiboard.core.keys.KeyId
+import brobata.physiboard.core.keys.SymPageEntry
+import brobata.physiboard.core.settings.AssistantAction
+import brobata.physiboard.core.settings.BarButton
 import brobata.physiboard.core.settings.CorrectionPrefs
 import brobata.physiboard.core.settings.DictationPrefs
 import brobata.physiboard.core.settings.EnterOverrideRow
+import brobata.physiboard.core.settings.HapticStrength
 import brobata.physiboard.core.settings.KeyPrefs
+import brobata.physiboard.core.settings.LanguagePrefs
 import brobata.physiboard.core.settings.PerAppPrefs
 import brobata.physiboard.core.settings.Settings
+import brobata.physiboard.core.settings.StatusBarPrefs
+import brobata.physiboard.core.settings.StatusBarVisibility
+import brobata.physiboard.core.settings.StripTheme
+import brobata.physiboard.core.settings.SubstitutionSet
 import brobata.physiboard.core.settings.SymPagePrefs
+import brobata.physiboard.core.settings.ThemeLayoutOverride
 import brobata.physiboard.core.settings.TrackpadPrefs
 import brobata.physiboard.core.settings.TypingPrefs
+import brobata.physiboard.core.speech.AssistantRequest
+import brobata.physiboard.core.speech.CueStrength
 import brobata.physiboard.core.speech.DictationTextSettings
+import brobata.physiboard.core.strip.StripButton
+import brobata.physiboard.core.strip.StripVisibilityMode
 import brobata.physiboard.core.text.DashStyle
 import brobata.physiboard.core.text.EnterBehavior
 import brobata.physiboard.core.text.EnterSendMethod
@@ -32,9 +49,153 @@ class ImeSettingsTest {
         // One difference, and it is a fix: `use_keyboard_proximity` is a single catalogue row
         // (settings-catalog.md SS2.2, baseline true) that feeds both the ranking options and the
         // autocorrect bundle; the shipped constant only ever set the former.
+        // The strip is the other difference: `KeyboardSettings()` ships `:core:strip`'s own
+        // Slate Dark and first-run slots, while the store's default is the catalogue's baseline
+        // hardware theme (settings-catalog.md SS3.1), which is what every Titan actually has.
+        // And `alt_shift_layout_switch`: the store carries the catalogue's baseline (true, SS4.1)
+        // while `:core:keys` ships the code default (false); the chord is still inert on the
+        // device until a subtype module sets KeyboardPipeline.anotherSubtypeAvailable.
         val shipped = KeyboardSettings()
-        val expected = shipped.copy(textInput = shipped.textInput.copy(autocorrect = shipped.textInput.autocorrect.copy(useKeyboardProximity = true)))
+        val expected = shipped.copy(
+            modifier = shipped.modifier.copy(altShiftLayoutSwitch = true),
+            textInput = shipped.textInput.copy(autocorrect = shipped.textInput.autocorrect.copy(useKeyboardProximity = true)),
+            statusBar = ImeSettings.stripSettings(Settings()),
+        )
         assertEquals(expected, ImeSettings.keyboardSettings(Settings()))
+    }
+
+    @Test
+    fun `the layout-switch chord rows and nav mode land in the modifier bundle and the pipeline settings`() {
+        val on = ImeSettings.keyboardSettings(Settings(languages = LanguagePrefs(altShiftLayoutSwitch = true, altEnterLayoutSwitch = true, ctrlSpaceLayoutSwitch = true)))
+        assertTrue(on.modifier.altShiftLayoutSwitch && on.modifier.altEnterLayoutSwitch && on.modifier.ctrlSpaceLayoutSwitch)
+        val off = ImeSettings.keyboardSettings(Settings(languages = LanguagePrefs(altShiftLayoutSwitch = false, altEnterLayoutSwitch = false, ctrlSpaceLayoutSwitch = false), keys = KeyPrefs(navModeEnabled = false)))
+        assertFalse(off.modifier.altShiftLayoutSwitch || off.modifier.altEnterLayoutSwitch || off.modifier.ctrlSpaceLayoutSwitch)
+        assertFalse(off.navModeEnabled)
+        assertTrue(ImeSettings.keyboardSettings(Settings()).navModeEnabled)
+    }
+
+    @Test
+    fun `status bar rows land in the strip settings - visibility, apps, height, slots, the nudge list and the corner insets`() {
+        val s = Settings(
+            statusBar = StatusBarPrefs(
+                visibility = StatusBarVisibility.APPS, apps = setOf("com.whatsapp"), heightDp = 48,
+                leftButtons = listOf(BarButton.HAMBURGER, BarButton.UNDO), rightButtons = listOf(BarButton.EMOJI), roundedCornerInsets = false,
+            ),
+            perApp = PerAppPrefs(nudgePackages = setOf("com.example.chat")),
+        )
+        val strip = ImeSettings.stripSettings(s)
+        assertEquals(StripVisibilityMode.APPS, strip.visibility)
+        assertEquals(setOf("com.whatsapp"), strip.apps)
+        assertEquals(48, strip.barHeightDp)
+        assertEquals(listOf(StripButton.HAMBURGER, StripButton.UNDO), strip.slots.left)
+        assertEquals(listOf(StripButton.EMOJI), strip.slots.right)
+        assertEquals(setOf("com.example.chat"), strip.dipApps)
+        assertFalse(strip.roundedCorners)
+        assertTrue(ImeSettings.stripSettings(Settings()).roundedCorners)
+        assertEquals(setOf("com.microsoft.teams"), ImeSettings.stripSettings(Settings()).dipApps)
+    }
+
+    @Test
+    fun `the stored theme reaches the strip field by field, status_bar_button as the button fill and both corner ratios`() {
+        val theme = StripTheme(background = 1, suggestion = 2, statusBarButton = 3, accent = 4, textAndIcons = 5, divider = 6, ledInactive = 7, ledActive = 8, ledLocked = 9, keyCornerRadiusRatio = 0.25, chromeCornerRadiusRatio = 0.5, suggestionsHeightScale = 1.1, showLeds = true)
+        val t = ImeSettings.stripSettings(Settings(statusBar = StatusBarPrefs(theme = theme))).theme
+        assertEquals(listOf(1, 2, 3, 4, 5, 6, 7, 8, 9), listOf(t.background, t.suggestion, t.button, t.accent, t.textAndIcons, t.divider, t.ledInactive, t.ledActive, t.ledLocked))
+        assertEquals(0.25, t.keyCornerRatio)
+        assertEquals(0.5, t.chromeCornerRatio)
+        assertEquals(1.1, t.suggestionsHeightScale)
+        assertTrue(t.showLeds)
+    }
+
+    @Test
+    fun `a per-layout theme override beats the chosen theme when keyboard_layout matches it`() {
+        val override = ThemeLayoutOverride(layout = "qwertz", theme = StripTheme(accent = 0x11223344))
+        val base = Settings(statusBar = StatusBarPrefs(theme = StripTheme(accent = 0x55667788), layoutOverrides = listOf(override)))
+        assertEquals(0x55667788, ImeSettings.stripSettings(base).theme.accent)
+        assertEquals(0x11223344, ImeSettings.stripSettings(base.copy(languages = LanguagePrefs(keyboardLayout = "qwertz"))).theme.accent)
+    }
+
+    @Test
+    fun `a custom Sym page replaces the shipped page entirely and an empty or unusable one leaves it alone`() {
+        val shipped = TitanLayouts.titan2EliteQwerty()
+        val custom = ImeSettings.layout(shipped, Settings(symPages = SymPagePrefs(customEmojiPage = mapOf("KEYCODE_Q" to "🦊", "KEYCODE_1" to "x", "KEYCODE_z" to "🐙"))))
+        assertEquals(SymPageEntry("🦊"), custom.emojiPage[KeyId.Letter('Q')])
+        assertEquals(SymPageEntry("🐙"), custom.emojiPage[KeyId.Letter('Z')])
+        assertEquals(2, custom.emojiPage.entries.size)
+        assertEquals(shipped.symbolsPage, custom.symbolsPage)
+        val symbols = ImeSettings.layout(shipped, Settings(symPages = SymPagePrefs(customSymbolsPage = mapOf("KEYCODE_A" to "§"))))
+        assertEquals(SymPageEntry("§"), symbols.symbolsPage[KeyId.Letter('A')])
+        assertEquals(shipped.emojiPage, symbols.emojiPage)
+        val unusable = ImeSettings.layout(shipped, Settings(symPages = SymPagePrefs(customEmojiPage = mapOf("KEYCODE_1" to "x", "KEYCODE_Q" to ""))))
+        assertEquals(shipped.emojiPage, unusable.emojiPage)
+    }
+
+    @Test
+    fun `rule sets follow auto_correct_enabled_languages with the user's substitutions overlaid, __name stripped`() {
+        val bundled = mapOf("en" to RuleSet("en", null, mapOf("dont" to "don't")))
+        val s = Settings(
+            correction = CorrectionPrefs(
+                textReplacementLanguages = listOf("en", "xx"),
+                customSubstitutions = mapOf(
+                    "en" to SubstitutionSet(rules = mapOf("teh" to "the", "__name" to "English")),
+                    "xx" to SubstitutionSet(displayName = "Recipes", rules = mapOf("tbsp" to "tablespoon")),
+                    "fr" to SubstitutionSet(rules = mapOf("etre" to "être")),
+                ),
+            ),
+        )
+        val sets = ImeSettings.ruleSets(s, systemLanguage = "de", bundled = bundled)
+        assertEquals(listOf("en", "xx"), sets.map { it.code })
+        assertEquals(mapOf("dont" to "don't", "teh" to "the"), sets[0].rules)
+        assertEquals("Recipes", sets[1].displayName)
+        assertEquals(mapOf("tbsp" to "tablespoon"), sets[1].rules)
+    }
+
+    @Test
+    fun `with no chosen languages the system language is searched if bundled, otherwise en`() {
+        val bundled = mapOf("en" to RuleSet("en", null, mapOf("dont" to "don't")), "fr" to RuleSet("fr", null, mapOf("etre" to "être")))
+        assertEquals(listOf("fr"), ImeSettings.ruleSets(Settings(), systemLanguage = "fr", bundled = bundled).map { it.code })
+        assertEquals(listOf("en"), ImeSettings.ruleSets(Settings(), systemLanguage = "ja", bundled = bundled).map { it.code })
+        val custom = Settings(correction = CorrectionPrefs(customSubstitutions = mapOf("en" to SubstitutionSet(rules = mapOf("teh" to "the")))))
+        assertEquals(mapOf("teh" to "the"), ImeSettings.ruleSets(custom, systemLanguage = "ja").single().rules)
+        assertTrue(ImeSettings.ruleSets(Settings(), systemLanguage = "ja").isEmpty())
+    }
+
+    @Test
+    fun `T27 - extra suggestion languages are found by the language-only key, deduplicated, the primary and x-pastiera dropped`() {
+        val s = Settings(languages = LanguagePrefs(keyboardLayout = "qwertz", suggestionLocales = mapOf("de:qwertz" to listOf("fr-FR", "en_US", "fr-FR", "x-pastiera", "de"))))
+        val de = LanguageCode.of("de")!!
+        assertEquals(listOf("fr", "en"), ImeSettings.extraSuggestionLanguages(s, de, "de_DE").map { it.value })
+        assertTrue(ImeSettings.extraSuggestionLanguages(s, LanguageCode.of("en")!!, "en_US").isEmpty())
+        assertTrue(ImeSettings.extraSuggestionLanguages(s.copy(languages = s.languages.copy(keyboardLayout = "qwerty")), de, "de_DE").isEmpty())
+        val exact = Settings(languages = LanguagePrefs(keyboardLayout = "qwerty", suggestionLocales = mapOf("en-GB:qwerty" to listOf("it"), "en:qwerty" to listOf("es"))))
+        assertEquals(listOf("it"), ImeSettings.extraSuggestionLanguages(exact, LanguageCode.of("en")!!, "en_GB").map { it.value })
+        assertEquals(listOf("es"), ImeSettings.extraSuggestionLanguages(exact, LanguageCode.of("en")!!, "en_US").map { it.value })
+    }
+
+    @Test
+    fun `the caret badge rows, the trackpad hint and the assistant action reach their bundles`() {
+        val s = Settings(statusBar = StatusBarPrefs(caretModifierBadge = false, caretBadgeArmedColor = 0x11, caretBadgeLockedColor = 0x22), trackpad = TrackpadPrefs(showHint = false), dictation = DictationPrefs(assistantAction = AssistantAction.HANDS_FREE))
+        val badge = ImeSettings.caretBadge(s)
+        assertFalse(badge.enabled)
+        assertEquals(0x11, badge.armedColorArgb)
+        assertEquals(0x22, badge.lockedColorArgb)
+        assertTrue(ImeSettings.caretBadge(Settings()).enabled)
+        assertFalse(ImeSettings.trackpadGesture(s).showHint)
+        assertTrue(ImeSettings.trackpadGesture(Settings()).showHint)
+        assertEquals(AssistantRequest.HANDS_FREE, ImeSettings.assistantRequest(s))
+        assertEquals(null, ImeSettings.assistantRequest(Settings()))
+    }
+
+    @Test
+    fun `masking, automatic punctuation and the cues reach the dictation bundle`() {
+        val d = ImeSettings.dictationSettings(Settings(dictation = DictationPrefs(maskOffensive = true, autoPunctuation = false, haptics = false, hapticStrength = HapticStrength.LIGHT)), androidApiLevel = 33)
+        assertTrue(d.maskOffensive)
+        assertFalse(d.autoPunctuation)
+        assertFalse(d.hapticsEnabled)
+        assertEquals(CueStrength.LIGHT, d.hapticStrength)
+        val defaults = ImeSettings.dictationSettings(Settings(), androidApiLevel = 33)
+        assertFalse(defaults.maskOffensive)
+        assertTrue(defaults.autoPunctuation && defaults.hapticsEnabled)
+        assertEquals(CueStrength.STRONG, defaults.hapticStrength)
     }
 
     @Test

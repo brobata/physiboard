@@ -127,6 +127,16 @@ data class KeyboardSettings(
     val launcherKeys: LauncherKeySettings = LauncherKeySettings(),
     /** spec SS6.1, D6: a fresh install has the quick launcher on Space; the store's first-read rule reproduces this (ImeSettings). */
     val launcherShortcuts: LauncherShortcuts = LauncherShortcuts().applyDefault(defaultAlreadyAssigned = false).shortcuts,
+    /**
+     * `nav_mode_enabled`. spec: keys-and-modifiers.md SS15 point 3: with no field, a Ctrl key is
+     * nav mode's "when `nav_mode_enabled` (default true) or nav mode is active".
+     *
+     * SPEC GAP: nav mode's no-field entry (`:core:pointer`'s `NavModeEntry`), its Fn Layer key
+     * routing and its notification (trackpad-caret-nav.md SS5) have no owner in `:ime` yet, so
+     * this is carried for that owner and read by nothing today; [KeyboardPipeline.onKeyStroke]'s
+     * modifier branch is where the no-field Ctrl stroke would consult it.
+     */
+    val navModeEnabled: Boolean = true,
 )
 
 /**
@@ -193,6 +203,16 @@ internal class KeyboardPipeline(
 
     /** spec SS6.2 A: whether the foreground package answers HOME; `:ime` resolves it, this class only routes on it. */
     var foregroundIsHome: Boolean = false
+
+    /**
+     * spec: keys-and-modifiers.md SS7.5: the layout-switch chords fire "only when another input
+     * subtype exists to switch to"; with one installed "the chord does not fire". `:ime` supplies
+     * the fact; every chord's own switch (`ModifierSettings`) is checked on top of it.
+     *
+     * SPEC GAP: no subtype module exists yet, so `:ime` never sets this and every chord stays a
+     * pass-through on the device, whatever its switch says.
+     */
+    var anotherSubtypeAvailable: Boolean = false
 
     val fieldContext: FieldContext get() = activeField
 
@@ -526,6 +546,7 @@ internal class KeyboardPipeline(
             isNumericField = isNumericField,
             hasSelection = editor.fullText?.hasSelection ?: false,
             hasTextBeforeCaret = editor.textBeforeCursor?.isNotEmpty() ?: true,
+            canSwitchLayout = anotherSubtypeAvailable,
         )
         val resolution = LayerResolver.resolveKeyDown(
             modifierState, typingState, effectiveStroke, layout, settings.modifier, settings.resolver, context,
@@ -749,13 +770,17 @@ internal class KeyboardPipeline(
     // Shared plumbing.
     // -----------------------------------------------------------------------------------------
 
+    /** spec SS7.5, the Alt+Shift row: "(either order, repeat 0, editable field)" plus the another-subtype fact. */
+    private val chordCanSwitchLayout: Boolean get() = anotherSubtypeAvailable && activeField.isReallyEditable
+
     private fun dispatchModifier(stroke: KeyStroke): Action {
         val key = (stroke.key as KeyId.Modifier).key
         val down = stroke.edge == KeyEdge.DOWN
         val result = when (key) {
-            ModifierKey.SHIFT -> if (down) ModifierMachine.shiftDown(modifierState, stroke, settings.modifier) else ModifierMachine.shiftUp(modifierState, stroke, settings.modifier)
+            // spec SS7.5: the Alt+Shift chord needs an editable field and another subtype.
+            ModifierKey.SHIFT -> if (down) ModifierMachine.shiftDown(modifierState, stroke, settings.modifier, canSwitchLayout = chordCanSwitchLayout) else ModifierMachine.shiftUp(modifierState, stroke, settings.modifier)
             ModifierKey.CTRL -> if (down) ModifierMachine.ctrlDown(modifierState, stroke, settings.modifier) else ModifierMachine.ctrlUp(modifierState, stroke, settings.modifier)
-            ModifierKey.ALT -> if (down) ModifierMachine.altDown(modifierState, stroke, settings.modifier) else ModifierMachine.altUp(modifierState, stroke, settings.modifier)
+            ModifierKey.ALT -> if (down) ModifierMachine.altDown(modifierState, stroke, settings.modifier, canSwitchLayout = chordCanSwitchLayout) else ModifierMachine.altUp(modifierState, stroke, settings.modifier)
             ModifierKey.SYM -> if (down) {
                 ModifierMachine.symDown(modifierState, stroke, settings.modifier, hasEditableField = activeField.isReallyEditable)
             } else {

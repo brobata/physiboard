@@ -67,6 +67,7 @@ class LayerResolverTest {
         l: LayoutDescription = layout(),
         context: LayerResolver.Context = field,
         typing: TypingSessionState = TypingSessionState(),
+        settings: ModifierSettings = this.settings,
     ) = LayerResolver.resolveKeyDown(state, typing, stroke, l, settings, resolverSettings, context)
 
     // T12-T15: Ctrl resolution ------------------------------------------------------------------
@@ -425,6 +426,53 @@ class LayerResolverTest {
         val result = resolve(ModifierState(ctrl = CtrlState(oneShot = true)), down(KeyId.Control(ControlKey.SPACE), 0), context = field.copy(canSwitchLayout = true))
         assertEquals(Action.RunCommand(KeyCommands.SWITCH_LAYOUT), result.action)
         assertFalse(result.state.ctrl.oneShot)
+    }
+
+    @Test
+    fun `ctrl_space_layout_switch off - Ctrl+Space with another layout available passes Space through instead of switching (spec SS7-5)`() {
+        val result = resolve(
+            ModifierState(ctrl = CtrlState(oneShot = true)), down(KeyId.Control(ControlKey.SPACE), 0),
+            settings = settings.copy(ctrlSpaceLayoutSwitch = false), context = field.copy(canSwitchLayout = true),
+        )
+        assertEquals(Action.PassThrough, result.action)
+    }
+
+    @Test
+    fun `alt_enter_layout_switch on - Alt+Enter with another layout available runs the switch and clears Alt (spec SS7-5)`() {
+        val result = resolve(
+            ModifierState(alt = AltState(oneShot = true)), down(KeyId.Control(ControlKey.ENTER), 0),
+            settings = settings.copy(altEnterLayoutSwitch = true), context = field.copy(canSwitchLayout = true),
+        )
+        assertEquals(Action.RunCommand(KeyCommands.SWITCH_LAYOUT), result.action)
+        assertEquals(AltState(), result.state.alt)
+        assertTrue(result.typing.consumeEnterRepeatsUntilUp)
+    }
+
+    @Test
+    fun `alt_enter_layout_switch off (the default) - Alt+Enter is a plain newline that clears the Alt one-shot (spec SS6-4)`() {
+        val result = resolve(ModifierState(alt = AltState(oneShot = true)), down(KeyId.Control(ControlKey.ENTER), 0), context = field.copy(canSwitchLayout = true))
+        assertEquals(Action.Edit(EditEffect.NEWLINE), result.action)
+    }
+
+    @Test
+    fun `alt_enter_layout_switch on but only one layout installed - Alt+Enter is a plain newline (spec SS7-5)`() {
+        val result = resolve(ModifierState(alt = AltState(oneShot = true)), down(KeyId.Control(ControlKey.ENTER), 0), settings = settings.copy(altEnterLayoutSwitch = true))
+        assertEquals(Action.Edit(EditEffect.NEWLINE), result.action)
+    }
+
+    @Test
+    fun `Alt+Enter chord - Enter repeats are swallowed until the key-up, which is consumed, and a fresh Enter is a newline again (spec SS7-5)`() {
+        val chordSettings = settings.copy(altEnterLayoutSwitch = true)
+        val ctx = field.copy(canSwitchLayout = true)
+        val enter = KeyId.Control(ControlKey.ENTER)
+        val first = resolve(ModifierState(alt = AltState(oneShot = true)), down(enter, 0), settings = chordSettings, context = ctx)
+        val repeat = resolve(first.state, down(enter, 400, repeat = 1), settings = chordSettings, context = ctx, typing = first.typing)
+        assertEquals(Action.Ignored, repeat.action)
+        val released = LayerResolver.resolveKeyUp(repeat.state, repeat.typing, KeyStroke(enter, KeyEdge.UP, 0, 500))
+        assertEquals(Action.Ignored, released.action)
+        assertFalse(released.typing.consumeEnterRepeatsUntilUp)
+        val fresh = resolve(released.state, down(enter, 900), settings = chordSettings, context = ctx, typing = released.typing)
+        assertEquals(Action.Edit(EditEffect.NEWLINE), fresh.action)
     }
 
     @Test

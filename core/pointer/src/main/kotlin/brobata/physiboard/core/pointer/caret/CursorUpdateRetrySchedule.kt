@@ -13,6 +13,17 @@ data class CursorUpdateRequestState(val attemptsMade: Int = 0, val accepted: Boo
  * while the setting is on and no request has been accepted yet, a retry is attempted", still under
  * the same cap.
  */
+/**
+ * Whether the editor should be asked for cursor-anchor reports at all. spec: trackpad-caret-nav.md
+ * SS4.7: "a request for cursor updates (immediate plus monitor) is issued if `caret_modifier_badge`
+ * is on or the emoji-picker search needs it; with neither, a request with no flags is issued to
+ * turn monitoring off. Both features share this one switch, so neither can turn it off under the
+ * other."
+ */
+object CursorUpdateRequestPolicy {
+    fun wantsReports(caretBadgeEnabled: Boolean, emojiSearchNeedsCaret: Boolean): Boolean = caretBadgeEnabled || emojiSearchNeedsCaret
+}
+
 object CursorUpdateRetrySchedule {
     val SCHEDULE_OFFSETS_MS: List<Long> = listOf(0L, 80L, 250L, 600L, 1200L)
     const val MAX_ATTEMPTS = 8

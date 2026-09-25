@@ -41,6 +41,8 @@ data class TrackpadGestureSettings(
     val horizontalStepPx: Float = 32f,
     val verticalStepMultiplier: Float = 2.0f,
     val maxEventsPerMove: Int = 12,
+    /** `screen_trackpad_show_hint`: whether the overlay draws SS2.5's hint pill at all. */
+    val showHint: Boolean = true,
 ) {
     /** spec: SS2.8's slider range, test T21 ("step preference written as 4, then 100 -> read back as 8, then 64"). */
     val clampedHorizontalStepPx: Float get() = horizontalStepPx.coerceIn(MIN_STEP_PX, MAX_STEP_PX)
