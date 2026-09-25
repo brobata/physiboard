@@ -15,6 +15,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.NavigateNext
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -399,6 +401,69 @@ fun AppPickerBody(
             }
         }
     }
+}
+
+/**
+ * The catalogue's ordered multi-choice control: like [MultiChoiceRow], but [selected] is a list
+ * (order matters), so a checked option also gets up/down affordances. Needed wherever the schema
+ * keeps an ordered list but the settings screen previously had only [MultiChoiceRow] to bind it
+ * with (status-bar.md SS6.3: "Left buttons"/"Right buttons" render every entry, in order, not just
+ * which ones are on). Up/down buttons rather than drag-and-drop: nothing in this app depends on a
+ * drag gesture library, and the Titan's hardware DPAD reaches an [IconButton] the same way it
+ * reaches every other row, which a drag handle would not offer.
+ */
+@Composable
+fun <T> ReorderableMultiChoiceRow(
+    label: String,
+    description: String? = null,
+    options: List<T>,
+    optionLabel: (T) -> String,
+    selected: List<T>,
+    onChange: (List<T>) -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+        RowLabel(label, description)
+        selected.forEachIndexed { index, option ->
+            Row(
+                modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = MinTouchTarget),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Checkbox(checked = true, onCheckedChange = { onChange(selected - option) })
+                Text(optionLabel(option), modifier = Modifier.weight(1f))
+                IconButton(
+                    onClick = { onChange(selected.moved(index, index - 1)) },
+                    enabled = index > 0,
+                    modifier = Modifier.defaultMinSize(MinTouchTarget, MinTouchTarget),
+                ) { Icon(Icons.Filled.KeyboardArrowUp, contentDescription = "Move up") }
+                IconButton(
+                    onClick = { onChange(selected.moved(index, index + 1)) },
+                    enabled = index < selected.lastIndex,
+                    modifier = Modifier.defaultMinSize(MinTouchTarget, MinTouchTarget),
+                ) { Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "Move down") }
+            }
+        }
+        val unselected = options.filter { it !in selected }
+        unselected.forEach { option ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .defaultMinSize(minHeight = MinTouchTarget)
+                    .clickableRow(true) { onChange(selected + option) },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Checkbox(checked = false, onCheckedChange = { onChange(selected + option) })
+                Text(optionLabel(option))
+            }
+        }
+    }
+}
+
+private fun <T> List<T>.moved(from: Int, to: Int): List<T> {
+    if (to < 0 || to >= size || from == to) return this
+    val mutable = toMutableList()
+    val item = mutable.removeAt(from)
+    mutable.add(to, item)
+    return mutable
 }
 
 /** Gives a row a click target with the [Role.Button] semantics DPAD/Enter navigation expects, without importing `clickable` at every call site. */

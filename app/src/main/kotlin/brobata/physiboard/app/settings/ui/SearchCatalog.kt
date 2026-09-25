@@ -12,8 +12,9 @@ package brobata.physiboard.app.settings.ui
  * at Smart Features instead of Extras, and "App Language" at a standalone screen this build never
  * gives a reachable entry point, folded here into its Input Languages dropdown). Every entry whose
  * only target is out of scope for this milestone (About, Diagnostics, Backup, Restore, Updates,
- * Reset device settings to stock, Remove bloat, Screen density, System tweaks, Key mapping, More
- * Customization) is left out rather than pointed at a screen that does not exist yet.
+ * Reset device settings to stock, More Customization) is left out rather than pointed at a screen
+ * that does not exist yet. Remove bloat, Screen density, System tweaks and Key mapping now have
+ * real screens (broker-privileged-toolbox.md) and are added below.
  */
 data class SearchEntry(val title: String, val screenTitle: String, val route: String, val keywords: String)
 
@@ -63,6 +64,22 @@ object SearchCatalog {
         SearchEntry("QuickLauncher entries", "PhysiBoard-QuickLauncher", Routes.QUICK_LAUNCHER_ENTRIES, "quick launcher sources apps device control navigation"),
         SearchEntry("Customize entries", "PhysiBoard-QuickLauncher", Routes.CUSTOMIZE_ENTRIES, "favorites hidden alias search color quick launcher"),
         SearchEntry("Clipboard history", "Clipboard history", Routes.CLIPBOARD_HISTORY, "clipboard copy paste history retention pin clips"),
+        // broker-privileged-toolbox.md, device-backlight-ring.md: the T2E Tools toolbox screens.
+        SearchEntry("Smart keyboard backlight", "Smart keyboard backlight", Routes.SMART_BACKLIGHT, "backlight keyboard light always on pairing broker adb"),
+        SearchEntry("Remove bloat", "Remove bloat", Routes.REMOVE_BLOAT, "bloat vendor factory uninstall disable bloatware titan"),
+        SearchEntry("Screen density", "Screen density", Routes.SCREEN_DENSITY, "density dpi wm zoom scale screen size"),
+        SearchEntry("System tweaks", "System tweaks", Routes.SYSTEM_TWEAKS, "animation scale notification history one-handed mode tweaks"),
+        SearchEntry("Notification ring", "Notification ring", Routes.NOTIFICATION_RING, "ring glow camera hole notification lock screen backlight color"),
+        SearchEntry("Key mapping", "Key mapping", Routes.KEY_MAPPING, "key mapping fn sym orange side key vendor inventory"),
+        // dictionaries-languages.md SS6, SS7, SS8.2; status-bar.md SS9.2-9.4; per-app-behavior.md
+        // SS3.11; trackpad-caret-nav.md SS5.8: this module's feature work.
+        SearchEntry("Personal dictionary", "Auto-correction", Routes.PERSONAL_DICTIONARY, "personal dictionary user words add delete edit"),
+        SearchEntry("Installed dictionaries", "Input Languages", Routes.INSTALLED_DICTIONARIES, "dictionary download import language install manage"),
+        SearchEntry("Manage input styles", "Input Languages", Routes.INPUT_STYLES, "input style locale layout suggestion dictionary add edit"),
+        SearchEntry("Saved themes", "Status Bar Theme", Routes.SAVED_THEMES, "saved theme apply delete custom"),
+        SearchEntry("Layout overrides", "Status Bar Theme", Routes.THEME_LAYOUT_OVERRIDES, "theme layout override locale language per-language"),
+        SearchEntry("App overrides", "Enter key behaviour", Routes.appPicker(PerAppListKind.ENTER_OVERRIDES), "enter send method shortcut per app override"),
+        SearchEntry("Configure Fn layer key mappings", "Fn Layer", Routes.FN_LAYER, "fn layer key grid mapping keycode action command"),
     )
 
     /** spec: SS8, "the trimmed query is a case-insensitive substring of the title, of the screen title, or of the keywords." Results keep catalogue order. */

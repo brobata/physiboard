@@ -31,9 +31,12 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import brobata.physiboard.app.BuildConfig
+import brobata.physiboard.app.PhysiBoardApplication
 import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
 import brobata.physiboard.app.shell.AppDebugCaptureStore
+import brobata.physiboard.app.shell.ImeComponent
+import brobata.physiboard.app.shell.ImeProbeAndroid
 import brobata.physiboard.core.settings.SettingsCodec
 import brobata.physiboard.core.shell.DebugExportPolicy
 import brobata.physiboard.core.shell.DebugShareMethod
@@ -41,6 +44,8 @@ import brobata.physiboard.core.shell.DiagnosticsReport
 import brobata.physiboard.core.shell.ReportSection
 import brobata.physiboard.core.shell.SettingsSnapshotExport
 import brobata.physiboard.core.shell.SuggestionExport
+import brobata.physiboard.device.privileged.PrivilegedExport
+import brobata.physiboard.device.privileged.PrivilegedExportFacts
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -118,6 +123,29 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
             ),
         )
         sections += ReportSection("settings_snapshot", SettingsSnapshotExport.lines(SettingsCodec.toMap(controller.current.value)))
+        // spec: broker-privileged-toolbox.md SS8 ("The debug export's `[privileged]` section").
+        run {
+            val application = context.applicationContext as PhysiBoardApplication
+            val privileged = application.privileged
+            val settings = controller.current.value
+            val probe = ImeProbeAndroid.evaluate(context, ImeComponent.SERVICE_CLASS_NAME)
+            val facts = PrivilegedExportFacts(
+                brokerPaired = privileged.broker.isPaired(),
+                wirelessDebuggingEnabled = privileged.broker.isWirelessDebuggingOn(),
+                brokerBlocker = privileged.broker.blocker()?.reason,
+                backlightEnabled = settings.device.smartBacklightEnabled,
+                backlightAppliedFlag = settings.captures.smartBacklightApplied,
+                overlayPermissionGranted = privileged.permissions.canDrawOverlays(),
+                notificationListenerGranted = privileged.permissions.isNotificationListenerGranted(),
+                notificationRingEnabled = settings.device.ringEnabled,
+                screenTrackpadEnabled = settings.trackpad.enabled,
+                trackpadProvider = if (settings.trackpad.enabled) "screen_trackpad" else "none",
+                imeEnabled = probe.enabled,
+                imeSelected = probe.selected,
+            )
+            val timestamped: (Long) -> String = { SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX", Locale.US).format(Date(it)) }
+            sections += ReportSection("privileged", PrivilegedExport.lines(facts, privileged.diagnostics, timestamped))
+        }
         if (includeAutocorrections) {
             val rows = store.autocorrections()
             sections += ReportSection(

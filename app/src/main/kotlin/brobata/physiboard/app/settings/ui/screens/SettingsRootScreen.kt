@@ -15,6 +15,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import brobata.physiboard.app.BuildConfig
+import brobata.physiboard.app.PhysiBoardApplication
 import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.NavigateRow
 import brobata.physiboard.app.settings.ui.RowList
@@ -30,6 +31,7 @@ import brobata.physiboard.core.shell.BackupCodec
 import brobata.physiboard.core.shell.BackupMeta
 import brobata.physiboard.core.shell.BackupRestore
 import brobata.physiboard.core.shell.GithubChecks
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -44,9 +46,13 @@ import java.util.Locale
 @Composable
 fun SettingsRootScreen(onNavigate: (String) -> Unit) {
     val context = LocalContext.current
+    val application = context.applicationContext as PhysiBoardApplication
     val controller = LocalSettingsController.current
     var showResetConfirm by remember { mutableStateOf(false) }
     var restoreMessage by remember { mutableStateOf<String?>(null) }
+    var showResetDeviceConfirm by remember { mutableStateOf(false) }
+    var resettingDevice by remember { mutableStateOf(false) }
+    var resetDeviceMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     val updateState = rememberUpdateCheckState()
@@ -92,6 +98,8 @@ fun SettingsRootScreen(onNavigate: (String) -> Unit) {
             rootRows(
                 onNavigate = onNavigate,
                 onResetClick = { showResetConfirm = true },
+                onResetDeviceClick = { showResetDeviceConfirm = true },
+                resettingDevice = resettingDevice,
                 onAboutClick = { onNavigate(Routes.ABOUT) },
                 onDiagnosticsClick = { onNavigate(Routes.DIAGNOSTICS) },
                 githubChecksAllowed = githubChecksAllowed,
@@ -142,11 +150,47 @@ fun SettingsRootScreen(onNavigate: (String) -> Unit) {
             confirmButton = { TextButton(onClick = { restoreMessage = null }) { Text("OK") } },
         )
     }
+
+    // spec: broker-privileged-toolbox.md SS10 ("Reset device settings to stock").
+    if (showResetDeviceConfirm) {
+        AlertDialog(
+            onDismissRequest = { showResetDeviceConfirm = false },
+            title = { Text("Reset device settings to stock?") },
+            text = {
+                Text(
+                    "This restores the Fn key mapping and keyboard backlight to your device's stock settings. Your PhysiBoard preferences are kept. You can re-apply these features anytime.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showResetDeviceConfirm = false
+                    resettingDevice = true
+                    scope.launch(Dispatchers.IO) {
+                        val report = application.privileged.reset.run()
+                        resetDeviceMessage = report.message
+                        resettingDevice = false
+                    }
+                }) { Text("Reset to stock") }
+            },
+            dismissButton = { TextButton(onClick = { showResetDeviceConfirm = false }) { Text("Cancel") } },
+        )
+    }
+
+    resetDeviceMessage?.let { message ->
+        AlertDialog(
+            onDismissRequest = { resetDeviceMessage = null },
+            title = { Text("Reset device settings to stock") },
+            text = { Text(message) },
+            confirmButton = { TextButton(onClick = { resetDeviceMessage = null }) { Text("OK") } },
+        )
+    }
 }
 
 private fun LazyListScope.rootRows(
     onNavigate: (String) -> Unit,
     onResetClick: () -> Unit,
+    onResetDeviceClick: () -> Unit,
+    resettingDevice: Boolean,
     onAboutClick: () -> Unit,
     onDiagnosticsClick: () -> Unit,
     githubChecksAllowed: Boolean,
@@ -195,6 +239,13 @@ private fun LazyListScope.rootRows(
     }
     item {
         NavigateRow(label = "Restore from file", description = "Import a PhysiBoard backup", onClick = onRestoreClick)
+    }
+    item {
+        NavigateRow(
+            label = if (resettingDevice) "Resetting…" else "Reset device settings to stock",
+            description = "Undo the system-wide changes PhysiBoard made — the Fn key mapping and keyboard backlight — restoring your device to stock. Do this BEFORE uninstalling; uninstalling alone won't undo them.",
+            onClick = if (resettingDevice) ({}) else onResetDeviceClick,
+        )
     }
     item {
         NavigateRow(label = "About", description = "Version, licence, and credits", onClick = onAboutClick)

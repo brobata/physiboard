@@ -1,13 +1,26 @@
 package brobata.physiboard.app.settings.ui.screens
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Card
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import brobata.physiboard.app.settings.ui.ButtonRow
 import brobata.physiboard.app.settings.ui.ColorFieldRow
 import brobata.physiboard.app.settings.ui.DividerLabel
 import brobata.physiboard.app.settings.ui.LocalSettingsController
-import brobata.physiboard.app.settings.ui.MultiChoiceRow
 import brobata.physiboard.app.settings.ui.NavigateRow
 import brobata.physiboard.app.settings.ui.PerAppListKind
+import brobata.physiboard.app.settings.ui.ReorderableMultiChoiceRow
 import brobata.physiboard.app.settings.ui.RowList
 import brobata.physiboard.app.settings.ui.Routes
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
@@ -16,16 +29,16 @@ import brobata.physiboard.app.settings.ui.SwitchRow
 import brobata.physiboard.core.settings.BarButton
 import brobata.physiboard.core.settings.StatusBarPrefs
 import brobata.physiboard.core.settings.StatusBarVisibility
+import brobata.physiboard.core.settings.StripTheme
+import brobata.physiboard.core.settings.StripThemePresets
 
 /**
- * "Status Bar Theme" (settings-catalog.md SS9.2, status-bar.md). "Choose a preset" and the
- * "Keyboard UI Preview" live under [StripThemeScreen]'s doc comment (no data / not a setting).
- * The saved-theme list (add/duplicate/export/import/delete) and the per-layout override editor
- * are left out: both need a list editor beyond this app's six row types, and the per-layout
- * override map is dropped from the 3.0 schema outright (settings-catalog.md SS13). Left and
- * right button slots bind as a set (which buttons are on, not their order): [StatusBarPrefs]
- * keeps `leftButtons`/`rightButtons` ordered, but the "multi choice" row type this app defines
- * has no notion of order, so re-ordering a slot is not available from this screen.
+ * "Status Bar Theme" (settings-catalog.md SS9.2, status-bar.md SS9.4). The "Keyboard UI Preview"
+ * lives under [StripThemeScreen]'s doc comment (a render, not a setting). Left and right button
+ * slots use [ReorderableMultiChoiceRow] rather than the plain multi-choice row: [StatusBarPrefs]
+ * keeps `leftButtons`/`rightButtons` ordered (status-bar.md SS6.3, "the strip... renders every
+ * entry in the list"), so a screen that could only turn buttons on and off would silently lose
+ * the order the strip actually draws them in.
  */
 @Composable
 fun StatusBarThemeScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
@@ -35,33 +48,44 @@ fun StatusBarThemeScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
 
     SettingsScreenScaffold(title = "Status Bar Theme", onBack = onBack) {
         RowList {
+            item { DividerLabel("Choose a preset") }
+            item {
+                ThemePresetRow(
+                    savedThemeNames = statusBar.savedThemes.map { it.name },
+                    activeTheme = statusBar.theme,
+                    onApplyPreset = { theme -> set { p -> p.copy(theme = theme) } },
+                    onApplySaved = { name ->
+                        statusBar.savedThemes.firstOrNull { it.name.equals(name, ignoreCase = true) }?.let { named ->
+                            set { p -> p.copy(theme = named.theme) }
+                        }
+                    },
+                )
+            }
             item {
                 SwitchRow("Show LEDs", checked = statusBar.theme.showLeds, onCheckedChange = { checked ->
                     set { p -> p.copy(theme = p.theme.copy(showLeds = checked)) }
                 })
             }
             item { NavigateRow("Customize colors", onClick = { onNavigate(Routes.CUSTOMIZE_COLORS) }) }
+            item { NavigateRow("Saved themes", "${statusBar.savedThemes.size} saved") { onNavigate(Routes.SAVED_THEMES) } }
+            item { NavigateRow("Layout overrides", "A different theme per language or layout") { onNavigate(Routes.THEME_LAYOUT_OVERRIDES) } }
             item { DividerLabel("Buttons") }
             item {
-                MultiChoiceRow(
+                ReorderableMultiChoiceRow(
                     label = "Left buttons",
                     options = BarButton.entries,
                     optionLabel = ::barButtonLabel,
-                    selected = statusBar.leftButtons.toSet(),
-                    onToggle = { button, checked ->
-                        set { p -> p.copy(leftButtons = if (checked) p.leftButtons + button else p.leftButtons - button) }
-                    },
+                    selected = statusBar.leftButtons,
+                    onChange = { updated -> set { p -> p.copy(leftButtons = updated) } },
                 )
             }
             item {
-                MultiChoiceRow(
+                ReorderableMultiChoiceRow(
                     label = "Right buttons",
                     options = BarButton.entries,
                     optionLabel = ::barButtonLabel,
-                    selected = statusBar.rightButtons.toSet(),
-                    onToggle = { button, checked ->
-                        set { p -> p.copy(rightButtons = if (checked) p.rightButtons + button else p.rightButtons - button) }
-                    },
+                    selected = statusBar.rightButtons,
+                    onChange = { updated -> set { p -> p.copy(rightButtons = updated) } },
                 )
             }
             item { DividerLabel("Show status bar") }
@@ -104,6 +128,42 @@ fun StatusBarThemeScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
             item {
                 ButtonRow(label = "Reset", buttonText = "Reset", onClick = { controller.update { it.copy(statusBar = StatusBarPrefs()) } })
             }
+        }
+    }
+}
+
+/**
+ * status-bar.md SS9.4 item 1: "a horizontal... row of cards, one per preset, then one per
+ * user-saved theme... the active one is marked 'Active'." Drafts are not modelled in 3.0 (there is
+ * no [brobata.physiboard.core.settings.StatusBarPrefs] field for one), so this row stops at
+ * presets and saved themes.
+ */
+@Composable
+private fun ThemePresetRow(
+    savedThemeNames: List<String>,
+    activeTheme: StripTheme,
+    onApplyPreset: (StripTheme) -> Unit,
+    onApplySaved: (String) -> Unit,
+) {
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+        items(StripThemePresets.ALL, key = { "preset:${it.name}" }) { preset ->
+            PresetCard(name = preset.name, active = preset.theme == activeTheme, onClick = { onApplyPreset(preset.theme) })
+        }
+        items(savedThemeNames, key = { "saved:$it" }) { name ->
+            PresetCard(name = name, active = false, onClick = { onApplySaved(name) })
+        }
+    }
+}
+
+@Composable
+private fun PresetCard(name: String, active: Boolean, onClick: () -> Unit) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.padding(vertical = 4.dp).width(104.dp).height(104.dp),
+    ) {
+        Column(modifier = Modifier.padding(8.dp)) {
+            Text(name, maxLines = 2)
+            if (active) Text("Active")
         }
     }
 }

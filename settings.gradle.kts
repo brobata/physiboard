@@ -36,6 +36,10 @@ include(":core:speech")
 include(":core:settings")
 include(":core:strip")
 include(":core:actions")
+// The T2E toolbox's decisions: the bloat catalog and its journal, the density arithmetic, system
+// tweaks and the key mapping inventory (broker-privileged-toolbox.md SS12 to SS15). Depends on
+// nothing else so its rules can be pinned on the JVM without pulling in the settings schema.
+include(":core:toolbox")
 // The app shell as plain Kotlin (app-shell.md): update checker, what's-new note, launch routing,
 // first-run steps, the debug capture store, the backup codec. Depends on :core:settings only.
 include(":core:shell")

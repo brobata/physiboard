@@ -2,6 +2,8 @@ package brobata.physiboard.app.settings.ui.screens
 
 import androidx.compose.runtime.Composable
 import brobata.physiboard.app.settings.ui.LocalSettingsController
+import brobata.physiboard.app.settings.ui.NavigateRow
+import brobata.physiboard.app.settings.ui.Routes
 import brobata.physiboard.app.settings.ui.RowList
 import brobata.physiboard.app.settings.ui.SectionHeader
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
@@ -28,22 +30,29 @@ private fun appLanguageLabel(tag: String): String = when (tag) {
 }
 
 /**
- * "Input Languages" (settings-catalog.md SS9.2, dictionaries-languages.md). The input style list
- * ("Installed dictionaries", add/edit/delete/hide/show, "Suggestion dictionaries" per style) is a
- * list editor beyond this app's six row types and is left unbound, which also leaves
- * [LanguagePrefs.keyboardLayout] (only ever set through that list's layout picker) with nothing
- * to bind to. `toast_on_layout_switch` sits in the same "Layout Switch Shortcuts" group in
+ * "Input Languages" (settings-catalog.md SS9.2, dictionaries-languages.md). "Installed
+ * dictionaries" (SS6) and "Manage input styles" (the input style list, SS8.2, add/edit/delete/
+ * hide/show and its per-style "Suggestion dictionaries") each navigate to their own list editor.
+ * [LanguagePrefs.keyboardLayout] stays unbound here: SS8.2 only ever sets it through a custom
+ * input style's own layout picker, which [InputStylesScreen] owns, not this screen's rows.
+ * `toast_on_layout_switch` sits in the same "Layout Switch Shortcuts" group in
  * dictionaries-languages.md SS13, but settings-catalog.md's own screen map (SS9.2, the map this
  * module mirrors) never lists it as a row, so it stays unbound too.
  */
 @Composable
-fun InputLanguagesScreen(onBack: () -> Unit) {
+fun InputLanguagesScreen(onBack: () -> Unit, onNavigate: (String) -> Unit = {}) {
     val controller = LocalSettingsController.current
     val languages = controller.current.value.languages
     fun set(transform: (LanguagePrefs) -> LanguagePrefs) = controller.update { it.copy(languages = transform(it.languages)) }
 
     SettingsScreenScaffold(title = "Input Languages", onBack = onBack) {
         RowList {
+            item {
+                NavigateRow("Installed dictionaries", "Download, import or remove per-language dictionaries") { onNavigate(Routes.INSTALLED_DICTIONARIES) }
+            }
+            item {
+                NavigateRow("Manage input styles", "Add, edit or hide the languages and layouts you type in") { onNavigate(Routes.INPUT_STYLES) }
+            }
             item {
                 SwitchRow("Automatic Layout Mapping", checked = languages.layoutAutoByLocale, onCheckedChange = { set { p -> p.copy(layoutAutoByLocale = it) } })
             }

@@ -265,7 +265,7 @@ class LegacyImportTest {
             "use_edit_type_ranking" to true, "bounce_keys_enabled" to true, "overlapping_keys_enabled" to true, "additional_ime_subtypes" to setOf("en_US:qwerty"),
             "keyboard_layout_list" to "[]", "physical_keyboard_profile_override" to "titan2", "titan2_layout_enabled" to true, "global_variation_layout_override" to "x",
             "alt_character_layer_binding" to "emoji", "restore_sym_page" to 1, "keyboard_theme_software" to "{}", "keyboard_theme_assignment_mode_hardware" to "fixed",
-            "keyboard_theme_light_hardware" to "{}", "keyboard_theme_layout_overrides_hardware" to "[]", "keyboard_theme_drafts" to "[]", "keyboard_theme_preview_viewport_scale" to 1.2f,
+            "keyboard_theme_light_hardware" to "{}", "keyboard_theme_drafts" to "[]", "keyboard_theme_preview_viewport_scale" to 1.2f,
             "accessibility_live_announcements_enabled" to true, "ime_overlay_debug_logging" to true, "pastierina_mode_active" to true, "pastierina_mode_override" to "x",
             "software_keyboard_mode_runtime_override" to "force_hardware", "quick_launcher_default_assigned" to true, "trackpad_gestures_enabled" to true, "trackpad_provider" to "shizuku",
             "typing_sound_mode" to "click", "quick_launcher_width_percent" to 80, "quick_launcher_animation_duration_ms" to 200, "command_surface_sources" to "{}",

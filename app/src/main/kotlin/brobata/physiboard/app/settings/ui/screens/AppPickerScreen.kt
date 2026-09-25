@@ -17,9 +17,17 @@ import brobata.physiboard.core.text.EnterBehavior
  * over installed packages with a switch per app, used by exact typing, the status-bar app list,
  * the dip list and the Enter overrides"). [kind] picks which [PerAppPrefs] (or, for the status
  * bar, [brobata.physiboard.core.settings.StatusBarPrefs]) set the switches read and write.
+ *
+ * [PerAppListKind.ENTER_OVERRIDES] delegates to [EnterOverridesScreen] instead of the plain
+ * on/off body below: per-app-behavior.md SS3.11 also needs a send-method and extra-shortcut
+ * chooser per row, which the shared switch-only body was never built to carry.
  */
 @Composable
 fun AppPickerScreen(kind: String, onBack: () -> Unit) {
+    if (kind == PerAppListKind.ENTER_OVERRIDES) {
+        EnterOverridesScreen(onBack = onBack)
+        return
+    }
     val controller = LocalSettingsController.current
     val settings = controller.current.value
     val context = LocalContext.current

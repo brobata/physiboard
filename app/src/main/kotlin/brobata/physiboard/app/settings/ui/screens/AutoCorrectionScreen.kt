@@ -13,10 +13,9 @@ import brobata.physiboard.core.settings.CorrectionPrefs
 
 /**
  * "Auto-correction" (settings-catalog.md SS9.2, autocorrect-suggestions.md). "Manage text
- * replacements" (per-language substitution lists) and "Personal dictionary" (owned by
- * `:core:dict`'s `UserDictionaryStore`, not a row in this typed schema) are left out: both need a
- * list editor beyond the six row types this app defines. "Edit Type Ranking"
- * (`use_edit_type_ranking`) is dropped from [CorrectionPrefs] for 3.0.
+ * replacements" (per-language substitution lists) and "Personal dictionary" (backed by
+ * `:core:dict`'s `UserWordStore`, not a row in this typed schema) both navigate to their own list
+ * editors. "Edit Type Ranking" (`use_edit_type_ranking`) is dropped from [CorrectionPrefs] for 3.0.
  */
 @Composable
 fun AutoCorrectionScreen(onBack: () -> Unit, onNavigate: (String) -> Unit = {}) {
@@ -31,6 +30,9 @@ fun AutoCorrectionScreen(onBack: () -> Unit, onNavigate: (String) -> Unit = {}) 
             }
             item {
                 NavigateRow("Manage text replacements", "Custom substitutions per language") { onNavigate(Routes.CUSTOM_SUBSTITUTIONS) }
+            }
+            item {
+                NavigateRow("Personal dictionary", "Words you've added, plus the built-in favourites") { onNavigate(Routes.PERSONAL_DICTIONARY) }
             }
             item {
                 SwitchRow("Automatic correction", checked = correction.autoReplaceOnSpaceEnter, onCheckedChange = { set { p -> p.copy(autoReplaceOnSpaceEnter = it) } })

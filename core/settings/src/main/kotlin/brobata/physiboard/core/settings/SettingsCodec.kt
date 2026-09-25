@@ -95,6 +95,7 @@ object SettingsKeys {
     const val CARET_BADGE_LOCKED_COLOR = "caret_badge_locked_color"
     const val THEME = "keyboard_theme_hardware"
     const val SAVED_THEMES = "keyboard_theme_saved_themes"
+    const val LAYOUT_OVERRIDES = "keyboard_theme_layout_overrides_hardware"
     const val ROUNDED_CORNER_INSETS = "titan2_elite_rounded_corner_insets"
 
     // SS2.7 per app
@@ -424,6 +425,7 @@ object SettingsCodec {
         put(SettingsKeys.CARET_BADGE_LOCKED_COLOR, s.caretBadgeLockedColor.toString())
         put(SettingsKeys.THEME, JsonRows.encode(StoredValues.theme(s.theme)))
         put(SettingsKeys.SAVED_THEMES, JsonRows.encode(JsonArray(s.savedThemes.map { StoredValues.namedTheme(it) })))
+        put(SettingsKeys.LAYOUT_OVERRIDES, JsonRows.encode(StoredValues.layoutOverrides(s.layoutOverrides)))
         put(SettingsKeys.ROUNDED_CORNER_INSETS, s.roundedCornerInsets.toString())
     }
 
@@ -440,6 +442,7 @@ object SettingsCodec {
             caretBadgeLockedColor = r.int(SettingsKeys.CARET_BADGE_LOCKED_COLOR, d.caretBadgeLockedColor),
             theme = StoredValues.theme(JsonRows.parseObject(r.string(SettingsKeys.THEME))) ?: d.theme,
             savedThemes = StoredValues.namedThemes(JsonRows.parseArray(r.string(SettingsKeys.SAVED_THEMES))) ?: d.savedThemes,
+            layoutOverrides = StoredValues.layoutOverrides(JsonRows.parseArray(r.string(SettingsKeys.LAYOUT_OVERRIDES))) ?: d.layoutOverrides,
             roundedCornerInsets = r.bool(SettingsKeys.ROUNDED_CORNER_INSETS, d.roundedCornerInsets),
         )
     }
@@ -931,6 +934,28 @@ internal object StoredValues {
         val obj = el as? JsonObject ?: return@mapNotNull null
         val theme = theme(obj["theme"] as? JsonObject) ?: return@mapNotNull null
         NamedTheme(obj.string("name")?.takeIf { it.isNotBlank() } ?: "Custom", theme)
+    }
+
+    /** spec: settings-catalog.md SS2.6, `{"locale"?: tag, "layout"?: id, "theme": theme}`; an entry with neither locale nor layout is dropped. */
+    fun layoutOverrides(overrides: List<ThemeLayoutOverride>): JsonArray = JsonArray(
+        overrides.filter { it.locale != null || it.layout != null }.map { o ->
+            val fields = buildMap {
+                o.locale?.let { put("locale", JsonPrimitive(it)) }
+                o.layout?.let { put("layout", JsonPrimitive(it)) }
+                put("theme", theme(o.theme))
+            }
+            JsonObject(fields)
+        },
+    )
+
+    /** An entry without a parseable theme, or with neither `locale` nor `layout`, is skipped. */
+    fun layoutOverrides(arr: JsonArray?): List<ThemeLayoutOverride>? = arr?.mapNotNull { el ->
+        val obj = el as? JsonObject ?: return@mapNotNull null
+        val locale = obj.string("locale")
+        val layout = obj.string("layout")
+        if (locale == null && layout == null) return@mapNotNull null
+        val theme = theme(obj["theme"] as? JsonObject) ?: return@mapNotNull null
+        ThemeLayoutOverride(locale, layout, theme)
     }
 
     fun enterOverrides(rows: List<EnterOverrideRow>): JsonArray = JsonArray(

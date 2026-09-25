@@ -78,6 +78,22 @@ class UserWordStore private constructor(
         return UserWordStore(defaultWords, personalWords - key)
     }
 
+    /**
+     * The personal-dictionary screen's edit pencil (autocorrect-suggestions.md §6.3, "rename"):
+     * [oldWord] keeps its frequency and last-used time under [newWord]'s key. A blank [newWord]
+     * or an [oldWord] not present is a no-op, so a caller need not pre-validate either; when
+     * [newWord] already names a different personal word, that entry is overwritten (the two rows
+     * would otherwise collide on the same normalized key).
+     */
+    fun withPersonalWordRenamed(oldWord: String, newWord: String): UserWordStore {
+        if (newWord.isBlank()) return this
+        val oldKey = DictNormalization.normalizedKey(oldWord)
+        val existing = personalWords[oldKey] ?: return this
+        val newKey = DictNormalization.normalizedKey(newWord)
+        val renamed = existing.copy(word = newWord)
+        return UserWordStore(defaultWords, (personalWords - oldKey) + (newKey to renamed))
+    }
+
     /** Every personal word, in no particular order; a screen sorts as it needs. */
     fun personalWords(): List<PersonalWord> = personalWords.values.toList()
 

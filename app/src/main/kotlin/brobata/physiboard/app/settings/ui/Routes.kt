@@ -27,6 +27,15 @@ object Routes {
     const val TEXT_EXPANSION = "text_expansion"
     const val TEST_FIELD = "test_field"
 
+    // broker-privileged-toolbox.md, device-backlight-ring.md: the T2E Tools toolbox screens.
+    const val SMART_BACKLIGHT = "smart_backlight"
+    const val REMOVE_BLOAT = "remove_bloat"
+    const val SCREEN_DENSITY = "screen_density"
+    const val SYSTEM_TWEAKS = "system_tweaks"
+    const val NOTIFICATION_RING = "notification_ring"
+    const val RING_FIT = "ring_fit"
+    const val KEY_MAPPING = "key_mapping"
+
     // app-shell.md: the shell's own screens. HOME is the real home (SS6); SETUP and WHATS_NEW are
     // also reachable as ordinary destinations (Setup from About's "Show Tutorial", SS3) in
     // addition to being a possible NavHost start destination (see SettingsNavHost's report).
@@ -44,6 +53,18 @@ object Routes {
     const val QUICK_LAUNCHER_ENTRIES = "quick_launcher_entries"
     const val CUSTOMIZE_ENTRIES = "customize_entries"
     const val CLIPBOARD_HISTORY = "clipboard_history"
+
+    // dictionaries-languages.md SS6, SS7, SS8.2; status-bar.md SS9.3-9.4; trackpad-caret-nav.md
+    // SS5.8: the list editors this module's feature work adds.
+    const val PERSONAL_DICTIONARY = "personal_dictionary"
+    const val INSTALLED_DICTIONARIES = "installed_dictionaries"
+    const val INPUT_STYLES = "input_styles"
+    const val SAVED_THEMES = "saved_themes"
+    const val THEME_LAYOUT_OVERRIDES = "theme_layout_overrides"
+
+    /** `theme_layout_overrides/{index}`; -1 adds a new override, else edits `layoutOverrides[index]`. */
+    fun themeLayoutOverride(index: Int) = "theme_layout_overrides/$index"
+    const val THEME_LAYOUT_OVERRIDE_PATTERN = "theme_layout_overrides/{index}"
 
     /** `custom_substitutions/{code}`: one language's "Custom Substitutions" list. */
     fun customSubstitutions(code: String) = "custom_substitutions/${android.net.Uri.encode(code)}"

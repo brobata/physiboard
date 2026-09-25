@@ -244,6 +244,20 @@ class SettingsCodecTest {
     }
 
     @Test
+    fun `layout overrides round trip, dropping an entry with neither locale nor layout and one with no theme`() {
+        val overrides = listOf(
+            ThemeLayoutOverride(locale = "it-IT", theme = StripTheme(accent = 7)),
+            ThemeLayoutOverride(layout = "qwertz", theme = StripTheme(accent = 8)),
+        )
+        val written = SettingsCodec.toMap(Settings(statusBar = StatusBarPrefs(layoutOverrides = overrides)))
+        val read = SettingsCodec.fromMap(written)
+        assertEquals(overrides, read.statusBar.layoutOverrides)
+
+        val s = SettingsCodec.fromMap(mapOf(SettingsKeys.LAYOUT_OVERRIDES to """[{"theme":{"accent":1}}, {"locale":"fr"}, 3]"""))
+        assertEquals(emptyList(), s.statusBar.layoutOverrides)
+    }
+
+    @Test
     fun `the ring fit exists only when the radius is stored`() {
         val noRadius = SettingsCodec.fromMap(mapOf(SettingsKeys.RING_CX to "12.5"))
         assertEquals(DevicePrefs().ringFit, noRadius.device.ringFit)

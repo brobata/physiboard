@@ -12,6 +12,9 @@ kotlin {
 }
 
 dependencies {
+    // Only the JSON tree API (no compiler plugin): the personal-word file and the hosted
+    // dictionary manifest are both hand-parsed, same pattern as `:core:settings`' JsonRows.
+    implementation(libs.kotlinx.serialization.json)
     testImplementation(libs.kotlin.test)
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)

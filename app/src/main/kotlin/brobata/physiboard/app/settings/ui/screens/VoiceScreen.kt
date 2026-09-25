@@ -18,10 +18,13 @@ import brobata.physiboard.core.settings.DictationPrefs
 
 /**
  * "Voice" (settings-catalog.md SS9.2, dictation.md). "Orange key opens the assistant" is bound
- * only to the store's `side_key_assistant` row here: the real behaviour also needs the vendor's
- * `func1_long_press_package`/`activity` slot rewritten (dictation.md SS11.3), a privileged
- * `Settings.System` write this settings screen does not perform (out of scope: see this module's
- * report).
+ * only to the store's `side_key_assistant` row here. The vendor-slot write itself now exists as
+ * `:device:privileged`'s `SideKeyAssistantRemap.bind`/`unbind` (broker-privileged-toolbox.md SS9,
+ * SS15), but this screen does not call it: `bind` needs the fully-qualified class name of
+ * PhysiBoard's own trampoline activity, and that activity (dictation.md SS11.3's transparent
+ * relay to the assistant launch of SS11.2) does not exist in this build yet, so there is nothing
+ * for the switch to point the vendor slot at. Wiring this switch is dictation.md's own feature to
+ * finish, not this toolbox module's (see this module's report).
  */
 @Composable
 fun VoiceScreen(onBack: () -> Unit) {

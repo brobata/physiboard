@@ -12,14 +12,13 @@ import brobata.physiboard.app.settings.ui.SwitchRow
 import brobata.physiboard.core.text.MessagingPreset
 
 /**
- * "Enter key behaviour" (settings-catalog.md SS9.2, per-app-behavior.md). "App overrides" is the
- * per-app list rebuild-from-scratch.md names directly ("used by ... the Enter overrides"): a
- * checked app gets the seeded `SEND_SHIFT_NEWLINE` override, matching the four apps the schema
- * already seeds; the per-app send method and extra shortcut sub-choices the 2.x screen also
- * offered are not exposed here, since they need more than a per-app switch. The 2.x preset text
- * names a fifth choice, "Newline only", that has no [MessagingPreset] value in the 3.0 schema
- * (only `NEWLINE`, an [brobata.physiboard.core.text.EnterBehavior], carries that meaning, and
- * only as a per-app override); the chooser below offers the four values the enum actually has.
+ * "Enter key behaviour" (settings-catalog.md SS9.2, per-app-behavior.md). "App overrides" opens
+ * [brobata.physiboard.app.settings.ui.screens.EnterOverridesScreen], where a checked app also
+ * gets the "Wanted behaviour", "Send method" and "Extra shortcut" choosers per-app-behavior.md
+ * SS3.11 describes. The 2.x preset text names a fifth choice, "Newline only", that has no
+ * [MessagingPreset] value in the 3.0 schema (only `NEWLINE`, an
+ * [brobata.physiboard.core.text.EnterBehavior], carries that meaning, and only as a per-app
+ * override); the chooser below offers the four values the enum actually has.
  */
 @Composable
 fun EnterKeyBehaviourScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
@@ -47,7 +46,7 @@ fun EnterKeyBehaviourScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
             item {
                 NavigateRow(
                     "App overrides",
-                    description = "Apps that always get Send with Enter, Shift+Enter newline, no matter the preset above",
+                    description = "Per-app behaviour, send method and extra shortcut, no matter the preset above",
                     onClick = { onNavigate(Routes.appPicker(PerAppListKind.ENTER_OVERRIDES)) },
                 )
             }

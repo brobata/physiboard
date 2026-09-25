@@ -74,6 +74,25 @@ class UserWordStoreTest {
     }
 
     @Test
+    fun `T-renaming a personal word keeps its frequency and last used time under the new spelling`() {
+        val store = UserWordStore.empty()
+            .withPersonalWordAdded("Parenzo", nowMillis = 1000L)
+            .withPersonalWordAdded("Parenzo", nowMillis = 2000L)
+            .withPersonalWordRenamed("Parenzo", "Pastiera")
+
+        assertFalse(store.isKnown("Parenzo"))
+        assertEquals(listOf(PersonalWord("Pastiera", 2, 2000L)), store.personalWords())
+    }
+
+    @Test
+    fun `T-renaming a word that was never added, or to a blank word, is a no-op`() {
+        val store = UserWordStore.empty().withPersonalWordAdded("Parenzo", nowMillis = 1L)
+
+        assertEquals(store.personalWords(), store.withPersonalWordRenamed("nothing", "Something").personalWords())
+        assertEquals(store.personalWords(), store.withPersonalWordRenamed("Parenzo", "  ").personalWords())
+    }
+
+    @Test
     fun `T-removing a personal word never touches default words`() {
         val store = UserWordStore
             .of(defaultWords = listOf(WordFrequency("PhysiBoard", 30)))

@@ -1,0 +1,29 @@
+{
+  "mappings": {
+    "KEYCODE_Q": {"type": "keycode", "keycode": "ESCAPE"},
+    "KEYCODE_W": {"type": "action", "action": "expand_selection_left"},
+    "KEYCODE_E": {"type": "keycode", "keycode": "DPAD_UP"},
+    "KEYCODE_R": {"type": "action", "action": "expand_selection_right"},
+    "KEYCODE_T": {"type": "keycode", "keycode": "TAB"},
+    "KEYCODE_Y": {"type": "keycode", "keycode": "PAGE_UP"},
+    "KEYCODE_U": {"type": "action", "action": "expand_selection_word_left"},
+    "KEYCODE_I": {"type": "action", "action": "expand_selection_word_right"},
+    "KEYCODE_O": {"type": "keycode", "keycode": "DPAD_CENTER"},
+    "KEYCODE_P": {"type": "action", "action": "toggle_minimal_ui"},
+    "KEYCODE_A": {"type": "action", "action": "select_all"},
+    "KEYCODE_S": {"type": "keycode", "keycode": "DPAD_LEFT"},
+    "KEYCODE_D": {"type": "keycode", "keycode": "DPAD_DOWN"},
+    "KEYCODE_F": {"type": "keycode", "keycode": "DPAD_RIGHT"},
+    "KEYCODE_H": {"type": "keycode", "keycode": "PAGE_DOWN"},
+    "KEYCODE_J": {"type": "keycode", "keycode": "DPAD_LEFT"},
+    "KEYCODE_K": {"type": "keycode", "keycode": "DPAD_DOWN"},
+    "KEYCODE_L": {"type": "keycode", "keycode": "DPAD_RIGHT"},
+    "KEYCODE_Z": {"type": "action", "action": "undo"},
+    "KEYCODE_X": {"type": "action", "action": "cut"},
+    "KEYCODE_C": {"type": "action", "action": "copy"},
+    "KEYCODE_V": {"type": "action", "action": "paste"},
+    "KEYCODE_B": {"type": "command", "command": "pastiera.toggle_software_keyboard_mode"},
+    "KEYCODE_N": {"type": "action", "action": "move_word_left"},
+    "KEYCODE_M": {"type": "action", "action": "move_word_right"}
+  }
+}

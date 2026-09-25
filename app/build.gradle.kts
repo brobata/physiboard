@@ -78,4 +78,8 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    // The personal-dictionary and Fn Layer file sidecars, and the dictionary manifest, are hand-
+    // parsed JSON on this module's own side (the settings-screens agent's feature work); only the
+    // JSON tree API is needed, same as every other module that parses stored JSON by hand.
+    implementation(libs.kotlinx.serialization.json)
 }

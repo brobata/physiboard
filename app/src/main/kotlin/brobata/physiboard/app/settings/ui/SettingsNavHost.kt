@@ -40,6 +40,19 @@ import brobata.physiboard.app.settings.ui.screens.CustomSubstitutionsScreen
 import brobata.physiboard.app.settings.ui.screens.CustomizeEntriesScreen
 import brobata.physiboard.app.settings.ui.screens.ManageSnippetsScreen
 import brobata.physiboard.app.settings.ui.screens.QuickLauncherEntriesScreen
+import brobata.physiboard.app.settings.ui.screens.KeyMappingScreen
+import brobata.physiboard.app.settings.ui.screens.NotificationRingScreen
+import brobata.physiboard.app.settings.ui.screens.RemoveBloatScreen
+import brobata.physiboard.app.settings.ui.screens.RingFitScreen
+import brobata.physiboard.app.settings.ui.screens.ScreenDensityScreen
+import brobata.physiboard.app.settings.ui.screens.SmartBacklightScreen
+import brobata.physiboard.app.settings.ui.screens.SystemTweaksScreen
+import brobata.physiboard.app.settings.ui.screens.PersonalDictionaryScreen
+import brobata.physiboard.app.settings.ui.screens.InstalledDictionariesScreen
+import brobata.physiboard.app.settings.ui.screens.InputStylesScreen
+import brobata.physiboard.app.settings.ui.screens.SavedThemesScreen
+import brobata.physiboard.app.settings.ui.screens.ThemeLayoutOverridesScreen
+import brobata.physiboard.app.settings.ui.screens.ThemeLayoutOverrideEditScreen
 
 /**
  * The whole settings app as one push/pop stack (settings-catalog.md SS9.1, "a push/pop stack
@@ -81,6 +94,17 @@ fun SettingsApp(startDestination: String = Routes.HOME) {
         composable(Routes.KEYBOARD) { KeyboardHubScreen(onBack = ::back, onNavigate = ::navigate) }
         composable(Routes.EXTRAS) { ExtrasHubScreen(onBack = ::back, onNavigate = ::navigate) }
 
+        // broker-privileged-toolbox.md, device-backlight-ring.md: the T2E Tools toolbox screens.
+        composable(Routes.SMART_BACKLIGHT) { SmartBacklightScreen(onBack = ::back, onNavigateToolbox = { navigate(Routes.T2E_TOOLS) }) }
+        composable(Routes.REMOVE_BLOAT) { RemoveBloatScreen(onBack = ::back, onNavigateToolbox = { navigate(Routes.T2E_TOOLS) }) }
+        composable(Routes.SCREEN_DENSITY) { ScreenDensityScreen(onBack = ::back, onNavigateToolbox = { navigate(Routes.T2E_TOOLS) }) }
+        composable(Routes.SYSTEM_TWEAKS) { SystemTweaksScreen(onBack = ::back, onNavigateToolbox = { navigate(Routes.T2E_TOOLS) }) }
+        composable(Routes.NOTIFICATION_RING) {
+            NotificationRingScreen(onBack = ::back, onNavigateFit = { navigate(Routes.RING_FIT) }, onNavigateToolbox = { navigate(Routes.T2E_TOOLS) })
+        }
+        composable(Routes.RING_FIT) { RingFitScreen(onDone = ::back) }
+        composable(Routes.KEY_MAPPING) { KeyMappingScreen(onBack = ::back, onNavigate = ::navigate) }
+
         composable(Routes.SCREEN_TRACKPAD) { ScreenTrackpadScreen(onBack = ::back) }
         composable(Routes.FN_LAYER) { FnLayerScreen(onBack = ::back) }
         composable(Routes.SMART_FEATURES) {
@@ -99,8 +123,22 @@ fun SettingsApp(startDestination: String = Routes.HOME) {
         composable(Routes.ENTER_KEY_BEHAVIOUR) { EnterKeyBehaviourScreen(onBack = ::back, onNavigate = ::navigate) }
 
         composable(Routes.QUICK_LAUNCHER) { QuickLauncherScreen(onBack = ::back, onNavigate = ::navigate) }
-        composable(Routes.INPUT_LANGUAGES) { InputLanguagesScreen(onBack = ::back) }
+        composable(Routes.INPUT_LANGUAGES) { InputLanguagesScreen(onBack = ::back, onNavigate = ::navigate) }
         composable(Routes.TEXT_EXPANSION) { TextExpansionScreen(onBack = ::back, onNavigate = ::navigate) }
+
+        // dictionaries-languages.md SS6, SS7, SS8.2; status-bar.md SS9.2-9.4: the list editors
+        // this module's feature work adds.
+        composable(Routes.PERSONAL_DICTIONARY) { PersonalDictionaryScreen(onBack = ::back) }
+        composable(Routes.INSTALLED_DICTIONARIES) { InstalledDictionariesScreen(onBack = ::back) }
+        composable(Routes.INPUT_STYLES) { InputStylesScreen(onBack = ::back) }
+        composable(Routes.SAVED_THEMES) { SavedThemesScreen(onBack = ::back) }
+        composable(Routes.THEME_LAYOUT_OVERRIDES) { ThemeLayoutOverridesScreen(onBack = ::back, onOpen = { index -> navigate(Routes.themeLayoutOverride(index)) }) }
+        composable(
+            Routes.THEME_LAYOUT_OVERRIDE_PATTERN,
+            arguments = listOf(navArgument("index") { type = NavType.IntType }),
+        ) { entry ->
+            ThemeLayoutOverrideEditScreen(index = entry.arguments?.getInt("index") ?: -1, onBack = ::back)
+        }
 
         // expansion-clipboard-pickers-launcher.md: the list editors.
         composable(Routes.MANAGE_SNIPPETS) { ManageSnippetsScreen(onBack = ::back) }

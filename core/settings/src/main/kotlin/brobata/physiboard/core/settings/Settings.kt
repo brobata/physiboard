@@ -265,9 +265,19 @@ data class StripTheme(
 data class NamedTheme(val name: String, val theme: StripTheme)
 
 /**
+ * One entry of `keyboard_theme_layout_overrides_hardware`: a theme for a matching locale and/or
+ * layout, beating the chosen theme when it matches. spec: settings-catalog.md SS2.6 (the row),
+ * status-bar.md SS9.2 ("the most specific matching override... beats the chosen theme") and
+ * SS2.6's scoring (exact locale 16 points, language 8, layout 4); resolution itself is
+ * [StripThemeResolution.resolve]. An entry with neither field set matches nothing and is dropped
+ * on write (status-bar.md SS2.6).
+ */
+data class ThemeLayoutOverride(val locale: String? = null, val layout: String? = null, val theme: StripTheme = StripTheme())
+
+/**
  * The strip, its theme and the caret badge. spec: settings-catalog.md SS2.6, status-bar.md.
  * Dropped: the `show_status_bar` and single-slot mirrors (the importer folds them in), the
- * software theme, the light/dark slots, assignment modes, per-layout overrides, drafts, the
+ * software theme, the light/dark slots, assignment modes, drafts, the
  * preview scale, `modifier_indicator_mode`, the accessibility and debug rows, and `pastierina_*`.
  *
  * [visibility] defaults to ALWAYS, not the asset's APPS: the catalogue (SS1.1, SS11 first row)
@@ -286,6 +296,8 @@ data class StatusBarPrefs(
     val caretBadgeLockedColor: Int = 0xFFDC2626.toInt(),
     val theme: StripTheme = StripTheme(),
     val savedThemes: List<NamedTheme> = emptyList(),
+    /** `keyboard_theme_layout_overrides_hardware`; see [ThemeLayoutOverride]. */
+    val layoutOverrides: List<ThemeLayoutOverride> = emptyList(),
     /** `titan2_elite_rounded_corner_insets`, kept as the hidden preference status-bar.md SS9 allows. */
     val roundedCornerInsets: Boolean = true,
 ) {
