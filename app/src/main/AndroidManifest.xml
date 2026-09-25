@@ -1,11 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- app-shell.md SS13.2: the update checker's one GitHub GET. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- app-shell.md SS4.4: the home screen's one-time POST_NOTIFICATIONS prompt on Android 13+. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <application
         android:name="brobata.physiboard.app.PhysiBoardApplication"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/Theme.PhysiBoard">
+        android:theme="@style/Theme.PhysiBoard"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules">
         <activity
             android:name="brobata.physiboard.app.MainActivity"
             android:exported="true">
@@ -14,6 +21,33 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- expansion-clipboard-pickers-launcher.md SS6.4: the assignment sheet, "a transparent,
+             animation-free activity (excluded from recents, no history, single-top)", answered
+             for the keyboard's ASSIGN_LAUNCHER_KEY intent (same package only). -->
+        <activity
+            android:name="brobata.physiboard.app.settings.ui.LauncherAssignmentActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:launchMode="singleTop">
+            <intent-filter>
+                <action android:name="brobata.physiboard.action.ASSIGN_LAUNCHER_KEY" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- app-shell.md SS10.5: the debug report's file share, cache path `debug-reports/`. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_provider_paths" />
+        </provider>
     </application>
 
 </manifest>

@@ -2,6 +2,8 @@ package brobata.physiboard.app.settings.ui.screens
 
 import androidx.compose.runtime.Composable
 import brobata.physiboard.app.settings.ui.LocalSettingsController
+import brobata.physiboard.app.settings.ui.NavigateRow
+import brobata.physiboard.app.settings.ui.Routes
 import brobata.physiboard.app.settings.ui.RowList
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
 import brobata.physiboard.app.settings.ui.SingleChoiceChipsRow
@@ -12,12 +14,12 @@ import brobata.physiboard.core.settings.SnippetPresentation
 
 /**
  * "Text expansion" (settings-catalog.md SS8 fixes this to Extras, not Smart Features; SS9.2;
- * expansion-clipboard-pickers-launcher.md SS2.7). "Manage snippets" needs a list editor beyond
- * this app's six row types and is left unbound; so is [ExpansionPrefs.snippets] itself, since it
- * is only ever written through that list.
+ * expansion-clipboard-pickers-launcher.md SS2.7), rows in the catalogue's order with "Manage
+ * snippets" opening [Routes.MANAGE_SNIPPETS], the list editor [ExpansionPrefs.snippets] is written
+ * through. "Enable snippets" ships off (SS2.8's own default and the project's default-ON rule).
  */
 @Composable
-fun TextExpansionScreen(onBack: () -> Unit) {
+fun TextExpansionScreen(onBack: () -> Unit, onNavigate: (String) -> Unit = {}) {
     val controller = LocalSettingsController.current
     val expansion = controller.current.value.expansion
     fun set(transform: (ExpansionPrefs) -> ExpansionPrefs) = controller.update { it.copy(expansion = transform(it.expansion)) }
@@ -68,6 +70,9 @@ fun TextExpansionScreen(onBack: () -> Unit) {
                     checked = expansion.acceptWithEnter,
                     onCheckedChange = { set { p -> p.copy(acceptWithEnter = it) } },
                 )
+            }
+            item {
+                NavigateRow("Manage snippets", "Add global shortcuts and multiline replacement text.") { onNavigate(Routes.MANAGE_SNIPPETS) }
             }
             item {
                 SwitchRow(

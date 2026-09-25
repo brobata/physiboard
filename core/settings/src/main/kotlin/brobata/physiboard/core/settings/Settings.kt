@@ -490,6 +490,12 @@ data class LauncherPrefs(
     val homeScreenShortcutsEnabled: Boolean = false,
     val assignedKeysJson: String = "",
     val commandCustomizationsJson: String = "",
+    /**
+     * `command_surface_sources` (expansion-clipboard-pickers-launcher.md SS8.6), carried as its
+     * JSON document like the two above now that the "QuickLauncher entries" screen exists in 3.0;
+     * blank means every source at its default (apps and PhysiBoard on, the other three off).
+     */
+    val commandSurfaceSourcesJson: String = "",
 )
 
 /**

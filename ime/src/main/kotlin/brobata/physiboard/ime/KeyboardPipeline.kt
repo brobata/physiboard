@@ -1,5 +1,18 @@
 package brobata.physiboard.ime
 
+import brobata.physiboard.core.actions.launcher.LauncherKeyDecision
+import brobata.physiboard.core.actions.launcher.LauncherKeyRouter
+import brobata.physiboard.core.actions.launcher.LauncherKeySettings
+import brobata.physiboard.core.actions.launcher.LauncherShortcuts
+import brobata.physiboard.core.actions.launcher.PowerShortcutMode
+import brobata.physiboard.core.actions.launcher.PowerShortcutState
+import brobata.physiboard.core.actions.snippets.ExpansionGate
+import brobata.physiboard.core.actions.snippets.ExpansionKeyResult
+import brobata.physiboard.core.actions.snippets.ExpansionState
+import brobata.physiboard.core.actions.snippets.SnippetExpansion
+import brobata.physiboard.core.actions.snippets.SnippetMatch
+import brobata.physiboard.core.actions.snippets.SnippetPresentation
+import brobata.physiboard.core.actions.snippets.SnippetSettings
 import brobata.physiboard.core.keys.Action
 import brobata.physiboard.core.keys.ControlKey
 import brobata.physiboard.core.keys.EditEffect
@@ -105,6 +118,15 @@ data class KeyboardSettings(
      * this from its own values later; nothing in the strip reads a preference.
      */
     val statusBar: StripSettings = StripSettings(),
+    /**
+     * spec: expansion-clipboard-pickers-launcher.md SS2.8. [SnippetSettings.enabled] ships false
+     * by the project's default-ON rule (expansion intercepts Space), see its own KDoc.
+     */
+    val expansion: SnippetSettings = SnippetSettings(),
+    /** spec SS6.6: power shortcuts on, home-screen shortcuts off. */
+    val launcherKeys: LauncherKeySettings = LauncherKeySettings(),
+    /** spec SS6.1, D6: a fresh install has the quick launcher on Space; the store's first-read rule reproduces this (ImeSettings). */
+    val launcherShortcuts: LauncherShortcuts = LauncherShortcuts().applyDefault(defaultAlreadyAssigned = false).shortcuts,
 )
 
 /**
@@ -124,6 +146,10 @@ data class PipelineResult(
      * Dictation's c440844 invariant needs that fact as much as an edit this keyboard made itself.
      */
     val appMayEditField: Boolean = false,
+    /** spec expansion-clipboard-pickers-launcher.md SS6.2: an assigned key fired (or an unassigned one asks for the sheet); `:ime` performs it. */
+    val launcherKey: LauncherKeyDecision? = null,
+    /** spec SS6.2 B: the Sym-armed mode just armed at this time; `:ime` schedules the toast and the disarm. */
+    val powerModeArmedAtMs: Long? = null,
 ) {
     companion object {
         val NOT_CONSUMED: PipelineResult = PipelineResult(emptyList(), consumed = false)
@@ -159,7 +185,30 @@ internal class KeyboardPipeline(
     private var activeTrust = EditorTrust.FULL
     private var activeAppProfile = AppProfile.default(null)
 
+    /** spec expansion-clipboard-pickers-launcher.md SS2: the open snippet matches, cleared whenever the editor changes (SS2.4). */
+    private var expansion = ExpansionState.EMPTY
+
+    /** spec SS6.2 B: the Sym-armed power shortcut mode, which only exists with no editable field. */
+    private var powerMode = PowerShortcutState.IDLE
+
+    /** spec SS6.2 A: whether the foreground package answers HOME; `:ime` resolves it, this class only routes on it. */
+    var foregroundIsHome: Boolean = false
+
     val fieldContext: FieldContext get() = activeField
+
+    /** spec layers-sym-alt.md SS5.2: the open Sym page (0 for none); `:ime` shows the clipboard and emoji panels for pages 3 and 4. */
+    val currentSymPage: Int get() = modifierState.sym.currentPageNumber
+
+    /** spec layers-sym-alt.md SS4.3: a strip button opens its page "regardless of whether it is enabled in the cycle, and each one toggles". */
+    fun toggleSymPage(page: Int) {
+        val next = if (modifierState.sym.currentPageNumber == page) 0 else page
+        modifierState = modifierState.copy(sym = modifierState.sym.copy(currentPageNumber = next))
+    }
+
+    /** spec SS3.5, SS4.3: the panels' own close buttons "ask the Sym session to close the page". */
+    fun closeSymPage() {
+        if (modifierState.sym.currentPageNumber != 0) modifierState = modifierState.copy(sym = modifierState.sym.copy(currentPageNumber = 0))
+    }
 
     /**
      * The caret badge's own small view of the modifier state. spec: trackpad-caret-nav.md SS4.2's
@@ -189,6 +238,7 @@ internal class KeyboardPipeline(
         modifierState.shift.physicallyPressed || modifierState.shift.value == ShiftValue.ONE_SHOT || modifierState.shift.layerLatched
 
     private val ENTER_KEY = KeyId.Control(ControlKey.ENTER)
+    private val SYM_KEY = KeyId.Modifier(ModifierKey.SYM)
 
     /** When a long press is armed, the wall-clock time (same basis as [KeyStroke.timeMs]) it fires at. spec: keys-and-modifiers.md SS8.3. */
     val pendingLongPressDeadlineMs: Long?
@@ -214,6 +264,7 @@ internal class KeyboardPipeline(
         textInputState = textInputState.forNewField()
         typingState = TypingSessionState()
         modifierState = ModifierMachine.fullReset(modifierState, preserveNavModeLatch = true)
+        expansion = ExpansionState.EMPTY
         if (AutoCapitalization.evaluateFieldStartCapsLock(field)) {
             applyCapDecision(CapDecision.EnableCapsLock)
         }
@@ -248,6 +299,7 @@ internal class KeyboardPipeline(
     fun onFinishInput() {
         typingState = TypingSessionState()
         modifierState = ModifierMachine.fullReset(modifierState, preserveNavModeLatch = true)
+        expansion = ExpansionState.EMPTY
     }
 
     /**
@@ -258,7 +310,7 @@ internal class KeyboardPipeline(
      * knows whether it just called the `InputConnection`), so [KeyboardSession] only calls this
      * for a move it did not cause itself.
      */
-    fun onExternalSelectionChange(textBeforeCursor: String?) {
+    fun onExternalSelectionChange(textBeforeCursor: String?, selectionCollapsed: Boolean = true) {
         // Resyncing the keyboard's own record to what the editor just reported is always allowed:
         // that is the drift-recovery path itself (rebuild-from-scratch.md "The editor is not a
         // reliable narrator" point 1), not a guess a reduced [activeTrust] should suppress.
@@ -269,7 +321,147 @@ internal class KeyboardPipeline(
         val (capState, decision) = AutoCapitalization.evaluate(textInputState.autoCap, activeField, settings.textInput.autoCap, capContext)
         textInputState = textInputState.copy(autoCap = capState)
         applyCapDecision(decision)
+        // spec expansion-clipboard-pickers-launcher.md SS2.4: the lookup runs "after every selection
+        // change that leaves a collapsed caret" and clears "when the selection stops being collapsed".
+        expansion = SnippetExpansion.refresh(expansion, textBeforeCursor, settings.expansion, expansionGate(selectionCollapsed = selectionCollapsed))
     }
+
+    // -----------------------------------------------------------------------------------------
+    // Text expansion. spec: expansion-clipboard-pickers-launcher.md SS2. The engine is
+    // `:core:actions`'; this class supplies the field, modifier and text facts it needs.
+    // -----------------------------------------------------------------------------------------
+
+    private fun expansionGate(selectionCollapsed: Boolean, editorConnected: Boolean = true): ExpansionGate = ExpansionGate(
+        fieldReallyEditable = activeField.isReallyEditable,
+        fieldRestricted = activeField.isRestricted,
+        selectionCollapsed = selectionCollapsed,
+        editorConnected = editorConnected,
+    )
+
+    /** spec SS2.6: "no modifier active in any form (Ctrl, Alt, Shift or Meta held, latched, one-shot, or reported by the event)". */
+    private fun anyModifierActive(stroke: KeyStroke): Boolean =
+        stroke.meta.shift || stroke.meta.ctrl || stroke.meta.alt ||
+            modifierState.shift.value != ShiftValue.OFF || modifierState.shift.pressed || modifierState.shift.layerLatched ||
+            modifierState.ctrl.latched || modifierState.ctrl.oneShot || modifierState.ctrl.pressed || modifierState.ctrl.physicallyPressed ||
+            modifierState.alt.latched || modifierState.alt.oneShot || modifierState.alt.pressed || modifierState.alt.layerLatched
+
+    /** spec SS2.4: the coalesced lookup `:ime` schedules 24 ms after a key release; answers the rows the popup should show. */
+    fun refreshExpansion(textBeforeCursor: String?, selectionCollapsed: Boolean = true): List<SnippetMatch> {
+        expansion = SnippetExpansion.refresh(expansion, textBeforeCursor, settings.expansion, expansionGate(selectionCollapsed, editorConnected = textBeforeCursor != null))
+        return expansionPopupRows()
+    }
+
+    /** spec SS2.5, the floating popup's rows (empty in every other presentation). */
+    fun expansionPopupRows(): List<SnippetMatch> =
+        if (settings.expansion.presentation == SnippetPresentation.FLOATING_POPUP) SnippetExpansion.visibleRows(expansion, settings.expansion.presentation) else emptyList()
+
+    val expansionHighlight: Int get() = expansion.highlight
+
+    /** spec SS2.5, the suggestion bar presentation: "the first three matches replace the three suggestion slots". */
+    private fun expansionBarRows(): List<SnippetMatch> =
+        if (settings.expansion.presentation == SnippetPresentation.SUGGESTION_BAR) SnippetExpansion.visibleRows(expansion, settings.expansion.presentation) else emptyList()
+
+    /** True while the strip's slots are showing expansion matches, so a slot tap commits a match instead of a suggestion. */
+    val expansionOwnsStripSlots: Boolean get() = expansionBarRows().isNotEmpty()
+
+    /** The bar's rows in match order, so `:ime` can map a tapped slot back to the match it shows. */
+    fun expansionPopupRowsForBar(): List<SnippetMatch> = expansionBarRows()
+
+    /** spec SS2.5: "A row tap commits that match with no trailing space." */
+    fun onExpansionRowTapped(index: Int, editor: EditorSnapshot): PipelineResult {
+        val result = SnippetExpansion.onRowTapped(expansion, index, editor.textBeforeCursor)
+        expansion = result.state
+        val commit = (result as? ExpansionKeyResult.Consumed)?.commit ?: return PipelineResult.CONSUMED_NO_OP
+        return expansionCommitResult(commit.deleteCount, commit.text, editor)
+    }
+
+    /** spec SS2.6 "Commit mechanics": finish any composition, delete the token, commit the replacement as finished text, then reset the suggestion context. */
+    private fun expansionCommitResult(deleteCount: Int, text: String, editor: EditorSnapshot): PipelineResult {
+        val before = editor.textBeforeCursor.orEmpty()
+        val after = before.dropLast(deleteCount.coerceAtMost(before.length)) + text
+        textInputState = textInputState.afterExternalCursorMove(after)
+        return PipelineResult(listOf(EditorOp.FinishComposing, EditorOp.ReplaceBeforeCursor(deleteCount, text)), consumed = true)
+    }
+
+    /**
+     * spec SS2.4: "Immediately, before the key is acted on, when Space, Tab, Enter or the d-pad
+     * center key goes down" (T11), and SS2.6's key table. Answers null when expansion leaves the
+     * key alone.
+     */
+    private fun tryExpansion(stroke: KeyStroke, editor: EditorSnapshot): PipelineResult? {
+        if (!settings.expansion.enabled || !SnippetExpansion.isExpansionKey(stroke.key) || stroke.repeatCount > 0) return null
+        val gate = expansionGate(selectionCollapsed = !(editor.fullText?.hasSelection ?: false), editorConnected = editor.textBeforeCursor != null)
+        val result = SnippetExpansion.onKeyDown(expansion, stroke.key, anyModifierActive(stroke), editor.textBeforeCursor, settings.expansion, gate)
+        expansion = result.state
+        return when (result) {
+            is ExpansionKeyResult.NotConsumed -> null
+            is ExpansionKeyResult.Consumed -> result.commit?.let { expansionCommitResult(it.deleteCount, it.text, editor) } ?: PipelineResult.CONSUMED_NO_OP
+        }
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Launcher keys. spec: expansion-clipboard-pickers-launcher.md SS6.2. The router and the
+    // armed mode are `:core:actions`'; `:ime` runs what they decide.
+    // -----------------------------------------------------------------------------------------
+
+    val powerShortcutArmedAtMs: Long? get() = powerMode.armedAtMs
+
+    /** spec SS6.2 B: the 5000 ms disarm, or any later check; restores nav mode if the arming suspended it. */
+    fun onPowerShortcutTimeout(nowMs: Long) {
+        val (next, effect) = PowerShortcutMode.onTimeout(powerMode, nowMs)
+        powerMode = next
+        if (effect.restoreNavMode) restoreNavModeLatch()
+    }
+
+    private fun suspendNavModeLatch() {
+        modifierState = modifierState.copy(ctrl = modifierState.ctrl.copy(latched = false, latchFromNavMode = false))
+    }
+
+    private fun restoreNavModeLatch() {
+        modifierState = modifierState.copy(ctrl = modifierState.ctrl.copy(latched = true, latchFromNavMode = true))
+    }
+
+    /** spec SS6.2 B: Sym down (repeat 0) with no editable field arms or disarms the mode. */
+    private fun powerModeOnSymDown(stroke: KeyStroke): PipelineResult? {
+        if (activeField.isReallyEditable || stroke.edge != KeyEdge.DOWN || stroke.repeatCount > 0) return null
+        val (next, effect) = PowerShortcutMode.onSymDown(powerMode, stroke.timeMs, settings.launcherKeys.symShortcutsEnabled, navModeActive = modifierState.ctrl.latchFromNavMode)
+        powerMode = next
+        if (effect.suspendNavMode) suspendNavModeLatch()
+        if (effect.restoreNavMode) restoreNavModeLatch()
+        if (!effect.consumed) return null
+        return PipelineResult(emptyList(), consumed = true, powerModeArmedAtMs = if (effect.scheduleToast) stroke.timeMs else null)
+    }
+
+    /** spec SS6.2 A and B, with no editable field: the armed mode's key, or a bare key on the home screen. */
+    private fun launcherOutsideTextField(stroke: KeyStroke): PipelineResult? {
+        if (stroke.repeatCount > 0) return null
+        val ctrlLatch = modifierState.ctrl.latched || modifierState.ctrl.latchFromNavMode
+        val (next, effect) = PowerShortcutMode.onKeyDown(powerMode, stroke.key, stroke.timeMs)
+        powerMode = next
+        if (effect.restoreNavMode) restoreNavModeLatch()
+        val fromArmedMode = effect.fireKey != null
+        val decision = LauncherKeyRouter.outsideTextField(stroke.key, settings.launcherShortcuts, settings.launcherKeys, ctrlLatch, foregroundIsHome, fromArmedMode)
+        if (decision == LauncherKeyDecision.FallThrough) return if (effect.consumed) PipelineResult.CONSUMED_NO_OP else null
+        return PipelineResult(emptyList(), consumed = true, launcherKey = decision)
+    }
+
+    /**
+     * spec SS6.2 C: in a text field, an assigned key with Sym held or a Sym tap pending fires
+     * and the chord counts as used (layers-sym-alt.md SS5.3 step 2, after the edit shortcuts of
+     * step 1 and ahead of the chord symbol of step 3).
+     */
+    private fun launcherInTextField(stroke: KeyStroke): PipelineResult? {
+        val symHeldOrPending = stroke.meta.sym || (modifierState.sym.togglePending && !modifierState.sym.chordUsed)
+        if (!symHeldOrPending) return null
+        if (settings.modifier.symEditShortcutsEnabled && !stroke.meta.alt && stroke.key in SYM_EDIT_SHORTCUT_KEYS) return null
+        val ctrlLatch = modifierState.ctrl.latched || modifierState.ctrl.latchFromNavMode
+        val decision = LauncherKeyRouter.inTextField(stroke.key, settings.launcherShortcuts, settings.launcherKeys, symHeldOrPending, stroke.isInitialPress, ctrlLatch)
+        if (decision !is LauncherKeyDecision.Run) return null
+        modifierState = ModifierMachine.symChordUsed(modifierState)
+        return PipelineResult(emptyList(), consumed = true, launcherKey = decision)
+    }
+
+    private val SYM_EDIT_SHORTCUT_KEYS = setOf(KeyId.Letter('C'), KeyId.Letter('V'), KeyId.Letter('X'), KeyId.Letter('A'))
 
     // -----------------------------------------------------------------------------------------
     // One key event. spec: docs/plans/rebuild-from-scratch.md "Keypress data flow".
@@ -296,8 +488,10 @@ internal class KeyboardPipeline(
 
     fun onKeyStroke(stroke: KeyStroke, editor: EditorSnapshot): PipelineResult {
         if (stroke.key is KeyId.Modifier) {
+            val armed = if (stroke.key == SYM_KEY) powerModeOnSymDown(stroke) else null
             val action = dispatchModifier(stroke)
-            return applyAction(action, shiftHeld = stroke.meta.shift, altActive = modifierState.isAltActive(stroke.meta.alt), editor)
+            val result = applyAction(action, shiftHeld = stroke.meta.shift, altActive = modifierState.isAltActive(stroke.meta.alt), editor)
+            return if (armed != null) result.copy(consumed = true, powerModeArmedAtMs = armed.powerModeArmedAtMs) else result
         }
 
         if (stroke.edge == KeyEdge.UP) {
@@ -310,6 +504,15 @@ internal class KeyboardPipeline(
         // spec: keys-and-modifiers.md SS5.2, "for any other key with repeat count 0"; dispatch
         // convention documented on ModifierMachine.onOtherKeyDown.
         modifierState = ModifierMachine.onOtherKeyDown(modifierState, stroke)
+
+        // spec expansion-clipboard-pickers-launcher.md SS6.2 A/B: with no editable field the
+        // launcher paths own the 29 keys before anything else can pass them to the app.
+        if (!activeField.isReallyEditable) launcherOutsideTextField(stroke)?.let { return it }
+        // spec SS6.2 C: Sym plus an assigned key in a text field, ahead of the Sym chord symbol.
+        if (activeField.isReallyEditable) launcherInTextField(stroke)?.let { return it }
+        // spec SS2.4: expansion evaluates Space, Tab, Enter and the d-pad center "immediately,
+        // before the key is acted on", so it must run before `:core:keys` turns Space into a commit.
+        if (activeField.isReallyEditable) tryExpansion(stroke, editor)?.let { return it }
 
         // *** The milestone-2 sequencing rule (docs/plans/rebuild-from-scratch.md, "What
         // milestone 2 established"): a letter's case is resolved by `:core:keys` before
@@ -460,11 +663,14 @@ internal class KeyboardPipeline(
      * (SS5.2) needs the subtype module; [dictionaryInstalled] is the caller's answer for the one
      * language this milestone loads.
      */
-    fun stripModel(clipboardCount: Int, dictationActive: Boolean, dictionaryInstalled: Boolean, subtypeLocale: String?): StripModel {
+    fun stripModel(clipboardCount: Int, dictationActive: Boolean, dictionaryInstalled: Boolean, subtypeLocale: String?, clipboardOverlayOpen: Boolean = false): StripModel {
         val inputs = StripInputs(
             packageName = currentPackageName,
             suggestions = suggestions().map { it.word },
             addWordCandidate = null,
+            // spec expansion-clipboard-pickers-launcher.md SS2.5, the suggestion bar presentation.
+            expansionSuggestions = expansionBarRows().map { it.label },
+            clipboardOverlayOpen = clipboardOverlayOpen,
             suggestionsEnabled = settings.textInput.autocorrect.suggestionsEnabled,
             fieldAllowsSuggestions = activeField.suggestionsAllowed,
             dictionaryInstalled = dictionaryInstalled,
@@ -534,6 +740,8 @@ internal class KeyboardPipeline(
         typingState = TypingSessionState()
         modifierState = ModifierMachine.fullReset(modifierState, preserveNavModeLatch = true)
         textInputState = textInputState.afterExternalCursorMove(null)
+        expansion = ExpansionState.EMPTY
+        powerMode = PowerShortcutState.IDLE
         return true
     }
 

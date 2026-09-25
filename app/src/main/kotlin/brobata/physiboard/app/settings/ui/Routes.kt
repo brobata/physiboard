@@ -27,6 +27,28 @@ object Routes {
     const val TEXT_EXPANSION = "text_expansion"
     const val TEST_FIELD = "test_field"
 
+    // app-shell.md: the shell's own screens. HOME is the real home (SS6); SETUP and WHATS_NEW are
+    // also reachable as ordinary destinations (Setup from About's "Show Tutorial", SS3) in
+    // addition to being a possible NavHost start destination (see SettingsNavHost's report).
+    const val HOME = "home"
+    const val SETUP = "setup"
+    const val WHATS_NEW = "whats_new"
+    const val STATUS = "status"
+    const val ABOUT = "about"
+    const val DIAGNOSTICS = "diagnostics"
+
+    // expansion-clipboard-pickers-launcher.md: the list editors the placeholder rows pointed at.
+    const val MANAGE_SNIPPETS = "manage_snippets"
+    const val CUSTOM_SUBSTITUTIONS = "custom_substitutions"
+    const val ASSIGNED_LAUNCHER_KEYS = "assigned_launcher_keys"
+    const val QUICK_LAUNCHER_ENTRIES = "quick_launcher_entries"
+    const val CUSTOMIZE_ENTRIES = "customize_entries"
+    const val CLIPBOARD_HISTORY = "clipboard_history"
+
+    /** `custom_substitutions/{code}`: one language's "Custom Substitutions" list. */
+    fun customSubstitutions(code: String) = "custom_substitutions/${android.net.Uri.encode(code)}"
+    const val CUSTOM_SUBSTITUTIONS_PATTERN = "custom_substitutions/{code}"
+
     /** `app_picker/{kind}`; see [PerAppListKind]. */
     fun appPicker(kind: String) = "app_picker/$kind"
     const val APP_PICKER_PATTERN = "app_picker/{kind}"

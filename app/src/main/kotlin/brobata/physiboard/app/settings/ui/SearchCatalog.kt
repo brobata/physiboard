@@ -47,6 +47,22 @@ object SearchCatalog {
         SearchEntry("Text expansion", "Text expansion", Routes.TEXT_EXPANSION, "snippet abbreviation expand shortcut"),
         SearchEntry("Exact typing", "Exact typing", Routes.appPicker(PerAppListKind.EXACT_TYPING), "terminal termux disable smart per app raw exceptions"),
         SearchEntry("Text box under the bar", "Text box under the bar", Routes.appPicker(PerAppListKind.TEXT_BOX_UNDER_BAR), "teams hidden covered text box compose field under bar inset blink"),
+        // app-shell.md: the shell's own rows, now that Settings, About, Diagnostics and the update
+        // checker exist (this module's report). Re-added per SS8's own rule: point at the real
+        // screen, not a placeholder.
+        SearchEntry("Status", "Settings", Routes.STATUS, "status enabled selected active keyboard language backlight version"),
+        SearchEntry("About", "Settings", Routes.ABOUT, "about version licence credits support sponsor report problem tutorial"),
+        SearchEntry("Diagnostics", "Settings", Routes.DIAGNOSTICS, "diagnostics debug export key event logger bug report record"),
+        SearchEntry("Updates", "Settings", Routes.SETTINGS, "update github release check version download apk"),
+        SearchEntry("Backup now", "Settings", Routes.SETTINGS, "backup export settings file"),
+        SearchEntry("Restore from file", "Settings", Routes.SETTINGS, "restore import backup settings file"),
+        // expansion-clipboard-pickers-launcher.md: the list editors and the launcher rows.
+        SearchEntry("Manage snippets", "Text expansion", Routes.MANAGE_SNIPPETS, "snippet shortcut replacement expand abbreviation"),
+        SearchEntry("Manage text replacements", "Auto-correction", Routes.CUSTOM_SUBSTITUTIONS, "text replacements custom substitutions correction language"),
+        SearchEntry("Assigned launcher keys", "PhysiBoard-QuickLauncher", Routes.ASSIGNED_LAUNCHER_KEYS, "launcher key assign shortcut sym space app command"),
+        SearchEntry("QuickLauncher entries", "PhysiBoard-QuickLauncher", Routes.QUICK_LAUNCHER_ENTRIES, "quick launcher sources apps device control navigation"),
+        SearchEntry("Customize entries", "PhysiBoard-QuickLauncher", Routes.CUSTOMIZE_ENTRIES, "favorites hidden alias search color quick launcher"),
+        SearchEntry("Clipboard history", "Clipboard history", Routes.CLIPBOARD_HISTORY, "clipboard copy paste history retention pin clips"),
     )
 
     /** spec: SS8, "the trimmed query is a case-insensitive substring of the title, of the screen title, or of the keywords." Results keep catalogue order. */

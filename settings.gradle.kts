@@ -35,6 +35,10 @@ include(":core:pointer")
 include(":core:speech")
 include(":core:settings")
 include(":core:strip")
+include(":core:actions")
+// The app shell as plain Kotlin (app-shell.md): update checker, what's-new note, launch routing,
+// first-run steps, the debug capture store, the backup codec. Depends on :core:settings only.
+include(":core:shell")
 include(":device:titan")
 
 // The privileged side of the Titan work: pairing, the setup pass, the backlight and the ring.

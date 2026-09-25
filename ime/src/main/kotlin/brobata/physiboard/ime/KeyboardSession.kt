@@ -12,12 +12,20 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.util.Log
+import android.view.HapticFeedbackConstants
 import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.CursorAnchorInfo
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
+import brobata.physiboard.core.actions.clipboard.Clip
+import brobata.physiboard.core.actions.feedback.TapVibration
+import brobata.physiboard.core.actions.launcher.AssignableKeys
+import brobata.physiboard.core.actions.snippets.SnippetExpansion
 import brobata.physiboard.core.dict.LanguageCode
+import brobata.physiboard.core.keys.CharacterResolution
+import brobata.physiboard.core.keys.KeyEdge
+import brobata.physiboard.core.keys.KeyId
 import brobata.physiboard.core.keys.KeyCommands
 import brobata.physiboard.core.keys.KeyStroke
 import brobata.physiboard.core.pointer.caret.CaretGeometry
@@ -49,6 +57,15 @@ import brobata.physiboard.core.text.EnterOverrideResolver
 import brobata.physiboard.core.text.MessagingPreset
 import brobata.physiboard.device.titan.KeyNormalizer
 import brobata.physiboard.device.titan.TitanLayouts
+import brobata.physiboard.ime.actions.AndroidCommandCatalog
+import brobata.physiboard.ime.actions.ClipboardHistoryController
+import brobata.physiboard.ime.actions.ClipboardPanelController
+import brobata.physiboard.ime.actions.CommandExecutor
+import brobata.physiboard.ime.actions.EmojiAssets
+import brobata.physiboard.ime.actions.EmojiPickerController
+import brobata.physiboard.ime.actions.ExpansionPopupController
+import brobata.physiboard.ime.actions.LauncherKeysController
+import brobata.physiboard.ime.actions.QuickLauncherController
 import brobata.physiboard.ime.pointer.CaretBadgeOverlayController
 import brobata.physiboard.ime.pointer.TrackpadOverlayController
 import kotlinx.coroutines.MainScope
@@ -142,6 +159,52 @@ internal class KeyboardSession(
 
     private val caretBadge = CaretBadgeOverlayController(service)
 
+    // -----------------------------------------------------------------------------------------
+    // Expansion, clipboard, the pickers, launcher keys. spec: expansion-clipboard-pickers-launcher.md.
+    // Every decision is `:core:actions`' or the pipeline's; these controllers own the windows,
+    // the clipboard listener, the database, the intents and the timers.
+    // -----------------------------------------------------------------------------------------
+
+    private val expansionPopup = ExpansionPopupController(service)
+    private val expansionRefreshRunnable = Runnable { refreshExpansionFromEditor() }
+
+    /** spec SS3.1: `clipboard_history_enabled` is read once; the store's first emission is that read (ClipboardHistoryController.applyEnabledOnce). */
+    private val clipboard = ClipboardHistoryController(service, handler) { onClipboardChanged() }
+    private val clipboardPanel = ClipboardPanelController(service)
+    private val emojiAssets = EmojiAssets(service.assets, handler, Build.VERSION.SDK_INT)
+    private val emojiPicker = EmojiPickerController(service, handler, emojiAssets)
+    private var emojiPickerExpanded = false
+    private var symAutoClose = true
+    private var symAutoCloseOnTouch = true
+
+    private val commandCatalog = AndroidCommandCatalog(service)
+    private val quickLauncher = QuickLauncherController(service, handler, commandCatalog) { key, uppercase -> layoutText(key, uppercase) }
+    private val commandExecutor = CommandExecutor(
+        service,
+        openQuickLauncher = { quickLauncher.open() },
+        startVoiceAssistant = ::startVoiceAssistant,
+        runNavAction = ::runNavAction,
+    )
+    private val launcherKeys = LauncherKeysController(service, handler, commandCatalog, commandExecutor, quickLauncher) { nowMs ->
+        pipeline.onPowerShortcutTimeout(nowMs)
+    }
+
+    /** spec SS6.2 A: "the foreground package being one that answers the HOME intent (the list is queried once per service lifetime and cached)". */
+    private val homePackages: Set<String> by lazy {
+        runCatching {
+            val home = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+            @Suppress("DEPRECATION")
+            service.packageManager.queryIntentActivities(home, 0).mapNotNull { it.activityInfo?.packageName }.toSet()
+        }.getOrDefault(emptySet())
+    }
+
+    /** spec SS9.2: the suggestion-slot tap vibration rows. */
+    private var tapHapticUseSystem = true
+    private var tapHapticDurationMs = TapVibration.DEFAULT_DURATION_MS
+
+    private fun layoutText(key: KeyId, uppercase: Boolean): String? =
+        CharacterResolution.layoutOrDefaultCharacter(key, uppercase, tapIndex = 0, pipeline.layout.baseLayout)
+
     /** The editor's last usable cursor-anchor report, or null; SS4.6, "forgotten... when the editor finishes". */
     private var lastCaretGeometry: CaretGeometry? = null
 
@@ -177,6 +240,11 @@ internal class KeyboardSession(
         runCatching { trackpad.onKeyboardWindowHidden() }.onFailure { error -> Log.e(TAG, "trackpad teardown crashed", error) }
         runCatching { caretBadge.hide() }.onFailure { error -> Log.e(TAG, "caret badge teardown crashed", error) }
         dictationController.onServiceDestroyed()
+        handler.removeCallbacks(expansionRefreshRunnable)
+        runCatching { expansionPopup.hide(); clipboardPanel.hide(); emojiPicker.hide(); quickLauncher.onServiceDestroyed() }
+            .onFailure { error -> Log.e(TAG, "panel teardown crashed", error) }
+        clipboard.onServiceDestroyed()
+        launcherKeys.onServiceDestroyed()
     }
 
     // SPEC GAP / missing module: there is no `:settings` module yet, so the primary suggestion
@@ -187,6 +255,8 @@ internal class KeyboardSession(
     private val dictionaryLoader = DictionaryAssetLoader(service.assets, handler)
 
     init {
+        quickLauncher.executor = commandExecutor
+        quickLauncher.quickLauncherKey = pipeline.settings.launcherShortcuts.quickLauncherKeycode?.let(AssignableKeys::keyOf)
         // spec: status-bar.md SS6.1: the microphone button follows the recognizer's level reports.
         // Dictation starts asynchronously, so the first report is also the first moment the strip
         // can learn the session is active; the refresh is equality-guarded and cheap.
@@ -226,6 +296,18 @@ internal class KeyboardSession(
         enterBehaviorEnabled = settings.perApp.enterBehaviorEnabled
         dictationController.settings = ImeSettings.dictationSettings(settings, Build.VERSION.SDK_INT)
         dictationController.textSettings = ImeSettings.dictationTextSettings(dictationController.textSettings, settings)
+        clipboard.retentionMinutes = settings.expansion.clipboardRetentionMinutes
+        clipboard.applyEnabledOnce(settings.expansion.clipboardHistoryEnabled)
+        emojiPickerExpanded = settings.symPages.emojiPickerExpandedHeight
+        symAutoClose = settings.symPages.autoClose
+        symAutoCloseOnTouch = settings.symPages.autoCloseOnTouch
+        quickLauncher.settings = ImeSettings.quickLauncherSettings(settings)
+        quickLauncher.customizations = ImeSettings.commandCustomizations(settings)
+        quickLauncher.visibility = ImeSettings.sourceVisibility(settings)
+        quickLauncher.quickLauncherKey = pipeline.settings.launcherShortcuts.quickLauncherKeycode?.let(AssignableKeys::keyOf)
+        quickLauncher.executor = commandExecutor
+        tapHapticUseSystem = settings.feedback.tapHapticUseSystem
+        tapHapticDurationMs = settings.feedback.tapHapticDurationMs
     }
 
     /**
@@ -295,7 +377,14 @@ internal class KeyboardSession(
         }
         service.setCandidatesViewShown(field.isReallyEditable)
         currentPackageName = reportedPackage
+        // spec expansion-clipboard-pickers-launcher.md SS6.2 A: the home screen path needs the foreground launcher.
+        pipeline.foregroundIsHome = reportedPackage != null && reportedPackage in homePackages
         dictationController.onEditorFieldOpened(reportedPackage)
+        clipboard.onFieldStarted()
+        // spec SS2.4: matches are cleared "on every start of input".
+        handler.removeCallbacks(expansionRefreshRunnable)
+        expansionPopup.hide()
+        syncSymPanels()
         refreshCandidatesStrip()
     }
 
@@ -308,6 +397,11 @@ internal class KeyboardSession(
         // spec: SS4.6, "forgotten and the badge hidden when the editor finishes".
         lastCaretGeometry = null
         caretBadge.hide()
+        clipboard.onFieldFinished()
+        handler.removeCallbacks(expansionRefreshRunnable)
+        expansionPopup.hide()
+        emojiPicker.onAppSelectionChanged()
+        syncSymPanels()
     }
 
     /**
@@ -323,6 +417,8 @@ internal class KeyboardSession(
             if (!pipeline.onWindowHidden(SystemClock.uptimeMillis())) return@runCatching
             trackpad.onKeyboardWindowHidden()
             statusBar?.invalidateRenderCache()
+            expansionPopup.hide()
+            syncSymPanels()
         }.onFailure { error -> Log.e(TAG, "onKeyboardWindowHidden crashed", error) }
     }
 
@@ -486,7 +582,9 @@ internal class KeyboardSession(
         }
         runCatching {
             val textBeforeCursor = runCatching { service.currentInputConnection?.getTextBeforeCursor(TEXT_BEFORE_CURSOR_READ, 0)?.toString() }.getOrNull()
-            pipeline.onExternalSelectionChange(textBeforeCursor)
+            pipeline.onExternalSelectionChange(textBeforeCursor, selectionCollapsed = newSelStart == newSelEnd)
+            // spec SS4.5: the app's own caret moved between two captured keys, so capture drops.
+            emojiPicker.onAppSelectionChanged()
             refreshCandidatesStrip()
         }.onFailure { error -> Log.e(TAG, "onUpdateSelection crashed", error) }
     }
@@ -512,6 +610,8 @@ internal class KeyboardSession(
      * that no unit test in this project runs against for real.
      */
     fun onKeyEvent(event: KeyEvent): Boolean = runCatching {
+        // spec expansion-clipboard-pickers-launcher.md SS4.5: while page 4's search captures, hardware keys type into it.
+        if (emojiPicker.isShown && emojiPicker.captureOn && emojiPicker.onHardwareKey(event, normalizeStroke(event)?.key)) return@runCatching true
         if (interceptForTrackpad(event)) return@runCatching true
         val stroke = normalizeStroke(event) ?: return@runCatching false
         processKeyStroke(stroke)
@@ -545,8 +645,161 @@ internal class KeyboardSession(
         val result = pipeline.onKeyStroke(stroke, readout.snapshot)
         val consumed = applyResult(ic, result, readout)
         scheduleLongPressIfNeeded()
+        // spec expansion-clipboard-pickers-launcher.md SS6.2: an assigned key fired, or the Sym-armed mode just armed.
+        result.launcherKey?.let { decision -> runCatching { launcherKeys.perform(decision) }.onFailure { error -> Log.e(TAG, "launcher key crashed", error) } }
+        result.powerModeArmedAtMs?.let { at -> launcherKeys.onPowerModeArmed(at) { pipeline.powerShortcutArmedAtMs == it } }
+        if (pipeline.powerShortcutArmedAtMs == null) launcherKeys.onPowerModeDisarmed()
+        syncSymPanels()
+        // spec SS2.4: the lookup is "scheduled, coalesced to one run 24 ms after the last request: after every hardware key release that is not a pure modifier".
+        if (stroke.edge == KeyEdge.UP && stroke.key !is KeyId.Modifier) {
+            handler.removeCallbacks(expansionRefreshRunnable)
+            handler.postDelayed(expansionRefreshRunnable, SnippetExpansion.LOOKUP_DELAY_MS)
+        }
         refreshCandidatesStrip()
         return consumed
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Text expansion's popup. spec: expansion-clipboard-pickers-launcher.md SS2.4, SS2.5.
+    // -----------------------------------------------------------------------------------------
+
+    private fun refreshExpansionFromEditor() {
+        runCatching {
+            val text = service.currentInputConnection?.getTextBeforeCursor(TEXT_BEFORE_CURSOR_READ, 0)?.toString()
+            pipeline.refreshExpansion(text)
+            refreshCandidatesStrip()
+        }.onFailure { error -> Log.e(TAG, "expansion refresh crashed", error) }
+    }
+
+    private fun refreshExpansionPopup() {
+        val rows = pipeline.expansionPopupRows()
+        if (rows.isEmpty() || !service.isInputViewShown && statusBar?.isRenderedOnScreen() != true) {
+            expansionPopup.hide()
+            return
+        }
+        expansionPopup.render(rows, pipeline.expansionHighlight, aboveBottomPx = stripHeightPx()) { index -> onExpansionRowTapped(index) }
+    }
+
+    private fun onExpansionRowTapped(index: Int) {
+        runCatching {
+            val ic = service.currentInputConnection ?: return@runCatching
+            val readout = ic.readEditorState(SystemClock.uptimeMillis(), wholeDocument = false, fallbackCursorAbsolute = lastReportedSelStart)
+            applyResult(ic, pipeline.onExpansionRowTapped(index, readout.snapshot), readout)
+            refreshCandidatesStrip()
+        }.onFailure { error -> Log.e(TAG, "expansion row tap crashed", error) }
+    }
+
+    private fun stripHeightPx(): Int = statusBar?.takeIf { it.isRenderedOnScreen() }?.height ?: 0
+
+    // -----------------------------------------------------------------------------------------
+    // The Sym panels: the clipboard history (page 3) and the emoji picker (page 4).
+    // spec: expansion-clipboard-pickers-launcher.md SS3.5, SS4; layers-sym-alt.md SS4.3, SS5.4.
+    // -----------------------------------------------------------------------------------------
+
+    private val clipboardPanelListener = object : ClipboardPanelController.Listener {
+        override fun onClipTapped(clip: Clip) {
+            // spec SS3.5: committed "as finished text (no composing, no auto-space, no autocorrect)"; the panel stays open.
+            commitFinishedText(clip.text)
+        }
+
+        override fun onTogglePinned(clip: Clip) {
+            clipboard.togglePinned(clip.id)
+            clipboardPanel.refresh(clipboard.history, this, scrollToTop = true, force = true)
+        }
+
+        override fun onDelete(clip: Clip) = clipboard.delete(clip.id)
+        override fun onClearAll() = clipboard.clearAll()
+        override fun onClose() = closeSymPanel()
+    }
+
+    private val emojiPickerListener = object : EmojiPickerController.Listener {
+        override fun onEmojiChosen(emoji: String) {
+            // spec SS4.4: with `sym_auto_close` and `sym_auto_close_on_touch` both on, the page closes first and the commit is posted after.
+            if (symAutoClose && symAutoCloseOnTouch) {
+                closeSymPanel()
+                handler.post { commitFinishedText(emoji) }
+            } else {
+                commitFinishedText(emoji)
+            }
+        }
+
+        override fun onClose() = closeSymPanel()
+        override fun layoutText(key: KeyId, uppercase: Boolean): String? = this@KeyboardSession.layoutText(key, uppercase)
+    }
+
+    private fun commitFinishedText(text: String) {
+        runCatching {
+            val ic = service.currentInputConnection ?: return@runCatching
+            ic.beginBatchEdit()
+            ic.finishComposingText()
+            ic.commitText(text, 1)
+            ic.endBatchEdit()
+            noteFieldEditedDuringDictation()
+            refreshCandidatesStrip()
+        }.onFailure { error -> Log.e(TAG, "panel commit crashed", error) }
+    }
+
+    private fun closeSymPanel() {
+        pipeline.closeSymPage()
+        syncSymPanels()
+        refreshCandidatesStrip()
+    }
+
+    /** Shows or hides the two panels to match the pipeline's open Sym page (0, 3 or 4). */
+    private fun syncSymPanels() {
+        runCatching {
+            val page = pipeline.currentSymPage
+            val theme = pipeline.settings.statusBar.theme
+            if (page == brobata.physiboard.core.strip.SYM_PAGE_CLIPBOARD) {
+                clipboard.cleanup(forced = true)
+                clipboardPanel.show(clipboard.history, theme, stripHeightPx(), clipboardPanelListener)
+            } else {
+                clipboardPanel.hide()
+            }
+            if (page == brobata.physiboard.core.strip.SYM_PAGE_EMOJI_PICKER) {
+                emojiPicker.show(emojiPickerExpanded, theme, stripHeightPx(), emojiPickerListener)
+            } else {
+                emojiPicker.hide()
+            }
+        }.onFailure { error -> Log.e(TAG, "sym panel sync crashed", error) }
+    }
+
+    private fun onClipboardChanged() {
+        runCatching {
+            if (clipboardPanel.isShown) clipboardPanel.refresh(clipboard.history, clipboardPanelListener, scrollToTop = false)
+            refreshCandidatesStrip()
+        }.onFailure { error -> Log.e(TAG, "clipboard change crashed", error) }
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // What the command executor cannot do on its own. spec SS8.2.
+    // -----------------------------------------------------------------------------------------
+
+    /** spec SS8.2 `pastiera.voice_assistant`: "Open it already listening" (dictation.md SS11's assistant intent). */
+    private fun startVoiceAssistant(): Boolean = runCatching {
+        service.startActivity(Intent(Intent.ACTION_VOICE_COMMAND).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        true
+    }.getOrDefault(false)
+
+    /** spec SS8.2 "Navigation": a keycode is sent as a key pair; the four editing actions go through the editor's context menu; the rest have no owning module yet. */
+    private fun runNavAction(mappingType: String, value: String): Boolean {
+        val ic = service.currentInputConnection ?: return false
+        if (mappingType == "keycode") {
+            val keyCode = runCatching { KeyEvent.keyCodeFromString("KEYCODE_$value") }.getOrDefault(KeyEvent.KEYCODE_UNKNOWN)
+            if (keyCode == KeyEvent.KEYCODE_UNKNOWN) return false
+            val now = SystemClock.uptimeMillis()
+            ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, keyCode, 0))
+            ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, keyCode, 0))
+            return true
+        }
+        val menuId = when (value) {
+            "copy" -> android.R.id.copy
+            "paste" -> android.R.id.paste
+            "cut" -> android.R.id.cut
+            "select_all" -> android.R.id.selectAll
+            else -> return false
+        }
+        return ic.performContextMenuAction(menuId)
     }
 
     // -----------------------------------------------------------------------------------------
@@ -809,13 +1062,31 @@ internal class KeyboardSession(
     private fun onStripSlotTapped(slot: Slot) {
         runCatching {
             if (slot.kind == SlotKind.EMPTY) return@runCatching
-            performHaptic()
+            performSlotTapHaptic()
             val ic = service.currentInputConnection ?: return@runCatching
+            // spec expansion-clipboard-pickers-launcher.md SS2.5, suggestion bar: "Tapping a slot commits that match with no trailing space."
+            if (pipeline.expansionOwnsStripSlots) {
+                val index = pipeline.expansionPopupRowsForBar().indexOfFirst { it.label == slot.text }
+                if (index >= 0) {
+                    val readout = ic.readEditorState(SystemClock.uptimeMillis(), wholeDocument = false, fallbackCursorAbsolute = lastReportedSelStart)
+                    applyResult(ic, pipeline.onExpansionRowTapped(index, readout.snapshot), readout)
+                    refreshCandidatesStrip()
+                    return@runCatching
+                }
+            }
             val readout = ic.readEditorState(SystemClock.uptimeMillis(), wholeDocument = true, fallbackCursorAbsolute = lastReportedSelStart)
             val result = pipeline.onAcceptSuggestion(slot.text, readout.snapshot)
             applyResult(ic, result, readout)
             refreshCandidatesStrip()
         }.onFailure { error -> Log.e(TAG, "slot tap crashed", error) }
+    }
+
+    /** spec SS9.2: slot taps use the system keyboard-tap haptic, or a fixed one-shot when `tap_haptic_use_system` is off; strip buttons always use the system one. */
+    private fun performSlotTapHaptic() {
+        when (val effect = TapVibration.slotTapEffect(tapHapticUseSystem, tapHapticDurationMs)) {
+            TapVibration.Effect.SystemKeyboardTap -> if (statusBar?.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP) != true) performHaptic()
+            is TapVibration.Effect.OneShot -> performHaptic(effect.durationMs)
+        }
     }
 
     /** spec SS6.1: the tap haptic, the "latched layer released first" rule, then the action. */
@@ -850,7 +1121,13 @@ internal class KeyboardSession(
                 Log.i(TAG, "language button: no input-style switching yet (placeholder)")
             }
             StripAction.OpenSettings -> openOwnApp()
-            is StripAction.OpenSymPage -> Log.i(TAG, "${button.id}: Sym page ${action.page} has no surface yet (placeholder)")
+            // spec layers-sym-alt.md SS4.3: the clipboard and emoji picker buttons open their page directly and toggle; the key layers still have no surface.
+            is StripAction.OpenSymPage -> if (action.page == brobata.physiboard.core.strip.SYM_PAGE_CLIPBOARD || action.page == brobata.physiboard.core.strip.SYM_PAGE_EMOJI_PICKER) {
+                pipeline.toggleSymPage(action.page)
+                syncSymPanels()
+            } else {
+                Log.i(TAG, "${button.id}: Sym page ${action.page} has no surface yet (placeholder)")
+            }
             StripAction.OpenQuickActions -> Log.i(TAG, "quick actions overlay not built yet (placeholder)")
         }
     }
@@ -882,14 +1159,16 @@ internal class KeyboardSession(
             runCatching {
                 view.render(
                     pipeline.stripModel(
-                        clipboardCount = 0, // SPEC GAP / missing module: no clipboard history yet (expansion-clipboard-pickers-launcher.md).
+                        clipboardCount = clipboard.count, // spec expansion-clipboard-pickers-launcher.md SS3.4: the count is pushed on every refresh.
                         dictationActive = dictationController.isActive,
                         dictionaryInstalled = pipeline.resources.dictionaries.isNotEmpty(),
                         subtypeLocale = PRIMARY_LANGUAGE.value, // SPEC GAP / missing module: no subtype yet; the one bundled language.
+                        clipboardOverlayOpen = clipboardPanel.isShown,
                     ),
                 )
             }.onFailure { error -> Log.e(TAG, "strip refresh crashed", error) }
         }
+        runCatching { refreshExpansionPopup() }.onFailure { error -> Log.e(TAG, "expansion popup crashed", error) }
         refreshCaretBadge()
         retryCursorUpdateOnRefresh()
     }

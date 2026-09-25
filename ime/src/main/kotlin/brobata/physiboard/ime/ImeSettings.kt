@@ -1,5 +1,14 @@
 package brobata.physiboard.ime
 
+import brobata.physiboard.core.actions.commands.SourceVisibility
+import brobata.physiboard.core.actions.launcher.CommandCustomizations
+import brobata.physiboard.core.actions.launcher.LauncherBehavior
+import brobata.physiboard.core.actions.launcher.LauncherKeySettings
+import brobata.physiboard.core.actions.launcher.LauncherShortcuts
+import brobata.physiboard.core.actions.launcher.QuickLauncherSettings
+import brobata.physiboard.core.actions.snippets.SnippetPresentation
+import brobata.physiboard.core.actions.snippets.SnippetRules
+import brobata.physiboard.core.actions.snippets.SnippetSettings
 import brobata.physiboard.core.keys.LayerResolver
 import brobata.physiboard.core.keys.LayoutDescription
 import brobata.physiboard.core.keys.LongPressSettings
@@ -87,8 +96,46 @@ internal object ImeSettings {
                 ),
             ),
             screenTrackpadEnabled = s.trackpad.enabled,
+            expansion = snippetSettings(s),
+            launcherKeys = LauncherKeySettings(symShortcutsEnabled = s.launcher.symShortcutsEnabled, homeScreenShortcutsEnabled = s.launcher.homeScreenShortcutsEnabled),
+            launcherShortcuts = launcherShortcuts(s),
         )
     }
+
+    /** spec: expansion-clipboard-pickers-launcher.md SS2.8, the eight `snippets_*` rows; the store's map is re-sanitised on the way in (SS2.1's load rules). */
+    fun snippetSettings(s: Settings): SnippetSettings = SnippetSettings(
+        enabled = s.expansion.snippetsEnabled,
+        prefix = SnippetRules.effectivePrefix(s.expansion.snippetPrefix),
+        snippets = SnippetRules.toSnippets(s.expansion.snippets),
+        presentation = SnippetPresentation.fromStored(s.expansion.presentation.storedValue),
+        expandExactOnSpace = s.expansion.expandExactOnSpace,
+        acceptPrefixWithSpace = s.expansion.acceptPrefixWithSpace,
+        acceptWithTab = s.expansion.acceptWithTab,
+        acceptWithEnter = s.expansion.acceptWithEnter,
+    )
+
+    /**
+     * spec SS6.1 "Default assignment": a blank `launcher_shortcuts` row is a store never written,
+     * so Space gets the quick launcher on this read; a written document (even `{}`, the user
+     * having removed it) is left alone, which is what `quick_launcher_default_assigned` guarded in 2.x.
+     */
+    fun launcherShortcuts(s: Settings): LauncherShortcuts {
+        val parsed = LauncherShortcuts.parse(s.launcher.assignedKeysJson)
+        return parsed.applyDefault(defaultAlreadyAssigned = s.launcher.assignedKeysJson.isNotBlank()).shortcuts
+    }
+
+    /** spec SS7.7 minus the dropped rows. */
+    fun quickLauncherSettings(s: Settings): QuickLauncherSettings = QuickLauncherSettings(
+        behavior = if (s.launcher.behavior == brobata.physiboard.core.settings.LauncherBehavior.NIAGARA) LauncherBehavior.NIAGARA else LauncherBehavior.PHYSIBOARD,
+        openUniqueMatch = s.launcher.openUniqueMatch,
+        limitResults = s.launcher.limitResults,
+        respectKeyboardLayout = s.launcher.respectKeyboardLayout,
+        typoTolerantRanking = s.launcher.typoTolerantRanking,
+    )
+
+    fun commandCustomizations(s: Settings): CommandCustomizations = CommandCustomizations.parse(s.launcher.commandCustomizationsJson)
+
+    fun sourceVisibility(s: Settings): SourceVisibility = SourceVisibility.parse(s.launcher.commandSurfaceSourcesJson)
 
     /** spec: keys-and-modifiers.md SS8.2, SS8.3: the long-press mode and threshold ride on the layout description. */
     fun layout(base: LayoutDescription, s: Settings): LayoutDescription =

@@ -158,6 +158,7 @@ object SettingsKeys {
     const val LAUNCHER_SHORTCUTS_ENABLED = "launcher_shortcuts_enabled"
     const val LAUNCHER_SHORTCUTS = "launcher_shortcuts"
     const val LAUNCHER_COMMAND_CUSTOMIZATIONS = "quick_launcher_command_customizations"
+    const val COMMAND_SURFACE_SOURCES = "command_surface_sources"
 
     // SS2.13 feedback
     const val TAP_HAPTIC_USE_SYSTEM = "tap_haptic_use_system"
@@ -621,6 +622,7 @@ object SettingsCodec {
         put(SettingsKeys.LAUNCHER_SHORTCUTS_ENABLED, l.homeScreenShortcutsEnabled.toString())
         if (l.assignedKeysJson.isNotBlank()) put(SettingsKeys.LAUNCHER_SHORTCUTS, l.assignedKeysJson)
         if (l.commandCustomizationsJson.isNotBlank()) put(SettingsKeys.LAUNCHER_COMMAND_CUSTOMIZATIONS, l.commandCustomizationsJson)
+        if (l.commandSurfaceSourcesJson.isNotBlank()) put(SettingsKeys.COMMAND_SURFACE_SOURCES, l.commandSurfaceSourcesJson)
     }
 
     private fun readLauncher(r: FlatReader): LauncherPrefs {
@@ -635,6 +637,7 @@ object SettingsCodec {
             homeScreenShortcutsEnabled = r.bool(SettingsKeys.LAUNCHER_SHORTCUTS_ENABLED, d.homeScreenShortcutsEnabled),
             assignedKeysJson = StoredValues.jsonObjectText(r.string(SettingsKeys.LAUNCHER_SHORTCUTS)),
             commandCustomizationsJson = StoredValues.jsonObjectText(r.string(SettingsKeys.LAUNCHER_COMMAND_CUSTOMIZATIONS)),
+            commandSurfaceSourcesJson = StoredValues.jsonObjectText(r.string(SettingsKeys.COMMAND_SURFACE_SOURCES)),
         )
     }
 

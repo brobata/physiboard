@@ -19,4 +19,6 @@ private fun LazyListScope.extrasHubRows(onNavigate: (String) -> Unit) {
     item { NavigateRow("PhysiBoard-QuickLauncher", "Quick launching, SYM shortcuts, and launcher key assignments") { onNavigate(Routes.QUICK_LAUNCHER) } }
     item { NavigateRow("Input Languages", "Input languages and layouts") { onNavigate(Routes.INPUT_LANGUAGES) } }
     item { NavigateRow("Text expansion", "Type a short trigger and have it expand into whatever you saved.") { onNavigate(Routes.TEXT_EXPANSION) } }
+    // expansion-clipboard-pickers-launcher.md SS13: the clipboard rows 2.x never built.
+    item { NavigateRow("Clipboard history", "Keep copied text on the clipboard panel; how long unpinned clips stay.") { onNavigate(Routes.CLIPBOARD_HISTORY) } }
 }

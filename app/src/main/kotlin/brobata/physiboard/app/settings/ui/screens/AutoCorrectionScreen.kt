@@ -4,6 +4,8 @@ import androidx.compose.runtime.Composable
 import brobata.physiboard.app.settings.ui.IntClosedRange
 import brobata.physiboard.app.settings.ui.IntRangeRow
 import brobata.physiboard.app.settings.ui.LocalSettingsController
+import brobata.physiboard.app.settings.ui.NavigateRow
+import brobata.physiboard.app.settings.ui.Routes
 import brobata.physiboard.app.settings.ui.RowList
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
 import brobata.physiboard.app.settings.ui.SwitchRow
@@ -17,7 +19,7 @@ import brobata.physiboard.core.settings.CorrectionPrefs
  * (`use_edit_type_ranking`) is dropped from [CorrectionPrefs] for 3.0.
  */
 @Composable
-fun AutoCorrectionScreen(onBack: () -> Unit) {
+fun AutoCorrectionScreen(onBack: () -> Unit, onNavigate: (String) -> Unit = {}) {
     val controller = LocalSettingsController.current
     val correction = controller.current.value.correction
     fun set(transform: (CorrectionPrefs) -> CorrectionPrefs) = controller.update { it.copy(correction = transform(it.correction)) }
@@ -26,6 +28,9 @@ fun AutoCorrectionScreen(onBack: () -> Unit) {
         RowList {
             item {
                 SwitchRow("Text replacements", checked = correction.textReplacementsEnabled, onCheckedChange = { set { p -> p.copy(textReplacementsEnabled = it) } })
+            }
+            item {
+                NavigateRow("Manage text replacements", "Custom substitutions per language") { onNavigate(Routes.CUSTOM_SUBSTITUTIONS) }
             }
             item {
                 SwitchRow("Automatic correction", checked = correction.autoReplaceOnSpaceEnter, onCheckedChange = { set { p -> p.copy(autoReplaceOnSpaceEnter = it) } })
