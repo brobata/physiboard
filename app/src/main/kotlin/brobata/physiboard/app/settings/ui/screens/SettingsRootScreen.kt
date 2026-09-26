@@ -27,9 +27,8 @@ import brobata.physiboard.app.shell.UpdateFoundDialog
 import brobata.physiboard.app.shell.rememberUpdateCheckState
 import brobata.physiboard.app.shell.runUpdateCheck
 import brobata.physiboard.app.shell.toast
-import brobata.physiboard.core.shell.BackupCodec
+import brobata.physiboard.app.settings.BackupArchive
 import brobata.physiboard.core.shell.BackupMeta
-import brobata.physiboard.core.shell.BackupRestore
 import brobata.physiboard.core.shell.GithubChecks
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -63,30 +62,38 @@ fun SettingsRootScreen(onNavigate: (String) -> Unit) {
         AutoUpdateCheckOnCreate(updateState, BuildConfig.VERSION_NAME, controller.current.value.shell.dismissedReleases)
     }
 
-    val backupLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+    val backupLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         val settings = controller.current.value
         val meta = BackupMeta(BuildConfig.VERSION_CODE, BuildConfig.VERSION_NAME, SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US).format(java.util.Date()))
-        val text = BackupCodec.encode(settings, meta)
-        runCatching { context.contentResolver.openOutputStream(uri)?.use { it.write(text.toByteArray(Charsets.UTF_8)) } }
-            .onSuccess { toast(context, "Backup completed") }
-            .onFailure { toast(context, "Backup failed: ${it.message}") }
+        scope.launch {
+            val result = runCatching {
+                val stream = context.contentResolver.openOutputStream(uri) ?: error("Unable to open target destination")
+                stream.use { BackupArchive.write(context, settings, meta, it) }
+            }
+            result.onSuccess { toast(context, "Backup completed") }
+                .onFailure { toast(context, "Backup failed: ${it.message}") }
+        }
     }
 
     val restoreLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
-        val text = runCatching { context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() } }.getOrNull()
-        val backup = text?.let { BackupCodec.decode(it) }
-        if (backup == null) {
-            restoreMessage = "Restore failed: Not a PhysiBoard backup: backup_meta.json is missing or unreadable"
-        } else {
-            scope.launch {
-                val outcome = BackupRestore.restore(controller.current.value, backup)
-                controller.update { outcome.settings }
-                restoreMessage = when {
-                    outcome.skippedCount == 0 -> "Restore completed"
-                    outcome.skippedCount == 1 -> "Restored, but one item could not be applied"
-                    else -> "Restored, but ${outcome.skippedCount} items could not be applied"
+        scope.launch {
+            val stream = runCatching { context.contentResolver.openInputStream(uri) }.getOrNull()
+            if (stream == null) {
+                restoreMessage = "Restore failed: Unable to open the selected file"
+                return@launch
+            }
+            when (val result = stream.use { BackupArchive.restore(context, controller.current.value, it) }) {
+                is BackupArchive.RestoreResult.Failed -> restoreMessage = "Restore failed: ${result.reason}"
+                is BackupArchive.RestoreResult.Applied -> {
+                    controller.update { result.outcome.settings }
+                    val skipped = result.outcome.skippedCount + result.sideFileFailures + result.unreadablePrefsFiles
+                    restoreMessage = when {
+                        skipped == 0 -> "Restore completed"
+                        skipped == 1 -> "Restored, but one item could not be applied"
+                        else -> "Restored, but $skipped items could not be applied"
+                    }
                 }
             }
         }
@@ -117,7 +124,7 @@ fun SettingsRootScreen(onNavigate: (String) -> Unit) {
                     }
                 },
                 onBackupClick = {
-                    val name = "physiboard-backup-${SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(java.util.Date())}.json"
+                    val name = "physiboard-backup-${SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(java.util.Date())}.zip"
                     backupLauncher.launch(name)
                 },
                 onRestoreClick = { restoreLauncher.launch(arrayOf("application/json", "application/zip", "*/*")) },

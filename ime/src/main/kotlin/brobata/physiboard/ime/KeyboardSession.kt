@@ -28,6 +28,7 @@ import androidx.core.content.ContextCompat
 import brobata.physiboard.core.actions.clipboard.Clip
 import brobata.physiboard.core.actions.feedback.TapVibration
 import brobata.physiboard.core.actions.launcher.AssignableKeys
+import brobata.physiboard.core.actions.picker.AddSubstitutionSheet
 import brobata.physiboard.core.actions.picker.SymCustomizationLink
 import brobata.physiboard.core.actions.snippets.SnippetExpansion
 import brobata.physiboard.core.dict.DictionaryBroadcastActions
@@ -55,6 +56,8 @@ import brobata.physiboard.core.pointer.trackpad.TrackpadActivationSettings
 import brobata.physiboard.core.pointer.trackpad.TrackpadGestureSettings
 import brobata.physiboard.core.pointer.trackpad.TrackpadPhysicalKey
 import brobata.physiboard.core.settings.Settings
+import brobata.physiboard.core.shell.ImeContextSnapshot
+import brobata.physiboard.core.shell.KeyboardEventRecord
 import brobata.physiboard.core.speech.AssistantLaunch
 import brobata.physiboard.core.speech.AssistantRequest
 import brobata.physiboard.core.subtype.AdditionalSubtypeBuilder
@@ -132,6 +135,9 @@ internal class KeyboardSession(
     private var enterOverrides: List<EnterOverride> = emptyList(),
     private var enterPreset: MessagingPreset = MessagingPreset.SEND_SHIFT_NEWLINE,
     private var enterBehaviorEnabled: Boolean = true,
+    // app-shell.md SS10.2, SS10.7: the Diagnostics screen's capture store, owned by `:app`; a null
+    // sink (a JVM test, or a host without the wiring) leaves this session silent, same as [settingsSource].
+    private val debugCaptureSink: DebugCaptureSink? = null,
 ) {
 
     /** Collects [settingsSource] on the main looper for the session's lifetime; cancelled in [onServiceDestroyed]. */
@@ -699,9 +705,11 @@ internal class KeyboardSession(
             enterBehavior = EnterOverrideResolver.resolveBehavior(reportedPackage, enterOverrides, enterPreset, enterBehaviorEnabled),
             enterSendMethod = EnterOverrideResolver.resolveSendMethod(reportedPackage, enterOverrides, enterBehaviorEnabled),
             enterActionAllowed = EnterOverrideResolver.isEditorActionAllowed(reportedPackage, enterOverrides, enterBehaviorEnabled),
+            extraSendShortcut = EnterOverrideResolver.resolveExtraShortcut(reportedPackage, enterOverrides, enterBehaviorEnabled),
         )
         val field = classifyField(info, profile)
         DiagnosticLog.i(TAG) { "field: pkg=$reportedPackage restarting=$restarting inputType=0x${Integer.toHexString(info?.inputType ?: 0)} caps=${field.capFlags} kind=${field.kind} trust=${profile.editorTrust}" }
+        reportFieldAttachDebug(reportedPackage, info)
         ownEdit = null
         lastReportedSelStart = info?.initialSelStart?.coerceAtLeast(0) ?: 0
         val openingText = initialTextBeforeCursor(info)
@@ -1045,6 +1053,9 @@ internal class KeyboardSession(
      * that no unit test in this project runs against for real.
      */
     fun onKeyEvent(event: KeyEvent): Boolean = runCatching {
+        // app-shell.md SS10.2: origin `ime_service`, reported before anything below can consume or
+        // rewrite the event, so the Diagnostics panel sees exactly what Android delivered.
+        reportKeyboardDebugEvent(event)
         // spec SS6.4: "The close button and the hardware Back key close it." Consumed outright,
         // like the close button, rather than falling through to nav mode or the app.
         if (quickActionsOpen && event.keyCode == KeyEvent.KEYCODE_BACK) {
@@ -1059,6 +1070,85 @@ internal class KeyboardSession(
     }.getOrElse { error ->
         Log.e(TAG, "onKeyEvent crashed on keyCode=${event.keyCode}; letting the raw key through", error)
         false
+    }
+
+    /**
+     * spec app-shell.md SS10.7: "The keyboard records a context snapshot every time it attaches to
+     * a field", so the store's "last field from another app" slot still describes the app being
+     * reported even after Diagnostics' own text field steals the "last field" slot. 3.0 ships only
+     * the Titan 2 Elite profile, so there is no override to read; both profile fields are constant.
+     */
+    private fun reportFieldAttachDebug(reportedPackage: String?, info: EditorInfo?) {
+        val sink = debugCaptureSink ?: return
+        val imeOptions = info?.imeOptions ?: 0
+        val fields = mapOf(
+            "input_type" to "0x${Integer.toHexString(info?.inputType ?: 0)}",
+            "ime_options" to "0x${Integer.toHexString(imeOptions)}",
+            "ime_no_enter_action" to ((imeOptions and EditorInfo.IME_FLAG_NO_ENTER_ACTION) != 0).toString(),
+            "resolved_editor_action" to editorActionName(imeOptions and EditorInfo.IME_MASK_ACTION),
+            "subtype_locale" to currentStyle.locale,
+            "resolved_layout" to currentStyle.layoutId,
+            "profile_override_snapshot" to "auto",
+            "resolved_physical_profile_snapshot" to "titan2elite_qwerty",
+        )
+        sink.reportFieldAttach(
+            ImeContextSnapshot(atMs = SystemClock.uptimeMillis(), packageName = reportedPackage.orEmpty(), fields = fields),
+            isPhysiBoardOwnPackage = reportedPackage == service.packageName,
+        )
+    }
+
+    /** spec app-shell.md SS10.6 `[ime_context]`: the six names the IME test screen's own "IME Actions" section uses. */
+    private fun editorActionName(action: Int): String = when (action) {
+        EditorInfo.IME_ACTION_GO -> "go"
+        EditorInfo.IME_ACTION_SEARCH -> "search"
+        EditorInfo.IME_ACTION_SEND -> "send"
+        EditorInfo.IME_ACTION_NEXT -> "next"
+        EditorInfo.IME_ACTION_DONE -> "done"
+        EditorInfo.IME_ACTION_PREVIOUS -> "previous"
+        EditorInfo.IME_ACTION_UNSPECIFIED -> "unspecified"
+        else -> "none"
+    }
+
+    /**
+     * spec app-shell.md SS10.2, SS10.3: reports the raw event, under origin `ime_service`, to
+     * whichever screen is registered (the Diagnostics screen; a no-op the rest of the time,
+     * [DebugCaptureSink.report] costs nothing while unregistered). SPEC GAP: the four other
+     * origins the spec names (`ime_router`, `ime_decor`, `bounce_keys`, `accidental_keys`) are
+     * internal pipeline stages this build does not separately instrument; every physical event
+     * still reaches the panel and the export under this one origin. The "Output" field is left
+     * unset here: telling whether the pipeline translated the key into another one needs the
+     * pipeline's own result, which this boundary does not see.
+     */
+    private fun reportKeyboardDebugEvent(event: KeyEvent) {
+        val sink = debugCaptureSink ?: return
+        val glyph = pipeline.modifierGlyphInput()
+        val unicodeRaw = runCatching { event.unicodeChar }.getOrDefault(0)
+        val unicodeEffective = runCatching { event.getUnicodeChar(event.metaState) }.getOrDefault(0)
+        sink.report(
+            KeyboardEventRecord(
+                origin = "ime_service",
+                action = if (event.action == KeyEvent.ACTION_DOWN) "KEY_DOWN" else "KEY_UP",
+                keyCode = event.keyCode,
+                scanCode = event.scanCode,
+                deviceId = event.deviceId,
+                source = event.source,
+                flags = event.flags,
+                repeatCount = event.repeatCount,
+                metaState = event.metaState,
+                unicodeRaw = unicodeRaw,
+                unicodeEffective = unicodeEffective,
+                layout = currentStyle.layoutId,
+                shift = event.isShiftPressed,
+                ctrl = event.isCtrlPressed,
+                alt = event.isAltPressed,
+                altLatch = glyph.altLatched,
+                altOneShot = glyph.altOneShotArmed,
+                shiftLatch = glyph.capsLockOn,
+                ctrlLatch = glyph.ctrlLatchedNotNavMode,
+                symPage = if (glyph.symPageOpen) "open" else "none",
+                eventUptimeMs = event.eventTime,
+            ),
+        )
     }
 
     private fun normalizeStroke(event: KeyEvent): KeyStroke? = KeyNormalizer.normalize(
@@ -1604,11 +1694,17 @@ internal class KeyboardSession(
         /**
          * spec status-bar.md SS5.3: enters action mode with the eye (always) and trash (only when
          * the word is already a personal word, dictionaries-languages.md SS7's [UserWordStore])
-         * buttons [SuggestionRowRules.actionModeButtons] computes for this slot.
+         * buttons [SuggestionRowRules.actionModeButtons] computes for this slot. spec autocorrect-
+         * suggestions.md SS6.2: "Long-pressing it opens the add-substitution sheet" for the
+         * add-word slot instead, since [SuggestionRowRules.actionModeButtons] never offers one.
          */
         override fun onSlotLongPressed(position: SlotPosition, slot: Slot) {
             runCatching {
                 if (!slot.isTappable) return@runCatching
+                if (slot.kind == SlotKind.ADD_WORD) {
+                    openAddSubstitutionSheet(slot.text)
+                    return@runCatching
+                }
                 val personal = userWordStore.sourceOf(slot.text) == WordSource.PERSONAL
                 val buttons = SuggestionRowRules.actionModeButtons(slot, wordInPersonalDictionary = personal)
                 if (buttons.isEmpty()) return@runCatching
@@ -1794,6 +1890,27 @@ internal class KeyboardSession(
             }
             service.startActivity(intent)
         }.onFailure { error -> Log.e(TAG, "sym customization open crashed", error) }
+    }
+
+    /**
+     * spec: autocorrect-suggestions.md SS6.2, SS8.5: long-pressing the add-word candidate opens
+     * the "Add substitution" sheet for [word], the same package-restricted-intent pattern
+     * [brobata.physiboard.ime.actions.LauncherKeysController.openAssignmentSheet] already uses for
+     * its own sheet. [currentStyle]'s own language answers "the current subtype language"; SS8.5's
+     * fallback ("`it` when the subtype has no language") is the settings app's sheet's own job,
+     * not this call site's, so a blank language is passed through as-is.
+     */
+    private fun openAddSubstitutionSheet(word: String) {
+        runCatching {
+            val intent = Intent(AddSubstitutionSheet.ACTION_ADD_SUBSTITUTION).apply {
+                setPackage(service.packageName)
+                putExtra(AddSubstitutionSheet.EXTRA_WORD, word)
+                putExtra(AddSubstitutionSheet.EXTRA_LANGUAGE_CODE, currentStyle.primaryLanguage)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
+            }
+            performSlotTapHaptic()
+            service.startActivity(intent)
+        }.onFailure { error -> Log.e(TAG, "add substitution sheet open crashed", error) }
     }
 
     /**

@@ -4,12 +4,19 @@ import android.app.Application
 import android.util.Log
 import brobata.physiboard.app.settings.LegacyImporter
 import brobata.physiboard.app.settings.SettingsStore
+import brobata.physiboard.app.settings.ui.AppPackageChangeMonitor
+import brobata.physiboard.app.shell.AppDebugCaptureStore
+import brobata.physiboard.app.shell.AppLocaleApplier
 import brobata.physiboard.app.shell.UpdateCheckScheduler
 import brobata.physiboard.core.settings.Settings
 import brobata.physiboard.core.shell.GithubChecks
+import brobata.physiboard.core.shell.ImeContextSnapshot
+import brobata.physiboard.core.shell.KeyboardEventRecord
 import brobata.physiboard.device.privileged.DeviceStateStore
 import brobata.physiboard.device.privileged.PrivilegedServices
 import brobata.physiboard.device.privileged.PrivilegedServicesOwner
+import brobata.physiboard.ime.DebugCaptureSink
+import brobata.physiboard.ime.DebugCaptureSinkOwner
 import brobata.physiboard.ime.SettingsSource
 import brobata.physiboard.ime.SettingsSourceOwner
 import kotlinx.coroutines.CompletableDeferred
@@ -38,7 +45,7 @@ import kotlinx.coroutines.runBlocking
  * application context, which is what the components `:device:privileged` declares and the
  * settings screens both have (broker-privileged-toolbox.md SS5.2, SS6: one verdict, one lock).
  */
-class PhysiBoardApplication : Application(), SettingsSourceOwner, PrivilegedServicesOwner {
+class PhysiBoardApplication : Application(), SettingsSourceOwner, PrivilegedServicesOwner, DebugCaptureSinkOwner {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val importSettled = CompletableDeferred<Unit>()
@@ -58,6 +65,16 @@ class PhysiBoardApplication : Application(), SettingsSourceOwner, PrivilegedServ
     }
 
     /**
+     * app-shell.md SS10.2, SS10.7: the keyboard's only way to reach the process-wide
+     * [AppDebugCaptureStore], the same seam shape as [settingsSource] above.
+     */
+    override val debugCaptureSink: DebugCaptureSink = object : DebugCaptureSink {
+        override fun report(event: KeyboardEventRecord) = AppDebugCaptureStore.instance.reportKeyboardEvent(event)
+        override fun reportFieldAttach(snapshot: ImeContextSnapshot, isPhysiBoardOwnPackage: Boolean) =
+            AppDebugCaptureStore.instance.recordFieldAttach(snapshot, isPhysiBoardOwnPackage)
+    }
+
+    /**
      * The entry point the settings screens use for pairing and every privileged feature:
      * `(application as PrivilegedServicesOwner).privileged`, then `.pairing` (arm, state, code
      * entry; `PairingWatcherService.arm(context)` for the notification route), `.broker`
@@ -68,10 +85,19 @@ class PhysiBoardApplication : Application(), SettingsSourceOwner, PrivilegedServ
     override fun onCreate() {
         super.onCreate()
         settingsStore = SettingsStore.open(this)
+        // dictionaries-languages.md SS11: sync AppCompatDelegate to the stored `app_language_tag`
+        // before any activity is created, so the first screen already draws in the chosen
+        // language. A synchronous read, same precedent as StoreBridge.snapshot() below: the
+        // gated, import-aware settingsSource flow has not emitted yet at this point in start-up.
+        runCatching { AppLocaleApplier.applyAtStartup(runBlocking { settingsStore.current() }.languages.appLanguageTag) }
+            .onFailure { Log.e(TAG, "app language apply at startup failed", it) }
         // app-shell.md SS13.7: the daily background check is (re)armed or torn down once per
         // process start, from the one component that runs whether the launcher activity or the
         // keyboard service brought this process up, and never from `:ime` itself.
         scheduleUpdateCheck()
+        // per-app-behavior.md SS7: the installed-app cache and launcher-shortcut cleanup react to
+        // Android's own package-change broadcasts for as long as this process is alive.
+        AppPackageChangeMonitor(settingsStore, scope).register(this)
         scope.launch {
             try {
                 when (val outcome = LegacyImporter(this@PhysiBoardApplication, settingsStore).runOnce()) {
@@ -85,6 +111,10 @@ class PhysiBoardApplication : Application(), SettingsSourceOwner, PrivilegedServ
                 // not written, so the import is tried again on the next start.
                 Log.e(TAG, "2.x settings import failed", error)
             } finally {
+                // settings-catalog.md SS4.2, SS1.1: after the import, before the first read. A
+                // failure here should not block startup; the marker just stays behind and the
+                // reset is retried on the next process start.
+                runCatching { settingsStore.applyBaselineOnce() }.onFailure { Log.e(TAG, "settings baseline apply failed", it) }
                 importSettled.complete(Unit)
                 // device-backlight-ring.md SS5.8: heal a ring that darkened the keyboard and then
                 // died with its process. After the import, so a 2.x record is seen too.

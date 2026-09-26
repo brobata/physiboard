@@ -182,6 +182,7 @@ object SettingsKeys {
     const val LAST_SEEN_WHATS_NEW = "last_seen_whats_new_version"
     const val DISMISSED_RELEASES = "dismissed_releases"
     const val UNTESTED_DEVICE_NOTICE_SEEN = "untested_device_notice_seen"
+    const val BASELINE_VERSION = "settings_baseline_version"
 
     // captures
     const val FN_CTRL_PREV_CAPTURED = "fn_ctrl_prev_captured"

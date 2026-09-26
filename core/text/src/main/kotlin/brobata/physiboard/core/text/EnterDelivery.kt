@@ -233,9 +233,11 @@ object EnterDecision {
         shiftActive: Boolean,
         /**
          * spec: SS3.5 step 4e, SS3.7 (`enter_newline`'s own nav-mode row), SS3.10. Nav mode
-         * (`trackpad-caret-nav.md`) has no owning module yet (rebuild-from-scratch.md build order
-         * step 4), so every existing caller leaves this false, which is exactly "nav mode is not
-         * active" and keeps today's behaviour unchanged.
+         * (`trackpad-caret-nav.md`) is a latched Ctrl (`ModifierState.ctrl.latchFromNavMode`);
+         * `:ime`'s `KeyboardPipeline` feeds its own `navModeActive` property through here so a
+         * send under a per-app behaviour also ends nav mode (SS3.10, "the send clears the Ctrl
+         * latch, which cancels the nav-mode notification and ends nav mode"). Defaults to false
+         * only for callers with no nav-mode concept, such as a JVM test.
          */
         navModeActive: Boolean = false,
     ): EnterIntent = when (profile.enterBehavior) {
@@ -257,6 +259,16 @@ object EnterDecision {
             else -> send(profile, field.imeAction, ctrlTriggered = false)
         }
     }
+
+    /**
+     * spec: SS3.5 step 4a, SS3.8: "Sym is being held (a Sym chord is pending) and the app's extra
+     * shortcut is `sym_enter`: the Sym chord is marked as used ... and the configured send method
+     * fires." `:ime` is the one that knows whether Sym is held or the chord is still pending (a
+     * `:core:keys` fact this module has no access to) and marks the chord used; this only supplies
+     * the send half, identical to an ordinary Ctrl-triggered send (SS3.6) but never Ctrl-triggered
+     * itself, since Sym+Enter is its own trigger, independent of [AppProfile.enterBehavior].
+     */
+    fun decideSymEnterSend(profile: AppProfile, field: FieldContext): EnterIntent = send(profile, field.imeAction, ctrlTriggered = false)
 
     /** spec: SS3.5 step 4e: nav mode declines first; otherwise the field's own declared action (SS3.9), with no fallback to Send and no Ctrl consumption; otherwise decline to the generic path (step 5). */
     private fun declineOrStepE(navModeActive: Boolean, fieldAction: ImeAction): EnterIntent {

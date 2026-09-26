@@ -4,7 +4,10 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.hardware.input.InputManager
 import android.os.Build
+import android.os.SystemClock
+import android.view.InputDevice
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,18 +18,22 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
@@ -41,6 +48,11 @@ import brobata.physiboard.core.settings.SettingsCodec
 import brobata.physiboard.core.shell.DebugExportPolicy
 import brobata.physiboard.core.shell.DebugShareMethod
 import brobata.physiboard.core.shell.DiagnosticsReport
+import brobata.physiboard.core.shell.ImeContextSnapshot
+import brobata.physiboard.core.shell.KeyboardEventExport
+import brobata.physiboard.core.shell.KeyboardEventRecord
+import brobata.physiboard.core.shell.KeyboardEventRecording
+import brobata.physiboard.core.shell.RecordedKeyboardEvent
 import brobata.physiboard.core.shell.ReportSection
 import brobata.physiboard.core.shell.SettingsSnapshotExport
 import brobata.physiboard.core.shell.SuggestionExport
@@ -57,10 +69,12 @@ import java.util.TimeZone
  * release logging. The text field exists only to give the keyboard a place to attach so key
  * events flow; nothing here reads what is typed into it.
  *
- * SPEC GAP: nothing in `:ime` reports key events into [AppDebugCaptureStore] yet (that wiring is
- * the keys/keyboard-service feature's job, not the app shell's), so "Record" here always yields
- * an empty `[events]` section until that lands. Every other section (system, app, device,
- * settings_snapshot) is real.
+ * Registers as the store's one [brobata.physiboard.core.shell.KeyboardEventListener] while this
+ * screen is on screen (SS10.2: "nothing is recorded while the screen is not open; leaving it
+ * unregisters"), drives the "Last Keyboard Event" panel from every event it sees, and appends to
+ * the recorded list only while "Record" is on (SS10.4). The recorded list is this screen's own
+ * state, not the capture store's: section 11's buffer table has no keyboard-event buffer, unlike
+ * autocorrections, suggestions and raw trackpad.
  */
 @Composable
 fun DiagnosticsScreen(onBack: () -> Unit) {
@@ -71,11 +85,29 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
     var fieldText by remember { mutableStateOf("") }
     var recording by remember { mutableStateOf(false) }
     var startedAt by remember { mutableStateOf<Long?>(null) }
-    var eventCount by remember { mutableStateOf(0) }
+    var lastRecordedAtMs by remember { mutableStateOf<Long?>(null) }
+    val recordedEvents = remember { mutableStateListOf<RecordedKeyboardEvent>() }
+    var displayedEvent by remember { mutableStateOf<KeyboardEventRecord?>(null) }
+    var ignoreBack by remember { mutableStateOf(true) } // spec SS10.3: "on by default"
     var includeSuggestions by remember { mutableStateOf(false) }
     var includeRawTrackpad by remember { mutableStateOf(false) }
     var includeAutocorrections by remember { mutableStateOf(false) }
     var viewerText by remember { mutableStateOf<String?>(null) }
+
+    // spec SS10.2: "it registers as the ONE listener for key events reported by the keyboard
+    // service... leaving it unregisters."
+    DisposableEffect(Unit) {
+        store.setKeyboardEventListener { event ->
+            displayedEvent = KeyboardEventRecording.displayedEvent(displayedEvent, event, ignoreBack)
+            if (recording) {
+                val atMs = KeyboardEventRecording.wallClockAtMs(System.currentTimeMillis(), SystemClock.uptimeMillis(), event.eventUptimeMs)
+                val delta = KeyboardEventRecording.deltaMs(lastRecordedAtMs, atMs)
+                recordedEvents.add(RecordedKeyboardEvent(atMs, delta, event))
+                lastRecordedAtMs = atMs
+            }
+        }
+        onDispose { store.setKeyboardEventListener(null) }
+    }
 
     fun buildReport(): String {
         val timeFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX", Locale.US)
@@ -99,29 +131,21 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
                 "build_type=${BuildConfig.BUILD_TYPE}",
             ),
         )
-        sections += ReportSection(
-            "device",
-            listOf(
-                "brand=${Build.BRAND}",
-                "manufacturer=${Build.MANUFACTURER}",
-                "model=${Build.MODEL}",
-                "device=${Build.DEVICE}",
-                "product=${Build.PRODUCT}",
-                "fingerprint=${Build.FINGERPRINT}",
-                "hardware=${Build.HARDWARE}",
-                "board=${Build.BOARD}",
-            ),
-        )
+        sections += ReportSection("device", deviceLines())
+        sections += ReportSection("input_devices", inputDeviceLines(context))
         sections += ReportSection(
             "recording",
             listOf(
                 "started_at=${startedAt?.let { timeFormat.format(Date(it)) } ?: "n/a"}",
-                "event_count=$eventCount",
+                "event_count=${recordedEvents.size}",
                 "include_suggestions=$includeSuggestions",
                 "include_raw_trackpad=$includeRawTrackpad",
                 "include_autocorrections=$includeAutocorrections",
+                "suggestions_filter=${if (includeSuggestions) "empty_hidden,dedupe_consecutive" else "disabled"}",
+                "attempt_logging_supported=true",
             ),
         )
+        sections += ReportSection("ime_context", imeContextLines(store.lastField(), store.lastFieldFromAnotherApp(), timeFormat))
         sections += ReportSection("settings_snapshot", SettingsSnapshotExport.lines(SettingsCodec.toMap(controller.current.value)))
         // spec: broker-privileged-toolbox.md SS8 ("The debug export's `[privileged]` section").
         run {
@@ -169,7 +193,12 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
             val rows = store.rawTrackpadEvents()
             sections += ReportSection("raw_trackpad", if (rows.isEmpty()) listOf("(no raw trackpad events recorded)") else rows.map { "${timeFormat.format(Date(it.atMs))} | ${it.line}" })
         }
-        sections += ReportSection("events", listOf("(no recorded events)")) // SPEC GAP: see the file header.
+        sections += ReportSection(
+            "events",
+            if (recordedEvents.isEmpty()) listOf("(no recorded events)") else recordedEvents.mapIndexed { index, recorded ->
+                KeyboardEventExport.eventLine(recorded, timeFormat.format(Date(recorded.atMs)), isFirst = index == 0)
+            },
+        )
 
         return DiagnosticsReport.assemble(
             exportedAt = timeFormat.format(now),
@@ -197,35 +226,38 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
                         recording = false
                     } else {
                         store.clear()
-                        eventCount = 0
+                        recordedEvents.clear()
+                        lastRecordedAtMs = null
                         startedAt = System.currentTimeMillis()
                         recording = true
                     }
                 }) { Text(if (recording) "Stop" else "Record") }
                 TextButton(onClick = {
                     store.clear()
-                    eventCount = 0
+                    recordedEvents.clear()
+                    lastRecordedAtMs = null
                     startedAt = null
                     recording = false
+                    displayedEvent = null
                     viewerText = null
                 }) { Text("Clear") }
                 TextButton(onClick = { viewerText = buildReport() }) { Text("View") }
                 TextButton(onClick = {
                     val report = buildReport()
-                    val method = DebugExportPolicy.shareMethod(eventCount, includeRawTrackpad, report.toByteArray(Charsets.UTF_8).size)
+                    val method = DebugExportPolicy.shareMethod(recordedEvents.size, includeRawTrackpad, report.toByteArray(Charsets.UTF_8).size)
                     shareReport(context, report, method)
                 }) { Text("Share") }
             }
 
             Text(
-                "Recorder: ${if (recording) "recording" else "stopped"} · Events: $eventCount",
+                "Recorder: ${if (recording) "recording" else "stopped"} · Events: ${recordedEvents.size}",
                 style = MaterialTheme.typography.bodySmall,
-                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                fontFamily = FontFamily.Monospace,
             )
             Text(
                 "Started at: ${startedAt?.let { SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date(it)) } ?: "n/a"}",
                 style = MaterialTheme.typography.bodySmall,
-                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                fontFamily = FontFamily.Monospace,
             )
 
             Row(modifier = Modifier.padding(top = 12.dp)) {
@@ -233,6 +265,13 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
                 FilterChip(selected = includeRawTrackpad, onClick = { includeRawTrackpad = !includeRawTrackpad }, label = { Text("incl. raw trackpad") }, modifier = Modifier.padding(start = 8.dp))
                 FilterChip(selected = includeAutocorrections, onClick = { includeAutocorrections = !includeAutocorrections }, label = { Text("incl. autocorrections") }, modifier = Modifier.padding(start = 8.dp))
             }
+
+            LastKeyboardEventPanel(
+                event = displayedEvent,
+                ignoreBack = ignoreBack,
+                onIgnoreBackChanged = { ignoreBack = it },
+                modifier = Modifier.padding(top = 12.dp),
+            )
         }
     }
 
@@ -241,7 +280,7 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
         AlertDialog(
             onDismissRequest = { viewerText = null },
             title = { Text("Debug Report Viewer") },
-            text = { Column(modifier = Modifier.verticalScroll(rememberScrollState())) { Text(report, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, style = MaterialTheme.typography.bodySmall) } },
+            text = { Column(modifier = Modifier.verticalScroll(rememberScrollState())) { Text(report, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall) } },
             confirmButton = {
                 TextButton(onClick = {
                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -251,6 +290,125 @@ fun DiagnosticsScreen(onBack: () -> Unit) {
             dismissButton = { TextButton(onClick = { viewerText = null }) { Text("Close") } },
         )
     }
+}
+
+/** spec SS10.1 "5.", SS10.3: the two-column panel plus its modifier chips and the "Ignore BACK" control. */
+@Composable
+private fun LastKeyboardEventPanel(
+    event: KeyboardEventRecord?,
+    ignoreBack: Boolean,
+    onIgnoreBackChanged: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(modifier = modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row {
+                Text("Last Keyboard Event", style = MaterialTheme.typography.titleSmall, modifier = Modifier.fillMaxWidth())
+            }
+            Row(modifier = Modifier.padding(top = 8.dp)) {
+                Column(modifier = Modifier.fillMaxWidth().padding(end = 8.dp)) {
+                    val left = event?.let { KeyboardEventExport.leftColumn(it) } ?: listOf("n/a")
+                    for (line in left) Text(line, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
+                }
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    val right = event?.let { KeyboardEventExport.rightColumn(it) } ?: listOf("n/a")
+                    for (line in right) Text(line, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+            val chips = event?.let { KeyboardEventExport.modifierChips(it) } ?: emptyList()
+            if (chips.isNotEmpty()) {
+                Row(modifier = Modifier.padding(top = 8.dp)) {
+                    chips.forEachIndexed { index, chip ->
+                        FilterChip(selected = true, onClick = {}, label = { Text(chip) }, modifier = if (index == 0) Modifier else Modifier.padding(start = 8.dp))
+                    }
+                }
+            }
+            Row(modifier = Modifier.padding(top = 8.dp)) {
+                // spec SS10.3: "on by default"; a BACK event does not replace the panel while this is on.
+                FilterChip(selected = ignoreBack, onClick = { onIgnoreBackChanged(!ignoreBack) }, label = { Text("Ignore BACK") })
+            }
+        }
+    }
+}
+
+/** spec SS10.6 `[device]`: every field the report lists, in order. */
+private fun deviceLines(): List<String> {
+    val soc = if (Build.VERSION.SDK_INT >= 31) runCatching { Build.SOC_MODEL }.getOrDefault("n/a") else "n/a"
+    val socManufacturer = if (Build.VERSION.SDK_INT >= 31) runCatching { Build.SOC_MANUFACTURER }.getOrDefault("n/a") else "n/a"
+    val sku = runCatching { Build.SKU }.getOrDefault("n/a")
+    val odmSku = runCatching { Build.ODM_SKU }.getOrDefault("n/a")
+    val isUnihertz = Build.BRAND.lowercase().contains("unihertz") || Build.MANUFACTURER.lowercase().contains("unihertz")
+    return listOf(
+        "brand=${Build.BRAND}",
+        "manufacturer=${Build.MANUFACTURER}",
+        "model=${Build.MODEL}",
+        "device=${Build.DEVICE}",
+        "product=${Build.PRODUCT}",
+        "fingerprint=${Build.FINGERPRINT}",
+        "hardware=${Build.HARDWARE}",
+        "board=${Build.BOARD}",
+        "bootloader=${Build.BOOTLOADER}",
+        "build_display=${Build.DISPLAY}",
+        "build_id=${Build.ID}",
+        "build_tags=${Build.TAGS}",
+        "build_type=${Build.TYPE}",
+        "supported_abis=${Build.SUPPORTED_ABIS.joinToString(",")}",
+        "sku=$sku",
+        "odm_sku=$odmSku",
+        "soc_manufacturer=$socManufacturer",
+        "soc_model=$soc",
+        "physical_keyboard_name=${physicalKeyboardName() ?: "n/a"}",
+        "keyboard_family=${if (isUnihertz) "Unihertz" else "unknown"}",
+        // spec SS27 D3, keys-and-modifiers.md: 3.0 ships one physical profile, so there is no
+        // override to read (settings-catalog.md SS2.3's row is dropped, see core/settings/Settings.kt).
+        "profile_override=auto",
+        "resolved_physical_profile=titan2elite_qwerty",
+    )
+}
+
+/** spec SS10.6 `[input_devices]`: one line per input device carrying the keyboard source or a keyboard type. */
+private fun inputDeviceLines(context: Context): List<String> {
+    val manager = context.getSystemService(Context.INPUT_SERVICE) as? InputManager
+    val ids = (manager?.inputDeviceIds ?: InputDevice.getDeviceIds()).toList()
+    val lines = ids.mapNotNull { id ->
+        val device = InputDevice.getDevice(id) ?: return@mapNotNull null
+        val isKeyboardLike = (device.sources and InputDevice.SOURCE_KEYBOARD) == InputDevice.SOURCE_KEYBOARD ||
+            device.keyboardType != InputDevice.KEYBOARD_TYPE_NONE
+        if (!isKeyboardLike) return@mapNotNull null
+        "id=${device.id} name='${device.name}' descriptor=${device.descriptor} vendor_id=${device.vendorId} " +
+            "product_id=${device.productId} keyboard_type=${device.keyboardType} sources=${device.sources} " +
+            "sources_hex=0x${device.sources.toString(16)} external=${device.isExternal} virtual=${device.isVirtual}"
+    }
+    return lines.ifEmpty { listOf("(no keyboard-like input devices found)") }
+}
+
+/** spec SS10.7: the physical keyboard's own reported name, for the `[device]` section's `physical_keyboard_name`. */
+private fun physicalKeyboardName(): String? = InputDevice.getDeviceIds().toList()
+    .mapNotNull { InputDevice.getDevice(it) }
+    .firstOrNull { (it.sources and InputDevice.SOURCE_KEYBOARD) == InputDevice.SOURCE_KEYBOARD && !it.isVirtual }
+    ?.name
+
+/** spec SS10.6 `[ime_context]`, SS10.7: own field snapshot, then the six `external_` fields from the last non-PhysiBoard field. */
+private fun imeContextLines(own: ImeContextSnapshot?, external: ImeContextSnapshot?, timeFormat: SimpleDateFormat): List<String> {
+    fun field(snapshot: ImeContextSnapshot?, key: String) = snapshot?.fields?.get(key) ?: "n/a"
+    return listOf(
+        "captured_at=${own?.let { timeFormat.format(Date(it.atMs)) } ?: "n/a"}",
+        "target_package=${own?.packageName ?: "n/a"}",
+        "input_type=${field(own, "input_type")}",
+        "ime_options=${field(own, "ime_options")}",
+        "ime_no_enter_action=${field(own, "ime_no_enter_action")}",
+        "resolved_editor_action=${field(own, "resolved_editor_action")}",
+        "subtype_locale=${field(own, "subtype_locale")}",
+        "resolved_layout=${field(own, "resolved_layout")}",
+        "external_target_package=${external?.packageName ?: "n/a"}",
+        "external_input_type=${field(external, "input_type")}",
+        "external_ime_options=${field(external, "ime_options")}",
+        "external_ime_no_enter_action=${field(external, "ime_no_enter_action")}",
+        "external_resolved_editor_action=${field(external, "resolved_editor_action")}",
+        "external_subtype_locale=${field(external, "subtype_locale")}",
+        "profile_override_snapshot=${field(own, "profile_override_snapshot")}",
+        "resolved_physical_profile_snapshot=${field(own, "resolved_physical_profile_snapshot")}",
+    )
 }
 
 /** spec: SS10.5. Text goes straight to the chooser; a file goes through the app's file provider with a read grant. */

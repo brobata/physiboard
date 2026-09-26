@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_language_title">Langue de l\'application</string>
+    <string name="app_language_description">Choisissez la langue utilisée pour les textes de l\'interface de l\'application.</string>
+    <string name="app_language_system_default">Langue du système</string>
+</resources>

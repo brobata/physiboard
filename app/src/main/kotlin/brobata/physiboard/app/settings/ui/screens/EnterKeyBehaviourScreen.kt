@@ -1,6 +1,8 @@
 package brobata.physiboard.app.settings.ui.screens
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
+import brobata.physiboard.app.settings.ui.AppCatalog
 import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.NavigateRow
 import brobata.physiboard.app.settings.ui.PerAppListKind
@@ -9,6 +11,9 @@ import brobata.physiboard.app.settings.ui.Routes
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
 import brobata.physiboard.app.settings.ui.SingleChoiceChipsRow
 import brobata.physiboard.app.settings.ui.SwitchRow
+import brobata.physiboard.app.settings.ui.toEnterOverride
+import brobata.physiboard.app.settings.ui.toEnterOverrideRow
+import brobata.physiboard.core.text.EnterPresetApplication
 import brobata.physiboard.core.text.MessagingPreset
 
 /**
@@ -24,6 +29,7 @@ import brobata.physiboard.core.text.MessagingPreset
 fun EnterKeyBehaviourScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
     val controller = LocalSettingsController.current
     val perApp = controller.current.value.perApp
+    val context = LocalContext.current
 
     SettingsScreenScaffold(title = "Enter key behaviour", onBack = onBack) {
         RowList {
@@ -40,7 +46,20 @@ fun EnterKeyBehaviourScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
                     options = listOf(MessagingPreset.APP_DEFAULT, MessagingPreset.SEND_SHIFT_NEWLINE, MessagingPreset.NEWLINE_CTRL_SEND, MessagingPreset.CUSTOM),
                     optionLabel = ::presetLabel,
                     selected = perApp.enterPreset,
-                    onSelect = { preset -> controller.update { it.copy(perApp = it.perApp.copy(enterPreset = preset)) } },
+                    // spec: per-app-behavior.md SS3.11 step 3: choosing a preset also rewrites the
+                    // override row for every installed favourite (Custom leaves rows alone).
+                    onSelect = { preset ->
+                        controller.update { settings ->
+                            val current = settings.perApp.enterOverrides.map { it.toEnterOverride() }
+                            val next = EnterPresetApplication.apply(preset, current, installed = { pkg -> AppCatalog.isInstalled(context, pkg) })
+                            settings.copy(
+                                perApp = settings.perApp.copy(
+                                    enterPreset = preset,
+                                    enterOverrides = next.map { it.toEnterOverrideRow() },
+                                ),
+                            )
+                        }
+                    },
                 )
             }
             item {

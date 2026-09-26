@@ -136,6 +136,17 @@ data class LauncherShortcuts(val entries: Map<Int, ShortcutEntry> = emptyMap()) 
     fun pruneUninstalled(installed: (String) -> Boolean): LauncherShortcuts =
         LauncherShortcuts(entries.filterValues { entry -> entry.displayPackage?.let(installed) ?: true })
 
+    /**
+     * spec: per-app-behavior.md SS7 point 2: "If the action is `PACKAGE_REMOVED` and the
+     * `EXTRA_REPLACING` extra is false (a true uninstall, not an update), every launcher shortcut
+     * whose target package is the removed one is deleted" (T50); an update ([removeTargeting] not
+     * called) "changes nothing in any list" (T51). Unlike [pruneUninstalled], which re-checks every
+     * entry against a live catalogue when a screen opens, this removes only the one package the
+     * caller already knows is gone, so it needs no `PackageManager` access at all.
+     */
+    fun removeTargeting(packageName: String): LauncherShortcuts =
+        LauncherShortcuts(entries.filterValues { entry -> entry.displayPackage != packageName })
+
     /** What the first read decided. spec SS6.1, "Default assignment" (T37, T38). */
     data class DefaultOutcome(val shortcuts: LauncherShortcuts, val defaultAssigned: Boolean, val blockedBySpace: Boolean)
 

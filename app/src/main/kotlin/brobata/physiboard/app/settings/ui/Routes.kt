@@ -45,6 +45,8 @@ object Routes {
     const val STATUS = "status"
     const val ABOUT = "about"
     const val DIAGNOSTICS = "diagnostics"
+    // dictionaries-languages.md SS11, app-shell.md SS15 card 3 / SS22.3: the "App Language" screen, reached from About.
+    const val APP_LANGUAGE = "app_language"
 
     // expansion-clipboard-pickers-launcher.md: the list editors the placeholder rows pointed at.
     const val MANAGE_SNIPPETS = "manage_snippets"

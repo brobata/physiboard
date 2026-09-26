@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_language_title">App-Sprache</string>
+    <string name="app_language_description">Wähle die Sprache für die Texte der App-Oberfläche.</string>
+    <string name="app_language_system_default">Systemstandard</string>
+</resources>

@@ -47,6 +47,7 @@ import brobata.physiboard.core.strip.StripInputs
 import brobata.physiboard.core.strip.StripModel
 import brobata.physiboard.core.strip.StripSettings
 import brobata.physiboard.core.text.LengthChangeAllowance
+import brobata.physiboard.core.text.AddWordCandidate
 import brobata.physiboard.core.text.AppProfile
 import brobata.physiboard.core.text.AutoCapitalization
 import brobata.physiboard.core.text.AutocorrectSettings
@@ -55,7 +56,9 @@ import brobata.physiboard.core.text.EditorOp
 import brobata.physiboard.core.text.EditorSnapshot
 import brobata.physiboard.core.text.EditorTrust
 import brobata.physiboard.core.text.EnterBehavior
+import brobata.physiboard.core.text.EnterDecision
 import brobata.physiboard.core.text.EnterIntent
+import brobata.physiboard.core.text.ExtraSendShortcut
 import brobata.physiboard.core.text.FieldContext
 import brobata.physiboard.core.text.FieldKind
 import brobata.physiboard.core.text.RankedSuggestion
@@ -528,6 +531,21 @@ internal class KeyboardPipeline(
         return PipelineResult(emptyList(), consumed = true, launcherKey = decision)
     }
 
+    /**
+     * spec: per-app-behavior.md SS3.5 step 4a, SS3.8: "Sym is being held (a Sym chord is pending)
+     * and the app's extra shortcut is `sym_enter`: the Sym chord is marked as used ... and the
+     * configured send method fires." Checked after [launcherInTextField] (E6: a QuickLauncher
+     * binding on Sym+Enter wins) and only for Enter, so every other Sym chord consumer keeps
+     * first refusal.
+     */
+    private fun trySymEnterSend(stroke: KeyStroke): PipelineResult? {
+        if (stroke.key != ENTER_KEY || !stroke.isInitialPress) return null
+        val symHeldOrPending = stroke.meta.sym || (modifierState.sym.togglePending && !modifierState.sym.chordUsed)
+        if (!symHeldOrPending || activeAppProfile.extraSendShortcut != ExtraSendShortcut.SYM_ENTER) return null
+        modifierState = ModifierMachine.symChordUsed(modifierState)
+        return toPipelineResult(emptyList(), EnterDecision.decideSymEnterSend(activeAppProfile, activeField))
+    }
+
     private val SYM_EDIT_SHORTCUT_KEYS = setOf(KeyId.Letter('C'), KeyId.Letter('V'), KeyId.Letter('X'), KeyId.Letter('A'))
 
     // -----------------------------------------------------------------------------------------
@@ -622,6 +640,9 @@ internal class KeyboardPipeline(
         if (!activeField.isReallyEditable) launcherOutsideTextField(stroke)?.let { return it }
         // spec SS6.2 C: Sym plus an assigned key in a text field, ahead of the Sym chord symbol.
         if (activeField.isReallyEditable) launcherInTextField(stroke)?.let { return it }
+        // spec per-app-behavior.md SS3.5 step 4a, SS3.8: Sym+Enter as an extra send, after the
+        // launcher-shortcut check above (E6) and ahead of the Sym chord symbol lookup below.
+        if (activeField.isReallyEditable) trySymEnterSend(stroke)?.let { return it }
         // spec SS2.4: expansion evaluates Space, Tab, Enter and the d-pad center "immediately,
         // before the key is acted on", so it must run before `:core:keys` turns Space into a commit.
         if (activeField.isReallyEditable) tryExpansion(stroke, editor)?.let { return it }
@@ -859,17 +880,28 @@ internal class KeyboardPipeline(
      * (never a plain physical hold, SS17), nav mode (SS3.4), and the app. What only `:ime` knows
      * (clipboard count, dictation, the loaded dictionary, the subtype) arrives as parameters.
      *
-     * SPEC GAP: `:core:text` exposes no add-word candidate for the left slot yet (SS5.1); it is
-     * passed as null until the autocorrect pipeline surfaces one. SPEC GAP: "no dictionary is
+     * spec: autocorrect-suggestions.md SS6.2's live-typing clause: [AddWordCandidate.forCurrentWord]
+     * offers the word being typed once it is unknown; the two clauses that extend the candidate
+     * past an automatic correction or an undo are not carried yet (`:core:text`'s boundary/undo
+     * results do not thread a candidate into [TextInputState] today). SPEC GAP: "no dictionary is
      * installed for the current language (checked by the language code of the current subtype)"
      * (SS5.2) needs the subtype module; [dictionaryInstalled] is the caller's answer for the one
-     * language this milestone loads.
+     * language this milestone loads, reused here as "the primary dictionary is loaded" (SS6.2).
      */
     fun stripModel(clipboardCount: Int, dictationActive: Boolean, dictionaryInstalled: Boolean, subtypeLocale: String?, clipboardOverlayOpen: Boolean = false): StripModel {
         val inputs = StripInputs(
             packageName = currentPackageName,
             suggestions = suggestions().map { it.word },
-            addWordCandidate = null,
+            addWordCandidate = if (activeField.suggestionsAllowed && settings.textInput.autocorrect.suggestionsEnabled) {
+                AddWordCandidate.forCurrentWord(
+                    word = textInputState.currentWord.word,
+                    primaryDictionaryLoaded = dictionaryInstalled,
+                    dictionaries = resources.dictionaries,
+                    userWords = resources.userWords,
+                )
+            } else {
+                null
+            },
             // spec expansion-clipboard-pickers-launcher.md SS2.5, the suggestion bar presentation.
             expansionSuggestions = expansionBarRows().map { it.label },
             clipboardOverlayOpen = clipboardOverlayOpen,
@@ -1034,9 +1066,9 @@ internal class KeyboardPipeline(
     }
 
     private fun textPipelineStep(action: Action, shiftHeld: Boolean, altActive: Boolean, ctrlActive: Boolean, shiftActive: Boolean, isRepeat: Boolean, editor: EditorSnapshot): PipelineResult {
-        // spec: per-app-behavior.md SS3.5 step 4e, SS3.10; nav mode has no owning module yet (see
-        // EnterDecision.decide's own KDoc), so this is always "nav mode is not active".
-        val request = TextInputRequest.Key(action, shiftHeld = shiftHeld, altActive = altActive, ctrlActive = ctrlActive, shiftActive = shiftActive, navModeActive = false, isRepeat = isRepeat)
+        // spec: per-app-behavior.md SS3.5 step 4e, SS3.10; nav mode is latched Ctrl (see
+        // navModeActive's own KDoc above), which is exactly what EnterDecision.decide needs.
+        val request = TextInputRequest.Key(action, shiftHeld = shiftHeld, altActive = altActive, ctrlActive = ctrlActive, shiftActive = shiftActive, navModeActive = navModeActive, isRepeat = isRepeat)
         val result = TextInputPipeline.handle(request, activeField, settings.textInput, resources, textInputState, editor, activeTrust, activeAppProfile)
         textInputState = result.state
         result.capDecision?.let(::applyCapDecision)

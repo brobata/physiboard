@@ -11,6 +11,7 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStoreFile
 import brobata.physiboard.core.settings.Settings
+import brobata.physiboard.core.settings.SettingsBaseline
 import brobata.physiboard.core.settings.SettingsCodec
 import brobata.physiboard.ime.SettingsSource
 import kotlinx.coroutines.flow.Flow
@@ -52,6 +53,27 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) : SettingsSou
             val before = SettingsCodec.toMap(SettingsCodec.fromMap(prefs.asStringMap()))
             prefs.replaceRows(before, SettingsCodec.toMap(settings))
             for ((k, v) in markers) prefs[stringPreferencesKey(k)] = v
+        }
+    }
+
+    /**
+     * settings-catalog.md SS4.2, SS1.1: run the versioned baseline reset (after the 2.x import,
+     * before the first read) so a default found to be wrong after release can be forced back onto
+     * an existing install, not just a fresh one. [SettingsBaseline.apply] is already a safe no-op
+     * once the marker is current, so calling this on every process start is correct and simpler
+     * than a separate run-once guard; the before/after equality check below just avoids a write
+     * (and the flow re-emission it would cause) on the common case where nothing changed. Reads
+     * and writes the whole flat map in one `dataStore.edit` transaction so a process death cannot
+     * leave a partially-corrected store or a marker without its corrections.
+     */
+    suspend fun applyBaselineOnce() {
+        dataStore.edit { prefs ->
+            val before = prefs.asStringMap()
+            val after = SettingsBaseline.apply(before, SettingsBaseline.storedVersion(before))
+            if (after != before) {
+                for (key in before.keys) if (key !in after) prefs.remove(stringPreferencesKey(key))
+                for ((k, v) in after) prefs[stringPreferencesKey(k)] = v
+            }
         }
     }
 

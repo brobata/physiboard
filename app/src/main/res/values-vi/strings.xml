@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_language_title">Ngôn ngữ ứng dụng</string>
+    <string name="app_language_description">Chọn ngôn ngữ dùng cho văn bản giao diện ứng dụng.</string>
+    <string name="app_language_system_default">Mặc định hệ thống</string>
+</resources>

@@ -187,4 +187,36 @@ class EnterDecisionTest {
         val p = profile(behavior = EnterBehavior.NEWLINE)
         assertEquals(decide(p, multiLine = false), decide(p, multiLine = true))
     }
+
+    // -----------------------------------------------------------------------------------------
+    // T29: Sym+Enter as an extra send (SS3.5 step 4a, SS3.8).
+    // -----------------------------------------------------------------------------------------
+
+    @Test
+    fun `T29 sym-enter send fires the configured method regardless of wanted behaviour`() {
+        val p = AppProfile(
+            packageName = "com.whatsapp",
+            enterBehavior = EnterBehavior.APP_DEFAULT,
+            enterSendMethod = EnterSendMethod.PLAIN_ENTER,
+            extraSendShortcut = ExtraSendShortcut.SYM_ENTER,
+        )
+        assertEquals(EnterIntent.SendPlainEnter, EnterDecision.decideSymEnterSend(p, field(ImeAction.NONE)))
+    }
+
+    @Test
+    fun `sym-enter send falls back to editor action with the field's own action id`() {
+        val p = AppProfile(
+            packageName = "com.whatsapp",
+            enterSendMethod = EnterSendMethod.EDITOR_ACTION,
+            enterActionAllowed = true,
+            extraSendShortcut = ExtraSendShortcut.SYM_ENTER,
+        )
+        assertEquals(EnterIntent.RequestEditorAction(2, clearCtrlIfDelivered = false), EnterDecision.decideSymEnterSend(p, field(ImeAction.GO)))
+    }
+
+    @Test
+    fun `sym-enter send is never ctrl-triggered so an editor action success does not clear ctrl`() {
+        val p = AppProfile(packageName = "com.whatsapp", enterSendMethod = EnterSendMethod.EDITOR_ACTION, enterActionAllowed = true)
+        assertEquals(EnterIntent.RequestEditorAction(4, clearCtrlIfDelivered = false), EnterDecision.decideSymEnterSend(p, field(ImeAction.NONE)))
+    }
 }

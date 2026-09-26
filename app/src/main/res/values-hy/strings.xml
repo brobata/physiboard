@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_language_title">Հավելվածի լեզուն</string>
+    <string name="app_language_description">Ընտրեք լեզուն, որով կցուցադրվեն հավելվածի ինտերֆեյսի տեքստերը:</string>
+    <string name="app_language_system_default">Համակարգային լռելյայն</string>
+</resources>

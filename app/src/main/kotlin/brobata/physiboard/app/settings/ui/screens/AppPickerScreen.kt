@@ -5,6 +5,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import brobata.physiboard.app.settings.ui.AppCatalog
 import brobata.physiboard.app.settings.ui.AppPickerBody
+import brobata.physiboard.app.settings.ui.InstalledApp
 import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.PerAppListKind
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
@@ -42,10 +43,27 @@ fun AppPickerScreen(kind: String, onBack: () -> Unit) {
 
     val apps = remember(kind) { AppCatalog.installedApps(context, alsoInclude = selected) }
 
+    // spec: per-app-behavior.md SS4.4 (the screen's own description) and SS4.3 ("The exact-typing
+    // list screen tells the user about the expansion on web-app rows; no other screen does").
+    val description = if (kind == PerAppListKind.EXACT_TYPING) {
+        "In the apps you pick here, PhysiBoard sends every keystroke as-is, without correction or " +
+            "capitalisation. Word suggestions, autocorrect, auto-capitalisation, double-space " +
+            "periods and text expansion are all turned off in these apps."
+    } else {
+        null
+    }
+    val noteFor: ((InstalledApp) -> String?)? = if (kind == PerAppListKind.EXACT_TYPING) {
+        { app -> AppCatalog.webApkNote(context, app.packageName) }
+    } else {
+        null
+    }
+
     SettingsScreenScaffold(title = title, onBack = onBack) {
         AppPickerBody(
             apps = apps,
             selected = selected,
+            description = description,
+            noteFor = noteFor,
             onToggle = { packageName, checked -> toggle(controller, kind, packageName, checked) },
         )
     }

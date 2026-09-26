@@ -60,6 +60,12 @@ data class AppProfile(
     /** spec: per-app-behavior.md SS3.3 ("Send method for P"); resolved the same way as [enterBehavior]. */
     val enterSendMethod: EnterSendMethod = EnterSendMethod.AUTO,
     /**
+     * spec: per-app-behavior.md SS3.1, SS3.8 ("Sym+Enter as an extra send"), SS3.5 step 4a.
+     * Resolved the same way as [enterBehavior] ([EnterOverrideResolver.resolveExtraShortcut]);
+     * `:ime`'s Sym-chord session checks this ahead of [enterBehavior]'s own wanted-behaviour steps.
+     */
+    val extraSendShortcut: ExtraSendShortcut = ExtraSendShortcut.NONE,
+    /**
      * spec: per-app-behavior.md SS3.3 ("Editor action allowed for P"): true when [packageName] is
      * one of the 8 send-action packages, or when the user has any override row for it at all
      * (regardless of that row's own content). [EnterOverrideResolver.isEditorActionAllowed]

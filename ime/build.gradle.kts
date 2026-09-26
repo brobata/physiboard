@@ -43,6 +43,9 @@ dependencies {
     api(project(":core:actions"))
     // The privileged setup pass runs at every IME start (broker-privileged-toolbox.md SS7, D17: the IME is what survives boot on this ROM).
     implementation(project(":device:privileged"))
+    // app-shell.md SS10.2: the Diagnostics screen's debug capture store, reached only through the
+    // DebugCaptureSink seam (mirrors SettingsSource), since :app owns the store and depends on :ime.
+    api(project(":core:shell"))
     implementation(libs.androidx.core.ktx)
     // The settings store is read as a Flow (SettingsSource); collection happens on the main looper.
     implementation(libs.kotlinx.coroutines.android)

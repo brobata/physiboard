@@ -14,12 +14,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import brobata.physiboard.app.BuildConfig
+import brobata.physiboard.app.R
+import brobata.physiboard.app.settings.ui.LocalSettingsController
 import brobata.physiboard.app.settings.ui.NavigateRow
+import brobata.physiboard.app.settings.ui.Routes
 import brobata.physiboard.app.settings.ui.SettingsScreenScaffold
 import brobata.physiboard.app.shell.DeviceDetectionAndroid
 import brobata.physiboard.app.shell.openInBrowser
+import brobata.physiboard.core.shell.AppLocale
 import brobata.physiboard.core.shell.BugReportContext
 import brobata.physiboard.core.shell.BugReportUrl
 import android.os.Build
@@ -31,9 +36,12 @@ import android.os.Build
  * one sentence the task's licensing note allows, and nothing else here mentions it.
  */
 @Composable
-fun AboutScreen(onBack: () -> Unit, onShowTutorial: () -> Unit) {
+fun AboutScreen(onBack: () -> Unit, onShowTutorial: () -> Unit, onNavigate: (String) -> Unit) {
     val context = LocalContext.current
     val model = remember { DeviceDetectionAndroid.classify() }
+    val appLanguageTag = LocalSettingsController.current.current.value.languages.appLanguageTag
+    val appLanguageDescription = AppLocale.resolve(appLanguageTag)?.let { AppLocale.nativeName(it) }
+        ?: stringResource(R.string.app_language_system_default)
 
     SettingsScreenScaffold(title = "About", onBack = onBack) {
         Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp)) {
@@ -86,6 +94,12 @@ fun AboutScreen(onBack: () -> Unit, onShowTutorial: () -> Unit) {
                 label = "Third-party notices",
                 description = "The vendored ADB client (Apache 2.0) and everything else this build bundles",
                 onClick = { openInBrowser(context, "https://github.com/brobata/physiboard/blob/main/broker/NOTICE") },
+            )
+
+            NavigateRow(
+                label = stringResource(R.string.app_language_title),
+                description = appLanguageDescription,
+                onClick = { onNavigate(Routes.APP_LANGUAGE) },
             )
 
             NavigateRow(

@@ -1,4 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">PhysiBoard</string>
+    <!-- A product name, not translated (dictionaries-languages.md SS11 default choice: names stay as-is). -->
+    <string name="app_name" translatable="false">PhysiBoard</string>
+
+    <!-- dictionaries-languages.md SS11, app-shell.md SS15 card 3 / SS22.3, settings-catalog.md
+         SS9.2: the "App Language" screen and the About row that opens it. Machine-translated for
+         values-de/es/fr/hy/it/pl/ru/uk/vi (this file, English, is the fallback and the source
+         text). -->
+    <string name="app_language_title">App Language</string>
+    <string name="app_language_description">Choose the language used for app interface texts.</string>
+    <string name="app_language_system_default">System default</string>
 </resources>

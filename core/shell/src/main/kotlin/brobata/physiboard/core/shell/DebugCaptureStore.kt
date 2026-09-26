@@ -37,6 +37,7 @@ class DebugCaptureStore {
     private val rawTrackpad = ArrayDeque<RawTrackpadRecord>()
     private var lastField: ImeContextSnapshot? = null
     private var lastFieldFromAnotherApp: ImeContextSnapshot? = null
+    private var keyboardEventListener: KeyboardEventListener? = null
 
     /**
      * spec: SS11. Dropped at record time (pure noise, never kept): an attempt with outcome
@@ -77,6 +78,20 @@ class DebugCaptureStore {
 
     fun lastField(): ImeContextSnapshot? = lastField
     fun lastFieldFromAnotherApp(): ImeContextSnapshot? = lastFieldFromAnotherApp
+
+    /**
+     * spec: SS10.2, "it registers as the ONE listener for key events reported by the keyboard
+     * service." A new registration replaces any previous one; `null` unregisters (leaving the
+     * Diagnostics screen stops the keyboard's events from being recorded at all).
+     */
+    fun setKeyboardEventListener(listener: KeyboardEventListener?) {
+        keyboardEventListener = listener
+    }
+
+    /** spec: SS10.2. The keyboard calls this for every event; it is a no-op while nothing is registered. */
+    fun reportKeyboardEvent(event: KeyboardEventRecord) {
+        keyboardEventListener?.onKeyboardEvent(event)
+    }
 
     /** spec: SS10.4 "Clear": wipes every buffer and both context slots for the whole process. */
     fun clear() {

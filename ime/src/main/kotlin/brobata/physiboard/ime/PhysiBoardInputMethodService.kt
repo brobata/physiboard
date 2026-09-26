@@ -24,8 +24,21 @@ import brobata.physiboard.device.privileged.setup.SetupReasons
  */
 class PhysiBoardInputMethodService : InputMethodService() {
 
-    /** The settings store lives in `:app` (see [SettingsSourceOwner]); a host without one leaves the session on its shipped defaults. */
-    private val keyboard by lazy { KeyboardSession(this, settingsSource = (applicationContext as? SettingsSourceOwner)?.settingsSource) }
+    /**
+     * The settings store lives in `:app` (see [SettingsSourceOwner]); a host without one leaves
+     * the session on its shipped defaults. spec: per-app-behavior.md SS2.2, the WebAPK host
+     * lookup: without [WebApkHostLookup] a WebAPK like PersaLink can only be told apart from its
+     * host browser by turning the whole browser raw.
+     */
+    private val keyboard by lazy {
+        KeyboardSession(
+            this,
+            settingsSource = (applicationContext as? SettingsSourceOwner)?.settingsSource,
+            webApkHost = WebApkHostLookup.forContext(this),
+            // app-shell.md SS10.2, SS10.7: a host without :app's wiring (a JVM test) simply reports nothing.
+            debugCaptureSink = (applicationContext as? DebugCaptureSinkOwner)?.debugCaptureSink,
+        )
+    }
 
     /**
      * spec: broker-privileged-toolbox.md SS7: the privileged setup pass runs at every IME start

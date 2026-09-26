@@ -49,6 +49,22 @@
             </intent-filter>
         </activity>
 
+        <!-- autocorrect-suggestions.md SS8.5: the "Add substitution" sheet, same transparent,
+             animation-free, excluded-from-recents pattern as the assignment sheet above, answered
+             for the keyboard's ADD_SUBSTITUTION intent (same package only). -->
+        <activity
+            android:name="brobata.physiboard.app.settings.ui.AddSubstitutionActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:launchMode="singleTop">
+            <intent-filter>
+                <action android:name="brobata.physiboard.action.ADD_SUBSTITUTION" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
         <!-- app-shell.md SS10.5: the debug report's file share, cache path `debug-reports/`. -->
         <provider
             android:name="androidx.core.content.FileProvider"

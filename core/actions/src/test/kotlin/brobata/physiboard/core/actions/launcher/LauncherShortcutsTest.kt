@@ -88,6 +88,18 @@ class LauncherShortcutsTest {
     }
 
     @Test
+    fun `T50 a real uninstall removes every shortcut targeting the removed package`() {
+        val s = LauncherShortcuts().assign(q, app).assign(space, ShortcutEntry.QUICK_LAUNCHER).removeTargeting("com.whatsapp")
+        assertEquals(setOf(space), s.entries.keys)
+    }
+
+    @Test
+    fun `T51 an unrelated package name removes nothing`() {
+        val s = LauncherShortcuts().assign(q, app).assign(space, ShortcutEntry.QUICK_LAUNCHER)
+        assertEquals(s, s.removeTargeting("com.example.other"))
+    }
+
+    @Test
     fun `resolution prefers the live catalogue, then the stored launch spec, and quick launcher entries always open the sheet`() {
         val live = BuiltInCommands.app("com.whatsapp", "WhatsApp Renamed")
         val catalog = CommandCatalog(listOf(live))

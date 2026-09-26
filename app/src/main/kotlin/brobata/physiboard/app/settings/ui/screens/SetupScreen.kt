@@ -3,11 +3,19 @@ package brobata.physiboard.app.settings.ui.screens
 import android.content.Intent
 import android.provider.Settings as AndroidSettings
 import android.view.inputmethod.InputMethodManager
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -19,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,6 +61,18 @@ fun SetupScreen(onComplete: () -> Unit) {
     var essentialsExpanded by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
 
+    // spec: SS4.2. "360 ms after both steps become done the page scrolls to its bottom... the
+    // same scroll happens when the essentials expand."
+    LaunchedEffect(steps.bothDone) {
+        if (steps.bothDone) {
+            delay(360)
+            scrollState.animateScrollTo(scrollState.maxValue)
+        }
+    }
+    LaunchedEffect(essentialsExpanded) {
+        if (essentialsExpanded) scrollState.animateScrollTo(scrollState.maxValue)
+    }
+
     Column(modifier = Modifier.fillMaxWidth().verticalScroll(scrollState).padding(16.dp)) {
         TerminalHeader()
         Text("Two quick steps to start typing.", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(vertical = 16.dp))
@@ -77,8 +98,8 @@ fun SetupScreen(onComplete: () -> Unit) {
             (context.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as? InputMethodManager)?.showInputMethodPicker()
         }
 
-        // spec: SS4.2. The 2.x fade/scroll choreography is cosmetic polish left for later; the
-        // section itself appears the moment both steps are done, which is the behavior that matters.
+        // spec: SS4.2. The section appears the moment both steps are done; the delayed scroll to
+        // it is driven by the LaunchedEffect above.
         if (steps.bothDone) {
             Column(modifier = Modifier.padding(top = 24.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -135,9 +156,26 @@ private fun LaunchedEffectPoll(action: () -> Unit) {
     }
 }
 
+/** spec: SS4, "a cursor that fades between opaque and transparent every 650 ms". */
 @Composable
 private fun TerminalHeader() {
-    Text("physiboard:~$ setup", style = TerminalPromptStyle, color = PhysiBoardColors.SignalAmber)
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text("physiboard:~$ setup", style = TerminalPromptStyle, color = PhysiBoardColors.SignalAmber)
+        val transition = rememberInfiniteTransition(label = "setup_cursor")
+        val alpha by transition.animateFloat(
+            initialValue = 1f,
+            targetValue = 0f,
+            animationSpec = infiniteRepeatable(animation = tween(650), repeatMode = RepeatMode.Reverse),
+            label = "setup_cursor_alpha",
+        )
+        Box(
+            modifier = Modifier
+                .padding(start = 4.dp)
+                .size(width = 10.dp, height = 20.dp)
+                .alpha(alpha)
+                .background(PhysiBoardColors.SignalAmber),
+        )
+    }
 }
 
 @Composable

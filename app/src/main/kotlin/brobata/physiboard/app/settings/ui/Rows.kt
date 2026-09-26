@@ -127,6 +127,9 @@ private fun RowLabel(label: String, description: String?, modifier: Modifier = M
 fun SwitchRow(
     label: String,
     description: String? = null,
+    // spec: per-app-behavior.md SS6.1, "an optional web-app note in the primary colour (up to two
+    // lines) when the screen supplies one" (the exact-typing list's WebAPK rows, SS4.3).
+    note: String? = null,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     enabled: Boolean = true,
@@ -139,7 +142,12 @@ fun SwitchRow(
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RowLabel(label, description, modifier = Modifier.weight(1f))
+        Column(modifier = Modifier.weight(1f)) {
+            RowLabel(label, description)
+            if (note != null) {
+                Text(note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+            }
+        }
         Switch(checked = checked, onCheckedChange = if (enabled) onCheckedChange else null, enabled = enabled)
     }
 }
@@ -376,13 +384,27 @@ fun ExpandableSection(title: String, initiallyExpanded: Boolean = false, content
 fun AppPickerBody(
     apps: List<InstalledApp>,
     selected: Set<String>,
+    // spec: per-app-behavior.md SS6.1, "a description paragraph ... at the top of the list".
+    description: String? = null,
+    // spec: SS6.1, "an optional web-app note ... when the screen supplies one" (SS4.3's WebAPK row text).
+    noteFor: ((InstalledApp) -> String?)? = null,
     onToggle: (String, Boolean) -> Unit,
 ) {
     var query by remember { mutableStateOf("") }
     val filtered = remember(apps, query) {
         if (query.isBlank()) apps else apps.filter { it.label.contains(query, ignoreCase = true) || it.packageName.contains(query, ignoreCase = true) }
     }
+    // spec: SS6.1, "Enabled rows sort to the top (stable within each group), re-sorted after every
+    // toggle". sortedBy is stable, so each group keeps [apps]'s own (alphabetical) order.
+    val sorted = filtered.sortedBy { it.packageName !in selected }
     Column {
+        if (description != null) {
+            Text(
+                description,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            )
+        }
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
@@ -391,10 +413,11 @@ fun AppPickerBody(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).defaultMinSize(minHeight = MinTouchTarget),
         )
         RowList {
-            items(filtered, key = { it.packageName }) { app ->
+            items(sorted, key = { it.packageName }) { app ->
                 SwitchRow(
                     label = app.label,
                     description = app.packageName,
+                    note = noteFor?.invoke(app),
                     checked = app.packageName in selected,
                     onCheckedChange = { onToggle(app.packageName, it) },
                 )

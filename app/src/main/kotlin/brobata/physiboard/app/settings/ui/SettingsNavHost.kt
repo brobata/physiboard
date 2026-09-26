@@ -8,6 +8,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import brobata.physiboard.app.settings.ui.screens.AboutScreen
+import brobata.physiboard.app.settings.ui.screens.AppLanguageScreen
 import brobata.physiboard.app.settings.ui.screens.AppPickerScreen
 import brobata.physiboard.app.settings.ui.screens.AutoCorrectionScreen
 import brobata.physiboard.app.settings.ui.screens.DiagnosticsScreen
@@ -87,9 +88,11 @@ fun SettingsApp(startDestination: String = Routes.HOME) {
                     controller.update { it.copy(shell = it.shell.copy(tutorialCompleted = false)) }
                     navController.navigate(Routes.SETUP)
                 },
+                onNavigate = ::navigate,
             )
         }
         composable(Routes.DIAGNOSTICS) { DiagnosticsScreen(onBack = ::back) }
+        composable(Routes.APP_LANGUAGE) { AppLanguageScreen(onBack = ::back) }
         composable(Routes.SETTINGS) { SettingsRootScreen(onNavigate = ::navigate) }
         composable(Routes.T2E_TOOLS) { T2EToolsScreen(onBack = ::back, onNavigate = ::navigate) }
         composable(Routes.KEYBOARD) { KeyboardHubScreen(onBack = ::back, onNavigate = ::navigate) }
